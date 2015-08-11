@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Time::HiRes qw(gettimeofday);
+use Bio::Easel::MSA;
 
 # hard-coded-paths:
 my $idfetch       = "/netopt/ncbi_tools64/bin/idfetch";
@@ -22,6 +23,13 @@ $usage .= "\n";
 my ($seconds, $microseconds) = gettimeofday();
 my $start_secs    = ($seconds + ($microseconds / 1000000.));
 my $executable    = $0;
+my $hmmer_exec_dir = "/home/nawrocke/bin/";
+my $hmmbuild       = $hmmer_exec_dir . "hmmbuild";
+my $hmmpress       = $hmmer_exec_dir . "hmmpress";
+my $nhmmscan       = $hmmer_exec_dir . "nhmmscan";
+foreach my $x ($hmmbuild, $hmmpress, $nhmmscan) { 
+  if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
+}
 
 #&GetOptions("noexp"      => \$do_noexp) || 
 #    die "Unknown option";
@@ -73,6 +81,7 @@ printf("# date:    %s\n", scalar localtime());
 if($opts_used_long ne "") { 
   print $opts_used_long;
 }
+printf("#\n");
 
 #####################
 # parse the list file
@@ -162,79 +171,10 @@ my @cds_protid_A = ();     # will remain empty unless $do_protid is 1 (-protid e
 my @cds_codonstart_A = (); # will remain empty unless $do_codonstart is 1 (-codonstart enabled at cmdline)
 #my $do_desc = ($do_product || $do_protid || $do_codonstart) ? 1 : 0; # '1' to create a description to add to defline of fetched sequences, '0' not to
 
-# Get information on the reference accession
-my $naccn = scalar(@accn_A);
-$ref_accn = $accn_A[0];
-if(! exists ($cds_tbl_HHA{$ref_accn})) { die "ERROR no CDS information stored for reference accession"; }
-(undef, undef, undef, undef, undef, $ref_strand_str) = getStrandStats(\%cds_tbl_HHA, $ref_accn);
-getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $ref_accn, \@ref_cds_len_A, \@ref_cds_coords_A);
-getQualifierValues(\%cds_tbl_HHA, $ref_accn, "product", \@ref_cds_product_A);
-$ref_ncds = scalar(@ref_cds_len_A);
-
-# Create input query files for each of the reference CDS:
-for(my $i = 0; $i < $ref_ncds; $i++) { 
-  printf("# Fetching reference CDS sequence %d ... ", ($i+1));
-
-  my $strand = substr($ref_strand_str, $i, 1);
-  my $coords_with_accn = addAccnToCoords($ref_cds_coords_A[$i], $ref_accn);
-
-  my $fetch_input = $out_root . ".ref.cds." . ($i+1) . ".esl-fetch.in";
-  my $fetch_fasta = $out_root . ".ref.cds." . ($i+1) . ".fa";
-  open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
-  printf FOUT ("$ref_accn:cds%d\t$coords_with_accn\n", ($i+1));
-  close FOUT;
-
-  my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input > $fetch_fasta";
-  runCommand($cmd, 0);
-      
-  printf("done. [$fetch_fasta]\n");
-
-  # if CDS has multiple exons, fetch each independently into it's own file
-  my @starts_A = ();
-  my @stops_A  = ();
-  my $nexons   = 0;
-  startStopsFromCoords($ref_cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
-  if($nexons > 1) { 
-    for(my $e = 0; $e < $nexons; $e++) { 
-      printf("# Fetching reference CDS %d sequence, exon %d ... ", ($i+1), ($e+1));
-      $fetch_input = $out_root . ".ref.cds." . ($i+1) . ".exon." . ($e+1) . ".esl-fetch.in";
-      $fetch_fasta = $out_root . ".ref.cds." . ($i+1) . ".exon." . ($e+1) . ".fa";
-      my $fetch_string = "";
-      $fetch_string = $ref_accn . ":" . $starts_A[$e] . ".." . $stops_A[$e];
-      if($strand eq "-") { # reverse strand
-        $fetch_string = "complement(" . $fetch_string . ")";
-      }
-      elsif($strand ne "+") { 
-        die "ERROR reference CDS $i has strand $strand, which we can't deal with";
-      }
-      open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
-      printf FOUT ("$ref_accn:cds%d:exon%d\t$fetch_string\n", ($i+1), ($e+1));
-      close FOUT;
-      my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input > $fetch_fasta";
-      runCommand($cmd, 0);
-      printf("done. [$fetch_fasta]\n");
-    }
-  }      
-}
-
-# validate all reference CDS have unique CDS:product annotation
-validateRefCDSAreUnique($ref_ncds, \@ref_cds_product_A);
-
-print("#\n");
-printf("# Reference accession: $ref_accn\n");
-#print("#\n");
-#for(my $rc = 0; $rc < $ref_ncds; $rc++) { 
-#$ref_cds_len_tol_A[$rc] = $fraclen * $ref_cds_len_A[$rc];
-#printf("# Reference CDS product %d: %-30s reference-length: %6d   length-range-for-match: %8.1f to %8.1f\n", $rc+1, $ref_cds_product_A[$rc], $ref_cds_len_A[$rc], ($ref_cds_len_A[$rc] - $ref_cds_len_tol_A[$rc]), ($ref_cds_len_A[$rc] + $ref_cds_len_tol_A[$rc]));
-#}
-
-#$wlabel_str  = (2*$ref_ncds+1) * 2;
-#$wstrand_str = $ref_ncds * 2;
-#if($wlabel_str  < length("label"))         { $wlabel_str  = length("label"); }
-#if($wstrand_str < length("strand-string")) { $wstrand_str = length("strand_string"); }
-# }    
-
+#####################################################
 # Fetch all genome sequences, including the reference
+#####################################################
+my $naccn = scalar(@accn_A);
 my $gnm_fetch_file = $out_root . ".fg.idfetch.in";
 my $gnm_fasta_file = $out_root . ".fg.fa";
 open(OUT, ">" . $gnm_fetch_file) || die "ERROR unable to open $gnm_fetch_file";
@@ -244,14 +184,86 @@ for(my $a = 0; $a < $naccn; $a++) {
   print OUT $accn_A[$a] . ":" . "genome-duplicated" . "\t" . "join($accn_A[$a]:1..$totlen_H{$accn_A[$a]},$accn_A[$a]:1..$totlen_H{$accn_A[$a]})\n";
 }
 close(OUT);
-
 printf("# Fetching $naccn full (duplicated) genome sequences... ");
 # my $cmd = "$idfetch -t 5 -c 1 -G $gnm_fetch_file > $gnm_fasta_file";
 my $cmd = "perl $esl_fetch_cds -nocodon $gnm_fetch_file > $gnm_fasta_file";
 runCommand($cmd, 0);
 printf("done. [$gnm_fasta_file]\n");
 
-# Pass through all accessions, and annotate them
+########################################################
+# Gather information and sequence data on the reference.
+# Use each reference CDS and reference CDS exon as a 
+# homology search query against all the genomes.
+#######################################################
+$ref_accn = $accn_A[0];
+if(! exists ($cds_tbl_HHA{$ref_accn})) { die "ERROR no CDS information stored for reference accession"; }
+(undef, undef, undef, undef, undef, $ref_strand_str) = getStrandStats(\%cds_tbl_HHA, $ref_accn);
+getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $ref_accn, \@ref_cds_len_A, \@ref_cds_coords_A);
+getQualifierValues(\%cds_tbl_HHA, $ref_accn, "product", \@ref_cds_product_A);
+$ref_ncds = scalar(@ref_cds_len_A);
+
+my $stk_file = $out_root . ".ref.all.stk";
+
+printf("# Fetching reference sequences, and reformatting them to stockholm format ... ");
+for(my $i = 0; $i < $ref_ncds; $i++) { 
+  my $strand = substr($ref_strand_str, $i, 1);
+  my $coords_with_accn = addAccnToCoords($ref_cds_coords_A[$i], $ref_accn);
+
+  my $tmp_out_root = $out_root . ".ref.cds." . ($i+1);
+  my $fetch_input  = $tmp_out_root . ".esl-fetch.in";
+  my $fetch_output = $tmp_out_root . ".stk";
+  open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
+  printf FOUT ("$ref_accn:cds%d\t$coords_with_accn\n", ($i+1));
+  close FOUT;
+
+  my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input | esl-reformat --informat afa stockholm - > $fetch_output";
+  runCommand($cmd, 0);
+  nameStockholmAlignment($tmp_out_root, $fetch_output, $tmp_out_root . ".named.stk");
+
+  # now append the named alignment to the growing stockholm alignment database $stk_file
+  $cmd = "cat " . $tmp_out_root . ".named.stk";
+  if($i == 0) { $cmd .= " >  $stk_file"; }
+  else        { $cmd .= " >> $stk_file"; }
+  runCommand($cmd, 0);
+
+  # if CDS has multiple exons, fetch each
+  my @starts_A = ();
+  my @stops_A  = ();
+  my $nexons   = 0;
+  startStopsFromCoords($ref_cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
+  if($nexons > 1) { 
+    for(my $e = 0; $e < $nexons; $e++) { 
+      my $tmp_out_root = $out_root . ".ref.cds." . ($i+1) . ".exon." . ($e+1);
+      $fetch_input  = $tmp_out_root . ".esl-fetch.in";
+      $fetch_output = $tmp_out_root . ".stk";
+      my $fetch_string = $ref_accn . ":" . $starts_A[$e] . ".." . $stops_A[$e];
+      if($strand eq "-") { # reverse strand
+        $fetch_string = "complement(" . $fetch_string . ")";
+      }
+      elsif($strand ne "+") { 
+        die "ERROR reference CDS $i has strand $strand, which we can't deal with";
+      }
+      open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
+      printf FOUT ("$ref_accn:cds%d:exon%d\t$fetch_string\n", ($i+1), ($e+1));
+      close FOUT;
+      my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input | esl-reformat --informat afa stockholm - > $fetch_output";
+      runCommand($cmd, 0);
+      nameStockholmAlignment($tmp_out_root, $fetch_output, $tmp_out_root . ".named.stk");
+
+      # now append the named alignment to the growing stockholm alignment database $stk_file
+      $cmd = "cat " . $tmp_out_root . ".named.stk >> $stk_file";
+      runCommand($cmd, 0);
+    }
+  }      
+}
+printf("done. [$stk_file]\n");
+
+# do the one homology search
+createHmmDb($hmmbuild, $hmmpress, $stk_file, $out_root . ".ref");
+my $hmmdb = $out_root . ".ref.hmm";
+runNhmmscan($nhmmscan, $hmmdb, $gnm_fasta_file, $out_root);
+
+# Pass through all accessions, and run homology searches on them using the reference CDS
 for(my $a = 0; $a < $naccn; $a++) { 
   my $accn = $accn_A[$a];
   # sanity checks
@@ -275,7 +287,8 @@ for(my $a = 0; $a < $naccn; $a++) {
     getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $accn, \@cds_len_A, \@cds_coords_A);
     getQualifierValues(\%cds_tbl_HHA, $accn, "product", \@cds_product_A);
   }
-} # end of first pass through all accessions 'for(my $a = 0; $a < $naccn; $a++)'
+
+} 
 
 #############
 # SUBROUTINES
@@ -809,4 +822,106 @@ sub lengthFromCoords {
   }
 
   return $length;
+}
+
+# Subroutine: createHmmDb()
+# Synopsis:   Create an HMM Db from a stockholm database file.
+#
+# Args:       $hmmbuild:   path to 'hmmbuild' executable
+#             $hmmpress:   path to 'hmmpress' executable
+#             $stk_file:   stockholm DB file
+#             $out_root:   string for naming output files
+#
+# Returns:    void
+#
+sub createHmmDb { 
+  my $sub_name = "createHmmDb()";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($hmmbuild, $hmmpress, $stk_file, $out_root) = @_;
+
+  if(! -s $stk_file)  { die "ERROR in $sub_name, $stk_file file does not exist or is empty"; }
+
+  # remove the binary files, possibly from an earlier hmmbuild/hmmpress:
+  for my $suffix ("h3f", "h3i", "h3m", "h3p") { 
+    my $file = $out_root . ".hmm." . $suffix;
+    if(-e $file) { unlink $file; }
+  }
+
+  # first build the models
+  printf("# Running hmmbuild for $out_root ... ");
+  my $cmd = "$hmmbuild --dna $out_root.hmm $stk_file > $out_root.hmmbuild";
+  runCommand($cmd, 0);
+#  printf("done. [$out_root.nhmmer and $out_root.tblout]\n");
+  printf("done.\n");
+
+  # next, press the HMM DB we just created
+  printf("# Running hmmpress for $out_root ... ");
+  $cmd = "$hmmpress $out_root.hmm > $out_root.hmmpress";
+  runCommand($cmd, 0);
+#  printf("done. [$out_root.nhmmer and $out_root.tblout]\n");
+  printf("done.\n");
+
+  return;
+}
+
+# Subroutine: runNhmmscan()
+# Synopsis:   Perform a homology search using nhmmscan.
+#
+# Args:       $query_hmmdb:   query HMM database
+#             $target_fasta:  fasta file that is the target
+#             $out_root:      string for naming output files
+#
+# Returns:    void
+#
+sub runNhmmscan { 
+  my $sub_name = "runNhmmscan()";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+ 
+  my ($nhmmscan, $query_hmmdb, $target_fasta, $out_root) = @_;
+
+  if(! -s $query_hmmdb)  { die "ERROR in $sub_name, $query_hmmdb file does not exist or is empty"; }
+  if(! -s $target_fasta) { die "ERROR in $sub_name, $target_fasta file does not exist or is empty"; }
+
+  printf("# Running nhmmscan for $out_root ... ");
+  my $cmd = "$nhmmscan --noali --tblout $out_root.tblout $query_hmmdb $target_fasta > $out_root.nhmmscan";
+  runCommand($cmd, 0);
+  printf("done.\n");
+
+  return;
+}
+
+# Subroutine: nameStockholmAlignment
+#
+# Synopsis:   Read in a stockholm alignment ($in_file), add a name
+#             ($name) to it, and output a new file ($out_file) that is
+#             identical to it but with the name annotation.
+#
+# Args:       $name:          name to add to alignment
+#             $in_file:       input stockholm alignment
+#             $out_file:      output stockholm alignment to create
+#
+# Returns:    void
+#
+sub nameStockholmAlignment {
+  my $sub_name = "nameStockholmAlignment";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($name, $in_file, $out_file) = @_;
+
+  # printf("# Naming alignment in $in_file to $name ... "); 
+
+  # open and validate file
+  my $msa = Bio::Easel::MSA->new({
+    fileLocation => $in_file,
+                                 });  
+  $msa->set_name($name);
+  $msa->write_msa($out_file);
+
+  # printf("done. [$out_file]\n");
+  return;
 }
