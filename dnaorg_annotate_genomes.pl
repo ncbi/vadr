@@ -31,8 +31,10 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan) {
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
-#&GetOptions("noexp"      => \$do_noexp) || 
-#    die "Unknown option";
+my $do_dup = 0; # set to '1' if -dup enabled, duplicate each genome, else do not
+
+&GetOptions("dup"      => \$do_dup) || 
+    die "Unknown option";
 
 if(scalar(@ARGV) != 2) { die $usage; }
 my ($dir, $listfile) = (@ARGV);
@@ -45,11 +47,10 @@ my ($dir, $listfile) = (@ARGV);
 # store options used, so we can output them 
 my $opts_used_short = "";
 my $opts_used_long  = "";
-# NONE YET: one left commented out below for future reference
-#if(defined $do_noexp) { 
-#  $opts_used_short .= "-noexp ";
-#  $opts_used_long  .= "# option:  verbose explanation of class definition not being output to stdout [-noexp]\n";
-#}
+if($do_dup) { 
+  $opts_used_short .= "-dup ";
+  $opts_used_long  .= "# option:  duplicating genomes to allow detection of CDS that wrap the start/end [-dup]\n";
+}
 # 
 # check for incompatible option values/combinations:
 # NONE YET
@@ -180,11 +181,17 @@ my $gnm_fasta_file = $out_root . ".fg.fa";
 open(OUT, ">" . $gnm_fetch_file) || die "ERROR unable to open $gnm_fetch_file";
 for(my $a = 0; $a < $naccn; $a++) { 
 #  print OUT $accn_A[$a] . "\n";
-  my $fetch_string = "join(" . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "," . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . ")\n";
-  print OUT $accn_A[$a] . ":" . "genome-duplicated" . "\t" . "join($accn_A[$a]:1..$totlen_H{$accn_A[$a]},$accn_A[$a]:1..$totlen_H{$accn_A[$a]})\n";
+  if($do_dup) { 
+    my $fetch_string = "join(" . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "," . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . ")\n";
+    print OUT $accn_A[$a] . ":" . "genome-duplicated" . "\t" . $fetch_string;
+  }
+  else { 
+    my $fetch_string = $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "\n";
+    print OUT $accn_A[$a] . ":" . "genome" . "\t" . $fetch_string;
+  }
 }
 close(OUT);
-printf("# Fetching $naccn full (duplicated) genome sequences... ");
+printf("# Fetching $naccn full%s genome sequences... ", $do_dup ? " (duplicated)" : "");
 # my $cmd = "$idfetch -t 5 -c 1 -G $gnm_fetch_file > $gnm_fasta_file";
 my $cmd = "perl $esl_fetch_cds -nocodon $gnm_fetch_file > $gnm_fasta_file";
 runCommand($cmd, 0);
