@@ -9,107 +9,42 @@ use Time::HiRes qw(gettimeofday);
 # hard-coded-paths:
 my $idfetch       = "/netopt/ncbi_tools64/bin/idfetch";
 my $esl_fetch_cds = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
-#my $esl_fetch_cds = "/home/nawrocke/notebook/15_0518_dnaorg_virus_compare_script/wd-esl-fetch-cds/esl-fetch-cds.pl";
-my $usearch       = "/panfs/pan1.be-md.ncbi.nlm.nih.gov/dnaorg/2015.05.29/usearch";
-
-my $do_uc    = 0; 
-my $uc_id    = undef;
-my $df_uc_id = 0.9;
-my $nuc      = 0;   # number of uclust commands written to uclust script
 
 # The definition of $usage explains the script and usage:
-my $usage = "\ndnaorg_compare_genomes.pl\n";
+my $usage = "\ndnaorg_annotate_genomes.pl\n";
 $usage .= "\t<directory created by dnaorg_fetch_dna_wrapper>\n";
 $usage .= "\t<list file with all accessions>\n";
 $usage .= "\n"; 
-$usage .= " This script compares genomes from the same species based\n";
-$usage .= " mostly on files containing parsed information from a\n";
-$usage .= " 'feature table' file which must already exist. That file is\n";
-$usage .= " created by running 'dnaorg_fetch_dna_wrapper.pl -ftable' and\n";
-$usage .= " subsequently 'parse-ftable.pl'.\n";
-$usage .= "\n";
-$usage .= " BASIC OPTIONS:\n";
-$usage .= "  -t <f>      : fractional length difference threshold for mismatch [default: 0.1]\n";
-$usage .= "  -s          : use short names: all CDS seqs will be named as sequence accession\n";
-$usage .= "  -product    : add CDS 'product' qualifier value to output sequence files deflines\n";
-$usage .= "  -protid     : add CDS 'protein_id' qualifier value to output sequence files deflines\n";
-$usage .= "  -codonstart : add CDS 'protein_id' qualifier value to output sequence files deflines\n";
-$usage .= "  -uc         : create a shell script to run uclust jobs for all fasta files\n";
-$usage .= "  -uc_id <f>  : with -uc, set sequence identity cutoff to <f> [default: $df_uc_id]\n";
+$usage .= " This script annotates genomes from the same species based\n";
+$usage .= " on reference annotation.\n";
 $usage .= "\n";
 
 my ($seconds, $microseconds) = gettimeofday();
 my $start_secs    = ($seconds + ($microseconds / 1000000.));
 my $executable    = $0;
-my $be_verbose    = 1;
-my $df_fraclen    = 0.1;
-my $fraclen       = undef;
-my $do_shortnames = 0; # changed to '1' if -s enabled
-my $do_product    = 0; # changed to '1' if -product enabled
-my $do_protid     = 0; # changed to '1' if -protid enabled
-my $do_codonstart = 0; # changed to '1' if -codonstart enabled
 
-&GetOptions( "t"          => \$fraclen, 
-             "s"          => \$do_shortnames, 
-             "product"    => \$do_product,
-             "protid"     => \$do_protid,
-             "codonstart" => \$do_codonstart,
-             "uc"         => \$do_uc, 
-             "uc_id"      => \$uc_id) || 
-    die "Unknown option";
+#&GetOptions("noexp"      => \$do_noexp) || 
+#    die "Unknown option";
 
 if(scalar(@ARGV) != 2) { die $usage; }
 my ($dir, $listfile) = (@ARGV);
 
-$dir =~ s/\/*$//; # remove trailing '/' if there is one
+#$dir =~ s/\/*$//; # remove trailing '/' if there is one
+#my $outdir     = $dir;
+#my $outdirroot = $outdir;
+#$outdirroot =~ s/^.+\///;
 
 # store options used, so we can output them 
 my $opts_used_short = "";
 my $opts_used_long  = "";
-if(defined $fraclen) { 
-  $opts_used_short .= "-t $fraclen";
-  $opts_used_long  .= "# option:  setting fractional length threshold to $fraclen [-t]\n";
-}
-if($do_shortnames) { 
-  $opts_used_short .= "-s ";
-  $opts_used_long  .= "# option:  outputting CDS names as accessions [-s]\n";
-}
-if($do_product) { 
-  $opts_used_short .= "-product ";
-  $opts_used_long  .= "# option:  adding \'product\' qualifier values to output sequence file deflines [-product]\n";
-}
-if($do_protid) { 
-  $opts_used_short .= "-protid ";
-  $opts_used_long  .= "# option:  adding \'protein_id\' qualifier values to output sequence file deflines [-protid]\n";
-}
-if($do_codonstart) { 
-  $opts_used_short .= "-codonstart ";
-  $opts_used_long  .= "# option:  adding \'codon_start\' qualifier values to output sequence file deflines [-codonstart]\n";
-}
-if($do_uc) { 
-  $opts_used_short .= "-uc ";
-  $opts_used_long  .= "# option:  outputting uclust shell script [-uc]\n";
-}
-if(defined $uc_id) { 
-  $opts_used_short .= "-uc_id ";
-  $opts_used_long  .= "# option:  uclust cluster identity set to $uc_id [-uc_id]\n";
-}
-
+# NONE YET: one left commented out below for future reference
+#if(defined $do_noexp) { 
+#  $opts_used_short .= "-noexp ";
+#  $opts_used_long  .= "# option:  verbose explanation of class definition not being output to stdout [-noexp]\n";
+#}
+# 
 # check for incompatible option values/combinations:
-if(defined $fraclen && ($fraclen < 0 || $fraclen > 1)) { 
-  die "ERROR with -t <f>, <f> must be a number between 0 and 1."; 
-}
-if((! $do_uc) && (defined $uc_id)) { 
-  die "ERROR -uc_id requires -uc";
-}
-
-# set default values if user didn't specify otherwise on the command line
-if(! defined $fraclen) { 
-  $fraclen = $df_fraclen; 
-}
-if(! defined $uc_id) { 
-  $uc_id = $df_uc_id;
-}
+# NONE YET
 
 ###############
 # Preliminaries
@@ -119,7 +54,7 @@ if(! -d $dir)      { die "ERROR directory $dir does not exist"; }
 if(! -s $listfile) { die "ERROR list file $listfile does not exist, or is empty"; }
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir
-#my $gene_tbl_file  = $dir . "/" . $dir_tail . ".gene.tbl";
+my $gene_tbl_file  = $dir . "/" . $dir_tail . ".gene.tbl";
 my $cds_tbl_file   = $dir . "/" . $dir_tail . ".CDS.tbl";
 my $length_file    = $dir . "/" . $dir_tail . ".length";
 my $out_root = $dir . "/" . $dir_tail;
@@ -128,8 +63,8 @@ if(! -s $cds_tbl_file)  { die "ERROR $cds_tbl_file does not exist."; }
 if(! -s $length_file)   { die "ERROR $length_file does not exist."; }
 
 # output banner
-my $script_name = "dnaorg_compare_genomes.pl";
-my $script_desc = "Compare GenBank annotation of genomes";
+my $script_name = "dnaorg_annotate_genomes.pl";
+my $script_desc = "Annotate genomes based on a reference and homology search";
 print ("# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
 print ("# $script_name: $script_desc\n");
 print ("# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
@@ -172,325 +107,175 @@ my %totlen_H = (); # key: accession, value length read from length file
 
 parseLength($length_file, \%totlen_H);
 
-#parseTable($gene_tbl_file, \%gene_tbl_HHA);
+parseTable($gene_tbl_file, \%gene_tbl_HHA);
 parseTable($cds_tbl_file, \%cds_tbl_HHA);
 
-########
-# output 
-########
-# now create the output
-# the verbose output
-my $wstrand_str = 0;
-my %class_strand_str_H = (); # key: strand string, class number for this strand string 
-my %ct_strand_str_H = ();    # key: strand string, value: number of accessions in the class defined by this strand string 
-my %idx_strand_str_H = ();   # key: class number,  value: strand string
-my %fa_strand_str_H = ();    # key: strand string, value: name of output fasta file for the class defined by this strand string 
-my %out_strand_str_HA = ();  # key: strand string, value: array of output strings for the class defined by this strand string 
-my @out_fetch_gnm_A = ();    # out_fetch_gnm_A[$c]: for class $c+1, input for idfetch to fetch full genome seqs
-my @ct_fetch_gnm_A = ();     # ct_fetch_gnm_A[$c]:  for class $c+1, number of genomes to fetch
-my @out_fetch_cds_AA = ();   # out_fetch_cds_AA[$c][$i]: for class $c+1, gene $i+1, input for esl-fetch-cds.pl
-my @ct_fetch_cds_AA = ();    # ct_fetch_cds_AA[$c][$i]:  for class $c+1, gene $i+1, number of sequences to fetch 
+###########################################################################
+# for each non-reference accession: 
+#   for each reference CDS: 
+#     look for homologous CDS in genome
+###########################################################################
 
-my $class = undef;
-my $nclasses = 0;
-my @ngenes_per_class_A = ();
-my $max_ngenes = 0;
+###########################################################################
+#my $wstrand_str = 0;         # for output formatting, width of max expected length strand string
+#my $wlabel_str = 0;          # for output formatting, width of max expected length label string
+#my %label_str2idx_H = ();    # key: label string, class number for this label string 
+#my %idx2label_str_H = ();    # key: class number,  value: label string
+#my %ct_label_str_H = ();     # key: label string, value: number of accessions in the class defined by this label string 
+#my %fa_label_str_H = ();     # key: strand string, value: name of output fasta file for the class defined by this label string 
+#my %out_label_str_HA = ();   # key: strand string, value: array of output strings for the class defined by this label string 
+#my @out_fetch_gnm_A = ();    # out_fetch_gnm_A[$c]: for class $c+1, input for idfetch to fetch full genome seqs
+#my @ct_fetch_gnm_A = ();     # ct_fetch_gnm_A[$c]:  for class $c+1, number of genomes to fetch
+#my @out_fetch_cds_AA = ();   # out_fetch_cds_AA[$c][$i]: for class $c+1, gene $i+1, input for esl-fetch-cds.pl
+#my @ct_fetch_cds_AA = ();    # ct_fetch_cds_AA[$c][$i]:  for class $c+1, gene $i+1, number of sequences to fetch 
+#my %accn2label_str_H = ();   # key: $accn, value: $label_str for that accn
+#my $label_str = "";          # a label string, e.g. 'ABCD:===='
+my $strand_str;              # +/- string for all CDS for an accession: e.g. '+-+': 1st and 3rd CDS are + strand, 2nd is -
+#my $class_idx = undef;       # class index for current accession
+#my $nclasses = 0;            # total number of classes
+#my @ncds_per_class_A = ();   # number of CDS per class
+#my $max_ncds = 0;            # max number of CDS for any class
 
-my $uc_script = $out_root . ".uclust.sh";
+# variables related to a reference accession
+my $ref_accn      = undef; # changed to <s> with -ref <s>
+my $ref_label_str = undef; # label string for reference accn
 
-for(my $a = 0; $a < scalar(@accn_A); $a++) { 
+#my $uc_script = $out_root . ".uclust.sh";
+
+# reference information on reference accession, first accession read in ntlist file
+my $ref_ncds          = 0;  # number of CDS in reference
+my $ref_strand_str    = ""; # strand string for reference 
+my @ref_cds_len_A     = (); # [0..$i..$ref_ncds-1]: length of each reference CDS
+#my @ref_cds_len_tol_A = (); # [0..$i..$ref_ncds-1]: length tolerance, any gene that is within this fraction of the lenght of the ref gene is a match
+my @ref_cds_coords_A  = (); # [0..$i..$ref_ncds-1]: CDS coords for reference
+my @ref_cds_product_A = (); # CDS:product qualifier data for reference 
+
+my $ncds = 0;              # number of CDS
+my $npos = 0;              # number of CDS on positive strand
+my $nneg = 0;              # number of CDS on negative strand
+my $nunc = 0;              # number of CDS on uncertain strand
+my $nbth = 0;              # number of CDS on both strands
+my @cds_len_A = ();        # [0..$i..$ncds-1] length of CDS $i
+my @cds_coords_A = ();     # [0..$i..$ncds-1] coords of CDS $i
+my @cds_product_A = ();    # [0..$i..$ncds-1] CDS:product annotation for CDS $i
+my @cds_protid_A = ();     # will remain empty unless $do_protid is 1 (-protid enabled at cmdline)
+my @cds_codonstart_A = (); # will remain empty unless $do_codonstart is 1 (-codonstart enabled at cmdline)
+#my $do_desc = ($do_product || $do_protid || $do_codonstart) ? 1 : 0; # '1' to create a description to add to defline of fetched sequences, '0' not to
+
+# Get information on the reference accession
+my $naccn = scalar(@accn_A);
+$ref_accn = $accn_A[0];
+if(! exists ($cds_tbl_HHA{$ref_accn})) { die "ERROR no CDS information stored for reference accession"; }
+(undef, undef, undef, undef, undef, $ref_strand_str) = getStrandStats(\%cds_tbl_HHA, $ref_accn);
+getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $ref_accn, \@ref_cds_len_A, \@ref_cds_coords_A);
+getQualifierValues(\%cds_tbl_HHA, $ref_accn, "product", \@ref_cds_product_A);
+$ref_ncds = scalar(@ref_cds_len_A);
+
+# Create input query files for each of the reference CDS:
+for(my $i = 0; $i < $ref_ncds; $i++) { 
+  printf("# Fetching reference CDS sequence %d ... ", ($i+1));
+
+  my $strand = substr($ref_strand_str, $i, 1);
+  my $coords_with_accn = addAccnToCoords($ref_cds_coords_A[$i], $ref_accn);
+
+  my $fetch_input = $out_root . ".ref.cds." . ($i+1) . ".esl-fetch.in";
+  my $fetch_fasta = $out_root . ".ref.cds." . ($i+1) . ".fa";
+  open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
+  printf FOUT ("$ref_accn:cds%d\t$coords_with_accn\n", ($i+1));
+  close FOUT;
+
+  my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input > $fetch_fasta";
+  runCommand($cmd, 0);
+      
+  printf("done. [$fetch_fasta]\n");
+
+  # if CDS has multiple exons, fetch each independently into it's own file
+  my @starts_A = ();
+  my @stops_A  = ();
+  my $nexons   = 0;
+  startStopsFromCoords($ref_cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
+  if($nexons > 1) { 
+    for(my $e = 0; $e < $nexons; $e++) { 
+      printf("# Fetching reference CDS %d sequence, exon %d ... ", ($i+1), ($e+1));
+      $fetch_input = $out_root . ".ref.cds." . ($i+1) . ".exon." . ($e+1) . ".esl-fetch.in";
+      $fetch_fasta = $out_root . ".ref.cds." . ($i+1) . ".exon." . ($e+1) . ".fa";
+      my $fetch_string = "";
+      $fetch_string = $ref_accn . ":" . $starts_A[$e] . ".." . $stops_A[$e];
+      if($strand eq "-") { # reverse strand
+        $fetch_string = "complement(" . $fetch_string . ")";
+      }
+      elsif($strand ne "+") { 
+        die "ERROR reference CDS $i has strand $strand, which we can't deal with";
+      }
+      open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
+      printf FOUT ("$ref_accn:cds%d:exon%d\t$fetch_string\n", ($i+1), ($e+1));
+      close FOUT;
+      my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input > $fetch_fasta";
+      runCommand($cmd, 0);
+      printf("done. [$fetch_fasta]\n");
+    }
+  }      
+}
+
+# validate all reference CDS have unique CDS:product annotation
+validateRefCDSAreUnique($ref_ncds, \@ref_cds_product_A);
+
+print("#\n");
+printf("# Reference accession: $ref_accn\n");
+#print("#\n");
+#for(my $rc = 0; $rc < $ref_ncds; $rc++) { 
+#$ref_cds_len_tol_A[$rc] = $fraclen * $ref_cds_len_A[$rc];
+#printf("# Reference CDS product %d: %-30s reference-length: %6d   length-range-for-match: %8.1f to %8.1f\n", $rc+1, $ref_cds_product_A[$rc], $ref_cds_len_A[$rc], ($ref_cds_len_A[$rc] - $ref_cds_len_tol_A[$rc]), ($ref_cds_len_A[$rc] + $ref_cds_len_tol_A[$rc]));
+#}
+
+#$wlabel_str  = (2*$ref_ncds+1) * 2;
+#$wstrand_str = $ref_ncds * 2;
+#if($wlabel_str  < length("label"))         { $wlabel_str  = length("label"); }
+#if($wstrand_str < length("strand-string")) { $wstrand_str = length("strand_string"); }
+# }    
+
+# Fetch all genome sequences, including the reference
+my $gnm_fetch_file = $out_root . ".fg.idfetch.in";
+my $gnm_fasta_file = $out_root . ".fg.fa";
+open(OUT, ">" . $gnm_fetch_file) || die "ERROR unable to open $gnm_fetch_file";
+for(my $a = 0; $a < $naccn; $a++) { 
+#  print OUT $accn_A[$a] . "\n";
+  my $fetch_string = "join(" . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "," . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . ")\n";
+  print OUT $accn_A[$a] . ":" . "genome-duplicated" . "\t" . "join($accn_A[$a]:1..$totlen_H{$accn_A[$a]},$accn_A[$a]:1..$totlen_H{$accn_A[$a]})\n";
+}
+close(OUT);
+
+printf("# Fetching $naccn full (duplicated) genome sequences... ");
+# my $cmd = "$idfetch -t 5 -c 1 -G $gnm_fetch_file > $gnm_fasta_file";
+my $cmd = "perl $esl_fetch_cds -nocodon $gnm_fetch_file > $gnm_fasta_file";
+runCommand($cmd, 0);
+printf("done. [$gnm_fasta_file]\n");
+
+# Pass through all accessions, and annotate them
+for(my $a = 0; $a < $naccn; $a++) { 
   my $accn = $accn_A[$a];
-
   # sanity checks
-  if($a == 0 && (! exists $cds_tbl_HHA{$accn})) { die "ERROR didn't read any CDS table information for first accession in $listfile: $accn\n"; } 
   if(! exists $totlen_H{$accn}) { die "ERROR accession $accn does not exist in the length file $length_file"; }
 
   # set defaults that will stay if we don't have any CDS information
-  my $ncds = 0; 
-  my $npos = 0;
-  my $nneg = 0;
-  my $nunc = 0;
-  my $nbth = 0; 
-  my $strand_str = "";
-  my @cds_len_A = ();
-  my @cds_coords_A = ();
-  my @cds_product_A = ();    # will remain empty unless $do_product is 1 (-product enabled at cmdline)
-  my @cds_protid_A = ();     # will remain empty unless $do_protid is 1 (-protid enabled at cmdline)
-  my @cds_codonstart_A = (); # will remain empty unless $do_codonstart is 1 (-codonstart enabled at cmdline)
-  my $do_desc = ($do_product || $do_protid || $do_codonstart) ? 1 : 0;
+  $ncds = 0; 
+  $npos = 0;
+  $nneg = 0;
+  $nunc = 0;
+  $nbth = 0; 
+  $strand_str = "";
+  @cds_len_A = ();
+  @cds_coords_A = ();
+  @cds_product_A = ();    # will remain empty unless $do_product is 1 (-product enabled at cmdline)
+  @cds_protid_A = ();     # will remain empty unless $do_protid is 1 (-protid enabled at cmdline)
+  @cds_codonstart_A = (); # will remain empty unless $do_codonstart is 1 (-codonstart enabled at cmdline)
 
   if(exists ($cds_tbl_HHA{$accn})) { 
     ($ncds, $npos, $nneg, $nunc, $nbth, $strand_str) = getStrandStats(\%cds_tbl_HHA, $accn);
     getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $accn, \@cds_len_A, \@cds_coords_A);
-    if($do_product) { 
-      getQualifierValues(\%cds_tbl_HHA, $accn, "product", \@cds_product_A);
-    }
-    if($do_protid) { 
-      getQualifierValues(\%cds_tbl_HHA, $accn, "protein_id", \@cds_protid_A);
-    }
-    if($do_codonstart) { 
-      getQualifierValues(\%cds_tbl_HHA, $accn, "codon_start", \@cds_codonstart_A);
-    }
+    getQualifierValues(\%cds_tbl_HHA, $accn, "product", \@cds_product_A);
   }
-  if($a == 0) { 
-    $wstrand_str = length($strand_str) + 2; 
-    if($wstrand_str < length("strand-string")) { $wstrand_str = length("strand_string"); }
-  }
-  
-  if(! exists $class_strand_str_H{$strand_str}) { 
-    $nclasses++;
-    $class_strand_str_H{$strand_str} = $nclasses;
-    $idx_strand_str_H{$nclasses}   = $strand_str;
-    $ct_strand_str_H{$strand_str} = 0;
-    $fa_strand_str_H{$strand_str} = $dir . "/" . $dir . "." . $nclasses . ".fa";
-    @{$out_strand_str_HA{$strand_str}} = ();
-  }
-  $class = $class_strand_str_H{$strand_str};
-  my $c = $class - 1;
-  $ct_strand_str_H{$strand_str}++;
-  my $ngenes = scalar(@cds_len_A);
-  $ngenes_per_class_A[($class-1)] = $ngenes;
-  if($ngenes > $max_ngenes) { $max_ngenes = $ngenes; }
-  if(! exists $out_fetch_cds_AA[$c]) { @{$out_fetch_cds_AA[$c]} = (); }
-  if(! exists $ct_fetch_cds_AA[$c])  { @{$ct_fetch_cds_AA[$c]} = (); }
-  
-  my $outline = sprintf("%-*s  %5d  %5d  %5d  %5d  %5d  %-*s  %3d  %7d  ", $waccn, $accn, $ncds, $npos, $nneg, $nbth, $nunc, $wstrand_str, $strand_str, $class, $totlen_H{$accn});
-  $out_fetch_gnm_A[$c] .= sprintf("%s\n", $accn);
-  $ct_fetch_gnm_A[$c]++;
-
-  for(my $i = 0; $i < $ngenes; $i++) { 
-    my $desc = "";
-    # determine DESCRIPTION: string, esl-fetch-cds.pl will parse this and add it as a description in the defline after fetching the sequence
-    if($do_desc) { 
-      $desc = "\tDESCRIPTION:";
-      if($do_product) { 
-        $desc .= "product:";
-        if(scalar(@cds_product_A) > 0) { 
-          if($i >= scalar(@cds_product_A)) { die "ERROR ran out of products too early for $accn\n"; }
-          $desc .= $cds_product_A[$i];
-        }
-        else { 
-          $desc .= "none-annotated";
-        }
-        if($do_protid || $do_codonstart) { $desc .= " "; }
-      }
-      if($do_protid) { 
-        $desc .= "protein_id:";
-        if(scalar(@cds_protid_A) > 0) { 
-          if($i >= scalar(@cds_protid_A)) { die "ERROR ran out of protein_ids too early for $accn\n"; }
-          $desc .= $cds_protid_A[$i];
-        }
-        else { 
-          $desc .= "none-annotated";
-        }
-        if($do_codonstart) { $desc .= " "; }
-      }
-      if($do_codonstart) { 
-        $desc .= "codon_start:";
-        if(scalar(@cds_codonstart_A) > 0) { 
-          if($i >= scalar(@cds_codonstart_A)) { die "ERROR ran out of codon_starts too early for $accn\n"; }
-          $desc .= $cds_codonstart_A[$i];
-        }
-        else { 
-          $desc .= "none-annotated";
-        }
-      }
-    }
-    $outline .= sprintf("  %5d", $cds_len_A[$i]);
-    # create line of input for esl-fetch-cds.pl for fetching the genes of this genome
-    if($do_shortnames) { 
-      $out_fetch_cds_AA[$c][$i] .= "$accn\t$cds_coords_A[$i]";
-    }
-    else { 
-      $out_fetch_cds_AA[$c][$i] .= sprintf("%s:%s%d:%s%d\t$cds_coords_A[$i]", $head_accn, "class", $class, "gene", ($i+1));
-    }
-    $out_fetch_cds_AA[$c][$i] .= $desc . "\n"; # $desc will be "" unless $do_product is true
-    $ct_fetch_cds_AA[$c][$i]++;
-  }
-  $outline .= "\n";
-
-  push(@{$out_strand_str_HA{$strand_str}}, $outline);
-}
-# print header line
-printf("#\n");
-printf("#%-*s  %5s  %5s  %5s  %5s  %5s  %-*s  %3s  %7s  ", $waccn-1, "accn", "#cds", "#pos", "#neg", "#both", "#unkn", $wstrand_str, "strand-string", "cls", "tot-len");
-for(my $i = 0; $i < $max_ngenes; $i++) { 
-  printf("  %5s", sprintf("g%d", ($i+1)));
-}
-printf("\n");
-
-# output stats
-for(my $c = 0; $c < $nclasses; $c++) { 
-  my $strand_str = $idx_strand_str_H{($c+1)};
-  foreach my $outline (@{$out_strand_str_HA{$strand_str}}) { 
-    print $outline;
-  }
-  print "\n";
-  @{$out_strand_str_HA{$strand_str}} = (); # clear it for consise output
-}
-
-# summarize
-#
-printf("\n");
-printf("# Number-of-classes: $nclasses\n");
-printf("# class  #accn  #genes  strand-string\n");
-printf("# -----  -----  ------  -------------\n");
-my $tot_ngenes = 0;
-my $tot_ct = 0;
-for(my $c = 0; $c < $nclasses; $c++) { 
-  my $strand_str = $idx_strand_str_H{($c+1)};
-  printf("%7d  %5d  %6d  %s\n", ($c+1), $ct_strand_str_H{$strand_str}, $ngenes_per_class_A[$c], $strand_str);
-  $tot_ngenes += $ngenes_per_class_A[$c];
-  $tot_ct     += $ct_strand_str_H{$strand_str};
-}
-printf("# -----  -----  ------  -------------\n");
-printf("%7s  %5d  %6d  %s\n", "total",     $tot_ct,             $tot_ngenes,             "N/A");
-printf("%7s  %5.1f  %6.1f  %s\n", "avg",   $tot_ct / $nclasses, $tot_ngenes / $nclasses, "N/A");
-printf("\n");
-
-if($do_uc) { 
-  open(UC, ">" . $uc_script);
-}
-
-# output esl-fetch-cds input, and run esl-fetch-cds.pl for each:
-for(my $c = 0; $c < $nclasses; $c++) { 
-  # fetch the full genomes
-  my $out_fetch_gnm_file   = $out_root . ".c" . ($c+1) . ".fg.idfetch.in";
-  my $tmp_out_fetch_gnm_fa = $out_root . ".c" . ($c+1) . ".fg.fa.tmp";
-  my $out_fetch_gnm_fa     = $out_root . ".c" . ($c+1) . ".fg.fa";
-  open(OUT, ">" . $out_fetch_gnm_file) || die "ERROR unable to open $out_fetch_gnm_file for writing";
-  print OUT $out_fetch_gnm_A[$c];
-  close OUT;
-  sleep(0.1);
-  printf("# Fetching %3d full genome sequences for class %2d ... ", $ct_fetch_gnm_A[$c], $c+1);
-  my $cmd = "$idfetch -t 5 -c 1 -G $out_fetch_gnm_file > $tmp_out_fetch_gnm_fa";
-  runCommand($cmd, 0);
-  # now open up the file and change the sequence names manually
-  open(IN, $tmp_out_fetch_gnm_fa)    || die "ERROR unable to open $tmp_out_fetch_gnm_fa for reading";
-  open(OUT, ">" . $out_fetch_gnm_fa) || die "ERROR unable to open $out_fetch_gnm_fa for writing";
-  while(my $line = <IN>) { 
-    if($line =~ m/^>/) { 
-      chomp $line;
-      if($line =~ /^>.*\|(\S+)\|\S*\s+(.+)$/) { 
-        print OUT (">$1 $2\n");
-      }
-      else { die "ERROR unable to parse defline $line in file $tmp_out_fetch_gnm_fa"; }
-    }
-    else { print OUT $line; }
-  }
-  close(IN);
-  close(OUT);
-  unlink $tmp_out_fetch_gnm_fa;
-  printf("done. [$out_fetch_gnm_fa]\n");
-
-  # fetch the cds'
-  for(my $i = 0; $i < scalar(@{$out_fetch_cds_AA[$c]}); $i++) { 
-    my $cg_substr = ".c" . ($c+1) . ".g" . ($i+1);
-    my $out_fetch_cds_file = $out_root . $cg_substr . ".esl-fetch-cds.in";
-    my $out_fetch_cds_fa   = $out_root . $cg_substr . ".fa";
-    my $np_out_fetch_cds_fa    = stripPath($out_fetch_cds_fa);
-    my $np_out_centroids_fa    = stripPath($out_root . $cg_substr . ".centroids.fa");
-    my $np_out_uclust_sum_file = stripPath($out_root . $cg_substr . ".cluster_summary.txt");
-    my $np_out_msa_root        = stripPath($out_root . $cg_substr . ".msa_cluster_");
-    open(OUT, ">" . $out_fetch_cds_file) || die "ERROR unable to open $out_fetch_cds_file for writing";
-    print OUT $out_fetch_cds_AA[$c][$i];
-    close OUT;
-    sleep(0.1);
-    printf("# Fetching %3d CDS sequences for class %2d gene %2d ... ", $ct_fetch_cds_AA[$c][$i], $c+1, $i+1);
-    my $cmd = "";
-    if($do_shortnames) { 
-      $cmd = "perl $esl_fetch_cds -onlyaccn $out_fetch_cds_file > $out_fetch_cds_fa";
-      #printf("$cmd\n");
-    }
-    else { 
-      $cmd = "perl $esl_fetch_cds -nocodon $out_fetch_cds_file > $out_fetch_cds_fa";
-    }
-    runCommand($cmd, 0);
-
-    printf("done. [$out_fetch_cds_fa]\n");
-
-    if($do_uc){ 
-      print UC ("$usearch -cluster_fast $np_out_fetch_cds_fa -id $uc_id -centroids $np_out_centroids_fa -uc $np_out_uclust_sum_file -msaout $np_out_msa_root\n");
-      $nuc++;
-    }
-  }
-}
-
-if($do_uc) { 
-  close(UC);
-  printf("#\n# Shell script for running $nuc usearch commands saved to $uc_script.\n");
-}
-printf("#[ok]\n");
-
-########################################################
-# CURRENTLY NO CONCISE OUTPUT IS PRINTED, BUT I'VE
-# LEFT THE BELOW CODE BLOCK FOR REFERENCE AND/OR FUTURE USE
-#
-# the concise output
-my ($ncds0, $npos0, $nneg0, $nunc0, $nbth0, $strand_str0) = getStrandStats(\%cds_tbl_HHA, $head_accn);
-my @cds_len0_A = (); 
-my @cds_coords0_A = (); 
-getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $head_accn, \@cds_len0_A, \@cds_coords0_A);
-
-my $mintotlen = $totlen_H{$head_accn} - ($fraclen * $totlen_H{$head_accn});
-my $maxtotlen = $totlen_H{$head_accn} + ($fraclen * $totlen_H{$head_accn});
-
-my @minlen_A = (); # [0..$i..scalar(@cds_len0_A)-1] minimum length for a length match for gene $i
-my @maxlen_A = (); # [0..$i..scalar(@cds_len0_A)-1] maximum length for a length match for gene $i
-for(my $i = 0; $i < scalar(@cds_len0_A); $i++) { 
-  $minlen_A[$i] = $cds_len0_A[$i] - ($fraclen * $cds_len0_A[$i]);
-  $maxlen_A[$i] = $cds_len0_A[$i] + ($fraclen * $cds_len0_A[$i]);
-}
-
-for(my $a = 0; $a < scalar(@accn_A); $a++) { 
-  my $accn = $accn_A[$a];
-  
-  # set defaults that will stay if we don't have any CDS information
-  my $ncds = 0; 
-  my $npos = 0;
-  my $nneg = 0;
-  my $nunc = 0;
-  my $nbth = 0; 
-  my $strand_str = "";
-  my @cds_len_A = ();
-  my @cds_coords_A = ();
-  if(exists ($cds_tbl_HHA{$accn})) { 
-    ($ncds, $npos, $nneg, $nunc, $nbth, $strand_str) = getStrandStats(\%cds_tbl_HHA, $accn);
-    getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $accn, \@cds_len_A, \@cds_coords_A);
-  }    
-
-  my $output_line = sprintf("%-*s  %s%s%s%s%s%s ", $waccn, $accn,
-                            $ncds       == $ncds0   ? "*" : "!",
-                            $npos       == $npos0   ? "*" : "!",
-                            $nneg       == $nneg0   ? "*" : "!",
-                            $nbth       == $nbth0   ? "*" : "!",
-                            $nunc       == $nunc0   ? "*" : "!",
-                            $strand_str eq $strand_str0 ? "*" : "!");
-
-  if($totlen_H{$accn} >= $mintotlen && $totlen_H{$accn} <= $maxtotlen) { 
-    $output_line .= "*";
-  }
-  else { 
-    $output_line .= "!";
-  }
-  $output_line .= " ";
-
-  for(my $i = 0; $i < scalar(@cds_len0_A); $i++) { 
-    if($i < scalar(@cds_len_A)) { 
-      if($cds_len_A[$i] >= $minlen_A[$i] && $cds_len_A[$i] <= $maxlen_A[$i]) { 
-        $output_line .= "*";
-      }
-      else { 
-        $output_line .= "!"; 
-      }
-    }
-    else { $output_line .= " "; }
-  }
-  my $pass_or_fail = ($output_line =~ m/\!/) ? "FAIL" : "PASS";
-
-  # print $output_line . " " . $pass_or_fail . "\n";
-}
-
+} # end of first pass through all accessions 'for(my $a = 0; $a < $naccn; $a++)'
 
 #############
 # SUBROUTINES
@@ -712,7 +497,8 @@ sub getLengthStatsAndCoordStrings {
   if ($ngenes > 0) { 
     for(my $i = 0; $i < $ngenes; $i++) { 
       push(@{$len_AR},    lengthFromCoords($tbl_HHAR->{$accn}{"coords"}[$i]));
-      push(@{$coords_AR}, addAccnToCoords($tbl_HHAR->{$accn}{"coords"}[$i], $accn));
+      push(@{$coords_AR}, $tbl_HHAR->{$accn}{"coords"}[$i]);
+      #push(@{$coords_AR}, addAccnToCoords($tbl_HHAR->{$accn}{"coords"}[$i], $accn));
     }
   }
 
@@ -752,55 +538,6 @@ sub getQualifierValues {
 }
 
 
-# Subroutine: lengthFromCoords()
-# Synopsis:   Determine the length of a region give its coords in NCBI format.
-#
-# Args:       $coords:  the coords string
-#
-# Returns:    length in nucleotides implied by $coords  
-#
-sub lengthFromCoords { 
-  my $sub_name = "lengthFromCoords()";
-  my $nargs_exp = 1;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
- 
-  my ($coords) = @_;
-
-  my $orig_coords = $coords;
-  # Examples:
-  # complement(2173412..2176090)
-  # complement(join(226623..226774, 226854..229725))
-
-  # remove 'complement('  ')'
-  $coords =~ s/^complement\(//;
-  $coords =~ s/\)$//;
-
-  # remove 'join('  ')'
-  $coords =~ s/^join\(//;
-  $coords =~ s/\)$//;
-
-  my @el_A = split(/\s*\,\s*/, $coords);
-
-  my $length = 0;
-  foreach my $el (@el_A) { 
-    # rare case: remove 'complement(' ')' that still exists:
-    $el =~ s/^complement\(//;
-    $el =~ s/\)$//;
-    $el =~ s/\<//; # remove '<'
-    $el =~ s/\>//; # remove '>'
-    if($el =~ m/^(\d+)\.\.(\d+)$/) { 
-      my ($start, $stop) = ($1, $2);
-      $length += abs($start - $stop) + 1;
-    }
-    else { 
-      die "ERROR unable to parse $orig_coords in $sub_name"; 
-    }
-  }
-
-  # printf("in lengthFromCoords(): orig_coords: $orig_coords returning length: $length\n");
-  return $length;
-}
-
 # Subroutine: addAccnToCoords()
 # Synopsis:   Add accession Determine the length of a region give its coords in NCBI format.
 #
@@ -812,7 +549,7 @@ sub addAccnToCoords {
   my $sub_name = "addAccnToCoords()";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
- 
+  
   my ($coords, $accn) = @_;
 
   my $ret_coords = $coords;
@@ -867,4 +604,209 @@ sub stripPath {
   $filename =~ s/^.+\///;
 
   return $filename;
+}
+
+# Subroutine: readInfile()
+# Purpose:    Read an input file specified with -i <s> and store the information therein.
+# Args:       $infile: name of the infile to read
+#             $in_cds_product_HAR: reference to a hash of arrays to store CDS:product info
+#             $in_cds_len_HAR:     reference to a hash of arrays to store CDS length info
+# Returns:    void
+sub readInfile {
+  my $sub_name  = "readInfile()";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($infile, $in_cds_product_HAR, $in_cds_len_HAR) = (@_);
+
+  open(IN, $infile) || die "ERROR unable to open $infile for reading.";
+  my $ctr = 0;
+  while(my $line = <IN>) { 
+    $ctr++;
+    chomp $line;
+    $line =~ s/^\s+//; # remove leading  whitespace
+    $line =~ s/\s+$//; # remove trailing whitespace
+    if($line !~ m/^\#/ && $line =~ m/\w/) { 
+      if($line =~ /(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.+)$/) { 
+        my ($type, $idx, $qual, $qval, $value) = ($1, $2, $3, $4, $5);
+        if($type ne "ref" && $type ne "alw" && $type ne "kma") { 
+          die "ERROR first token not 'ref' nor 'alw' nor 'kma' in infile: $infile on line $ctr:\n$line\n"; 
+        }
+        if($qual ne "CDS") { 
+          die "ERROR read non-CDS qualifier in infile: $infile on line $ctr:\n$line\n"; 
+        }
+        if($qval eq "product") { 
+          if(! exists $in_cds_product_HAR->{$type}) { 
+            @{$in_cds_product_HAR->{$type}} = ();
+          }
+          $in_cds_product_HAR->{$type}[$idx-1] = $value;
+        }
+        elsif($qval eq "length") { 
+          if(! exists $in_cds_len_HAR->{$type}) { 
+            @{$in_cds_len_HAR->{$type}} = ();
+          }
+          $in_cds_len_HAR->{$type}[$idx-1] = $value;
+        }
+        else { 
+          die "ERROR unexpected qualifier value $qval in infile: $infile on line $ctr:\n$line\n"; 
+        }
+      }
+      else { 
+        die "ERROR read less than 5 whitespace-delimited tokens in infile: $infile on line $ctr:\n$line\n"; 
+      }
+    }
+  } # end of 'while ($line = <IN>)'
+  return;
+}
+
+# Subroutine: validateInfileGivenRefInfo()
+# Purpose:    Given information read from the parsed ftable about the reference accession, 
+#             validate the information we read from the infile with the -i option.
+# Args:       $ref_ncds:           number of reference CDS
+#             $ref_cds_product_AR: ref to array of CDS:product annotations for the $ref_ncds reference CDS 
+#             $ref_cds_len_AR:     ref to array of lengths for the $ref_ncds reference CDS 
+#             $in_cds_product_HAR: ref to hash of arrays of CDS:product annotations read from the infile (-i)
+#             $in_cds_len_HAR:     ref to hash of arrays of length annotations read from the infile (-i)
+# Returns:    void
+# Dies:       if we didn't read product and length values for all reference accession from the infile
+#             if product and length values read from the infile don't match reference accession info
+sub validateInfileGivenRefInfo {
+  my $sub_name  = "validateInfileGivenRefInfo()";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ref_ncds, $infile, $ref_cds_product_AR, $ref_cds_len_AR, $in_cds_product_HAR, $in_cds_len_HAR) = @_;
+
+  if(! defined $in_cds_product_HAR)           { die "ERROR didn't read any CDS:product information from infile $infile\n"; }
+  if(! defined $in_cds_len_HAR)               { die "ERROR didn't read any CDS length information from infile $infile\n"; }
+  if(! defined $in_cds_product_HAR->{"ref"})  { die "ERROR didn't read any reference CDS:product information from infile $infile\n"; }
+  if(! defined $in_cds_len_HAR->{"ref"})      { die "ERROR didn't read any reference CDS length information from infile $infile\n"; }
+  if(scalar(@{$in_cds_product_HAR->{"ref"}}) ne $ref_ncds) { die "ERROR didn't read correct number of CDS:product values from infile $infile\n"; }
+  if(scalar(@{$in_cds_len_HAR->{"ref"}})     ne $ref_ncds) { die "ERROR didn't read correct number of CDS length values from infile $infile\n"; }
+  for(my $i = 1; $i <= $ref_ncds; $i++) { 
+    printf("$sub_name validating CDS $i ... ");
+    if(! defined $in_cds_product_HAR->{"ref"}[($i-1)]) { 
+      die "ERROR CDS:product information not read for CDS $i in infile: $infile"; 
+    }
+    if(! defined $in_cds_len_HAR->{"ref"}[($i-1)]) {
+      die "ERROR CDS length information not read for CDS $i in infile: $infile"; 
+    } 
+    if($in_cds_product_HAR->{"ref"}[($i-1)] ne $ref_cds_product_AR->[($i-1)]) { 
+      die sprintf("ERROR CDS:product information for CDS reference accession does not match feature table for CDS $i in infile: $infile\ninfile: %s\nftable: %s\n", $in_cds_product_HAR->{"ref"}[($i-1)], $ref_cds_product_AR->[($i-1)]);
+    }
+    if($in_cds_len_HAR->{"ref"}[($i-1)] ne $ref_cds_len_AR->[($i-1)]) { 
+      die sprintf("ERROR CDS length information for CDS reference accession does not match feature table for CDS $i in infile: $infile\ninfile: %d\nftable: %d", $in_cds_len_HAR->{"ref"}[($i-1)], $ref_cds_len_AR->[($i-1)]);
+                  
+    }
+    printf(" done.\n");
+  }
+  return;
+}
+
+# Subroutine: validateRefCDSAreUnique()
+# Purpose:    Validate that all CDS:product annotation for all reference CDS 
+#             are unique, i.e. there are no two CDS that have the same value
+#             in their CDS:product annotation.
+# Args:       $ref_ncds:           number of reference CDS
+#             $ref_cds_product_AR: ref to array of CDS:product annotations for the $ref_ncds reference CDS 
+# Returns:    void
+# Dies:       if more than one ref CDS have same CDS:product annotation.
+sub validateRefCDSAreUnique {
+  my $sub_name  = "validateRefCDSAreUnique()";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ref_ncds, $ref_cds_product_AR) = @_;
+
+  my %exists_H = ();
+  for(my $i = 0; $i < $ref_ncds; $i++) { 
+    if(exists $exists_H{$ref_cds_product_AR->[$i]}) { die sprintf("ERROR %s is CDS:product value for more than one reference CDS!", $ref_cds_product_AR->[$i]); }
+  }
+
+  return;
+}
+
+# Subroutine: startStopsFromCoords()
+# Synopsis:   Extract the starts and stops from a coords string.
+#
+# Args:       $coords:  the coords string
+#             $starts_AR: ref to array to fill with start positions
+#             $stops_AR:  ref to array to fill with stop positions
+#             $nexons_R:  ref to scalar that fill with the number of exons
+#
+# Returns:    void; but fills
+#
+sub startStopsFromCoords { 
+  my $sub_name = "startStopsFromCoords()";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+ 
+  my ($coords, $starts_AR, $stops_AR, $nexons_R) = @_;
+
+  @{$starts_AR} = ();
+  @{$stops_AR}  = ();
+  $$nexons_R    = 0;
+  
+  my $orig_coords = $coords;
+  # Examples:
+  # complement(2173412..2176090)
+  # complement(join(226623..226774, 226854..229725))
+
+  # remove 'complement('  ')'
+  $coords =~ s/^complement\(//;
+  $coords =~ s/\)$//;
+
+  # remove 'join('  ')'
+  $coords =~ s/^join\(//;
+  $coords =~ s/\)$//;
+
+  my @el_A = split(/\s*\,\s*/, $coords);
+
+  my $length = 0;
+  foreach my $el (@el_A) { 
+    # rare case: remove 'complement(' ')' that still exists:
+    $el =~ s/^complement\(//;
+    $el =~ s/\)$//;
+    $el =~ s/\<//; # remove '<'
+    $el =~ s/\>//; # remove '>'
+    if($el =~ m/^(\d+)\.\.(\d+)$/) { 
+      push(@{$starts_AR}, $1);
+      push(@{$stops_AR},  $2);
+      $$nexons_R++;
+    }
+    else { 
+      die "ERROR unable to parse $orig_coords in $sub_name"; 
+    }
+  }
+
+  # printf("in startStopsFromCoords(): orig_coords: $orig_coords returning length: $length\n");
+  return;
+}
+
+# Subroutine: lengthFromCoords()
+# Synopsis:   Determine the length of a region give its coords in NCBI format.
+#
+# Args:       $coords:  the coords string
+#
+# Returns:    length in nucleotides implied by $coords  
+#
+sub lengthFromCoords { 
+  my $sub_name = "lengthFromCoords()";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+ 
+  my ($coords) = @_;
+
+  my @starts_A = ();
+  my @stops_A  = ();
+  my $nexons   = 0;
+
+  startStopsFromCoords($coords, \@starts_A, \@stops_A, \$nexons);
+
+  my $length = 0;
+  for(my $i = 0; $i < $nexons; $i++) { 
+    $length += abs($starts_A[$i] - $stops_A[$i]) + 1;
+  }
+
+  return $length;
 }
