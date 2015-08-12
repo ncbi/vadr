@@ -31,9 +31,11 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan) {
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
-my $do_dup = 0; # set to '1' if -dup enabled, duplicate each genome, else do not
+my $do_dup     = 0; # set to '1' if -dup enabled, duplicate each genome,              else do not
+my $do_notexon = 0; # set to '1' if -noexon enabled, do not use exon-specific models, else do
 
-&GetOptions("dup"      => \$do_dup) || 
+&GetOptions("dup"      => \$do_dup,
+            "notexon"  => \$do_notexon) || 
     die "Unknown option";
 
 if(scalar(@ARGV) != 2) { die $usage; }
@@ -50,6 +52,10 @@ my $opts_used_long  = "";
 if($do_dup) { 
   $opts_used_short .= "-dup ";
   $opts_used_long  .= "# option:  duplicating genomes to allow detection of CDS that wrap the start/end [-dup]\n";
+}
+if($do_notexon) { 
+  $opts_used_short .= "-notexon ";
+  $opts_used_long  .= "# option:  using full CDS, and not exon-specific models, for CDS with multiple exons [-noexon]\n";
 }
 # 
 # check for incompatible option values/combinations:
@@ -178,17 +184,22 @@ my @cds_codonstart_A = (); # will remain empty unless $do_codonstart is 1 (-codo
 my $naccn = scalar(@accn_A);
 my $gnm_fetch_file = $out_root . ".fg.idfetch.in";
 my $gnm_fasta_file = $out_root . ".fg.fa";
+my @target_accn_A = (); # [0..$naccn-1] name of genome fasta sequence for each accn
+my $target_accn; # temp fasta sequence name
 open(OUT, ">" . $gnm_fetch_file) || die "ERROR unable to open $gnm_fetch_file";
 for(my $a = 0; $a < $naccn; $a++) { 
 #  print OUT $accn_A[$a] . "\n";
   if($do_dup) { 
     my $fetch_string = "join(" . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "," . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . ")\n";
     print OUT $accn_A[$a] . ":" . "genome-duplicated" . "\t" . $fetch_string;
+    $target_accn = $accn_A[$a] . ":genome:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:";
   }
   else { 
     my $fetch_string = $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "\n";
     print OUT $accn_A[$a] . ":" . "genome" . "\t" . $fetch_string;
+    $target_accn = $accn_A[$a] . ":genome:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:";
   }
+  push(@target_accn_A, $target_accn);
 }
 close(OUT);
 printf("# Fetching $naccn full%s genome sequences... ", $do_dup ? " (duplicated)" : "");
@@ -212,33 +223,52 @@ $ref_ncds = scalar(@ref_cds_len_A);
 my $stk_file = $out_root . ".ref.all.stk";
 
 printf("# Fetching reference sequences, and reformatting them to stockholm format ... ");
+my $tmp_out_root;
+my $fetch_input;
+my $fetch_output;
+my $nhmm = 0;             # number of HMMs (and alignments used to build those HMMs)
+my @query_A = ();         # [0..$nhmm-1]: array of query HMM names, also name of stockholm alignments used to build those HMMs
+my @query_toprint_A = (); # [0..$nhmm-1]: array of query HMM names to print, corresponding to @query_A
+my @ref_nexons_A = ();
 for(my $i = 0; $i < $ref_ncds; $i++) { 
   my $strand = substr($ref_strand_str, $i, 1);
   my $coords_with_accn = addAccnToCoords($ref_cds_coords_A[$i], $ref_accn);
 
-  my $tmp_out_root = $out_root . ".ref.cds." . ($i+1);
-  my $fetch_input  = $tmp_out_root . ".esl-fetch.in";
-  my $fetch_output = $tmp_out_root . ".stk";
-  open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
-  printf FOUT ("$ref_accn:cds%d\t$coords_with_accn\n", ($i+1));
-  close FOUT;
-
-  my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input | esl-reformat --informat afa stockholm - > $fetch_output";
-  runCommand($cmd, 0);
-  nameStockholmAlignment($tmp_out_root, $fetch_output, $tmp_out_root . ".named.stk");
-
-  # now append the named alignment to the growing stockholm alignment database $stk_file
-  $cmd = "cat " . $tmp_out_root . ".named.stk";
-  if($i == 0) { $cmd .= " >  $stk_file"; }
-  else        { $cmd .= " >> $stk_file"; }
-  runCommand($cmd, 0);
-
-  # if CDS has multiple exons, fetch each
+  # determine start and stop positions of all exons
   my @starts_A = ();
   my @stops_A  = ();
   my $nexons   = 0;
   startStopsFromCoords($ref_cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
-  if($nexons > 1) { 
+  push(@ref_nexons_A, $nexons);
+
+  if($nexons == 1 || $do_notexon) { 
+    $tmp_out_root = $out_root . ".ref.cds." . ($i+1);
+    $fetch_input  = $tmp_out_root . ".esl-fetch.in";
+    $fetch_output = $tmp_out_root . ".stk";
+    open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
+    printf FOUT ("$ref_accn:cds%d\t$coords_with_accn\n", ($i+1));
+    close FOUT;
+
+    my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input | esl-reformat --informat afa stockholm - > $fetch_output";
+    runCommand($cmd, 0);
+    nameStockholmAlignment($tmp_out_root, $fetch_output, $tmp_out_root . ".named.stk");
+    push(@query_A, $tmp_out_root);
+    push(@query_toprint_A, sprintf("Reference CDS %d (%s)", ($i+1), ($nexons == 1) ? "single exon" : "multiple exons"));
+
+    # now append the named alignment to the growing stockholm alignment database $stk_file
+    $cmd = "cat " . $tmp_out_root . ".named.stk";
+    if($nhmm == 0) { $cmd .= " >  $stk_file"; }
+    else           { $cmd .= " >> $stk_file"; }
+    runCommand($cmd, 0);
+    $nhmm++;
+  }
+
+  # if CDS has multiple exons, fetch each (unless -notexon enabled)
+  if((! $do_notexon) && ($nexons > 1)) { 
+    if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
+      @starts_A = reverse @starts_A;
+      @stops_A  = reverse @stops_A;
+    }
     for(my $e = 0; $e < $nexons; $e++) { 
       my $tmp_out_root = $out_root . ".ref.cds." . ($i+1) . ".exon." . ($e+1);
       $fetch_input  = $tmp_out_root . ".esl-fetch.in";
@@ -256,26 +286,68 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
       my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input | esl-reformat --informat afa stockholm - > $fetch_output";
       runCommand($cmd, 0);
       nameStockholmAlignment($tmp_out_root, $fetch_output, $tmp_out_root . ".named.stk");
-
+      push(@query_A, $tmp_out_root);
+      push(@query_toprint_A, sprintf("Reference CDS %d (exon %d of %d)", ($i+1), ($e+1), $nexons));
+      
       # now append the named alignment to the growing stockholm alignment database $stk_file
-      $cmd = "cat " . $tmp_out_root . ".named.stk >> $stk_file";
+      $cmd = "cat " . $tmp_out_root . ".named.stk";
+      if($nhmm == 0) { $cmd .= " >  $stk_file"; }
+      else           { $cmd .= " >> $stk_file"; }
       runCommand($cmd, 0);
+      $nhmm++;
     }
-  }      
+  } # end of 'if((! $do_notexon) && ($nexons > 1))'    
 }
 printf("done. [$stk_file]\n");
 
 # do the one homology search
 createHmmDb($hmmbuild, $hmmpress, $stk_file, $out_root . ".ref");
-my $hmmdb = $out_root . ".ref.hmm";
-runNhmmscan($nhmmscan, $hmmdb, $gnm_fasta_file, $out_root);
+my $hmmdb        = $out_root . ".ref.hmm";
+my $tblout       = $out_root . ".tblout";
+my $nhmmscan_out = $out_root . ".nhmmscan";
+runNhmmscan($nhmmscan, $hmmdb, $gnm_fasta_file, $tblout, $nhmmscan_out);
+printf("#\n");
+printf("#\n");
 
-# Pass through all accessions, and run homology searches on them using the reference CDS
+# parse the homology search results and output predicted annotations
+my %p_start_HH    = ();
+my %p_stop_HH     = ();
+my %p_strand_HH  = ();
+my %p_score_HH    = ();
+my %p_hangover_HH = ();
+parseNhmmscanTblout($tblout, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
+
+
+# Pass through all accessions, and output predicted annotation for each
 for(my $a = 0; $a < $naccn; $a++) { 
+  my @tmp_start_A = ();
+  my @tmp_stop_A = ();
   my $accn = $accn_A[$a];
+  my $target_accn = $target_accn_A[$a];
   # sanity checks
   if(! exists $totlen_H{$accn}) { die "ERROR accession $accn does not exist in the length file $length_file"; }
 
+  printf("%-20s  ", $accn);
+  my $predicted_string = "";
+  for(my $h = 0; $h < $nhmm; $h++) { 
+    my $query = $query_A[$h];
+    if($predicted_string ne "") { $predicted_string .= "  "; }
+    if(exists $p_start_HH{$query}{$target_accn}) { 
+      $predicted_string .= sprintf("%6d %6d",
+                                   $p_start_HH{$query}{$target_accn}, 
+                                   $p_stop_HH{$query}{$target_accn});
+      push(@tmp_start_A, $p_start_HH{$query}{$target_accn});
+      push(@tmp_stop_A, $p_stop_HH{$query}{$target_accn});
+    }
+    else { 
+      $predicted_string .= sprintf("%11s\n", "NO PRDCTION");
+      push(@tmp_start_A, -1);
+      push(@tmp_stop_A, -1);
+    }
+  }
+  printf("$predicted_string");
+
+  # now create actual annotation string 
   # set defaults that will stay if we don't have any CDS information
   $ncds = 0; 
   $npos = 0;
@@ -294,8 +366,55 @@ for(my $a = 0; $a < $naccn; $a++) {
     getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $accn, \@cds_len_A, \@cds_coords_A);
     getQualifierValues(\%cds_tbl_HHA, $accn, "product", \@cds_product_A);
   }
+  my $actual_string = "";
+  my $h = 0;
+  for(my $i = 0; $i < $ncds; $i++) { 
+    # determine start and stop positions of all exons
+    my @starts_A = ();
+    my @stops_A  = ();
+    my $nexons   = 0;
+    startStopsFromCoords($cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
 
-} 
+    my $strand = substr($strand_str, $i, 1);
+    if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
+      @starts_A = reverse @starts_A;
+      @stops_A  = reverse @stops_A;
+    }
+
+    if($i >= $ref_ncds) { 
+      $actual_string .= sprintf("%6s  %6s", "+", "+");
+      $h += $nexons;
+    }
+    elsif($nexons != $ref_nexons_A[$i]) { 
+      $actual_string .= sprintf("%6s  %6s", "!", "!");
+      $h += $nexons;
+    }
+    else { 
+      for(my $e = 0; $e < $nexons; $e++) { 
+        my $start = ($strand eq "-") ? $stops_A[$e]  : $starts_A[$e];
+        my $stop  = ($strand eq "-") ? $starts_A[$e] : $stops_A[$e];
+        my $start_string = sprintf("%s%4d%s", 
+                                   ($start eq $tmp_start_A[$h]) ? "(" : " ",
+                                   $start, 
+                                   ($start eq $tmp_start_A[$h]) ? ")" : " ");
+        my $stop_string = sprintf("%s%4d%s", 
+                                  ($stop eq $tmp_stop_A[$h]) ? "(" : " ",
+                                  $stop, 
+                                  ($stop eq $tmp_stop_A[$h]) ? ")" : " ");
+        $actual_string .= sprintf("%6s  %6s", $start_string, $stop_string);
+        $h++;
+      }
+    }
+  }
+  if($ncds < $ref_ncds) { 
+    while($ncds < $ref_ncds) { 
+      $actual_string .= sprintf("%6s  %6s", "?", "?");
+      $ncds++;
+    }
+  }
+  printf " | " . $actual_string . "\n";
+}
+
 
 #############
 # SUBROUTINES
@@ -876,25 +995,33 @@ sub createHmmDb {
 # Subroutine: runNhmmscan()
 # Synopsis:   Perform a homology search using nhmmscan.
 #
-# Args:       $query_hmmdb:   query HMM database
-#             $target_fasta:  fasta file that is the target
-#             $out_root:      string for naming output files
+# Args:       $nhmmscan:      path to nhmmscan executable
+#             $query_hmmdb:   path to query HMM database
+#             $target_fasta:  path to target fasta file
+#             $tblout_file:   path to --tblout output file to create, undef to not create one
+#             $stdout_file:   path to output file to create with standard output from nhmmscan, undef 
+#                             to pipe to /dev/null
 #
 # Returns:    void
 #
 sub runNhmmscan { 
   my $sub_name = "runNhmmscan()";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
  
-  my ($nhmmscan, $query_hmmdb, $target_fasta, $out_root) = @_;
+  my ($nhmmscan, $query_hmmdb, $target_fasta, $tblout_file, $stdout_file) = @_;
+
+  my $opts = "--noali";
+  if(defined $tblout_file) { $opts .= " --tblout $tblout_file "; }
+
+  if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
 
   if(! -s $query_hmmdb)  { die "ERROR in $sub_name, $query_hmmdb file does not exist or is empty"; }
   if(! -s $target_fasta) { die "ERROR in $sub_name, $target_fasta file does not exist or is empty"; }
 
-  printf("# Running nhmmscan for $out_root ... ");
-  my $cmd = "$nhmmscan --noali --tblout $out_root.tblout $query_hmmdb $target_fasta > $out_root.nhmmscan";
+  printf("# Running nhmmscan ... ");
+  my $cmd = "$nhmmscan $opts $query_hmmdb $target_fasta > $stdout_file";
   runCommand($cmd, 0);
   printf("done.\n");
 
@@ -930,5 +1057,69 @@ sub nameStockholmAlignment {
   $msa->write_msa($out_file);
 
   # printf("done. [$out_file]\n");
+  return;
+}
+
+# Subroutine: parseNhmmscanTblout
+#
+# Synopsis:   Parse nhmmscan tblout output into 5 2D hashes.
+#             For each 2D hash first key is target name, second key
+#             is query name, value is either start, stop, strand,
+#             score or hangover (number of model positions not included
+#             on 5' and 3' end). Information for the lowest E-value hit
+#             for each target/query pair is stored. This will be the
+#             first hit encountered in the file for each target/query
+#             pair.
+#
+# Args:       $tblout_file:   tblout file to parse
+#             $start_HHR:     ref to 2D hash of start values
+#             $stop_HHR:      ref to 2D hash of stop values
+#             $strand_HHR:    ref to 2D hash of strand value
+#             $score_HHR:     ref to 2D hash of score values
+#             $hangoverHHR:   ref to 2D hash of model hangover values
+#
+# Returns:    void
+#
+sub parseNhmmscanTblout { 
+  my $sub_name = "parseNhmmscanTblout";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($tblout_file, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR) = @_;
+  
+  open(IN, $tblout_file) || die "ERROR unable to open $tblout_file for reading";
+
+  my $line_ctr = 0;
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    if($line =~ m/^\# \S/ && $line_ctr == 1) { 
+      # sanity check, make sure the fields are what we expect
+      chomp $line;
+      if($line ne "# target name                                                          accession  query name                           accession  hmmfrom hmm to alifrom  ali to envfrom  env to  modlen strand   E-value  score  bias  description of target") { 
+        die "ERROR unexpected field names in $tblout\n$line\n";
+      }
+    }
+    elsif($line !~ m/^\#/) { 
+      chomp $line;
+      #Maize-streak_r23.NC_001346/Maize-streak_r23.NC_001346.ref.cds.4        -          NC_001346:genome:NC_001346:1:2689:+: -                1     819    2 527    1709    2527    1709     819    -    9.8e-261  856.5  12.1  -
+      my @elA = split(/\s+/, $line);
+      my ($target, $query, $hmmfrom, $hmmto, $alifrom, $alito, $envfrom, $envto, $modlen, $strand, $score) = 
+          ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[10], $elA[11], $elA[13]);
+      if(! exists $start_HHR->{$target}) { # initialize
+        %{$start_HHR->{$target}}    = ();
+        %{$stop_HHR->{$target}}     = ();
+        %{$strand_HHR->{$target}}   = ();
+        %{$score_HHR->{$target}}    = ();
+        %{$hangover_HHR->{$target}} = ();
+      }
+      if(! exists $start_HHR->{$target}{$query})    { $start_HHR->{$target}{$query}    = $envfrom; }
+      if(! exists $stop_HHR->{$target}{$query})     { $stop_HHR->{$target}{$query}     = $envto; }
+      if(! exists $strand_HHR->{$target}{$query})   { $strand_HHR->{$target}{$query}   = $strand; }
+      if(! exists $score_HHR->{$target}{$query})    { $score_HHR->{$target}{$query}    = $score; }
+      if(! exists $hangover_HHR->{$target}{$query}) { $hangover_HHR->{$target}{$query} = ($hmmfrom - 1) . ":" . ($modlen - $hmmto); }
+    }
+  }
+  close(IN);
+  
   return;
 }
