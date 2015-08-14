@@ -38,8 +38,8 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan) {
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
-my $origin_seq = undef;
-my $do_nodup   = 0; # set to '1' if -dup enabled, duplicate each genome,              else do not
+my $origin_seq = undef; # defined if -oseq enabled
+my $do_nodup   = 0; # set to '1' if -dup enabled, duplicate each genome, else do not
 my $do_notexon = 0; # set to '1' if -noexon enabled, do not use exon-specific models, else do
 
 &GetOptions("oseq=s"   => \$origin_seq,
@@ -146,24 +146,7 @@ parseTable($cds_tbl_file, \%cds_tbl_HHA);
 ###########################################################################
 
 ###########################################################################
-#my $wstrand_str = 0;         # for output formatting, width of max expected length strand string
-#my $wlabel_str = 0;          # for output formatting, width of max expected length label string
-#my %label_str2idx_H = ();    # key: label string, class number for this label string 
-#my %idx2label_str_H = ();    # key: class number,  value: label string
-#my %ct_label_str_H = ();     # key: label string, value: number of accessions in the class defined by this label string 
-#my %fa_label_str_H = ();     # key: strand string, value: name of output fasta file for the class defined by this label string 
-#my %out_label_str_HA = ();   # key: strand string, value: array of output strings for the class defined by this label string 
-#my @out_fetch_gnm_A = ();    # out_fetch_gnm_A[$c]: for class $c+1, input for idfetch to fetch full genome seqs
-#my @ct_fetch_gnm_A = ();     # ct_fetch_gnm_A[$c]:  for class $c+1, number of genomes to fetch
-#my @out_fetch_cds_AA = ();   # out_fetch_cds_AA[$c][$i]: for class $c+1, gene $i+1, input for esl-fetch-cds.pl
-#my @ct_fetch_cds_AA = ();    # ct_fetch_cds_AA[$c][$i]:  for class $c+1, gene $i+1, number of sequences to fetch 
-#my %accn2label_str_H = ();   # key: $accn, value: $label_str for that accn
-#my $label_str = "";          # a label string, e.g. 'ABCD:===='
 my $strand_str;              # +/- string for all CDS for an accession: e.g. '+-+': 1st and 3rd CDS are + strand, 2nd is -
-#my $class_idx = undef;       # class index for current accession
-#my $nclasses = 0;            # total number of classes
-#my @ncds_per_class_A = ();   # number of CDS per class
-#my $max_ncds = 0;            # max number of CDS for any class
 
 # variables related to a reference accession
 my $ref_accn      = undef; # changed to <s> with -ref <s>
@@ -211,7 +194,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   else { 
     $fetch_string = "join(" . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "," . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . ")\n";
     print OUT $accn_A[$a] . ":" . "genome-duplicated" . "\t" . $fetch_string;
-    $target_accn = $accn_A[$a] . ":genome:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:";
+    $target_accn = $accn_A[$a] . ":genome-duplicated:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:";
   }
   push(@target_accn_A, $target_accn);
 }
@@ -230,37 +213,37 @@ if(defined $origin_seq) {
   findSeqInFile($gnm_fasta_file, $origin_seq, $do_nodup, \%origin_coords_HA);
 }
 
-# TEMPORARY OUTPUT:
-# first determine max number of origins
-my $max_norigin = 0;
-for(my $a = 0; $a < $naccn; $a++) { 
-  my $accn = $accn_A[$a];
-  my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
-  if($norigin > $max_norigin) { $max_norigin = $norigin; }
-}
+## TEMPORARY OUTPUT:
+## first determine max number of origins
+#my $max_norigin = 0;
+#for(my $a = 0; $a < $naccn; $a++) { 
+#  my $accn = $accn_A[$a];
+#  my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
+#  if($norigin > $max_norigin) { $max_norigin = $norigin; }
+#}
+#
+#printf("%10s  %6s  %5s  ", "#accession", "totlen", "norig");
+#for(my $o = 1; $o <= $max_norigin; $o++) { 
+#  printf("%5s  %5s", "start", "stop");
+#  if($o > 1) { print "    "; }
+#}
+#print("\n");
+#
+#for(my $o = 0; $o <= $max_norigin; $o++) { 
+#  for(my $a = 0; $a < $naccn; $a++) { 
+#    my $accn = $accn_A[$a];
+#    my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
+#    if($norigin == $o) { 
+#      printf("%-10s  %5d  %6d  ", $accn, $totlen_H{$accn}, $norigin);
+#      for(my $o = 0; $o < $norigin; $o++) { 
+#        my ($start, $stop) = split(":", $origin_coords_HA{$accn}[$o]);
+#        printf("%s%5d  %5d", ($o > 0) ? "    " : "", $start, $stop);
+#      }
+#      printf("\n");
+#    }
+#  }
+#}
 
-printf("%10s  %6s  %5s  ", "#accession", "totlen", "norig");
-for(my $o = 1; $o <= $max_norigin; $o++) { 
-  printf("%5s  %5s", "start", "stop");
-  if($o > 1) { print "    "; }
-}
-print("\n");
-
-for(my $o = 0; $o <= $max_norigin; $o++) { 
-  for(my $a = 0; $a < $naccn; $a++) { 
-    my $accn = $accn_A[$a];
-    my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
-    if($norigin == $o) { 
-      printf("%-10s  %5d  %6d  ", $accn, $totlen_H{$accn}, $norigin);
-      for(my $o = 0; $o < $norigin; $o++) { 
-        my ($start, $stop) = split(":", $origin_coords_HA{$accn}[$o]);
-        printf("%s%5d  %5d", ($o > 0) ? "    " : "", $start, $stop);
-      }
-      printf("\n");
-    }
-  }
-}
-exit;
 ########################################################
 # Gather information and sequence data on the reference.
 # Use each reference CDS and reference CDS exon as a 
@@ -282,6 +265,7 @@ my $fetch_output;
 my $nhmm = 0;             # number of HMMs (and alignments used to build those HMMs)
 my @query_A = ();         # [0..$nhmm-1]: array of query HMM names, also name of stockholm alignments used to build those HMMs
 my @query_toprint_A = (); # [0..$nhmm-1]: array of query HMM names to print, corresponding to @query_A
+my @query_short_A = ();   # [0..$nhmm-1]: array of abbreviated query HMM names to print, corresponding to @query_A
 my @ref_nexons_A = ();
 for(my $i = 0; $i < $ref_ncds; $i++) { 
   my $strand = substr($ref_strand_str, $i, 1);
@@ -307,6 +291,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
     nameStockholmAlignment($tmp_out_root, $fetch_output, $tmp_out_root . ".named.stk");
     push(@query_A, $tmp_out_root);
     push(@query_toprint_A, sprintf("Reference CDS %d (%s)", ($i+1), ($nexons == 1) ? "single exon" : "multiple exons"));
+    push(@query_short_A, sprintf("CDS-%d", ($i+1)));
 
     # now append the named alignment to the growing stockholm alignment database $stk_file
     $cmd = "cat " . $tmp_out_root . ".named.stk";
@@ -341,6 +326,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
       nameStockholmAlignment($tmp_out_root, $fetch_output, $tmp_out_root . ".named.stk");
       push(@query_A, $tmp_out_root);
       push(@query_toprint_A, sprintf("Reference CDS %d (exon %d of %d)", ($i+1), ($e+1), $nexons));
+      push(@query_short_A, sprintf("CDS-%d.%d", ($i+1), ($e+1)));
       
       # now append the named alignment to the growing stockholm alignment database $stk_file
       $cmd = "cat " . $tmp_out_root . ".named.stk";
@@ -368,20 +354,88 @@ my %p_stop_HH     = ();
 my %p_strand_HH  = ();
 my %p_score_HH    = ();
 my %p_hangover_HH = ();
-parseNhmmscanTblout($tblout, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
+parseNhmmscanTblout($tblout, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
 
-
+#######################################################################
 # Pass through all accessions, and output predicted annotation for each
+#######################################################################
 for(my $a = 0; $a < $naccn; $a++) { 
-  my @tmp_start_A = ();
-  my @tmp_stop_A = ();
   my $accn = $accn_A[$a];
   my $target_accn = $target_accn_A[$a];
   # sanity checks
   if(! exists $totlen_H{$accn}) { die "ERROR accession $accn does not exist in the length file $length_file"; }
+  
+  ###########################################################
+  # Create the column headers if this is the first accession.
+  if($a == 0) { 
+    # first line of column headers
+    if(defined $origin_seq) { 
+      printf("%-20s  %6s  %16s", "#", "", "origin sequence");
+    }
+    for(my $h = 0; $h < $nhmm; $h++) { 
+      printf("  %13s", $query_short_A[$h]);
+    }
+    printf("\n");
 
-  printf("%-20s  ", $accn);
+    # second line of column headers 
+    if(defined $origin_seq) { 
+      printf("%-20s  %6s  %16s", "#", "", "----------------");
+    }
+    for(my $h = 0; $h < $nhmm; $h++) { 
+      printf("  %13s", "-------------");
+    }
+    printf("\n");
+
+    # third line of column headers
+    printf("%-20s  %6s  ", "# accession", "totlen");
+    if(defined $origin_seq) {
+      printf("%2s  %5s  %5s", " #", "start", "stop");
+    }
+    for(my $h = 0; $h < $nhmm; $h++) { 
+      printf("  %6s %6s", "start", "stop");
+    }
+    print "\n";
+
+    # fourth line of column headers
+    printf("%-20s  %6s  ", "#-------------------", "------");
+    if(defined $origin_seq) {
+      printf("%2s  %5s  %5s", "--", "-----", "-----");
+    }
+    for(my $h = 0; $h < $nhmm; $h++) { 
+      printf("  %6s %6s", "------", "------");
+    }
+    print "\n";
+
+  }
+  ###########################################################
+
+
+  #########################################################################
+  # Create the initial portion of the output line, the accession and length
+  printf("%-20s  %6d  ", $accn, $totlen_H{$accn});
+  #########################################################################
+
+  ###############################################################
+  # Create the origin sequence portion of the output line, if nec
+  my $oseq_string = "";
+  if(defined $origin_seq) { 
+    my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
+    if($norigin == 1) { 
+      my ($ostart, $ostop) = split(":", $origin_coords_HA{$accn}[0]);
+      $oseq_string .= sprintf("%2d  %5d  %5d  ", 1, $ostart, $ostop);
+    }
+    else { 
+      $oseq_string .= sprintf("%2d  %12s  ", $norigin, "error (!= 1)");
+    }
+  }
+  print $oseq_string;
+  ###############################################################
+
+  ############################################################
+  # Create the predicted annotation portion of the output line
   my $predicted_string = "";
+  my @tmp_start_A = ();
+  my @tmp_stop_A = ();
   for(my $h = 0; $h < $nhmm; $h++) { 
     my $query = $query_A[$h];
     if($predicted_string ne "") { $predicted_string .= "  "; }
@@ -393,14 +447,17 @@ for(my $a = 0; $a < $naccn; $a++) {
       push(@tmp_stop_A, $p_stop_HH{$query}{$target_accn});
     }
     else { 
-      $predicted_string .= sprintf("%11s\n", "NO PRDCTION");
+      printf("no hits for $query $target_accn\n");
+      $predicted_string .= sprintf("%11s", "NO PRDCTION");
       push(@tmp_start_A, -1);
       push(@tmp_stop_A, -1);
     }
   }
-  printf("$predicted_string");
+  print "$predicted_string";
+  ############################################################
 
-  # now create actual annotation string 
+  #########################################################
+  # Create the actual annotation portion of the output line
   # set defaults that will stay if we don't have any CDS information
   $ncds = 0; 
   $npos = 0;
@@ -1125,20 +1182,21 @@ sub nameStockholmAlignment {
 #             pair.
 #
 # Args:       $tblout_file:   tblout file to parse
-#             $start_HHR:     ref to 2D hash of start values
-#             $stop_HHR:      ref to 2D hash of stop values
-#             $strand_HHR:    ref to 2D hash of strand value
-#             $score_HHR:     ref to 2D hash of score values
-#             $hangoverHHR:   ref to 2D hash of model hangover values
+#             $totlen_HR:     ref to hash, key is accession, value is length, pre-filled
+#             $start_HHR:     ref to 2D hash of start values, to fill here
+#             $stop_HHR:      ref to 2D hash of stop values, to fill here
+#             $strand_HHR:    ref to 2D hash of strand value, to fill here
+#             $score_HHR:     ref to 2D hash of score values, to fill here
+#             $hangoverHHR:   ref to 2D hash of model hangover values, to fill here
 #
 # Returns:    void
 #
 sub parseNhmmscanTblout { 
   my $sub_name = "parseNhmmscanTblout";
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR) = @_;
+  my ($tblout_file, $totlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR) = @_;
   
   open(IN, $tblout_file) || die "ERROR unable to open $tblout_file for reading";
 
@@ -1158,18 +1216,38 @@ sub parseNhmmscanTblout {
       my @elA = split(/\s+/, $line);
       my ($target, $query, $hmmfrom, $hmmto, $alifrom, $alito, $envfrom, $envto, $modlen, $strand, $score) = 
           ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[10], $elA[11], $elA[13]);
-      if(! exists $start_HHR->{$target}) { # initialize
-        %{$start_HHR->{$target}}    = ();
-        %{$stop_HHR->{$target}}     = ();
-        %{$strand_HHR->{$target}}   = ();
-        %{$score_HHR->{$target}}    = ();
-        %{$hangover_HHR->{$target}} = ();
+
+      my $accn = $query;
+      $accn =~ s/\:.+$//;
+      if(! exists $totlen_HR->{$accn}) { die "ERROR unable to determine accession with stored length from fasta sequence $query"; }
+      my $L = $totlen_HR->{$accn};
+
+      # only consider hits where either the start or end are less than the total length
+      # of the genome. Since we typically duplicate all genomes, this avoids storing 
+      # duplicate hits at different positions.
+      if(($envfrom <= $L) || ($envto <= $L)) { 
+
+        # deal with case where one but not both of envfrom envto is > L:
+        if($envfrom > $L || $envto > $L) { 
+          $envfrom -= $L; 
+          $envto   -= $L; 
+          if($envfrom < 0)  { $envfrom--; }
+          if($envto   < 0)  { $envto--; }
+        }
+
+        if(! exists $start_HHR->{$target}) { # initialize
+          %{$start_HHR->{$target}}    = ();
+          %{$stop_HHR->{$target}}     = ();
+          %{$strand_HHR->{$target}}   = ();
+          %{$score_HHR->{$target}}    = ();
+          %{$hangover_HHR->{$target}} = ();
+        }
+        if(! exists $start_HHR->{$target}{$query})    { $start_HHR->{$target}{$query}    = $envfrom; }
+        if(! exists $stop_HHR->{$target}{$query})     { $stop_HHR->{$target}{$query}     = $envto; }
+        if(! exists $strand_HHR->{$target}{$query})   { $strand_HHR->{$target}{$query}   = $strand; }
+        if(! exists $score_HHR->{$target}{$query})    { $score_HHR->{$target}{$query}    = $score; }
+        if(! exists $hangover_HHR->{$target}{$query}) { $hangover_HHR->{$target}{$query} = ($hmmfrom - 1) . ":" . ($modlen - $hmmto); }
       }
-      if(! exists $start_HHR->{$target}{$query})    { $start_HHR->{$target}{$query}    = $envfrom; }
-      if(! exists $stop_HHR->{$target}{$query})     { $stop_HHR->{$target}{$query}     = $envto; }
-      if(! exists $strand_HHR->{$target}{$query})   { $strand_HHR->{$target}{$query}   = $strand; }
-      if(! exists $score_HHR->{$target}{$query})    { $score_HHR->{$target}{$query}    = $score; }
-      if(! exists $hangover_HHR->{$target}{$query}) { $hangover_HHR->{$target}{$query} = ($hmmfrom - 1) . ":" . ($modlen - $hmmto); }
     }
   }
   close(IN);
@@ -1231,7 +1309,7 @@ sub findSeqInFile {
           @{$coords_HAR->{$accn}} = ();
         }
         push(@{$coords_HAR->{$accn}}, $qseq_start . ":" . $qseq_stop);
-        #printf("Found $qseq in $accn at position %d..%d\n", $qseq_start, $qseq_stop);
+        # printf("Found $qseq in $accn at position %d..%d\n", $qseq_start, $qseq_stop);
       }
       $qseq_posn = index($seq, $qseq, $qseq_posn);
     }
