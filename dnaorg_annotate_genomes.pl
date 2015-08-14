@@ -6,6 +6,8 @@ use warnings;
 use Getopt::Long;
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
+use Bio::Easel::SqFile;
+
 
 # hard-coded-paths:
 my $idfetch       = "/netopt/ncbi_tools64/bin/idfetch";
@@ -19,6 +21,11 @@ $usage .= "\n";
 $usage .= " This script annotates genomes from the same species based\n";
 $usage .= " on reference annotation.\n";
 $usage .= "\n";
+$usage .= " BASIC OPTIONS:\n";
+$usage .= "  -oseq <s>: identify origin sequence <s> in genomes\n";
+$usage .= "  -nodup  : do not duplicate each genome to allow identification of features that span stop..start\n";
+$usage .= "  -notexon: add CDS 'product' qualifier value to output sequence files deflines\n";
+$usage .= "\n";
 
 my ($seconds, $microseconds) = gettimeofday();
 my $start_secs    = ($seconds + ($microseconds / 1000000.));
@@ -31,10 +38,12 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan) {
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
-my $do_dup     = 0; # set to '1' if -dup enabled, duplicate each genome,              else do not
+my $origin_seq = undef;
+my $do_nodup   = 0; # set to '1' if -dup enabled, duplicate each genome,              else do not
 my $do_notexon = 0; # set to '1' if -noexon enabled, do not use exon-specific models, else do
 
-&GetOptions("dup"      => \$do_dup,
+&GetOptions("oseq=s"   => \$origin_seq,
+            "nodup"    => \$do_nodup,
             "notexon"  => \$do_notexon) || 
     die "Unknown option";
 
@@ -49,9 +58,13 @@ my ($dir, $listfile) = (@ARGV);
 # store options used, so we can output them 
 my $opts_used_short = "";
 my $opts_used_long  = "";
-if($do_dup) { 
-  $opts_used_short .= "-dup ";
-  $opts_used_long  .= "# option:  duplicating genomes to allow detection of CDS that wrap the start/end [-dup]\n";
+if(defined $origin_seq) { 
+  $opts_used_short .= "-oseq ";
+  $opts_used_long  .= "# option:  searching for origin sequence of $origin_seq [-oseq]\n";
+}
+if($do_nodup) { 
+  $opts_used_short .= "-nodup ";
+  $opts_used_long  .= "# option:  not duplicating genomes, features that span the end..start will be undetectable [-nodup]\n";
 }
 if($do_notexon) { 
   $opts_used_short .= "-notexon ";
@@ -186,28 +199,68 @@ my $gnm_fetch_file = $out_root . ".fg.idfetch.in";
 my $gnm_fasta_file = $out_root . ".fg.fa";
 my @target_accn_A = (); # [0..$naccn-1] name of genome fasta sequence for each accn
 my $target_accn; # temp fasta sequence name
+my $fetch_string = undef;
 open(OUT, ">" . $gnm_fetch_file) || die "ERROR unable to open $gnm_fetch_file";
 for(my $a = 0; $a < $naccn; $a++) { 
 #  print OUT $accn_A[$a] . "\n";
-  if($do_dup) { 
-    my $fetch_string = "join(" . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "," . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . ")\n";
-    print OUT $accn_A[$a] . ":" . "genome-duplicated" . "\t" . $fetch_string;
-    $target_accn = $accn_A[$a] . ":genome:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:";
-  }
-  else { 
-    my $fetch_string = $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "\n";
+  if($do_nodup) { 
+    $fetch_string = $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "\n";
     print OUT $accn_A[$a] . ":" . "genome" . "\t" . $fetch_string;
     $target_accn = $accn_A[$a] . ":genome:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:";
+  }
+  else { 
+    $fetch_string = "join(" . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "," . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . ")\n";
+    print OUT $accn_A[$a] . ":" . "genome-duplicated" . "\t" . $fetch_string;
+    $target_accn = $accn_A[$a] . ":genome:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:";
   }
   push(@target_accn_A, $target_accn);
 }
 close(OUT);
-printf("# Fetching $naccn full%s genome sequences... ", $do_dup ? " (duplicated)" : "");
+printf("# Fetching $naccn full%s genome sequences... ", $do_nodup ? "" : " (duplicated)");
 # my $cmd = "$idfetch -t 5 -c 1 -G $gnm_fetch_file > $gnm_fasta_file";
 my $cmd = "perl $esl_fetch_cds -nocodon $gnm_fetch_file > $gnm_fasta_file";
 runCommand($cmd, 0);
 printf("done. [$gnm_fasta_file]\n");
 
+##################################################
+# If we're looking for an origin sequence, do that
+##################################################
+my %origin_coords_HA = ();
+if(defined $origin_seq) {
+  findSeqInFile($gnm_fasta_file, $origin_seq, $do_nodup, \%origin_coords_HA);
+}
+
+# TEMPORARY OUTPUT:
+# first determine max number of origins
+my $max_norigin = 0;
+for(my $a = 0; $a < $naccn; $a++) { 
+  my $accn = $accn_A[$a];
+  my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
+  if($norigin > $max_norigin) { $max_norigin = $norigin; }
+}
+
+printf("%10s  %6s  %5s  ", "#accession", "totlen", "norig");
+for(my $o = 1; $o <= $max_norigin; $o++) { 
+  printf("%5s  %5s", "start", "stop");
+  if($o > 1) { print "    "; }
+}
+print("\n");
+
+for(my $o = 0; $o <= $max_norigin; $o++) { 
+  for(my $a = 0; $a < $naccn; $a++) { 
+    my $accn = $accn_A[$a];
+    my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
+    if($norigin == $o) { 
+      printf("%-10s  %5d  %6d  ", $accn, $totlen_H{$accn}, $norigin);
+      for(my $o = 0; $o < $norigin; $o++) { 
+        my ($start, $stop) = split(":", $origin_coords_HA{$accn}[$o]);
+        printf("%s%5d  %5d", ($o > 0) ? "    " : "", $start, $stop);
+      }
+      printf("\n");
+    }
+  }
+}
+exit;
 ########################################################
 # Gather information and sequence data on the reference.
 # Use each reference CDS and reference CDS exon as a 
@@ -1095,7 +1148,7 @@ sub parseNhmmscanTblout {
     if($line =~ m/^\# \S/ && $line_ctr == 1) { 
       # sanity check, make sure the fields are what we expect
       chomp $line;
-      if($line ne "# target name                                                          accession  query name                           accession  hmmfrom hmm to alifrom  ali to envfrom  env to  modlen strand   E-value  score  bias  description of target") { 
+      if($line !~ m/#\s+target\s+name\s+accession\s+query name\s+accession\s+hmmfrom\s+hmm to\s+alifrom\s+ali to\s+envfrom  env to\s+modlen\s+strand\s+E-value\s+score\s+bias\s+description of target/) { 
         die "ERROR unexpected field names in $tblout\n$line\n";
       }
     }
@@ -1120,6 +1173,73 @@ sub parseNhmmscanTblout {
     }
   }
   close(IN);
+  
+  return;
+}
+
+# Subroutine: findSeqInFile
+#
+# Synopsis:   Identify all exact occurences of a sequence in a file
+#             of sequences, and store the coordinates of the
+#             matches in %{$coords_HAR}.
+#
+# Args:       $fasta_file:    fasta file to search in
+#             $qseq:          query sequence we're looking for
+#             $do_nodup:      '1' if -nodup was used at command line, else '0'
+#             $coords_HAR:    ref to hash of arrays to store coords in
+#                             key is accession, value is array of 
+#                             start..stop coordinates for $qseq.
+# Returns:    void
+#
+sub findSeqInFile { 
+  my $sub_name = "findSeqInFile";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($fasta_file, $qseq, $do_nodup, $coords_HAR) = @_;
+
+  # remove any old .ssi files that may exist
+  if(-e $fasta_file . ".ssi") { unlink $fasta_file . ".ssi"; }
+
+  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file });
+  # printf("# Naming alignment in $in_file to $name ... "); 
+
+  # fetch each sequence and look for $qseq in it
+  # (could (and probably should) make this more efficient...)
+  my $nseq = $sqfile->nseq_ssi();
+  for(my $i = 0; $i < $nseq; $i++) { 
+    my $seqname   = $sqfile->fetch_seq_name_given_ssi_number($i);
+    my $accn      = $seqname;
+    # example: AJ224507:genome-duplicated:AJ224507:1:2685:+:AJ224507:1:2685:+:
+    $accn =~ s/\:.+$//;
+    my $fasta_seq = $sqfile->fetch_seq_to_fasta_string($seqname, -1);
+    my ($header, $seq) = split(/\n/, $fasta_seq);
+    chomp $seq;
+    my $L = ($do_nodup) ? length($seq) : (length($seq) / 2);
+    # now use Perl's index() function to find all occurrences of $qseq
+    my $qseq_posn = index($seq, $qseq);
+    while($qseq_posn != -1) { 
+      $qseq_posn++;
+      if($qseq_posn <= $L) { 
+        my $qseq_start = $qseq_posn;
+        my $qseq_stop  = $qseq_posn + length($qseq) - 1;;
+        if($qseq_stop > $L) { 
+          $qseq_start -= $L;
+          $qseq_stop  -= $L;
+        }
+        if(! exists $coords_HAR->{$accn}) { 
+          @{$coords_HAR->{$accn}} = ();
+        }
+        push(@{$coords_HAR->{$accn}}, $qseq_start . ":" . $qseq_stop);
+        #printf("Found $qseq in $accn at position %d..%d\n", $qseq_start, $qseq_stop);
+      }
+      $qseq_posn = index($seq, $qseq, $qseq_posn);
+    }
+  }
+
+  # make sure we remove any .ssi files we created
+  # remove any old .ssi files that may exist
+  if(-e $fasta_file . ".ssi") { unlink $fasta_file . ".ssi"; }
   
   return;
 }
