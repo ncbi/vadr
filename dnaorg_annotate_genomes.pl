@@ -213,37 +213,6 @@ if(defined $origin_seq) {
   findSeqInFile($gnm_fasta_file, $origin_seq, $do_nodup, \%origin_coords_HA);
 }
 
-## TEMPORARY OUTPUT:
-## first determine max number of origins
-#my $max_norigin = 0;
-#for(my $a = 0; $a < $naccn; $a++) { 
-#  my $accn = $accn_A[$a];
-#  my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
-#  if($norigin > $max_norigin) { $max_norigin = $norigin; }
-#}
-#
-#printf("%10s  %6s  %5s  ", "#accession", "totlen", "norig");
-#for(my $o = 1; $o <= $max_norigin; $o++) { 
-#  printf("%5s  %5s", "start", "stop");
-#  if($o > 1) { print "    "; }
-#}
-#print("\n");
-#
-#for(my $o = 0; $o <= $max_norigin; $o++) { 
-#  for(my $a = 0; $a < $naccn; $a++) { 
-#    my $accn = $accn_A[$a];
-#    my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
-#    if($norigin == $o) { 
-#      printf("%-10s  %5d  %6d  ", $accn, $totlen_H{$accn}, $norigin);
-#      for(my $o = 0; $o < $norigin; $o++) { 
-#        my ($start, $stop) = split(":", $origin_coords_HA{$accn}[$o]);
-#        printf("%s%5d  %5d", ($o > 0) ? "    " : "", $start, $stop);
-#      }
-#      printf("\n");
-#    }
-#  }
-#}
-
 ########################################################
 # Gather information and sequence data on the reference.
 # Use each reference CDS and reference CDS exon as a 
@@ -263,6 +232,8 @@ my $tmp_out_root;
 my $fetch_input;
 my $fetch_output;
 my $nhmm = 0;             # number of HMMs (and alignments used to build those HMMs)
+my @hmm2cds_map_A = ();   # [0..h..$nhmm-1]: $i: HMM ($h+1) maps to reference cds ($i+1)
+my @hmm2exon_map_A = ();  # [0..h..$nhmm-1]: $e: HMM ($h+1) maps to exon ($e+1) of reference cds $hmm2cds_map_A[$h]+1
 my @query_A = ();         # [0..$nhmm-1]: array of query HMM names, also name of stockholm alignments used to build those HMMs
 my @query_toprint_A = (); # [0..$nhmm-1]: array of query HMM names to print, corresponding to @query_A
 my @query_short_A = ();   # [0..$nhmm-1]: array of abbreviated query HMM names to print, corresponding to @query_A
@@ -298,6 +269,8 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
     if($nhmm == 0) { $cmd .= " >  $stk_file"; }
     else           { $cmd .= " >> $stk_file"; }
     runCommand($cmd, 0);
+    push(@hmm2cds_map_A, $i);
+    push(@hmm2exon_map_A, 0);
     $nhmm++;
   }
 
@@ -333,13 +306,15 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
       if($nhmm == 0) { $cmd .= " >  $stk_file"; }
       else           { $cmd .= " >> $stk_file"; }
       runCommand($cmd, 0);
+      push(@hmm2cds_map_A, $i);
+      push(@hmm2exon_map_A, $e);
       $nhmm++;
     }
   } # end of 'if((! $do_notexon) && ($nexons > 1))'    
 }
 printf("done. [$stk_file]\n");
 
-# do the one homology search
+# do the homology search
 createHmmDb($hmmbuild, $hmmpress, $stk_file, $out_root . ".ref");
 my $hmmdb        = $out_root . ".ref.hmm";
 my $tblout       = $out_root . ".tblout";
@@ -373,8 +348,10 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("%-20s  %6s  %16s", "#", "", "origin sequence");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %13s", $query_short_A[$h]);
+      printf("  %17s", $query_short_A[$h]);
     }
+    printf("  %6s", "");
+    printf("    %14s", "existing annot");
     printf("\n");
 
     # second line of column headers 
@@ -382,8 +359,10 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("%-20s  %6s  %16s", "#", "", "----------------");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %13s", "-------------");
-    }
+      printf("  %17s", "-----------------"); 
+   }
+    printf("  %6s", "");
+    printf("    %14s", "--------------");
     printf("\n");
 
     # third line of column headers
@@ -392,8 +371,10 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("%2s  %5s  %5s", " #", "start", "stop");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %6s %6s", "start", "stop");
+      printf("  %8s %8s", "start", "stop");
     }
+    printf("  %6s", "totlen");
+    printf("    %6s  %6s", "#cds", "#exons");
     print "\n";
 
     # fourth line of column headers
@@ -402,13 +383,16 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("%2s  %5s  %5s", "--", "-----", "-----");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %6s %6s", "------", "------");
+      printf("  %8s %8s", "--------", "--------");
     }
+    printf("  %6s", "------");
+
+    printf("    %6s  %6s\n", "------", "------");
+
     print "\n";
 
   }
   ###########################################################
-
 
   #########################################################################
   # Create the initial portion of the output line, the accession and length
@@ -431,98 +415,93 @@ for(my $a = 0; $a < $naccn; $a++) {
   print $oseq_string;
   ###############################################################
 
+  #########################################################
+  # Get information on the actual annotation of this genome
+  #########################################################
+  my @act_exon_starts_AA = (); # [0..$ncds-1][0..$nexons-1] start positions of actual annotations of exons for this accn, $nexons is CDS specific
+  my @act_exon_stops_AA  = (); # [0..$ncds-1][0..$nexons-1] stop  positions of actual annotations of exons for this accn, $nexons is CDS specific
+  my $tot_nexons = 0;
+  if(exists ($cds_tbl_HHA{$accn})) { 
+    ($ncds, $npos, $nneg, $nunc, $nbth, $strand_str) = getStrandStats(\%cds_tbl_HHA, $accn);
+    my @cds_len_A = ();
+    my @cds_coords_A = ();
+    my @cds_product_A = ();
+    getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $accn, \@cds_len_A, \@cds_coords_A);
+    getQualifierValues(\%cds_tbl_HHA, $accn, "product", \@cds_product_A);
+    for(my $i = 0; $i < $ncds; $i++) { 
+      # determine start and stop positions of all exons
+      my @starts_A = ();
+      my @stops_A  = ();
+      my $nexons   = 0;
+      @{$act_exon_starts_AA[$i]} = ();
+      @{$act_exon_stops_AA[$i]}  = ();
+      startStopsFromCoords($cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
+
+      my $strand = substr($strand_str, $i, 1);
+      if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
+        @starts_A = reverse @starts_A;           # exons will be in reverse order, b/c we're on the negative strand
+        @stops_A  = reverse @stops_A;            # exons will be in reverse order, b/c we're on the negative strand
+        @{$act_exon_starts_AA[$i]} = @stops_A;  # save stops  to starts array b/c we're on the negative strand
+        @{$act_exon_stops_AA[$i]}  = @starts_A; # save starts to stops  array b/c we're on the negative strand
+      }
+      else { 
+        @{$act_exon_starts_AA[$i]} = @starts_A;
+        @{$act_exon_stops_AA[$i]}  = @stops_A;
+      }
+      $tot_nexons += $nexons;
+    }
+
+    # printf("\n");
+    # printf("$accn\n");
+    # for(my $zz = 0; $zz < scalar(@act_exon_starts_AA); $zz++) { 
+    #  for(my $zzz = 0; $zzz < scalar(@{$act_exon_starts_AA[$zz]}); $zzz++) { 
+    #    printf("act_exon_AA[$zz][$zzz]: $act_exon_starts_AA[$zz][$zzz]  $act_exon_stops_AA[$zz][$zzz]\n");
+    #  }
+    #  printf("\n");
+    #}
+    #printf("\n");
+  }
+
   ############################################################
   # Create the predicted annotation portion of the output line
   my $predicted_string = "";
-  my @tmp_start_A = ();
-  my @tmp_stop_A = ();
   for(my $h = 0; $h < $nhmm; $h++) { 
-    my $query = $query_A[$h];
+    my $query  = $query_A[$h];
+    my $cds_i  = $hmm2cds_map_A[$h];
+    my $exon_i = $hmm2exon_map_A[$h];
     if($predicted_string ne "") { $predicted_string .= "  "; }
     if(exists $p_start_HH{$query}{$target_accn}) { 
-      $predicted_string .= sprintf("%6d %6d",
-                                   $p_start_HH{$query}{$target_accn}, 
-                                   $p_stop_HH{$query}{$target_accn});
-      push(@tmp_start_A, $p_start_HH{$query}{$target_accn});
-      push(@tmp_stop_A, $p_stop_HH{$query}{$target_accn});
+      my ($start, $stop) = ($p_start_HH{$query}{$target_accn}, $p_stop_HH{$query}{$target_accn});
+      if(exists ($act_exon_starts_AA[$cds_i]) && 
+         exists ($act_exon_starts_AA[$cds_i][$exon_i]) && 
+         $start == $act_exon_starts_AA[$cds_i][$exon_i]) { 
+        $predicted_string .= sprintf("%8s", " " . $start . " ");
+      }
+      else { 
+        $predicted_string .= sprintf("%8s", "[" . $start . "]");
+      }
+      $predicted_string .= " ";
+      if(exists ($act_exon_stops_AA[$cds_i]) && 
+         exists ($act_exon_stops_AA[$cds_i][$exon_i]) && 
+         $stop == $act_exon_stops_AA[$cds_i][$exon_i]) { 
+        $predicted_string .= sprintf("%8s", " " . $stop . " ");
+      }
+      else { 
+        $predicted_string .= sprintf("%8s", "[" . $stop . "]");
+      }
     }
     else { 
-      printf("no hits for $query $target_accn\n");
-      $predicted_string .= sprintf("%11s", "NO PRDCTION");
-      push(@tmp_start_A, -1);
-      push(@tmp_stop_A, -1);
+      # printf("no hits for $query $target_accn\n");
+      $predicted_string .= sprintf("%17s", "NO PRDCTION");
     }
   }
   print "$predicted_string";
   ############################################################
 
-  #########################################################
-  # Create the actual annotation portion of the output line
-  # set defaults that will stay if we don't have any CDS information
-  $ncds = 0; 
-  $npos = 0;
-  $nneg = 0;
-  $nunc = 0;
-  $nbth = 0; 
-  $strand_str = "";
-  @cds_len_A = ();
-  @cds_coords_A = ();
-  @cds_product_A = ();    # will remain empty unless $do_product is 1 (-product enabled at cmdline)
-  @cds_protid_A = ();     # will remain empty unless $do_protid is 1 (-protid enabled at cmdline)
-  @cds_codonstart_A = (); # will remain empty unless $do_codonstart is 1 (-codonstart enabled at cmdline)
-
-  if(exists ($cds_tbl_HHA{$accn})) { 
-    ($ncds, $npos, $nneg, $nunc, $nbth, $strand_str) = getStrandStats(\%cds_tbl_HHA, $accn);
-    getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $accn, \@cds_len_A, \@cds_coords_A);
-    getQualifierValues(\%cds_tbl_HHA, $accn, "product", \@cds_product_A);
-  }
-  my $actual_string = "";
-  my $h = 0;
-  for(my $i = 0; $i < $ncds; $i++) { 
-    # determine start and stop positions of all exons
-    my @starts_A = ();
-    my @stops_A  = ();
-    my $nexons   = 0;
-    startStopsFromCoords($cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
-
-    my $strand = substr($strand_str, $i, 1);
-    if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
-      @starts_A = reverse @starts_A;
-      @stops_A  = reverse @stops_A;
-    }
-
-    if($i >= $ref_ncds) { 
-      $actual_string .= sprintf("%6s  %6s", "+", "+");
-      $h += $nexons;
-    }
-    elsif($nexons != $ref_nexons_A[$i]) { 
-      $actual_string .= sprintf("%6s  %6s", "!", "!");
-      $h += $nexons;
-    }
-    else { 
-      for(my $e = 0; $e < $nexons; $e++) { 
-        my $start = ($strand eq "-") ? $stops_A[$e]  : $starts_A[$e];
-        my $stop  = ($strand eq "-") ? $starts_A[$e] : $stops_A[$e];
-        my $start_string = sprintf("%s%4d%s", 
-                                   ($start eq $tmp_start_A[$h]) ? "(" : " ",
-                                   $start, 
-                                   ($start eq $tmp_start_A[$h]) ? ")" : " ");
-        my $stop_string = sprintf("%s%4d%s", 
-                                  ($stop eq $tmp_stop_A[$h]) ? "(" : " ",
-                                  $stop, 
-                                  ($stop eq $tmp_stop_A[$h]) ? ")" : " ");
-        $actual_string .= sprintf("%6s  %6s", $start_string, $stop_string);
-        $h++;
-      }
-    }
-  }
-  if($ncds < $ref_ncds) { 
-    while($ncds < $ref_ncds) { 
-      $actual_string .= sprintf("%6s  %6s", "?", "?");
-      $ncds++;
-    }
-  }
-  printf " | " . $actual_string . "\n";
+  ################################################################################
+  # Output number of actually annotated CDS and summed total of exons in those CDS
+  ################################################################################
+  printf("  %6d    %6d  %6d\n", $totlen_H{$accn}, $ncds, $tot_nexons);
 }
 
 
@@ -855,102 +834,6 @@ sub stripPath {
   return $filename;
 }
 
-# Subroutine: readInfile()
-# Purpose:    Read an input file specified with -i <s> and store the information therein.
-# Args:       $infile: name of the infile to read
-#             $in_cds_product_HAR: reference to a hash of arrays to store CDS:product info
-#             $in_cds_len_HAR:     reference to a hash of arrays to store CDS length info
-# Returns:    void
-sub readInfile {
-  my $sub_name  = "readInfile()";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($infile, $in_cds_product_HAR, $in_cds_len_HAR) = (@_);
-
-  open(IN, $infile) || die "ERROR unable to open $infile for reading.";
-  my $ctr = 0;
-  while(my $line = <IN>) { 
-    $ctr++;
-    chomp $line;
-    $line =~ s/^\s+//; # remove leading  whitespace
-    $line =~ s/\s+$//; # remove trailing whitespace
-    if($line !~ m/^\#/ && $line =~ m/\w/) { 
-      if($line =~ /(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.+)$/) { 
-        my ($type, $idx, $qual, $qval, $value) = ($1, $2, $3, $4, $5);
-        if($type ne "ref" && $type ne "alw" && $type ne "kma") { 
-          die "ERROR first token not 'ref' nor 'alw' nor 'kma' in infile: $infile on line $ctr:\n$line\n"; 
-        }
-        if($qual ne "CDS") { 
-          die "ERROR read non-CDS qualifier in infile: $infile on line $ctr:\n$line\n"; 
-        }
-        if($qval eq "product") { 
-          if(! exists $in_cds_product_HAR->{$type}) { 
-            @{$in_cds_product_HAR->{$type}} = ();
-          }
-          $in_cds_product_HAR->{$type}[$idx-1] = $value;
-        }
-        elsif($qval eq "length") { 
-          if(! exists $in_cds_len_HAR->{$type}) { 
-            @{$in_cds_len_HAR->{$type}} = ();
-          }
-          $in_cds_len_HAR->{$type}[$idx-1] = $value;
-        }
-        else { 
-          die "ERROR unexpected qualifier value $qval in infile: $infile on line $ctr:\n$line\n"; 
-        }
-      }
-      else { 
-        die "ERROR read less than 5 whitespace-delimited tokens in infile: $infile on line $ctr:\n$line\n"; 
-      }
-    }
-  } # end of 'while ($line = <IN>)'
-  return;
-}
-
-# Subroutine: validateInfileGivenRefInfo()
-# Purpose:    Given information read from the parsed ftable about the reference accession, 
-#             validate the information we read from the infile with the -i option.
-# Args:       $ref_ncds:           number of reference CDS
-#             $ref_cds_product_AR: ref to array of CDS:product annotations for the $ref_ncds reference CDS 
-#             $ref_cds_len_AR:     ref to array of lengths for the $ref_ncds reference CDS 
-#             $in_cds_product_HAR: ref to hash of arrays of CDS:product annotations read from the infile (-i)
-#             $in_cds_len_HAR:     ref to hash of arrays of length annotations read from the infile (-i)
-# Returns:    void
-# Dies:       if we didn't read product and length values for all reference accession from the infile
-#             if product and length values read from the infile don't match reference accession info
-sub validateInfileGivenRefInfo {
-  my $sub_name  = "validateInfileGivenRefInfo()";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($ref_ncds, $infile, $ref_cds_product_AR, $ref_cds_len_AR, $in_cds_product_HAR, $in_cds_len_HAR) = @_;
-
-  if(! defined $in_cds_product_HAR)           { die "ERROR didn't read any CDS:product information from infile $infile\n"; }
-  if(! defined $in_cds_len_HAR)               { die "ERROR didn't read any CDS length information from infile $infile\n"; }
-  if(! defined $in_cds_product_HAR->{"ref"})  { die "ERROR didn't read any reference CDS:product information from infile $infile\n"; }
-  if(! defined $in_cds_len_HAR->{"ref"})      { die "ERROR didn't read any reference CDS length information from infile $infile\n"; }
-  if(scalar(@{$in_cds_product_HAR->{"ref"}}) ne $ref_ncds) { die "ERROR didn't read correct number of CDS:product values from infile $infile\n"; }
-  if(scalar(@{$in_cds_len_HAR->{"ref"}})     ne $ref_ncds) { die "ERROR didn't read correct number of CDS length values from infile $infile\n"; }
-  for(my $i = 1; $i <= $ref_ncds; $i++) { 
-    printf("$sub_name validating CDS $i ... ");
-    if(! defined $in_cds_product_HAR->{"ref"}[($i-1)]) { 
-      die "ERROR CDS:product information not read for CDS $i in infile: $infile"; 
-    }
-    if(! defined $in_cds_len_HAR->{"ref"}[($i-1)]) {
-      die "ERROR CDS length information not read for CDS $i in infile: $infile"; 
-    } 
-    if($in_cds_product_HAR->{"ref"}[($i-1)] ne $ref_cds_product_AR->[($i-1)]) { 
-      die sprintf("ERROR CDS:product information for CDS reference accession does not match feature table for CDS $i in infile: $infile\ninfile: %s\nftable: %s\n", $in_cds_product_HAR->{"ref"}[($i-1)], $ref_cds_product_AR->[($i-1)]);
-    }
-    if($in_cds_len_HAR->{"ref"}[($i-1)] ne $ref_cds_len_AR->[($i-1)]) { 
-      die sprintf("ERROR CDS length information for CDS reference accession does not match feature table for CDS $i in infile: $infile\ninfile: %d\nftable: %d", $in_cds_len_HAR->{"ref"}[($i-1)], $ref_cds_len_AR->[($i-1)]);
-                  
-    }
-    printf(" done.\n");
-  }
-  return;
-}
 
 # Subroutine: validateRefCDSAreUnique()
 # Purpose:    Validate that all CDS:product annotation for all reference CDS 
