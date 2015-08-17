@@ -23,13 +23,16 @@ $usage .= " on reference annotation.\n";
 $usage .= "\n";
 $usage .= " BASIC OPTIONS:\n";
 $usage .= "  -oseq <s>: identify origin sequence <s> in genomes\n";
-$usage .= "  -nodup  : do not duplicate each genome to allow identification of features that span stop..start\n";
-$usage .= "  -notexon: add CDS 'product' qualifier value to output sequence files deflines\n";
+$usage .= "  -hmmenv  : use HMM envelope boundaries for predicted annotations, default: use window boundaries\n";
+$usage .= "  -strict  : do not add HMM boundary annotation to output\n";
+$usage .= "  -nohmmb  : do not add HMM boundary annotation to output\n";
+$usage .= "  -nodup   : do not duplicate each genome to allow identification of features that span stop..start\n";
+$usage .= "  -notexon : add CDS 'product' qualifier value to output sequence files deflines\n";
 $usage .= "\n";
 
 my ($seconds, $microseconds) = gettimeofday();
-my $start_secs    = ($seconds + ($microseconds / 1000000.));
-my $executable    = $0;
+my $start_secs     = ($seconds + ($microseconds / 1000000.));
+my $executable     = $0;
 my $hmmer_exec_dir = "/home/nawrocke/bin/";
 my $hmmbuild       = $hmmer_exec_dir . "hmmbuild";
 my $hmmpress       = $hmmer_exec_dir . "hmmpress";
@@ -39,10 +42,16 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan) {
 }
 
 my $origin_seq = undef; # defined if -oseq enabled
-my $do_nodup   = 0; # set to '1' if -dup enabled, duplicate each genome, else do not
+my $do_strict  = 0; # set to '1' if -strict enabled, matching annotations must be same index CDS+exon, else any will do
+my $do_hmmenv  = 0; # set to '1' if -hmmenv enabled, use HMM envelope boundaries as predicted annotations, else use window boundaries
+my $do_nohmmb  = 0; # set to '1' if -nohmmb enabled, do not print HMM boundary info for annotations, else do
+my $do_nodup   = 0; # set to '1' if -nodup enabled, do not duplicate each genome, else do 
 my $do_notexon = 0; # set to '1' if -noexon enabled, do not use exon-specific models, else do
 
 &GetOptions("oseq=s"   => \$origin_seq,
+            "strict"   => \$do_strict,
+            "hmmenv"   => \$do_hmmenv,
+            "nohmmb"   => \$do_nohmmb,
             "nodup"    => \$do_nodup,
             "notexon"  => \$do_notexon) || 
     die "Unknown option";
@@ -61,6 +70,14 @@ my $opts_used_long  = "";
 if(defined $origin_seq) { 
   $opts_used_short .= "-oseq ";
   $opts_used_long  .= "# option:  searching for origin sequence of $origin_seq [-oseq]\n";
+}
+if($do_strict) { 
+  $opts_used_short .= "-strict ";
+  $opts_used_long  .= "# option:  demand matching annotations are same indexed CDS/exon [-strict]\n";
+}
+if($do_nohmmb) { 
+  $opts_used_short .= "-nohmmb ";
+  $opts_used_long  .= "# option:  do not output HMM boundaries of predicted annotations [-nohmmb]\n";
 }
 if($do_nodup) { 
   $opts_used_short .= "-nodup ";
@@ -329,7 +346,7 @@ my %p_stop_HH     = ();
 my %p_strand_HH  = ();
 my %p_score_HH    = ();
 my %p_hangover_HH = ();
-parseNhmmscanTblout($tblout, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
+parseNhmmscanTblout($tblout, $do_hmmenv, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
 
 #######################################################################
 # Pass through all accessions, and output predicted annotation for each
@@ -348,7 +365,16 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("%-20s  %6s  %16s", "#", "", "origin sequence");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %17s", $query_short_A[$h]);
+      if(! $do_nohmmb) { 
+        my $pad = "";
+        for(my $pi = 0; $pi < (21-length($query_short_A[$h]))/2; $pi++) { $pad .= " "; }
+        printf("  %21s", $query_short_A[$h] . $pad);
+      }
+      else { 
+        my $pad = "";
+        for(my $pi = 0; $pi < (17-length($query_short_A[$h]))/2; $pi++) { $pad .= " "; }
+        printf("  %17s", $query_short_A[$h] . $pad);
+      }
     }
     printf("  %6s", "");
     printf("    %14s", "existing annot");
@@ -359,7 +385,12 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("%-20s  %6s  %16s", "#", "", "----------------");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %17s", "-----------------"); 
+      if(! $do_nohmmb) { 
+        printf("  %21s", "---------------------"); 
+      }
+      else { 
+        printf("  %17s", "-----------------"); 
+      }
    }
     printf("  %6s", "");
     printf("    %14s", "--------------");
@@ -372,6 +403,9 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
       printf("  %8s %8s", "start", "stop");
+      if(! $do_nohmmb) { 
+        printf(" %3s", "hmm");
+      }
     }
     printf("  %6s", "totlen");
     printf("    %6s  %6s", "#cds", "#exons");
@@ -384,6 +418,9 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
       printf("  %8s %8s", "--------", "--------");
+      if(! $do_nohmmb) { 
+        printf(" %3s", "---");
+      }
     }
     printf("  %6s", "------");
 
@@ -471,28 +508,34 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $exon_i = $hmm2exon_map_A[$h];
     if($predicted_string ne "") { $predicted_string .= "  "; }
     if(exists $p_start_HH{$query}{$target_accn}) { 
-      my ($start, $stop) = ($p_start_HH{$query}{$target_accn}, $p_stop_HH{$query}{$target_accn});
-      if(exists ($act_exon_starts_AA[$cds_i]) && 
-         exists ($act_exon_starts_AA[$cds_i][$exon_i]) && 
-         $start == $act_exon_starts_AA[$cds_i][$exon_i]) { 
-        $predicted_string .= sprintf("%8s", " " . $start . " ");
-      }
-      else { 
-        $predicted_string .= sprintf("%8s", "[" . $start . "]");
-      }
-      $predicted_string .= " ";
-      if(exists ($act_exon_stops_AA[$cds_i]) && 
-         exists ($act_exon_stops_AA[$cds_i][$exon_i]) && 
-         $stop == $act_exon_stops_AA[$cds_i][$exon_i]) { 
-        $predicted_string .= sprintf("%8s", " " . $stop . " ");
-      }
-      else { 
-        $predicted_string .= sprintf("%8s", "[" . $stop . "]");
-      }
+      my ($start, $stop, $hangover) = ($p_start_HH{$query}{$target_accn}, $p_stop_HH{$query}{$target_accn}, $p_hangover_HH{$query}{$target_accn});
+      my ($hang5, $hang3) = split(":", $hangover);
+      if($hang5    >  9) { $hang5 = "*"; }
+      elsif($hang5 == 0) { $hang5 = "."; }
+
+      if($hang3       >  9) { $hang3 = "*"; }
+      elsif($hang3    == 0) { $hang3 = "."; }
+
+      my ($start_match, $stop_match) = ($do_strict) ? 
+          checkStrictBoundaryMatch   (\@act_exon_starts_AA, \@act_exon_stops_AA, $cds_i, $exon_i, $start, $stop) :
+          checkNonStrictBoundaryMatch(\@act_exon_starts_AA, \@act_exon_stops_AA, $start, $stop);
+
+      $predicted_string .= sprintf("%8s %8s", 
+                                   ($start_match ? " " . $start . " " : "[" . $start . "]"), 
+                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"));
+
+      if(! $do_nohmmb) { 
+        $predicted_string .= "  " . $hang5 . $hang3;
+      }        
     }
     else { 
       # printf("no hits for $query $target_accn\n");
-      $predicted_string .= sprintf("%17s", "NO PRDCTION");
+      if($do_nohmmb) { 
+        $predicted_string .= sprintf("%17s", "NO PREDICTION");
+      }
+      else { 
+        $predicted_string .= sprintf("%21s", "NO PREDICTION");
+      }
     }
   }
   print "$predicted_string";
@@ -1005,7 +1048,8 @@ sub runNhmmscan {
  
   my ($nhmmscan, $query_hmmdb, $target_fasta, $tblout_file, $stdout_file) = @_;
 
-  my $opts = "--noali";
+  # my $opts = "--noali";
+  my $opts = "";
   if(defined $tblout_file) { $opts .= " --tblout $tblout_file "; }
 
   if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
@@ -1065,6 +1109,7 @@ sub nameStockholmAlignment {
 #             pair.
 #
 # Args:       $tblout_file:   tblout file to parse
+#             $do_hmmenv:     '1' to use envelope boundaries, else use window boundaries
 #             $totlen_HR:     ref to hash, key is accession, value is length, pre-filled
 #             $start_HHR:     ref to 2D hash of start values, to fill here
 #             $stop_HHR:      ref to 2D hash of stop values, to fill here
@@ -1076,10 +1121,10 @@ sub nameStockholmAlignment {
 #
 sub parseNhmmscanTblout { 
   my $sub_name = "parseNhmmscanTblout";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $totlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR) = @_;
+  my ($tblout_file, $do_hmmenv, $totlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR) = @_;
   
   open(IN, $tblout_file) || die "ERROR unable to open $tblout_file for reading";
 
@@ -1100,6 +1145,9 @@ sub parseNhmmscanTblout {
       my ($target, $query, $hmmfrom, $hmmto, $alifrom, $alito, $envfrom, $envto, $modlen, $strand, $score) = 
           ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[10], $elA[11], $elA[13]);
 
+      my $from = ($do_hmmenv) ? $envfrom : $alifrom;
+      my $to   = ($do_hmmenv) ? $envto   : $alito;
+
       my $accn = $query;
       $accn =~ s/\:.+$//;
       if(! exists $totlen_HR->{$accn}) { die "ERROR unable to determine accession with stored length from fasta sequence $query"; }
@@ -1108,14 +1156,14 @@ sub parseNhmmscanTblout {
       # only consider hits where either the start or end are less than the total length
       # of the genome. Since we typically duplicate all genomes, this avoids storing 
       # duplicate hits at different positions.
-      if(($envfrom <= $L) || ($envto <= $L)) { 
+      if(($from <= $L) || ($to <= $L)) { 
 
-        # deal with case where one but not both of envfrom envto is > L:
-        if($envfrom > $L || $envto > $L) { 
-          $envfrom -= $L; 
-          $envto   -= $L; 
-          if($envfrom < 0)  { $envfrom--; }
-          if($envto   < 0)  { $envto--; }
+        # deal with case where one but not both of from to is > L:
+        if($from > $L || $to > $L) { 
+          $from -= $L; 
+          $to   -= $L; 
+          if($from < 0)  { $from--; }
+          if($to   < 0)  { $to--; }
         }
 
         if(! exists $start_HHR->{$target}) { # initialize
@@ -1125,8 +1173,8 @@ sub parseNhmmscanTblout {
           %{$score_HHR->{$target}}    = ();
           %{$hangover_HHR->{$target}} = ();
         }
-        if(! exists $start_HHR->{$target}{$query})    { $start_HHR->{$target}{$query}    = $envfrom; }
-        if(! exists $stop_HHR->{$target}{$query})     { $stop_HHR->{$target}{$query}     = $envto; }
+        if(! exists $start_HHR->{$target}{$query})    { $start_HHR->{$target}{$query}    = $from; }
+        if(! exists $stop_HHR->{$target}{$query})     { $stop_HHR->{$target}{$query}     = $to; }
         if(! exists $strand_HHR->{$target}{$query})   { $strand_HHR->{$target}{$query}   = $strand; }
         if(! exists $score_HHR->{$target}{$query})    { $score_HHR->{$target}{$query}    = $score; }
         if(! exists $hangover_HHR->{$target}{$query}) { $hangover_HHR->{$target}{$query} = ($hmmfrom - 1) . ":" . ($modlen - $hmmto); }
@@ -1203,4 +1251,91 @@ sub findSeqInFile {
   if(-e $fasta_file . ".ssi") { unlink $fasta_file . ".ssi"; }
   
   return;
+}
+
+# Subroutine: checkStrictBoundaryMatch
+#
+# Synopsis:   Check if a given start..stop boundary set matches the 
+#             actual annotation in $act_AAR->[$cds_i][$exon_i]
+#             (if that array element even exists).
+#
+# Args:       $act_start_AAR: ref to 2D array [0..i..$ncds-1][0..e..$nexon-1], start for cds $i+1 exon $e+1
+#             $act_stop_AAR:  ref to 2D array [0..i..$ncds-1][0..e..$nexon-1], stop for cds $i+1 exon $e+1
+#             $cds_i:         CDS index we want to check against
+#             $exon_i:        exon index we want to check against
+#             $pstart:        predicted start boundary
+#             $pstop:         predicted stop boundary
+# Returns:    Two values:
+#             '1' if $pstart == $act_start_AAR->[$cds_i][$exon_i], else '0'
+#             '1' if $pstop  == $act_stop_AAR->[$cds_i][$exon_i], else '0'
+#
+sub checkStrictBoundaryMatch {
+  my $sub_name = "checkStrictBoundaryMatch";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($act_start_AAR, $act_stop_AAR, $cds_i, $exon_i, $pstart, $pstop) = @_;
+
+  my $retval1 = 
+      ((exists ($act_start_AAR->[$cds_i])) && 
+       (exists ($act_start_AAR->[$cds_i][$exon_i])) && 
+       ($pstart == $act_start_AAR->[$cds_i][$exon_i])) ? 
+       1 : 0;
+
+  my $retval2 = 
+      ((exists ($act_stop_AAR->[$cds_i])) && 
+       (exists ($act_stop_AAR->[$cds_i][$exon_i])) && 
+       ($pstop == $act_stop_AAR->[$cds_i][$exon_i])) ? 
+       1 : 0;
+
+  return ($retval1, $retval2);
+}
+
+# Subroutine: checkNonStrictBoundaryMatch
+#
+# Synopsis:   Check if a given boundary matches any
+#             annotation in the 2D array referred to
+#             by $act_AAR.
+#
+# Args:       $act_start_AAR: ref to 2D array [0..i..$ncds-1][0..e..$nexon-1], start for cds $i+1 exon $e+1
+#     :       $act_stop_AAR:  ref to 2D array [0..i..$ncds-1][0..e..$nexon-1], stop for cds $i+1 exon $e+1
+#             $pstart:        predicted start position
+#             $pstop:         predicted stop position
+# Returns:    Two values:
+#             '1' if $pstart == $act_start_AAR->[$i][$e], else '0'
+#             '1' if $pstop  == $act_stop_AAR->[$i][$e], else '0'
+#             For any possible $i and $e values, as long as they are the same for start and stop
+#             If both ('1', '0') and ('0', '1') are possible sets of return values, 
+#             ('1', '0') is returned.
+#
+sub checkNonStrictBoundaryMatch {
+  my $sub_name = "checkNonStrictBoundaryMatch";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($act_start_AAR, $act_stop_AAR, $pstart, $pstop) = @_;
+
+  my $found_start_match = 0;
+  my $found_stop_match = 0;
+  my $found_both_match = 0;
+  my $start_match = 0;
+  my $stop_match = 0;
+  my $ncds = scalar(@{$act_start_AAR});
+  for(my $i = 0; $i < $ncds; $i++) { 
+    my $nexons = scalar(@{$act_start_AAR->[$i]});
+    if(! exists $act_stop_AAR->[$i]) { die "ERROR in checkNonStrictBoundaryMatch() $i exists in first dimension of start coords, but not stop coords"; }
+    for(my $e = 0; $e < $nexons; $e++) { 
+      if(! exists $act_stop_AAR->[$i][$e]) { die "ERROR in checkNonStrictBoundaryMatch() $i $e exists in start coords, but not stop coords"; }
+      $start_match = ($pstart == $act_start_AAR->[$i][$e]) ? 1 : 0;
+      $stop_match  = ($pstop  == $act_stop_AAR->[$i][$e])  ? 1 : 0;
+      if($start_match && $stop_match) { $found_both_match  = 1; }
+      elsif($start_match)             { $found_start_match = 1; }
+      elsif($stop_match)              { $found_stop_match = 1; }
+    }
+  }
+
+  if   ($found_both_match)  { return (1, 1); }
+  elsif($found_start_match) { return (1, 0); }
+  elsif($found_stop_match)  { return (0, 1); }
+  else                      { return (0, 0); }
 }
