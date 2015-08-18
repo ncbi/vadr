@@ -8,7 +8,6 @@ use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
-
 # hard-coded-paths:
 my $idfetch       = "/netopt/ncbi_tools64/bin/idfetch";
 my $esl_fetch_cds = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
@@ -22,38 +21,73 @@ $usage .= " This script annotates genomes from the same species based\n";
 $usage .= " on reference annotation.\n";
 $usage .= "\n";
 $usage .= " BASIC OPTIONS:\n";
-$usage .= "  -oseq <s>: identify origin sequence <s> in genomes\n";
+$usage .= "  -oseq <s>  : identify origin sequence <s> in genomes\n";
+$usage .= "  -strict    : require matching annotations to match CDS/exon index\n";
+$usage .= "  -nohmmb    : do not add HMM boundary annotation to output\n";
+$usage .= "  -nodup     : do not duplicate each genome to allow identification of features that span stop..start\n";
+$usage .= "  -notexon   : add CDS 'product' qualifier value to output sequence files deflines\n";
+$usage .= "  -onlybuild : exit after building reference models\n";
+$usage .= "  -model <s> : use model file <s>, instead of building one\n";
+$usage .= "\n OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:\n";
+$usage .= "  -inf1p0  : use Infernal 1.0 --forward for predicting annotations, default: use HMMER3's nhmmscan\n";
+$usage .= "  -inf1p1  : use Infernal 1.1 for predicting annotations, default: use HMMER3's nhmmscan\n";
+$usage .= "\n OPTIONS SPECIFIC TO HMMER3:\n";
 $usage .= "  -hmmenv  : use HMM envelope boundaries for predicted annotations, default: use window boundaries\n";
-$usage .= "  -strict  : do not add HMM boundary annotation to output\n";
-$usage .= "  -nohmmb  : do not add HMM boundary annotation to output\n";
-$usage .= "  -nodup   : do not duplicate each genome to allow identification of features that span stop..start\n";
-$usage .= "  -notexon : add CDS 'product' qualifier value to output sequence files deflines\n";
+$usage .= "\n OPTIONS SPECIFIC TO INFERNAL (1.0 OR 1.1):\n";
+$usage .= "  -iglocal  : use the -g option with cmsearch for glocal searches\n";
+$usage .= "  -cslow    : use default cmcalibrate parameters, not parameters optimized for speed (requires --inf1p1)\n";
+$usage .= "  -ccluster : submit calibration to cluster and exit (requires --onlybuild and --inf1p1)\n";
+
 $usage .= "\n";
 
 my ($seconds, $microseconds) = gettimeofday();
-my $start_secs     = ($seconds + ($microseconds / 1000000.));
-my $executable     = $0;
-my $hmmer_exec_dir = "/home/nawrocke/bin/";
-my $hmmbuild       = $hmmer_exec_dir . "hmmbuild";
-my $hmmpress       = $hmmer_exec_dir . "hmmpress";
-my $nhmmscan       = $hmmer_exec_dir . "nhmmscan";
-foreach my $x ($hmmbuild, $hmmpress, $nhmmscan) { 
+my $start_secs      = ($seconds + ($microseconds / 1000000.));
+my $executable      = $0;
+my $hmmer_exec_dir  = "/home/nawrocke/bin/";
+my $inf1p0_exec_dir = "/home/nawrocke/src/infernal-1.0/src/";
+my $inf1p1_exec_dir = "/usr/local/infernal/1.1.1/bin/";
+my $hmmbuild        = $hmmer_exec_dir  . "hmmbuild";
+my $hmmpress        = $hmmer_exec_dir  . "hmmpress";
+my $nhmmscan        = $hmmer_exec_dir  . "nhmmscan";
+my $cmbuild_1p0     = $inf1p0_exec_dir . "cmbuild";
+my $cmsearch_1p0    = $inf1p0_exec_dir . "cmsearch";
+my $cmbuild_1p1     = $inf1p1_exec_dir . "cmbuild";
+my $cmcalibrate_1p1 = $inf1p1_exec_dir . "cmcalibrate";
+my $cmpress_1p1     = $inf1p1_exec_dir . "cmpress";
+my $cmscan_1p1      = $inf1p1_exec_dir . "cmscan";
+my $cmsearch_1p1    = $inf1p1_exec_dir . "cmsearch";
+
+foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild_1p0, $cmsearch_1p0, $cmbuild_1p1, $cmcalibrate_1p1, $cmpress_1p1, $cmscan_1p1, $cmsearch_1p1) { 
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
-my $origin_seq = undef; # defined if -oseq enabled
-my $do_strict  = 0; # set to '1' if -strict enabled, matching annotations must be same index CDS+exon, else any will do
-my $do_hmmenv  = 0; # set to '1' if -hmmenv enabled, use HMM envelope boundaries as predicted annotations, else use window boundaries
-my $do_nohmmb  = 0; # set to '1' if -nohmmb enabled, do not print HMM boundary info for annotations, else do
-my $do_nodup   = 0; # set to '1' if -nodup enabled, do not duplicate each genome, else do 
-my $do_notexon = 0; # set to '1' if -noexon enabled, do not use exon-specific models, else do
+my $origin_seq   = undef; # defined if -oseq      enabled
+my $do_strict    = 0; # set to '1' if -strict     enabled, matching annotations must be same index CDS+exon, else any will do
+my $do_nohmmb    = 0; # set to '1' if -nohmmb     enabled, do not print HMM boundary info for annotations, else do
+my $do_nodup     = 0; # set to '1' if -nodup      enabled, do not duplicate each genome, else do 
+my $do_notexon   = 0; # set to '1' if -noexon     enabled, do not use exon-specific models, else do
+my $do_onlybuild = 0; # set to '1' if -onlybuild  enabled, exit after building the model
+my $in_model_db  = undef; # defined if -model <s> enabled, use <s> as the model file instead of building one
+my $do_inf1p0    = 0; # set to '1' if -inf1p0     enabled, use Infernal 1.0, not HMMER3's nhmmscan
+my $do_inf1p1    = 0; # set to '1' if -inf1p1     enabled, use Infernal 1.1, not HMMER3's nhmmscan
+my $do_hmmenv    = 0; # set to '1' if -hmmenv     enabled, use HMM envelope boundaries as predicted annotations, else use window boundaries
+my $do_iglocal   = 0; # set to '1' if -iglocal    enabled, use -g with cmsearch
+my $do_cslow     = 0; # set to '1' if -cslow      enabled, use default, slow, cmcalibrate parameters instead of speed optimized ones
+my $do_ccluster  = 0; # set to '1' if -ccluster   enabled, submit calibration to cmcalibrate
 
-&GetOptions("oseq=s"   => \$origin_seq,
-            "strict"   => \$do_strict,
-            "hmmenv"   => \$do_hmmenv,
-            "nohmmb"   => \$do_nohmmb,
-            "nodup"    => \$do_nodup,
-            "notexon"  => \$do_notexon) || 
+&GetOptions("oseq=s"    => \$origin_seq,
+            "strict"    => \$do_strict,
+            "nohmmb"    => \$do_nohmmb,
+            "nodup"     => \$do_nodup,
+            "notexon"   => \$do_notexon,
+            "onlybuild" => \$do_onlybuild,
+            "model=s"   => \$in_model_db,
+            "inf1p0"    => \$do_inf1p0,
+            "inf1p1"    => \$do_inf1p1,
+            "hmmenv"    => \$do_hmmenv,
+            "iglocal"   => \$do_iglocal,
+            "cslow"     => \$do_cslow, 
+            "ccluster"  => \$do_ccluster) ||
     die "Unknown option";
 
 if(scalar(@ARGV) != 2) { die $usage; }
@@ -87,10 +121,66 @@ if($do_notexon) {
   $opts_used_short .= "-notexon ";
   $opts_used_long  .= "# option:  using full CDS, and not exon-specific models, for CDS with multiple exons [-noexon]\n";
 }
+if($do_onlybuild) { 
+  $opts_used_short .= "-onlybuild ";
+  $opts_used_long  .= "# option:  exit after model construction step [-onlybuild]\n";
+}
+if(defined $in_model_db) { 
+  $opts_used_short .= "-model $in_model_db ";
+  $opts_used_long  .= "# option:  use model in $in_model_db instead of building one here [-model]\n";
+}
+if($do_inf1p0) { 
+  $opts_used_short .= "-inf1p0 ";
+  $opts_used_long  .= "# option:  using Infernal 1.0 for predicting annotation [-inf1p0]\n";
+}
+if($do_inf1p1) { 
+  $opts_used_short .= "-inf1p1 ";
+  $opts_used_long  .= "# option:  using Infernal 1.1 for predicting annotation [-inf1p1]\n";
+}
+if($do_hmmenv) { 
+  $opts_used_short .= "-hmmenv ";
+  $opts_used_long  .= "# option:  use HMM envelope boundaries as predicted annotations, not window boundaries [-hmmenv]\n";
+}
+if($do_iglocal) { 
+  $opts_used_short .= "-iglocal ";
+  $opts_used_long  .= "# option:  use glocal search option with Infernal [-iglocal]\n";
+}
+if($do_cslow) { 
+  $opts_used_short .= "-cslow ";
+  $opts_used_long  .= "# option:  run cmcalibrate in default (slow) mode [-cslow]\n";
+}
+if($do_ccluster) { 
+  $opts_used_short .= "-ccluster ";
+  $opts_used_long  .= "# option:  submit calibration job to cluster [-ccluster]\n";
+}
 # 
 # check for incompatible option values/combinations:
-# NONE YET
+if($do_inf1p0 && $do_hmmenv) { 
+  die "ERROR -hmmenv is incompatible with --inf1p0"; 
+}
+if($do_inf1p0 && $do_inf1p1) { 
+  die "ERROR -inf1p0 is incompatible with --inf1p1, pick one"; 
+}
+if($do_inf1p1 && $do_hmmenv) { 
+  die "ERROR -hmmenv is incompatible with --inf1p1"; 
+}
 
+# check that options that must occur in combination, do
+if($do_ccluster && (! $do_onlybuild)) { 
+  die "ERROR -ccluster must be used in combination with -onlybuild"; 
+}
+if($do_ccluster && (! $do_inf1p1)) { 
+  die "ERROR -ccluster must be used in combination with -inf1p1"; 
+}
+if($do_cslow && (! $do_inf1p1)) { 
+  die "ERROR -cslow must be used in combination with -inf1p1"; 
+}
+
+# check that input files related to options actually exist
+if(defined $in_model_db) { 
+  if(! -s $in_model_db) { die "ERROR: $in_model_db file does not exist"; }
+}
+              
 ###############
 # Preliminaries
 ###############
@@ -156,22 +246,14 @@ parseLength($length_file, \%totlen_H);
 parseTable($gene_tbl_file, \%gene_tbl_HHA);
 parseTable($cds_tbl_file, \%cds_tbl_HHA);
 
-###########################################################################
-# for each non-reference accession: 
-#   for each reference CDS: 
-#     look for homologous CDS in genome
-###########################################################################
-
-###########################################################################
+#######################
+# variable declarations
+#######################
 my $strand_str;              # +/- string for all CDS for an accession: e.g. '+-+': 1st and 3rd CDS are + strand, 2nd is -
 
-# variables related to a reference accession
-my $ref_accn      = undef; # changed to <s> with -ref <s>
-my $ref_label_str = undef; # label string for reference accn
-
-#my $uc_script = $out_root . ".uclust.sh";
-
 # reference information on reference accession, first accession read in ntlist file
+my $ref_accn          = undef; # changed to <s> with -ref <s>
+my $ref_label_str     = undef; # label string for reference accn
 my $ref_ncds          = 0;  # number of CDS in reference
 my $ref_strand_str    = ""; # strand string for reference 
 my @ref_cds_len_A     = (); # [0..$i..$ref_ncds-1]: length of each reference CDS
@@ -246,14 +328,15 @@ my $stk_file = $out_root . ".ref.all.stk";
 
 printf("# Fetching reference sequences, and reformatting them to stockholm format ... ");
 my $tmp_out_root;
+my $tmp_name_root;
 my $fetch_input;
 my $fetch_output;
 my $nhmm = 0;             # number of HMMs (and alignments used to build those HMMs)
 my @hmm2cds_map_A = ();   # [0..h..$nhmm-1]: $i: HMM ($h+1) maps to reference cds ($i+1)
 my @hmm2exon_map_A = ();  # [0..h..$nhmm-1]: $e: HMM ($h+1) maps to exon ($e+1) of reference cds $hmm2cds_map_A[$h]+1
-my @query_A = ();         # [0..$nhmm-1]: array of query HMM names, also name of stockholm alignments used to build those HMMs
-my @query_toprint_A = (); # [0..$nhmm-1]: array of query HMM names to print, corresponding to @query_A
-my @query_short_A = ();   # [0..$nhmm-1]: array of abbreviated query HMM names to print, corresponding to @query_A
+my @model_A = ();         # [0..$nhmm-1]: array of model HMM names, also name of stockholm alignments used to build those HMMs
+my @model_toprint_A = (); # [0..$nhmm-1]: array of model HMM names to print, corresponding to @model_A
+my @model_short_A = ();   # [0..$nhmm-1]: array of abbreviated model HMM names to print, corresponding to @model_A
 my @ref_nexons_A = ();
 for(my $i = 0; $i < $ref_ncds; $i++) { 
   my $strand = substr($ref_strand_str, $i, 1);
@@ -267,19 +350,21 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
   push(@ref_nexons_A, $nexons);
 
   if($nexons == 1 || $do_notexon) { 
-    $tmp_out_root = $out_root . ".ref.cds." . ($i+1);
-    $fetch_input  = $tmp_out_root . ".esl-fetch.in";
-    $fetch_output = $tmp_out_root . ".stk";
+    $tmp_out_root  = $out_root . ".ref.cds." . ($i+1);
+    $tmp_name_root = $dir_tail     . ".ref.cds." . ($i+1);
+    $fetch_input   = $tmp_out_root . ".esl-fetch.in";
+    $fetch_output  = $tmp_out_root . ".stk";
     open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
     printf FOUT ("$ref_accn:cds%d\t$coords_with_accn\n", ($i+1));
     close FOUT;
 
     my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input | esl-reformat --informat afa stockholm - > $fetch_output";
     runCommand($cmd, 0);
-    nameStockholmAlignment($tmp_out_root, $fetch_output, $tmp_out_root . ".named.stk");
-    push(@query_A, $tmp_out_root);
-    push(@query_toprint_A, sprintf("Reference CDS %d (%s)", ($i+1), ($nexons == 1) ? "single exon" : "multiple exons"));
-    push(@query_short_A, sprintf("CDS-%d", ($i+1)));
+    my $do_blank_ss = ($do_inf1p0 || $do_inf1p1); # add a blank SS_cons line if we're using Infernal
+    annotateStockholmAlignment($tmp_name_root, $do_blank_ss, $fetch_output, $tmp_out_root . ".named.stk");
+    push(@model_A, $tmp_name_root);
+    push(@model_toprint_A, sprintf("Reference CDS %d (%s)", ($i+1), ($nexons == 1) ? "single exon" : "multiple exons"));
+    push(@model_short_A, sprintf("CDS-%d", ($i+1)));
 
     # now append the named alignment to the growing stockholm alignment database $stk_file
     $cmd = "cat " . $tmp_out_root . ".named.stk";
@@ -298,7 +383,8 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
       @stops_A  = reverse @stops_A;
     }
     for(my $e = 0; $e < $nexons; $e++) { 
-      my $tmp_out_root = $out_root . ".ref.cds." . ($i+1) . ".exon." . ($e+1);
+      my $tmp_out_root  = $out_root . ".ref.cds." . ($i+1) . ".exon." . ($e+1);
+      my $tmp_name_root = $dir_tail . ".ref.cds." . ($i+1) . ".exon." . ($e+1);
       $fetch_input  = $tmp_out_root . ".esl-fetch.in";
       $fetch_output = $tmp_out_root . ".stk";
       my $fetch_string = $ref_accn . ":" . $starts_A[$e] . ".." . $stops_A[$e];
@@ -313,10 +399,11 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
       close FOUT;
       my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input | esl-reformat --informat afa stockholm - > $fetch_output";
       runCommand($cmd, 0);
-      nameStockholmAlignment($tmp_out_root, $fetch_output, $tmp_out_root . ".named.stk");
-      push(@query_A, $tmp_out_root);
-      push(@query_toprint_A, sprintf("Reference CDS %d (exon %d of %d)", ($i+1), ($e+1), $nexons));
-      push(@query_short_A, sprintf("CDS-%d.%d", ($i+1), ($e+1)));
+      my $do_blank_ss = ($do_inf1p0 || $do_inf1p1); # add a blank SS_cons line if we're using Infernal
+      annotateStockholmAlignment($tmp_name_root, $do_blank_ss, $fetch_output, $tmp_out_root . ".named.stk");
+      push(@model_A, $tmp_name_root);
+      push(@model_toprint_A, sprintf("Reference CDS %d (exon %d of %d)", ($i+1), ($e+1), $nexons));
+      push(@model_short_A, sprintf("CDS-%d.%d", ($i+1), ($e+1)));
       
       # now append the named alignment to the growing stockholm alignment database $stk_file
       $cmd = "cat " . $tmp_out_root . ".named.stk";
@@ -331,22 +418,75 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
 }
 printf("done. [$stk_file]\n");
 
-# do the homology search
-createHmmDb($hmmbuild, $hmmpress, $stk_file, $out_root . ".ref");
-my $hmmdb        = $out_root . ".ref.hmm";
-my $tblout       = $out_root . ".tblout";
-my $nhmmscan_out = $out_root . ".nhmmscan";
-runNhmmscan($nhmmscan, $hmmdb, $gnm_fasta_file, $tblout, $nhmmscan_out);
+# homology search section
+my $model_db; # model database file, either HMMs or CMs
+
+# first, create the model database, unless it was passed in:
+if(defined $in_model_db) { 
+  $model_db = $in_model_db;
+}
+else { 
+  if($do_inf1p1) { 
+    createCmDb($cmbuild_1p1, $cmcalibrate_1p1, $cmpress_1p1, $do_cslow, $do_ccluster, $stk_file, $out_root . ".ref");
+    if($do_onlybuild) { 
+      printf("#\n# Model construction %s. Exiting.\n", ($do_ccluster) ? "job submitted." : "complete");
+      exit 0;
+    }
+    $model_db = $out_root . ".ref.cm";
+  }
+  elsif($do_inf1p0) { 
+    # the two 'undef's below tells createCmDb to skip cmcalibrate and cmpress steps,
+    # and the two '0's pertain to calibration, which is irrelevant, since we're not calibrating
+    createCmDb($cmbuild_1p0, undef, undef, 0, 0, $stk_file, $out_root . ".ref");
+    if($do_onlybuild) { 
+      printf("#\n# Model construction complete. Exiting.\n");
+      exit 0;
+    }
+    $model_db = $out_root . ".ref.cm";
+  }
+  else { # use HMMER3's nhmmscan
+    createHmmDb($hmmbuild, $hmmpress, $stk_file, $out_root . ".ref");
+    if($do_onlybuild) { 
+      printf("#\n# Model construction complete. Exiting.\n");
+      exit 0;
+    }
+    $model_db = $out_root . ".ref.hmm";
+  }
+}
+  
+# now we know we have a model database, perform the search and parse the results
+# output files from homology searches
+my $tblout = $out_root . ".tblout"; # tabular output file, created by either nhmmscan or cmsearch
+my $stdout = $out_root . ".stdout"; # standard output file from either nhmmscan or cmsearch
+
+# 2D hashes for storing the search results
+# For all of these: 1D key: model name, 2D key: sequence name,
+# and the value is for the top-scoring hit only
+my %p_start_HH    = (); # start positions of hits
+my %p_stop_HH     = (); # stop positions of hits
+my %p_strand_HH   = (); # strands of hits
+my %p_score_HH    = (); # bit score of hits 
+my %p_hangover_HH = (); # "<a>:<b>" where <a> is number of 5' model positions not in the alignment
+                        # and <b> is number of 3' model positions not in the alignment
+
+if($do_inf1p1) { 
+  runCmscan($cmscan_1p1, $do_iglocal, $model_db, $gnm_fasta_file, $tblout, $stdout);
+  die "WRITE FUNCTION TO PARSE INFERNAL 1.1 CMSCAN OUTPUT";
+}
+elsif($do_inf1p0) { 
+  runCmsearch($cmsearch_1p0, $do_iglocal, 1, $model_db, $gnm_fasta_file, $tblout, $stdout);
+  die "WRITE FUNCTION TO PARSE INFERNAL 1.0 CMSEARCH OUTPUT";
+}
+else { 
+  runNhmmscan($nhmmscan, $model_db, $gnm_fasta_file, $tblout, $stdout);
+  parseNhmmscanTblout($tblout, $do_hmmenv, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
+}
+
 printf("#\n");
 printf("#\n");
 
 # parse the homology search results and output predicted annotations
-my %p_start_HH    = ();
-my %p_stop_HH     = ();
-my %p_strand_HH  = ();
-my %p_score_HH    = ();
-my %p_hangover_HH = ();
-parseNhmmscanTblout($tblout, $do_hmmenv, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
+
 
 #######################################################################
 # Pass through all accessions, and output predicted annotation for each
@@ -367,13 +507,13 @@ for(my $a = 0; $a < $naccn; $a++) {
     for(my $h = 0; $h < $nhmm; $h++) { 
       if(! $do_nohmmb) { 
         my $pad = "";
-        for(my $pi = 0; $pi < (21-length($query_short_A[$h]))/2; $pi++) { $pad .= " "; }
-        printf("  %21s", $query_short_A[$h] . $pad);
+        for(my $pi = 0; $pi < (21-length($model_short_A[$h]))/2; $pi++) { $pad .= " "; }
+        printf("  %21s", $model_short_A[$h] . $pad);
       }
       else { 
         my $pad = "";
-        for(my $pi = 0; $pi < (17-length($query_short_A[$h]))/2; $pi++) { $pad .= " "; }
-        printf("  %17s", $query_short_A[$h] . $pad);
+        for(my $pi = 0; $pi < (17-length($model_short_A[$h]))/2; $pi++) { $pad .= " "; }
+        printf("  %17s", $model_short_A[$h] . $pad);
       }
     }
     printf("  %6s", "");
@@ -503,12 +643,12 @@ for(my $a = 0; $a < $naccn; $a++) {
   # Create the predicted annotation portion of the output line
   my $predicted_string = "";
   for(my $h = 0; $h < $nhmm; $h++) { 
-    my $query  = $query_A[$h];
+    my $model  = $model_A[$h];
     my $cds_i  = $hmm2cds_map_A[$h];
     my $exon_i = $hmm2exon_map_A[$h];
     if($predicted_string ne "") { $predicted_string .= "  "; }
-    if(exists $p_start_HH{$query}{$target_accn}) { 
-      my ($start, $stop, $hangover) = ($p_start_HH{$query}{$target_accn}, $p_stop_HH{$query}{$target_accn}, $p_hangover_HH{$query}{$target_accn});
+    if(exists $p_start_HH{$model}{$target_accn}) { 
+      my ($start, $stop, $hangover) = ($p_start_HH{$model}{$target_accn}, $p_stop_HH{$model}{$target_accn}, $p_hangover_HH{$model}{$target_accn});
       my ($hang5, $hang3) = split(":", $hangover);
       if($hang5    >  9) { $hang5 = "*"; }
       elsif($hang5 == 0) { $hang5 = "."; }
@@ -529,7 +669,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       }        
     }
     else { 
-      # printf("no hits for $query $target_accn\n");
+      # printf("no hits for $model $target_accn\n");
       if($do_nohmmb) { 
         $predicted_string .= sprintf("%17s", "NO PREDICTION");
       }
@@ -1028,6 +1168,95 @@ sub createHmmDb {
   return;
 }
 
+# Subroutine: createCmDb()
+# Synopsis:   Create an CM database from a stockholm database file
+#             for use with either Infernal 1.0 or Infernal 1.1.
+#             Which version of Infernal to use is dictated by 
+#             the $cmbuild executable. If $cmcalibrate is defined
+#             also run cmcalibrate. 
+#
+# Args:       $cmbuild:          path to 'cmbuild' executable, Inf 1.0 or 1.1
+#             $cmcalibrate:      path to 'cmcalibrate' executable, or undef if we're not calibrating (Infernal 1.0)
+#             $cmpress:          path to 'cmpress' executable, or undef if we're not pressing (Infernal 1.0)
+#             $do_calib_slow:    '1' to calibrate using default parameters instead of
+#                                options to make it go much faster
+#             $do_calib_cluster: '1' to submit calibration job to cluster, '0' to do it locally
+#             $stk_file:         stockholm DB file
+#             $out_root:         string for naming output files
+#
+# Returns:    void
+#
+sub createCmDb { 
+  my $sub_name = "createCmDb()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($cmbuild, $cmcalibrate, $cmpress, $do_calib_slow, $do_calib_cluster, $stk_file, $out_root) = @_;
+
+  if(! -s $stk_file)  { die "ERROR in $sub_name, $stk_file file does not exist or is empty"; }
+
+  if(defined $do_calib_cluster && ((! defined $cmcalibrate) || (! defined $cmpress))) { 
+    die "ERROR in $sub_name, $do_calib_cluster is on but cmcalibrate or cmpress are not defined."
+  }
+
+  # remove the binary files, possibly from an earlier cmbuild/cmpress:
+  for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
+    my $file = $out_root . ".cm." . $suffix;
+    if(-e $file) { unlink $file; }
+  }
+
+  my ($cmbuild_opts,     $cmbuild_cmd);
+  my ($cmcalibrate_opts, $cmcalibrate_cmd);
+  my ($cmpress_opts,     $cmpress_cmd);
+
+  $cmbuild_opts = "-F";
+  $cmbuild_cmd  = "$cmbuild $cmbuild_opts $out_root.cm $stk_file > $out_root.cmbuild";
+
+  if(defined $cmcalibrate) { 
+    $cmcalibrate_opts = " --cpu 4 ";
+    if(! $do_calib_slow) { $cmcalibrate_opts .= " -L 0.04 "; }
+    $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
+  }
+  
+  if(defined $cmpress) { 
+    $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
+  }
+
+  # first build the models
+  printf("# Running cmbuild for $out_root ... ");
+  runCommand($cmbuild_cmd, 0);
+  printf("done.\n");
+
+  if($do_calib_cluster) { 
+    # submit a job to the cluster and exit. 
+    my $out_tail = $out_root;
+    $out_tail =~ s/^.+\///;
+    my $jobname = "cp." . $out_tail;
+    my $errfile = $out_root . ".err";
+    my $cluster_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=28800,h_vmem=8G,mem_free=8G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . ";" . $cmpress_cmd . ";\"\n";
+    # print("$cluster_cmd\n");
+    runCommand($cluster_cmd, 0);
+  }
+  else { 
+    if(defined $cmcalibrate) { 
+      # calibrate the model
+      printf("# Running cmcalibrate for $out_root ... ");
+      #runCommand($cmcalibrate_cmd, 0);
+      printf("\n$cmcalibrate_cmd\n");
+      printf("done.\n");
+    }
+    if(defined $cmpress) { 
+      # press the model
+      printf("# Running cmpress for $out_root ... ");
+      #runCommand($cm_presscmd, 0);
+      printf("\n$cmpress_cmd\n");
+      printf("done.\n");
+    }
+  } # end of 'else' entered if $do_calib_cluster is false
+
+  return;
+}
+
 # Subroutine: runNhmmscan()
 # Synopsis:   Perform a homology search using nhmmscan.
 #
@@ -1048,9 +1277,8 @@ sub runNhmmscan {
  
   my ($nhmmscan, $query_hmmdb, $target_fasta, $tblout_file, $stdout_file) = @_;
 
-  # my $opts = "--noali";
-  my $opts = "";
-  if(defined $tblout_file) { $opts .= " --tblout $tblout_file "; }
+  # my $opts = " --noali --tblout $tblout_file ";
+  my $opts = " --tblout $tblout_file ";
 
   if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
 
@@ -1065,24 +1293,106 @@ sub runNhmmscan {
   return;
 }
 
-# Subroutine: nameStockholmAlignment
+# Subroutine: runCmsearch()
+# Synopsis:   Run Infernal 1.0 or 1.1's cmsearch.
 #
-# Synopsis:   Read in a stockholm alignment ($in_file), add a name
-#             ($name) to it, and output a new file ($out_file) that is
-#             identical to it but with the name annotation.
+# Args:       $cmsearch:      path to cmsearch executable
+#             $do_glocal:     '1' to use the -g option, '0' not to
+#             $do_1p0:        '1' if we're using infernal 1.0, else we're using infernal 1.1
+#             $query_cmdb:    path to query CM database
+#             $target_fasta:  path to target fasta file
+#             $tblout_file:   path to --tblout output file to create, undef to not create one
+#             $stdout_file:   path to output file to create with standard output from cmsearch, undef 
+#                             to pipe to /dev/null
+#
+# Returns:    void
+#
+sub runCmsearch { 
+  my $sub_name = "runCmsearch()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($cmsearch, $do_glocal, $do_1p0, $query_cmdb, $target_fasta, $tblout_file, $stdout_file) = @_;
+
+  my $opts = "";
+  if($do_iglocal) { $opts .= "-g "; }
+  if($do_1p0) { 
+    $opts .= " --forward --tabfile $tblout_file ";
+  }
+  else { 
+    $opts .= " --rfam --tblout $tblout_file ";
+  }
+  if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
+
+  if(! -s $query_cmdb)   { die "ERROR in $sub_name, $query_cmdb file does not exist or is empty"; }
+  if(! -s $target_fasta) { die "ERROR in $sub_name, $target_fasta file does not exist or is empty"; }
+
+  printf("# Running cmsearch version %s ... ", $do_1p0 ? "1.0" : "1.1.1");
+  my $cmd = "$cmsearch $opts $query_cmdb $target_fasta > $stdout_file";
+  runCommand($cmd, 0);
+  printf("done.\n");
+
+  return;
+}
+
+# Subroutine: runCmscan()
+# Synopsis:   Run Infernal 1.1's cmscan.
+#
+# Args:       $cmscan:        path to cmscan executable
+#             $do_glocal:     '1' to use the -g option, '0' not to
+#             $query_cmdb:    path to query CM database
+#             $target_fasta:  path to target fasta file
+#             $tblout_file:   path to --tblout output file to create, undef to not create one
+#             $stdout_file:   path to output file to create with standard output from cmsearch, undef 
+#                             to pipe to /dev/null
+#
+# Returns:    void
+#
+sub runCmscan { 
+  my $sub_name = "runCmscan()";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($cmscan, $do_glocal, $query_cmdb, $target_fasta, $tblout_file, $stdout_file) = @_;
+
+  my $opts = "";
+  if($do_iglocal) { $opts .= "-g "; }
+  $opts .= " --rfam --tblout $tblout_file --verbose --nohmmonly ";
+  if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
+
+  if(! -s $query_cmdb)   { die "ERROR in $sub_name, $query_cmdb file does not exist or is empty"; }
+  if(! -s $target_fasta) { die "ERROR in $sub_name, $target_fasta file does not exist or is empty"; }
+
+  printf("# Running cmscan version 1.1.1 ... ");
+  my $cmd = "$cmscan $opts $query_cmdb $target_fasta > $stdout_file";
+  runCommand($cmd, 0);
+  printf("done.\n");
+
+  return;
+}
+
+# Subroutine: annotateStockholmAlignment
+#
+# Synopsis:   Read in a stockholm alignment ($in_file), and 
+#             add a name ($name) to it, then optionally add
+#             a blank SS (#=GC SS_cons) annotation to it
+#             and output a new file ($out_file) that is
+#             identical to it but with the name annotation
+#             and possibly a blank SS.
 #
 # Args:       $name:          name to add to alignment
+#             $do_blank_ss:   '1' to add a blank SS, else '0'
 #             $in_file:       input stockholm alignment
 #             $out_file:      output stockholm alignment to create
 #
 # Returns:    void
 #
-sub nameStockholmAlignment {
-  my $sub_name = "nameStockholmAlignment";
-  my $nargs_exp = 3;
+sub annotateStockholmAlignment {
+  my $sub_name = "annotateStockholmAlignment";
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($name, $in_file, $out_file) = @_;
+  my ($name, $do_blank_ss, $in_file, $out_file) = @_;
 
   # printf("# Naming alignment in $in_file to $name ... "); 
 
@@ -1091,6 +1401,9 @@ sub nameStockholmAlignment {
     fileLocation => $in_file,
                                  });  
   $msa->set_name($name);
+  if($do_blank_ss) { 
+    $msa->set_blank_ss_cons;
+  }
   $msa->write_msa($out_file);
 
   # printf("done. [$out_file]\n");
