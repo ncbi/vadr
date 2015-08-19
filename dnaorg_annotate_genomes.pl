@@ -225,10 +225,12 @@ my @accn_A = (); # array of accessions
 open(IN, $listfile) || die "ERROR unable to open $listfile for reading"; 
 my $waccn = 0; # max length of all accessions
 while(my $accn = <IN>) { 
-  chomp $accn;
-  stripVersion(\$accn); # remove version
-  push(@accn_A, $accn);
-  if(length($accn) > $waccn) { $waccn = length($accn); }
+  if($accn =~ m/\w/) { 
+    chomp $accn;
+    stripVersion(\$accn); # remove version
+    push(@accn_A, $accn);
+    if(length($accn) > $waccn) { $waccn = length($accn); }
+  }
 }
 close(IN); 
 
@@ -262,12 +264,12 @@ my $strand_str;              # +/- string for all CDS for an accession: e.g. '+-
 # reference information on reference accession, first accession read in ntlist file
 my $ref_accn          = undef; # changed to <s> with -ref <s>
 my $ref_label_str     = undef; # label string for reference accn
-my $ref_ncds          = 0;  # number of CDS in reference
-my $ref_strand_str    = ""; # strand string for reference 
-my @ref_cds_len_A     = (); # [0..$i..$ref_ncds-1]: length of each reference CDS
-#my @ref_cds_len_tol_A = (); # [0..$i..$ref_ncds-1]: length tolerance, any gene that is within this fraction of the lenght of the ref gene is a match
-my @ref_cds_coords_A  = (); # [0..$i..$ref_ncds-1]: CDS coords for reference
-my @ref_cds_product_A = (); # CDS:product qualifier data for reference 
+my $ref_ncds          = 0;     # number of CDS in reference
+my $ref_strand_str    = "";    # strand string for reference 
+my @ref_cds_len_A     = ();    # [0..$i..$ref_ncds-1]: length of each reference CDS
+#my @ref_cds_len_tol_A = ();   # [0..$i..$ref_ncds-1]: length tolerance, any gene that is within this fraction of the lenght of the ref gene is a match
+my @ref_cds_coords_A  = ();    # [0..$i..$ref_ncds-1]: CDS coords for reference
+my @ref_cds_product_A = ();    # CDS:product qualifier data for reference 
 
 my $ncds = 0;              # number of CDS
 my $npos = 0;              # number of CDS on positive strand
@@ -293,15 +295,17 @@ my $fetch_string = undef;
 open(OUT, ">" . $gnm_fetch_file) || die "ERROR unable to open $gnm_fetch_file";
 for(my $a = 0; $a < $naccn; $a++) { 
 #  print OUT $accn_A[$a] . "\n";
+  my $accn = $accn_A[$a];
+  if(! exists $totlen_H{$accn}) { die "ERROR no total length read for accession $accn"; } 
   if($do_nodup) { 
-    $fetch_string = $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "\n";
-    print OUT $accn_A[$a] . ":" . "genome" . "\t" . $fetch_string;
-    $target_accn = $accn_A[$a] . ":genome:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:";
+    $fetch_string = $accn . ":1.." . $totlen_H{$accn} . "\n";
+    print OUT $accn . ":" . "genome" . "\t" . $fetch_string;
+    $target_accn = $accn . ":genome:" . $accn . ":1:" . $totlen_H{$accn} . ":+:";
   }
   else { 
-    $fetch_string = "join(" . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . "," . $accn_A[$a] . ":1.." . $totlen_H{$accn_A[$a]} . ")\n";
-    print OUT $accn_A[$a] . ":" . "genome-duplicated" . "\t" . $fetch_string;
-    $target_accn = $accn_A[$a] . ":genome-duplicated:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:" . $accn_A[$a] . ":1:" . $totlen_H{$accn_A[$a]} . ":+:";
+    $fetch_string = "join(" . $accn . ":1.." . $totlen_H{$accn} . "," . $accn . ":1.." . $totlen_H{$accn} . ")\n";
+    print OUT $accn . ":" . "genome-duplicated" . "\t" . $fetch_string;
+    $target_accn = $accn . ":genome-duplicated:" . $accn . ":1:" . $totlen_H{$accn} . ":+:" . $accn . ":1:" . $totlen_H{$accn} . ":+:";
   }
   push(@target_accn_A, $target_accn);
 }
@@ -345,9 +349,11 @@ my @hmm2exon_map_A = ();  # [0..h..$nhmm-1]: $e: HMM ($h+1) maps to exon ($e+1) 
 my @model_A = ();         # [0..$nhmm-1]: array of model HMM names, also name of stockholm alignments used to build those HMMs
 my @model_toprint_A = (); # [0..$nhmm-1]: array of model HMM names to print, corresponding to @model_A
 my @model_short_A = ();   # [0..$nhmm-1]: array of abbreviated model HMM names to print, corresponding to @model_A
+my @model_product_A = (); # [0..$nhmm-1]: array of 'CDS:product' qualifier (protein names) corresponding to @model_A
 my %modlen_H      = ();   # key: model name from @model_A, value is model length
 my @ref_nexons_A = ();
 for(my $i = 0; $i < $ref_ncds; $i++) { 
+  # printf("REF CDS $i $ref_cds_product_A[$i]\n");
   my $strand = substr($ref_strand_str, $i, 1);
   my $coords_with_accn = addAccnToCoords($ref_cds_coords_A[$i], $ref_accn);
 
@@ -374,6 +380,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
     push(@model_A, $tmp_name_root);
     push(@model_toprint_A, sprintf("Reference CDS %d (%s)", ($i+1), ($nexons == 1) ? "single exon" : "multiple exons"));
     push(@model_short_A, sprintf("CDS-%d", ($i+1)));
+    push(@model_product_A, "(" . $ref_cds_product_A[$i] . ")");
     $modlen_H{$tmp_name_root} = $modlen;
 
     # now append the named alignment to the growing stockholm alignment database $stk_file
@@ -414,6 +421,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
       push(@model_A, $tmp_name_root);
       push(@model_toprint_A, sprintf("Reference CDS %d (exon %d of %d)", ($i+1), ($e+1), $nexons));
       push(@model_short_A, sprintf("CDS-%d.%d", ($i+1), ($e+1)));
+      push(@model_product_A, ($e == 0) ? "(" . $ref_cds_product_A[$i] . ")" : "");
       $modlen_H{$tmp_name_root} = $modlen;
       
       # now append the named alignment to the growing stockholm alignment database $stk_file
@@ -497,7 +505,30 @@ for(my $a = 0; $a < $naccn; $a++) {
   ###########################################################
   # Create the column headers if this is the first accession.
   if($a == 0) { 
-    # first line of column headers
+    # line 1 of column headers
+    printf("%-20s  %6s", "#", "");
+    if(defined $origin_seq) { 
+      printf("  %23s", "");
+    }
+    for(my $h = 0; $h < $nhmm; $h++) { 
+      if(! $do_nomdlb) { 
+        my $pad = "";
+        for(my $pi = 0; $pi < (27-length($model_short_A[$h]))/2; $pi++) { $pad .= " "; }
+        printf("  %28s", $model_short_A[$h] . $pad);
+      }
+      else { 
+        my $pad = "";
+        for(my $pi = 0; $pi < (23-length($model_short_A[$h]))/2; $pi++) { $pad .= " "; }
+        printf("  %24s", $model_short_A[$h] . $pad);
+      }
+    }
+    printf("  %6s", "");
+    if(! $do_noexist) { 
+      printf("    %19s", "");
+    }
+    printf("\n");
+
+    # line 2 of column headers
     printf("%-20s  %6s", "#", "");
     if(defined $origin_seq) { 
       printf("  %23s", "   origin sequence");
@@ -505,64 +536,64 @@ for(my $a = 0; $a < $naccn; $a++) {
     for(my $h = 0; $h < $nhmm; $h++) { 
       if(! $do_nomdlb) { 
         my $pad = "";
-        for(my $pi = 0; $pi < (21-length($model_short_A[$h]))/2; $pi++) { $pad .= " "; }
-        printf("  %21s", $model_short_A[$h] . $pad);
+        for(my $pi = 0; $pi < (28-length($model_product_A[$h]))/2; $pi++) { $pad .= " "; }
+        printf("  %28s", $model_product_A[$h] . $pad);
       }
       else { 
         my $pad = "";
-        for(my $pi = 0; $pi < (17-length($model_short_A[$h]))/2; $pi++) { $pad .= " "; }
-        printf("  %17s", $model_short_A[$h] . $pad);
+        for(my $pi = 0; $pi < (24-length($model_product_A[$h]))/2; $pi++) { $pad .= " "; }
+        printf("  %24s", $model_product_A[$h] . $pad);
       }
     }
     printf("  %6s", "");
     if(! $do_noexist) { 
-      printf("    %14s", "existing annot");
+      printf("    %19s", "existing annotation");
     }
     printf("\n");
 
-    # second line of column headers 
+    # line 3 of column headers 
     printf("%-20s  %6s", "#", "");
     if(defined $origin_seq) { 
       printf("  %23s", "-----------------------");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
       if(! $do_nomdlb) { 
-        printf("  %21s", "---------------------"); 
+        printf("  %28s", "----------------------------"); 
       }
       else { 
-        printf("  %17s", "-----------------"); 
+        printf("  %24s", "------------------------"); 
       }
    }
     printf("  %6s", "");
     if(! $do_noexist) { 
-      printf("    %14s", "--------------");
+      printf("    %19s", "--------------------");
     }
     printf("\n");
 
-    # third line of column headers
+    # line 4 of column headers
     printf("%-20s  %6s", "# accession", "totlen");
     if(defined $origin_seq) {
       printf("  %2s  %5s  %5s  %5s", " #", "start", "stop", "offst");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s", "start", "stop");
+      printf("  %8s %8s %6s", "start", "stop", "length");
       if(! $do_nomdlb) { 
         printf(" %3s", "mdl");
       }
     }
     printf("  %6s", "totlen");
     if(! $do_noexist) { 
-      printf("    %6s  %6s", "#cds", "#exons");
+      printf("    %5s  %5s  %5s", "cds", "exons", "match");
     }
     print "\n";
 
-    # fourth line of column headers
+    # line 5 of column headers
     printf("%-20s  %6s", "#-------------------", "------");
     if(defined $origin_seq) {
       printf("  %2s  %5s  %5s  %5s", "--", "-----", "-----", "-----");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s", "--------", "--------");
+      printf("  %8s %8s %6s", "--------", "--------", "------");
       if(! $do_nomdlb) { 
         printf(" %3s", "---");
       }
@@ -570,7 +601,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     printf("  %6s", "------");
 
     if(! $do_noexist) { 
-      printf("    %6s  %6s\n", "------", "------");
+      printf("    %5s  %5s  %5s\n", "-----", "-----", "-----");
     }
 
     print "\n";
@@ -590,10 +621,10 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
     if($norigin == 1) { 
       my ($ostart, $ostop) = split(":", $origin_coords_HA{$accn}[0]);
-      my $predicted_offset = $ostart + $origin_offset - 1; 
+      my $predicted_offset = ($ostart < 0) ? ($ostart + $origin_offset) : ($ostart + $origin_offset - 1);
       # $predicted_offset is now number of nts to shift origin in counterclockwise direction
       if($predicted_offset > ($totlen_H{$accn} / 2)) { # simpler (shorter distance) to move origin clockwise
-        $predicted_offset = ($totlen_H{$accn} - $predicted_offset);
+        $predicted_offset = ($totlen_H{$accn} - $predicted_offset + 1);
       }
       else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
         $predicted_offset *= -1;
@@ -653,10 +684,15 @@ for(my $a = 0; $a < $naccn; $a++) {
     #}
     #printf("\n");
   }
+  else { 
+    $ncds = 0;
+    $tot_nexons = 0;
+  }
 
   ############################################################
   # Create the predicted annotation portion of the output line
   my $predicted_string = "";
+  my $nmatch_boundaries = 0;
   for(my $h = 0; $h < $nhmm; $h++) { 
     my $model  = $model_A[$h];
     my $cds_i  = $hmm2cds_map_A[$h];
@@ -665,22 +701,27 @@ for(my $a = 0; $a < $naccn; $a++) {
     if(exists $p_start_HH{$model}{$target_accn}) { 
       my ($start, $stop, $hangover) = ($p_start_HH{$model}{$target_accn}, $p_stop_HH{$model}{$target_accn}, $p_hangover_HH{$model}{$target_accn});
       my ($hang5, $hang3) = split(":", $hangover);
-      if($hang5    >  9) { $hang5 = "*"; }
+      if($hang5    >  9) { $hang5 = "+"; }
       elsif($hang5 == 0) { $hang5 = "."; }
 
-      if($hang3       >  9) { $hang3 = "*"; }
+      if($hang3       >  9) { $hang3 = "+"; }
       elsif($hang3    == 0) { $hang3 = "."; }
 
-      my $start_match = 1;
-      my $stop_match  = 1;
-      if(! $do_nobrack) { # leave start_match and stop_match as 1 if -nobrack enabled, this will force brackets to never be printed
-        ($start_match, $stop_match) = ($do_strict) ? 
-            checkStrictBoundaryMatch   (\@act_exon_starts_AA, \@act_exon_stops_AA, $cds_i, $exon_i, $start, $stop) :
-            checkNonStrictBoundaryMatch(\@act_exon_starts_AA, \@act_exon_stops_AA, $start, $stop);
+      my ($start_match, $stop_match);
+      ($start_match, $stop_match) = ($do_strict) ? 
+          checkStrictBoundaryMatch   (\@act_exon_starts_AA, \@act_exon_stops_AA, $cds_i, $exon_i, $start, $stop) :
+          checkNonStrictBoundaryMatch(\@act_exon_starts_AA, \@act_exon_stops_AA, $start, $stop);
+      if($start_match) { $nmatch_boundaries++; }
+      if($stop_match)  { $nmatch_boundaries++; }
+ 
+      if($do_nobrack) { # set to '1' so brackets are never printed
+        $start_match = 1;
+        $stop_match  = 1; 
       }
-      $predicted_string .= sprintf("%8s %8s", 
+      $predicted_string .= sprintf("%8s %8s %6s", 
                                    ($start_match ? " " . $start . " " : "[" . $start . "]"), 
-                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"));
+                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"), 
+                                   abs($stop-$start) + 1);
 
       if(! $do_nomdlb) { 
         $predicted_string .= "  " . $hang5 . $hang3;
@@ -704,7 +745,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   ################################################################################
   printf("  %6d", $totlen_H{$accn});
   if(! $do_noexist) { 
-    printf("  %6d  %6d", $totlen_H{$accn}, $ncds, $tot_nexons);
+    printf("    %5d  %5d  %5d", $ncds, $tot_nexons, $nmatch_boundaries);
   }
   print "\n";
 }
