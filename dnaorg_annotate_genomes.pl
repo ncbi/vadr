@@ -23,11 +23,14 @@ $usage .= "\n";
 $usage .= " BASIC OPTIONS:\n";
 $usage .= "  -oseq <s>  : identify origin sequence <s> in genomes, put | at site of origin, e.g. TAATATT|AC\n";
 $usage .= "  -strict    : require matching annotations to match CDS/exon index\n";
-$usage .= "  -nohmmb    : do not add HMM boundary annotation to output\n";
 $usage .= "  -nodup     : do not duplicate each genome to allow identification of features that span stop..start\n";
-$usage .= "  -notexon   : add CDS 'product' qualifier value to output sequence files deflines\n";
+$usage .= "  -notexon   : do not use exon-specific models\n";
 $usage .= "  -onlybuild : exit after building reference models\n";
 $usage .= "  -model <s> : use model file <s>, instead of building one\n";
+$usage .= "\n OPTIONS CONTROLLING OUTPUT TABLE:\n";
+$usage .= "  -nomdlb    : do not add model boundary annotation to output\n";
+$usage .= "  -noexist   : do not include information on existing annotation\n";
+$usage .= "  -nobrack   : do not include brackets around predicted annotations that do not match existing\n";
 $usage .= "\n OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:\n";
 $usage .= "  -inf     : use Infernal 1.1 for predicting annotations, default: use HMMER3's nhmmscan\n";
 $usage .= "\n OPTIONS SPECIFIC TO HMMER3:\n";
@@ -58,24 +61,32 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmpress
 
 my $origin_seq   = undef; # defined if -oseq      enabled
 my $do_strict    = 0; # set to '1' if -strict     enabled, matching annotations must be same index CDS+exon, else any will do
-my $do_nohmmb    = 0; # set to '1' if -nohmmb     enabled, do not print HMM boundary info for annotations, else do
+my $do_nomdlb    = 0; # set to '1' if -nomdlb     enabled, do not print HMM boundary info for annotations, else do
 my $do_nodup     = 0; # set to '1' if -nodup      enabled, do not duplicate each genome, else do 
 my $do_notexon   = 0; # set to '1' if -noexon     enabled, do not use exon-specific models, else do
 my $do_onlybuild = 0; # set to '1' if -onlybuild  enabled, exit after building the model
 my $in_model_db  = undef; # defined if -model <s> enabled, use <s> as the model file instead of building one
+# options for controlling output table
+my $do_noexist   = 0; # set to '1' if -noexist enabled, do not output information on existing annotations
+my $do_nobrack   = 0; # set to '1' if -nobrack enabled, do not output brackets around predicted annotations that do not match any existing annotation
+# options for controlling homology search method
 my $do_inf       = 0; # set to '1' if -inf1p1     enabled, use Infernal 1.1, not HMMER3's nhmmscan
+# options specific to HMMER3
 my $do_hmmenv    = 0; # set to '1' if -hmmenv     enabled, use HMM envelope boundaries as predicted annotations, else use window boundaries
+# options specific to Infernal
 my $do_iglocal   = 0; # set to '1' if -iglocal    enabled, use -g with cmsearch
 my $do_cslow     = 0; # set to '1' if -cslow      enabled, use default, slow, cmcalibrate parameters instead of speed optimized ones
 my $do_ccluster  = 0; # set to '1' if -ccluster   enabled, submit calibration to cmcalibrate
 
 &GetOptions("oseq=s"    => \$origin_seq,
             "strict"    => \$do_strict,
-            "nohmmb"    => \$do_nohmmb,
+            "nomdlb"    => \$do_nomdlb,
             "nodup"     => \$do_nodup,
             "notexon"   => \$do_notexon,
             "onlybuild" => \$do_onlybuild,
             "model=s"   => \$in_model_db,
+            "noexist"   => \$do_noexist,
+            "nobrack"   => \$do_nobrack,
             "inf"       => \$do_inf,
             "hmmenv"    => \$do_hmmenv,
             "iglocal"   => \$do_iglocal,
@@ -102,9 +113,9 @@ if($do_strict) {
   $opts_used_short .= "-strict ";
   $opts_used_long  .= "# option:  demand matching annotations are same indexed CDS/exon [-strict]\n";
 }
-if($do_nohmmb) { 
-  $opts_used_short .= "-nohmmb ";
-  $opts_used_long  .= "# option:  do not output HMM boundaries of predicted annotations [-nohmmb]\n";
+if($do_nomdlb) { 
+  $opts_used_short .= "-nomdlb ";
+  $opts_used_long  .= "# option:  do not output HMM boundaries of predicted annotations [-nomdlb]\n";
 }
 if($do_nodup) { 
   $opts_used_short .= "-nodup ";
@@ -121,6 +132,14 @@ if($do_onlybuild) {
 if(defined $in_model_db) { 
   $opts_used_short .= "-model $in_model_db ";
   $opts_used_long  .= "# option:  use model in $in_model_db instead of building one here [-model]\n";
+}
+if($do_noexist) { 
+  $opts_used_short .= "-noexist";
+  $opts_used_long  .= "# option:  not outputting info on existing annotations [-noexist]\n";
+}
+if($do_nobrack) { 
+  $opts_used_short .= "-nobrack";
+  $opts_used_long  .= "# option:  not putting brackets around predicted start/stop positions [-nobrack]\n";
 }
 if($do_inf) { 
   $opts_used_short .= "-inf";
@@ -484,7 +503,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("  %23s", "   origin sequence");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      if(! $do_nohmmb) { 
+      if(! $do_nomdlb) { 
         my $pad = "";
         for(my $pi = 0; $pi < (21-length($model_short_A[$h]))/2; $pi++) { $pad .= " "; }
         printf("  %21s", $model_short_A[$h] . $pad);
@@ -496,7 +515,9 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
     }
     printf("  %6s", "");
-    printf("    %14s", "existing annot");
+    if(! $do_noexist) { 
+      printf("    %14s", "existing annot");
+    }
     printf("\n");
 
     # second line of column headers 
@@ -505,7 +526,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("  %23s", "-----------------------");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      if(! $do_nohmmb) { 
+      if(! $do_nomdlb) { 
         printf("  %21s", "---------------------"); 
       }
       else { 
@@ -513,7 +534,9 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
    }
     printf("  %6s", "");
-    printf("    %14s", "--------------");
+    if(! $do_noexist) { 
+      printf("    %14s", "--------------");
+    }
     printf("\n");
 
     # third line of column headers
@@ -523,12 +546,14 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
       printf("  %8s %8s", "start", "stop");
-      if(! $do_nohmmb) { 
+      if(! $do_nomdlb) { 
         printf(" %3s", "mdl");
       }
     }
     printf("  %6s", "totlen");
-    printf("    %6s  %6s", "#cds", "#exons");
+    if(! $do_noexist) { 
+      printf("    %6s  %6s", "#cds", "#exons");
+    }
     print "\n";
 
     # fourth line of column headers
@@ -538,13 +563,15 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
       printf("  %8s %8s", "--------", "--------");
-      if(! $do_nohmmb) { 
+      if(! $do_nomdlb) { 
         printf(" %3s", "---");
       }
     }
     printf("  %6s", "------");
 
-    printf("    %6s  %6s\n", "------", "------");
+    if(! $do_noexist) { 
+      printf("    %6s  %6s\n", "------", "------");
+    }
 
     print "\n";
 
@@ -644,21 +671,24 @@ for(my $a = 0; $a < $naccn; $a++) {
       if($hang3       >  9) { $hang3 = "*"; }
       elsif($hang3    == 0) { $hang3 = "."; }
 
-      my ($start_match, $stop_match) = ($do_strict) ? 
-          checkStrictBoundaryMatch   (\@act_exon_starts_AA, \@act_exon_stops_AA, $cds_i, $exon_i, $start, $stop) :
-          checkNonStrictBoundaryMatch(\@act_exon_starts_AA, \@act_exon_stops_AA, $start, $stop);
-
+      my $start_match = 1;
+      my $stop_match  = 1;
+      if(! $do_nobrack) { # leave start_match and stop_match as 1 if -nobrack enabled, this will force brackets to never be printed
+        ($start_match, $stop_match) = ($do_strict) ? 
+            checkStrictBoundaryMatch   (\@act_exon_starts_AA, \@act_exon_stops_AA, $cds_i, $exon_i, $start, $stop) :
+            checkNonStrictBoundaryMatch(\@act_exon_starts_AA, \@act_exon_stops_AA, $start, $stop);
+      }
       $predicted_string .= sprintf("%8s %8s", 
                                    ($start_match ? " " . $start . " " : "[" . $start . "]"), 
                                    ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"));
 
-      if(! $do_nohmmb) { 
+      if(! $do_nomdlb) { 
         $predicted_string .= "  " . $hang5 . $hang3;
       }        
     }
     else { 
       # printf("no hits for $model $target_accn\n");
-      if($do_nohmmb) { 
+      if($do_nomdlb) { 
         $predicted_string .= sprintf("%17s", "NO PREDICTION");
       }
       else { 
@@ -666,13 +696,17 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
     }
   }
-  print "$predicted_string";
+  print $predicted_string;
   ############################################################
 
   ################################################################################
   # Output number of actually annotated CDS and summed total of exons in those CDS
   ################################################################################
-  printf("  %6d    %6d  %6d\n", $totlen_H{$accn}, $ncds, $tot_nexons);
+  printf("  %6d", $totlen_H{$accn});
+  if(! $do_noexist) { 
+    printf("  %6d  %6d", $totlen_H{$accn}, $ncds, $tot_nexons);
+  }
+  print "\n";
 }
 
 
