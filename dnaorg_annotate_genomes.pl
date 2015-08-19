@@ -563,9 +563,13 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
     if($norigin == 1) { 
       my ($ostart, $ostop) = split(":", $origin_coords_HA{$accn}[0]);
-      my $predicted_offset = $ostart + $origin_offset;
-      if($predicted_offset > ($totlen_H{$accn} / 2)) { 
-        $predicted_offset = -1 * ($totlen_H{$accn} - $predicted_offset + 1);
+      my $predicted_offset = $ostart + $origin_offset - 1; 
+      # $predicted_offset is now number of nts to shift origin in counterclockwise direction
+      if($predicted_offset > ($totlen_H{$accn} / 2)) { # simpler (shorter distance) to move origin clockwise
+        $predicted_offset = ($totlen_H{$accn} - $predicted_offset);
+      }
+      else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
+        $predicted_offset *= -1;
       }
       $oseq_string .= sprintf("%2d  %5d  %5d  %5d  ", 1, $ostart, $ostop, $predicted_offset);
     }
