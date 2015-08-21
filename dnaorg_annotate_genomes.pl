@@ -31,6 +31,7 @@ $usage .= "\n OPTIONS CONTROLLING OUTPUT TABLE:\n";
 $usage .= "  -nomdlb    : do not add model boundary annotation to output\n";
 $usage .= "  -noexist   : do not include information on existing annotation\n";
 $usage .= "  -nobrack   : do not include brackets around predicted annotations that do not match existing\n";
+$usage .= "  -nostop    : do not output stop codon for each predicted CDS\n";
 $usage .= "\n OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:\n";
 $usage .= "  -inf     : use Infernal 1.1 for predicting annotations, default: use HMMER3's nhmmscan\n";
 $usage .= "\n OPTIONS SPECIFIC TO HMMER3:\n";
@@ -61,14 +62,15 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmpress
 
 my $origin_seq   = undef; # defined if -oseq      enabled
 my $do_strict    = 0; # set to '1' if -strict     enabled, matching annotations must be same index CDS+exon, else any will do
-my $do_nomdlb    = 0; # set to '1' if -nomdlb     enabled, do not print HMM boundary info for annotations, else do
 my $do_nodup     = 0; # set to '1' if -nodup      enabled, do not duplicate each genome, else do 
 my $do_notexon   = 0; # set to '1' if -noexon     enabled, do not use exon-specific models, else do
 my $do_onlybuild = 0; # set to '1' if -onlybuild  enabled, exit after building the model
 my $in_model_db  = undef; # defined if -model <s> enabled, use <s> as the model file instead of building one
 # options for controlling output table
+my $do_nomdlb    = 0; # set to '1' if -nomdlb  enabled, do not print HMM boundary info for annotations, else do
 my $do_noexist   = 0; # set to '1' if -noexist enabled, do not output information on existing annotations
 my $do_nobrack   = 0; # set to '1' if -nobrack enabled, do not output brackets around predicted annotations that do not match any existing annotation
+my $do_nostop    = 0; # set to '1' if -nostop  enabled, do not output stop codon for predicted annotations
 # options for controlling homology search method
 my $do_inf       = 0; # set to '1' if -inf1p1     enabled, use Infernal 1.1, not HMMER3's nhmmscan
 # options specific to HMMER3
@@ -80,13 +82,14 @@ my $do_ccluster  = 0; # set to '1' if -ccluster   enabled, submit calibration to
 
 &GetOptions("oseq=s"    => \$origin_seq,
             "strict"    => \$do_strict,
-            "nomdlb"    => \$do_nomdlb,
             "nodup"     => \$do_nodup,
             "notexon"   => \$do_notexon,
             "onlybuild" => \$do_onlybuild,
             "model=s"   => \$in_model_db,
+            "nomdlb"    => \$do_nomdlb,
             "noexist"   => \$do_noexist,
             "nobrack"   => \$do_nobrack,
+            "nostop"    => \$do_nostop,
             "inf"       => \$do_inf,
             "hmmenv"    => \$do_hmmenv,
             "iglocal"   => \$do_iglocal,
@@ -113,10 +116,6 @@ if($do_strict) {
   $opts_used_short .= "-strict ";
   $opts_used_long  .= "# option:  demand matching annotations are same indexed CDS/exon [-strict]\n";
 }
-if($do_nomdlb) { 
-  $opts_used_short .= "-nomdlb ";
-  $opts_used_long  .= "# option:  do not output HMM boundaries of predicted annotations [-nomdlb]\n";
-}
 if($do_nodup) { 
   $opts_used_short .= "-nodup ";
   $opts_used_long  .= "# option:  not duplicating genomes, features that span the end..start will be undetectable [-nodup]\n";
@@ -133,6 +132,10 @@ if(defined $in_model_db) {
   $opts_used_short .= "-model $in_model_db ";
   $opts_used_long  .= "# option:  use model in $in_model_db instead of building one here [-model]\n";
 }
+if($do_nomdlb) { 
+  $opts_used_short .= "-nomdlb ";
+  $opts_used_long  .= "# option:  do not output HMM boundaries of predicted annotations [-nomdlb]\n";
+}
 if($do_noexist) { 
   $opts_used_short .= "-noexist";
   $opts_used_long  .= "# option:  not outputting info on existing annotations [-noexist]\n";
@@ -140,6 +143,10 @@ if($do_noexist) {
 if($do_nobrack) { 
   $opts_used_short .= "-nobrack";
   $opts_used_long  .= "# option:  not putting brackets around predicted start/stop positions [-nobrack]\n";
+}
+if($do_nostop) { 
+  $opts_used_short .= "-nostop";
+  $opts_used_long  .= "# option:  do not output stop codons [-nostop]\n";
 }
 if($do_inf) { 
   $opts_used_short .= "-inf";
@@ -290,8 +297,9 @@ my $naccn = scalar(@accn_A);
 my $gnm_fetch_file = $out_root . ".fg.idfetch.in";
 my $gnm_fasta_file = $out_root . ".fg.fa";
 my @target_accn_A = (); # [0..$naccn-1] name of genome fasta sequence for each accn
-my $target_accn; # temp fasta sequence name
+my $target_accn;     # temp fasta sequence name
 my $fetch_string = undef;
+my $ref_target_accn; # name of fasta sequence for reference
 open(OUT, ">" . $gnm_fetch_file) || die "ERROR unable to open $gnm_fetch_file";
 for(my $a = 0; $a < $naccn; $a++) { 
 #  print OUT $accn_A[$a] . "\n";
@@ -308,20 +316,29 @@ for(my $a = 0; $a < $naccn; $a++) {
     $target_accn = $accn . ":genome-duplicated:" . $accn . ":1:" . $totlen_H{$accn} . ":+:" . $accn . ":1:" . $totlen_H{$accn} . ":+:";
   }
   push(@target_accn_A, $target_accn);
+  if($a == 0) { $ref_target_accn = $target_accn; }
 }
 close(OUT);
+
+# remove the file we're about to create ($gnm_fasta_file), and any .ssi index that may exist with it
+if(-e $gnm_fasta_file)          { unlink $gnm_fasta_file; }
+if(-e $gnm_fasta_file . ".ssi") { unlink $gnm_fasta_file . ".ssi"; }
+
 printf("# Fetching $naccn full%s genome sequences... ", $do_nodup ? "" : " (duplicated)");
 # my $cmd = "$idfetch -t 5 -c 1 -G $gnm_fetch_file > $gnm_fasta_file";
 my $cmd = "perl $esl_fetch_cds -nocodon $gnm_fetch_file > $gnm_fasta_file";
 runCommand($cmd, 0);
 printf("done. [$gnm_fasta_file]\n");
 
+# and open the sequence file using BioEasel
+my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $gnm_fasta_file });
+
 ##################################################
 # If we're looking for an origin sequence, do that
 ##################################################
 my %origin_coords_HA = ();
 if(defined $origin_seq) {
-  findSeqInFile($gnm_fasta_file, $origin_seq, $do_nodup, \%origin_coords_HA);
+  findSeqInFile($sqfile, $origin_seq, $do_nodup, \%origin_coords_HA);
 }
 
 ########################################################
@@ -336,27 +353,28 @@ getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $ref_accn, \@ref_cds_len_A, \@ref_c
 getQualifierValues(\%cds_tbl_HHA, $ref_accn, "product", \@ref_cds_product_A);
 $ref_ncds = scalar(@ref_cds_len_A);
 
-my $stk_file = $out_root . ".ref.all.stk";
+my $all_stk_file = $out_root . ".ref.all.stk";
 
 printf("# Fetching reference sequences, and reformatting them to stockholm format ... ");
-my $tmp_out_root;
-my $tmp_name_root;
+my $cur_out_root;
+my $cur_name_root;
 my $fetch_input;
 my $fetch_output;
-my $nhmm = 0;             # number of HMMs (and alignments used to build those HMMs)
-my @hmm2cds_map_A = ();   # [0..h..$nhmm-1]: $i: HMM ($h+1) maps to reference cds ($i+1)
-my @hmm2exon_map_A = ();  # [0..h..$nhmm-1]: $e: HMM ($h+1) maps to exon ($e+1) of reference cds $hmm2cds_map_A[$h]+1
-my @model_A = ();         # [0..$nhmm-1]: array of model HMM names, also name of stockholm alignments used to build those HMMs
-my @model_toprint_A = (); # [0..$nhmm-1]: array of model HMM names to print, corresponding to @model_A
-my @model_short_A = ();   # [0..$nhmm-1]: array of abbreviated model HMM names to print, corresponding to @model_A
-my @model_product_A = (); # [0..$nhmm-1]: array of 'CDS:product' qualifier (protein names) corresponding to @model_A
-my %modlen_H      = ();   # key: model name from @model_A, value is model length
+my $nhmm = 0;               # number of HMMs (and alignments used to build those HMMs)
+my @hmm2cds_map_A = ();     # [0..h..$nhmm-1]: $i: HMM ($h+1) maps to reference cds ($i+1)
+my @hmm2exon_map_A = ();    # [0..h..$nhmm-1]: $e: HMM ($h+1) maps to exon ($e+1) of reference cds $hmm2cds_map_A[$h]+1
+my @hmm_is_first_A = ();    # [0..h..$nhmm-1]: '1' if HMM ($h+1) is the first one for cds $hmm2cds_map_A[$h], else 0
+my @hmm_is_final_A = ();    # [0..h..$nhmm-1]: '1' if HMM ($h+1) is the final one for cds $hmm2cds_map_A[$h], else 0
+my @model_A = ();           # [0..$nhmm-1]: array of model HMM names, also name of stockholm alignments used to build those HMMs
+my @cds_out_short_A   = (); # [0..$ref_ncds-1]: array of abbreviated model CDS names to print
+my @cds_out_product_A = (); # [0..$ref_ncds-1]: array of 'CDS:product' qualifier (protein names)
+my %modlen_H      = ();     # key: model name from @model_A, value is model length
 my @ref_nexons_A = ();
+
+# for each reference CDS, fetch each exon (or the full CDS if -notexon enabled)
 for(my $i = 0; $i < $ref_ncds; $i++) { 
   # printf("REF CDS $i $ref_cds_product_A[$i]\n");
-  my $strand = substr($ref_strand_str, $i, 1);
-  my $coords_with_accn = addAccnToCoords($ref_cds_coords_A[$i], $ref_accn);
-
+  
   # determine start and stop positions of all exons
   my @starts_A = ();
   my @stops_A  = ();
@@ -364,78 +382,78 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
   startStopsFromCoords($ref_cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
   push(@ref_nexons_A, $nexons);
 
-  if($nexons == 1 || $do_notexon) { 
-    $tmp_out_root  = $out_root . ".ref.cds." . ($i+1);
-    $tmp_name_root = $dir_tail     . ".ref.cds." . ($i+1);
-    $fetch_input   = $tmp_out_root . ".esl-fetch.in";
-    $fetch_output  = $tmp_out_root . ".stk";
-    open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
-    printf FOUT ("$ref_accn:cds%d\t$coords_with_accn\n", ($i+1));
-    close FOUT;
-
-    my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input | esl-reformat --informat afa stockholm - > $fetch_output";
-    runCommand($cmd, 0);
-    my $do_blank_ss = ($do_inf); # add a blank SS_cons line if we're using Infernal
-    my $modlen = annotateStockholmAlignment($tmp_name_root, $do_blank_ss, $fetch_output, $tmp_out_root . ".named.stk");
-    push(@model_A, $tmp_name_root);
-    push(@model_toprint_A, sprintf("Reference CDS %d (%s)", ($i+1), ($nexons == 1) ? "single exon" : "multiple exons"));
-    push(@model_short_A, sprintf("CDS-%d", ($i+1)));
-    push(@model_product_A, "(" . $ref_cds_product_A[$i] . ")");
-    $modlen_H{$tmp_name_root} = $modlen;
-
-    # now append the named alignment to the growing stockholm alignment database $stk_file
-    $cmd = "cat " . $tmp_out_root . ".named.stk";
-    if($nhmm == 0) { $cmd .= " >  $stk_file"; }
-    else           { $cmd .= " >> $stk_file"; }
-    runCommand($cmd, 0);
-    push(@hmm2cds_map_A, $i);
-    push(@hmm2exon_map_A, 0);
-    $nhmm++;
+  # if we're on the negative strand, reverse the arrays, they'll be in the incorrect order
+  my $strand = substr($ref_strand_str, $i, 1);
+  if($strand eq "-") { 
+    @starts_A = reverse @starts_A;
+    @stops_A  = reverse @stops_A;
   }
 
-  # if CDS has multiple exons, fetch each (unless -notexon enabled)
-  if((! $do_notexon) && ($nexons > 1)) { 
-    if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
-      @starts_A = reverse @starts_A;
-      @stops_A  = reverse @stops_A;
+  # are we going to fetch multiple exons?
+  my $cur_multi_exon = ($nexons == 1 || $do_notexon) ? 0 : 1;
+  my $act_nexons = $nexons;
+  if(! $cur_multi_exon) { $nexons = 1; }
+
+  # for each exon, note that if $do_notexon is true, $nexons was redefined as 1 above
+  for(my $e = 0; $e < $nexons; $e++) { 
+    if($cur_multi_exon) { 
+      $cur_out_root  = $out_root . ".ref.cds." . ($i+1) . ".exon." . ($e+1);
+      $cur_name_root = $dir_tail . ".ref.cds." . ($i+1) . ".exon." . ($e+1);
     }
-    for(my $e = 0; $e < $nexons; $e++) { 
-      my $tmp_out_root  = $out_root . ".ref.cds." . ($i+1) . ".exon." . ($e+1);
-      my $tmp_name_root = $dir_tail . ".ref.cds." . ($i+1) . ".exon." . ($e+1);
-      $fetch_input  = $tmp_out_root . ".esl-fetch.in";
-      $fetch_output = $tmp_out_root . ".stk";
-      my $fetch_string = $ref_accn . ":" . $starts_A[$e] . ".." . $stops_A[$e];
-      if($strand eq "-") { # reverse strand
-        $fetch_string = "complement(" . $fetch_string . ")";
-      }
-      elsif($strand ne "+") { 
-        die "ERROR reference CDS $i has strand $strand, which we can't deal with";
-      }
-      open(FOUT, ">" . $fetch_input) || die "ERROR unable to open $fetch_input for writing";
-      printf FOUT ("$ref_accn:cds%d:exon%d\t$fetch_string\n", ($i+1), ($e+1));
-      close FOUT;
-      my $cmd = "perl $esl_fetch_cds -nocodon $fetch_input | esl-reformat --informat afa stockholm - > $fetch_output";
-      runCommand($cmd, 0);
-      my $do_blank_ss = ($do_inf); # add a blank SS_cons line if we're using Infernal
-      my $modlen = annotateStockholmAlignment($tmp_name_root, $do_blank_ss, $fetch_output, $tmp_out_root . ".named.stk");
-      push(@model_A, $tmp_name_root);
-      push(@model_toprint_A, sprintf("Reference CDS %d (exon %d of %d)", ($i+1), ($e+1), $nexons));
-      push(@model_short_A, sprintf("CDS-%d.%d", ($i+1), ($e+1)));
-      push(@model_product_A, ($e == 0) ? "(" . $ref_cds_product_A[$i] . ")" : "");
-      $modlen_H{$tmp_name_root} = $modlen;
-      
-      # now append the named alignment to the growing stockholm alignment database $stk_file
-      $cmd = "cat " . $tmp_out_root . ".named.stk";
-      if($nhmm == 0) { $cmd .= " >  $stk_file"; }
-      else           { $cmd .= " >> $stk_file"; }
-      runCommand($cmd, 0);
-      push(@hmm2cds_map_A, $i);
-      push(@hmm2exon_map_A, $e);
-      $nhmm++;
+    else { 
+      $cur_out_root  = $out_root . ".ref.cds." . ($i+1);
+      $cur_name_root = $dir_tail . ".ref.cds." . ($i+1);
     }
-  } # end of 'if((! $do_notexon) && ($nexons > 1))'    
+    
+    # determine start and stop of the region we are going to fetch
+    my $start = ($cur_multi_exon) ? $starts_A[$e] : $starts_A[0];
+    my $stop  = ($cur_multi_exon) ? $stops_A[$e]  : $stops_A[$nexons-1]; 
+    if($strand eq "-") { # swap start and stop
+      my $tmp = $start;
+      $start = $stop;
+      $stop  = $tmp;
+    }
+    my @fetch_AA = ();
+    push(@fetch_AA, [$cur_name_root, $start, $stop, $ref_target_accn]);
+    
+    # fetch the sequence
+    my $cur_fafile = $cur_out_root . ".fa";
+    $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
+    
+    # reformat to stockholm
+    my $cur_stkfile = $cur_out_root . ".stk";
+    my $cmd = "esl-reformat --informat afa stockholm $cur_fafile > $cur_stkfile";
+    runCommand($cmd, 0);
+    
+    # annotate the stockholm file with a blank SS and with a name
+    my $do_blank_ss = ($do_inf); # add a blank SS_cons line if we're using Infernal
+    my $cur_named_stkfile = $cur_out_root . ".named.stk";
+    my $modlen = annotateStockholmAlignment($cur_name_root, $do_blank_ss, $cur_stkfile, $cur_named_stkfile);
+
+    # store information on this model's name for output purposes
+    if($e == ($nexons-1)) { 
+      my $short = sprintf("CDS #%d", ($i+1));
+      if($act_nexons > 1) { $short .= " [$act_nexons exons; strand: $strand]"; }
+      else                { $short .= " [single exon; strand: $strand]"; }
+      push(@cds_out_short_A,   $short);
+      push(@cds_out_product_A, $ref_cds_product_A[$i]);
+    }
+    push(@model_A,         $cur_name_root);
+    $modlen_H{$cur_name_root} = $modlen;
+
+    # now append the named alignment to the growing stockholm alignment database $all-stk_file
+    $cmd = "cat $cur_named_stkfile";
+    if($nhmm == 0) { $cmd .= " >  $all_stk_file"; }
+    else           { $cmd .= " >> $all_stk_file"; }
+    runCommand($cmd, 0);
+    push(@hmm2cds_map_A,  $i);
+    push(@hmm2exon_map_A, $e);
+    push(@hmm_is_first_A, ($e == 0)           ? 1 : 0);
+    push(@hmm_is_final_A, ($e == ($nexons-1)) ? 1 : 0);
+    $nhmm++;
+  }
 }
-printf("done. [$stk_file]\n");
+printf("done. [$all_stk_file]\n");
 
 # homology search section
 my $model_db; # model database file, either HMMs or CMs
@@ -446,7 +464,7 @@ if(defined $in_model_db) {
 }
 else { 
   if($do_inf) { 
-    createCmDb($cmbuild, $cmcalibrate, $cmpress, $do_cslow, $do_ccluster, $stk_file, $out_root . ".ref");
+    createCmDb($cmbuild, $cmcalibrate, $cmpress, $do_cslow, $do_ccluster, $all_stk_file, $out_root . ".ref");
     if($do_onlybuild) { 
       printf("#\n# Model construction %s. Exiting.\n", ($do_ccluster) ? "job submitted." : "complete");
       exit 0;
@@ -454,7 +472,7 @@ else {
     $model_db = $out_root . ".ref.cm";
   }
   else { # use HMMER3's nhmmscan
-    createHmmDb($hmmbuild, $hmmpress, $stk_file, $out_root . ".ref");
+    createHmmDb($hmmbuild, $hmmpress, $all_stk_file, $out_root . ".ref");
     if($do_onlybuild) { 
       printf("#\n# Model construction complete. Exiting.\n");
       exit 0;
@@ -490,12 +508,12 @@ else {
 printf("#\n");
 printf("#\n");
 
-# parse the homology search results and output predicted annotations
-
 
 #######################################################################
 # Pass through all accessions, and output predicted annotation for each
 #######################################################################
+my $width;  # width of a field
+my $pad;    # string of all spaces used for pretty formatting
 for(my $a = 0; $a < $naccn; $a++) { 
   my $accn = $accn_A[$a];
   my $target_accn = $target_accn_A[$a];
@@ -510,16 +528,17 @@ for(my $a = 0; $a < $naccn; $a++) {
     if(defined $origin_seq) { 
       printf("  %23s", "");
     }
+    # for each CDS, output the topmost column header
+    $width = 0;
     for(my $h = 0; $h < $nhmm; $h++) { 
-      if(! $do_nomdlb) { 
-        my $pad = "";
-        for(my $pi = 0; $pi < (27-length($model_short_A[$h]))/2; $pi++) { $pad .= " "; }
-        printf("  %28s", $model_short_A[$h] . $pad);
-      }
-      else { 
-        my $pad = "";
-        for(my $pi = 0; $pi < (23-length($model_short_A[$h]))/2; $pi++) { $pad .= " "; }
-        printf("  %24s", $model_short_A[$h] . $pad);
+      $width += 17;
+      my $cds_i = $hmm2cds_map_A[$h];
+      if(! $do_nomdlb) { $width += 4; }
+      if($hmm_is_final_A[$h]) { 
+        $width += 11;
+        if(! $do_nostop) { $width += 4; }
+        printf("  %*s", $width, $cds_out_short_A[$cds_i] . monocharacterString(($width-length($cds_out_short_A[$cds_i]))/2, " "));
+        $width = 0;
       }
     }
     printf("  %6s", "");
@@ -527,22 +546,24 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("    %19s", "");
     }
     printf("\n");
-
+    
     # line 2 of column headers
     printf("%-20s  %6s", "#", "");
     if(defined $origin_seq) { 
       printf("  %23s", "   origin sequence");
     }
+    # for each CDS, output the second column header
+    $width = 0;
     for(my $h = 0; $h < $nhmm; $h++) { 
-      if(! $do_nomdlb) { 
-        my $pad = "";
-        for(my $pi = 0; $pi < (28-length($model_product_A[$h]))/2; $pi++) { $pad .= " "; }
-        printf("  %28s", $model_product_A[$h] . $pad);
-      }
-      else { 
-        my $pad = "";
-        for(my $pi = 0; $pi < (24-length($model_product_A[$h]))/2; $pi++) { $pad .= " "; }
-        printf("  %24s", $model_product_A[$h] . $pad);
+      $pad = "";
+      $width += 17;
+      my $cds_i = $hmm2cds_map_A[$h];
+      if(! $do_nomdlb) { $width += 4; }
+      if($hmm_is_final_A[$h]) { 
+        $width += 11;
+        if(! $do_nostop) { $width += 4; }
+        printf("  %*s", $width, substr($cds_out_product_A[$cds_i], 0, $width) . monocharacterString(($width-length($cds_out_product_A[$cds_i]))/2, " "));
+        $width = 0;
       }
     }
     printf("  %6s", "");
@@ -550,35 +571,47 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("    %19s", "existing annotation");
     }
     printf("\n");
-
+    
     # line 3 of column headers 
     printf("%-20s  %6s", "#", "");
     if(defined $origin_seq) { 
       printf("  %23s", "-----------------------");
     }
+    $width = 0;
     for(my $h = 0; $h < $nhmm; $h++) { 
-      if(! $do_nomdlb) { 
-        printf("  %28s", "----------------------------"); 
+      $width += 17;
+      if(! $do_nomdlb) { $width += 4; }
+      if(! $hmm_is_first_A[$h]) { 
+        $width += 2;
       }
-      else { 
-        printf("  %24s", "------------------------"); 
+      if($hmm_is_final_A[$h]) { 
+        $width += 11;
+        if(! $do_nostop) { $width += 4; }
+        printf("  %s", monocharacterString($width, "-"));
+        $width = 0;
       }
-   }
+    }
     printf("  %6s", "");
     if(! $do_noexist) { 
       printf("    %19s", "--------------------");
     }
     printf("\n");
-
+    
     # line 4 of column headers
     printf("%-20s  %6s", "# accession", "totlen");
     if(defined $origin_seq) {
       printf("  %2s  %5s  %5s  %5s", " #", "start", "stop", "offst");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s %6s", "start", "stop", "length");
+      printf("  %8s %8s", "start", "stop");
       if(! $do_nomdlb) { 
         printf(" %3s", "mdl");
+      }
+      if($hmm_is_final_A[$h]) { 
+        printf(" %6s %3s", "length", "SS3");
+        if(! $do_nostop) { 
+          printf(" %3s", "stp");
+        }
       }
     }
     printf("  %6s", "totlen");
@@ -586,16 +619,22 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("    %5s  %5s  %5s", "cds", "exons", "match");
     }
     print "\n";
-
+    
     # line 5 of column headers
     printf("%-20s  %6s", "#-------------------", "------");
     if(defined $origin_seq) {
       printf("  %2s  %5s  %5s  %5s", "--", "-----", "-----", "-----");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s %6s", "--------", "--------", "------");
+      printf("  %8s %8s", "--------", "--------");
       if(! $do_nomdlb) { 
         printf(" %3s", "---");
+      }
+      if($hmm_is_final_A[$h]) { 
+        printf(" %6s %3s", "------", "---");
+        if(! $do_nostop) { 
+          printf(" %3s", "---");
+        }
       }
     }
     printf("  %6s", "------");
@@ -605,7 +644,6 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
 
     print "\n";
-
   }
   ###########################################################
 
@@ -685,7 +723,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     #printf("\n");
   }
   else { 
-    $ncds = 0;
+    $ncds       = 0;
     $tot_nexons = 0;
   }
 
@@ -693,6 +731,17 @@ for(my $a = 0; $a < $naccn; $a++) {
   # Create the predicted annotation portion of the output line
   my $predicted_string = "";
   my $nmatch_boundaries = 0;
+  my $start_codon_posn;
+  my $stop_codon_posn;
+  my $start_codon;
+  my $stop_codon;
+  my $start_codon_char;
+  my $stop_codon_char;
+  my $multiple_of_3_char;
+  my $ss3_yes_char = ".";
+  my $ss3_no_char  = "!";
+  my $hit_length;
+  
   for(my $h = 0; $h < $nhmm; $h++) { 
     my $model  = $model_A[$h];
     my $cds_i  = $hmm2cds_map_A[$h];
@@ -718,22 +767,63 @@ for(my $a = 0; $a < $naccn; $a++) {
         $start_match = 1;
         $stop_match  = 1; 
       }
-      $predicted_string .= sprintf("%8s %8s %6s", 
+
+      if($hmm_is_first_A[$h]) {
+        $hit_length = 0; # reset this
+      }
+
+      $hit_length += abs($stop-$start) + 1;
+      if(($stop < 0 && $start > 0) || 
+         ($stop > 0 && $start < 0)) { 
+        # correct for off-by-one induced by the way we use negative indices distance from -1..1 is 1 nt, not 2
+        $hit_length -= 1;
+      }
+      $predicted_string .= sprintf("%8s %8s",
                                    ($start_match ? " " . $start . " " : "[" . $start . "]"), 
-                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"), 
-                                   abs($stop-$start) + 1);
+                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"));
 
       if(! $do_nomdlb) { 
         $predicted_string .= "  " . $hang5 . $hang3;
       }        
+                                   
+      if($hmm_is_first_A[$h]) { # determine $start_codon_char
+        if($p_strand_HH{$model}{$target_accn} eq "-") { 
+          $start_codon_posn = (($start-2) < 0) ? $start + $totlen_H{$accn} + 1 : $start;
+        }
+        else { 
+          $start_codon_posn = ($start < 0) ? $start + $totlen_H{$accn} + 1 : $start;
+        }
+        $start_codon      = fetchCodon($sqfile, $target_accn, $start_codon_posn, $p_strand_HH{$model}{$target_accn});
+        $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
+      }
+      
+      if($hmm_is_final_A[$h]) { 
+        if($p_strand_HH{$model}{$target_accn} eq "-") { 
+          $stop_codon_posn    = ($stop < 0) ? ($stop + $totlen_H{$accn}) + 1 + 2 : $stop + 2;
+        }
+        else { 
+          $stop_codon_posn    = (($stop-2) < 0) ? ($stop + $totlen_H{$accn}) + 1 - 2 : $stop - 2;
+        }
+        $stop_codon         = fetchCodon($sqfile, $target_accn, $stop_codon_posn, $p_strand_HH{$model}{$target_accn});
+        $stop_codon_char    = ($stop_codon  eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
+        $multiple_of_3_char = (($hit_length % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
+
+        # append the ss3 (start/stop/multiple of 3 info)
+        $predicted_string .= sprintf(" %6d %s%s%s", $hit_length, $start_codon_char, $stop_codon_char, $multiple_of_3_char);
+        if(! $do_nostop) { 
+          $predicted_string .= sprintf(" %3s", $stop_codon);
+        }
+      }
     }
     else { 
       # printf("no hits for $model $target_accn\n");
       if($do_nomdlb) { 
-        $predicted_string .= sprintf("%17s", "NO PREDICTION");
+        $width = ($hmm_is_final_A[$h]) ? 28 : 17;
+        $predicted_string .= sprintf("%*s", $width, "NO PREDICTION");
       }
       else { 
-        $predicted_string .= sprintf("%21s", "NO PREDICTION");
+        $width = ($hmm_is_final_A[$h]) ? 32 : 21;
+        $predicted_string .= sprintf("%*s", $width, "NO PREDICTION");
       }
     }
   }
@@ -748,7 +838,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     printf("    %5d  %5d  %5d", $ncds, $tot_nexons, $nmatch_boundaries);
   }
   print "\n";
-}
+  }
 
 
 #############
@@ -1615,7 +1705,7 @@ sub storeHit {
 #             of sequences, and store the coordinates of the
 #             matches in %{$coords_HAR}.
 #
-# Args:       $fasta_file:    fasta file to search in
+# Args:       $sqfile:        Bio::Easel::SqFile object, the sequence file to search in
 #             $qseq:          query sequence we're looking for
 #             $do_nodup:      '1' if -nodup was used at command line, else '0'
 #             $coords_HAR:    ref to hash of arrays to store coords in
@@ -1628,12 +1718,8 @@ sub findSeqInFile {
   my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($fasta_file, $qseq, $do_nodup, $coords_HAR) = @_;
+  my ($sqfile, $qseq, $do_nodup, $coords_HAR) = @_;
 
-  # remove any old .ssi files that may exist
-  if(-e $fasta_file . ".ssi") { unlink $fasta_file . ".ssi"; }
-
-  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file });
   # printf("# Naming alignment in $in_file to $name ... "); 
 
   # fetch each sequence and look for $qseq in it
@@ -1669,10 +1755,6 @@ sub findSeqInFile {
       $qseq_posn = index($seq, $qseq, $qseq_posn);
     }
   }
-
-  # make sure we remove any .ssi files we created
-  # remove any old .ssi files that may exist
-  if(-e $fasta_file . ".ssi") { unlink $fasta_file . ".ssi"; }
   
   return;
 }
@@ -1803,4 +1885,68 @@ sub validateOriginSeq {
   #printf("in $sub_name, $origin_seq returning $origin_offset\n");
 
   return $origin_offset;
+}
+
+# Subroutine: fetchCodon()
+#
+# Synopsis:   Fetch a codon given it's first position
+#             and the strand and a Bio::Easel::SqFile object
+#             that is the open sequence file with the desired
+#             sequence.
+#
+# Args:       $sqfile:  Bio::Easel::SqFile object, open sequence
+#                       file containing $seqname;
+#             $seqname: name of sequence to fetch part of
+#             $start:   start position of the codon
+#             $strand:  strand we want ("+" or "-")
+#
+# Returns:    The codon as a string
+#
+sub fetchCodon {
+  my $sub_name = "fetchCodon";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $seqname, $start, $strand) = @_;
+
+  my $codon_start = $start;
+  my $codon_stop  = ($strand eq "-") ? $start - 2 : $start + 2; 
+
+  my $newname = $seqname . "/" . $codon_start . "-" . $codon_stop;
+
+  my @fetch_AA = ();
+  push(@fetch_AA, [$newname, $codon_start, $codon_stop, $seqname]);
+
+  my $faseq = $sqfile->fetch_subseqs(\@fetch_AA, -1);
+
+  my ($header, $seq) = split("\n", $faseq);
+
+  # printf("$faseq");
+  
+  return $seq;
+}
+
+# Subroutine: monocharacterString()
+#
+# Synopsis:   Return a string of length $len of repeated
+#             instances of the character $char.
+#
+# Args:       $len:   desired length of the string to return
+#             $char:  desired character
+#
+# Returns:    A string of $char repeated $len times.
+#
+sub monocharacterString {
+  my $sub_name = "monocharacterString";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($len, $char) = @_;
+
+  my $ret_str = "";
+  for(my $i = 0; $i < $len; $i++) { 
+    $ret_str .= $char;
+  }
+
+  return $ret_str;
 }
