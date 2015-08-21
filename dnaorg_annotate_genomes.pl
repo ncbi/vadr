@@ -50,6 +50,8 @@ my $hmmer_exec_dir  = "/home/nawrocke/bin/";
 my $inf_exec_dir    = "/usr/local/infernal/1.1.1/bin/";
 my $hmmbuild        = $hmmer_exec_dir  . "hmmbuild";
 my $hmmpress        = $hmmer_exec_dir  . "hmmpress";
+my $hmmalign        = $hmmer_exec_dir  . "hmmalign";
+my $hmmfetch        = $hmmer_exec_dir  . "hmmfetch";
 my $nhmmscan        = $hmmer_exec_dir  . "nhmmscan";
 my $cmbuild         = $inf_exec_dir . "cmbuild";
 my $cmcalibrate     = $inf_exec_dir . "cmcalibrate";
@@ -296,10 +298,10 @@ my @cds_codonstart_A = (); # will remain empty unless $do_codonstart is 1 (-codo
 my $naccn = scalar(@accn_A);
 my $gnm_fetch_file = $out_root . ".fg.idfetch.in";
 my $gnm_fasta_file = $out_root . ".fg.fa";
-my @target_accn_A = (); # [0..$naccn-1] name of genome fasta sequence for each accn
-my $target_accn;     # temp fasta sequence name
+my @seq_accn_A = (); # [0..$naccn-1] name of genome fasta sequence for each accn
+my $seq_accn;     # temp fasta sequence name
 my $fetch_string = undef;
-my $ref_target_accn; # name of fasta sequence for reference
+my $ref_seq_accn; # name of fasta sequence for reference
 open(OUT, ">" . $gnm_fetch_file) || die "ERROR unable to open $gnm_fetch_file";
 for(my $a = 0; $a < $naccn; $a++) { 
 #  print OUT $accn_A[$a] . "\n";
@@ -308,15 +310,15 @@ for(my $a = 0; $a < $naccn; $a++) {
   if($do_nodup) { 
     $fetch_string = $accn . ":1.." . $totlen_H{$accn} . "\n";
     print OUT $accn . ":" . "genome" . "\t" . $fetch_string;
-    $target_accn = $accn . ":genome:" . $accn . ":1:" . $totlen_H{$accn} . ":+:";
+    $seq_accn = $accn . ":genome:" . $accn . ":1:" . $totlen_H{$accn} . ":+:";
   }
   else { 
     $fetch_string = "join(" . $accn . ":1.." . $totlen_H{$accn} . "," . $accn . ":1.." . $totlen_H{$accn} . ")\n";
     print OUT $accn . ":" . "genome-duplicated" . "\t" . $fetch_string;
-    $target_accn = $accn . ":genome-duplicated:" . $accn . ":1:" . $totlen_H{$accn} . ":+:" . $accn . ":1:" . $totlen_H{$accn} . ":+:";
+    $seq_accn = $accn . ":genome-duplicated:" . $accn . ":1:" . $totlen_H{$accn} . ":+:" . $accn . ":1:" . $totlen_H{$accn} . ":+:";
   }
-  push(@target_accn_A, $target_accn);
-  if($a == 0) { $ref_target_accn = $target_accn; }
+  push(@seq_accn_A, $seq_accn);
+  if($a == 0) { $ref_seq_accn = $seq_accn; }
 }
 close(OUT);
 
@@ -344,7 +346,7 @@ if(defined $origin_seq) {
 ########################################################
 # Gather information and sequence data on the reference.
 # Use each reference CDS and reference CDS exon as a 
-# homology search query against all the genomes.
+# homology search model against all the genomes.
 #######################################################
 $ref_accn = $accn_A[0];
 if(! exists ($cds_tbl_HHA{$ref_accn})) { die "ERROR no CDS information stored for reference accession"; }
@@ -368,7 +370,7 @@ my @hmm_is_final_A = ();    # [0..h..$nhmm-1]: '1' if HMM ($h+1) is the final on
 my @model_A = ();           # [0..$nhmm-1]: array of model HMM names, also name of stockholm alignments used to build those HMMs
 my @cds_out_short_A   = (); # [0..$ref_ncds-1]: array of abbreviated model CDS names to print
 my @cds_out_product_A = (); # [0..$ref_ncds-1]: array of 'CDS:product' qualifier (protein names)
-my %modlen_H      = ();     # key: model name from @model_A, value is model length
+my %mdllen_H      = ();     # key: model name from @model_A, value is model length
 my @ref_nexons_A = ();
 
 # for each reference CDS, fetch each exon (or the full CDS if -notexon enabled)
@@ -414,7 +416,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
       $stop  = $tmp;
     }
     my @fetch_AA = ();
-    push(@fetch_AA, [$cur_name_root, $start, $stop, $ref_target_accn]);
+    push(@fetch_AA, [$cur_name_root, $start, $stop, $ref_seq_accn]);
     
     # fetch the sequence
     my $cur_fafile = $cur_out_root . ".fa";
@@ -428,7 +430,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
     # annotate the stockholm file with a blank SS and with a name
     my $do_blank_ss = ($do_inf); # add a blank SS_cons line if we're using Infernal
     my $cur_named_stkfile = $cur_out_root . ".named.stk";
-    my $modlen = annotateStockholmAlignment($cur_name_root, $do_blank_ss, $cur_stkfile, $cur_named_stkfile);
+    my $mdllen = annotateStockholmAlignment($cur_name_root, $do_blank_ss, $cur_stkfile, $cur_named_stkfile);
 
     # store information on this model's name for output purposes
     if($e == ($nexons-1)) { 
@@ -438,8 +440,8 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
       push(@cds_out_short_A,   $short);
       push(@cds_out_product_A, $ref_cds_product_A[$i]);
     }
-    push(@model_A,         $cur_name_root);
-    $modlen_H{$cur_name_root} = $modlen;
+    push(@model_A, $cur_name_root);
+    $mdllen_H{$cur_name_root} = $mdllen;
 
     # now append the named alignment to the growing stockholm alignment database $all-stk_file
     $cmd = "cat $cur_named_stkfile";
@@ -495,14 +497,17 @@ my %p_strand_HH   = (); # strands of hits
 my %p_score_HH    = (); # bit score of hits 
 my %p_hangover_HH = (); # "<a>:<b>" where <a> is number of 5' model positions not in the alignment
                         # and <b> is number of 3' model positions not in the alignment
+my %p_fid2ref_HH  = (); # fractional identity to reference 
 
 if($do_inf) { 
   runCmscan($cmscan, $do_iglocal, $model_db, $gnm_fasta_file, $tblout, $stdout);
-  parseCmscanTblout($tblout, \%totlen_H, \%modlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
+  parseCmscanTblout($tblout, \%totlen_H, \%mdllen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
+  # cmalignAllHits($sqfile, $model_db, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, $out_aln_root);
 }
 else { 
   runNhmmscan($nhmmscan, $model_db, $gnm_fasta_file, $tblout, $stdout);
   parseNhmmscanTblout($tblout, $do_hmmenv, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
+  hmmalignHits($hmmalign, $hmmfetch, $model_db, $sqfile, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, $out_root);
 }
 
 printf("#\n");
@@ -516,7 +521,7 @@ my $width;  # width of a field
 my $pad;    # string of all spaces used for pretty formatting
 for(my $a = 0; $a < $naccn; $a++) { 
   my $accn = $accn_A[$a];
-  my $target_accn = $target_accn_A[$a];
+  my $seq_accn = $seq_accn_A[$a];
   # sanity checks
   if(! exists $totlen_H{$accn}) { die "ERROR accession $accn does not exist in the length file $length_file"; }
   
@@ -531,7 +536,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     # for each CDS, output the topmost column header
     $width = 0;
     for(my $h = 0; $h < $nhmm; $h++) { 
-      $width += 17;
+      $width += 23;
       my $cds_i = $hmm2cds_map_A[$h];
       if(! $do_nomdlb) { $width += 4; }
       if($hmm_is_final_A[$h]) { 
@@ -556,7 +561,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     $width = 0;
     for(my $h = 0; $h < $nhmm; $h++) { 
       $pad = "";
-      $width += 17;
+      $width += 23;
       my $cds_i = $hmm2cds_map_A[$h];
       if(! $do_nomdlb) { $width += 4; }
       if($hmm_is_final_A[$h]) { 
@@ -579,7 +584,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
     $width = 0;
     for(my $h = 0; $h < $nhmm; $h++) { 
-      $width += 17;
+      $width += 23;
       if(! $do_nomdlb) { $width += 4; }
       if(! $hmm_is_first_A[$h]) { 
         $width += 2;
@@ -603,7 +608,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("  %2s  %5s  %5s  %5s", " #", "start", "stop", "offst");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s", "start", "stop");
+      printf("  %8s %8s %5s", "start", "stop", "fid");
       if(! $do_nomdlb) { 
         printf(" %3s", "mdl");
       }
@@ -626,7 +631,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("  %2s  %5s  %5s  %5s", "--", "-----", "-----", "-----");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s", "--------", "--------");
+      printf("  %8s %8s %5s", "--------", "--------", "-----");
       if(! $do_nomdlb) { 
         printf(" %3s", "---");
       }
@@ -747,8 +752,8 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $cds_i  = $hmm2cds_map_A[$h];
     my $exon_i = $hmm2exon_map_A[$h];
     if($predicted_string ne "") { $predicted_string .= "  "; }
-    if(exists $p_start_HH{$model}{$target_accn}) { 
-      my ($start, $stop, $hangover) = ($p_start_HH{$model}{$target_accn}, $p_stop_HH{$model}{$target_accn}, $p_hangover_HH{$model}{$target_accn});
+    if(exists $p_start_HH{$model}{$seq_accn}) { 
+      my ($start, $stop, $hangover) = ($p_start_HH{$model}{$seq_accn}, $p_stop_HH{$model}{$seq_accn}, $p_hangover_HH{$model}{$seq_accn});
       my ($hang5, $hang3) = split(":", $hangover);
       if($hang5    >  9) { $hang5 = "+"; }
       elsif($hang5 == 0) { $hang5 = "."; }
@@ -778,33 +783,34 @@ for(my $a = 0; $a < $naccn; $a++) {
         # correct for off-by-one induced by the way we use negative indices distance from -1..1 is 1 nt, not 2
         $hit_length -= 1;
       }
-      $predicted_string .= sprintf("%8s %8s",
+      $predicted_string .= sprintf("%8s %8s %5.3f",
                                    ($start_match ? " " . $start . " " : "[" . $start . "]"), 
-                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"));
+                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"), 
+                                   $p_fid2ref_HH{$model}{$seq_accn});
 
       if(! $do_nomdlb) { 
         $predicted_string .= "  " . $hang5 . $hang3;
       }        
                                    
       if($hmm_is_first_A[$h]) { # determine $start_codon_char
-        if($p_strand_HH{$model}{$target_accn} eq "-") { 
+        if($p_strand_HH{$model}{$seq_accn} eq "-") { 
           $start_codon_posn = (($start-2) < 0) ? $start + $totlen_H{$accn} + 1 : $start;
         }
         else { 
           $start_codon_posn = ($start < 0) ? $start + $totlen_H{$accn} + 1 : $start;
         }
-        $start_codon      = fetchCodon($sqfile, $target_accn, $start_codon_posn, $p_strand_HH{$model}{$target_accn});
+        $start_codon      = fetchCodon($sqfile, $seq_accn, $start_codon_posn, $p_strand_HH{$model}{$seq_accn});
         $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
       }
       
       if($hmm_is_final_A[$h]) { 
-        if($p_strand_HH{$model}{$target_accn} eq "-") { 
+        if($p_strand_HH{$model}{$seq_accn} eq "-") { 
           $stop_codon_posn    = ($stop < 0) ? ($stop + $totlen_H{$accn}) + 1 + 2 : $stop + 2;
         }
         else { 
           $stop_codon_posn    = (($stop-2) < 0) ? ($stop + $totlen_H{$accn}) + 1 - 2 : $stop - 2;
         }
-        $stop_codon         = fetchCodon($sqfile, $target_accn, $stop_codon_posn, $p_strand_HH{$model}{$target_accn});
+        $stop_codon         = fetchCodon($sqfile, $seq_accn, $stop_codon_posn, $p_strand_HH{$model}{$seq_accn});
         $stop_codon_char    = ($stop_codon  eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
         $multiple_of_3_char = (($hit_length % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
 
@@ -816,13 +822,13 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
     }
     else { 
-      # printf("no hits for $model $target_accn\n");
+      # printf("no hits for $model $seq_accn\n");
       if($do_nomdlb) { 
-        $width = ($hmm_is_final_A[$h]) ? 28 : 17;
+        $width = ($hmm_is_final_A[$h]) ? 34 : 23;
         $predicted_string .= sprintf("%*s", $width, "NO PREDICTION");
       }
       else { 
-        $width = ($hmm_is_final_A[$h]) ? 32 : 21;
+        $width = ($hmm_is_final_A[$h]) ? 38 : 27;
         $predicted_string .= sprintf("%*s", $width, "NO PREDICTION");
       }
     }
@@ -1401,12 +1407,12 @@ sub createCmDb {
 # Subroutine: runNhmmscan()
 # Synopsis:   Perform a homology search using nhmmscan.
 #
-# Args:       $nhmmscan:      path to nhmmscan executable
-#             $query_hmmdb:   path to query HMM database
-#             $target_fasta:  path to target fasta file
-#             $tblout_file:   path to --tblout output file to create, undef to not create one
-#             $stdout_file:   path to output file to create with standard output from nhmmscan, undef 
-#                             to pipe to /dev/null
+# Args:       $nhmmscan:     path to nhmmscan executable
+#             $model_db:     path to model HMM database
+#             $seq_fasta:    path to seq fasta file
+#             $tblout_file:  path to --tblout output file to create, undef to not create one
+#             $stdout_file:  path to output file to create with standard output from nhmmscan, undef 
+#                            to pipe to /dev/null
 #
 # Returns:    void
 #
@@ -1416,18 +1422,18 @@ sub runNhmmscan {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
  
-  my ($nhmmscan, $query_hmmdb, $target_fasta, $tblout_file, $stdout_file) = @_;
+  my ($nhmmscan, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
 
   # my $opts = " --noali --tblout $tblout_file ";
   my $opts = " --tblout $tblout_file ";
 
   if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
 
-  if(! -s $query_hmmdb)  { die "ERROR in $sub_name, $query_hmmdb file does not exist or is empty"; }
-  if(! -s $target_fasta) { die "ERROR in $sub_name, $target_fasta file does not exist or is empty"; }
+  if(! -s $model_db)  { die "ERROR in $sub_name, $model_db file does not exist or is empty"; }
+  if(! -s $seq_fasta) { die "ERROR in $sub_name, $seq_fasta file does not exist or is empty"; }
 
   printf("# Running nhmmscan ... ");
-  my $cmd = "$nhmmscan $opts $query_hmmdb $target_fasta > $stdout_file";
+  my $cmd = "$nhmmscan $opts $model_db $seq_fasta > $stdout_file";
   runCommand($cmd, 0);
   printf("done.\n");
 
@@ -1437,13 +1443,13 @@ sub runNhmmscan {
 # Subroutine: runCmscan()
 # Synopsis:   Run Infernal 1.1's cmscan.
 #
-# Args:       $cmscan:        path to cmscan executable
-#             $do_glocal:     '1' to use the -g option, '0' not to
-#             $query_cmdb:    path to query CM database
-#             $target_fasta:  path to target fasta file
-#             $tblout_file:   path to --tblout output file to create, undef to not create one
-#             $stdout_file:   path to output file to create with standard output from cmsearch, undef 
-#                             to pipe to /dev/null
+# Args:       $cmscan:      path to cmscan executable
+#             $do_glocal:   '1' to use the -g option, '0' not to
+#             $model_db:    path to model CM database
+#             $seq_fasta:   path to seq fasta file
+#             $tblout_file: path to --tblout output file to create, undef to not create one
+#             $stdout_file: path to output file to create with standard output from cmsearch, undef 
+#                           to pipe to /dev/null
 #
 # Returns:    void
 #
@@ -1452,18 +1458,18 @@ sub runCmscan {
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($cmscan, $do_glocal, $query_cmdb, $target_fasta, $tblout_file, $stdout_file) = @_;
+  my ($cmscan, $do_glocal, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
 
   my $opts = "";
   if($do_iglocal) { $opts .= "-g "; }
   $opts .= " --rfam --tblout $tblout_file --verbose --nohmmonly ";
   if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
 
-  if(! -s $query_cmdb)   { die "ERROR in $sub_name, $query_cmdb file does not exist or is empty"; }
-  if(! -s $target_fasta) { die "ERROR in $sub_name, $target_fasta file does not exist or is empty"; }
+  if(! -s $model_db)   { die "ERROR in $sub_name, $model_db file does not exist or is empty"; }
+  if(! -s $seq_fasta) { die "ERROR in $sub_name, $seq_fasta file does not exist or is empty"; }
 
   printf("# Running cmscan version 1.1.1 ... ");
-  my $cmd = "$cmscan $opts $query_cmdb $target_fasta > $stdout_file";
+  my $cmd = "$cmscan $opts $model_db $seq_fasta > $stdout_file";
   runCommand($cmd, 0);
   printf("done.\n");
 
@@ -1512,12 +1518,12 @@ sub annotateStockholmAlignment {
 # Subroutine: parseNhmmscanTblout
 #
 # Synopsis:   Parse nhmmscan tblout output into 5 2D hashes.
-#             For each 2D hash first key is target name, second key
-#             is query name, value is either start, stop, strand,
+#             For each 2D hash first key is seq name, second key
+#             is model name, value is either start, stop, strand,
 #             score or hangover (number of model positions not included
 #             on 5' and 3' end). Information for the lowest E-value hit
-#             for each target/query pair is stored. This will be the
-#             first hit encountered in the file for each target/query
+#             for each seq/model pair is stored. This will be the
+#             first hit encountered in the file for each seq/model
 #             pair.
 #
 # Args:       $tblout_file:   tblout file to parse
@@ -1554,18 +1560,18 @@ sub parseNhmmscanTblout {
       chomp $line;
       #Maize-streak_r23.NC_001346/Maize-streak_r23.NC_001346.ref.cds.4        -          NC_001346:genome:NC_001346:1:2689:+: -                1     819    2 527    1709    2527    1709     819    -    9.8e-261  856.5  12.1  -
       my @elA = split(/\s+/, $line);
-      my ($target, $query, $hmmfrom, $hmmto, $alifrom, $alito, $envfrom, $envto, $modlen, $strand, $score) = 
+      my ($mdl, $seq, $hmmfrom, $hmmto, $alifrom, $alito, $envfrom, $envto, $mdllen, $strand, $score) = 
           ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[10], $elA[11], $elA[13]);
 
       my $from = ($do_hmmenv) ? $envfrom : $alifrom;
       my $to   = ($do_hmmenv) ? $envto   : $alito;
 
-      my $accn = $query;
+      my $accn = $seq;
       $accn =~ s/\:.+$//;
-      if(! exists $totlen_HR->{$accn}) { die "ERROR unable to determine accession with stored length from fasta sequence $query"; }
+      if(! exists $totlen_HR->{$accn}) { die "ERROR unable to determine accession with stored length from fasta sequence $mdl"; }
       my $L = $totlen_HR->{$accn};
 
-      storeHit($query, $target, $modlen, $L, $from, $to, $hmmfrom, $hmmto, $strand, $score, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR);
+      storeHit($mdl, $seq, $mdllen, $L, $hmmfrom, $hmmto, $from, $to, $strand, $score, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR);
     }
   }
   close(IN);
@@ -1576,17 +1582,17 @@ sub parseNhmmscanTblout {
 # Subroutine: parseCmscanTblout
 #
 # Synopsis:   Parse Infernal 1.1 cmscan --tblout output.
-#             For each 2D hash first key is target name, second key
-#             is query name, value is either start, stop, strand,
+#             For each 2D hash first key is seq name, second key
+#             is model name, value is either start, stop, strand,
 #             score or hangover (number of model positions not included
 #             on 5' and 3' end). Information for the lowest E-value hit
-#             for each target/query pair is stored. This will be the
-#             first hit encountered in the file for each target/query
+#             for each seq/model pair is stored. This will be the
+#             first hit encountered in the file for each seq/model
 #             pair.
 #
 # Args:       $tblout_file:   tblout file to parse
 #             $totlen_HR:     ref to hash, key is accession, value is length, pre-filled
-#             $modlen_HR:     ref to hash, key is model name, value is model length, pre-filled
+#             $mdllen_HR:     ref to hash, key is model name, value is model length, pre-filled
 #             $start_HHR:     ref to 2D hash of start values, to fill here
 #             $stop_HHR:      ref to 2D hash of stop values, to fill here
 #             $strand_HHR:    ref to 2D hash of strand value, to fill here
@@ -1600,7 +1606,7 @@ sub parseCmscanTblout {
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $totlen_HR, $modlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR) = @_;
+  my ($tblout_file, $totlen_HR, $mdllen_HR, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR) = @_;
   
   open(IN, $tblout_file) || die "ERROR unable to open $tblout_file for reading";
 
@@ -1619,17 +1625,17 @@ sub parseCmscanTblout {
       chomp $line;
       #Maize-streak_r23.NC_001346.ref.cds.4        -         NC_001346:genome-duplicated:NC_001346:1:2689:+:NC_001346:1:2689:+: -          cm        1      819     2527     1709      -    no    1 0.44   0.2  892.0         0 !   -
       my @elA = split(/\s+/, $line);
-      my ($target, $query, $mod, $modfrom, $modto, $from, $to, $strand, $score) = 
+      my ($mdl, $seq, $mod, $mdlfrom, $mdlto, $from, $to, $strand, $score) = 
           ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14]);
 
-      my $accn = $query;
+      my $accn = $mdl;
       $accn =~ s/\:.+$//;
-      if(! exists $totlen_HR->{$accn})   { die "ERROR unable to determine accession with stored length from fasta sequence $query"; }
-      if(! exists $modlen_HR->{$target}) { die "ERROR do not have model length information for model $target"; }
+      if(! exists $totlen_HR->{$accn})   { die "ERROR unable to determine accession with stored length from fasta sequence $mdl"; }
+      if(! exists $mdllen_HR->{$mdl}) { die "ERROR do not have model length information for model $mdl"; }
       my $L      = $totlen_HR->{$accn};
-      my $modlen = $modlen_HR->{$target};
+      my $mdllen = $mdllen_HR->{$mdl};
 
-      storeHit($query, $target, $modlen, $L, $from, $to, $modfrom, $modto, $strand, $score, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR);
+      storeHit($mdl, $seq, $mdllen, $L, $mdlfrom, $mdlto, $from, $to, $strand, $score, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR);
     }
   }
   close(IN);
@@ -1643,14 +1649,14 @@ sub parseCmscanTblout {
 #             Given info on a hit and refs to hashes to store info on it in,
 #             store it.
 #
-# Args:       $query:         query model
-#             $target:        target sequence
-#             $modlen:        model length
+# Args:       $mdl:           model name
+#             $seq:           sequence name
+#             $mdllen:        model length
 #             $L:             target sequence length
+#             $mdlfrom:       start position of hit
+#             $mdlto:         stop position of hit
 #             $seqfrom:       start position of hit
 #             $seqto:         stop position of hit
-#             $modfrom:       start position of hit
-#             $modto:         stop position of hit
 #             $strand:        strand of hit
 #             $score:         bit score of hit
 #             $start_HHR:     ref to 2D hash of start values, to fill here
@@ -1666,7 +1672,7 @@ sub storeHit {
   my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($query, $target, $modlen, $L, $seqfrom, $seqto, $modfrom, $modto, $strand, $score, 
+  my ($mdl, $seq, $mdllen, $L, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $score, 
       $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR) = @_;
 
   # only consider hits where either the start or end are less than the total length
@@ -1682,18 +1688,18 @@ sub storeHit {
       if($seqto   < 0)  { $seqto--; }
     }
     
-    if(! exists $start_HHR->{$target}) { # initialize
-      %{$start_HHR->{$target}}    = ();
-      %{$stop_HHR->{$target}}     = ();
-      %{$strand_HHR->{$target}}   = ();
-      %{$score_HHR->{$target}}    = ();
-      %{$hangover_HHR->{$target}} = ();
+    if(! exists $start_HHR->{$mdl}) { # initialize
+      %{$start_HHR->{$mdl}}    = ();
+      %{$stop_HHR->{$mdl}}     = ();
+      %{$strand_HHR->{$mdl}}   = ();
+      %{$score_HHR->{$mdl}}    = ();
+      %{$hangover_HHR->{$mdl}} = ();
     }
-    if(! exists $start_HHR->{$target}{$query})    { $start_HHR->{$target}{$query}    = $seqfrom; }
-    if(! exists $stop_HHR->{$target}{$query})     { $stop_HHR->{$target}{$query}     = $seqto; }
-    if(! exists $strand_HHR->{$target}{$query})   { $strand_HHR->{$target}{$query}   = $strand; }
-    if(! exists $score_HHR->{$target}{$query})    { $score_HHR->{$target}{$query}    = $score; }
-    if(! exists $hangover_HHR->{$target}{$query}) { $hangover_HHR->{$target}{$query} = ($modfrom - 1) . ":" . ($modlen - $modto); }
+    if(! exists $start_HHR->{$mdl}{$seq})    { $start_HHR->{$mdl}{$seq}    = $seqfrom; }
+    if(! exists $stop_HHR->{$mdl}{$seq})     { $stop_HHR->{$mdl}{$seq}     = $seqto; }
+    if(! exists $strand_HHR->{$mdl}{$seq})   { $strand_HHR->{$mdl}{$seq}   = $strand; }
+    if(! exists $score_HHR->{$mdl}{$seq})    { $score_HHR->{$mdl}{$seq}    = $score; }
+    if(! exists $hangover_HHR->{$mdl}{$seq}) { $hangover_HHR->{$mdl}{$seq} = ($mdlfrom - 1) . ":" . ($mdllen - $mdlto); }
   }
 
   return;
@@ -1949,4 +1955,90 @@ sub monocharacterString {
   }
 
   return $ret_str;
+}
+
+# Subroutine: hmmalignHits()
+#
+# Synopsis:   Given 2D hashes that describe all hits, fetch
+#             the hits for each CDS/exon to a file and then 
+#             align all those sequences to the appropriate 
+#             model to create a multiple alignment.
+#
+# Args:       $hmmalign:     path to hmmalign executable
+#             $hmmfetch:     path to hmmfetch executable
+#             $model_db:     model database file to fetch the models from
+#             $sqfile:       Bio::Easel::SqFile object, open sequence
+#                            file containing $seqname;
+#             $mdl_order_AR: ref to array of model names in order
+#             $seq_order_AR: ref to array of sequence names in order
+#             $seqlen_HR:    ref to hash of total lengths
+#             $start_HHR:    ref to 2D hash of start values, pre-filled
+#             $stop_HHR:     ref to 2D hash of stop values, pre-filled
+#             $strand_HHR:   ref to 2D hash of strand values, pre-filled
+#             $fid2ref_HHR:  ref to 2D hash of fractional identity values 
+#                            of aligned sequences to the reference, FILLED HERE
+#             $out_aln_root: root name for output files
+# 
+# Returns:    void
+#
+sub hmmalignHits {
+  my $sub_name = "hmmalignHits";
+  my $nargs_exp = 12;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($hmmalign, $hmmfetch, $model_db, $sqfile, $mdl_order_AR, $seq_order_AR, $seqlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $fid2ref_HHR, $out_aln_root) = @_;
+
+  foreach my $mdl (@{$mdl_order_AR}) { 
+    my @fetch_AA = ();
+    my $nseq = 0;
+    for(my $seq_i = 0; $seq_i < scalar(@{$seq_order_AR}); $seq_i++) { 
+      my $seq = $seq_order_AR->[$seq_i];
+      if($seq_i == 0 && (! exists $start_HHR->{$mdl}{$seq})) {
+        die "ERROR in $sub_name(), no hit from model $mdl to the reference sequence $seq"; 
+      }
+      if(exists $start_HHR->{$mdl}{$seq}) { 
+        my $accn = $seq;
+        $accn =~ s/\:.+$//;
+        my $newname .= $accn . "/" . $start_HHR->{$mdl}{$seq} . "-" . $stop_HHR->{$mdl}{$seq};
+        my $start = $start_HHR->{$mdl}{$seq};
+        my $stop  = $stop_HHR->{$mdl}{$seq};
+        if($start < 0 || $stop < 0) { 
+          $start += $seqlen_HR->{$accn};
+          $stop  += $seqlen_HR->{$accn};
+        }
+        push(@fetch_AA, [$newname, $start, $stop, $seq]);
+        $nseq++;
+      }
+    }
+    if($nseq > 0) { 
+      my $cur_fafile = $out_aln_root . "." . $mdl . ".fa";
+      $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
+      printf("Saved $nseq sequences to $cur_fafile.\n");
+      
+      # create the alignment
+      my $cur_stkfile = $out_aln_root . "." . $mdl . ".stk";
+      my $cmd = "$hmmfetch $model_db $mdl | $hmmalign - $cur_fafile > $cur_stkfile";
+      #print $cmd . "\n";
+      runCommand($cmd, 0);
+      printf("Saved $nseq aligned sequences to $cur_stkfile.\n");
+
+      # store the fractional identities between each sequence and the reference
+      # first we need to read in the MSA we just created 
+      my $msa = Bio::Easel::MSA->new({
+        fileLocation => $cur_stkfile,
+                                     });  
+
+      my $i = 0; # this will remain '0', which is the reference sequence
+      my $j = 0; # we'll increment this from 0..$nseq-1
+      foreach my $seq (@{$seq_order_AR}) { 
+        if(exists $start_HHR->{$mdl}{$seq}) { 
+          $fid2ref_HHR->{$mdl}{$seq} = $msa->pairwise_identity($i, $j);
+          # printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
+          $j++;
+        }
+      }
+    }
+  }
+
+  return;
 }
