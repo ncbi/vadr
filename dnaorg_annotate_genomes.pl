@@ -57,6 +57,8 @@ my $cmbuild         = $inf_exec_dir . "cmbuild";
 my $cmcalibrate     = $inf_exec_dir . "cmcalibrate";
 my $cmpress         = $inf_exec_dir . "cmpress";
 my $cmscan          = $inf_exec_dir . "cmscan";
+my $cmalign         = $inf_exec_dir . "cmalign";
+my $cmfetch         = $inf_exec_dir . "cmfetch";
 
 foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmpress, $cmscan) { 
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
@@ -502,12 +504,12 @@ my %p_fid2ref_HH  = (); # fractional identity to reference
 if($do_inf) { 
   runCmscan($cmscan, $do_iglocal, $model_db, $gnm_fasta_file, $tblout, $stdout);
   parseCmscanTblout($tblout, \%totlen_H, \%mdllen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
-  # cmalignAllHits($sqfile, $model_db, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, $out_aln_root);
+  alignHits($cmalign, $cmfetch, $model_db, $sqfile, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, $out_root);
 }
 else { 
   runNhmmscan($nhmmscan, $model_db, $gnm_fasta_file, $tblout, $stdout);
   parseNhmmscanTblout($tblout, $do_hmmenv, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
-  hmmalignHits($hmmalign, $hmmfetch, $model_db, $sqfile, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, $out_root);
+  alignHits($hmmalign, $hmmfetch, $model_db, $sqfile, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, $out_root);
 }
 
 printf("#\n");
@@ -542,11 +544,11 @@ for(my $a = 0; $a < $naccn; $a++) {
       if($hmm_is_final_A[$h]) { 
         $width += 11;
         if(! $do_nostop) { $width += 4; }
-        printf("  %*s", $width, $cds_out_short_A[$cds_i] . monocharacterString(($width-length($cds_out_short_A[$cds_i]))/2, " "));
+        printf("    %*s", $width, $cds_out_short_A[$cds_i] . monocharacterString(($width-length($cds_out_short_A[$cds_i]))/2, " "));
         $width = 0;
       }
     }
-    printf("  %6s", "");
+    printf("  %6s  %4s", "", "");
     if(! $do_noexist) { 
       printf("    %19s", "");
     }
@@ -567,11 +569,14 @@ for(my $a = 0; $a < $naccn; $a++) {
       if($hmm_is_final_A[$h]) { 
         $width += 11;
         if(! $do_nostop) { $width += 4; }
-        printf("  %*s", $width, substr($cds_out_product_A[$cds_i], 0, $width) . monocharacterString(($width-length($cds_out_product_A[$cds_i]))/2, " "));
+        printf("    %*s", $width, substr($cds_out_product_A[$cds_i], 0, $width) . monocharacterString(($width-length($cds_out_product_A[$cds_i]))/2, " "));
         $width = 0;
       }
+      else { 
+        $width += 2;
+      }
     }
-    printf("  %6s", "");
+    printf("  %6s  %4s", "", "");
     if(! $do_noexist) { 
       printf("    %19s", "existing annotation");
     }
@@ -586,9 +591,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     for(my $h = 0; $h < $nhmm; $h++) { 
       $width += 23;
       if(! $do_nomdlb) { $width += 4; }
-      if(! $hmm_is_first_A[$h]) { 
-        $width += 2;
-      }
+      $width += 2;
       if($hmm_is_final_A[$h]) { 
         $width += 11;
         if(! $do_nostop) { $width += 4; }
@@ -596,9 +599,9 @@ for(my $a = 0; $a < $naccn; $a++) {
         $width = 0;
       }
     }
-    printf("  %6s", "");
+    printf("  %6s  %4s", "", "");
     if(! $do_noexist) { 
-      printf("    %19s", "--------------------");
+      printf("    %19s", "-------------------");
     }
     printf("\n");
     
@@ -608,7 +611,10 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("  %2s  %5s  %5s  %5s", " #", "start", "stop", "offst");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s %5s", "start", "stop", "fid");
+      printf("  %8s %8s %5s", 
+             sprintf("%s%s", "start", ($hmm_is_first_A[$h] && $hmm_is_final_A[$h]) ? "" : $hmm2exon_map_A[$h]+1), 
+             sprintf("%s%s", "stop",  ($hmm_is_first_A[$h] && $hmm_is_final_A[$h]) ? "" : $hmm2exon_map_A[$h]+1), 
+             "fid");
       if(! $do_nomdlb) { 
         printf(" %3s", "mdl");
       }
@@ -617,12 +623,14 @@ for(my $a = 0; $a < $naccn; $a++) {
         if(! $do_nostop) { 
           printf(" %3s", "stp");
         }
+        print "  ";
       }
     }
-    printf("  %6s", "totlen");
+    printf("  %6s  %4s", "totlen", "");
     if(! $do_noexist) { 
       printf("    %5s  %5s  %5s", "cds", "exons", "match");
     }
+    printf("  overlaps?");
     print "\n";
     
     # line 5 of column headers
@@ -640,13 +648,15 @@ for(my $a = 0; $a < $naccn; $a++) {
         if(! $do_nostop) { 
           printf(" %3s", "---");
         }
+        printf("  ");
       }
     }
-    printf("  %6s", "------");
+    printf("  %6s  %4s", "------", "");
 
     if(! $do_noexist) { 
-      printf("    %5s  %5s  %5s\n", "-----", "-----", "-----");
+      printf("    %5s  %5s  %5s", "-----", "-----", "-----");
     }
+    printf("  ---------");
 
     print "\n";
   }
@@ -746,19 +756,35 @@ for(my $a = 0; $a < $naccn; $a++) {
   my $ss3_yes_char = ".";
   my $ss3_no_char  = "!";
   my $hit_length;
-  
+  my $at_least_one_fail; # set to '1' for each CDS if any of the 'tests' for that CDS fail
+  my $pass_fail_char; # "P" or "F"
+  my $pass_fail_str;  # string of pass_fail_chars
+ 
+  # data structures we use for checking for overlapping annotation
+  my @ol_name_A   = ();  # [0..$nhmm-1]: name of CDS/exons to print if/when outputting information on overlaps
+  my @ol_start_A  = ();  # [0..$nhmm-1]: start  position of CDS/exon for use when checking for overlaps
+  my @ol_stop_A   = ();  # [0..$nhmm-1]: stop   position of CDS/exon for use when checking for overlaps
+  my @ol_strand_A = ();  # [0..$nhmm-1]: strand position of CDS/exon for use when checking for overlaps
+
   for(my $h = 0; $h < $nhmm; $h++) { 
     my $model  = $model_A[$h];
     my $cds_i  = $hmm2cds_map_A[$h];
     my $exon_i = $hmm2exon_map_A[$h];
+
+    if($hmm_is_first_A[$h]) {
+      # reset these
+      $hit_length = 0; 
+      $at_least_one_fail = 0;
+    }
+
     if($predicted_string ne "") { $predicted_string .= "  "; }
     if(exists $p_start_HH{$model}{$seq_accn}) { 
       my ($start, $stop, $hangover) = ($p_start_HH{$model}{$seq_accn}, $p_stop_HH{$model}{$seq_accn}, $p_hangover_HH{$model}{$seq_accn});
       my ($hang5, $hang3) = split(":", $hangover);
-      if($hang5    >  9) { $hang5 = "+"; }
+      if($hang5    >  9) { $hang5 = "+"; $at_least_one_fail = 1; }
       elsif($hang5 == 0) { $hang5 = "."; }
 
-      if($hang3       >  9) { $hang3 = "+"; }
+      if($hang3       >  9) { $hang3 = "+"; $at_least_one_fail = 1; }
       elsif($hang3    == 0) { $hang3 = "."; }
 
       my ($start_match, $stop_match);
@@ -771,10 +797,6 @@ for(my $a = 0; $a < $naccn; $a++) {
       if($do_nobrack) { # set to '1' so brackets are never printed
         $start_match = 1;
         $stop_match  = 1; 
-      }
-
-      if($hmm_is_first_A[$h]) {
-        $hit_length = 0; # reset this
       }
 
       $hit_length += abs($stop-$start) + 1;
@@ -799,8 +821,14 @@ for(my $a = 0; $a < $naccn; $a++) {
         else { 
           $start_codon_posn = ($start < 0) ? $start + $totlen_H{$accn} + 1 : $start;
         }
-        $start_codon      = fetchCodon($sqfile, $seq_accn, $start_codon_posn, $p_strand_HH{$model}{$seq_accn});
-        $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
+        $start_codon = fetchCodon($sqfile, $seq_accn, $start_codon_posn, $p_strand_HH{$model}{$seq_accn});
+        if($start_codon eq "ATG") { 
+          $start_codon_char = $ss3_yes_char;
+        }
+        else { 
+          $start_codon_char = $ss3_no_char;
+          $at_least_one_fail = 1;
+        }
       }
       
       if($hmm_is_final_A[$h]) { 
@@ -811,15 +839,37 @@ for(my $a = 0; $a < $naccn; $a++) {
           $stop_codon_posn    = (($stop-2) < 0) ? ($stop + $totlen_H{$accn}) + 1 - 2 : $stop - 2;
         }
         $stop_codon         = fetchCodon($sqfile, $seq_accn, $stop_codon_posn, $p_strand_HH{$model}{$seq_accn});
-        $stop_codon_char    = ($stop_codon  eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
-        $multiple_of_3_char = (($hit_length % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
 
+        if($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") { 
+          $stop_codon_char = $ss3_yes_char;
+        }
+        else { 
+          $stop_codon_char = $ss3_no_char;
+          $at_least_one_fail = 1;
+        }
+        if(($hit_length % 3) == 0) { 
+          $multiple_of_3_char = $ss3_yes_char;
+        }
+        else { 
+          $multiple_of_3_char = $ss3_no_char;
+          $at_least_one_fail = 1;
+        }
         # append the ss3 (start/stop/multiple of 3 info)
         $predicted_string .= sprintf(" %6d %s%s%s", $hit_length, $start_codon_char, $stop_codon_char, $multiple_of_3_char);
         if(! $do_nostop) { 
           $predicted_string .= sprintf(" %3s", $stop_codon);
         }
+
+        $pass_fail_char = ($at_least_one_fail) ? "F" : "P";
+        $predicted_string .= sprintf(" %s", $pass_fail_char);
+        $pass_fail_str .= $pass_fail_char;
       }
+
+      # save information for overlap check
+      push(@ol_name_A, sprintf "%d.%d", $hmm2cds_map_A[$h]+1, $hmm2exon_map_A[$h]+1);
+      push(@ol_start_A, $start);
+      push(@ol_stop_A,  $stop);
+      push(@ol_strand_A, $p_strand_HH{$model}{$seq_accn});
     }
     else { 
       # printf("no hits for $model $seq_accn\n");
@@ -839,12 +889,23 @@ for(my $a = 0; $a < $naccn; $a++) {
   ################################################################################
   # Output number of actually annotated CDS and summed total of exons in those CDS
   ################################################################################
-  printf("  %6d", $totlen_H{$accn});
+  if($pass_fail_str =~ m/F/) { $pass_fail_str = "FAIL"; }
+  else                       { $pass_fail_str = "PASS"; }
+
+  printf("  %6d  %s", $totlen_H{$accn}, $pass_fail_str);
   if(! $do_noexist) { 
     printf("    %5d  %5d  %5d", $ncds, $tot_nexons, $nmatch_boundaries);
   }
-  print "\n";
+
+  # check for overlaps
+  my $overlap_notes = checkForOverlaps(\@ol_name_A, \@ol_start_A, \@ol_stop_A, \@ol_strand_A);
+  if($overlap_notes ne "") { 
+    print "  " . $overlap_notes;
   }
+  print "\n";
+}
+
+
 
 
 #############
@@ -1462,7 +1523,7 @@ sub runCmscan {
 
   my $opts = "";
   if($do_iglocal) { $opts .= "-g "; }
-  $opts .= " --rfam --tblout $tblout_file --verbose --nohmmonly ";
+  $opts .= " --cpu 0 --rfam --tblout $tblout_file --verbose --nohmmonly ";
   if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
 
   if(! -s $model_db)   { die "ERROR in $sub_name, $model_db file does not exist or is empty"; }
@@ -1568,7 +1629,7 @@ sub parseNhmmscanTblout {
 
       my $accn = $seq;
       $accn =~ s/\:.+$//;
-      if(! exists $totlen_HR->{$accn}) { die "ERROR unable to determine accession with stored length from fasta sequence $mdl"; }
+      if(! exists $totlen_HR->{$accn}) { die "ERROR unable to determine accession with stored length from fasta sequence $mdl (seq: $seq)"; }
       my $L = $totlen_HR->{$accn};
 
       storeHit($mdl, $seq, $mdllen, $L, $hmmfrom, $hmmto, $from, $to, $strand, $score, $start_HHR, $stop_HHR, $strand_HHR, $score_HHR, $hangover_HHR);
@@ -1628,10 +1689,10 @@ sub parseCmscanTblout {
       my ($mdl, $seq, $mod, $mdlfrom, $mdlto, $from, $to, $strand, $score) = 
           ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14]);
 
-      my $accn = $mdl;
+      my $accn = $seq;
       $accn =~ s/\:.+$//;
-      if(! exists $totlen_HR->{$accn})   { die "ERROR unable to determine accession with stored length from fasta sequence $mdl"; }
-      if(! exists $mdllen_HR->{$mdl}) { die "ERROR do not have model length information for model $mdl"; }
+      if(! exists $totlen_HR->{$accn})  { die "ERROR unable to determine accession with stored length from fasta sequence $mdl"; }
+      if(! exists $mdllen_HR->{$mdl})   { die "ERROR do not have model length information for model $mdl"; }
       my $L      = $totlen_HR->{$accn};
       my $mdllen = $mdllen_HR->{$mdl};
 
@@ -1957,15 +2018,15 @@ sub monocharacterString {
   return $ret_str;
 }
 
-# Subroutine: hmmalignHits()
+# Subroutine: alignHits()
 #
 # Synopsis:   Given 2D hashes that describe all hits, fetch
 #             the hits for each CDS/exon to a file and then 
 #             align all those sequences to the appropriate 
 #             model to create a multiple alignment.
 #
-# Args:       $hmmalign:     path to hmmalign executable
-#             $hmmfetch:     path to hmmfetch executable
+# Args:       $align:        path to hmmalign or cmalign executable
+#             $fetch:        path to hmmfetch or cmfetch executable
 #             $model_db:     model database file to fetch the models from
 #             $sqfile:       Bio::Easel::SqFile object, open sequence
 #                            file containing $seqname;
@@ -1981,12 +2042,12 @@ sub monocharacterString {
 # 
 # Returns:    void
 #
-sub hmmalignHits {
+sub alignHits {
   my $sub_name = "hmmalignHits";
   my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($hmmalign, $hmmfetch, $model_db, $sqfile, $mdl_order_AR, $seq_order_AR, $seqlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $fid2ref_HHR, $out_aln_root) = @_;
+  my ($align, $fetch, $model_db, $sqfile, $mdl_order_AR, $seq_order_AR, $seqlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $fid2ref_HHR, $out_aln_root) = @_;
 
   foreach my $mdl (@{$mdl_order_AR}) { 
     my @fetch_AA = ();
@@ -2013,14 +2074,14 @@ sub hmmalignHits {
     if($nseq > 0) { 
       my $cur_fafile = $out_aln_root . "." . $mdl . ".fa";
       $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
-      printf("Saved $nseq sequences to $cur_fafile.\n");
+      # printf("Saved $nseq sequences to $cur_fafile.\n");
       
       # create the alignment
       my $cur_stkfile = $out_aln_root . "." . $mdl . ".stk";
-      my $cmd = "$hmmfetch $model_db $mdl | $hmmalign - $cur_fafile > $cur_stkfile";
+      my $cmd = "$fetch $model_db $mdl | $align - $cur_fafile > $cur_stkfile";
       #print $cmd . "\n";
       runCommand($cmd, 0);
-      printf("Saved $nseq aligned sequences to $cur_stkfile.\n");
+      # printf("Saved $nseq aligned sequences to $cur_stkfile.\n");
 
       # store the fractional identities between each sequence and the reference
       # first we need to read in the MSA we just created 
@@ -2041,4 +2102,103 @@ sub hmmalignHits {
   }
 
   return;
+}
+
+# Subroutine: checkForOverlaps()
+#
+# Synopsis:   Given refs to three arrays that describe 
+#             a list of hits, check if any of them overlap.
+#
+# Args:       $name_AR:      ref to array of short names for each annotation
+#             $start_AR:     ref to array of start positions
+#             $stop_AR:      ref to array of stop positions
+#             $strand_AR:    ref to array of strands
+# 
+# Returns:    String describing the overlaps, empty string ("") if no overlaps.
+#
+sub checkForOverlaps {
+  my $sub_name = "checkForOverlaps";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($name_AR, $start_AR, $stop_AR, $strand_AR) = @_;
+
+  my $ret_str = "";
+
+  my $nhits = scalar(@{$name_AR});
+  my $noverlaps = 0;
+  for(my $i = 0; $i < $nhits; $i++) { 
+    my $start_i  = $start_AR->[$i];
+    my $stop_i   = $stop_AR->[$i];
+    if($start_i > $stop_i) { 
+      my $tmp  = $start_i;
+      $start_i = $stop_i;
+      $stop_i  = $tmp;
+    }
+    for(my $j = $i+1; $j < $nhits; $j++) { 
+      my $start_j  = $start_AR->[$j];
+      my $stop_j   = $stop_AR->[$j];
+      if($start_j > $stop_j) { 
+        my $tmp  = $start_j;
+        $start_j = $stop_j;
+        $stop_j  = $tmp;
+      }
+      my $nres_overlap = get_nres_overlap($start_i, $stop_i, $start_j, $stop_j);
+      if($nres_overlap > 0) { 
+        $noverlaps++;
+        # $ret_str .= sprintf("%s overlaps with %s (%s);", $name_AR->[$i], $name_AR->[$j], ($strand_AR->[$i] eq $strand_AR->[$j]) ? "same strand" : "opposite strands");
+        if($ret_str ne "") { 
+          $ret_str .= " ";
+        }
+        $ret_str .= sprintf("%s and %s;", $name_AR->[$i], $name_AR->[$j], ($strand_AR->[$i] eq $strand_AR->[$j]) ? "same strand" : "opposite strands");
+      }
+    }
+  }
+
+  if($ret_str ne "") { 
+    $ret_str = $noverlaps . " (" . $ret_str . ")";
+  }
+
+  return $ret_str;
+}
+
+# Subroutine: get_nres_overlap()
+# Args:       $start1: start position of hit 1 (must be <= $end1)
+#             $end1:   end   position of hit 1 (must be >= $end1)
+#             $start2: start position of hit 2 (must be <= $end2)
+#             $end2:   end   position of hit 2 (must be >= $end2)
+#
+# Returns:    Number of residues of overlap between hit1 and hit2,
+#             0 if none
+# Dies:       if $end1 < $start1 or $end2 < $start2.
+
+sub get_nres_overlap {
+  if(scalar(@_) != 4) { die "ERROR get_nres_overlap() entered with wrong number of input args"; }
+
+  my ($start1, $end1, $start2, $end2) = @_; 
+
+  #printf("in get_nres_overlap $start1..$end1 $start2..$end2\n");
+
+  if($start1 > $end1) { die "ERROR start1 > end1 ($start1 > $end1) in get_nres_overlap()"; }
+  if($start2 > $end2) { die "ERROR start2 > end2 ($start2 > $end2) in get_nres_overlap()"; }
+
+  # Given: $start1 <= $end1 and $start2 <= $end2.
+  
+  # Swap if nec so that $start1 <= $start2.
+  if($start1 > $start2) { 
+    my $tmp;
+    $tmp   = $start1; $start1 = $start2; $start2 = $tmp;
+    $tmp   =   $end1;   $end1 =   $end2;   $end2 = $tmp;
+  }
+  
+  # 3 possible cases:
+  # Case 1. $start1 <=   $end1 <  $start2 <=   $end2  Overlap is 0
+  # Case 2. $start1 <= $start2 <=   $end1 <    $end2  
+  # Case 3. $start1 <= $start2 <=   $end2 <=   $end1
+  if($end1 < $start2) { return 0; }                      # case 1
+  if($end1 <   $end2) { return ($end1 - $start2 + 1); }  # case 2
+  if($end2 <=  $end1) { return ($end2 - $start2 + 1); }  # case 3
+  die "Unforeseen case in get_nres_overlap $start1..$end1 and $start2..$end2";
+
+  return; # NOT REACHED
 }
