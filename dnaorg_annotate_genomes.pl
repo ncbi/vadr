@@ -36,6 +36,7 @@ $usage .= "  -nostop    : do not output stop codon for each predicted CDS\n";
 $usage .= "  -nofid     : do not output fractional identity relative to reference for each CDS/exon\n";
 $usage .= "  -noss3     : do not output results of start codon, stop codon and multiple of 3 tests\n";
 $usage .= "  -noolap    : do not output overlap information\n";
+$usage .= "  -noexp     : do not output explanation of column headings\n";
 $usage .= "\n OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:\n";
 $usage .= "  -inf     : use Infernal 1.1 for predicting annotations, default: use HMMER3's nhmmscan\n";
 $usage .= "\n OPTIONS SPECIFIC TO HMMER3:\n";
@@ -83,6 +84,7 @@ my $do_nostop    = 0; # set to '1' if -nostop  or -c enabled, do not output stop
 my $do_nofid     = 0; # set to '1' if -nofid   or -c enabled, do not output fractional identities relative to the reference
 my $do_noss3     = 0; # set to '1' if -noss3   or -c enabled, do not output SS3 columns: 'S'tart codon check, 'S'top codon check and multiple of '3' check
 my $do_noolap    = 0; # set to '1' if -noolap  or -c enabled, do not output information on overlapping CDS/exons
+my $do_noexp     = 0; # set to '1' if -noexp   or -c enabled, do not output explanatory information about column headings
 # options for controlling homology search method
 my $do_inf       = 0; # set to '1' if -inf1p1     enabled, use Infernal 1.1, not HMMER3's nhmmscan
 # options specific to HMMER3
@@ -106,6 +108,7 @@ my $do_ccluster  = 0; # set to '1' if -ccluster   enabled, submit calibration to
             "nofid"     => \$do_nofid,
             "noss3"     => \$do_noss3,
             "noolap"    => \$do_noolap,
+            "noexp"     => \$do_noexp,
             "inf"       => \$do_inf,
             "hmmenv"    => \$do_hmmenv,
             "iglocal"   => \$do_iglocal,
@@ -179,6 +182,10 @@ if($do_noss3) {
 if($do_noolap) { 
   $opts_used_short .= "-noolap";
   $opts_used_long  .= "# option:  do not output information on overlaps [-noolap]\n";
+}
+if($do_noexp) { 
+  $opts_used_short .= "-noexp";
+  $opts_used_long  .= "# option:  do not output information on column headings [-noexp]\n";
 }
 if($do_inf) { 
   $opts_used_short .= "-inf";
@@ -285,7 +292,6 @@ while(my $accn = <IN>) {
 close(IN); 
 
 my $head_accn = $accn_A[0];
-
 
 ##################################
 # parse the table and length files
@@ -411,8 +417,9 @@ my @hmm_is_final_A = ();    # [0..h..$nhmm-1]: '1' if HMM ($h+1) is the final on
 my @model_A = ();           # [0..$nhmm-1]: array of model HMM names, also name of stockholm alignments used to build those HMMs
 my @cds_out_short_A   = (); # [0..$ref_ncds-1]: array of abbreviated model CDS names to print
 my @cds_out_product_A = (); # [0..$ref_ncds-1]: array of 'CDS:product' qualifier (protein names)
-my %mdllen_H      = ();     # key: model name from @model_A, value is model length
-my @ref_nexons_A = ();
+my %mdllen_H          = (); # key: model name from @model_A, value is model length
+my @ref_nexons_A      = ();
+my $ref_tot_nexons    = 0;
 
 # for each reference CDS, fetch each exon (or the full CDS if -notexon enabled)
 for(my $i = 0; $i < $ref_ncds; $i++) { 
@@ -424,6 +431,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
   my $nexons   = 0;
   startStopsFromCoords($ref_cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
   push(@ref_nexons_A, $nexons);
+  $ref_tot_nexons += $nexons;
 
   # if we're on the negative strand, reverse the arrays, they'll be in the incorrect order
   my $strand = substr($ref_strand_str, $i, 1);
@@ -560,6 +568,9 @@ printf("#\n");
 #######################################################################
 my $width;  # width of a field
 my $pad;    # string of all spaces used for pretty formatting
+my @ref_ol_AA = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
+my $width_result = 5 + $ref_tot_nexons + 2;
+
 for(my $a = 0; $a < $naccn; $a++) { 
   my $accn = $accn_A[$a];
   my $seq_accn = $seq_accn_A[$a];
@@ -572,7 +583,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     # line 1 of column headers
     printf("%-20s  %6s", "#", "");
     if(defined $origin_seq) { 
-      printf("  %23s", "");
+      printf("  %22s", "");
     }
     # for each CDS, output the topmost column header
     $width = 0;
@@ -589,16 +600,17 @@ for(my $a = 0; $a < $naccn; $a++) {
         $width = 0;
       }
     }
-    printf("  %6s  %4s", "", "");
+    printf("  %6s", "");
     if(! $do_noexist) { 
       printf("    %19s", "");
     }
+    printf("  %*s", $width_result, "");
     printf("\n");
     
     # line 2 of column headers
     printf("%-20s  %6s", "#", "");
     if(defined $origin_seq) { 
-      printf("  %23s", "   origin sequence");
+      printf("  %22s", "   origin sequence");
     }
     # for each CDS, output the second column header
     $width = 0;
@@ -619,16 +631,17 @@ for(my $a = 0; $a < $naccn; $a++) {
         $width += 2;
       }
     }
-    printf("  %6s  %4s", "", "");
+    printf("  %6s", "");
     if(! $do_noexist) { 
-      printf("    %19s", "existing annotation");
+      printf(" %19s", "existing annotation");
     }
+    printf("  %*s", $width_result, "");
     printf("\n");
     
     # line 3 of column headers 
     printf("%-20s  %6s", "#", "");
     if(defined $origin_seq) { 
-      printf("  %23s", "-----------------------");
+      printf("  %22s", "----------------------");
     }
     $width = 0;
     for(my $h = 0; $h < $nhmm; $h++) { 
@@ -646,16 +659,18 @@ for(my $a = 0; $a < $naccn; $a++) {
         $width += 1;
       }
     }
-    printf("  %6s  %6s", "", "");
+#    printf("  %6s  %-*s", "", $width_result, "");
+    printf("  %6s", "");
     if(! $do_noexist) { 
       printf("  %19s", "-------------------");
     }
+    printf("  %-*s", $width_result, "");
     printf("\n");
     
     # line 4 of column headers
     printf("%-20s  %6s", "# accession", "totlen");
     if(defined $origin_seq) {
-      printf("  %2s  %5s  %5s  %5s", " #", "start", "stop", "offst");
+      printf(" %2s %5s %5s %5s %2s", " #", "start", "stop", "offst", "PF");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
       printf("  %8s %8s", 
@@ -678,19 +693,21 @@ for(my $a = 0; $a < $naccn; $a++) {
         printf(" %2s", "PF");
       }
     }
-    printf("  %6s  %6s", "totlen", "result");
+    printf("  %6s", "totlen");
     if(! $do_noexist) { 
       printf("  %5s  %5s  %5s", "cds", "exons", "match");
     }
     if(! $do_noolap) { 
-      printf("  overlaps?");
+      printf("  %20s", " overlaps?");
     }
+
+    printf("  %-*s", $width_result, "result");
     print "\n";
     
     # line 5 of column headers
     printf("%-20s  %6s", "#-------------------", "------");
     if(defined $origin_seq) {
-      printf("  %2s  %5s  %5s  %5s", "--", "-----", "-----", "-----");
+      printf(" %2s %5s %5s %5s %2s", "--", "-----", "-----", "-----", "--");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
       printf("  %8s %8s", "--------", "--------");
@@ -711,14 +728,15 @@ for(my $a = 0; $a < $naccn; $a++) {
         printf(" --");
       }
     }
-    printf("  %6s  %6s", "------", "------");
+    printf("  %6s", "------");
 
     if(! $do_noexist) { 
       printf("  %5s  %5s  %5s", "-----", "-----", "-----");
     }
     if(! $do_noolap) { 
-      printf("  ---------");
+      printf("  %20s", monocharacterString(20, "-"));
     }
+    printf("  %-*s", $width_result, monocharacterString($width_result, "-"));
 
     print "\n";
   }
@@ -726,32 +744,8 @@ for(my $a = 0; $a < $naccn; $a++) {
 
   #########################################################################
   # Create the initial portion of the output line, the accession and length
-  printf("%-20s  %6d  ", $accn, $totlen_H{$accn});
+  printf("%-20s  %6d ", $accn, $totlen_H{$accn});
   #########################################################################
-
-  ###############################################################
-  # Create the origin sequence portion of the output line, if nec
-  my $oseq_string = "";
-  if(defined $origin_seq) { 
-    my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
-    if($norigin == 1) { 
-      my ($ostart, $ostop) = split(":", $origin_coords_HA{$accn}[0]);
-      my $predicted_offset = ($ostart < 0) ? ($ostart + $origin_offset) : ($ostart + $origin_offset - 1);
-      # $predicted_offset is now number of nts to shift origin in counterclockwise direction
-      if($predicted_offset > ($totlen_H{$accn} / 2)) { # simpler (shorter distance) to move origin clockwise
-        $predicted_offset = ($totlen_H{$accn} - $predicted_offset + 1);
-      }
-      else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
-        $predicted_offset *= -1;
-      }
-      $oseq_string .= sprintf("%2d  %5d  %5d  %5d  ", 1, $ostart, $ostop, $predicted_offset);
-    }
-    else { 
-      $oseq_string .= sprintf("%2d  %19s  ", $norigin, "   error (!= 1)");
-    }
-  }
-  print $oseq_string;
-  ###############################################################
 
   #########################################################
   # Get information on the actual annotation of this genome
@@ -821,13 +815,41 @@ for(my $a = 0; $a < $naccn; $a++) {
   my $at_least_one_fail; # set to '1' for each CDS if any of the 'tests' for that CDS fail
   my $pass_fail_char; # "P" or "F"
   my $pass_fail_str;  # string of pass_fail_chars
- 
+
   # data structures we use for checking for overlapping annotation
   my @ol_name_A   = ();  # [0..$nhmm-1]: name of CDS/exons to print if/when outputting information on overlaps
   my @ol_start_A  = ();  # [0..$nhmm-1]: start  position of CDS/exon for use when checking for overlaps
   my @ol_stop_A   = ();  # [0..$nhmm-1]: stop   position of CDS/exon for use when checking for overlaps
   my @ol_strand_A = ();  # [0..$nhmm-1]: strand position of CDS/exon for use when checking for overlaps
+ 
+  ###############################################################
+  # create the origin sequence portion of the output line, if nec
+  my $oseq_string = "";
+  if(defined $origin_seq) { 
+    my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
+    if($norigin == 1) { 
+      my ($ostart, $ostop) = split(":", $origin_coords_HA{$accn}[0]);
+      my $predicted_offset = ($ostart < 0) ? ($ostart + $origin_offset) : ($ostart + $origin_offset - 1);
+      # $predicted_offset is now number of nts to shift origin in counterclockwise direction
+      if($predicted_offset > ($totlen_H{$accn} / 2)) { # simpler (shorter distance) to move origin clockwise
+        $predicted_offset = ($totlen_H{$accn} - $predicted_offset + 1);
+      }
+      else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
+        $predicted_offset *= -1;
+      }
+      $pass_fail_char = "P";
+      $oseq_string .= sprintf("%2d %5d %5d %5d  %s  ", 1, $ostart, $ostop, $predicted_offset, "P");
+    }
+    else { 
+      $pass_fail_char = "F";
+      $oseq_string .= sprintf("%2d %5s %5s %5s  %s  ", $norigin, "-", "-", "-", "F");
+    }
+    $pass_fail_str .= $pass_fail_char;
+  }
+  print $oseq_string;
+  ###############################################################
 
+  # now the per-exon predictions:
   for(my $h = 0; $h < $nhmm; $h++) { 
     my $model  = $model_A[$h];
     my $cds_i  = $hmm2cds_map_A[$h];
@@ -952,30 +974,42 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
   }
   print $predicted_string;
-  ############################################################
 
-  ################################################################################
-  # Output number of actually annotated CDS and summed total of exons in those CDS
-  ################################################################################
-  if($pass_fail_str =~ m/F/) { $pass_fail_str = "FAIL"; }
-  else                       { $pass_fail_str = "PASS"; }
+  printf("  %6d", $totlen_H{$accn});
 
-  printf("  %6d  %s", $totlen_H{$accn}, $pass_fail_str);
+  # output number of actually annotated CDS and summed total of exons in those CDS, if nec
   if(! $do_noexist) { 
-    printf("    %5d  %5d  %5d", $ncds, $tot_nexons, $nmatch_boundaries);
+    printf("  %5d  %5d  %5d", $ncds, $tot_nexons, $nmatch_boundaries);
   }
 
   # check for overlaps
-  if(! $do_noolap) { 
-    my $overlap_notes = checkForOverlaps(\@ol_name_A, \@ol_start_A, \@ol_stop_A, \@ol_strand_A);
-    if($overlap_notes ne "") { 
-      print "  " . $overlap_notes;
-    }
+  my $overlap_notes;
+  if($a == 0) { 
+    # the reference, determine which overlaps are allowed, we'll fill @allowed_ol_AA in checkForOverlaps
+    ($pass_fail_char, $overlap_notes) = checkForOverlaps(\@ol_name_A, \@ol_start_A, \@ol_stop_A, \@ol_strand_A, undef, \@ref_ol_AA);
   }
+  else { 
+    # not the reference, we'll determine if this accession 'passes' the overlap test based on whether it's observed
+    # overlaps match those in \@allowed_ol_AA exactly or not
+    ($pass_fail_char, $overlap_notes) = checkForOverlaps(\@ol_name_A, \@ol_start_A, \@ol_stop_A, \@ol_strand_A, \@ref_ol_AA, undef);
+  }
+  $pass_fail_str .= $pass_fail_char;
+
+  # output overlap info, if nec
+  if((! $do_noolap) && ($overlap_notes ne "")) { 
+    printf("  %20s", $overlap_notes);
+  }
+
+  my $result_str = ($pass_fail_str =~ m/F/) ? "FAIL" : "PASS";
+  $result_str .= " " . $pass_fail_str;
+  printf("  %s", $result_str);
+
   print "\n";
 }
 
-printColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
+if(! $do_noexp) { 
+  printColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
+}
 
 #############
 # SUBROUTINES
@@ -2178,23 +2212,42 @@ sub alignHits {
 # Synopsis:   Given refs to three arrays that describe 
 #             a list of hits, check if any of them overlap.
 #
-# Args:       $name_AR:      ref to array of short names for each annotation
-#             $start_AR:     ref to array of start positions
-#             $stop_AR:      ref to array of stop positions
-#             $strand_AR:    ref to array of strands
+# Args:       $name_AR:         ref to array of short names for each annotation
+#             $start_AR:        ref to array of start positions
+#             $stop_AR:         ref to array of stop positions
+#             $strand_AR:       ref to array of strands
+#             $expected_ol_AAR: ref to 2D array of expected overlaps $expected_ol_AAR->[$i][$j] is '1' if 
+#                               those two exons are expected to overlap, PRE-FILLED, 
+#                               can be undefined
+#             $return_ol_AAR:   ref to 2D array of observed overlaps $observed_ol_AAR->[$i][$j] is '1' if 
+#                               those two exons are observed to overlap here, FILLED HERE,
+#                               can be undefined
 # 
-# Returns:    String describing the overlaps, empty string ("") if no overlaps.
+# Returns:    Two values:
+#             $pass_fail_char: "P" if overlaps match those in $expected_ol_AAR, else "F"
+#                              if $expected_ol_AAR is undef, always return "P"
+#             $overlap_notes:  string describing the overlaps, empty string ("") if no overlaps.
 #
 sub checkForOverlaps {
   my $sub_name = "checkForOverlaps";
-  my $nargs_exp = 4;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($name_AR, $start_AR, $stop_AR, $strand_AR) = @_;
+  my ($name_AR, $start_AR, $stop_AR, $strand_AR, $expected_ol_AAR, $return_ol_AAR) = @_;
 
   my $ret_str = "";
 
+  my @observed_ol_AA = (); # [$i][$j] is '1' if we observe an overlap between $i and $j (or $j and $i), else 0
+
   my $nhits = scalar(@{$name_AR});
+
+  # initialize
+  for(my $i = 0; $i < $nhits; $i++) { 
+    for(my $j = 0; $j < $nhits; $j++) { 
+      $observed_ol_AA[$i][$j] = 0;
+    }
+  }
+
   my $noverlaps = 0;
   for(my $i = 0; $i < $nhits; $i++) { 
     my $start_i  = $start_AR->[$i];
@@ -2215,20 +2268,42 @@ sub checkForOverlaps {
       my $nres_overlap = get_nres_overlap($start_i, $stop_i, $start_j, $stop_j);
       if($nres_overlap > 0) { 
         $noverlaps++;
+        $observed_ol_AA[$i][$j] = 1;
+        $observed_ol_AA[$j][$i] = 1;
         # $ret_str .= sprintf("%s overlaps with %s (%s);", $name_AR->[$i], $name_AR->[$j], ($strand_AR->[$i] eq $strand_AR->[$j]) ? "same strand" : "opposite strands");
         if($ret_str ne "") { 
           $ret_str .= " ";
         }
-        $ret_str .= sprintf("%s and %s;", $name_AR->[$i], $name_AR->[$j], ($strand_AR->[$i] eq $strand_AR->[$j]) ? "same strand" : "opposite strands");
+        $ret_str .= sprintf("%s/%s", $name_AR->[$i], $name_AR->[$j]); 
+      }
+      else { # no overlap
+        $observed_ol_AA[$i][$j] = 0;
+        $observed_ol_AA[$j][$i] = 0;
+      }
+    }
+  }
+
+  # check @observed_ol_AA against @{$expected_ol_AAR} and/or
+  # copy @observed_ol_AA to @{$return_ol_AAR}
+  my $pass_fail_char = "P";
+  for(my $i = 0; $i < $nhits; $i++) { 
+    for(my $j = 0; $j < $nhits; $j++) { 
+      if(defined $expected_ol_AAR) { 
+        if($observed_ol_AA[$i][$j] ne $expected_ol_AAR->[$i][$j]) { 
+          $pass_fail_char = "F";
+        }
+      }
+      if(defined $return_ol_AAR) {
+        $return_ol_AAR->[$i][$j] = $observed_ol_AA[$i][$j];
       }
     }
   }
 
   if($ret_str ne "") { 
-    $ret_str = $noverlaps . " (" . $ret_str . ")";
+    $ret_str = $pass_fail_char . " " . $noverlaps . " " . $ret_str;
   }
 
-  return $ret_str;
+  return ($pass_fail_char, $ret_str);
 }
 
 # Subroutine: get_nres_overlap()
@@ -2309,10 +2384,6 @@ sub printColumnHeaderExplanations {
     printf("# %-*s %s\n", $width, "\"CDS #<i>: fid<j>\":",  "fractional identity between exon #<j> of CDS #<i> and reference genome");
   }
 
-  if(! $do_nofid) { 
-    printf("# %-*s %s\n", $width, "\"CDS #<i>: fid<j>\":",  "fractional identity between exon #<j> of CDS #<i> and reference genome");
-  }
-
   if(! $do_nomdlb) { 
     printf("# %-*s %s\n", $width, "\"CDS #<i>: md<j>\":",  "annotation indicating if alignment to reference extends to 5' and 3' end of reference exon.");
     printf("# %-*s %s\n", $width, "",                      "first character pertains to 5' end and second character pertains to 3' end.");
@@ -2327,12 +2398,9 @@ sub printColumnHeaderExplanations {
   if(! $do_noss3) { 
     print("#\n");
     printf("# %-*s %s\n", $width, "\"CDS #<i>: SS3\":",   "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3");
-    printf("# %-*s %s\n", $width, "",                      "first  character pertains to whether predicted CDS has a valid start codon.");
-    printf("# %-*s %s\n", $width, "",                      "second character pertains to whether predicted CDS has a valid stop  codon.");
-    printf("# %-*s %s\n", $width, "",                      "third  character pertains to whether predicted CDS has a length which is a multiple of three.");
-    printf("# %-*s %s\n", $width, "",                      "possible values in each position:");
-    printf("# %-*s %s\n", $width, "",                      "  \".\": predicted CDS has   valid start/stop or is     a length that is a multiple of 3");
-    printf("# %-*s %s\n", $width, "",                      "  \"!\": predicted CDS has invalid start/stop or is not a length that is a multiple of 3");
+    printf("# %-*s %s\n", $width, "",                      "first  character: '.' if predicted CDS has a valid start codon, else '!'");
+    printf("# %-*s %s\n", $width, "",                      "second character: '.' if predicted CDS has a valid stop  codon, else '!'");
+    printf("# %-*s %s\n", $width, "",                      "third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'");
   }
 
   if(! $do_nostop) { 
@@ -2347,8 +2415,6 @@ sub printColumnHeaderExplanations {
 
   print("#\n");
   printf("# %-*s %s\n", $width, "\"totlen\":",            "total length (nt) for accession (repeated for convenience"); 
-  printf("# %-*s %s\n", $width, "\"result\":",            "\"PASS\" or \"FAIL\". \"PASS\" if and only if all exons for this");
-  printf("# %-*s %s\n", $width, "",                       "PASS ('P') as indicating in the \"PF\" columns");
   
   if(! $do_noexist) { 
     printf("#\n");
@@ -2360,10 +2426,16 @@ sub printColumnHeaderExplanations {
   if(! $do_noolap) { 
     printf("#\n");
     printf("# %-*s %s\n", $width, "\"overlaps\?\"",   "text describing which (if any) of the predicted exons overlap with each other");
-    printf("# %-*s %s\n", $width, "",                 "first digit:       number of overlaps between any two exons");
+    printf("# %-*s %s\n", $width, "",                 "first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference");
+    printf("# %-*s %s\n", $width, "",                 "                   'F' for FAIL if it does not");
+    printf("# %-*s %s\n", $width, "",                 "second character:  number of overlaps between any two exons");
     printf("# %-*s %s\n", $width, "",                 "remainder of line: text explaining which exons overlap");
-    printf("# %-*s %s]\n", $width, "",                 "  e.g.: \"3.2 and 4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand");
+    printf("# %-*s %s\n", $width, "",                 "  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand");
   }  
+
+  print("#\n");
+  printf("# %-*s %s\n", $width, "\"result\":",            "\"PASS\" or \"FAIL\". \"PASS\" if and only if all tests for this accession PASSED ('P')");
+  printf("# %-*s %s\n", $width, "",                       "as indicated in the \"PF\" columns");
 
   return; 
 }
