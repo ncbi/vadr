@@ -373,11 +373,11 @@ close(OUT);
 if(-e $gnm_fasta_file)          { unlink $gnm_fasta_file; }
 if(-e $gnm_fasta_file . ".ssi") { unlink $gnm_fasta_file . ".ssi"; }
 
-printf("# Fetching $naccn full%s genome sequences... ", $do_nodup ? "" : " (duplicated)");
+printf("%-50s ... ", sprintf("# Fetching $naccn full%s genome sequences", $do_nodup ? "" : " (duplicated)"));
 # my $cmd = "$idfetch -t 5 -c 1 -G $gnm_fetch_file > $gnm_fasta_file";
 my $cmd = "perl $esl_fetch_cds -nocodon $gnm_fetch_file > $gnm_fasta_file";
-runCommand($cmd, 0);
-printf("done. [$gnm_fasta_file]\n");
+my $secs_elapsed = runCommand($cmd, 0);
+printf("done. [%.1f seconds]\n", $secs_elapsed);
 
 # and open the sequence file using BioEasel
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $gnm_fasta_file });
@@ -404,7 +404,9 @@ $ref_ncds = scalar(@ref_cds_len_A);
 
 my $all_stk_file = $out_root . ".ref.all.stk";
 
-printf("# Fetching reference sequences, and reformatting them to stockholm format ... ");
+($seconds, $microseconds) = gettimeofday();
+my $start_time = ($seconds + ($microseconds / 1000000.));
+printf("%-50s ... ", "# Fetching reference CDS sequences");
 my $cur_out_root;
 my $cur_name_root;
 my $fetch_input;
@@ -504,7 +506,9 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
     $nhmm++;
   }
 }
-printf("done. [$all_stk_file]\n");
+($seconds, $microseconds) = gettimeofday();
+my $stop_time = ($seconds + ($microseconds / 1000000.));
+printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
 # homology search section
 my $model_db; # model database file, either HMMs or CMs
@@ -601,6 +605,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
     }
     printf("  %6s", "");
+    printf("  %5s", "");
     if(! $do_noexist) { 
       printf("    %19s", "");
     }
@@ -632,6 +637,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
     }
     printf("  %6s", "");
+    printf("  %5s", "");
     if(! $do_noexist) { 
       printf(" %19s", "existing annotation");
     }
@@ -661,6 +667,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
 #    printf("  %6s  %-*s", "", $width_result, "");
     printf("  %6s", "");
+    printf("  %5s", "");
     if(! $do_noexist) { 
       printf("  %19s", "-------------------");
     }
@@ -694,6 +701,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
     }
     printf("  %6s", "totlen");
+    printf("  %5s", "avgid");    
     if(! $do_noexist) { 
       printf("  %5s  %5s  %5s", "cds", "exons", "match");
     }
@@ -729,6 +737,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
     }
     printf("  %6s", "------");
+    printf("  %5s", "-----");
 
     if(! $do_noexist) { 
       printf("  %5s  %5s  %5s", "-----", "-----", "-----");
@@ -850,6 +859,9 @@ for(my $a = 0; $a < $naccn; $a++) {
   ###############################################################
 
   # now the per-exon predictions:
+  my $tot_fid = 0.; # all fractional identities added together
+  my $n_fid = 0;    # number of fractional identities
+
   for(my $h = 0; $h < $nhmm; $h++) { 
     my $model  = $model_A[$h];
     my $cds_i  = $hmm2cds_map_A[$h];
@@ -896,6 +908,8 @@ for(my $a = 0; $a < $naccn; $a++) {
         $predicted_string .= sprintf(" %5.3f",
                                    $p_fid2ref_HH{$model}{$seq_accn});
       }
+      $tot_fid += $p_fid2ref_HH{$model}{$seq_accn};
+      $n_fid++;
 
       if(! $do_nomdlb) { 
         $predicted_string .= "  " . $hang5 . $hang3;
@@ -976,6 +990,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   print $predicted_string;
 
   printf("  %6d", $totlen_H{$accn});
+  printf("  %5.3f", $tot_fid / $n_fid);
 
   # output number of actually annotated CDS and summed total of exons in those CDS, if nec
   if(! $do_noexist) { 
@@ -1475,18 +1490,19 @@ sub createHmmDb {
   }
 
   # first build the models
-  printf("# Running hmmbuild for $out_root ... ");
+
+  printf("%-50s ... ", "# Running hmmbuild");
   my $cmd = "$hmmbuild --dna $out_root.hmm $stk_file > $out_root.hmmbuild";
-  runCommand($cmd, 0);
+  my $secs_elapsed = runCommand($cmd, 0);
 #  printf("done. [$out_root.nhmmer and $out_root.tblout]\n");
-  printf("done.\n");
+  printf("done. [%.1f seconds]\n", $secs_elapsed);
 
   # next, press the HMM DB we just created
-  printf("# Running hmmpress for $out_root ... ");
+  printf("%-50s ... ", "# Running hmmpress");
   $cmd = "$hmmpress $out_root.hmm > $out_root.hmmpress";
-  runCommand($cmd, 0);
+  $secs_elapsed = runCommand($cmd, 0);
 #  printf("done. [$out_root.nhmmer and $out_root.tblout]\n");
-  printf("done.\n");
+  printf("done. [%.1f seconds]\n", $secs_elapsed);
 
   return;
 }
@@ -1537,9 +1553,9 @@ sub createCmDb {
   $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
 
   # first build the models
-  printf("# Running cmbuild for $out_root ... ");
-  runCommand($cmbuild_cmd, 0);
-  printf("done.\n");
+  printf("%-50s ... ", "# Running cmbuild");
+  my $secs_elapsed = runCommand($cmbuild_cmd, 0);
+  printf("done. [%.1f seconds]\n", $secs_elapsed);
 
   if($do_calib_cluster) { 
     # submit a job to the cluster and exit. 
@@ -1553,16 +1569,16 @@ sub createCmDb {
   }
   else { 
     # calibrate the model
-    printf("# Running cmcalibrate for $out_root ... ");
-    #runCommand($cmcalibrate_cmd, 0);
-    printf("\n$cmcalibrate_cmd\n");
-    printf("done.\n");
+    printf("%-50s ... ", "# Running cmcalibrate");
+    $secs_elapsed = runCommand($cmcalibrate_cmd, 0);
+    #printf("\n$cmcalibrate_cmd\n");
+    printf("done. [%.1f seconds]\n", $secs_elapsed);
 
     # press the model
-    printf("# Running cmpress for $out_root ... ");
-    #runCommand($cm_presscmd, 0);
-    printf("\n$cmpress_cmd\n");
-    printf("done.\n");
+    printf("%-50s ... ", "# Running cmpress");
+    $secs_elapsed = runCommand($cmpress_cmd, 0);
+    #printf("\n$cmpress_cmd\n");
+    printf("done [%.1f seconds]\n", $secs_elapsed);
   } # end of 'else' entered if $do_calib_cluster is false
 
   return;
@@ -1596,10 +1612,10 @@ sub runNhmmscan {
   if(! -s $model_db)  { die "ERROR in $sub_name, $model_db file does not exist or is empty"; }
   if(! -s $seq_fasta) { die "ERROR in $sub_name, $seq_fasta file does not exist or is empty"; }
 
-  printf("# Running nhmmscan ... ");
+  printf("%-50s ... ", "# Running nhmmscan");
   my $cmd = "$nhmmscan $opts $model_db $seq_fasta > $stdout_file";
-  runCommand($cmd, 0);
-  printf("done.\n");
+  my $secs_elapsed = runCommand($cmd, 0);
+  printf("done. [%.1f seconds]\n", $secs_elapsed);
 
   return;
 }
@@ -1632,10 +1648,10 @@ sub runCmscan {
   if(! -s $model_db)   { die "ERROR in $sub_name, $model_db file does not exist or is empty"; }
   if(! -s $seq_fasta) { die "ERROR in $sub_name, $seq_fasta file does not exist or is empty"; }
 
-  printf("# Running cmscan version 1.1.1 ... ");
+  printf("%-50s ... ", "# Running cmscan");
   my $cmd = "$cmscan $opts $model_db $seq_fasta > $stdout_file";
-  runCommand($cmd, 0);
-  printf("done.\n");
+  $secs_elapsed = runCommand($cmd, 0);
+  printf("done. [%.1f seconds]\n", $secs_elapsed);
 
   return;
 }
@@ -2374,6 +2390,7 @@ sub printColumnHeaderExplanations {
     printf("# %-*s %s\n", $width, "\"origin sequence: start\":",  "start position of lone occurence of origin sequence (if only 1 exists)");
     printf("# %-*s %s\n", $width, "\"origin sequence: stop\":",   "stop  position of lone occurence of origin sequence (if only 1 exists)");
     printf("# %-*s %s\n", $width, "\"origin sequence: offst\":",  "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)");
+    printf("# %-*s %s\n", $width, "\"origin sequence: PF\":",     "'P' (for PASS) if there is exactly 1 occurence of the offset, else 'F' for FAIL");
   }
 
   printf("#\n");
@@ -2410,11 +2427,11 @@ sub printColumnHeaderExplanations {
   printf("# %-*s %s\n", $width, "\"CDS #<i>: PF\":",      "annotation indicating if this exon PASSED ('P') or FAILED ('F')");
   printf("# %-*s %s\n", $width, "",                       "an exon PASSES ('P') if and only if it has a valid start codon, stop codon");
   printf("# %-*s %s\n", $width, "",                       "  is a length that is a multiple of 3, and has an alignment to the reference");
-  printf("# %-*s %s\n", $width, "",                       "  that extends to the 5' and 3' boundary of the reference annotation,");
-  printf("# %-*s %s\n", $width, "",                       "  if any of these conditions is not met, the exon FAILS ('F').");
+  printf("# %-*s %s\n", $width, "",                       "  that extends to the 5' and 3' boundary of the reference annotation.");
+  printf("# %-*s %s\n", $width, "",                       "  If >= 1 of these conditions is not met then the exon FAILS ('F').");
 
   print("#\n");
-  printf("# %-*s %s\n", $width, "\"totlen\":",            "total length (nt) for accession (repeated for convenience"); 
+  printf("# %-*s %s\n", $width, "\"totlen\":",            "total length (nt) for accession (repeated for convenience)"); 
   
   if(! $do_noexist) { 
     printf("#\n");
@@ -2435,7 +2452,11 @@ sub printColumnHeaderExplanations {
 
   print("#\n");
   printf("# %-*s %s\n", $width, "\"result\":",            "\"PASS\" or \"FAIL\". \"PASS\" if and only if all tests for this accession PASSED ('P')");
-  printf("# %-*s %s\n", $width, "",                       "as indicated in the \"PF\" columns");
+  printf("# %-*s %s\n", $width, "",                       "as indicated in the \"PF\" columns. Followed by the individual P/F results in order.");
+  if($do_noolap) { 
+    printf("# %-*s %s\n", $width, "",                       "Final P/F in the results pertains to the overlap check: 'P' if this accession has the same");
+    printf("# %-*s %s\n", $width, "",                       "set of overlaps as the reference accession, and 'F' if not.");
+  }    
 
   return; 
 }
