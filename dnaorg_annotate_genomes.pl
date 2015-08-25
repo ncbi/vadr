@@ -28,10 +28,14 @@ $usage .= "  -notexon   : do not use exon-specific models\n";
 $usage .= "  -onlybuild : exit after building reference models\n";
 $usage .= "  -model <s> : use model file <s>, instead of building one\n";
 $usage .= "\n OPTIONS CONTROLLING OUTPUT TABLE:\n";
+$usage .= "  -c         : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)\n";
 $usage .= "  -nomdlb    : do not add model boundary annotation to output\n";
 $usage .= "  -noexist   : do not include information on existing annotation\n";
 $usage .= "  -nobrack   : do not include brackets around predicted annotations that do not match existing\n";
 $usage .= "  -nostop    : do not output stop codon for each predicted CDS\n";
+$usage .= "  -nofid     : do not output fractional identity relative to reference for each CDS/exon\n";
+$usage .= "  -noss3     : do not output results of start codon, stop codon and multiple of 3 tests\n";
+$usage .= "  -noolap    : do not output overlap information\n";
 $usage .= "\n OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:\n";
 $usage .= "  -inf     : use Infernal 1.1 for predicting annotations, default: use HMMER3's nhmmscan\n";
 $usage .= "\n OPTIONS SPECIFIC TO HMMER3:\n";
@@ -71,10 +75,14 @@ my $do_notexon   = 0; # set to '1' if -noexon     enabled, do not use exon-speci
 my $do_onlybuild = 0; # set to '1' if -onlybuild  enabled, exit after building the model
 my $in_model_db  = undef; # defined if -model <s> enabled, use <s> as the model file instead of building one
 # options for controlling output table
-my $do_nomdlb    = 0; # set to '1' if -nomdlb  enabled, do not print HMM boundary info for annotations, else do
-my $do_noexist   = 0; # set to '1' if -noexist enabled, do not output information on existing annotations
-my $do_nobrack   = 0; # set to '1' if -nobrack enabled, do not output brackets around predicted annotations that do not match any existing annotation
-my $do_nostop    = 0; # set to '1' if -nostop  enabled, do not output stop codon for predicted annotations
+my $do_concise   = 0; # set to '1' if -c       enabled, invoke concise output mode, set's all $do_no* variables below to '1'
+my $do_nomdlb    = 0; # set to '1' if -nomdlb  or -c enabled, do not print HMM boundary info for annotations, else do
+my $do_noexist   = 0; # set to '1' if -noexist or -c enabled, do not output information on existing annotations
+my $do_nobrack   = 0; # set to '1' if -nobrack or -c enabled, do not output brackets around predicted annotations that do not match any existing annotation
+my $do_nostop    = 0; # set to '1' if -nostop  or -c enabled, do not output stop codon for predicted annotations
+my $do_nofid     = 0; # set to '1' if -nofid   or -c enabled, do not output fractional identities relative to the reference
+my $do_noss3     = 0; # set to '1' if -noss3   or -c enabled, do not output SS3 columns: 'S'tart codon check, 'S'top codon check and multiple of '3' check
+my $do_noolap    = 0; # set to '1' if -noolap  or -c enabled, do not output information on overlapping CDS/exons
 # options for controlling homology search method
 my $do_inf       = 0; # set to '1' if -inf1p1     enabled, use Infernal 1.1, not HMMER3's nhmmscan
 # options specific to HMMER3
@@ -90,10 +98,14 @@ my $do_ccluster  = 0; # set to '1' if -ccluster   enabled, submit calibration to
             "notexon"   => \$do_notexon,
             "onlybuild" => \$do_onlybuild,
             "model=s"   => \$in_model_db,
+            "c"         => \$do_concise,
             "nomdlb"    => \$do_nomdlb,
             "noexist"   => \$do_noexist,
             "nobrack"   => \$do_nobrack,
             "nostop"    => \$do_nostop,
+            "nofid"     => \$do_nofid,
+            "noss3"     => \$do_noss3,
+            "noolap"    => \$do_noolap,
             "inf"       => \$do_inf,
             "hmmenv"    => \$do_hmmenv,
             "iglocal"   => \$do_iglocal,
@@ -136,6 +148,10 @@ if(defined $in_model_db) {
   $opts_used_short .= "-model $in_model_db ";
   $opts_used_long  .= "# option:  use model in $in_model_db instead of building one here [-model]\n";
 }
+if($do_concise) { 
+  $opts_used_short .= "-c ";
+  $opts_used_long  .= "# option:  concise output mode [-c]\n";
+}
 if($do_nomdlb) { 
   $opts_used_short .= "-nomdlb ";
   $opts_used_long  .= "# option:  do not output HMM boundaries of predicted annotations [-nomdlb]\n";
@@ -151,6 +167,18 @@ if($do_nobrack) {
 if($do_nostop) { 
   $opts_used_short .= "-nostop";
   $opts_used_long  .= "# option:  do not output stop codons [-nostop]\n";
+}
+if($do_nofid) { 
+  $opts_used_short .= "-nofid";
+  $opts_used_long  .= "# option:  do not output fractional identities [-nofid]\n";
+}
+if($do_noss3) { 
+  $opts_used_short .= "-noss3";
+  $opts_used_long  .= "# option:  do not output start codon, stop codon or multiple of 3 test results [-noss3]\n";
+}
+if($do_noolap) { 
+  $opts_used_short .= "-noolap";
+  $opts_used_long  .= "# option:  do not output information on overlaps [-noolap]\n";
 }
 if($do_inf) { 
   $opts_used_short .= "-inf";
@@ -198,6 +226,17 @@ my $origin_offset = undef;
 if(defined $origin_seq) { 
   $origin_offset = validateOriginSeq($origin_seq);
   $origin_seq =~ s/\|//;
+}
+
+# if in $concise output mode, turn on other affected options:
+if($do_concise) { 
+  $do_nomdlb =  1;
+  $do_noexist = 1;
+  $do_nobrack = 1;
+  $do_nostop  = 1;
+  $do_nofid   = 1;
+  $do_noss3   = 1;
+  $do_noolap  = 1;
 }
 
 ###############
@@ -437,8 +476,8 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
     # store information on this model's name for output purposes
     if($e == ($nexons-1)) { 
       my $short = sprintf("CDS #%d", ($i+1));
-      if($act_nexons > 1) { $short .= " [$act_nexons exons; strand: $strand]"; }
-      else                { $short .= " [single exon; strand: $strand]"; }
+      if($act_nexons > 1) { $short .= " [$act_nexons exons; $strand]"; }
+      else                { $short .= " [single exon; $strand]"; }
       push(@cds_out_short_A,   $short);
       push(@cds_out_product_A, $ref_cds_product_A[$i]);
     }
@@ -538,11 +577,13 @@ for(my $a = 0; $a < $naccn; $a++) {
     # for each CDS, output the topmost column header
     $width = 0;
     for(my $h = 0; $h < $nhmm; $h++) { 
-      $width += 23;
+      $width += 18;
       my $cds_i = $hmm2cds_map_A[$h];
+      if(! $do_nofid)  { $width += 6; }
       if(! $do_nomdlb) { $width += 4; }
       if($hmm_is_final_A[$h]) { 
-        $width += 11;
+        $width += 7;
+        if(! $do_noss3)  { $width += 4; }
         if(! $do_nostop) { $width += 4; }
         printf("    %*s", $width, $cds_out_short_A[$cds_i] . monocharacterString(($width-length($cds_out_short_A[$cds_i]))/2, " "));
         $width = 0;
@@ -563,11 +604,13 @@ for(my $a = 0; $a < $naccn; $a++) {
     $width = 0;
     for(my $h = 0; $h < $nhmm; $h++) { 
       $pad = "";
-      $width += 23;
+      $width += 18;
       my $cds_i = $hmm2cds_map_A[$h];
+      if(! $do_nofid)  { $width += 6; }
       if(! $do_nomdlb) { $width += 4; }
       if($hmm_is_final_A[$h]) { 
-        $width += 11;
+        $width += 7;
+        if(! $do_noss3)  { $width += 4; }
         if(! $do_nostop) { $width += 4; }
         printf("    %*s", $width, substr($cds_out_product_A[$cds_i], 0, $width) . monocharacterString(($width-length($cds_out_product_A[$cds_i]))/2, " "));
         $width = 0;
@@ -589,19 +632,23 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
     $width = 0;
     for(my $h = 0; $h < $nhmm; $h++) { 
-      $width += 23;
+      $width += 18;
+      if(! $do_nofid)  { $width += 6; }
       if(! $do_nomdlb) { $width += 4; }
-      $width += 2;
       if($hmm_is_final_A[$h]) { 
-        $width += 11;
+        $width += 9;
+        if(! $do_noss3)  { $width += 4; }
         if(! $do_nostop) { $width += 4; }
         printf("  %s", monocharacterString($width, "-"));
         $width = 0;
       }
+      else { 
+        $width += 1;
+      }
     }
-    printf("  %6s  %4s", "", "");
+    printf("  %6s  %6s", "", "");
     if(! $do_noexist) { 
-      printf("    %19s", "-------------------");
+      printf("  %19s", "-------------------");
     }
     printf("\n");
     
@@ -611,26 +658,33 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("  %2s  %5s  %5s  %5s", " #", "start", "stop", "offst");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s %5s", 
-             sprintf("%s%s", "start", ($hmm_is_first_A[$h] && $hmm_is_final_A[$h]) ? "" : $hmm2exon_map_A[$h]+1), 
-             sprintf("%s%s", "stop",  ($hmm_is_first_A[$h] && $hmm_is_final_A[$h]) ? "" : $hmm2exon_map_A[$h]+1), 
-             "fid");
+      printf("  %8s %8s", 
+             sprintf("%s%s", "start", $hmm2exon_map_A[$h]+1), 
+             sprintf("%s%s", "stop",  $hmm2exon_map_A[$h]+1));
+      if(! $do_nofid) { 
+        printf(" %5s", sprintf("%s%s", "fid", $hmm2exon_map_A[$h]+1));
+      }
       if(! $do_nomdlb) { 
-        printf(" %3s", "mdl");
+        printf(" %3s", sprintf("%s%s", "md", $hmm2exon_map_A[$h]+1));
       }
       if($hmm_is_final_A[$h]) { 
-        printf(" %6s %3s", "length", "SS3");
+        printf(" %6s", "length");
+        if(! $do_noss3) { 
+          printf(" %3s", "SS3");
+        }
         if(! $do_nostop) { 
           printf(" %3s", "stp");
         }
-        print "  ";
+        printf(" %2s", "PF");
       }
     }
-    printf("  %6s  %4s", "totlen", "");
+    printf("  %6s  %6s", "totlen", "result");
     if(! $do_noexist) { 
-      printf("    %5s  %5s  %5s", "cds", "exons", "match");
+      printf("  %5s  %5s  %5s", "cds", "exons", "match");
     }
-    printf("  overlaps?");
+    if(! $do_noolap) { 
+      printf("  overlaps?");
+    }
     print "\n";
     
     # line 5 of column headers
@@ -639,24 +693,32 @@ for(my $a = 0; $a < $naccn; $a++) {
       printf("  %2s  %5s  %5s  %5s", "--", "-----", "-----", "-----");
     }
     for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s %5s", "--------", "--------", "-----");
+      printf("  %8s %8s", "--------", "--------");
+      if(! $do_nofid) { 
+        printf(" %5s", "-----");
+      }
       if(! $do_nomdlb) { 
         printf(" %3s", "---");
       }
       if($hmm_is_final_A[$h]) { 
-        printf(" %6s %3s", "------", "---");
+        printf(" %6s", "------");
+        if(! $do_noss3) { 
+          printf(" %3s", "---");
+        }
         if(! $do_nostop) { 
           printf(" %3s", "---");
         }
-        printf("  ");
+        printf(" --");
       }
     }
-    printf("  %6s  %4s", "------", "");
+    printf("  %6s  %6s", "------", "------");
 
     if(! $do_noexist) { 
-      printf("    %5s  %5s  %5s", "-----", "-----", "-----");
+      printf("  %5s  %5s  %5s", "-----", "-----", "-----");
     }
-    printf("  ---------");
+    if(! $do_noolap) { 
+      printf("  ---------");
+    }
 
     print "\n";
   }
@@ -805,10 +867,13 @@ for(my $a = 0; $a < $naccn; $a++) {
         # correct for off-by-one induced by the way we use negative indices distance from -1..1 is 1 nt, not 2
         $hit_length -= 1;
       }
-      $predicted_string .= sprintf("%8s %8s %5.3f",
+      $predicted_string .= sprintf("%8s %8s",
                                    ($start_match ? " " . $start . " " : "[" . $start . "]"), 
-                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"), 
+                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"));
+      if(! $do_nofid) { 
+        $predicted_string .= sprintf(" %5.3f",
                                    $p_fid2ref_HH{$model}{$seq_accn});
+      }
 
       if(! $do_nomdlb) { 
         $predicted_string .= "  " . $hang5 . $hang3;
@@ -855,13 +920,16 @@ for(my $a = 0; $a < $naccn; $a++) {
           $at_least_one_fail = 1;
         }
         # append the ss3 (start/stop/multiple of 3 info)
-        $predicted_string .= sprintf(" %6d %s%s%s", $hit_length, $start_codon_char, $stop_codon_char, $multiple_of_3_char);
+        $predicted_string .= sprintf(" %6d", $hit_length);
+        if(! $do_noss3) { 
+          $predicted_string .= sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char);
+        }
         if(! $do_nostop) { 
           $predicted_string .= sprintf(" %3s", $stop_codon);
         }
 
         $pass_fail_char = ($at_least_one_fail) ? "F" : "P";
-        $predicted_string .= sprintf(" %s", $pass_fail_char);
+        $predicted_string .= sprintf(" %2s", $pass_fail_char);
         $pass_fail_str .= $pass_fail_char;
       }
 
@@ -898,15 +966,16 @@ for(my $a = 0; $a < $naccn; $a++) {
   }
 
   # check for overlaps
-  my $overlap_notes = checkForOverlaps(\@ol_name_A, \@ol_start_A, \@ol_stop_A, \@ol_strand_A);
-  if($overlap_notes ne "") { 
-    print "  " . $overlap_notes;
+  if(! $do_noolap) { 
+    my $overlap_notes = checkForOverlaps(\@ol_name_A, \@ol_start_A, \@ol_stop_A, \@ol_strand_A);
+    if($overlap_notes ne "") { 
+      print "  " . $overlap_notes;
+    }
   }
   print "\n";
 }
 
-
-
+printColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
 
 #############
 # SUBROUTINES
@@ -2201,4 +2270,100 @@ sub get_nres_overlap {
   die "Unforeseen case in get_nres_overlap $start1..$end1 and $start2..$end2";
 
   return; # NOT REACHED
+}
+
+
+# Subroutine: printColumnHeaderExplanations()
+# Args:       $do_oseq: '1' if -oseq was enabled
+#
+# Returns:    void
+
+sub printColumnHeaderExplanations {
+  my $sub_name = "printColumnHeaderExplanations";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($do_oseq, $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap) = @_; 
+  
+  print("#\n");
+  print("# Explanations of column headings (in left to right order):\n");
+
+  my $width = 35;
+
+  printf("# %-*s %s\n", $width, "\"accession\":", "GenBank accession for genomic sequence");
+  printf("# %-*s %s\n", $width, "\"totlen\":",    "total length (nt) for accession");
+
+  if($do_oseq) {
+    printf("#\n");
+    printf("# %-*s %s\n", $width, "\"origin sequence: #\":",      "number of occurences of origin sequence (input with -oseq) in genome");
+    printf("# %-*s %s\n", $width, "\"origin sequence: start\":",  "start position of lone occurence of origin sequence (if only 1 exists)");
+    printf("# %-*s %s\n", $width, "\"origin sequence: stop\":",   "stop  position of lone occurence of origin sequence (if only 1 exists)");
+    printf("# %-*s %s\n", $width, "\"origin sequence: offst\":",  "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)");
+  }
+
+  printf("#\n");
+  printf("# %-*s %s\n", $width, "\"CDS #<i>: start<j>\":", "start position of exon #<j> of CDS #<i>");
+  printf("# %-*s %s\n", $width, "\"CDS #<i>: stop<j>\":",  "stop  position of exon #<j> of CDS #<i>");
+
+  if(! $do_nofid) { 
+    printf("# %-*s %s\n", $width, "\"CDS #<i>: fid<j>\":",  "fractional identity between exon #<j> of CDS #<i> and reference genome");
+  }
+
+  if(! $do_nofid) { 
+    printf("# %-*s %s\n", $width, "\"CDS #<i>: fid<j>\":",  "fractional identity between exon #<j> of CDS #<i> and reference genome");
+  }
+
+  if(! $do_nomdlb) { 
+    printf("# %-*s %s\n", $width, "\"CDS #<i>: md<j>\":",  "annotation indicating if alignment to reference extends to 5' and 3' end of reference exon.");
+    printf("# %-*s %s\n", $width, "",                      "first character pertains to 5' end and second character pertains to 3' end.");
+    printf("# %-*s %s\n", $width, "",                      "possible values for each of the two characters:");
+    printf("# %-*s %s\n", $width, "",                      "  \".\":   alignment extends to boundary of reference");
+    printf("# %-*s %s\n", $width, "",                      "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)");
+    printf("# %-*s %s\n", $width, "",                      "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference");
+  }
+
+  printf("# %-*s %s\n", $width, "\"CDS #<i>: length\":",   "length of CDS #<i> (all exons summed)");
+
+  if(! $do_noss3) { 
+    print("#\n");
+    printf("# %-*s %s\n", $width, "\"CDS #<i>: SS3\":",   "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3");
+    printf("# %-*s %s\n", $width, "",                      "first  character pertains to whether predicted CDS has a valid start codon.");
+    printf("# %-*s %s\n", $width, "",                      "second character pertains to whether predicted CDS has a valid stop  codon.");
+    printf("# %-*s %s\n", $width, "",                      "third  character pertains to whether predicted CDS has a length which is a multiple of three.");
+    printf("# %-*s %s\n", $width, "",                      "possible values in each position:");
+    printf("# %-*s %s\n", $width, "",                      "  \".\": predicted CDS has   valid start/stop or is     a length that is a multiple of 3");
+    printf("# %-*s %s\n", $width, "",                      "  \"!\": predicted CDS has invalid start/stop or is not a length that is a multiple of 3");
+  }
+
+  if(! $do_nostop) { 
+    printf("# %-*s %s\n", $width, "\"CDS #<i>: stp\":",   "the predicted stop codon for this CDS");
+  }
+
+  printf("# %-*s %s\n", $width, "\"CDS #<i>: PF\":",      "annotation indicating if this exon PASSED ('P') or FAILED ('F')");
+  printf("# %-*s %s\n", $width, "",                       "an exon PASSES ('P') if and only if it has a valid start codon, stop codon");
+  printf("# %-*s %s\n", $width, "",                       "  is a length that is a multiple of 3, and has an alignment to the reference");
+  printf("# %-*s %s\n", $width, "",                       "  that extends to the 5' and 3' boundary of the reference annotation,");
+  printf("# %-*s %s\n", $width, "",                       "  if any of these conditions is not met, the exon FAILS ('F').");
+
+  print("#\n");
+  printf("# %-*s %s\n", $width, "\"totlen\":",            "total length (nt) for accession (repeated for convenience"); 
+  printf("# %-*s %s\n", $width, "\"result\":",            "\"PASS\" or \"FAIL\". \"PASS\" if and only if all exons for this");
+  printf("# %-*s %s\n", $width, "",                       "PASS ('P') as indicating in the \"PF\" columns");
+  
+  if(! $do_noexist) { 
+    printf("#\n");
+    printf("# %-*s %s\n", $width, "\"existing annotation: cds\"",   "number of CDS in the existing NCBI annotation for this accession");
+    printf("# %-*s %s\n", $width, "\"existing annotation: exons\"", "total number of exons in the existing NCBI annotation for this accession");
+    printf("# %-*s %s\n", $width, "\"existing annotation: match\"", "number of exons in existing NCBI annotation for which existing and predicted annotation agree exactly");
+  }
+
+  if(! $do_noolap) { 
+    printf("#\n");
+    printf("# %-*s %s\n", $width, "\"overlaps\?\"",   "text describing which (if any) of the predicted exons overlap with each other");
+    printf("# %-*s %s\n", $width, "",                 "first digit:       number of overlaps between any two exons");
+    printf("# %-*s %s\n", $width, "",                 "remainder of line: text explaining which exons overlap");
+    printf("# %-*s %s]\n", $width, "",                 "  e.g.: \"3.2 and 4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand");
+  }  
+
+  return; 
 }
