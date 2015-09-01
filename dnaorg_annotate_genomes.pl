@@ -2425,10 +2425,11 @@ sub printColumnHeaderExplanations {
   }
 
   printf("# %-*s %s\n", $width, "\"CDS #<i>: PF\":",      "annotation indicating if this exon PASSED ('P') or FAILED ('F')");
-  printf("# %-*s %s\n", $width, "",                       "an exon PASSES ('P') if and only if it has a valid start codon, stop codon");
-  printf("# %-*s %s\n", $width, "",                       "  is a length that is a multiple of 3, and has an alignment to the reference");
-  printf("# %-*s %s\n", $width, "",                       "  that extends to the 5' and 3' boundary of the reference annotation.");
-  printf("# %-*s %s\n", $width, "",                       "  If >= 1 of these conditions is not met then the exon FAILS ('F').");
+  printf("# %-*s %s\n", $width, "",                       "  a CDS PASSES ('P') if and only if ALL of its exons have a valid start codon,");
+  printf("# %-*s %s\n", $width, "",                       "  a valid stop codon, are lengths that are a multiple of 3, and have an");
+  printf("# %-*s %s\n", $width, "",                       "  alignment to the corresponding reference exon that extends to the 5'");
+  printf("# %-*s %s\n", $width, "",                       "  and 3' boundary of the reference annotation.");
+  printf("# %-*s %s\n", $width, "",                       "  If >= 1 of these conditions is not met then the CDS FAILS ('F').");
 
   print("#\n");
   printf("# %-*s %s\n", $width, "\"totlen\":",            "total length (nt) for accession (repeated for convenience)"); 
