@@ -38,7 +38,7 @@ $usage .= "  -noss3     : do not output results of start codon, stop codon and m
 $usage .= "  -noolap    : do not output overlap information\n";
 $usage .= "  -noexp     : do not output explanation of column headings\n";
 $usage .= "\n OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:\n";
-$usage .= "  -inf     : use Infernal 1.1 for predicting annotations, default: use HMMER3's nhmmscan\n";
+$usage .= "  -hmmer     : use HMMER for predicting annotations, default: use Infernal\n";
 $usage .= "\n OPTIONS SPECIFIC TO HMMER3:\n";
 $usage .= "  -hmmenv  : use HMM envelope boundaries for predicted annotations, default: use window boundaries\n";
 $usage .= "\n OPTIONS SPECIFIC TO INFERNAL:\n";
@@ -86,7 +86,7 @@ my $do_noss3     = 0; # set to '1' if -noss3   or -c enabled, do not output SS3 
 my $do_noolap    = 0; # set to '1' if -noolap  or -c enabled, do not output information on overlapping CDS/exons
 my $do_noexp     = 0; # set to '1' if -noexp   or -c enabled, do not output explanatory information about column headings
 # options for controlling homology search method
-my $do_inf       = 0; # set to '1' if -inf1p1     enabled, use Infernal 1.1, not HMMER3's nhmmscan
+my $do_hmmer     = 0; # set to '1' if -hmmer      enabled, use HMMER3's nhmmscan, not Infernal 1.1
 # options specific to HMMER3
 my $do_hmmenv    = 0; # set to '1' if -hmmenv     enabled, use HMM envelope boundaries as predicted annotations, else use window boundaries
 # options specific to Infernal
@@ -109,7 +109,7 @@ my $do_ccluster  = 0; # set to '1' if -ccluster   enabled, submit calibration to
             "noss3"     => \$do_noss3,
             "noolap"    => \$do_noolap,
             "noexp"     => \$do_noexp,
-            "inf"       => \$do_inf,
+            "hmmer"     => \$do_hmmer,
             "hmmenv"    => \$do_hmmenv,
             "iglocal"   => \$do_iglocal,
             "cslow"     => \$do_cslow, 
@@ -187,9 +187,9 @@ if($do_noexp) {
   $opts_used_short .= "-noexp";
   $opts_used_long  .= "# option:  do not output information on column headings [-noexp]\n";
 }
-if($do_inf) { 
-  $opts_used_short .= "-inf";
-  $opts_used_long  .= "# option:  using Infernal 1.1 for predicting annotation [-inf]\n";
+if($do_hmmer) { 
+  $opts_used_short .= "-hmmer";
+  $opts_used_long  .= "# option:  using HMMER3 for predicting annotation [-hmmer]\n";
 }
 if($do_hmmenv) { 
   $opts_used_short .= "-hmmenv ";
@@ -209,19 +209,19 @@ if($do_ccluster) {
 }
 # 
 # check for incompatible option values/combinations:
-if($do_inf && $do_hmmenv) { 
-  die "ERROR -hmmenv is incompatible with --inf"; 
+if((! $do_hmmer) && $do_hmmenv) { 
+  die "ERROR -hmmenv requires -hmmer"; 
 }
 
 # check that options that must occur in combination, do
 if($do_ccluster && (! $do_onlybuild)) { 
   die "ERROR -ccluster must be used in combination with -onlybuild"; 
 }
-if($do_ccluster && (! $do_inf)) { 
-  die "ERROR -ccluster must be used in combination with -inf"; 
+if($do_ccluster && $do_hmmer) { 
+  die "ERROR -ccluster is incompatible with -hmmer"; 
 }
-if($do_cslow && (! $do_inf)) { 
-  die "ERROR -cslow must be used in combination with -inf"; 
+if($do_cslow && $do_hmmer) { 
+  die "ERROR -cslow is incompatible with -hmmer"; 
 }
 
 # check that input files related to options actually exist
@@ -479,7 +479,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
     runCommand($cmd, 0);
     
     # annotate the stockholm file with a blank SS and with a name
-    my $do_blank_ss = ($do_inf); # add a blank SS_cons line if we're using Infernal
+    my $do_blank_ss = (! $do_hmmer); # add a blank SS_cons line if we're using Infernal
     my $cur_named_stkfile = $cur_out_root . ".named.stk";
     my $mdllen = annotateStockholmAlignment($cur_name_root, $do_blank_ss, $cur_stkfile, $cur_named_stkfile);
 
@@ -518,7 +518,7 @@ if(defined $in_model_db) {
   $model_db = $in_model_db;
 }
 else { 
-  if($do_inf) { 
+  if(! $do_hmmer) { 
     createCmDb($cmbuild, $cmcalibrate, $cmpress, $do_cslow, $do_ccluster, $all_stk_file, $out_root . ".ref");
     if($do_onlybuild) { 
       printf("#\n# Model construction %s. Exiting.\n", ($do_ccluster) ? "job submitted." : "complete");
@@ -551,21 +551,21 @@ my %p_score_HH    = (); # bit score of hits
 my %p_hangover_HH = (); # "<a>:<b>" where <a> is number of 5' model positions not in the alignment
                         # and <b> is number of 3' model positions not in the alignment
 my %p_fid2ref_HH  = (); # fractional identity to reference 
+my %p_refdel_HHA  = (); # array of reference positions that are deleted for the alignment of this sequence
+my %p_refins_HHA  = (); # array of strings ("<rfpos>:<count>") reference positions that are deleted for the alignment of this sequence
 
-if($do_inf) { 
-  runCmscan($cmscan, $do_iglocal, $model_db, $gnm_fasta_file, $tblout, $stdout);
-  parseCmscanTblout($tblout, \%totlen_H, \%mdllen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
-  alignHits($cmalign, $cmfetch, $model_db, $sqfile, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, $out_root);
-}
-else { 
+if($do_hmmer) { 
   runNhmmscan($nhmmscan, $model_db, $gnm_fasta_file, $tblout, $stdout);
   parseNhmmscanTblout($tblout, $do_hmmenv, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
-  alignHits($hmmalign, $hmmfetch, $model_db, $sqfile, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, $out_root);
+  alignHits($hmmalign, $hmmfetch, $model_db, $sqfile, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
 }
-
+else { 
+  runCmscan($cmscan, $do_iglocal, $model_db, $gnm_fasta_file, $tblout, $stdout);
+  parseCmscanTblout($tblout, \%totlen_H, \%mdllen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
+  alignHits($cmalign, $cmfetch, $model_db, $sqfile, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
+}
 printf("#\n");
 printf("#\n");
-
 
 #######################################################################
 # Pass through all accessions, and output predicted annotation for each
@@ -862,16 +862,24 @@ for(my $a = 0; $a < $naccn; $a++) {
   my $tot_fid = 0.; # all fractional identities added together
   my $n_fid = 0;    # number of fractional identities
 
+  # arrays of data structures that pertain to all exons of current CDS
+  my @cur_model_A = (); # array of all model names of exons in current CDS
+  my $cur_nexons  = 0;  # number of exons in current CDS
+
   for(my $h = 0; $h < $nhmm; $h++) { 
-    my $model  = $model_A[$h];
-    my $cds_i  = $hmm2cds_map_A[$h];
-    my $exon_i = $hmm2exon_map_A[$h];
+    my $model   = $model_A[$h];
+    my $cds_i   = $hmm2cds_map_A[$h];
+    my $exon_i  = $hmm2exon_map_A[$h];
 
     if($hmm_is_first_A[$h]) {
       # reset these
       $hit_length = 0; 
       $at_least_one_fail = 0;
+      @cur_model_A = ();
+      $cur_nexons = 0;
     }
+    push(@cur_model_A, $model);
+    $cur_nexons++;
 
     if($predicted_string ne "") { $predicted_string .= "  "; }
     if(exists $p_start_HH{$model}{$seq_accn}) { 
@@ -1021,6 +1029,12 @@ for(my $a = 0; $a < $naccn; $a++) {
 
   print "\n";
 }
+
+my $gap_file = $out_root . ".gap.txt";
+my $gap_FH = undef;
+open($gap_FH, ">" . $gap_file) || die 'ERROR unable to open $gap_file for writing';
+outputGapInfo($gap_FH, \@model_A, \@seq_accn_A, \%mdllen_H, \@hmm2cds_map_A, \%p_refdel_HHA, \%p_refins_HHA);
+close($gap_FH);
 
 if(! $do_noexp) { 
   printColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
@@ -2144,29 +2158,37 @@ sub monocharacterString {
 #             align all those sequences to the appropriate 
 #             model to create a multiple alignment.
 #
-# Args:       $align:        path to hmmalign or cmalign executable
-#             $fetch:        path to hmmfetch or cmfetch executable
-#             $model_db:     model database file to fetch the models from
-#             $sqfile:       Bio::Easel::SqFile object, open sequence
-#                            file containing $seqname;
-#             $mdl_order_AR: ref to array of model names in order
-#             $seq_order_AR: ref to array of sequence names in order
-#             $seqlen_HR:    ref to hash of total lengths
-#             $start_HHR:    ref to 2D hash of start values, pre-filled
-#             $stop_HHR:     ref to 2D hash of stop values, pre-filled
-#             $strand_HHR:   ref to 2D hash of strand values, pre-filled
-#             $fid2ref_HHR:  ref to 2D hash of fractional identity values 
-#                            of aligned sequences to the reference, FILLED HERE
-#             $out_aln_root: root name for output files
+# Args:       $align:         path to hmmalign or cmalign executable
+#             $fetch:         path to hmmfetch or cmfetch executable
+#             $model_db:      model database file to fetch the models from
+#             $sqfile:        Bio::Easel::SqFile object, open sequence
+#                             file containing $seqname;
+#             $mdl_order_AR:  ref to array of model names in order
+#             $seq_order_AR:  ref to array of sequence names in order
+#             $seqlen_HR:     ref to hash of total lengths
+#             $start_HHR:     ref to 2D hash of start values, pre-filled
+#             $stop_HHR:      ref to 2D hash of stop values, pre-filled
+#             $strand_HHR:    ref to 2D hash of strand values, pre-filled
+#             $fid2ref_HHR:   ref to 2D hash of fractional identity values 
+#                             of aligned sequences to the reference, FILLED HERE
+#             $refdel_HHAR:   ref to 2D hash where value is an array, each element is
+#                             an rf position that is deleted in the alignment of the $seq_accn
+#                             FILLED HERE
+#             $refins_HHAR:   ref to 2D hash where value is an array, each element is
+#                             a string <rfpos>:<ct> where <rfpos> is a rf pos in the alignment
+#                             after which $seq_accn has an insert and <ct> is the number of inserted
+#                             positions.
+#                             FILLED HERE
+#             $out_aln_root:  root name for output files
 # 
 # Returns:    void
 #
 sub alignHits {
-  my $sub_name = "hmmalignHits";
-  my $nargs_exp = 12;
+  my $sub_name = "alignHits";
+  my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($align, $fetch, $model_db, $sqfile, $mdl_order_AR, $seq_order_AR, $seqlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $fid2ref_HHR, $out_aln_root) = @_;
+  my ($align, $fetch, $model_db, $sqfile, $mdl_order_AR, $seq_order_AR, $seqlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $fid2ref_HHR, $refdel_HHAR, $refins_HHAR, $out_aln_root) = @_;
 
   foreach my $mdl (@{$mdl_order_AR}) { 
     my @fetch_AA = ();
@@ -2208,18 +2230,60 @@ sub alignHits {
         fileLocation => $cur_stkfile,
                                      });  
 
+      # determine which positions are RF positions
+      my $rfseq = $msa->get_rf();
+      my @rfseq_A = split("", $rfseq);
+      my $alen  = $msa->alen();
+      my @i_am_rfpos_A = (); # 0..$apos..$alen-1: '1' if RF is a nongap at position $apos+1, else '0'
+      for(my $apos = 0; $apos < $alen; $apos++) { 
+        $i_am_rfpos_A[$apos] = ($rfseq_A[$apos] eq ".") ? 0 : 1;
+      }          
+
       my $i = 0; # this will remain '0', which is the reference sequence
       my $j = 0; # we'll increment this from 0..$nseq-1
       foreach my $seq (@{$seq_order_AR}) { 
         if(exists $start_HHR->{$mdl}{$seq}) { 
           $fid2ref_HHR->{$mdl}{$seq} = $msa->pairwise_identity($i, $j);
           # printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
-          $j++;
+
+          # determine the RF positions that are gaps in this sequence
+          # and the positions of the inserted residues in this sequence
+          # and store them
+          my $aseqstring  = $msa->get_sqstring_aligned($j);
+          my @aseq_A = split("", $aseqstring);
+          my $rfpos = 0;
+          for(my $apos = 0; $apos < $alen; $apos++) { 
+            if($i_am_rfpos_A[$apos]) { 
+              $rfpos++; 
+            }
+            if($aseq_A[$apos] =~ m/[\.\-]/) { # a gap in the sequence
+              if($i_am_rfpos_A[$apos]) { # not a gap in the RF sequence
+                # deletion (gap) relative to the reference sequence
+                if(! exists $refdel_HHAR->{$mdl}{$seq}) { 
+                  @{$refdel_HHAR->{$mdl}{$seq}} = (); 
+                }
+                updateGapArray(\@{$refdel_HHAR->{$mdl}{$seq}}, $rfpos, 1); # 1 informs the subroutine that this is a delete array
+              }
+            }
+            else { # nongap in the sequence
+              if(! $i_am_rfpos_A[$apos]) { # gap in the RF sequence
+                # insertion in sequence relative to the reference sequence
+                if(! exists $refins_HHAR->{$mdl}{$seq}) { 
+                  @{$refins_HHAR->{$mdl}{$seq}} = (); 
+                }
+                updateGapArray(\@{$refins_HHAR->{$mdl}{$seq}}, $rfpos, 0); # 1 informs the subroutine that this is a delete array
+              }
+            }
+          }
+          $j++; # increment sequence index in msa
+          # printf("printing insert info for $mdl $seq\n");
+          # debugPrintGapArray(\@{$refins_HHAR->{$mdl}{$seq}});
+          # printf("printing delete info for $mdl $seq\n");
+          # debugPrintGapArray(\@{$refdel_HHAR->{$mdl}{$seq}});
         }
       }
     }
   }
-
   return;
 }
 
@@ -2394,8 +2458,8 @@ sub printColumnHeaderExplanations {
   }
 
   printf("#\n");
-  printf("# %-*s %s\n", $width, "\"CDS #<i>: start<j>\":", "start position of exon #<j> of CDS #<i>");
-  printf("# %-*s %s\n", $width, "\"CDS #<i>: stop<j>\":",  "stop  position of exon #<j> of CDS #<i>");
+  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: start<j>\":", "start position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing annotation");
+  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: stop<j>\":",  "stop  position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing annotation");
 
   if(! $do_nofid) { 
     printf("# %-*s %s\n", $width, "\"CDS #<i>: fid<j>\":",  "fractional identity between exon #<j> of CDS #<i> and reference genome");
@@ -2461,3 +2525,291 @@ sub printColumnHeaderExplanations {
 
   return; 
 }
+
+# Subroutine: updateGapArray()
+#
+# Synopsis:   Given an rfpos that we have a gap in, update a 
+#             array that stores all the gap information for a given
+#             sequence. This can be called for an array that holds
+#             gaps in the reference (deletions, refdel* data 
+#             structures) or in the other sequence (insertions,
+#             refins* data structures).
+#
+# Args:       $AR:            reference to the array to update
+#             $rfpos:         reference position the gap occurs at or after
+#             $is_delete:     '1' if we're updating a delete array, else we're
+#                             updating an insert array (we do the update slightly
+#                             differently for each type)
+#
+# Returns:    void
+#
+sub updateGapArray {
+  my $sub_name = "updateGapArray";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($AR, $rfpos, $is_delete) = @_;
+
+  my $nel = scalar(@{$AR});
+  my $same_as_prv = 0;
+  if($nel > 0) { 
+    # need to check latest element to see if it pertains to the same rfpos
+    my ($prv_rfpos, $prv_cnt) = split(":", $AR->[$nel-1]);
+    # printf("\tsplit %s into %s and %d\n", $AR->[$nel-1], $prv_rfpos, $prv_cnt);
+    if((  $is_delete) && (($prv_rfpos + $prv_cnt) == $rfpos) ||
+       (! $is_delete) && ($prv_rfpos == $rfpos)) { 
+      # this is not the first insert/delete at this position, update previous value
+      $same_as_prv = 1;
+      $AR->[($nel-1)] = $prv_rfpos . ":" . ($prv_cnt+1);
+    }
+  }
+  if(! $same_as_prv) { 
+    # either this is the first insert/delete or not the same as the previous one
+    push(@{$AR}, $rfpos . ":" . "1");
+  }
+
+  return;
+}
+
+# Subroutine: debugPrintGapArray()
+#
+# Synopsis:   Print a gap array, for debugging purposes.
+#
+# Args:       $AR:            reference to the array to update
+#             $rfpos:         reference position the gap occurs at or after
+#             $is_delete:     '1' if we're updating a delete array, else we're
+#                             updating an insert array (we do the update slightly
+#                             differently for each type)
+#
+# Returns:    void
+#
+sub debugPrintGapArray {
+  my $sub_name = "debugPrintGapArray";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($AR) = @_;
+
+  if(defined $AR) { 
+    my $nel = scalar(@{$AR});
+    if($nel > 0) { 
+      for(my $zz = 0; $zz < scalar(@{$AR}); $zz++) { 
+        printf("$AR->[$zz]\n");
+      }
+    }
+  }
+  return;
+}
+
+# Subroutine: outputGapInfo()
+#
+# Synopsis:   Output gap information for all predicted CDS in a single sequence 
+#             to a file handle.
+#
+# Args:       $FH:             output file handle to print to
+#             $mdl_AR:         reference to array of all model names
+#             $seq_AR:         reference to array of all sequence names
+#             $mdllen_HR:      ref to hash of model lengths
+#             $hmm2cds_map_AR: ref to array that maps each hmm to a CDS
+#             $refdel_HHAR:    ref to 2D hash where value is an array, each element is
+#                              an rf position that is deleted in the alignment of the $seq_accn
+#                              pre-filled
+#             $refins_HHAR:    ref to 2D hash where value is an array, each element is
+#                              a string <rfpos>:<ct> where <rfpos> is a rf pos in the alignment
+#                              after which $seq_accn has an insert and <ct> is the number of inserted
+#                              positions.
+#                              pre-filled
+#
+# Returns:    void
+#
+sub outputGapInfo {
+  my $sub_name = "outputGapInfo";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($FH, $mdl_AR, $seq_AR, $mdllen_HR, $hmm2cds_map_AR, $refdel_HHAR, $refins_HHAR) = @_;
+
+  my @str2print_AA = ();
+  my @width_A = ();
+  $width_A[0] = length("CDS#1");
+  my $width_seq = length("#accession");
+  my $cds_idx = 0;
+  my @cand_seq_error_A = ();
+
+  for(my $i = 0; $i < scalar(@{$seq_AR}); $i++) { 
+    my $seq = $seq_AR->[$i];
+    my $seq2print = $seq;
+    $seq2print =~ s/\:.+$//;
+    if(length($seq2print) > $width_seq) { 
+      $width_seq = length($seq2print);
+    }
+    @{$str2print_AA[$i]} = ();
+    my $offset = 0;
+    my $ins_idx = 0;
+    my $del_idx = 0;
+    my $next_ins_str   = undef;
+    my $next_del_str   = undef;
+    my $next_ins_rfpos = undef;
+    my $next_del_rfpos = undef;
+    my $next_ins_count = undef;
+    my $next_del_count = undef;
+    my $nhmm = scalar(@{$hmm2cds_map_AR});
+    my $str2print = "";
+    my $total_gap_length = 0;
+    my $cand_seq_error = undef;
+    $cds_idx = 0;
+
+    for(my $h = 0; $h < $nhmm; $h++) { 
+      my $mdl = $mdl_AR->[$h];
+      my $ndel = (exists $refdel_HHAR->{$mdl}{$seq}) ? scalar(@{$refdel_HHAR->{$mdl}{$seq}}) : 0;
+      my $nins = (exists $refins_HHAR->{$mdl}{$seq}) ? scalar(@{$refins_HHAR->{$mdl}{$seq}}) : 0;
+      my $hmm_is_final = (($h == ($nhmm-1)) || ($hmm2cds_map_AR->[($h+1)] != $hmm2cds_map_AR->[$h])) ? 1 : 0; 
+      my $hmm_is_first = (($h == 0)         || ($hmm2cds_map_AR->[($h-1)] != $hmm2cds_map_AR->[$h])) ? 1 : 0; 
+      $ins_idx = 0;
+      $del_idx = 0;
+      $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
+      $next_ins_str = ($ins_idx < $nins) ? $refins_HHAR->{$mdl}{$seq}[$ins_idx] : undef;
+      
+      while(defined $next_ins_str || defined $next_del_str) { 
+        # printf("next_ins_str: %s\n", (defined $next_ins_str) ? $next_ins_str : "undefined");
+        # printf("next_del_str: %s\n", (defined $next_del_str) ? $next_del_str : "undefined");
+        ($next_del_rfpos, $next_del_count) = (defined $next_del_str) ? split(":", $refdel_HHAR->{$mdl}{$seq}[$del_idx]) : (undef, undef);
+        ($next_ins_rfpos, $next_ins_count) = (defined $next_ins_str) ? split(":", $refins_HHAR->{$mdl}{$seq}[$ins_idx]) : (undef, undef);
+        if(defined $next_del_rfpos) { $next_del_rfpos += $offset; }
+        if(defined $next_ins_rfpos) { $next_ins_rfpos += $offset; }
+        
+        if($str2print ne "") { $str2print .= ","; }
+        if(defined $next_ins_str && defined $next_del_str) { 
+          if($next_del_rfpos < $next_ins_rfpos) { # delete comes first, print it
+            $str2print .= "D" . $next_del_rfpos . ":" . $next_del_count;
+            $total_gap_length -= $next_del_count;
+            if($next_del_count != 3) { 
+              if(! defined $cand_seq_error) { 
+                $cand_seq_error = "D" . $next_del_rfpos . ":" . $next_del_count;
+              }
+              else { # more than one candidate sequencing error, not sure what to do, so do nothing
+                $cand_seq_error = undef;
+              }
+            }
+            $del_idx++;
+            $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
+          }
+          elsif($next_ins_rfpos < $next_del_rfpos) { # insert comes first, print it
+            $str2print .= "I" . $next_ins_rfpos . ":" . $next_ins_count;
+            $total_gap_length += $next_ins_count;
+            if($next_ins_count != 3) { 
+              if(! defined $cand_seq_error) { 
+                $cand_seq_error = "I" . $next_ins_rfpos . ":" . $next_ins_count;
+              }
+              else { # more than one candidate sequencing error, not sure what to do, so do nothing
+                $cand_seq_error = undef;
+              }
+            }
+            $ins_idx++;
+            $next_ins_str = ($ins_idx < $nins) ? $refins_HHAR->{$mdl}{$seq}[$ins_idx] : undef;
+          }
+          else { # $next_del_rfpos == $next_ins_rfpos, shouldn't happen
+            die "ERROR for model $mdl seq $seq, we have an insert and a delete at position $next_ins_rfpos";
+          }
+        }
+        elsif(defined $next_del_str) { # $next_ins is undefined
+          $str2print .= "D" . $next_del_rfpos . ":" . $next_del_count;
+          $total_gap_length -= $next_del_count;
+          if($next_del_count != 3) { 
+            if(! defined $cand_seq_error) { 
+              $cand_seq_error = "D" . $next_del_rfpos . ":" . $next_del_count;
+            }
+            else { # more than one candidate sequencing error, not sure what to do, so do nothing
+              $cand_seq_error = undef;
+            }
+          }
+          $del_idx++;
+          $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
+        }
+        elsif(defined $next_ins_str) { # $next_del is undefined
+          $str2print .= "I" . $next_ins_rfpos . ":" . $next_ins_count;
+          $total_gap_length += $next_ins_count;
+          if($next_ins_count != 3) { 
+            if(! defined $cand_seq_error) { 
+              $cand_seq_error = "I" . $next_ins_rfpos . ":" . $next_ins_count;
+            }
+            else { # more than one candidate sequencing error, not sure what to do, so do nothing
+              $cand_seq_error = undef;
+            }
+          }
+          $ins_idx++;
+          $next_ins_str = ($ins_idx < $nins) ? $refins_HHAR->{$mdl}{$seq}[$ins_idx] : undef;
+        }        
+      } # end of 'while(defined $next_ins_str || defined $next_del_str) { 
+      
+      $offset += $mdllen_HR->{$mdl};
+      
+      if($hmm_is_final) {
+        if($str2print eq "") { $str2print = "NONE"; }
+        push(@{$str2print_AA[$i]}, $str2print);
+        # printf("pushing str2print: $str2print to AA[$i]\n");
+        if(length($str2print) > $width_A[$cds_idx]) { 
+          $width_A[$cds_idx] = length($str2print);
+        }
+        $str2print = "";
+        $offset = 0;
+        $cds_idx++;
+        $width_A[$cds_idx] = length("CDS#" . $cds_idx);
+        $total_gap_length = 0;
+      }
+    }
+    push(@cand_seq_error_A, $cand_seq_error);
+    $cand_seq_error = undef;
+  }
+
+  my $ncds = $cds_idx;
+
+  # output the column headers:
+  printf $FH ("%-*s  ", $width_seq, "#accession");
+  for(my $c = 0; $c < $ncds; $c++) { 
+    printf $FH ("%-*s  ", $width_A[$c], "CDS#" . ($c+1));
+  }
+  printf $FH ("possible-sequencing-error");
+  print $FH "\n";
+
+  printf $FH ("%-*s  ", $width_seq, monocharacterString($width_seq, "-"));
+  for(my $c = 0; $c < $ncds; $c++) { 
+    printf $FH ("%-*s  ", $width_A[$c], monocharacterString($width_A[$c], "-"));
+  }
+  printf $FH ("-------------------------");
+  print $FH "\n";
+
+  # output all the rows, now that we know how wide each field can be
+  for(my $i = 0; $i < scalar(@{$seq_AR}); $i++) { 
+    my $seq2print = $seq_AR->[$i];
+    $seq2print =~ s/\:.+$//;
+    printf $FH ("%-*s  ", $width_seq, $seq2print);
+    for(my $c = 0; $c < $ncds; $c++) { 
+      printf $FH ("%-*s  ", $width_A[$c], $str2print_AA[$i][$c]);
+    }
+    printf $FH ("%s", (defined $cand_seq_error_A[$i]) ? $cand_seq_error_A[$i] : "-");
+    print $FH ("\n");
+  }
+
+  # output explanatory text
+  print $FH "#\n";
+  print $FH ("# Explanation of information in this file:\n");
+  print $FH ("# This file includes information on all gaps that exist between all pairwise alignments of\n");
+  print $FH ("# the reference CDS and the predicted homologous CDS for each sequence. Each column other\n");
+  print $FH ("# than the first contains either \"NONE\" or >= 1 token. \"NONE\" indicates there are zero\n");
+  print $FH ("# gaps in the alignment of the predicted CDS to the corresponding reference CDS. Each token\n");
+  print $FH ("# describes a gap of length >= 1 nucleotide.\n");
+  print $FH ("# Tokens are in the form: <char><position><length>\n");
+  print $FH ("#   <char>     is 'I' for an insertion relative to the reference CDS (gap in reference sequence)\n");
+  print $FH ("#              or 'D' for a  deletion  relative to the reference CDS (gap in current sequence)\n");
+  print $FH ("#   <position> is the nucleotide position of the gap in reference coordinates.\n");
+  print $FH ("#              For insertions this is the reference position after which the insertion occurs.\n");
+  print $FH ("#              For deletions  this is the first reference position for this deletion.\n");
+  print $FH ("#   <length>   length of the gap in nucleotides.\n");
+  print $FH ("#              For insertions this is the number of nucleotides inserted relative to the reference\n");
+  print $FH ("#              For deletions  this is the number of reference positions deleted.\n");
+  print $FH "#\n";
+
+  return;
+}
+
