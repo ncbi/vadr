@@ -1030,11 +1030,20 @@ for(my $a = 0; $a < $naccn; $a++) {
   print "\n";
 }
 
+# output the gap info files
+# first, the gap file that lists all gaps, and all gaps that are not multiples of 3
 my $gap_file = $out_root . ".gap.txt";
 my $gap_FH = undef;
 open($gap_FH, ">" . $gap_file) || die 'ERROR unable to open $gap_file for writing';
-outputGapInfo($gap_FH, \@model_A, \@seq_accn_A, \%mdllen_H, \@hmm2cds_map_A, \%p_refdel_HHA, \%p_refins_HHA);
+outputGapInfo($gap_FH, 0, \@model_A, \@seq_accn_A, \%mdllen_H, \@hmm2cds_map_A, \%p_refdel_HHA, \%p_refins_HHA);
 close($gap_FH);
+
+# second, the gap file that lists all gaps, and all gaps that are uniquely responsible for the net number of gaps (if any)
+my $unqgap_file = $out_root . ".unqgap.txt";
+my $unqgap_FH = undef;
+open($unqgap_FH, ">" . $unqgap_file) || die 'ERROR unable to open $unqgap_file for writing';
+outputGapInfo($unqgap_FH, 1, \@model_A, \@seq_accn_A, \%mdllen_H, \@hmm2cds_map_A, \%p_refdel_HHA, \%p_refins_HHA);
+close($unqgap_FH);
 
 if(! $do_noexp) { 
   printColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
@@ -2607,6 +2616,10 @@ sub debugPrintGapArray {
 #             to a file handle.
 #
 # Args:       $FH:             output file handle to print to
+#             $do_unq:         '1' to print second set of columns with stats on 
+#                              gaps that are uniquely responsible for net number of gaps.
+#                              '0' to print second set of columsn with stats on 
+#                              all gaps which are not multiples of 3.
 #             $mdl_AR:         reference to array of all model names
 #             $seq_AR:         reference to array of all sequence names
 #             $mdllen_HR:      ref to hash of model lengths
@@ -2624,17 +2637,52 @@ sub debugPrintGapArray {
 #
 sub outputGapInfo {
   my $sub_name = "outputGapInfo";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+ 
+  my ($FH, $do_unq, $mdl_AR, $seq_AR, $mdllen_HR, $hmm2cds_map_AR, $refdel_HHAR, $refins_HHAR) = @_;
 
-  my ($FH, $mdl_AR, $seq_AR, $mdllen_HR, $hmm2cds_map_AR, $refdel_HHAR, $refins_HHAR) = @_;
+  my @gapstr_AA = ();           # [0..$nseq-1][0..$ncds-1]: string describing all gaps for this sequence and this CDS
+  my @not3_gapstr_AA = ();      # [0..$nseq-1][0..$ncds-1]: string describing gaps not divisible by 3 for this sequence and this CDS
+  my @w_gapstr_A = ();          # [0..$i..$ncds-1] max width of $gapstr_AA[$0..nseq-1][$i] for cds $i over all sequences
+  my @w_not3_gapstr_A = ();     # [0..$i..$ncds-1] max width of $not3_gapstr_AA[$0..nseq-1][$i] for cds $i over all sequences
 
-  my @str2print_AA = ();
-  my @width_A = ();
-  $width_A[0] = length("CDS#1");
+  my @tot_gap_length_AA = ();        # [0..$nseq-1][0..$ncds-1]: total number of gap positions for this sequence and this CDS
+  my @not3_tot_gap_length_AA = ();   # [0..$nseq-1][0..$ncds-1]: total number of gaps not divisible by 3 for this sequence and this CDS
+  my @w_tot_gap_length_A = ();       # [0..$i..$ncds-1] max width of $tot_gap_length_AA[$0..nseq-1][$i] for cds $i over all sequences
+  my @w_not3_tot_gap_length_A = ();  # [0..$i..$ncds-1] max width of $not3_tot_gap_length_AA[$0..nseq-1][$i] for cds $i over all sequences
+
+  my @net_gap_length_AA = ();        # [0..$nseq-1][0..$ncds-1]: net number of gap positions for this sequence and this CDS
+  my @not3_net_gap_length_AA = ();   # [0..$nseq-1][0..$ncds-1]: net number of gap positions not divisible by 3 for this sequence and this CDS
+  my @w_net_gap_length_A = ();       # [0..$i..$ncds-1] max width of $net_gap_length_AA[$0..nseq-1][$i] for cds $i over all sequences
+  my @w_not3_net_gap_length_A = ();  # [0..$i..$ncds-1] max width of $not3_net_gap_length_AA[$0..nseq-1][$i] for cds $i over all sequences
+
+  my @cds_gapstr_AH      = (); # [0..$i..$ncds-1]: hash w/key: gapstring for a single position, value: number of times that gapstring occurs in any of @gapstr_AA for CDS $i
+  my @not3_cds_gapstr_AH = (); # [0..$i..$ncds-1]: hash w/key: gapstring for a single position, value: number of times that gapstring occurs in any of @not3_gapstr_AA for CDS $i
+  
+  my $ch_gapstr           = "string";
+  my $ch_not3_gapstr      = ($do_unq) ? "string       " : "string    ";
+
+  my $ch_tot_gap_length      = "tot";
+  my $ch_not3_tot_gap_length = "tot";
+
+  my $ch_net_gap_length      = "net";
+  my $ch_not3_net_gap_length = "net";
+
+  $w_gapstr_A[0]           = length($ch_gapstr);
+  $w_not3_gapstr_A[0]      = length($ch_not3_gapstr);
+
+  $w_tot_gap_length_A[0]      = length($ch_tot_gap_length);
+  $w_not3_tot_gap_length_A[0] = length($ch_not3_tot_gap_length);
+
+  $w_net_gap_length_A[0]      = length($ch_net_gap_length);
+  $w_not3_net_gap_length_A[0] = length($ch_not3_net_gap_length);
+
+  %{$cds_gapstr_AH[0]}      = ();
+  %{$not3_cds_gapstr_AH[0]} = ();
+
   my $width_seq = length("#accession");
   my $cds_idx = 0;
-  my @cand_seq_error_A = ();
 
   for(my $i = 0; $i < scalar(@{$seq_AR}); $i++) { 
     my $seq = $seq_AR->[$i];
@@ -2643,7 +2691,8 @@ sub outputGapInfo {
     if(length($seq2print) > $width_seq) { 
       $width_seq = length($seq2print);
     }
-    @{$str2print_AA[$i]} = ();
+    @{$gapstr_AA[$i]} = ();
+    @{$not3_gapstr_AA[$i]} = ();
     my $offset = 0;
     my $ins_idx = 0;
     my $del_idx = 0;
@@ -2654,9 +2703,13 @@ sub outputGapInfo {
     my $next_ins_count = undef;
     my $next_del_count = undef;
     my $nhmm = scalar(@{$hmm2cds_map_AR});
-    my $str2print = "";
-    my $total_gap_length = 0;
-    my $cand_seq_error = undef;
+    my $gapstr = "";
+    my $not3_gapstr = "";
+    my $substr;
+    my $tot_gap_length = 0;
+    my $net_gap_length = 0;
+    my $not3_tot_gap_length = 0;
+    my $not3_net_gap_length = 0;
     $cds_idx = 0;
 
     for(my $h = 0; $h < $nhmm; $h++) { 
@@ -2678,63 +2731,73 @@ sub outputGapInfo {
         if(defined $next_del_rfpos) { $next_del_rfpos += $offset; }
         if(defined $next_ins_rfpos) { $next_ins_rfpos += $offset; }
         
-        if($str2print ne "") { $str2print .= ","; }
+        if($gapstr ne "")      { $gapstr      .= ","; }
+        if($not3_gapstr ne "") { $not3_gapstr .= ","; }
         if(defined $next_ins_str && defined $next_del_str) { 
-          if($next_del_rfpos < $next_ins_rfpos) { # delete comes first, print it
-            $str2print .= "D" . $next_del_rfpos . ":" . $next_del_count;
-            $total_gap_length -= $next_del_count;
-            if($next_del_count != 3) { 
-              if(! defined $cand_seq_error) { 
-                $cand_seq_error = "D" . $next_del_rfpos . ":" . $next_del_count;
-              }
-              else { # more than one candidate sequencing error, not sure what to do, so do nothing
-                $cand_seq_error = undef;
+          if($next_del_rfpos <= $next_ins_rfpos) { # delete comes first, print it
+            $substr     = "D" . $next_del_rfpos . ":" . $next_del_count;
+            $gapstr .= $substr;
+            $tot_gap_length += $next_del_count;
+            $net_gap_length -= $next_del_count;
+            $cds_gapstr_AH[$cds_idx]{$substr}++;
+            if(($next_del_count % 3) != 0) { 
+              $not3_gapstr .= $substr;
+              $not3_tot_gap_length += $next_del_count;
+              $not3_net_gap_length -= $next_del_count;
+              if(! $do_unq) { 
+                $not3_cds_gapstr_AH[$cds_idx]{$substr}++;
               }
             }
             $del_idx++;
             $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
           }
           elsif($next_ins_rfpos < $next_del_rfpos) { # insert comes first, print it
-            $str2print .= "I" . $next_ins_rfpos . ":" . $next_ins_count;
-            $total_gap_length += $next_ins_count;
-            if($next_ins_count != 3) { 
-              if(! defined $cand_seq_error) { 
-                $cand_seq_error = "I" . $next_ins_rfpos . ":" . $next_ins_count;
-              }
-              else { # more than one candidate sequencing error, not sure what to do, so do nothing
-                $cand_seq_error = undef;
+            $substr     = "I" . $next_ins_rfpos . ":" . $next_ins_count;
+            $gapstr .= $substr;
+            $tot_gap_length += $next_ins_count;
+            $net_gap_length += $next_ins_count;
+            $cds_gapstr_AH[$cds_idx]{$substr}++;
+            if(($next_ins_count % 3) != 0) { 
+              $not3_gapstr .= $substr;
+              $not3_tot_gap_length += $next_ins_count;
+              $not3_net_gap_length += $next_ins_count;
+              if(! $do_unq) { 
+                $not3_cds_gapstr_AH[$cds_idx]{$substr}++;
               }
             }
             $ins_idx++;
             $next_ins_str = ($ins_idx < $nins) ? $refins_HHAR->{$mdl}{$seq}[$ins_idx] : undef;
           }
-          else { # $next_del_rfpos == $next_ins_rfpos, shouldn't happen
-            die "ERROR for model $mdl seq $seq, we have an insert and a delete at position $next_ins_rfpos";
-          }
         }
         elsif(defined $next_del_str) { # $next_ins is undefined
-          $str2print .= "D" . $next_del_rfpos . ":" . $next_del_count;
-          $total_gap_length -= $next_del_count;
-          if($next_del_count != 3) { 
-            if(! defined $cand_seq_error) { 
-              $cand_seq_error = "D" . $next_del_rfpos . ":" . $next_del_count;
-            }
-            else { # more than one candidate sequencing error, not sure what to do, so do nothing
-              $cand_seq_error = undef;
+          $substr     = "D" . $next_del_rfpos . ":" . $next_del_count;
+          $gapstr .= $substr;
+          $tot_gap_length += $next_del_count;
+          $net_gap_length -= $next_del_count;
+          $cds_gapstr_AH[$cds_idx]{$substr}++;
+          if(($next_del_count % 3) != 0) { 
+            $not3_gapstr .= $substr;
+            $not3_tot_gap_length += $next_del_count;
+            $not3_net_gap_length -= $next_del_count;
+            if(! $do_unq) {
+              $not3_cds_gapstr_AH[$cds_idx]{$substr}++;
             }
           }
           $del_idx++;
           $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
         }
         elsif(defined $next_ins_str) { # $next_del is undefined
-          $str2print .= "I" . $next_ins_rfpos . ":" . $next_ins_count;
-          $total_gap_length += $next_ins_count;
-          if($next_ins_count != 3) { 
-            if(! defined $cand_seq_error) { 
-              $cand_seq_error = "I" . $next_ins_rfpos . ":" . $next_ins_count;
-            }
-            else { # more than one candidate sequencing error, not sure what to do, so do nothing
-              $cand_seq_error = undef;
+          $substr     = "I" . $next_ins_rfpos . ":" . $next_ins_count;
+          $gapstr .= $substr;
+          $tot_gap_length += $next_ins_count;
+          $net_gap_length += $next_ins_count;
+          $cds_gapstr_AH[$cds_idx]{$substr}++;
+          if(($next_ins_count % 3) != 0) { 
+            $not3_gapstr .= $substr;
+            $not3_tot_gap_length += $next_ins_count;
+            $not3_net_gap_length += $next_ins_count;
+            if(! $do_unq) { 
+              $not3_cds_gapstr_AH[$cds_idx]{$substr}++;
             }
           }
           $ins_idx++;
@@ -2745,60 +2808,188 @@ sub outputGapInfo {
       $offset += $mdllen_HR->{$mdl};
       
       if($hmm_is_final) {
-        if($str2print eq "") { $str2print = "NONE"; }
-        push(@{$str2print_AA[$i]}, $str2print);
-        # printf("pushing str2print: $str2print to AA[$i]\n");
-        if(length($str2print) > $width_A[$cds_idx]) { 
-          $width_A[$cds_idx] = length($str2print);
+        if($gapstr eq "") { $gapstr = "-"; }
+        push(@{$gapstr_AA[$i]}, $gapstr);
+        if(length($gapstr) > $w_gapstr_A[$cds_idx]) { $w_gapstr_A[$cds_idx] = length($gapstr); }
+        $gapstr = "";
+
+        if($not3_gapstr eq "") { $not3_gapstr = "-"; }
+        if($do_unq) { 
+          ($not3_gapstr) = findSpecialGap($not3_gapstr);
+          $not3_net_gap_length = $not3_tot_gap_length;
+          if($not3_gapstr ne "?" && $not3_gapstr ne "-") { 
+            my @el_A = split(",", $not3_gapstr); 
+            foreach my $el (@el_A) { 
+              $not3_cds_gapstr_AH[$cds_idx]{$el}++;
+            }
+          }
         }
-        $str2print = "";
+        push(@{$not3_gapstr_AA[$i]}, $not3_gapstr);
+        if(length($not3_gapstr) > $w_not3_gapstr_A[$cds_idx]) { $w_not3_gapstr_A[$cds_idx] = length($not3_gapstr); }
+        $not3_gapstr = "";
+
+        push(@{$tot_gap_length_AA[$i]}, $tot_gap_length);
+        if(length($tot_gap_length) > $w_tot_gap_length_A[$cds_idx]) { $w_tot_gap_length_A[$cds_idx] = length($tot_gap_length); }
+        $tot_gap_length = 0;
+
+        push(@{$not3_tot_gap_length_AA[$i]}, $not3_tot_gap_length);
+        if(length($not3_tot_gap_length) > $w_not3_tot_gap_length_A[$cds_idx]) { $w_not3_tot_gap_length_A[$cds_idx] = length($not3_tot_gap_length); }
+        $not3_tot_gap_length = 0;
+
+        push(@{$net_gap_length_AA[$i]}, $net_gap_length);
+        if(length($net_gap_length) > $w_net_gap_length_A[$cds_idx]) { $w_net_gap_length_A[$cds_idx] = length($net_gap_length); }
+        $net_gap_length = 0;
+
+        push(@{$not3_net_gap_length_AA[$i]}, $not3_net_gap_length);
+        if(length($not3_net_gap_length) > $w_not3_net_gap_length_A[$cds_idx]) { $w_not3_net_gap_length_A[$cds_idx] = length($not3_net_gap_length); }
+        $not3_net_gap_length = 0;
+
         $offset = 0;
+
         $cds_idx++;
-        $width_A[$cds_idx] = length("CDS#" . $cds_idx);
-        $total_gap_length = 0;
+        if(scalar(@w_gapstr_A)              <= $cds_idx) { $w_gapstr_A[$cds_idx]              = length($ch_gapstr); }
+        if(scalar(@w_not3_gapstr_A)         <= $cds_idx) { $w_not3_gapstr_A[$cds_idx]         = length($ch_not3_gapstr); }
+        if(scalar(@w_tot_gap_length_A)      <= $cds_idx) { $w_tot_gap_length_A[$cds_idx]      = length($ch_tot_gap_length); }
+        if(scalar(@w_not3_tot_gap_length_A) <= $cds_idx) { $w_not3_tot_gap_length_A[$cds_idx] = length($ch_not3_tot_gap_length); }
+        if(scalar(@w_net_gap_length_A)      <= $cds_idx) { $w_net_gap_length_A[$cds_idx]      = length($ch_net_gap_length); }
+        if(scalar(@w_not3_net_gap_length_A) <= $cds_idx) { $w_not3_net_gap_length_A[$cds_idx] = length($ch_net_gap_length); }
+
+        if(scalar(@cds_gapstr_AH)      <= $cds_idx) { %{$cds_gapstr_AH[$cds_idx]}      = (); }
+        if(scalar(@not3_cds_gapstr_AH) <= $cds_idx) { %{$not3_cds_gapstr_AH[$cds_idx]} = (); }
       }
     }
-    push(@cand_seq_error_A, $cand_seq_error);
-    $cand_seq_error = undef;
   }
-
   my $ncds = $cds_idx;
 
-  # output the column headers:
+  #################################################################
+  # Output table of all gap info
+  # output line 1 of the column headers:
+  printf $FH ("%-*s  ", $width_seq, "#");
+  for(my $c = 0; $c < $ncds; $c++) { 
+    my $w_cur = $w_tot_gap_length_A[$c] + 2 + $w_net_gap_length_A[$c] + 2 + $w_gapstr_A[$c];
+    if($c > 0) { print $FH "  "; }
+    printf $FH ("%-*s", $w_cur, "CDS#" . ($c+1) . " (all gaps)");
+  }    
+  printf $FH ("    ");
+  for(my $c = 0; $c < $ncds; $c++) { 
+    my $w_cur;
+    if(! $do_unq) { 
+      $w_cur = $w_not3_tot_gap_length_A[$c] + 2 + $w_not3_net_gap_length_A[$c] + 2 + $w_not3_gapstr_A[$c];
+    }
+    else { 
+      $w_cur = $w_not3_gapstr_A[$c];
+    }
+    if($c > 0) { print $FH "  "; }
+    if(! $do_unq) { 
+      printf $FH ("%-*s", $w_cur, "CDS#" . ($c+1) . " (gaps %3 != 0)");
+    }
+    else { 
+      printf $FH ("%-*s", $w_cur, "CDS#" . ($c+1) . " (unq gaps == net)");
+    }
+  }    
+  print $FH "\n";
+
+  # output line 2 (dashes under line 1 of column headers)
+  printf $FH ("%-*s  ", $width_seq, "#");
+  for(my $c = 0; $c < $ncds; $c++) { 
+    my $w_cur = $w_tot_gap_length_A[$c] + 2 + $w_net_gap_length_A[$c] + 2 + $w_gapstr_A[$c];
+    if($c > 0) { print $FH "  "; }
+    printf $FH ("%-*s", $w_cur, monocharacterString($w_cur, "="));
+  }    
+  printf $FH ("    ");
+  for(my $c = 0; $c < $ncds; $c++) { 
+    my $w_cur;
+    if(! $do_unq) { 
+      $w_cur = $w_not3_tot_gap_length_A[$c] + 2 + $w_not3_net_gap_length_A[$c] + 2 + $w_not3_gapstr_A[$c];
+    }
+    else { 
+      $w_cur = $w_not3_gapstr_A[$c];
+    }
+    if($c > 0) { print $FH "  "; }
+    printf $FH ("%-*s", $w_cur, monocharacterString($w_cur, "="));
+  }    
+  print $FH "\n";
+
+  # output line 3 of the column headers:
   printf $FH ("%-*s  ", $width_seq, "#accession");
   for(my $c = 0; $c < $ncds; $c++) { 
-    printf $FH ("%-*s  ", $width_A[$c], "CDS#" . ($c+1));
+    if($c > 0) { print $FH "  "; }
+    printf $FH ("%-*s  ", $w_tot_gap_length_A[$c], $ch_tot_gap_length);
+    printf $FH ("%-*s  ", $w_net_gap_length_A[$c], $ch_net_gap_length);
+    printf $FH ("%-*s", $w_gapstr_A[$c], $ch_gapstr);
   }
-  printf $FH ("possible-sequencing-error");
-  print $FH "\n";
-
-  printf $FH ("%-*s  ", $width_seq, monocharacterString($width_seq, "-"));
+  printf $FH "    ";
   for(my $c = 0; $c < $ncds; $c++) { 
-    printf $FH ("%-*s  ", $width_A[$c], monocharacterString($width_A[$c], "-"));
+    if($c > 0) { print $FH "  "; }
+    if(! $do_unq) { 
+      printf $FH ("%-*s  ", $w_not3_tot_gap_length_A[$c], $ch_not3_tot_gap_length);
+      printf $FH ("%-*s  ", $w_not3_net_gap_length_A[$c], $ch_not3_net_gap_length);
+      printf $FH ("%-*s", $w_not3_gapstr_A[$c], $ch_not3_gapstr);
+    }
+    else { 
+      printf $FH ("%-*s", $w_not3_gapstr_A[$c], $ch_not3_gapstr);
+    }
   }
-  printf $FH ("-------------------------");
   print $FH "\n";
 
-  # output all the rows, now that we know how wide each field can be
+  # output line 4 (dashes under line 3 of column headers)
+  printf $FH ("%-*s  ", $width_seq, "#", monocharacterString($width_seq-1, "-"));
+  for(my $c = 0; $c < $ncds; $c++) { 
+    if($c > 0) { print $FH "  "; }
+    printf $FH ("%-*s  ", $w_tot_gap_length_A[$c], monocharacterString($w_tot_gap_length_A[$c], "-"));
+    printf $FH ("%-*s  ", $w_net_gap_length_A[$c], monocharacterString($w_net_gap_length_A[$c], "-"));
+    printf $FH ("%-*s", $w_gapstr_A[$c], monocharacterString($w_gapstr_A[$c], "-"));
+  }
+  printf $FH "    ";
+  for(my $c = 0; $c < $ncds; $c++) { 
+    if($c > 0) { print $FH "  "; }
+    if(! $do_unq) { 
+      printf $FH ("%-*s  ", $w_not3_tot_gap_length_A[$c], monocharacterString($w_not3_tot_gap_length_A[$c], "-"));
+      printf $FH ("%-*s  ", $w_not3_net_gap_length_A[$c], monocharacterString($w_not3_net_gap_length_A[$c], "-"));
+      printf $FH ("%-*s", $w_not3_gapstr_A[$c], monocharacterString($w_not3_gapstr_A[$c], "-"));
+    }
+    else { 
+      printf $FH ("%-*s", $w_not3_gapstr_A[$c], monocharacterString($w_not3_gapstr_A[$c], "-"));
+    }
+  }
+  print $FH "\n";
+
+
+
   for(my $i = 0; $i < scalar(@{$seq_AR}); $i++) { 
     my $seq2print = $seq_AR->[$i];
     $seq2print =~ s/\:.+$//;
     printf $FH ("%-*s  ", $width_seq, $seq2print);
     for(my $c = 0; $c < $ncds; $c++) { 
-      printf $FH ("%-*s  ", $width_A[$c], $str2print_AA[$i][$c]);
+      if($c > 0) { print $FH "  "; }
+      printf $FH ("%-*s  ", $w_tot_gap_length_A[$c], $tot_gap_length_AA[$i][$c]);
+      printf $FH ("%-*s  ", $w_net_gap_length_A[$c], $net_gap_length_AA[$i][$c]);
+      printf $FH ("%-*s", $w_gapstr_A[$c], $gapstr_AA[$i][$c]);
     }
-    printf $FH ("%s", (defined $cand_seq_error_A[$i]) ? $cand_seq_error_A[$i] : "-");
+    printf $FH "    ";
+    for(my $c = 0; $c < $ncds; $c++) { 
+      if($c > 0) { print $FH "  "; }
+      if(! $do_unq) { 
+        printf $FH ("%-*s  ", $w_not3_tot_gap_length_A[$c], $not3_tot_gap_length_AA[$i][$c]);
+        printf $FH ("%-*s  ", $w_not3_net_gap_length_A[$c], $not3_net_gap_length_AA[$i][$c]);
+      }
+      printf $FH ("%-*s", $w_not3_gapstr_A[$c], $not3_gapstr_AA[$i][$c]);
+    }
     print $FH ("\n");
   }
 
   # output explanatory text
   print $FH "#\n";
-  print $FH ("# Explanation of information in this file:\n");
-  print $FH ("# This file includes information on all gaps that exist between all pairwise alignments of\n");
-  print $FH ("# the reference CDS and the predicted homologous CDS for each sequence. Each column other\n");
-  print $FH ("# than the first contains either \"NONE\" or >= 1 token. \"NONE\" indicates there are zero\n");
-  print $FH ("# gaps in the alignment of the predicted CDS to the corresponding reference CDS. Each token\n");
-  print $FH ("# describes a gap of length >= 1 nucleotide.\n");
+  print $FH ("# Explanation of the above table:\n");
+  print $FH ("# The table includes information on all gaps that exist between all pairwise alignments of\n");
+  print $FH ("# the reference CDS and the predicted homologous CDS for each sequence.\n");
+  print $FH ("#\n");
+  print $FH ("# There are 3 columns under each header \"CDS#<n> (all gaps)\" named \"tot\", \"net\",\n");
+  print $FH ("# and \"string\".\n");
+  print $FH ("# The \"tot\" columns list the total number of gap positions in either sequence in the pairwise alignment.\n");
+  print $FH ("# The \"net\" columns list the net number of gaps in the pairwise alignment; this is the number\n");
+  print $FH ("#   of gaps in the reference sequence minus the number of gaps in the current sequence (inserts minus deletes)\n");
+  print $FH ("# The \"string\" columns include a list of <n> tokens, each of which describes a gap of length >= 1 nucleotide.\n");
   print $FH ("# Tokens are in the form: <char><position><length>\n");
   print $FH ("#   <char>     is 'I' for an insertion relative to the reference CDS (gap in reference sequence)\n");
   print $FH ("#              or 'D' for a  deletion  relative to the reference CDS (gap in current sequence)\n");
@@ -2808,8 +2999,187 @@ sub outputGapInfo {
   print $FH ("#   <length>   length of the gap in nucleotides.\n");
   print $FH ("#              For insertions this is the number of nucleotides inserted relative to the reference\n");
   print $FH ("#              For deletions  this is the number of reference positions deleted.\n");
-  print $FH "#\n";
+  print $FH ("#\n");
+  if($do_unq) { 
+    print $FH ("# There are also 3 columns under each header \"CDS#<n> (unq gaps == net)\"\n");
+    print $FH ("# These have the same meanings as those under \"CDS#<n> (all gaps)\" but this data\n");
+    print $FH ("# only includes gaps which uniquely explain why the net gap length is not zero or a\n");
+    print $FH ("# multiple of 3.\n");
+    print $FH ("If the net gap length is 0 or a multiple of 3, the values in the three columns will always be:\n");
+    print $FH ("\"tot\"=0, \"net\"=0, and \"string\"=\"-\".\n");
+    print $FH ("Else if not exactly one gap can solely explain the net length deviating from 0 or a multiple of 3, the\n");
+    print $FH ("values in the three columns will be:\n");
+    print $FH ("\"tot\"=0, \"net\"=0, and \"string\"=\"?\".\n");
+    print $FH ("Else if exactly one gap can solely explain the net gap length deviating from 0 or a multiple of 3, the\n");
+    print $FH ("values in the three columns will be:\n");
+    print $FH ("\"tot\"=<n>, \"net\"=<n>, and \"string\"=\"<tok>\". Where <tok> is the gap that can explain the net gap length\n");
+    print $FH ("deviating from 0, and <n> is the number of positions that are required to make total gap length a multiple of 3\n");
+  }
+  else { 
+    print $FH ("# There are also 3 columns under each header \"CDS#<n> (gaps %3 != 0)\"\n");
+    print $FH ("# These have the same meanings as those under \"CDS#<n> (all gaps)\" but this data\n");
+    print $FH ("# only includes those gaps whose lengths are not multiples of 3.\n");
+  }
+  print $FH ("#\n");
+  print $FH ("# Below you will find the counts of occurences of each of the gap tokens, listed separately for the \"(all gaps)\"\n");
+  if($do_unq) { 
+    print $FH ("# and the \"(unq gaps == net)\" columns.\n");
+  }
+  else { 
+    print $FH ("# and the \"(gaps %3 != 0)\" columns.\n");
+  }
+  print $FH ("#\n");
+
+
+  # list counts of each gap
+  printf $FH ("# Counts of all gaps:\n");
+  my $nprinted = 0;
+  for(my $c = 0; $c < $ncds; $c++) { 
+    if((scalar(keys %{$cds_gapstr_AH[$c]})) > 0) { 
+      foreach my $key (sort keys %{$cds_gapstr_AH[$c]}) { 
+        printf $FH ("CDS#" . ($c+1) . " " . $key . " " . $cds_gapstr_AH[$c]{$key} . "\n");
+        $nprinted++;
+      }
+      printf $FH ("#\n");
+    }
+  }
+  if($nprinted == 0) { 
+    printf $FH ("# NONE\n");
+  }
+
+  # list counts of each gap
+  if($do_unq) { 
+    printf $FH ("# Counts of gaps that are uniquely responsible for net gap length that is not a multiple of 3:\n");
+  }
+  else { 
+    printf $FH ("# Counts of gaps that have length that is not a multiple of 3:\n");
+  }
+  $nprinted = 0;
+  for(my $c = 0; $c < $ncds; $c++) { 
+    if((scalar(keys %{$not3_cds_gapstr_AH[$c]})) > 0) { 
+      foreach my $key (sort keys(%{$not3_cds_gapstr_AH[$c]})) { 
+        printf $FH ("CDS#" . ($c+1) . " " . $key . " " . $not3_cds_gapstr_AH[$c]{$key} . "\n");
+        $nprinted++;
+      }
+      printf $FH ("#\n");
+    }
+  }
+  if($nprinted == 0) { 
+    printf $FH ("# NONE\n");
+  }
 
   return;
 }
 
+# Subroutine: findSpecialGap()
+#
+# Synopsis:   Given a gap string that lists all gaps in a CDS, determine if the gaps cause
+#             the predicted length of the CDS to be non-modulo 3. If so, determine if there's
+#             exactly one gap that if we remove it, the remaining gaps will make the predicted
+#             length of the CDS to be modulo 3. 
+#
+#             I think there can only be 0 or 1 such gap, but I'm not sure.
+# 
+#             Return two values: 
+#             - the length of the speical gap if there is one, or 0 if there is not
+#               (this value will be negative if it is a deletion relative to the 
+#               reference, and positive if it is an insertion relative to the reference)
+#             - the string that describes the special gap, 
+#               or '-' if the predicted length of the CDS is modulo 3 if we include all gaps
+#               or '?' if the predicted length of the CDS is not modulo 3 but there is no
+#               special gap that can explain the non-modulo-3ness.
+
+#             If the net gap length is zero modulo 3, return (0, "-").
+#             If the net gap length is nonzero modulo 3, and there's exactly 1 gap that equals the net length modulo 3, return its length and the string..
+#             If the net gap length is nonzero modulo 3, and there's not exactly 1 gap that equals the net length modulo 3, return (0, "?");
+#            
+#             Examples: 
+#
+#               Input:    $gapstr = "D377:2,I388:2,I1066:1 net gap is 1
+#               Returns:  (1, "I1066:1")
+#
+#               Input:    $gapstr = "D377:2,I388:2", , net gap is 0;
+#               Returns:  (0, "-")
+#
+#               Input:    $gapstr = "D377:5,I388:2", net gap is -3;
+#               Returns:  (0, "-")
+#
+#               Input:    $gapstr = "D377:2,I388:5", net gap is 3;
+#               Returns:  (0, "-")
+#
+#               Input:    $gapstr = "D377:2,I388:3,I1066:1", net gap is 2;
+#               Returns:  (0, "?")
+#
+#               Input:    $gapstr = "D277:2,D377:2,I388:2", $net_gap = 2;
+#               Returns:  (0, "?")
+#
+sub findSpecialGap {
+  my $sub_name = "findSpecialGap";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($gapstr) = (@_);
+  # printf("in $sub_name gapstr: $gapstr\n");
+
+  if($gapstr eq "-") { # no gaps
+    return ("-"); 
+  }
+
+  # determine net number of gaps if we include them all
+  my @el_A = split(",", $gapstr);
+  my $ngaps = scalar(@el_A);
+  my @gapsize_A = (); # [0..$ngaps-1], length of each gap
+  my $tot_gaps = 0;
+
+  for(my $e = 0; $e < $ngaps; $e++) { 
+    my $el = $el_A[$e];
+    my ($type_loc, $len) = split(":", $el);
+
+    if($type_loc =~ /^I(\d+)/) { # insert
+      $gapsize_A[$e] = $len;
+      $tot_gaps += $len;
+    }
+    elsif($type_loc =~ /^D(\d+)/) { # delete
+      $gapsize_A[$e] = -1 * $len;
+      $tot_gaps -= $len;
+    }
+    else { 
+      die "ERROR: in $sub_name, unable to parse gap string: $gapstr element $el"; 
+    }
+  }
+  if(($tot_gaps % 3) == 0) { 
+    return ("-"); 
+  }
+
+  # find gap that gives minimal net gap length
+  
+  my $min_len = undef;
+  for(my $e = 0; $e < $ngaps; $e++) { 
+    my $net_gap_len = $tot_gaps - $gapsize_A[$e];
+    if(($net_gap_len % 3) == 0) { 
+      if(! defined $min_len || ($net_gap_len < $min_len)) { 
+        $min_len = $net_gap_len;
+      }
+    }
+  }
+
+  my $nspecial = 0;
+  my $special_str = "";
+  my $special_len = 0;
+
+  if(! defined $min_len) { # no gaps can be removed and give modulo 3
+    return ("?");
+  }
+  else { # at least 1 gap can be removed and give modulo 3
+    for(my $e = 0; $e < $ngaps; $e++) { 
+      my $net_gap_len = $tot_gaps - $gapsize_A[$e];
+      if(($net_gap_len % 3) == 0) { 
+        if($net_gap_len == $min_len) { 
+          if($special_str ne "") { $special_str .= ","; }
+          $special_str .= $el_A[$e];
+        }
+      }
+    }
+    return $special_str;
+  }
+}
