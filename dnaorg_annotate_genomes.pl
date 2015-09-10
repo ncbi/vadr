@@ -21,6 +21,7 @@ $usage .= " This script annotates genomes from the same species based\n";
 $usage .= " on reference annotation.\n";
 $usage .= "\n";
 $usage .= " BASIC OPTIONS:\n";
+$usage .= "  -matpept   : use mat_peptide info instead of CDS info\n";
 $usage .= "  -oseq <s>  : identify origin sequence <s> in genomes, put | at site of origin, e.g. TAATATT|AC\n";
 $usage .= "  -strict    : require matching annotations to match CDS/exon index\n";
 $usage .= "  -nodup     : do not duplicate each genome to allow identification of features that span stop..start\n";
@@ -69,6 +70,7 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmpress
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
+my $do_matpept   = 0; # set to '1' if -poly       enabled, genome has a single polyprotein, use mat_peptide info, not CDS
 my $origin_seq   = undef; # defined if -oseq      enabled
 my $do_strict    = 0; # set to '1' if -strict     enabled, matching annotations must be same index CDS+exon, else any will do
 my $do_nodup     = 0; # set to '1' if -nodup      enabled, do not duplicate each genome, else do 
@@ -94,7 +96,8 @@ my $do_iglocal   = 0; # set to '1' if -iglocal    enabled, use -g with cmsearch
 my $do_cslow     = 0; # set to '1' if -cslow      enabled, use default, slow, cmcalibrate parameters instead of speed optimized ones
 my $do_ccluster  = 0; # set to '1' if -ccluster   enabled, submit calibration to cmcalibrate
 
-&GetOptions("oseq=s"    => \$origin_seq,
+&GetOptions("matpept"   => \$do_matpept,
+            "oseq=s"    => \$origin_seq,
             "strict"    => \$do_strict,
             "nodup"     => \$do_nodup,
             "notexon"   => \$do_notexon,
@@ -127,6 +130,10 @@ my ($dir, $listfile) = (@ARGV);
 # store options used, so we can output them 
 my $opts_used_short = "";
 my $opts_used_long  = "";
+if(defined $do_matpept) { 
+  $opts_used_short .= "-matpept ";
+  $opts_used_long  .= "# option:  using mat_peptide info instead of CDS info [-matpept]\n";
+}
 if(defined $origin_seq) { 
   $opts_used_short .= "-oseq ";
   $opts_used_long  .= "# option:  searching for origin sequence of $origin_seq [-oseq]\n";
@@ -254,12 +261,14 @@ if(! -d $dir)      { die "ERROR directory $dir does not exist"; }
 if(! -s $listfile) { die "ERROR list file $listfile does not exist, or is empty"; }
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir
-my $gene_tbl_file  = $dir . "/" . $dir_tail . ".gene.tbl";
-my $cds_tbl_file   = $dir . "/" . $dir_tail . ".CDS.tbl";
-my $length_file    = $dir . "/" . $dir_tail . ".length";
+my $gene_tbl_file    = $dir . "/" . $dir_tail . ".gene.tbl";
+my $cds_tbl_file     = $dir . "/" . $dir_tail . ".CDS.tbl";
+my $matpept_tbl_file = $dir . "/" . $dir_tail . ".mat_peptide.tbl";
+my $length_file      = $dir . "/" . $dir_tail . ".length";
 my $out_root = $dir . "/" . $dir_tail;
 #if(! -s $gene_tbl_file) { die "ERROR $gene_tbl_file does not exist."; }
-if(! -s $cds_tbl_file)  { die "ERROR $cds_tbl_file does not exist."; }
+if($do_matpept) { if(! -s $matpept_tbl_file)  { die "ERROR $matpept_tbl_file does not exist."; } }
+else            { if(! -s $cds_tbl_file)      { die "ERROR $cds_tbl_file does not exist."; } }
 if(! -s $length_file)   { die "ERROR $length_file does not exist."; }
 
 # output banner
@@ -309,8 +318,13 @@ my %totlen_H = (); # key: accession, value length read from length file
 
 parseLength($length_file, \%totlen_H);
 
-parseTable($gene_tbl_file, \%gene_tbl_HHA);
-parseTable($cds_tbl_file, \%cds_tbl_HHA);
+# parseTable($gene_tbl_file, \%gene_tbl_HHA);
+if($do_matpept) { 
+  parseTable($matpept_tbl_file, \%cds_tbl_HHA);
+}
+else {
+  parseTable($cds_tbl_file, \%cds_tbl_HHA);
+}
 
 #######################
 # variable declarations
@@ -2732,7 +2746,6 @@ sub outputGapInfo {
         if(defined $next_ins_rfpos) { $next_ins_rfpos += $offset; }
         
         if($gapstr ne "")      { $gapstr      .= ","; }
-        if($not3_gapstr ne "") { $not3_gapstr .= ","; }
         if(defined $next_ins_str && defined $next_del_str) { 
           if($next_del_rfpos <= $next_ins_rfpos) { # delete comes first, print it
             $substr     = "D" . $next_del_rfpos . ":" . $next_del_count;
@@ -2741,6 +2754,7 @@ sub outputGapInfo {
             $net_gap_length -= $next_del_count;
             $cds_gapstr_AH[$cds_idx]{$substr}++;
             if(($next_del_count % 3) != 0) { 
+              if($not3_gapstr ne "") { $not3_gapstr .= ","; }
               $not3_gapstr .= $substr;
               $not3_tot_gap_length += $next_del_count;
               $not3_net_gap_length -= $next_del_count;
@@ -2758,6 +2772,7 @@ sub outputGapInfo {
             $net_gap_length += $next_ins_count;
             $cds_gapstr_AH[$cds_idx]{$substr}++;
             if(($next_ins_count % 3) != 0) { 
+              if($not3_gapstr ne "") { $not3_gapstr .= ","; }
               $not3_gapstr .= $substr;
               $not3_tot_gap_length += $next_ins_count;
               $not3_net_gap_length += $next_ins_count;
@@ -2776,6 +2791,7 @@ sub outputGapInfo {
           $net_gap_length -= $next_del_count;
           $cds_gapstr_AH[$cds_idx]{$substr}++;
           if(($next_del_count % 3) != 0) { 
+            if($not3_gapstr ne "") { $not3_gapstr .= ","; }
             $not3_gapstr .= $substr;
             $not3_tot_gap_length += $next_del_count;
             $not3_net_gap_length -= $next_del_count;
@@ -2793,6 +2809,7 @@ sub outputGapInfo {
           $net_gap_length += $next_ins_count;
           $cds_gapstr_AH[$cds_idx]{$substr}++;
           if(($next_ins_count % 3) != 0) { 
+            if($not3_gapstr ne "") { $not3_gapstr .= ","; }
             $not3_gapstr .= $substr;
             $not3_tot_gap_length += $next_ins_count;
             $not3_net_gap_length += $next_ins_count;
@@ -2815,6 +2832,7 @@ sub outputGapInfo {
 
         if($not3_gapstr eq "") { $not3_gapstr = "-"; }
         if($do_unq) { 
+          # printf("calling findSpecialGap for $seq model $mdl with $not3_gapstr");
           ($not3_gapstr) = findSpecialGap($not3_gapstr);
           $not3_net_gap_length = $not3_tot_gap_length;
           if($not3_gapstr ne "?" && $not3_gapstr ne "-") { 
