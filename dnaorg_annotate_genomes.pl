@@ -600,13 +600,19 @@ else {
 printf("#\n");
 printf("#\n");
 
+##########
+# OUTPUT #
+##########
+
+if(1) { # output sequences as rows 
+  outputSeqRowHeadings($do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, \@hmm2cds_map_A, \@hmm2exon_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@cds_out_short_A, \@cds_out_product_A);
+}
+
 #######################################################################
 # Pass through all accessions, and output predicted annotation for each
 #######################################################################
-my $width;  # width of a field
-my $pad;    # string of all spaces used for pretty formatting
 my @ref_ol_AA = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
-my $width_result = 5 + $ref_tot_nexons + 2;
+my $width;          # width of a field
 
 for(my $a = 0; $a < $naccn; $a++) { 
   my $accn = $accn_A[$a];
@@ -614,180 +620,8 @@ for(my $a = 0; $a < $naccn; $a++) {
   # sanity checks
   if(! exists $totlen_H{$accn}) { die "ERROR accession $accn does not exist in the length file $length_file"; }
   
-  ###########################################################
-  # Create the column headers if this is the first accession.
-  if($a == 0) { 
-    # line 1 of column headers
-    printf("%-20s  %6s", "#", "");
-    if(defined $origin_seq) { 
-      printf("  %22s", "");
-    }
-    # for each CDS, output the topmost column header
-    $width = 0;
-    for(my $h = 0; $h < $nhmm; $h++) { 
-      $width += 18;
-      my $cds_i = $hmm2cds_map_A[$h];
-      if(! $do_nofid)  { $width += 6; }
-      if(! $do_nomdlb) { $width += 4; }
-      if($hmm_is_final_A[$h]) { 
-        $width += 7;
-        if(! $do_noss3)  { $width += 4; }
-        if(! $do_nostop) { $width += 4; }
-        printf("    %*s", $width, $cds_out_short_A[$cds_i] . monocharacterString(($width-length($cds_out_short_A[$cds_i]))/2, " "));
-        $width = 0;
-      }
-    }
-    printf("  %6s", "");
-    printf("  %5s", "");
-    if(! $do_noexist) { 
-      printf("    %19s", "");
-    }
-    printf("  %*s", $width_result, "");
-    printf("\n");
-    
-    # line 2 of column headers
-    printf("%-20s  %6s", "#", "");
-    if(defined $origin_seq) { 
-      printf("  %22s", "   origin sequence");
-    }
-    # for each CDS, output the second column header
-    $width = 0;
-    for(my $h = 0; $h < $nhmm; $h++) { 
-      $pad = "";
-      $width += 18;
-      my $cds_i = $hmm2cds_map_A[$h];
-      if(! $do_nofid)  { $width += 6; }
-      if(! $do_nomdlb) { $width += 4; }
-      if($hmm_is_final_A[$h]) { 
-        $width += 7;
-        if(! $do_noss3)  { $width += 4; }
-        if(! $do_nostop) { $width += 4; }
-        printf("    %*s", $width, substr($cds_out_product_A[$cds_i], 0, $width) . monocharacterString(($width-length($cds_out_product_A[$cds_i]))/2, " "));
-        $width = 0;
-      }
-      else { 
-        $width += 2;
-      }
-    }
-    printf("  %6s", "");
-    printf("  %5s", "");
-    if(! $do_noexist) { 
-      printf(" %19s", "existing annotation");
-    }
-    printf("  %*s", $width_result, "");
-    printf("\n");
-    
-    # line 3 of column headers 
-    printf("%-20s  %6s", "#", "");
-    if(defined $origin_seq) { 
-      printf("  %22s", "----------------------");
-    }
-    $width = 0;
-    for(my $h = 0; $h < $nhmm; $h++) { 
-      $width += 18;
-      if(! $do_nofid)  { $width += 6; }
-      if(! $do_nomdlb) { $width += 4; }
-      if($hmm_is_final_A[$h]) { 
-        $width += 9;
-        if(! $do_noss3)  { $width += 4; }
-        if(! $do_nostop) { $width += 4; }
-        printf("  %s", monocharacterString($width, "-"));
-        $width = 0;
-      }
-      else { 
-        $width += 1;
-      }
-    }
-#    printf("  %6s  %-*s", "", $width_result, "");
-    printf("  %6s", "");
-    printf("  %5s", "");
-    if(! $do_noexist) { 
-      printf("  %19s", "-------------------");
-    }
-    printf("  %-*s", $width_result, "");
-    printf("\n");
-    
-    # line 4 of column headers
-    printf("%-20s  %6s", "# accession", "totlen");
-    if(defined $origin_seq) {
-      printf(" %2s %5s %5s %5s %2s", " #", "start", "stop", "offst", "PF");
-    }
-    for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s", 
-             sprintf("%s%s", "start", $hmm2exon_map_A[$h]+1), 
-             sprintf("%s%s", "stop",  $hmm2exon_map_A[$h]+1));
-      if(! $do_nofid) { 
-        printf(" %5s", sprintf("%s%s", "fid", $hmm2exon_map_A[$h]+1));
-      }
-      if(! $do_nomdlb) { 
-        printf(" %3s", sprintf("%s%s", "md", $hmm2exon_map_A[$h]+1));
-      }
-      if($hmm_is_final_A[$h]) { 
-        printf(" %6s", "length");
-        if(! $do_noss3) { 
-          printf(" %3s", "SS3");
-        }
-        if(! $do_nostop) { 
-          printf(" %3s", "stp");
-        }
-        printf(" %2s", "PF");
-      }
-    }
-    printf("  %6s", "totlen");
-    printf("  %5s", "avgid");    
-    if(! $do_noexist) { 
-      printf("  %5s  %5s  %5s", "cds", "exons", "match");
-    }
-    if(! $do_noolap) { 
-      printf("  %20s", " overlaps?");
-    }
-
-    printf("  %-*s", $width_result, "result");
-    print "\n";
-    
-    # line 5 of column headers
-    printf("%-20s  %6s", "#-------------------", "------");
-    if(defined $origin_seq) {
-      printf(" %2s %5s %5s %5s %2s", "--", "-----", "-----", "-----", "--");
-    }
-    for(my $h = 0; $h < $nhmm; $h++) { 
-      printf("  %8s %8s", "--------", "--------");
-      if(! $do_nofid) { 
-        printf(" %5s", "-----");
-      }
-      if(! $do_nomdlb) { 
-        printf(" %3s", "---");
-      }
-      if($hmm_is_final_A[$h]) { 
-        printf(" %6s", "------");
-        if(! $do_noss3) { 
-          printf(" %3s", "---");
-        }
-        if(! $do_nostop) { 
-          printf(" %3s", "---");
-        }
-        printf(" --");
-      }
-    }
-    printf("  %6s", "------");
-    printf("  %5s", "-----");
-
-    if(! $do_noexist) { 
-      printf("  %5s  %5s  %5s", "-----", "-----", "-----");
-    }
-    if(! $do_noolap) { 
-      printf("  %20s", monocharacterString(20, "-"));
-    }
-    printf("  %-*s", $width_result, monocharacterString($width_result, "-"));
-
-    print "\n";
-  }
-  ###########################################################
-
-  #########################################################################
   # Create the initial portion of the output line, the accession and length
   printf("%-20s  %6d ", $accn, $totlen_H{$accn});
-  #########################################################################
 
   #########################################################
   # Get information on the actual annotation of this genome
@@ -3256,3 +3090,203 @@ sub findSpecialGap {
     return $special_str;
   }
 }
+
+######################
+# OUTPUT subroutines #
+######################
+#
+# Subroutine: outputSeqRowHeadings()
+#
+# Synopsis:   For 'sequences are rows' tabular output, output the headings.
+#
+# Args:       $do_nofid:           '1' if we're not printing fractional ids, else '0'
+#             $do_mdlb:            '1' if we're not printing model boundaries, else '0'
+#             $do_noss3:           '1' if we're not printing SS3 columns, else '0'
+#             $do_nostop:          '1' if we're not printing Stop codons, else '0'
+#             $origin_seq:         origin sequence, or undef if ! defined
+#             $ref_tot_nexons:     number of total exons in reference
+#             $nhmm:               number of total HMMs
+#             $hmm2cds_map_AR:     ref to @hmm2cds_map array
+#             $hmm2exon_map_AR:    ref to @hmm2exon_map array
+#             $hmm_is_final_AR:    ref to @hmm_is_final_A
+#             $hmm_is_first_AR:    ref to @hmm_is_first_A
+#             $cds_out_short_AR:   ref to @cds_out_short_A
+#             $cds_out_product_AR: ref to @cds_out_short_A
+#
+sub outputSeqRowHeadings {
+  my $sub_name = "outputSeqRowHeadings";
+  my $nargs_exp = 13;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($do_nofid, $do_mdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, $hmm2cds_map_AR, $hmm2exon_map_AR, $hmm_is_first_AR, $hmm_is_final_AR, $cds_out_short_AR, $cds_out_product_AR) = @_;
+
+  my $width;  # width of a field
+  my $pad;    # string of all spaces used for pretty formatting
+  my $width_result = 5 + $ref_tot_nexons + 2;
+
+  # line 1 of column headers
+  printf("%-20s  %6s", "#", "");
+  if(defined $origin_seq) { 
+    printf("  %22s", "");
+  }
+  # for each CDS, output the topmost column header
+  $width = 0;
+  for(my $h = 0; $h < $nhmm; $h++) { 
+    $width += 18;
+    my $cds_i = $hmm2cds_map_AR->[$h];
+    if(! $do_nofid)  { $width += 6; }
+    if(! $do_nomdlb) { $width += 4; }
+    if($hmm_is_final_AR->[$h]) { 
+      $width += 7;
+      if(! $do_noss3)  { $width += 4; }
+      if(! $do_nostop) { $width += 4; }
+      printf("    %*s", $width, $cds_out_short_AR->[$cds_i] . monocharacterString(($width-length($cds_out_short_AR->[$cds_i]))/2, " "));
+      $width = 0;
+    }
+  }
+  printf("  %6s", "");
+  printf("  %5s", "");
+  if(! $do_noexist) { 
+    printf("    %19s", "");
+  }
+  printf("  %*s", $width_result, "");
+  printf("\n");
+  
+  # line 2 of column headers
+  printf("%-20s  %6s", "#", "");
+  if(defined $origin_seq) { 
+    printf("  %22s", "   origin sequence");
+  }
+  # for each CDS, output the second column header
+  $width = 0;
+  for(my $h = 0; $h < $nhmm; $h++) { 
+    $pad = "";
+    $width += 18;
+    my $cds_i = $hmm2cds_map_AR->[$h];
+    if(! $do_nofid)  { $width += 6; }
+    if(! $do_nomdlb) { $width += 4; }
+    if($hmm_is_final_AR->[$h]) { 
+      $width += 7;
+      if(! $do_noss3)  { $width += 4; }
+      if(! $do_nostop) { $width += 4; }
+      printf("    %*s", $width, substr($cds_out_product_AR->[$cds_i], 0, $width) . monocharacterString(($width-length($cds_out_product_AR->[$cds_i]))/2, " "));
+      $width = 0;
+    }
+    else { 
+      $width += 2;
+    }
+  }
+  printf("  %6s", "");
+  printf("  %5s", "");
+  if(! $do_noexist) { 
+    printf(" %19s", "existing annotation");
+  }
+  printf("  %*s", $width_result, "");
+  printf("\n");
+  
+  # line 3 of column headers 
+  printf("%-20s  %6s", "#", "");
+  if(defined $origin_seq) { 
+    printf("  %22s", "----------------------");
+  }
+  $width = 0;
+  for(my $h = 0; $h < $nhmm; $h++) { 
+    $width += 18;
+    if(! $do_nofid)  { $width += 6; }
+    if(! $do_nomdlb) { $width += 4; }
+    if($hmm_is_final_AR->[$h]) { 
+      $width += 9;
+      if(! $do_noss3)  { $width += 4; }
+      if(! $do_nostop) { $width += 4; }
+      printf("  %s", monocharacterString($width, "-"));
+      $width = 0;
+    }
+    else { 
+      $width += 1;
+    }
+  }
+#    printf("  %6s  %-*s", "", $width_result, "");
+  printf("  %6s", "");
+  printf("  %5s", "");
+  if(! $do_noexist) { 
+    printf("  %19s", "-------------------");
+  }
+  printf("  %-*s", $width_result, "");
+  printf("\n");
+  
+  # line 4 of column headers
+  printf("%-20s  %6s", "# accession", "totlen");
+  if(defined $origin_seq) {
+    printf(" %2s %5s %5s %5s %2s", " #", "start", "stop", "offst", "PF");
+  }
+  for(my $h = 0; $h < $nhmm; $h++) { 
+    printf("  %8s %8s", 
+           sprintf("%s%s", "start", $hmm2exon_map_AR->[$h]+1), 
+           sprintf("%s%s", "stop",  $hmm2exon_map_AR->[$h]+1));
+    if(! $do_nofid) { 
+      printf(" %5s", sprintf("%s%s", "fid", $hmm2exon_map_AR->[$h]+1));
+    }
+    if(! $do_nomdlb) { 
+      printf(" %3s", sprintf("%s%s", "md", $hmm2exon_map_AR->[$h]+1));
+    }
+    if($hmm_is_final_AR->[$h]) { 
+      printf(" %6s", "length");
+      if(! $do_noss3) { 
+        printf(" %3s", "SS3");
+      }
+      if(! $do_nostop) { 
+        printf(" %3s", "stp");
+      }
+      printf(" %2s", "PF");
+    }
+  }
+  printf("  %6s", "totlen");
+  printf("  %5s", "avgid");    
+  if(! $do_noexist) { 
+    printf("  %5s  %5s  %5s", "cds", "exons", "match");
+  }
+  if(! $do_noolap) { 
+    printf("  %20s", " overlaps?");
+  }
+  
+  printf("  %-*s", $width_result, "result");
+  print "\n";
+  
+  # line 5 of column headers
+  printf("%-20s  %6s", "#-------------------", "------");
+  if(defined $origin_seq) {
+    printf(" %2s %5s %5s %5s %2s", "--", "-----", "-----", "-----", "--");
+  }
+  for(my $h = 0; $h < $nhmm; $h++) { 
+    printf("  %8s %8s", "--------", "--------");
+    if(! $do_nofid) { 
+      printf(" %5s", "-----");
+    }
+    if(! $do_nomdlb) { 
+      printf(" %3s", "---");
+    }
+    if($hmm_is_final_AR->[$h]) { 
+      printf(" %6s", "------");
+      if(! $do_noss3) { 
+        printf(" %3s", "---");
+      }
+      if(! $do_nostop) { 
+        printf(" %3s", "---");
+      }
+      printf(" --");
+    }
+  }
+  printf("  %6s", "------");
+  printf("  %5s", "-----");
+  
+  if(! $do_noexist) { 
+    printf("  %5s  %5s  %5s", "-----", "-----", "-----");
+  }
+  if(! $do_noolap) { 
+    printf("  %20s", monocharacterString(20, "-"));
+  }
+  printf("  %-*s", $width_result, monocharacterString($width_result, "-"));
+  
+  print "\n";
+}
+###########################################################
