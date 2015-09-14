@@ -46,6 +46,9 @@ $usage .= "\n OPTIONS SPECIFIC TO INFERNAL:\n";
 $usage .= "  -iglocal  : use the -g option with cmsearch for glocal searches\n";
 $usage .= "  -cslow    : use default cmcalibrate parameters, not parameters optimized for speed\n";
 $usage .= "  -ccluster : submit calibration to cluster and exit (requires --onlybuild)\n";
+$usage .= "\n OPTIONS USEFUL FOR DEVELOPMENT/DEBUGGING:\n";
+$usage .= "  -skipscan : use existing cmscan/hmmscan results, don't actually run it\n";
+$usage .= "  -skipaln  : use existing cmscan/hmmscan and alignment results, don't actually run it\n";
 
 $usage .= "\n";
 
@@ -95,6 +98,9 @@ my $do_hmmenv    = 0; # set to '1' if -hmmenv     enabled, use HMM envelope boun
 my $do_iglocal   = 0; # set to '1' if -iglocal    enabled, use -g with cmsearch
 my $do_cslow     = 0; # set to '1' if -cslow      enabled, use default, slow, cmcalibrate parameters instead of speed optimized ones
 my $do_ccluster  = 0; # set to '1' if -ccluster   enabled, submit calibration to cmcalibrate
+# options for development/debugging
+my $do_skipscan  = 0; # set to '1' if -skipscan   enabled, skip cmscan/hmmscan step, use pre-existing output from a previous run
+my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan and alignment step, use pre-existing output from a previous run
 
 &GetOptions("matpept"   => \$do_matpept,
             "oseq=s"    => \$origin_seq,
@@ -116,7 +122,9 @@ my $do_ccluster  = 0; # set to '1' if -ccluster   enabled, submit calibration to
             "hmmenv"    => \$do_hmmenv,
             "iglocal"   => \$do_iglocal,
             "cslow"     => \$do_cslow, 
-            "ccluster"  => \$do_ccluster) ||
+            "ccluster"  => \$do_ccluster,
+            "skipscan"  => \$do_skipscan,
+            "skipaln"   => \$do_skipaln) ||
     die "Unknown option";
 
 if(scalar(@ARGV) != 2) { die $usage; }
@@ -214,21 +222,32 @@ if($do_ccluster) {
   $opts_used_short .= "-ccluster ";
   $opts_used_long  .= "# option:  submit calibration job to cluster [-ccluster]\n";
 }
+if($do_skipscan) { 
+  $opts_used_short .= "-skipscan ";
+  $opts_used_long  .= "# option:  use existing cmscan/hmmscan results, don't actually run it [-skipscan]\n";
+}
+if($do_skipaln) { 
+  $opts_used_short .= "-skipscan ";
+  $opts_used_long  .= "# option:  use existing cmscan/hmmscan and alignment results, don't actually run either [-skipaln]\n";
+}
 # 
 # check for incompatible option values/combinations:
 if((! $do_hmmer) && $do_hmmenv) { 
   die "ERROR -hmmenv requires -hmmer"; 
-}
-
-# check that options that must occur in combination, do
-if($do_ccluster && (! $do_onlybuild)) { 
-  die "ERROR -ccluster must be used in combination with -onlybuild"; 
 }
 if($do_ccluster && $do_hmmer) { 
   die "ERROR -ccluster is incompatible with -hmmer"; 
 }
 if($do_cslow && $do_hmmer) { 
   die "ERROR -cslow is incompatible with -hmmer"; 
+}
+if($do_skipscan && ($do_ccluster || $do_cslow || $do_onlybuild)) { 
+  die "ERROR -skipscan is incompatible with -ccluster, -cslow, and -onlybuild";
+}
+
+# check that options that must occur in combination, do
+if($do_ccluster && (! $do_onlybuild)) { 
+  die "ERROR -ccluster must be used in combination with -onlybuild"; 
 }
 
 # check that input files related to options actually exist
@@ -569,14 +588,14 @@ my %p_refdel_HHA  = (); # array of reference positions that are deleted for the 
 my %p_refins_HHA  = (); # array of strings ("<rfpos>:<count>") reference positions that are deleted for the alignment of this sequence
 
 if($do_hmmer) { 
-  runNhmmscan($nhmmscan, $model_db, $gnm_fasta_file, $tblout, $stdout);
+  runNhmmscan($nhmmscan, ($do_skipscan || $do_skipaln), $model_db, $gnm_fasta_file, $tblout, $stdout);
   parseNhmmscanTblout($tblout, $do_hmmenv, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
-  alignHits($hmmalign, $hmmfetch, $model_db, $sqfile, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
+  alignHits($hmmalign, $hmmfetch, $model_db, $sqfile, $do_skipaln, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
 }
 else { 
-  runCmscan($cmscan, $do_iglocal, $model_db, $gnm_fasta_file, $tblout, $stdout);
+  runCmscan($cmscan, $do_iglocal, ($do_skipscan || $do_skipaln), $model_db, $gnm_fasta_file, $tblout, $stdout);
   parseCmscanTblout($tblout, \%totlen_H, \%mdllen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
-  alignHits($cmalign, $cmfetch, $model_db, $sqfile, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
+  alignHits($cmalign, $cmfetch, $model_db, $sqfile, $do_skipaln, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
 }
 printf("#\n");
 printf("#\n");
@@ -1625,6 +1644,7 @@ sub createCmDb {
 # Synopsis:   Perform a homology search using nhmmscan.
 #
 # Args:       $nhmmscan:     path to nhmmscan executable
+#             $do_skip:      '1' to not actually run hmmscan, but verify expected output already exists
 #             $model_db:     path to model HMM database
 #             $seq_fasta:    path to seq fasta file
 #             $tblout_file:  path to --tblout output file to create, undef to not create one
@@ -1635,11 +1655,18 @@ sub createCmDb {
 #
 sub runNhmmscan { 
   my $sub_name = "runNhmmscan()";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
- 
-  my ($nhmmscan, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
+  my ($nhmmscan, $do_skip, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
+
+  if($do_skip) { 
+    if(! -s $tblout_file) { die "ERROR, with -skipscan or -skipaln nhmmscan output is expected to already exist, but $tblout_file does not or is empty"; }
+    if(! -s $stdout_file) { die "ERROR, with -skipscan or -skipaln nhmmscan output is expected to already exist, but $stdout_file does not or is empty"; }
+    printf("%-50s ... ", "# Skipping nhmmscan step");
+    printf("done. [-skipscan or -skipaln]\n");
+    return;
+  }
 
   # my $opts = " --noali --tblout $tblout_file ";
   my $opts = " --tblout $tblout_file ";
@@ -1662,6 +1689,7 @@ sub runNhmmscan {
 #
 # Args:       $cmscan:      path to cmscan executable
 #             $do_glocal:   '1' to use the -g option, '0' not to
+#             $do_skip:     '1' to not actually run cmscan, but verify expected output already exists
 #             $model_db:    path to model CM database
 #             $seq_fasta:   path to seq fasta file
 #             $tblout_file: path to --tblout output file to create, undef to not create one
@@ -1672,10 +1700,18 @@ sub runNhmmscan {
 #
 sub runCmscan { 
   my $sub_name = "runCmscan()";
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($cmscan, $do_glocal, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
+  my ($cmscan, $do_glocal, $do_skip, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
+
+  if($do_skip) { 
+    if(! -s $tblout_file) { die "ERROR, with -skipscan or -skipaln cmscan output is expected to already exist, but $tblout_file does not or is empty"; }
+    if(! -s $stdout_file) { die "ERROR, with -skipscan or -skipaln cmscan output is expected to already exist, but $stdout_file does not or is empty"; }
+    printf("%-50s ... ", "# Skipping cmscan step");
+    printf("done. [-skipscan or -skipaln]\n");
+    return;
+  }
 
   my $opts = "";
   if($do_iglocal) { $opts .= "-g "; }
@@ -2186,6 +2222,7 @@ sub monocharacterString {
 #             $model_db:      model database file to fetch the models from
 #             $sqfile:        Bio::Easel::SqFile object, open sequence
 #                             file containing $seqname;
+#             $do_skip:       '1' to skip alignment step after verifying alignments exist
 #             $mdl_order_AR:  ref to array of model names in order
 #             $seq_order_AR:  ref to array of sequence names in order
 #             $seqlen_HR:     ref to hash of total lengths
@@ -2208,11 +2245,16 @@ sub monocharacterString {
 #
 sub alignHits {
   my $sub_name = "alignHits";
-  my $nargs_exp = 14;
+  my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($align, $fetch, $model_db, $sqfile, $mdl_order_AR, $seq_order_AR, $seqlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $fid2ref_HHR, $refdel_HHAR, $refins_HHAR, $out_aln_root) = @_;
+  my ($align, $fetch, $model_db, $sqfile, $do_skip, $mdl_order_AR, $seq_order_AR, $seqlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $fid2ref_HHR, $refdel_HHAR, $refins_HHAR, $out_aln_root) = @_;
 
+  my ($seconds, $microseconds) = gettimeofday();
+  my $start_time = ($seconds + ($microseconds / 1000000.));
+
+  printf("%-50s ... ", ($do_skip) ? "# Skipping multiple alignment creation" : "# Creating multiple alignments");
+    
   foreach my $mdl (@{$mdl_order_AR}) { 
     my @fetch_AA = ();
     my $nseq = 0;
@@ -2248,7 +2290,12 @@ sub alignHits {
       my $cur_stkfile = $out_aln_root . "." . $mdl . ".stk";
       my $cmd = "$fetch $model_db $mdl | $align - $cur_fafile > $cur_stkfile";
       #print $cmd . "\n";
-      runCommand($cmd, 0);
+      if($do_skip) { 
+        if(! -s $cur_stkfile) { die "ERROR, with -skipaln, alignments are expected to already exist, but $cur_stkfile does not or is empty"; }
+      }
+      else { 
+        runCommand($cmd, 0);
+      }
       # printf("Saved $nseq aligned sequences to $cur_stkfile.\n");
 
       # store the fractional identities between each sequence and the reference
@@ -2311,6 +2358,10 @@ sub alignHits {
       }
     }
   }
+  ($seconds, $microseconds) = gettimeofday();
+  my $stop_time = ($seconds + ($microseconds / 1000000.));
+  printf("done. [%s]\n", ($do_skip) ? "-skipaln" : sprintf("%.1f secs", ($stop_time - $start_time)));
+
   return;
 }
 
