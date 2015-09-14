@@ -2228,6 +2228,10 @@ sub alignHits {
         my $start = $start_HHR->{$mdl}{$seq};
         my $stop  = $stop_HHR->{$mdl}{$seq};
         if($start < 0 || $stop < 0) { 
+          # first, take care of off-by-one we introduced for coordinates that wrap around start (e.g. -2..3 in a length 
+          # 10 genome is really 9..10..11..12..13 in  duplicated genome, not 8..13)
+          if($start < 0) { $start -= 1; }
+          if($stop  < 0) { $stop  -= 1; }
           $start += $seqlen_HR->{$accn};
           $stop  += $seqlen_HR->{$accn};
         }
