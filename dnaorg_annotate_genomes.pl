@@ -44,8 +44,8 @@ $usage .= "\n OPTIONS SPECIFIC TO HMMER3:\n";
 $usage .= "  -hmmenv  : use HMM envelope boundaries for predicted annotations, default: use window boundaries\n";
 $usage .= "\n OPTIONS SPECIFIC TO INFERNAL:\n";
 $usage .= "  -iglocal  : use the -g option with cmsearch for glocal searches\n";
-$usage .= "  -cslow    : use default cmcalibrate parameters, not parameters optimized for speed (requires --inf1p1)\n";
-$usage .= "  -ccluster : submit calibration to cluster and exit (requires --onlybuild and --inf1p1)\n";
+$usage .= "  -cslow    : use default cmcalibrate parameters, not parameters optimized for speed\n";
+$usage .= "  -ccluster : submit calibration to cluster and exit (requires --onlybuild)\n";
 
 $usage .= "\n";
 
