@@ -11,6 +11,7 @@ use Bio::Easel::SqFile;
 # hard-coded-paths:
 my $idfetch       = "/netopt/ncbi_tools64/bin/idfetch";
 my $esl_fetch_cds = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
+my $esl_ssplit    = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
 
 # The definition of $usage explains the script and usage:
 my $usage = "\ndnaorg_annotate_genomes.pl\n";
@@ -43,9 +44,12 @@ $usage .= "  -hmmer     : use HMMER for predicting annotations, default: use Inf
 $usage .= "\n OPTIONS SPECIFIC TO HMMER3:\n";
 $usage .= "  -hmmenv  : use HMM envelope boundaries for predicted annotations, default: use window boundaries\n";
 $usage .= "\n OPTIONS SPECIFIC TO INFERNAL:\n";
-$usage .= "  -iglocal  : use the -g option with cmsearch for glocal searches\n";
-$usage .= "  -cslow    : use default cmcalibrate parameters, not parameters optimized for speed\n";
-$usage .= "  -ccluster : submit calibration to cluster and exit (requires --onlybuild)\n";
+$usage .= "  -iglocal      : use the -g option with cmsearch for glocal searches\n";
+$usage .= "  -cslow        : use default cmcalibrate parameters, not parameters optimized for speed\n";
+$usage .= "  -ccluster     : submit calibration to cluster and exit (requires --onlybuild)\n";
+$usage .= "  -scluster <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes\n";
+$usage .= "                  (changeable with -swait) before concatenating all the output files and continuing\n";
+$usage .= "  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]\n";
 $usage .= "\n OPTIONS USEFUL FOR DEVELOPMENT/DEBUGGING:\n";
 $usage .= "  -skipscan : use existing cmscan/hmmscan results, don't actually run it\n";
 $usage .= "  -skipaln  : use existing cmscan/hmmscan and alignment results, don't actually run it\n";
@@ -95,9 +99,13 @@ my $do_hmmer     = 0; # set to '1' if -hmmer      enabled, use HMMER3's nhmmscan
 # options specific to HMMER3
 my $do_hmmenv    = 0; # set to '1' if -hmmenv     enabled, use HMM envelope boundaries as predicted annotations, else use window boundaries
 # options specific to Infernal
-my $do_iglocal   = 0; # set to '1' if -iglocal    enabled, use -g with cmsearch
-my $do_cslow     = 0; # set to '1' if -cslow      enabled, use default, slow, cmcalibrate parameters instead of speed optimized ones
-my $do_ccluster  = 0; # set to '1' if -ccluster   enabled, submit calibration to cmcalibrate
+my $do_iglocal       = 0; # set to '1' if -iglocal    enabled, use -g with cmsearch
+my $do_cslow         = 0; # set to '1' if -cslow      enabled, use default, slow, cmcalibrate parameters instead of speed optimized ones
+my $do_ccluster      = 0; # set to '1' if -ccluster   enabled, submit cmcalibrate job to cluster
+my $do_scluster      = 0; # set to '1' if -scluster   enabled, submit cmscan jobs to cluster
+my $scluster_njobs   = undef; # set to a value if -scluster is used
+my $df_scluster_wait = 3; # default value for number of minutes to wait for cmscan jobs to finish
+my $scluster_wait    = $df_scluster_wait; # changeable to <n> with -swait <n>
 # options for development/debugging
 my $do_skipscan  = 0; # set to '1' if -skipscan   enabled, skip cmscan/hmmscan step, use pre-existing output from a previous run
 my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan and alignment step, use pre-existing output from a previous run
@@ -123,6 +131,8 @@ my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan a
             "iglocal"   => \$do_iglocal,
             "cslow"     => \$do_cslow, 
             "ccluster"  => \$do_ccluster,
+            "scluster=s"=> \$scluster_njobs,
+            "swait=s"   => \$scluster_wait,
             "skipscan"  => \$do_skipscan,
             "skipaln"   => \$do_skipaln) ||
     die "Unknown option";
@@ -222,6 +232,15 @@ if($do_ccluster) {
   $opts_used_short .= "-ccluster ";
   $opts_used_long  .= "# option:  submit calibration job to cluster [-ccluster]\n";
 }
+if(defined $scluster_njobs) { 
+  $do_scluster = 1;
+  $opts_used_short .= "-scluster ";
+  $opts_used_long  .= "# option:  submit cmscan jobs to cluster and wait for them to finish [-scluster]\n";
+}
+if($scluster_wait != $df_scluster_wait) { 
+  $opts_used_short .= "-swait ";
+  $opts_used_long  .= "# option:  submit cmscan jobs to cluster and wait for them to finish [-scluster]\n";
+}
 if($do_skipscan) { 
   $opts_used_short .= "-skipscan ";
   $opts_used_long  .= "# option:  use existing cmscan/hmmscan results, don't actually run it [-skipscan]\n";
@@ -244,10 +263,16 @@ if($do_cslow && $do_hmmer) {
 if($do_skipscan && ($do_ccluster || $do_cslow || $do_onlybuild)) { 
   die "ERROR -skipscan is incompatible with -ccluster, -cslow, and -onlybuild";
 }
+if($do_scluster && ($do_skipaln || $do_skipscan)) { 
+  die "ERROR -skipscan and -skipaln are incompatible with -scluster";
+}
 
 # check that options that must occur in combination, do
 if($do_ccluster && (! $do_onlybuild)) { 
   die "ERROR -ccluster must be used in combination with -onlybuild"; 
+}
+if(($scluster_wait != $df_scluster_wait) && (! $do_scluster)) { 
+  die "ERROR -swait must be used in combination with -scluster"; 
 }
 
 # check that input files related to options actually exist
@@ -382,6 +407,12 @@ my @seq_accn_A = (); # [0..$naccn-1] name of genome fasta sequence for each accn
 my $seq_accn;     # temp fasta sequence name
 my $fetch_string = undef;
 my $ref_seq_accn; # name of fasta sequence for reference
+
+# another error check
+if($do_scluster && ($scluster_njobs > $naccn)) { 
+  die "ERROR with -scluster <n>, <n> must be <= number of genomes ($naccn), but you used $scluster_njobs"; 
+}
+
 open(OUT, ">" . $gnm_fetch_file) || die "ERROR unable to open $gnm_fetch_file";
 for(my $a = 0; $a < $naccn; $a++) { 
 #  print OUT $accn_A[$a] . "\n";
@@ -593,7 +624,63 @@ if($do_hmmer) {
   alignHits($hmmalign, $hmmfetch, $model_db, $sqfile, $do_skipaln, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
 }
 else { 
-  runCmscan($cmscan, $do_iglocal, ($do_skipscan || $do_skipaln), $model_db, $gnm_fasta_file, $tblout, $stdout);
+  if(! $do_scluster) { 
+    # default method, run cmscan on full genome file
+    runCmscan($cmscan, $do_iglocal, ($do_skipscan || $do_skipaln), 0, $model_db, $gnm_fasta_file, $tblout, $stdout);
+  }
+  else { # we need to split up the genome fasta file and submit a different cmscan job for each fasta file
+    splitFastaFile($esl_ssplit, $gnm_fasta_file, $scluster_njobs);
+    # now submit a job for each
+    printf("%-50s ... ", sprintf("# Submitting %d cmscan jobs", $scluster_njobs));
+    for(my $z = 1; $z <= $scluster_njobs; $z++) { 
+      my $cur_gnm_fasta_file = $gnm_fasta_file . "." . $z;
+      my $cur_tblout = $tblout . "." . $z;
+      my $cur_stdout = $stdout . "." . $z;
+      runCmscan($cmscan, $do_iglocal, 0, 1, $model_db, $cur_gnm_fasta_file, $cur_tblout, $cur_stdout);
+    }
+    printf("done. [waiting max of $scluster_wait minutes for them to finish]\n");
+
+    # now check that they're all finished every 15 seconds until we hit our max wait time
+    my $all_finished = 0;
+    my $nfinished = 0;
+    for(my $zz = 0; $zz < ($scluster_wait*4); $zz++) { 
+      # check to see if jobs are finished, every 30 seconds
+      sleep(15);
+      $nfinished = 0;
+      for(my $z = 1; $z <= $scluster_njobs; $z++) { 
+        my $cur_stdout = $stdout . "." . $z;
+        if(-s $cur_stdout) { 
+          my $final_line = `tail -n 1 $cur_stdout`;
+          chomp $final_line;
+          if($final_line eq "[ok]") { 
+            $nfinished++;
+          }
+        }
+      }
+      if($nfinished == $scluster_njobs) { 
+        # we're done break out of it
+        $all_finished = 1;
+        $zz = ($scluster_wait * 4);
+      }
+    }
+    if($all_finished) { 
+      # concatenate all outputs into one main one
+      for(my $z = 1; $z <= $scluster_njobs; $z++) { 
+        my $cur_gnm_fasta_file = $gnm_fasta_file . "." . $z;
+        my $cur_stdout = $stdout . "." . $z;
+        my $cur_tblout = $tblout . "." . $z;
+        my $output_char = ($z == 1) ? ">" : ">>";
+        $cmd = "cat $cur_stdout $output_char $stdout; rm $cur_stdout; rm $cur_gnm_fasta_file";
+        runCommand($cmd, 0);
+        $cmd = "cat $cur_tblout $output_char $tblout; rm $cur_tblout";
+        runCommand($cmd, 0);
+      }
+    }
+    else { 
+      die "ERROR only $nfinished of the $scluster_njobs are finished after $scluster_wait minutes. Increase limit with -swait";
+    }
+  } # end of 'else' entered if we're submitting jobs to the cluster
+
   parseCmscanTblout($tblout, \%totlen_H, \%mdllen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
   alignHits($cmalign, $cmfetch, $model_db, $sqfile, $do_skipaln, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
 }
@@ -1546,6 +1633,7 @@ sub runNhmmscan {
 # Args:       $cmscan:      path to cmscan executable
 #             $do_glocal:   '1' to use the -g option, '0' not to
 #             $do_skip:     '1' to not actually run cmscan, but verify expected output already exists
+#             $do_cluster:  '1' to submit job to cluster, instead of running it locally
 #             $model_db:    path to model CM database
 #             $seq_fasta:   path to seq fasta file
 #             $tblout_file: path to --tblout output file to create, undef to not create one
@@ -1556,10 +1644,10 @@ sub runNhmmscan {
 #
 sub runCmscan { 
   my $sub_name = "runCmscan()";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($cmscan, $do_glocal, $do_skip, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
+  my ($cmscan, $do_glocal, $do_skip, $do_cluster, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
 
   if($do_skip) { 
     if(! -s $tblout_file) { die "ERROR, with -skipscan or -skipaln cmscan output is expected to already exist, but $tblout_file does not or is empty"; }
@@ -1577,11 +1665,21 @@ sub runCmscan {
   if(! -s $model_db)   { die "ERROR in $sub_name, $model_db file does not exist or is empty"; }
   if(! -s $seq_fasta) { die "ERROR in $sub_name, $seq_fasta file does not exist or is empty"; }
 
-  printf("%-50s ... ", "# Running cmscan");
   my $cmd = "$cmscan $opts $model_db $seq_fasta > $stdout_file";
-  $secs_elapsed = runCommand($cmd, 0);
-  printf("done. [%.1f seconds]\n", $secs_elapsed);
-
+  if(! $do_cluster) { 
+    # default mode, run job locally
+    printf("%-50s ... ", "# Running cmscan");
+    $secs_elapsed = runCommand($cmd, 0);
+    printf("done. [%.1f seconds]\n", $secs_elapsed);
+  }
+  else { 
+    # submit job to cluster and return
+    my $jobname = $seq_fasta;
+    my $errfile = $stdout . ".err";
+    $jobname =~ s/^.+\///; # remove everything up until final '/'
+    my $cluster_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G " . "\"" . $cmd . "\" > /dev/null\n";
+    runCommand($cluster_cmd, 0);
+  }
   return;
 }
 
@@ -3022,6 +3120,34 @@ sub findSpecialGap {
   }
 }
 
+# Subroutine: splitFastaFile()
+#
+# Synopsis:   Split up a fasta file into <n> smaller files using 
+#             the esl-ssplit script.
+#
+# Args:       $esl_ssplit:   path to perl esl-sscript.pl script to use
+#             $fafile:       fasta file to split up
+#             $nfiles:       number of files to split $fafile into
+#
+# Returns:    void
+# Dies:       if command fails or there is some other problem
+#
+sub splitFastaFile {
+  my $sub_name = "splitFastaFile";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($esl_ssplit, $fafile, $nfiles) = @_;
+
+  if(! -s $esl_ssplit) { die "ERROR the $esl_ssplit file does not exist or is empty"; }
+  if(! -x $esl_ssplit) { die "ERROR the $esl_ssplit file is not executable"; }
+
+  my $cmd = "$esl_ssplit -n $fafile $nfiles > /dev/null";
+  runCommand($cmd, 0);
+
+  return;
+}
+
 ######################
 # OUTPUT subroutines #
 ######################
@@ -3221,3 +3347,4 @@ sub outputSeqRowHeadings {
   print "\n";
 }
 ###########################################################
+
