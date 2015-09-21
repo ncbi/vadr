@@ -707,10 +707,14 @@ else {
 # Output (or verify that we have already output) CDS sequences, and translate them to amino acid sequences
 
 my @exon_fafile_A = ();
-my @nfullprot_A   = (); # [0..$i..ncds-1], number of accessions we have a full protein for, for CDS $i
-my @fullprot_AH   = (); # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
-                        # of number of full length protein sequences we have for CDS $i for key $key. Values should
-                        # always be '1', more than '1' is an error, and we never create a value of '0'.
+my @nfullprot_A   = ();    # [0..$i..ncds-1], number of accessions we have a full protein for, for CDS $i
+my @fullprot_AH   = ();    # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
+                           # of number of full length protein sequences we have for CDS $i for key $key. Values should
+                           # always be '1', more than '1' is an error, and we never create a value of '0'.
+my @nnonfullprot_A   = (); # [0..$i..ncds-1], number of accessions we do not have a full protein for, for CDS $i
+my @nonfullprot_AH   = (); # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
+                           # of number of non-full length protein sequences we have for CDS $i for key $key. Values should
+                           # always be '1', more than '1' is an error, and we never create a value of '0'.
     
 ($seconds, $microseconds) = gettimeofday();
 $start_time = ($seconds + ($microseconds / 1000000.));
@@ -739,17 +743,28 @@ for(my $h = 0; $h < $nhmm; $h++) {
     @exon_fafile_A = ();
 
     # translate into AA sequences
-    my $tmp_aa_fafile = $cur_fafile;
-    my $aa_fafile     = $cur_fafile;
-    $tmp_aa_fafile =~ s/\.cds/\.aatmp/;
-    $aa_fafile     =~ s/\.cds/\.aa/;
+    my $tmp_aa_fafile     = $cur_fafile;
+    my $aa_full_fafile    = $cur_fafile;
+    my $aa_nonfull_fafile = $cur_fafile;
+    $tmp_aa_fafile     =~ s/\.cds/\.aa.tmp/;
+    $aa_full_fafile    =~ s/\.cds/\.aa.full/;
+    $aa_nonfull_fafile =~ s/\.cds/\.aa.nonfull/;
+
     $cmd = $esl_translate . " --watson $cur_fafile > $tmp_aa_fafile";
     runCommand($cmd, 0);
 
     # now we have to parse that file to only keep the full length protein seqs
     # we also keep track of which sequence accessions we have full length proteins for
-    parseEslTranslateOutput($tmp_aa_fafile, $aa_fafile, \%{$fullprot_AH[$cds_i]}, \$nfullprot_A[$cds_i]);
+    my $prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
+    my $prot_must_stop_at_posn_L  = 1; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
+    parseEslTranslateOutput($tmp_aa_fafile, $aa_full_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$fullprot_AH[$cds_i]}, \$nfullprot_A[$cds_i]);
     printf("CDS: %d nfullprot: %d\n", ($cds_i+1), $nfullprot_A[$cds_i]);
+
+    # now fetch any protein sequences that start at position 1 but do not end at the final predicted position
+    $prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
+    $prot_must_stop_at_posn_L  = 0; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
+    parseEslTranslateOutput($tmp_aa_fafile, $aa_nonfull_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$nonfullprot_AH[$cds_i]}, \$nnonfullprot_A[$cds_i]);
+    printf("CDS: %d nnonfullprot: %d\n", ($cds_i+1), $nnonfullprot_A[$cds_i]);
   }
 }
 ($seconds, $microseconds) = gettimeofday();
@@ -806,8 +821,8 @@ for(my $a = 0; $a < $naccn; $a++) {
 
       my $strand = substr($strand_str, $i, 1);
       if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
-        @starts_A = reverse @starts_A;           # exons will be in reverse order, b/c we're on the negative strand
-        @stops_A  = reverse @stops_A;            # exons will be in reverse order, b/c we're on the negative strand
+        @starts_A = reverse @starts_A;          # exons will be in reverse order, b/c we're on the negative strand
+        @stops_A  = reverse @stops_A;           # exons will be in reverse order, b/c we're on the negative strand
         @{$act_exon_starts_AA[$i]} = @stops_A;  # save stops  to starts array b/c we're on the negative strand
         @{$act_exon_stops_AA[$i]}  = @starts_A; # save starts to stops  array b/c we're on the negative strand
       }
@@ -998,6 +1013,26 @@ for(my $a = 0; $a < $naccn; $a++) {
           $predicted_string .= sprintf(" %3s", $stop_codon);
         }
 
+        if($at_least_one_fail) { 
+          $pass_fail_char = "F"; 
+          # ensure we didn't fetch a full length protein for this CDS
+          if(exists $fullprot_AH[$cds_i]{$accn}) { 
+            die sprintf("ERROR, incorrectly translated full length protein for CDS: %d for seq accn: $accn, but at least one test failed...", $cds_i+1); 
+          }
+          if(! exists $nonfullprot_AH[$cds_i]{$accn}) { 
+            die sprintf("ERROR, failed to translate non full length protein for CDS: %d for seq accn: $accn, but at least one test failed...", $cds_i+1); 
+          }
+        }
+        else { 
+          $pass_fail_char = "P"; 
+          # verify that we have a translated protein sequence for this CDS
+          if(! exists $fullprot_AH[$cds_i]{$accn}) { 
+            die sprintf("ERROR, failed to translate full length protein for CDS: %d for seq accn: $accn, but all tests passed...", $cds_i+1); 
+          }
+          if(exists $nonfullprot_AH[$cds_i]{$accn}) { 
+            die sprintf("ERROR, incorrectly translated non full length protein for CDS: %d for seq accn: $%accn, but all tests passed...", $cds_i+1);
+          }
+        }
         $pass_fail_char = ($at_least_one_fail) ? "F" : "P";
         $predicted_string .= sprintf(" %2s", $pass_fail_char);
         $pass_fail_str .= $pass_fail_char;
@@ -3321,10 +3356,14 @@ sub combineExonsIntoCDS {
 # Args:       $esl_translate_output: output fasta file from esl-translate
 #             $new_output:           new output file to create with subset
 #                                    of sequences from $esl_translate_output
-#             $fullprot_HR:          ref to hash to fill here, keys are seq accessions
+#             $prot_must_start_at_1: '1' if translated protein sequence must start 
+#                                    at position 1 of the CDS sequence
+#             $prot_must_stop_at_L:  'L' if translated protein sequence must stop
+#                                    at final position of the CDS sequence
+#             $prot_HR:              ref to hash to fill here, keys are seq accessions
 #                                    values are number of protein sequences fetch for that
 #                                    accession, any value >1 is an error, and we'll die
-#             $nfullprot_R:          ref to scalar to fill with number of accessions
+#             $nprot_R:              ref to scalar to fill with number of accessions
 #                                    for which we fetched a full length protein
 #
 # Returns:    void
@@ -3332,12 +3371,14 @@ sub combineExonsIntoCDS {
 #
 sub parseEslTranslateOutput {
   my $sub_name = "parseEslTranslateOutput";
-  my $nargs_exp = 4;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my $nfullprot = 0; # number of full length proteins kept
+  my $nprot = 0; # number of full length proteins kept
 
-  my ($esl_translate_output, $new_output, $fullprot_HR, $nfullprot_R) = @_;
+  my ($esl_translate_output, $new_output, $prot_must_start_at_1, $prot_must_stop_at_L, $prot_HR, $nprot_R) = @_;
+
+  if(! $prot_must_start_at_1) { die "ERROR in $sub_name, prot_must_start_at_1 is FALSE, you haven't implemented this case yet..."; }
 
   open(IN,  "<", $esl_translate_output) || die "ERROR unable to open $esl_translate_output for reading";
   open(OUT, ">", $new_output)           || die "ERROR unable to open $new_output for writing";
@@ -3376,12 +3417,26 @@ sub parseEslTranslateOutput {
       }
     }
     $coords_length = ($coords_to - $coords_from) + 1;
-    $print_flag = (($source_length - 3) == ($coords_length)) ? 1 : 0;
+    # now determine if this protein passes or not
+    $print_flag = 0; # by default it fails, but we redefine this below if it passes
+    if($prot_must_start_at_1 && $prot_must_stop_at_L && 
+       ($coords_from == 1) && ($coords_to == ($source_length - 3))) { 
+      # we're looking only for full length proteins, and this is one
+      $print_flag = 1;
+    }
+    if($prot_must_start_at_1 && (! $prot_must_stop_at_L) && 
+       ($coords_from == 1) && $coords_to != ($source_length - 3)) { 
+      # we're NOT looking for full length proteins, but rather for proteins
+      # that start at the beginning of the CDS but do NOT end at the end of the 
+      # CDS, they may be shorter or longer
+      $print_flag = 1;
+    }
+
     if($print_flag) { 
       print OUT $line; 
-      $nfullprot++;
-      $fullprot_HR->{$source_name}++;
-      if($fullprot_HR->{$source_name} > 1) { 
+      $nprot++;
+      $prot_HR->{$source_name}++;
+      if($prot_HR->{$source_name} > 1) { 
         die "ERROR in $sub_name, found more than 1 full length protein translation for $source_name"; 
       }
     }
@@ -3393,7 +3448,7 @@ sub parseEslTranslateOutput {
   }
   close(OUT);
 
-  $$nfullprot_R = $nfullprot;
+  $$nprot_R = $nprot;
   return;
 }
 
