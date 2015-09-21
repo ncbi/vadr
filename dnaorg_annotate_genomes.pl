@@ -12,6 +12,7 @@ use Bio::Easel::SqFile;
 my $idfetch       = "/netopt/ncbi_tools64/bin/idfetch";
 my $esl_fetch_cds = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 my $esl_ssplit    = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
+my $esl_translate = "/home/nawrocke/src/wd-easel/miniapps/esl-translate";
 
 # The definition of $usage explains the script and usage:
 my $usage = "\ndnaorg_annotate_genomes.pl\n";
@@ -51,8 +52,9 @@ $usage .= "  -scluster <n> : split genome file into <n> pieces, submit <n> cmsca
 $usage .= "                  (changeable with -swait) before concatenating all the output files and continuing\n";
 $usage .= "  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]\n";
 $usage .= "\n OPTIONS USEFUL FOR DEVELOPMENT/DEBUGGING:\n";
-$usage .= "  -skipscan : use existing cmscan/hmmscan results, don't actually run it\n";
-$usage .= "  -skipaln  : use existing cmscan/hmmscan and alignment results, don't actually run it\n";
+$usage .= "  -skipfetch : use existing cmscan/hmmscan results, don't actually run it\n";
+$usage .= "  -skipscan  : use existing cmscan/hmmscan results, don't actually run it\n";
+$usage .= "  -skipaln   : use existing cmscan/hmmscan and alignment results, don't actually run it\n";
 
 $usage .= "\n";
 
@@ -107,6 +109,7 @@ my $scluster_njobs   = undef; # set to a value if -scluster is used
 my $df_scluster_wait = 3; # default value for number of minutes to wait for cmscan jobs to finish
 my $scluster_wait    = $df_scluster_wait; # changeable to <n> with -swait <n>
 # options for development/debugging
+my $do_skipfetch = 0; # set to '1' if -skipfetch  enabled, skip genome fetch step, use pre-existing output from a previous run
 my $do_skipscan  = 0; # set to '1' if -skipscan   enabled, skip cmscan/hmmscan step, use pre-existing output from a previous run
 my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan and alignment step, use pre-existing output from a previous run
 
@@ -133,12 +136,14 @@ my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan a
             "ccluster"  => \$do_ccluster,
             "scluster=s"=> \$scluster_njobs,
             "swait=s"   => \$scluster_wait,
+            "skipfetch" => \$do_skipfetch,
             "skipscan"  => \$do_skipscan,
             "skipaln"   => \$do_skipaln) ||
     die "Unknown option";
 
 if(scalar(@ARGV) != 2) { die $usage; }
 my ($dir, $listfile) = (@ARGV);
+my $cmd; # a command to run with runCommand()
 
 #$dir =~ s/\/*$//; # remove trailing '/' if there is one
 #my $outdir     = $dir;
@@ -241,12 +246,16 @@ if($scluster_wait != $df_scluster_wait) {
   $opts_used_short .= "-swait ";
   $opts_used_long  .= "# option:  submit cmscan jobs to cluster and wait for them to finish [-scluster]\n";
 }
+if($do_skipfetch) { 
+  $opts_used_short .= "-skipfetch ";
+  $opts_used_long  .= "# option:  use existing fetched genome file, don't create a new one [-skipfetch]\n";
+}
 if($do_skipscan) { 
   $opts_used_short .= "-skipscan ";
   $opts_used_long  .= "# option:  use existing cmscan/hmmscan results, don't actually run it [-skipscan]\n";
 }
 if($do_skipaln) { 
-  $opts_used_short .= "-skipscan ";
+  $opts_used_short .= "-skipaln ";
   $opts_used_long  .= "# option:  use existing cmscan/hmmscan and alignment results, don't actually run either [-skipaln]\n";
 }
 # 
@@ -433,15 +442,23 @@ for(my $a = 0; $a < $naccn; $a++) {
 }
 close(OUT);
 
-# remove the file we're about to create ($gnm_fasta_file), and any .ssi index that may exist with it
-if(-e $gnm_fasta_file)          { unlink $gnm_fasta_file; }
-if(-e $gnm_fasta_file . ".ssi") { unlink $gnm_fasta_file . ".ssi"; }
+if($do_skipfetch) { 
+  # trying to skip fetch step, make sure we have the fasta file
+  printf("%-50s ... ", "# Skipping genome fetch step");
+  if(! -s $gnm_fasta_file) { die "ERROR, with -skipfetch genome fasta file is expected to exist, but $gnm_fasta_file does not or is empty"; }
+  printf("done. [-skipfetch]\n");
+}
+else { 
+  # remove the file we're about to create ($gnm_fasta_file), and any .ssi index that may exist with it
+  if(-e $gnm_fasta_file)          { unlink $gnm_fasta_file; }
+  if(-e $gnm_fasta_file . ".ssi") { unlink $gnm_fasta_file . ".ssi"; }
 
-printf("%-50s ... ", sprintf("# Fetching $naccn full%s genome sequences", $do_nodup ? "" : " (duplicated)"));
+  printf("%-50s ... ", sprintf("# Fetching $naccn full%s genome sequences", $do_nodup ? "" : " (duplicated)"));
 # my $cmd = "$idfetch -t 5 -c 1 -G $gnm_fetch_file > $gnm_fasta_file";
-my $cmd = "perl $esl_fetch_cds -nocodon $gnm_fetch_file > $gnm_fasta_file";
-my $secs_elapsed = runCommand($cmd, 0);
-printf("done. [%.1f seconds]\n", $secs_elapsed);
+  $cmd = "perl $esl_fetch_cds -nocodon $gnm_fetch_file > $gnm_fasta_file";
+  my $secs_elapsed = runCommand($cmd, 0);
+  printf("done. [%.1f seconds]\n", $secs_elapsed);
+}
 
 # and open the sequence file using BioEasel
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $gnm_fasta_file });
@@ -556,6 +573,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
       push(@cds_out_product_A, $ref_cds_product_A[$i]);
     }
     push(@model_A, $cur_name_root);
+
     $mdllen_H{$cur_name_root} = $mdllen;
 
     # now append the named alignment to the growing stockholm alignment database $all-stk_file
@@ -684,6 +702,60 @@ else {
   parseCmscanTblout($tblout, \%totlen_H, \%mdllen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
   alignHits($cmalign, $cmfetch, $model_db, $sqfile, $do_skipaln, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
 }
+
+###################
+# Output (or verify that we have already output) CDS sequences, and translate them to amino acid sequences
+
+my @exon_fafile_A = ();
+my @nfullprot_A   = (); # [0..$i..ncds-1], number of accessions we have a full protein for, for CDS $i
+my @fullprot_AH   = (); # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
+                        # of number of full length protein sequences we have for CDS $i for key $key. Values should
+                        # always be '1', more than '1' is an error, and we never create a value of '0'.
+    
+($seconds, $microseconds) = gettimeofday();
+$start_time = ($seconds + ($microseconds / 1000000.));
+printf("%-50s ... ", "# Combining multi-exon CDS and translating all CDS");
+for(my $h = 0; $h < $nhmm; $h++) { 
+  my $model           = $model_A[$h];
+  my $cds_i           = $hmm2cds_map_A[$h];
+  my $exon_i          = $hmm2exon_map_A[$h];
+  my $cds_i_to_print  = $cds_i+1;
+  my $exon_i_to_print = $exon_i+1;
+  my $cur_fafile      = $out_root;
+  my $out_key         = $model;
+  $out_key      =~ s/ref/predicted/;
+  $cur_fafile  =~ s/\/.+$/\//; # remove everything after the first '/'
+  $cur_fafile .= $out_key . ".fa";
+  push(@exon_fafile_A, $cur_fafile);
+  if($hmm_is_final_A[$h]) { 
+    %{$fullprot_AH[$cds_i]} = ();
+    if(! $hmm_is_first_A[$h]) { # a multi-exon gene
+      $cur_fafile =~ s/\.exon\.\d+//;
+      combineExonsIntoCDS(\@exon_fafile_A, $cur_fafile);
+    }
+    else { # a single exon gene, we should already have the sequence from alignHits
+      if(! -s $cur_fafile) { die "ERROR, expected output fasta file for CDS $cds_i_to_print does not exist: $cur_fafile"; }
+    }
+    @exon_fafile_A = ();
+
+    # translate into AA sequences
+    my $tmp_aa_fafile = $cur_fafile;
+    my $aa_fafile     = $cur_fafile;
+    $tmp_aa_fafile =~ s/\.cds/\.aatmp/;
+    $aa_fafile     =~ s/\.cds/\.aa/;
+    $cmd = $esl_translate . " --watson $cur_fafile > $tmp_aa_fafile";
+    runCommand($cmd, 0);
+
+    # now we have to parse that file to only keep the full length protein seqs
+    # we also keep track of which sequence accessions we have full length proteins for
+    parseEslTranslateOutput($tmp_aa_fafile, $aa_fafile, \%{$fullprot_AH[$cds_i]}, \$nfullprot_A[$cds_i]);
+    printf("CDS: %d nfullprot: %d\n", ($cds_i+1), $nfullprot_A[$cds_i]);
+  }
+}
+($seconds, $microseconds) = gettimeofday();
+$stop_time = ($seconds + ($microseconds / 1000000.));
+printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
+
 printf("#\n");
 printf("#\n");
 
@@ -1002,12 +1074,12 @@ my $gap_pergap_all_FH     = undef;
 my $gap_pergap_not3_FH    = undef;
 my $gap_pergap_special_FH = undef;
 
-open($gap_perseq_all_FH,     ">" . $gap_perseq_all_file)     || die "ERROR unable to open $gap_perseq_all_file"; 
-open($gap_perseq_not3_FH,    ">" . $gap_perseq_not3_file)    || die "ERROR unable to open $gap_perseq_not3_file"; 
-open($gap_perseq_special_FH, ">" . $gap_perseq_special_file) || die "ERROR unable to open $gap_perseq_special_file"; 
-open($gap_pergap_all_FH,     ">" . $gap_pergap_all_file)     || die "ERROR unable to open $gap_pergap_all_file"; 
-open($gap_pergap_not3_FH,    ">" . $gap_pergap_not3_file)    || die "ERROR unable to open $gap_pergap_not3_file"; 
-open($gap_pergap_special_FH, ">" . $gap_pergap_special_file) || die "ERROR unable to open $gap_pergap_special_file"; 
+open($gap_perseq_all_FH,     ">", $gap_perseq_all_file)     || die "ERROR unable to open $gap_perseq_all_file"; 
+open($gap_perseq_not3_FH,    ">", $gap_perseq_not3_file)    || die "ERROR unable to open $gap_perseq_not3_file"; 
+open($gap_perseq_special_FH, ">", $gap_perseq_special_file) || die "ERROR unable to open $gap_perseq_special_file"; 
+open($gap_pergap_all_FH,     ">", $gap_pergap_all_file)     || die "ERROR unable to open $gap_pergap_all_file"; 
+open($gap_pergap_not3_FH,    ">", $gap_pergap_not3_file)    || die "ERROR unable to open $gap_pergap_not3_file"; 
+open($gap_pergap_special_FH, ">", $gap_pergap_special_file) || die "ERROR unable to open $gap_pergap_special_file"; 
 
 # 3 calls to outputGapInfo to create all the files we need:
 outputGapInfo($gap_perseq_all_FH,     $gap_pergap_all_FH,     0, 1, 0, 0, \@model_A, \@seq_accn_A, \%mdllen_H, \@hmm2cds_map_A, \%p_refdel_HHA, \%p_refins_HHA);
@@ -1604,9 +1676,9 @@ sub runNhmmscan {
   my ($nhmmscan, $do_skip, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
 
   if($do_skip) { 
+    printf("%-50s ... ", "# Skipping nhmmscan step");
     if(! -s $tblout_file) { die "ERROR, with -skipscan or -skipaln nhmmscan output is expected to already exist, but $tblout_file does not or is empty"; }
     if(! -s $stdout_file) { die "ERROR, with -skipscan or -skipaln nhmmscan output is expected to already exist, but $stdout_file does not or is empty"; }
-    printf("%-50s ... ", "# Skipping nhmmscan step");
     printf("done. [-skipscan or -skipaln]\n");
     return;
   }
@@ -1650,9 +1722,9 @@ sub runCmscan {
   my ($cmscan, $do_glocal, $do_skip, $do_cluster, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
 
   if($do_skip) { 
+    printf("%-50s ... ", "# Skipping cmscan step");
     if(! -s $tblout_file) { die "ERROR, with -skipscan or -skipaln cmscan output is expected to already exist, but $tblout_file does not or is empty"; }
     if(! -s $stdout_file) { die "ERROR, with -skipscan or -skipaln cmscan output is expected to already exist, but $stdout_file does not or is empty"; }
-    printf("%-50s ... ", "# Skipping cmscan step");
     printf("done. [-skipscan or -skipaln]\n");
     return;
   }
@@ -1669,7 +1741,7 @@ sub runCmscan {
   if(! $do_cluster) { 
     # default mode, run job locally
     printf("%-50s ... ", "# Running cmscan");
-    $secs_elapsed = runCommand($cmd, 0);
+    my $secs_elapsed = runCommand($cmd, 0);
     printf("done. [%.1f seconds]\n", $secs_elapsed);
   }
   else { 
@@ -2207,9 +2279,13 @@ sub alignHits {
   my ($seconds, $microseconds) = gettimeofday();
   my $start_time = ($seconds + ($microseconds / 1000000.));
 
+  $out_aln_root =~ s/\/.+$/\//; # remove everything after the first '/'
+
   printf("%-50s ... ", ($do_skip) ? "# Skipping multiple alignment creation" : "# Creating multiple alignments");
     
   foreach my $mdl (@{$mdl_order_AR}) { 
+    my $out_key = $mdl;
+    $out_key =~ s/ref/predicted/;
     my @fetch_AA = ();
     my $nseq = 0;
     for(my $seq_i = 0; $seq_i < scalar(@{$seq_order_AR}); $seq_i++) { 
@@ -2236,12 +2312,12 @@ sub alignHits {
       }
     }
     if($nseq > 0) { 
-      my $cur_fafile = $out_aln_root . "." . $mdl . ".fa";
+      my $cur_fafile = $out_aln_root . $out_key . ".fa";
       $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
       # printf("Saved $nseq sequences to $cur_fafile.\n");
       
       # create the alignment
-      my $cur_stkfile = $out_aln_root . "." . $mdl . ".stk";
+      my $cur_stkfile = $out_aln_root . $out_key . ".stk";
       my $cmd = "$fetch $model_db $mdl | $align - $cur_fafile > $cur_stkfile";
       #print $cmd . "\n";
       if($do_skip) { 
@@ -3145,6 +3221,179 @@ sub splitFastaFile {
   my $cmd = "$esl_ssplit -n $fafile $nfiles > /dev/null";
   runCommand($cmd, 0);
 
+  return;
+}
+
+# Subroutine: combineExonsIntoCDS()
+#
+# Synopsis:   Given an array of fasta files each with a different exon 
+#             of a CDS, create a single new fasta file that has the complete
+#             CDS by combining all the exon sequences together.
+#
+# Args:       $exon_fafile_AR: ref to array of all exon files for this CDS
+#             $cds_fafile:     name of CDS fasta file to create
+#
+# Returns:    void
+# Dies:       if something unexpected happens when reading the exon fasta files
+#
+sub combineExonsIntoCDS {
+  my $sub_name = "combineExonsIntoCDS";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($exon_fafile_AR, $cds_fafile) = @_;
+
+  # we do this manually, by opening each exon file into a separate file handle and then 
+  # outputting each exon as we read it
+  my $nexons = scalar(@{$exon_fafile_AR});
+  my @FH_A = ();
+  my $FH;
+  for(my $i = 0; $i < $nexons; $i++) { 
+    open($FH_A[$i], "<", $exon_fafile_AR->[$i]) || die "ERROR unable to open $exon_fafile_AR->[$i] for reading";
+  }
+
+  open(OUT, ">", $cds_fafile) || die "ERROR unable to open file $cds_fafile for writing";
+
+  my $nseqs_read      = 0;  # number of sequences read so far
+  my @read_header_A   = (); # current header line read from file [0..$nexons-1]
+  my @read_sequence_A = (); # current sequence read from file [0..$nexons-1]
+  my $header          = ""; # name of sequence to output
+
+  # read all exons of each sequence and then output it
+  while(($nseqs_read == 0) || (defined $read_header_A[0])) { 
+    # first read the header line for each exon, if this is the first sequence, else we already read them at the end of this loop
+    if($nseqs_read == 0) { 
+      for(my $i = 0; $i < $nexons; $i++) { 
+        my $FH = $FH_A[$i];
+        $read_header_A[$i] = <$FH>;
+        chomp $read_header_A[$i];
+      }
+    }
+    # split up header lines to get new header name
+    my @read_seqname_A = ();
+    my @read_coords_A = ();
+    for(my $i = 0; $i < $nexons; $i++) { 
+      ($read_seqname_A[$i], $read_coords_A[$i]) = split(/\//, $read_header_A[$i]);
+      if(($i > 0) && ($read_seqname_A[$i] ne $read_seqname_A[0])) { 
+        die "ERROR, expected same sequence names for each exon, but read $read_seqname_A[0] and $read_seqname_A[$i]"; 
+      }
+      # add to growing header
+      $header .= ($i == 0) ? 
+          ($read_seqname_A[$i] . "/" . $read_coords_A[$i]) : 
+          ("," . $read_coords_A[$i]);
+    }
+    # printf("nseqs_read: $nseqs_read\nheader: $header\n");
+
+    # we've just read the header lines for each sequence, now read all sequence lines
+    for(my $i = 0; $i < $nexons; $i++) { 
+      if(! defined $read_header_A[$i]) { die "ERROR in $sub_name, ran out of header lines too soon for file $i"; }
+      my $FH = $FH_A[$i];
+      my $read_line = <$FH>;
+      while((defined $read_line) && ($read_line !~ m/^\>/)) { 
+        $read_sequence_A[$i] .= $read_line;
+        $read_line = <$FH>;
+      }
+      # printf("setting read_header_A[$i] to $read_line\n");
+      $read_header_A[$i] = $read_line;
+      if(defined $read_header_A[$i]) { chomp($read_header_A[$i]); }
+    }
+
+    # output full CDS for the current accesion
+    print OUT $header . "\n";
+    for(my $i = 0; $i < $nexons; $i++) { 
+      print OUT $read_sequence_A[$i];
+      $read_sequence_A[$i] = "";
+    }
+    $nseqs_read++;
+    $header = "";
+  }
+
+  close(OUT);
+
+  return;
+}
+
+# Subroutine: parseEslTranslateOutput()
+#
+# Synopsis:   Given an output file from EslTranslateOutput(), keep only
+#             full length translations. 
+#
+# Args:       $esl_translate_output: output fasta file from esl-translate
+#             $new_output:           new output file to create with subset
+#                                    of sequences from $esl_translate_output
+#             $fullprot_HR:          ref to hash to fill here, keys are seq accessions
+#                                    values are number of protein sequences fetch for that
+#                                    accession, any value >1 is an error, and we'll die
+#             $nfullprot_R:          ref to scalar to fill with number of accessions
+#                                    for which we fetched a full length protein
+#
+# Returns:    void
+# Dies:       if something unexpected happens when reading the exon fasta files
+#
+sub parseEslTranslateOutput {
+  my $sub_name = "parseEslTranslateOutput";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my $nfullprot = 0; # number of full length proteins kept
+
+  my ($esl_translate_output, $new_output, $fullprot_HR, $nfullprot_R) = @_;
+
+  open(IN,  "<", $esl_translate_output) || die "ERROR unable to open $esl_translate_output for reading";
+  open(OUT, ">", $new_output)           || die "ERROR unable to open $new_output for writing";
+
+  my ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame);
+  my $source_length = 0; # length of original CDS sequence, including stop
+  my $coords_length = 0; # length of original CDS sequence that was translated, not included stop codon
+  my $print_flag = 0;
+  my $line = <IN>;
+  while(defined $line) { 
+    if($line =~ m/^\>/) { 
+      #>orf1 source=NC_001346/150-455 coords=1..303 length=101 frame=1  
+      # OR
+      #>orf1 source=NC_001346/2527-1886,1793-1353 coords=87..161 length=25 frame=3  
+#      if($line =~ /^\>orf\d+\s+source\=(\S+)\/(\-?\d+)\-(\-?\d+)\s+coords\=(\d+)\.\.(\d+)\s+length\=(\d+)\s+frame=(\d+)/) { 
+      if($line =~ /^\>orf\d+\s+source\=(\S+)\/(\S+)\s+coords\=(\d+)\.\.(\d+)\s+length\=(\d+)\s+frame=(\d+)/) { 
+        ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame) = ($1, $2, $3, $4, $5, $6);
+        # $source_coords = '150-455' or
+        # $source_coords = '2527-1886,1793-1353'
+        my @source_coords_A = split(",", $source_coords);
+        $source_length = 0;
+        foreach my $cur_coords (@source_coords_A) { 
+          if($cur_coords =~ m/^(\-?\d+)\-(\-?\d+)$/) { 
+            my($cur_from, $cur_to) = ($1, $2);
+            $source_length += ($cur_from < $cur_to) ? ($cur_to - $cur_from + 1) : ($cur_from - $cur_to + 1);
+            if(($cur_from < 0) && ($cur_to > 0)) { $source_length--; } # fix off-by-one introduced by negative indexing in sequence position
+            if(($cur_from > 0) && ($cur_to < 0)) { $source_length--; } # fix off-by-one introduced by negative indexing in sequence position
+          }
+          else { 
+            die "ERROR in $sub_name, unable to parse source coordinates in header line: $line";
+          }
+        }
+      }
+      else { 
+        die "ERROR in $sub_name, unable to parse header line: $line";
+      }
+    }
+    $coords_length = ($coords_to - $coords_from) + 1;
+    $print_flag = (($source_length - 3) == ($coords_length)) ? 1 : 0;
+    if($print_flag) { 
+      print OUT $line; 
+      $nfullprot++;
+      $fullprot_HR->{$source_name}++;
+      if($fullprot_HR->{$source_name} > 1) { 
+        die "ERROR in $sub_name, found more than 1 full length protein translation for $source_name"; 
+      }
+    }
+    $line = <IN>;
+    while(defined $line && $line !~ m/^\>/) { 
+      if($print_flag) { print OUT $line; }
+      $line = <IN>;
+    }
+  }
+  close(OUT);
+
+  $$nfullprot_R = $nfullprot;
   return;
 }
 
