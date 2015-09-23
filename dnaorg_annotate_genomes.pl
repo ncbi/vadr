@@ -887,11 +887,11 @@ if(! $do_nocorrect) {
                 }
                 $found_exon = 1;
                 $did_corr_exon_stop_AH[$h]{$accn} = 1;
-                printf("corr_stop: $corr_stop\n");
-                printf("len_so_far: $len_so_far\n");
-                printf("exon_len_A[$hp]: $exon_len_A[$hp]\n");
-                printf("p_stop_HH{$mdl}{$seq_accn} exon %d: $p_stop_HH{$mdl}{$seq_accn}\n", ($h-$first_hmm+1));
-                printf("c_stop_HH{$mdl}{$seq_accn} exon %d: $c_stop_HH{$mdl}{$seq_accn}\n", ($h-$first_hmm+1));
+                #printf("corr_stop: $corr_stop\n");
+                #printf("len_so_far: $len_so_far\n");
+                #printf("exon_len_A[$hp]: $exon_len_A[$hp]\n");
+                #printf("p_stop_HH{$mdl}{$seq_accn} exon %d: $p_stop_HH{$mdl}{$seq_accn}\n", ($h-$first_hmm+1));
+                #printf("c_stop_HH{$mdl}{$seq_accn} exon %d: $c_stop_HH{$mdl}{$seq_accn}\n", ($h-$first_hmm+1));
               }
             }
           }
@@ -937,7 +937,7 @@ for(my $c = 0; $c < $ref_ncds; $c++) {
   my $prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
   my $prot_must_stop_at_posn_L  = 1; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
   parseEslTranslateOutput($tmp_aa_fafile, $aa_full_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$fullprot_AH[$c]}, \$nfullprot_A[$c]);
-  printf("CDS: %d nfullprot: %d\n", ($c+1), $nfullprot_A[$c]);
+  #printf("CDS: %d nfullprot: %d\n", ($c+1), $nfullprot_A[$c]);
   
   ## now fetch any protein sequences that start at position 1 but do not end at the final predicted position
   #$prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
@@ -1112,8 +1112,8 @@ for(my $a = 0; $a < $naccn; $a++) {
     if(exists $p_start_HH{$model}{$seq_accn}) { 
       my $start_corrected_exon = (exists $did_corr_exon_start_AH[$h]{$accn}) ? 1 : 0;
       my $stop_corrected_exon  = (exists $did_corr_exon_stop_AH[$h]{$accn})  ? 1 : 0;
-      my $start_corrected_cds  = ($corr_cds_start_AH[$h]{$accn} != 0)        ? 1 : 0;
-      my $stop_corrected_cds   = ($corr_cds_stop_AH[$h]{$accn}  != 0)        ? 1 : 0;
+      my $start_corrected_cds  = ($corr_cds_start_AH[$hmm2cds_map_A[$h]]{$accn} != 0) ? 1 : 0;
+      my $stop_corrected_cds   = ($corr_cds_stop_AH[$hmm2cds_map_A[$h]]{$accn}  != 0) ? 1 : 0;
 
       my $start    = ($do_nocorrect) ? $p_start_HH{$model}{$seq_accn} : $c_start_HH{$model}{$seq_accn};
       my $stop     = ($do_nocorrect) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
