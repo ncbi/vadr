@@ -23,6 +23,7 @@ $usage .= " This script annotates genomes from the same species based\n";
 $usage .= " on reference annotation.\n";
 $usage .= "\n";
 $usage .= " BASIC OPTIONS:\n";
+$usage .= "  -nocorrect : do not correct annotations based on internal start/stop codons in predicted exons/CDS\n";
 $usage .= "  -matpept   : use mat_peptide info instead of CDS info\n";
 $usage .= "  -oseq <s>  : identify origin sequence <s> in genomes, put | at site of origin, e.g. TAATATT|AC\n";
 $usage .= "  -strict    : require matching annotations to match CDS/exon index\n";
@@ -79,7 +80,8 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmpress
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
-my $do_matpept   = 0; # set to '1' if -poly       enabled, genome has a single polyprotein, use mat_peptide info, not CDS
+my $do_nocorrect = 0; # set to '1' if -nocorrect  enabled, do not look for internal start/stop codons and update annotation if found
+my $do_matpept   = 0; # set to '1' if -matpept    enabled, genome has a single polyprotein, use mat_peptide info, not CDS
 my $origin_seq   = undef; # defined if -oseq      enabled
 my $do_strict    = 0; # set to '1' if -strict     enabled, matching annotations must be same index CDS+exon, else any will do
 my $do_nodup     = 0; # set to '1' if -nodup      enabled, do not duplicate each genome, else do 
@@ -113,7 +115,8 @@ my $do_skipfetch = 0; # set to '1' if -skipfetch  enabled, skip genome fetch ste
 my $do_skipscan  = 0; # set to '1' if -skipscan   enabled, skip cmscan/hmmscan step, use pre-existing output from a previous run
 my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan and alignment step, use pre-existing output from a previous run
 
-&GetOptions("matpept"   => \$do_matpept,
+&GetOptions("nocorrect" => \$do_nocorrect,
+            "matpept"   => \$do_matpept,
             "oseq=s"    => \$origin_seq,
             "strict"    => \$do_strict,
             "nodup"     => \$do_nodup,
@@ -153,7 +156,11 @@ my $cmd; # a command to run with runCommand()
 # store options used, so we can output them 
 my $opts_used_short = "";
 my $opts_used_long  = "";
-if(defined $do_matpept) { 
+if($do_nocorrect) { 
+  $opts_used_short .= "-nocorrect ";
+  $opts_used_long  .= "# option:  do not correct after identifying internal start/stops in predicted CDS [-nocorrect]\n";
+}
+if($do_matpept) { 
   $opts_used_short .= "-matpept ";
   $opts_used_long  .= "# option:  using mat_peptide info instead of CDS info [-matpept]\n";
 }
@@ -274,6 +281,9 @@ if($do_skipscan && ($do_ccluster || $do_cslow || $do_onlybuild)) {
 }
 if($do_scluster && ($do_skipaln || $do_skipscan)) { 
   die "ERROR -skipscan and -skipaln are incompatible with -scluster";
+}
+if($do_scluster && $do_hmmer) { 
+  die "ERROR -scluster and -hmmer are incompatible";
 }
 
 # check that options that must occur in combination, do
@@ -497,12 +507,14 @@ my @hmm2cds_map_A = ();     # [0..h..$nhmm-1]: $i: HMM ($h+1) maps to reference 
 my @hmm2exon_map_A = ();    # [0..h..$nhmm-1]: $e: HMM ($h+1) maps to exon ($e+1) of reference cds $hmm2cds_map_A[$h]+1
 my @hmm_is_first_A = ();    # [0..h..$nhmm-1]: '1' if HMM ($h+1) is the first one for cds $hmm2cds_map_A[$h], else 0
 my @hmm_is_final_A = ();    # [0..h..$nhmm-1]: '1' if HMM ($h+1) is the final one for cds $hmm2cds_map_A[$h], else 0
+my @cds2first_hmm_A = ();   # [0..$c..ncds-1]: $h, first exon of CDS $c+1 is modeled by HMM $h+1
+my @cds2final_hmm_A = ();   # [0..$c..ncds-1]: $h, final exon of CDS $c+1 is modeled by HMM $h+1
 my @model_A = ();           # [0..$nhmm-1]: array of model HMM names, also name of stockholm alignments used to build those HMMs
 my @cds_out_short_A   = (); # [0..$ref_ncds-1]: array of abbreviated model CDS names to print
 my @cds_out_product_A = (); # [0..$ref_ncds-1]: array of 'CDS:product' qualifier (protein names)
 my %mdllen_H          = (); # key: model name from @model_A, value is model length
-my @ref_nexons_A      = ();
-my $ref_tot_nexons    = 0;
+my @ref_nexons_A      = (); # [0..$c..$ref_ncds-1]: number of exons in CDS $c+1
+my $ref_tot_nexons    = 0;  # total number of exons in all CDS
 
 # for each reference CDS, fetch each exon (or the full CDS if -notexon enabled)
 for(my $i = 0; $i < $ref_ncds; $i++) { 
@@ -585,6 +597,8 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
     push(@hmm2exon_map_A, $e);
     push(@hmm_is_first_A, ($e == 0)           ? 1 : 0);
     push(@hmm_is_final_A, ($e == ($nexons-1)) ? 1 : 0);
+    if($e == 0)           { $cds2first_hmm_A[$i] = $nhmm; }
+    if($e == ($nexons-1)) { $cds2final_hmm_A[$i] = $nhmm; }
     $nhmm++;
   }
 }
@@ -592,7 +606,9 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
 my $stop_time = ($seconds + ($microseconds / 1000000.));
 printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
-# homology search section
+######################
+# HOMOLOGY SEARCH STEP
+######################
 my $model_db; # model database file, either HMMs or CMs
 
 # first, create the model database, unless it was passed in:
@@ -636,10 +652,12 @@ my %p_fid2ref_HH  = (); # fractional identity to reference
 my %p_refdel_HHA  = (); # array of reference positions that are deleted for the alignment of this sequence
 my %p_refins_HHA  = (); # array of strings ("<rfpos>:<count>") reference positions that are deleted for the alignment of this sequence
 
+my %pred_fafile_H = (); # hash of names of fasta files for predicted exon sequences, keys: model name from @model_A, value: name of file
+
 if($do_hmmer) { 
   runNhmmscan($nhmmscan, ($do_skipscan || $do_skipaln), $model_db, $gnm_fasta_file, $tblout, $stdout);
   parseNhmmscanTblout($tblout, $do_hmmenv, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
-  alignHits($hmmalign, $hmmfetch, $model_db, $sqfile, $do_skipaln, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
+  fetchHits($sqfile, $do_skipaln, "predicted", \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, $out_root, \%pred_fafile_H);
 }
 else { 
   if(! $do_scluster) { 
@@ -700,83 +718,222 @@ else {
   } # end of 'else' entered if we're submitting jobs to the cluster
 
   parseCmscanTblout($tblout, \%totlen_H, \%mdllen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
-  alignHits($cmalign, $cmfetch, $model_db, $sqfile, $do_skipaln, \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA, $out_root);
+  fetchHits($sqfile, $do_skipaln, "predicted", \@model_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, $out_root, \%pred_fafile_H);
 }
 
-###################
-# Output (or verify that we have already output) CDS sequences, and translate them to amino acid sequences
+########################################################
+# COMBINE MULTI-EXON SEQUENCES INTO SINGLE CDS SEQUENCES
+########################################################
+my @pred_cds_fafile_A = (); # array of predicted CDS sequence files, filled below
+wrapperCombineExonsIntoCDS($nhmm, $dir, "predicted", \@model_A, \@hmm2cds_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@pred_cds_fafile_A);
 
-my @exon_fafile_A = ();
-my @nfullprot_A   = ();    # [0..$i..ncds-1], number of accessions we have a full protein for, for CDS $i
-my @fullprot_AH   = ();    # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
-                           # of number of full length protein sequences we have for CDS $i for key $key. Values should
-                           # always be '1', more than '1' is an error, and we never create a value of '0'.
-my @nnonfullprot_A   = (); # [0..$i..ncds-1], number of accessions we do not have a full protein for, for CDS $i
-my @nonfullprot_AH   = (); # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
-                           # of number of non-full length protein sequences we have for CDS $i for key $key. Values should
-                           # always be '1', more than '1' is an error, and we never create a value of '0'.
-    
-($seconds, $microseconds) = gettimeofday();
-$start_time = ($seconds + ($microseconds / 1000000.));
-printf("%-50s ... ", "# Combining multi-exon CDS and translating all CDS");
-for(my $h = 0; $h < $nhmm; $h++) { 
-  my $model           = $model_A[$h];
-  my $cds_i           = $hmm2cds_map_A[$h];
-  my $exon_i          = $hmm2exon_map_A[$h];
-  my $cds_i_to_print  = $cds_i+1;
-  my $exon_i_to_print = $exon_i+1;
-  my $cur_fafile      = $out_root;
-  my $out_key         = $model;
-  $out_key      =~ s/ref/predicted/;
-  $cur_fafile  =~ s/\/.+$/\//; # remove everything after the first '/'
-  $cur_fafile .= $out_key . ".fa";
-  push(@exon_fafile_A, $cur_fafile);
-  if($hmm_is_final_A[$h]) { 
-    %{$fullprot_AH[$cds_i]} = ();
-    if(! $hmm_is_first_A[$h]) { # a multi-exon gene
-      $cur_fafile =~ s/\.exon\.\d+//;
-      combineExonsIntoCDS(\@exon_fafile_A, $cur_fafile);
-    }
-    else { # a single exon gene, we should already have the sequence from alignHits
-      if(! -s $cur_fafile) { die "ERROR, expected output fasta file for CDS $cds_i_to_print does not exist: $cur_fafile"; }
-    }
-    @exon_fafile_A = ();
+###########################################################################
+# CORRECT PREDICTIONS
+# - look for internal starts and stops and make corrections based on those
+# - combine new exons into new CDS
+###########################################################################
+my $source_accn;   # name of CDS sequence that was translated
+my $source_length; # length of CDS sequence that was translated
+my $coords_from;   # start nt coordinate of current translation
+my $coords_to;     # stop nt coordinate of current translation
+my @corr_start_AH = ();  # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
+                         # are number of nucleotides that the prediction of the start coordinate should be corrected
+                         # based on an esl-translate translation of the predicted CDS sequence, values can be negative
+                         # or positive
+my @corr_stop_AH = ();   # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
+                         # are number of nucleotides that the prediction of the stop coordinate should be corrected
+                         # based on an esl-translate translation of the predicted CDS sequence, values can be negative
+                         # or positive
+my @coords_len_AH = ();  # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
+                         # are lengths of translated protein sequences (in nucleotides corresponding to values in $corr_start_AH
+                         # and $corr_stop_AH
+#my %c_start_HH = %p_start_HH; # corrected start positions of hits, start with a copy of p_start_HH
+#my %c_stop_HH  = %p_stop_HH;  # corrected stop positions of hits,  start with a copy of p_stop_HH
+my %c_start_HH = (); # corrected start positions of hits, start with a copy of p_start_HH
+my %c_stop_HH  = ();  # corrected stop positions of hits,  start with a copy of p_stop_HH
+my %corr_fafile_H = ();     # hash of names of fasta files for corrected exon sequences, keys: model name from @model_A, value: name of file
+my @corr_cds_fafile_A = (); # array of corrected CDS sequence files, filled below
 
+if(! $do_nocorrect) { 
+  # translate predicted CDS sequences using esl-translate to see if any corrections to predictions are necessary
+  for(my $c = 0; $c < $ref_ncds; $c++) { 
+    # determine first and final HMM for this 
+
+    my $cur_fafile = $pred_cds_fafile_A[$c];
     # translate into AA sequences
-    my $tmp_aa_fafile     = $cur_fafile;
-    my $aa_full_fafile    = $cur_fafile;
-    my $aa_nonfull_fafile = $cur_fafile;
-    $tmp_aa_fafile     =~ s/\.cds/\.aa.tmp/;
-    $aa_full_fafile    =~ s/\.cds/\.aa.full/;
-    $aa_nonfull_fafile =~ s/\.cds/\.aa.nonfull/;
-
-    $cmd = $esl_translate . " --watson $cur_fafile > $tmp_aa_fafile";
+    my $tmp_esl_translate_output = $cur_fafile;
+    $tmp_esl_translate_output    =~ s/\.cds/\.esl-translate/;
+    $cmd = $esl_translate . " --watson $cur_fafile | grep ^\\> | grep \"frame=1\" > $tmp_esl_translate_output";
     runCommand($cmd, 0);
 
-    # now we have to parse that file to only keep the full length protein seqs
-    # we also keep track of which sequence accessions we have full length proteins for
-    my $prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
-    my $prot_must_stop_at_posn_L  = 1; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
-    parseEslTranslateOutput($tmp_aa_fafile, $aa_full_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$fullprot_AH[$cds_i]}, \$nfullprot_A[$cds_i]);
-    printf("CDS: %d nfullprot: %d\n", ($cds_i+1), $nfullprot_A[$cds_i]);
-
-    # now fetch any protein sequences that start at position 1 but do not end at the final predicted position
-    $prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
-    $prot_must_stop_at_posn_L  = 0; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
-    parseEslTranslateOutput($tmp_aa_fafile, $aa_nonfull_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$nonfullprot_AH[$cds_i]}, \$nnonfullprot_A[$cds_i]);
-    printf("CDS: %d nnonfullprot: %d\n", ($cds_i+1), $nnonfullprot_A[$cds_i]);
+    # now based on the esl-translate deflines, determine if there are any internal starts or stops
+    # note that we've grep'ed for only frame=1 translations, and we've specified only top strand with
+    # --watson, so we should only see at most 1 translation of each sequence
+    open(IN, $tmp_esl_translate_output) || die "ERROR unable to open $tmp_esl_translate_output for reading";
+    while(my $line = <IN>) { 
+      parseEslTranslateDefline($line, \$coords_from, \$coords_to, \$source_accn, \$source_length);
+      # keep longest translated stretch
+      my $coords_len = ($coords_to - $coords_from + 1);
+      if((! exists $corr_start_AH[$c]{$source_accn}) || ($coords_len > $coords_len_AH[$c]{$source_accn})) { 
+        $corr_start_AH[$c]{$source_accn} = $coords_from - 1;
+        $corr_stop_AH[$c]{$source_accn}  = -1 * (($source_length - 3) - $coords_to); # source length includes stop codon
+        $coords_len_AH[$c]{$source_accn} = $coords_len;
+      }
+    }
+    close(IN);
   }
+
+  # now we have all corrections, go back and create c_start, c_stop data structures based 
+  # on p_start, p_stop data structures and these corrections, this is tricky for multi-exon
+  # CDS because we have to make sure we correct the proper exon
+  for(my $a = 0; $a < $naccn; $a++) { 
+    my $accn     = $accn_A[$a];
+    my $seq_accn = $seq_accn_A[$a];
+    my $mdl; # name of a model
+    for(my $c = 0; $c < $ref_ncds; $c++) { 
+      if(! exists $corr_start_AH[$c]{$accn}) { 
+        die sprintf("ERROR no corrected start position value for CDS %d sequence $accn", $c+1); 
+      }
+      if(! exists $corr_stop_AH[$c]{$accn}) { 
+        die sprintf("ERROR no corrected stop position value for CDS %d sequence $accn", $c+1); 
+      }
+      my $corr_start = $corr_start_AH[$c]{$accn};
+      my $corr_stop  = $corr_stop_AH[$c]{$accn};
+      # sanity check
+      if($corr_start < 0) { die "ERROR corrected start less than 0, can't deal with that yet";  }
+      if($corr_stop  > 0) { die "ERROR corrected stop greather than 0, can't deal with that yet"; }
+
+      my $first_hmm = $cds2first_hmm_A[$c];
+      my $final_hmm = $cds2final_hmm_A[$c];
+      my $cur_nhmm = $final_hmm - $first_hmm + 1;
+
+      if($first_hmm == $final_hmm) {       # easy case: single exon CDS:
+        my $mdl = $model_A[$first_hmm];
+        if($p_strand_HH{$mdl}{$seq_accn} eq "+") { 
+          $c_start_HH{$mdl}{$seq_accn} = $p_start_HH{$mdl}{$seq_accn} + $corr_start; # note that $corr_start may be 0
+          $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  + $corr_stop;  # note that $corr_stop  may be 0
+        }
+        else { 
+          $c_start_HH{$mdl}{$seq_accn} = $p_start_HH{$mdl}{$seq_accn} - $corr_start; # note that $corr_start may be 0
+          $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  - $corr_stop;  # note that $corr_stop  may be 0
+        }
+      }
+      else { # multi exon CDS
+        # get temporary array of exon lengths and determine full CDS length
+        my $cds_len    = 0;
+        my @exon_len_A = ();
+        for(my $h = $first_hmm; $h <= $final_hmm; $h++) { 
+          $exon_len_A[$h-$first_hmm] = ($p_strand_HH{$model_A[$h]}{$seq_accn} eq "+") ? 
+              ($p_stop_HH{$model_A[$h]}{$seq_accn}  - $p_start_HH{$model_A[$h]}{$seq_accn} + 1) : 
+              ($p_start_HH{$model_A[$h]}{$seq_accn} - $p_stop_HH{$model_A[$h]}{$seq_accn}  + 1);
+          $cds_len += $exon_len_A[$h-$first_hmm];
+          
+          # copy predicted, we may correct this below
+          $mdl = $model_A[$h];
+          $c_start_HH{$mdl}{$seq_accn} = $p_start_HH{$mdl}{$seq_accn};
+          $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn};
+        }
+        # First, some error checking:
+        # make sure corrected start is in first exon
+        if(($corr_start > 0) && ($corr_start >= $exon_len_A[0])) { 
+          die sprintf("ERROR, corrected start is outside first exon for CDS: %d, accn: $accn", $c+1);
+        }
+        # make sure corrected stop is in final exon
+        if(($corr_stop < 0) && ((-1 * $corr_stop) >= $exon_len_A[($cur_nhmm-1)])) { 
+          die sprintf("ERROR, corrected stop is outside final exon for CDS: %d, accn: $accn", $c+1);
+        }
+        # if we get here, corrected start, if nec, is in first exon ($first_hmm)
+        # and corrected stop, if nec, is in final exon ($final_hmm)
+        $mdl = $model_A[$first_hmm];
+        if($corr_start > 0) { 
+          if($p_strand_HH{$mdl}{$seq_accn} eq "+") { 
+            $c_start_HH{$mdl}{$seq_accn} += $corr_start;
+          }
+          else { 
+            $c_start_HH{$mdl}{$seq_accn} -= $corr_start;
+          }
+          #printf("p_start_HH{$mdl}{$seq_accn}: $p_start_HH{$mdl}{$seq_accn}\n");
+          #printf("c_start_HH{$mdl}{$seq_accn}: $c_start_HH{$mdl}{$seq_accn}\n");
+          #printf("\n");
+        }
+        $mdl = $model_A[$final_hmm];
+        if($corr_stop < 0) { 
+          if($p_strand_HH{$mdl}{$seq_accn} eq "+") { 
+            $c_stop_HH{$mdl}{$seq_accn}  += $corr_stop;
+          }
+          else {
+            $c_stop_HH{$mdl}{$seq_accn}  -= $corr_stop;
+          }
+          #printf("p_stop_HH{$mdl}{$seq_accn}: $p_stop_HH{$mdl}{$seq_accn}\n");
+          #printf("c_stop_HH{$mdl}{$seq_accn}: $c_stop_HH{$mdl}{$seq_accn}\n");
+          #printf("\n");
+        }
+      }
+    } # end of loop over CDS
+  } # end of loop over sequences
+
+  # fetch corrected hits into new files
+  fetchHits($sqfile, $do_skipaln, "corrected", \@model_A, \@seq_accn_A, \%totlen_H, \%c_start_HH, \%c_stop_HH, \%p_strand_HH, $out_root, \%corr_fafile_H);
+
+  # combine multi-exon sequences into CDS:
+  wrapperCombineExonsIntoCDS($nhmm, $dir, "corrected", \@model_A, \@hmm2cds_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@corr_cds_fafile_A);
+} # end of if(! $do_nocorrect)
+
+#########################################
+# TRANSLATE PREDICTIONS INTO PROTEIN SEQS
+#########################################
+my @nfullprot_A   = ();  # [0..$i..ncds-1], number of accessions we have a full protein for, for CDS $i
+my @fullprot_AH   = ();  # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
+                         # of number of full length protein sequences we have for CDS $i for key $key. Values should
+                         # always be '1', more than '1' is an error, and we never create a value of '0'.
+my @ntruncprot_A   = (); # [0..$i..ncds-1], number of accessions we do not have a full protein for, for CDS $i
+my @truncprot_AH   = (); # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
+                           # of number of non-full length protein sequences we have for CDS $i for key $key. Values should
+                           # always be '1', more than '1' is an error, and we never create a value of '0'.
+for(my $c = 0; $c < $ref_ncds; $c++) { 
+  my $cur_fafile = ($do_nocorrect) ? $pred_cds_fafile_A[$c] : $corr_cds_fafile_A[$c];
+  # translate into AA sequences
+  my $tmp_aa_fafile   = $cur_fafile;
+  my $aa_full_fafile  = $cur_fafile;
+  my $aa_trunc_fafile = $cur_fafile;
+  $tmp_aa_fafile      =~ s/\.cds/\.aa.tmp/;
+  $aa_full_fafile     =~ s/\.cds/\.aa.full/;
+  # $aa_trunc_fafile    =~ s/\.cds/\.aa.trunc/;
+  
+  $cmd = $esl_translate . " --watson $cur_fafile > $tmp_aa_fafile";
+  runCommand($cmd, 0);
+
+  # now we have to parse that file to only keep the full length protein seqs
+  # we also keep track of which sequence accessions we have full length proteins for
+  my $prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
+  my $prot_must_stop_at_posn_L  = 1; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
+  parseEslTranslateOutput($tmp_aa_fafile, $aa_full_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$fullprot_AH[$c]}, \$nfullprot_A[$c]);
+  printf("CDS: %d nfullprot: %d\n", ($c+1), $nfullprot_A[$c]);
+  
+  ## now fetch any protein sequences that start at position 1 but do not end at the final predicted position
+  #$prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
+  #$prot_must_stop_at_posn_L  = 0; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
+  #parseEslTranslateOutput($tmp_aa_fafile, $aa_trunc_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$truncprot_AH[$c]}, \$ntruncprot_A[$c]);
+  #printf("CDS: %d ntruncprot: %d\n", ($c+1), $ntruncprot_A[$c]);
 }
-($seconds, $microseconds) = gettimeofday();
-$stop_time = ($seconds + ($microseconds / 1000000.));
-printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
-printf("#\n");
-printf("#\n");
+#############################
+# CREATE MULTIPLE ALIGNMENTS
+#############################
+if($do_hmmer) { 
+  alignHits($hmmalign, $hmmfetch, $model_db, $do_skipaln, \@model_A, \@seq_accn_A, 
+            (($do_nocorrect) ? \%pred_fafile_H : \%corr_fafile_H), 
+            \%p_start_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA);
+}
+else { 
+  alignHits($cmalign, $cmfetch, $model_db, $do_skipaln, \@model_A, \@seq_accn_A, 
+            (($do_nocorrect) ? \%pred_fafile_H : \%corr_fafile_H), 
+            \%p_start_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA);
+}
 
-##########
-# OUTPUT #
-##########
+#########################
+# OUTPUT ANNOTATION TABLE
+#########################
 
 if(1) { # output sequences as rows 
   outputSeqRowHeadings($do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, \@hmm2cds_map_A, \@hmm2exon_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@cds_out_short_A, \@cds_out_product_A);
@@ -924,13 +1081,21 @@ for(my $a = 0; $a < $naccn; $a++) {
 
     if($predicted_string ne "") { $predicted_string .= "  "; }
     if(exists $p_start_HH{$model}{$seq_accn}) { 
-      my ($start, $stop, $hangover) = ($p_start_HH{$model}{$seq_accn}, $p_stop_HH{$model}{$seq_accn}, $p_hangover_HH{$model}{$seq_accn});
+      my $start_corrected = ($corr_start_AH[$hmm2cds_map_A[$h]]{$accn} == 0) ? 0 : 1;
+      my $stop_corrected  = ($corr_stop_AH[$hmm2cds_map_A[$h]]{$accn}  == 0) ? 0 : 1;
+
+      my $start    = ($do_nocorrect) ? $p_start_HH{$model}{$seq_accn} : $c_start_HH{$model}{$seq_accn};
+      my $stop     = ($do_nocorrect) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
+      my $hangover = $p_hangover_HH{$model}{$seq_accn};
+
       my ($hang5, $hang3) = split(":", $hangover);
       if($hang5    >  9) { $hang5 = "+"; $at_least_one_fail = 1; }
       elsif($hang5 == 0) { $hang5 = "."; }
+      if($start_corrected) { $hang5 = "c"; }
 
       if($hang3       >  9) { $hang3 = "+"; $at_least_one_fail = 1; }
       elsif($hang3    == 0) { $hang3 = "."; }
+      if($stop_corrected) { $hang3 = "c"; }
 
       my ($start_match, $stop_match);
       ($start_match, $stop_match) = ($do_strict) ? 
@@ -1015,23 +1180,23 @@ for(my $a = 0; $a < $naccn; $a++) {
 
         if($at_least_one_fail) { 
           $pass_fail_char = "F"; 
-          # ensure we didn't fetch a full length protein for this CDS
-          if(exists $fullprot_AH[$cds_i]{$accn}) { 
-            die sprintf("ERROR, incorrectly translated full length protein for CDS: %d for seq accn: $accn, but at least one test failed...", $cds_i+1); 
-          }
-          if(! exists $nonfullprot_AH[$cds_i]{$accn}) { 
-            die sprintf("ERROR, failed to translate non full length protein for CDS: %d for seq accn: $accn, but at least one test failed...", $cds_i+1); 
-          }
+          #### ensure we didn't fetch a full length protein for this CDS
+          ###if(exists $fullprot_AH[$cds_i]{$accn}) { 
+          ###  die sprintf("ERROR, incorrectly translated full length protein for CDS: %d for seq accn: $accn, but at least one test failed...", $cds_i+1); 
+          ###}
+          ###if(! exists $truncprot_AH[$cds_i]{$accn}) { 
+          ###  die sprintf("ERROR, failed to translate truncated protein for CDS: %d for seq accn: $accn, but at least one test failed...", $cds_i+1); 
+          ###}
         }
         else { 
           $pass_fail_char = "P"; 
-          # verify that we have a translated protein sequence for this CDS
-          if(! exists $fullprot_AH[$cds_i]{$accn}) { 
-            die sprintf("ERROR, failed to translate full length protein for CDS: %d for seq accn: $accn, but all tests passed...", $cds_i+1); 
-          }
-          if(exists $nonfullprot_AH[$cds_i]{$accn}) { 
-            die sprintf("ERROR, incorrectly translated non full length protein for CDS: %d for seq accn: $%accn, but all tests passed...", $cds_i+1);
-          }
+          #### verify that we have a translated protein sequence for this CDS
+          ###if(! exists $fullprot_AH[$cds_i]{$accn}) { 
+          ###  die sprintf("ERROR, failed to translate full length protein for CDS: %d for seq accn: $accn, but all tests passed...", $cds_i+1); 
+          ###}
+          ###if(exists $truncprot_AH[$cds_i]{$accn}) { 
+          ###  die sprintf("ERROR, incorrectly translated truncated protein for CDS: %d for seq accn: $%accn, but all tests passed...", $cds_i+1);
+          ###}
         }
         $pass_fail_char = ($at_least_one_fail) ? "F" : "P";
         $predicted_string .= sprintf(" %2s", $pass_fail_char);
@@ -2271,7 +2436,208 @@ sub monocharacterString {
   return $ret_str;
 }
 
+# Subroutine: fetchHits()
+#
+# Synopsis:   Given 2D hashes that describe all hits, fetch
+#             the hits for each CDS/exon to files.
+#
+# Args:       $sqfile:        Bio::Easel::SqFile object, open sequence
+#                             file containing $seqname;
+#             $do_skip:       '1' to skip alignment step after verifying alignments exist
+#             $key:           string for naming output files (e.g.: "predicted", "corrected";
+#             $mdl_order_AR:  ref to array of model names in order
+#             $seq_order_AR:  ref to array of sequence names in order
+#             $seqlen_HR:     ref to hash of total lengths
+#             $start_HHR:     ref to 2D hash of start values, pre-filled
+#             $stop_HHR:      ref to 2D hash of stop values, pre-filled
+#             $strand_HHR:    ref to 2D hash of strand values, pre-filled
+#             $out_aln_root:  root name for output files
+#             $fafile_HR:     ref to hash: key: model name, value name of fasta file
+#                             with fetched sequences, FILLED HERE
+# 
+# Returns:    void
+#
+sub fetchHits {
+  my $sub_name = "fetchHits";
+  my $nargs_exp = 11;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $do_skip, $key, $mdl_order_AR, $seq_order_AR, $seqlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $out_aln_root, $fafile_HR) = @_;
+
+  my ($seconds, $microseconds) = gettimeofday();
+  my $start_time = ($seconds + ($microseconds / 1000000.));
+
+  $out_aln_root =~ s/\/.+$/\//; # remove everything after the first '/'
+
+  printf("%-50s ... ", ($do_skip) ? "# Skipping fetch of $key exons" : "# Fetching $key exon sequences");
+    
+  foreach my $mdl (@{$mdl_order_AR}) { 
+    my $out_key = $mdl;
+    $out_key =~ s/ref/$key/;
+    my @fetch_AA = ();
+    my $nseq = 0;
+    for(my $seq_i = 0; $seq_i < scalar(@{$seq_order_AR}); $seq_i++) { 
+      my $seq = $seq_order_AR->[$seq_i];
+      if($seq_i == 0 && (! exists $start_HHR->{$mdl}{$seq})) {
+        die "ERROR in $sub_name(), no hit from model $mdl to the reference sequence $seq"; 
+      }
+      if(exists $start_HHR->{$mdl}{$seq}) { 
+        my $accn = $seq;
+        $accn =~ s/\:.+$//;
+        my $newname .= $accn . "/" . $start_HHR->{$mdl}{$seq} . "-" . $stop_HHR->{$mdl}{$seq};
+        my $start = $start_HHR->{$mdl}{$seq};
+        my $stop  = $stop_HHR->{$mdl}{$seq};
+        if($start < 0 || $stop < 0) { 
+          # first, take care of off-by-one we introduced for coordinates that wrap around start (e.g. -2..3 in a length 
+          # 10 genome is really 9..10..11..12..13 in duplicated genome, not 8..13)
+          if($start < 0) { $start += 1; }
+          if($stop  < 0) { $stop  += 1; }
+          $start += $seqlen_HR->{$accn};
+          $stop  += $seqlen_HR->{$accn};
+        }
+        push(@fetch_AA, [$newname, $start, $stop, $seq]);
+        $nseq++;
+      }
+    }
+    if($nseq > 0) { 
+      my $cur_fafile = $out_aln_root . $out_key . ".fa";
+      $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
+      # printf("Saved $nseq sequences to $cur_fafile.\n");
+      $fafile_HR->{$mdl} = $cur_fafile;
+    }
+  }
+  ($seconds, $microseconds) = gettimeofday();
+  my $stop_time = ($seconds + ($microseconds / 1000000.));
+  printf("done. [%s]\n", ($do_skip) ? "-skipaln" : sprintf("%.1f seconds", ($stop_time - $start_time)));
+
+  return;
+}
+
 # Subroutine: alignHits()
+#
+# Synopsis:   Given a hash of sequence file names (already created)
+#             to align for each model, align each file to the appropriate 
+#             model to create a multiple alignment. Then parse the 
+#             alignments to get info on all gaps in the alignment.
+#
+# Args:       $align:         path to hmmalign or cmalign executable
+#             $fetch:         path to hmmfetch or cmfetch executable
+#             $model_db:      model database file to fetch the models from
+#             $do_skip:       '1' to skip alignment step after verifying alignments exist
+#             $mdl_order_AR:  ref to array of model names in order
+#             $seq_order_AR:  ref to array of sequence names in order
+#             $fafile_HR:     ref to hash: key: model name, value: name of fasta file with 
+#                             all fetched seqs to align to that model
+#             $start_HHR:     ref to 2D hash of start values, pre-filled, 
+#                             used only so we know what seqs should exist in alignments
+#             $fid2ref_HHR:   ref to 2D hash of fractional identity values 
+#                             of aligned sequences to the reference, FILLED HERE
+#             $refdel_HHAR:   ref to 2D hash where value is an array, each element is
+#                             an rf position that is deleted in the alignment of the $seq_accn
+#                             FILLED HERE
+#             $refins_HHAR:   ref to 2D hash where value is an array, each element is
+#                             a string <rfpos>:<ct> where <rfpos> is a rf pos in the alignment
+#                             after which $seq_accn has an insert and <ct> is the number of inserted
+#                             positions.
+#                             FILLED HERE
+# 
+# Returns:    void
+#
+sub alignHits {
+  my $sub_name = "alignHits";
+  my $nargs_exp = 11;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($align, $fetch, $model_db, $do_skip, $mdl_order_AR, $seq_order_AR, $fafile_HR, $start_HHR, $fid2ref_HHR, $refdel_HHAR, $refins_HHAR) = @_;
+
+  my ($seconds, $microseconds) = gettimeofday();
+  my $start_time = ($seconds + ($microseconds / 1000000.));
+
+  printf("%-50s ... ", ($do_skip) ? "# Skipping multiple alignment creation" : "# Creating multiple alignments");
+    
+  foreach my $mdl (@{$mdl_order_AR}) { 
+    if(exists($fafile_HR->{$mdl})) { 
+      my $cur_fafile  = $fafile_HR->{$mdl};
+      my $cur_stkfile = $cur_fafile;
+      $cur_stkfile =~ s/\.fa/\.stk/;
+      my $cmd = "$fetch $model_db $mdl | $align - $cur_fafile > $cur_stkfile";
+      #print $cmd . "\n";
+      if($do_skip) { 
+        if(! -s $cur_stkfile) { die "ERROR, with -skipaln, alignments are expected to already exist, but $cur_stkfile does not or is empty"; }
+      }
+      else { 
+        runCommand($cmd, 0);
+      }
+      # printf("Saved $nseq aligned sequences to $cur_stkfile.\n");
+
+      # store the fractional identities between each sequence and the reference
+      # first we need to read in the MSA we just created 
+      my $msa = Bio::Easel::MSA->new({
+        fileLocation => $cur_stkfile,
+                                     });  
+
+      # determine which positions are RF positions
+      my $rfseq = $msa->get_rf();
+      my @rfseq_A = split("", $rfseq);
+      my $alen  = $msa->alen();
+      my @i_am_rfpos_A = (); # 0..$apos..$alen-1: '1' if RF is a nongap at position $apos+1, else '0'
+      for(my $apos = 0; $apos < $alen; $apos++) { 
+        $i_am_rfpos_A[$apos] = ($rfseq_A[$apos] eq ".") ? 0 : 1;
+      }          
+
+      my $i = 0; # this will remain '0', which is the reference sequence
+      my $j = 0; # we'll increment this from 0..$nseq-1
+      foreach my $seq (@{$seq_order_AR}) { 
+        if(exists $start_HHR->{$mdl}{$seq}) { 
+          $fid2ref_HHR->{$mdl}{$seq} = $msa->pairwise_identity($i, $j);
+          # printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
+
+          # determine the RF positions that are gaps in this sequence
+          # and the positions of the inserted residues in this sequence
+          # and store them
+          my $aseqstring  = $msa->get_sqstring_aligned($j);
+          my @aseq_A = split("", $aseqstring);
+          my $rfpos = 0;
+          for(my $apos = 0; $apos < $alen; $apos++) { 
+            if($i_am_rfpos_A[$apos]) { 
+              $rfpos++; 
+            }
+            if($aseq_A[$apos] =~ m/[\.\-]/) { # a gap in the sequence
+              if($i_am_rfpos_A[$apos]) { # not a gap in the RF sequence
+                # deletion (gap) relative to the reference sequence
+                if(! exists $refdel_HHAR->{$mdl}{$seq}) { 
+                  @{$refdel_HHAR->{$mdl}{$seq}} = (); 
+                }
+                updateGapArray(\@{$refdel_HHAR->{$mdl}{$seq}}, $rfpos, 1); # 1 informs the subroutine that this is a delete array
+              }
+            }
+            else { # nongap in the sequence
+              if(! $i_am_rfpos_A[$apos]) { # gap in the RF sequence
+                # insertion in sequence relative to the reference sequence
+                if(! exists $refins_HHAR->{$mdl}{$seq}) { 
+                  @{$refins_HHAR->{$mdl}{$seq}} = (); 
+                }
+                updateGapArray(\@{$refins_HHAR->{$mdl}{$seq}}, $rfpos, 0); # 1 informs the subroutine that this is a delete array
+              }
+            }
+          }
+          $j++; # increment sequence index in msa
+          # printf("printing insert info for $mdl $seq\n");
+          # debugPrintGapArray(\@{$refins_HHAR->{$mdl}{$seq}});
+          # printf("printing delete info for $mdl $seq\n");
+          # debugPrintGapArray(\@{$refdel_HHAR->{$mdl}{$seq}});
+        }
+      }
+    }
+  }
+  ($seconds, $microseconds) = gettimeofday();
+  my $stop_time = ($seconds + ($microseconds / 1000000.));
+  printf("done. [%s]\n", ($do_skip) ? "-skipaln" : sprintf("%.1f seconds", ($stop_time - $start_time)));
+
+  return;
+}
+
+# Subroutine: OLDalignHits()
 #
 # Synopsis:   Given 2D hashes that describe all hits, fetch
 #             the hits for each CDS/exon to a file and then 
@@ -2304,8 +2670,8 @@ sub monocharacterString {
 # 
 # Returns:    void
 #
-sub alignHits {
-  my $sub_name = "alignHits";
+sub OLDalignHits {
+  my $sub_name = "OLDalignHits";
   my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -2425,7 +2791,7 @@ sub alignHits {
   }
   ($seconds, $microseconds) = gettimeofday();
   my $stop_time = ($seconds + ($microseconds / 1000000.));
-  printf("done. [%s]\n", ($do_skip) ? "-skipaln" : sprintf("%.1f secs", ($stop_time - $start_time)));
+  printf("done. [%s]\n", ($do_skip) ? "-skipaln" : sprintf("%.1f seconds", ($stop_time - $start_time)));
 
   return;
 }
@@ -3259,6 +3625,60 @@ sub splitFastaFile {
   return;
 }
 
+# Subroutine: wrapperCombineExonsIntoCDS()
+#
+# Synopsis:   For all CDS, combine all exons into CDS. A wrapper function
+#             for combineExonsIntoCDS().
+#
+# Args:       $nhmm:            total number of exons/models
+#             $dir:             directory for output files
+#             $key:             string for naming output files (e.g.: "predicted" or "corrected")
+#             $model_AR:        ref to array of model names 
+#             $hmm2cds_map_AR:  ref to array mapping models to CDS
+#             $hmm_is_first_AR: ref to array signifying if a model is first in a CDS or not
+#             $hmm_is_final_AR: ref to array signifying if a model is final in a CDS or not
+#             $outfile_AR:      ref to array of output files, filled here
+#
+# Returns:    void
+# Dies:       if something unexpected happens when reading the exon fasta files
+#
+sub wrapperCombineExonsIntoCDS {
+  my $sub_name = "combineExonsIntoCDS";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($nhmm, $dir, $key, $model_AR, $hmm2cds_map_AR, $hmm_is_first_AR, $hmm_is_final_AR, $outfile_AR) = @_;
+
+  my ($seconds, $microseconds) = gettimeofday();
+  my $start_time = ($seconds + ($microseconds / 1000000.));
+  printf("%-50s ... ", "# Combining multi-exon $key CDS ");
+
+  my @tmp_exon_fafile_A = (); # temporary array of exon fafiles for all exons in current CDS
+  
+  for(my $h = 0; $h < $nhmm; $h++) { 
+    my $cds_i      = $hmm2cds_map_AR->[$h];
+    my $cur_fafile = $dir . "/" . $model_AR->[$h] . ".fa";
+    $cur_fafile    =~ s/ref/$key/;
+    push(@tmp_exon_fafile_A, $cur_fafile);
+    if($hmm_is_final_A[$h]) { 
+      if(! $hmm_is_first_A[$h]) { 
+        $cur_fafile =~ s/\.exon\.\d+//; # remove exon.<d> part of file name
+        combineExonsIntoCDS(\@tmp_exon_fafile_A, $cur_fafile);
+      }
+      else { # a single exon gene, we should already have the sequence from alignHits
+        if(! -s $cur_fafile) { die sprintf("ERROR, expected output fasta file for CDS %s does not exist: $cur_fafile", $cds_i+1); }
+      }
+      push(@{$outfile_AR}, $cur_fafile);
+      @tmp_exon_fafile_A = (); # reset to empty, for next CDS
+    }
+  }
+
+  ($seconds, $microseconds) = gettimeofday();
+  my $stop_time = ($seconds + ($microseconds / 1000000.));
+  printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
+
+  return;
+}
 # Subroutine: combineExonsIntoCDS()
 #
 # Synopsis:   Given an array of fasta files each with a different exon 
@@ -3328,7 +3748,7 @@ sub combineExonsIntoCDS {
         $read_sequence_A[$i] .= $read_line;
         $read_line = <$FH>;
       }
-      # printf("setting read_header_A[$i] to $read_line\n");
+      # if(defined $read_line) { printf("setting read_header_A[$i] to $read_line\n"); }
       $read_header_A[$i] = $read_line;
       if(defined $read_header_A[$i]) { chomp($read_header_A[$i]); }
     }
@@ -3390,65 +3810,102 @@ sub parseEslTranslateOutput {
   my $line = <IN>;
   while(defined $line) { 
     if($line =~ m/^\>/) { 
-      #>orf1 source=NC_001346/150-455 coords=1..303 length=101 frame=1  
-      # OR
-      #>orf1 source=NC_001346/2527-1886,1793-1353 coords=87..161 length=25 frame=3  
-#      if($line =~ /^\>orf\d+\s+source\=(\S+)\/(\-?\d+)\-(\-?\d+)\s+coords\=(\d+)\.\.(\d+)\s+length\=(\d+)\s+frame=(\d+)/) { 
-      if($line =~ /^\>orf\d+\s+source\=(\S+)\/(\S+)\s+coords\=(\d+)\.\.(\d+)\s+length\=(\d+)\s+frame=(\d+)/) { 
-        ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame) = ($1, $2, $3, $4, $5, $6);
-        # $source_coords = '150-455' or
-        # $source_coords = '2527-1886,1793-1353'
-        my @source_coords_A = split(",", $source_coords);
-        $source_length = 0;
-        foreach my $cur_coords (@source_coords_A) { 
-          if($cur_coords =~ m/^(\-?\d+)\-(\-?\d+)$/) { 
-            my($cur_from, $cur_to) = ($1, $2);
-            $source_length += ($cur_from < $cur_to) ? ($cur_to - $cur_from + 1) : ($cur_from - $cur_to + 1);
-            if(($cur_from < 0) && ($cur_to > 0)) { $source_length--; } # fix off-by-one introduced by negative indexing in sequence position
-            if(($cur_from > 0) && ($cur_to < 0)) { $source_length--; } # fix off-by-one introduced by negative indexing in sequence position
-          }
-          else { 
-            die "ERROR in $sub_name, unable to parse source coordinates in header line: $line";
-          }
+      parseEslTranslateDefline($line, \$coords_from, \$coords_to, \$source_name, \$source_length);
+
+      $coords_length = ($coords_to - $coords_from) + 1;
+      # now determine if this protein passes or not
+      $print_flag = 0; # by default it fails, but we redefine this below if it passes
+      if($prot_must_start_at_1 && $prot_must_stop_at_L && 
+         ($coords_from == 1) && ($coords_to == ($source_length - 3))) { 
+        # we're looking only for full length proteins, and this is one
+        $print_flag = 1;
+      }
+      if($prot_must_start_at_1 && (! $prot_must_stop_at_L) && 
+         ($coords_from == 1) && $coords_to != ($source_length - 3)) { 
+        # we're NOT looking for full length proteins, but rather for proteins
+        # that start at the beginning of the CDS but do NOT end at the end of the 
+        # CDS, they may be shorter or longer
+        $print_flag = 1;
+      }
+      
+      if($print_flag) { 
+        print OUT $line; 
+        $nprot++;
+        $prot_HR->{$source_name}++;
+        if($prot_HR->{$source_name} > 1) { 
+          die "ERROR in $sub_name, found more than 1 full length protein translation for $source_name"; 
         }
       }
-      else { 
-        die "ERROR in $sub_name, unable to parse header line: $line";
-      }
-    }
-    $coords_length = ($coords_to - $coords_from) + 1;
-    # now determine if this protein passes or not
-    $print_flag = 0; # by default it fails, but we redefine this below if it passes
-    if($prot_must_start_at_1 && $prot_must_stop_at_L && 
-       ($coords_from == 1) && ($coords_to == ($source_length - 3))) { 
-      # we're looking only for full length proteins, and this is one
-      $print_flag = 1;
-    }
-    if($prot_must_start_at_1 && (! $prot_must_stop_at_L) && 
-       ($coords_from == 1) && $coords_to != ($source_length - 3)) { 
-      # we're NOT looking for full length proteins, but rather for proteins
-      # that start at the beginning of the CDS but do NOT end at the end of the 
-      # CDS, they may be shorter or longer
-      $print_flag = 1;
-    }
-
-    if($print_flag) { 
-      print OUT $line; 
-      $nprot++;
-      $prot_HR->{$source_name}++;
-      if($prot_HR->{$source_name} > 1) { 
-        die "ERROR in $sub_name, found more than 1 full length protein translation for $source_name"; 
-      }
-    }
-    $line = <IN>;
-    while(defined $line && $line !~ m/^\>/) { 
-      if($print_flag) { print OUT $line; }
       $line = <IN>;
+      while(defined $line && $line !~ m/^\>/) { 
+        if($print_flag) { print OUT $line; }
+        $line = <IN>;
+      }
+    }
+    else { 
+      die "ERROR in $sub_name, expected header line but read line: $line";
     }
   }
   close(OUT);
 
   $$nprot_R = $nprot;
+  return;
+}
+
+
+# Subroutine: parseEslTranslateDefline()
+#
+# Synopsis:   Given a defline output from esl-translate, parse it and
+#             return some relevant info.
+#
+# Args:       $line:                 the line to parse
+#             $coords_from_R:        ref to coordinate of start nt of translation, filled here, can be undef
+#             $coords_to_R:          ref to coordinate of stop  nt of translation, filled here, can be undef
+#             $source_name_R:        ref to name of source CDS, filled here, can be undef
+#             $source_len_R:         ref to coordinate of length of source CDS, filled here, can be undef
+#
+# Returns:    void
+# Dies:       if format of defline is unexpected
+#
+sub parseEslTranslateDefline {
+  my $sub_name = "parseEslTranslateDefline";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($line, $coords_from_R, $coords_to_R, $source_name_R, $source_len_R) = @_;
+
+  my ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame, $source_len);
+
+  # example $line's:
+  #>orf1 source=NC_001346/150-455 coords=1..303 length=101 frame=1  
+  # OR
+  #>orf1 source=NC_001346/2527-1886,1793-1353 coords=87..161 length=25 frame=3  
+  if($line =~ /^\>orf\d+\s+source\=(\S+)\/(\S+)\s+coords\=(\d+)\.\.(\d+)\s+length\=(\d+)\s+frame=(\d+)/) { 
+    ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame) = ($1, $2, $3, $4, $5, $6);
+    # $source_coords = '150-455' or
+    # $source_coords = '2527-1886,1793-1353'
+    my @source_coords_A = split(",", $source_coords);
+    $source_len = 0;
+    foreach my $cur_coords (@source_coords_A) { 
+      if($cur_coords =~ m/^(\-?\d+)\-(\-?\d+)$/) { 
+        my($cur_from, $cur_to) = ($1, $2);
+        $source_len += ($cur_from < $cur_to) ? ($cur_to - $cur_from + 1) : ($cur_from - $cur_to + 1);
+        if(($cur_from < 0) && ($cur_to > 0)) { $source_len--; } # fix off-by-one introduced by negative indexing in sequence position
+        if(($cur_from > 0) && ($cur_to < 0)) { $source_len--; } # fix off-by-one introduced by negative indexing in sequence position
+      }
+      else { 
+        die "ERROR in $sub_name, unable to parse source coordinates in header line: $line";
+      }
+    }
+  }
+  else { 
+    die "ERROR in $sub_name, unable to parse header line: $line";
+  }
+
+  if(defined $coords_from_R) { $$coords_from_R = $coords_from; }
+  if(defined $coords_to_R)   { $$coords_to_R   = $coords_to;   }
+  if(defined $source_name_R) { $$source_name_R = $source_name; }
+  if(defined $source_len_R)  { $$source_len_R  = $source_len;  }
   return;
 }
 
