@@ -9,18 +9,21 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
 # hard-coded-paths:
-my $idfetch       = "/netopt/ncbi_tools64/bin/idfetch";
-my $esl_fetch_cds = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
-my $esl_ssplit    = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
-my $esl_translate = "/home/nawrocke/src/wd-easel/miniapps/esl-translate";
+my $idfetch        = "/netopt/ncbi_tools64/bin/idfetch";
+my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
+my $esl_ssplit     = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
+my $esl_translate  = "/home/nawrocke/src/wd-easel/miniapps/esl-translate";
+my $hmmer_exec_dir = "/home/nawrocke/bin/";
+my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 
 # The definition of $usage explains the script and usage:
 my $usage = "\ndnaorg_annotate_genomes.pl\n";
-$usage .= "\t<directory created by dnaorg_fetch_dna_wrapper>\n";
+$usage .= "\t<directory created by dnaorg_virus_wrapper.pl>\n";
 $usage .= "\t<list file with all accessions>\n";
 $usage .= "\n"; 
 $usage .= " This script annotates genomes from the same species based\n";
-$usage .= " on reference annotation.\n";
+$usage .= " on reference annotation. The reference accession is the\n";
+$usage .= " first accession listed in <list file with all accessions>\n";
 $usage .= "\n";
 $usage .= " BASIC OPTIONS:\n";
 $usage .= "  -nocorrect : do not correct annotations based on internal start/stop codons in predicted exons/CDS\n";
@@ -62,8 +65,6 @@ $usage .= "\n";
 my ($seconds, $microseconds) = gettimeofday();
 my $start_secs      = ($seconds + ($microseconds / 1000000.));
 my $executable      = $0;
-my $hmmer_exec_dir  = "/home/nawrocke/bin/";
-my $inf_exec_dir    = "/usr/local/infernal/1.1.1/bin/";
 my $hmmbuild        = $hmmer_exec_dir  . "hmmbuild";
 my $hmmpress        = $hmmer_exec_dir  . "hmmpress";
 my $hmmalign        = $hmmer_exec_dir  . "hmmalign";
@@ -76,10 +77,11 @@ my $cmscan          = $inf_exec_dir . "cmscan";
 my $cmalign         = $inf_exec_dir . "cmalign";
 my $cmfetch         = $inf_exec_dir . "cmfetch";
 
-foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmpress, $cmscan) { 
+foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmpress, $cmscan, $esl_translate, $esl_ssplit) { 
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
+# general options:
 my $do_nocorrect = 0; # set to '1' if -nocorrect  enabled, do not look for internal start/stop codons and update annotation if found
 my $do_matpept   = 0; # set to '1' if -matpept    enabled, genome has a single polyprotein, use mat_peptide info, not CDS
 my $origin_seq   = undef; # defined if -oseq      enabled
@@ -319,7 +321,7 @@ if($do_concise) {
 ###############
 # Preliminaries
 ###############
-# check if the $dir exists, and that it contains a .gene.tbl file, and a .length file
+# check if the $dir exists, and that it contains the files we need
 if(! -d $dir)      { die "ERROR directory $dir does not exist"; }
 if(! -s $listfile) { die "ERROR list file $listfile does not exist, or is empty"; }
 my $dir_tail = $dir;
@@ -454,7 +456,7 @@ close(OUT);
 
 if($do_skipfetch) { 
   # trying to skip fetch step, make sure we have the fasta file
-  printf("%-50s ... ", "# Skipping genome fetch step");
+  printf("%-65s ... ", "# Skipping genome fetch step");
   if(! -s $gnm_fasta_file) { die "ERROR, with -skipfetch genome fasta file is expected to exist, but $gnm_fasta_file does not or is empty"; }
   printf("done. [-skipfetch]\n");
 }
@@ -463,7 +465,7 @@ else {
   if(-e $gnm_fasta_file)          { unlink $gnm_fasta_file; }
   if(-e $gnm_fasta_file . ".ssi") { unlink $gnm_fasta_file . ".ssi"; }
 
-  printf("%-50s ... ", sprintf("# Fetching $naccn full%s genome sequences", $do_nodup ? "" : " (duplicated)"));
+  printf("%-65s ... ", sprintf("# Fetching $naccn full%s genome sequences", $do_nodup ? "" : " (duplicated)"));
 # my $cmd = "$idfetch -t 5 -c 1 -G $gnm_fetch_file > $gnm_fasta_file";
   $cmd = "perl $esl_fetch_cds -nocodon $gnm_fetch_file > $gnm_fasta_file";
   my $secs_elapsed = runCommand($cmd, 0);
@@ -497,7 +499,7 @@ my $all_stk_file = $out_root . ".ref.all.stk";
 
 ($seconds, $microseconds) = gettimeofday();
 my $start_time = ($seconds + ($microseconds / 1000000.));
-printf("%-50s ... ", "# Fetching reference CDS sequences");
+printf("%-65s ... ", "# Fetching reference CDS sequences");
 my $cur_out_root;
 my $cur_name_root;
 my $fetch_input;
@@ -617,15 +619,15 @@ if(defined $in_model_db) {
 }
 else { 
   if(! $do_hmmer) { 
-    createCmDb($cmbuild, $cmcalibrate, $cmpress, $do_cslow, $do_ccluster, $all_stk_file, $out_root . ".ref");
+    createCmDb($cmbuild, $cmcalibrate, $cmpress, $nhmm, $do_cslow, $do_ccluster, $all_stk_file, $out_root . ".ref");
     if($do_onlybuild) { 
-      printf("#\n# Model construction %s. Exiting.\n", ($do_ccluster) ? "job submitted." : "complete");
+      printf("#\n# Model calibration %s. Exiting.\n", ($do_ccluster) ? "job submitted" : "complete");
       exit 0;
     }
     $model_db = $out_root . ".ref.cm";
   }
   else { # use HMMER3's nhmmscan
-    createHmmDb($hmmbuild, $hmmpress, $all_stk_file, $out_root . ".ref");
+    createHmmDb($hmmbuild, $hmmpress, $nhmm, $all_stk_file, $out_root . ".ref");
     if($do_onlybuild) { 
       printf("#\n# Model construction complete. Exiting.\n");
       exit 0;
@@ -667,7 +669,7 @@ else {
   else { # we need to split up the genome fasta file and submit a different cmscan job for each fasta file
     splitFastaFile($esl_ssplit, $gnm_fasta_file, $scluster_njobs);
     # now submit a job for each
-    printf("%-50s ... ", sprintf("# Submitting %d cmscan jobs", $scluster_njobs));
+    printf("%-65s ... ", sprintf("# Submitting %d cmscan jobs", $scluster_njobs));
     for(my $z = 1; $z <= $scluster_njobs; $z++) { 
       my $cur_gnm_fasta_file = $gnm_fasta_file . "." . $z;
       my $cur_tblout = $tblout . "." . $z;
@@ -732,6 +734,10 @@ wrapperCombineExonsIntoCDS($nhmm, $dir, "predicted", \@model_A, \@hmm2cds_map_A,
 # - look for internal starts and stops and make corrections based on those
 # - combine new exons into new CDS
 ###########################################################################
+($seconds, $microseconds) = gettimeofday();
+my $start_time = ($seconds + ($microseconds / 1000000.));
+printf("%-65s ... ", "# Translating predicted CDS to identify internal starts/stops");
+
 my $source_accn;   # name of CDS sequence that was translated
 my $source_length; # length of CDS sequence that was translated
 my $coords_from;   # start nt coordinate of current translation
@@ -751,8 +757,6 @@ my @did_corr_exon_start_AH = ();  # [0..$i..ref_nexons-1], each element is a has
                                   # are '1' if this exon's start position was corrected
 my @did_corr_exon_stop_AH = ();   # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
                                   # are '1' if this exon's stop position was corrected
-#my %c_start_HH = %p_start_HH; # corrected start positions of hits, start with a copy of p_start_HH
-#my %c_stop_HH  = %p_stop_HH;  # corrected stop positions of hits,  start with a copy of p_stop_HH
 my %c_start_HH = (); # corrected start positions of hits, start with a copy of p_start_HH
 my %c_stop_HH  = ();  # corrected stop positions of hits,  start with a copy of p_stop_HH
 my %corr_fafile_H = ();     # hash of names of fasta files for corrected exon sequences, keys: model name from @model_A, value: name of file
@@ -813,7 +817,8 @@ if(! $do_nocorrect) {
       my $final_hmm = $cds2final_hmm_A[$c];
       my $cur_nhmm = $final_hmm - $first_hmm + 1;
 
-      if($first_hmm == $final_hmm) {       # easy case: single exon CDS:
+      if($first_hmm == $final_hmm) {
+        # easy case: single exon CDS:
         my $mdl = $model_A[$first_hmm];
         if($p_strand_HH{$mdl}{$seq_accn} eq "+") { 
           $c_start_HH{$mdl}{$seq_accn} = $p_start_HH{$mdl}{$seq_accn} + $corr_start; # note that $corr_start may be 0
@@ -835,7 +840,7 @@ if(! $do_nocorrect) {
               ($p_start_HH{$model_A[$h]}{$seq_accn} - $p_stop_HH{$model_A[$h]}{$seq_accn}  + 1);
           $cds_len += $exon_len_A[$hp];
           
-          # IMPORTANT: copy predicted to corrected, we may 'correct' this below, but if we don't prediction stays the same
+          # IMPORTANT: copy predicted to corrected, we may 'correct' this below, but if we don't the prediction stays the same.
           #            In case when we correct a multi-exon gene by putting the stop in the non-final exon or the start in
           #            non-first exon, note that this means we will only 'correct' the exons that have the modified stop
           #            or start, and NOT any others. For example if we have a 2-exon CDS and our correction puts the stop
@@ -905,6 +910,9 @@ if(! $do_nocorrect) {
       } # end of 'else' entered if we're a multi-exon CDS
     } # end of loop over CDS
   } # end of loop over sequences
+  ($seconds, $microseconds) = gettimeofday();
+  my $stop_time = ($seconds + ($microseconds / 1000000.));
+  printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
   # fetch corrected hits into new files
   fetchHits($sqfile, $do_skipaln, "corrected", \@model_A, \@seq_accn_A, \%totlen_H, \%c_start_HH, \%c_stop_HH, \%p_strand_HH, $out_root, \%corr_fafile_H);
@@ -975,7 +983,8 @@ else {
 if(1) { # output sequences as rows 
   outputSeqRowHeadings($do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, \@hmm2cds_map_A, \@hmm2exon_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@cds_out_short_A, \@cds_out_product_A);
 }
-
+# eventually we may have additional output modes here, not just 1 seq per row
+#
 #######################################################################
 # Pass through all accessions, and output predicted annotation for each
 #######################################################################
@@ -1027,6 +1036,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       $tot_nexons += $nexons;
     }
 
+    # Debugging print statements:
     # printf("\n");
     # printf("$accn\n");
     # for(my $zz = 0; $zz < scalar(@act_exon_starts_AA); $zz++) { 
@@ -1298,7 +1308,16 @@ for(my $a = 0; $a < $naccn; $a++) {
   print "\n";
 }
 
-# output the gap info files
+##########################
+# OUTPUT EXPLANATORY TEXT 
+##########################
+if(! $do_noexp) { 
+  printColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
+}
+
+###########################
+# OUTPUT THE GAP INFO FILES
+###########################
 # first, the gap file that lists all gaps, and all gaps that are not multiples of 3
 my $gap_perseq_all_file     = $out_root . ".gap.perseq-all.txt";
 my $gap_perseq_not3_file    = $out_root . ".gap.perseq-not3.txt";
@@ -1334,10 +1353,6 @@ close($gap_perseq_special_FH);
 close($gap_pergap_all_FH);
 close($gap_pergap_not3_FH);
 close($gap_pergap_special_FH);
-
-if(! $do_noexp) { 
-  printColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
-}
 
 #############
 # SUBROUTINES
@@ -1673,8 +1688,10 @@ sub stripPath {
 # Purpose:    Validate that all CDS:product annotation for all reference CDS 
 #             are unique, i.e. there are no two CDS that have the same value
 #             in their CDS:product annotation.
+#
 # Args:       $ref_ncds:           number of reference CDS
 #             $ref_cds_product_AR: ref to array of CDS:product annotations for the $ref_ncds reference CDS 
+#
 # Returns:    void
 # Dies:       if more than one ref CDS have same CDS:product annotation.
 sub validateRefCDSAreUnique {
@@ -1700,7 +1717,7 @@ sub validateRefCDSAreUnique {
 #             $stops_AR:  ref to array to fill with stop positions
 #             $nexons_R:  ref to scalar that fill with the number of exons
 #
-# Returns:    void; but fills
+# Returns:    void; but fills @{$starts_AR}, @{$stops_AR}, and $$nexons_R.
 #
 sub startStopsFromCoords { 
   my $sub_name = "startStopsFromCoords()";
@@ -1782,6 +1799,7 @@ sub lengthFromCoords {
 #
 # Args:       $hmmbuild:   path to 'hmmbuild' executable
 #             $hmmpress:   path to 'hmmpress' executable
+#             $nmodel:     number of models we're creating
 #             $stk_file:   stockholm DB file
 #             $out_root:   string for naming output files
 #
@@ -1789,10 +1807,10 @@ sub lengthFromCoords {
 #
 sub createHmmDb { 
   my $sub_name = "createHmmDb()";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($hmmbuild, $hmmpress, $stk_file, $out_root) = @_;
+  my ($hmmbuild, $hmmpress, $nmodel, $stk_file, $out_root) = @_;
 
   if(! -s $stk_file)  { die "ERROR in $sub_name, $stk_file file does not exist or is empty"; }
 
@@ -1804,14 +1822,14 @@ sub createHmmDb {
 
   # first build the models
 
-  printf("%-50s ... ", "# Running hmmbuild");
+  printf("%-65s ... ", sprintf("# Running hmmbuild to build %d HMMs", $nmodel));
   my $cmd = "$hmmbuild --dna $out_root.hmm $stk_file > $out_root.hmmbuild";
   my $secs_elapsed = runCommand($cmd, 0);
 #  printf("done. [$out_root.nhmmer and $out_root.tblout]\n");
   printf("done. [%.1f seconds]\n", $secs_elapsed);
 
   # next, press the HMM DB we just created
-  printf("%-50s ... ", "# Running hmmpress");
+  printf("%-65s ... ", "# Running hmmpress");
   $cmd = "$hmmpress $out_root.hmm > $out_root.hmmpress";
   $secs_elapsed = runCommand($cmd, 0);
 #  printf("done. [$out_root.nhmmer and $out_root.tblout]\n");
@@ -1829,6 +1847,7 @@ sub createHmmDb {
 # Args:       $cmbuild:          path to 'cmbuild' executable
 #             $cmcalibrate:      path to 'cmcalibrate' executable
 #             $cmpress:          path to 'cmpress' executable
+#             $nmodel:           number of models we're creating/calibrating
 #             $do_calib_slow:    '1' to calibrate using default parameters instead of
 #                                options to make it go much faster
 #             $do_calib_cluster: '1' to submit calibration job to cluster, '0' to do it locally
@@ -1839,10 +1858,10 @@ sub createHmmDb {
 #
 sub createCmDb { 
   my $sub_name = "createCmDb()";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($cmbuild, $cmcalibrate, $cmpress, $do_calib_slow, $do_calib_cluster, $stk_file, $out_root) = @_;
+  my ($cmbuild, $cmcalibrate, $cmpress, $nmodel, $do_calib_slow, $do_calib_cluster, $stk_file, $out_root) = @_;
 
   if(! -s $stk_file)  { die "ERROR in $sub_name, $stk_file file does not exist or is empty"; }
 
@@ -1866,7 +1885,7 @@ sub createCmDb {
   $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
 
   # first build the models
-  printf("%-50s ... ", "# Running cmbuild");
+  printf("%-65s ... ", sprintf("# Running cmbuild to build %d CMs", $nmodel));
   my $secs_elapsed = runCommand($cmbuild_cmd, 0);
   printf("done. [%.1f seconds]\n", $secs_elapsed);
 
@@ -1882,13 +1901,13 @@ sub createCmDb {
   }
   else { 
     # calibrate the model
-    printf("%-50s ... ", "# Running cmcalibrate");
+    printf("%-65s ... ", "# Running cmcalibrate");
     $secs_elapsed = runCommand($cmcalibrate_cmd, 0);
     #printf("\n$cmcalibrate_cmd\n");
     printf("done. [%.1f seconds]\n", $secs_elapsed);
 
     # press the model
-    printf("%-50s ... ", "# Running cmpress");
+    printf("%-65s ... ", "# Running cmpress");
     $secs_elapsed = runCommand($cmpress_cmd, 0);
     #printf("\n$cmpress_cmd\n");
     printf("done [%.1f seconds]\n", $secs_elapsed);
@@ -1912,13 +1931,13 @@ sub createCmDb {
 #
 sub runNhmmscan { 
   my $sub_name = "runNhmmscan()";
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($nhmmscan, $do_skip, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
 
   if($do_skip) { 
-    printf("%-50s ... ", "# Skipping nhmmscan step");
+    printf("%-65s ... ", "# Skipping nhmmscan step");
     if(! -s $tblout_file) { die "ERROR, with -skipscan or -skipaln nhmmscan output is expected to already exist, but $tblout_file does not or is empty"; }
     if(! -s $stdout_file) { die "ERROR, with -skipscan or -skipaln nhmmscan output is expected to already exist, but $stdout_file does not or is empty"; }
     printf("done. [-skipscan or -skipaln]\n");
@@ -1933,7 +1952,7 @@ sub runNhmmscan {
   if(! -s $model_db)  { die "ERROR in $sub_name, $model_db file does not exist or is empty"; }
   if(! -s $seq_fasta) { die "ERROR in $sub_name, $seq_fasta file does not exist or is empty"; }
 
-  printf("%-50s ... ", "# Running nhmmscan");
+  printf("%-65s ... ", "# Running nhmmscan");
   my $cmd = "$nhmmscan $opts $model_db $seq_fasta > $stdout_file";
   my $secs_elapsed = runCommand($cmd, 0);
   printf("done. [%.1f seconds]\n", $secs_elapsed);
@@ -1964,7 +1983,7 @@ sub runCmscan {
   my ($cmscan, $do_glocal, $do_skip, $do_cluster, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
 
   if($do_skip) { 
-    printf("%-50s ... ", "# Skipping cmscan step");
+    printf("%-65s ... ", "# Skipping cmscan step");
     if(! -s $tblout_file) { die "ERROR, with -skipscan or -skipaln cmscan output is expected to already exist, but $tblout_file does not or is empty"; }
     if(! -s $stdout_file) { die "ERROR, with -skipscan or -skipaln cmscan output is expected to already exist, but $stdout_file does not or is empty"; }
     printf("done. [-skipscan or -skipaln]\n");
@@ -1982,7 +2001,7 @@ sub runCmscan {
   my $cmd = "$cmscan $opts $model_db $seq_fasta > $stdout_file";
   if(! $do_cluster) { 
     # default mode, run job locally
-    printf("%-50s ... ", "# Running cmscan");
+    printf("%-65s ... ", "# Running cmscan");
     my $secs_elapsed = runCommand($cmd, 0);
     printf("done. [%.1f seconds]\n", $secs_elapsed);
   }
@@ -2511,7 +2530,7 @@ sub fetchHits {
 
   $out_aln_root =~ s/\/.+$/\//; # remove everything after the first '/'
 
-  printf("%-50s ... ", ($do_skip) ? "# Skipping fetch of $key exons" : "# Fetching $key exon sequences");
+  printf("%-65s ... ", ($do_skip) ? "# Skipping fetch of $key exons" : "# Fetching $key exon sequences");
     
   foreach my $mdl (@{$mdl_order_AR}) { 
     my $out_key = $mdl;
@@ -2595,172 +2614,13 @@ sub alignHits {
   my ($seconds, $microseconds) = gettimeofday();
   my $start_time = ($seconds + ($microseconds / 1000000.));
 
-  printf("%-50s ... ", ($do_skip) ? "# Skipping multiple alignment creation" : "# Creating multiple alignments");
+  printf("%-65s ... ", ($do_skip) ? "# Skipping multiple alignment creation" : "# Creating multiple alignments");
     
   foreach my $mdl (@{$mdl_order_AR}) { 
     if(exists($fafile_HR->{$mdl})) { 
       my $cur_fafile  = $fafile_HR->{$mdl};
       my $cur_stkfile = $cur_fafile;
       $cur_stkfile =~ s/\.fa/\.stk/;
-      my $cmd = "$fetch $model_db $mdl | $align - $cur_fafile > $cur_stkfile";
-      #print $cmd . "\n";
-      if($do_skip) { 
-        if(! -s $cur_stkfile) { die "ERROR, with -skipaln, alignments are expected to already exist, but $cur_stkfile does not or is empty"; }
-      }
-      else { 
-        runCommand($cmd, 0);
-      }
-      # printf("Saved $nseq aligned sequences to $cur_stkfile.\n");
-
-      # store the fractional identities between each sequence and the reference
-      # first we need to read in the MSA we just created 
-      my $msa = Bio::Easel::MSA->new({
-        fileLocation => $cur_stkfile,
-                                     });  
-
-      # determine which positions are RF positions
-      my $rfseq = $msa->get_rf();
-      my @rfseq_A = split("", $rfseq);
-      my $alen  = $msa->alen();
-      my @i_am_rfpos_A = (); # 0..$apos..$alen-1: '1' if RF is a nongap at position $apos+1, else '0'
-      for(my $apos = 0; $apos < $alen; $apos++) { 
-        $i_am_rfpos_A[$apos] = ($rfseq_A[$apos] eq ".") ? 0 : 1;
-      }          
-
-      my $i = 0; # this will remain '0', which is the reference sequence
-      my $j = 0; # we'll increment this from 0..$nseq-1
-      foreach my $seq (@{$seq_order_AR}) { 
-        if(exists $start_HHR->{$mdl}{$seq}) { 
-          $fid2ref_HHR->{$mdl}{$seq} = $msa->pairwise_identity($i, $j);
-          # printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
-
-          # determine the RF positions that are gaps in this sequence
-          # and the positions of the inserted residues in this sequence
-          # and store them
-          my $aseqstring  = $msa->get_sqstring_aligned($j);
-          my @aseq_A = split("", $aseqstring);
-          my $rfpos = 0;
-          for(my $apos = 0; $apos < $alen; $apos++) { 
-            if($i_am_rfpos_A[$apos]) { 
-              $rfpos++; 
-            }
-            if($aseq_A[$apos] =~ m/[\.\-]/) { # a gap in the sequence
-              if($i_am_rfpos_A[$apos]) { # not a gap in the RF sequence
-                # deletion (gap) relative to the reference sequence
-                if(! exists $refdel_HHAR->{$mdl}{$seq}) { 
-                  @{$refdel_HHAR->{$mdl}{$seq}} = (); 
-                }
-                updateGapArray(\@{$refdel_HHAR->{$mdl}{$seq}}, $rfpos, 1); # 1 informs the subroutine that this is a delete array
-              }
-            }
-            else { # nongap in the sequence
-              if(! $i_am_rfpos_A[$apos]) { # gap in the RF sequence
-                # insertion in sequence relative to the reference sequence
-                if(! exists $refins_HHAR->{$mdl}{$seq}) { 
-                  @{$refins_HHAR->{$mdl}{$seq}} = (); 
-                }
-                updateGapArray(\@{$refins_HHAR->{$mdl}{$seq}}, $rfpos, 0); # 1 informs the subroutine that this is a delete array
-              }
-            }
-          }
-          $j++; # increment sequence index in msa
-          # printf("printing insert info for $mdl $seq\n");
-          # debugPrintGapArray(\@{$refins_HHAR->{$mdl}{$seq}});
-          # printf("printing delete info for $mdl $seq\n");
-          # debugPrintGapArray(\@{$refdel_HHAR->{$mdl}{$seq}});
-        }
-      }
-    }
-  }
-  ($seconds, $microseconds) = gettimeofday();
-  my $stop_time = ($seconds + ($microseconds / 1000000.));
-  printf("done. [%s]\n", ($do_skip) ? "-skipaln" : sprintf("%.1f seconds", ($stop_time - $start_time)));
-
-  return;
-}
-
-# Subroutine: OLDalignHits()
-#
-# Synopsis:   Given 2D hashes that describe all hits, fetch
-#             the hits for each CDS/exon to a file and then 
-#             align all those sequences to the appropriate 
-#             model to create a multiple alignment.
-#
-# Args:       $align:         path to hmmalign or cmalign executable
-#             $fetch:         path to hmmfetch or cmfetch executable
-#             $model_db:      model database file to fetch the models from
-#             $sqfile:        Bio::Easel::SqFile object, open sequence
-#                             file containing $seqname;
-#             $do_skip:       '1' to skip alignment step after verifying alignments exist
-#             $mdl_order_AR:  ref to array of model names in order
-#             $seq_order_AR:  ref to array of sequence names in order
-#             $seqlen_HR:     ref to hash of total lengths
-#             $start_HHR:     ref to 2D hash of start values, pre-filled
-#             $stop_HHR:      ref to 2D hash of stop values, pre-filled
-#             $strand_HHR:    ref to 2D hash of strand values, pre-filled
-#             $fid2ref_HHR:   ref to 2D hash of fractional identity values 
-#                             of aligned sequences to the reference, FILLED HERE
-#             $refdel_HHAR:   ref to 2D hash where value is an array, each element is
-#                             an rf position that is deleted in the alignment of the $seq_accn
-#                             FILLED HERE
-#             $refins_HHAR:   ref to 2D hash where value is an array, each element is
-#                             a string <rfpos>:<ct> where <rfpos> is a rf pos in the alignment
-#                             after which $seq_accn has an insert and <ct> is the number of inserted
-#                             positions.
-#                             FILLED HERE
-#             $out_aln_root:  root name for output files
-# 
-# Returns:    void
-#
-sub OLDalignHits {
-  my $sub_name = "OLDalignHits";
-  my $nargs_exp = 15;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($align, $fetch, $model_db, $sqfile, $do_skip, $mdl_order_AR, $seq_order_AR, $seqlen_HR, $start_HHR, $stop_HHR, $strand_HHR, $fid2ref_HHR, $refdel_HHAR, $refins_HHAR, $out_aln_root) = @_;
-
-  my ($seconds, $microseconds) = gettimeofday();
-  my $start_time = ($seconds + ($microseconds / 1000000.));
-
-  $out_aln_root =~ s/\/.+$/\//; # remove everything after the first '/'
-
-  printf("%-50s ... ", ($do_skip) ? "# Skipping multiple alignment creation" : "# Creating multiple alignments");
-    
-  foreach my $mdl (@{$mdl_order_AR}) { 
-    my $out_key = $mdl;
-    $out_key =~ s/ref/predicted/;
-    my @fetch_AA = ();
-    my $nseq = 0;
-    for(my $seq_i = 0; $seq_i < scalar(@{$seq_order_AR}); $seq_i++) { 
-      my $seq = $seq_order_AR->[$seq_i];
-      if($seq_i == 0 && (! exists $start_HHR->{$mdl}{$seq})) {
-        die "ERROR in $sub_name(), no hit from model $mdl to the reference sequence $seq"; 
-      }
-      if(exists $start_HHR->{$mdl}{$seq}) { 
-        my $accn = $seq;
-        $accn =~ s/\:.+$//;
-        my $newname .= $accn . "/" . $start_HHR->{$mdl}{$seq} . "-" . $stop_HHR->{$mdl}{$seq};
-        my $start = $start_HHR->{$mdl}{$seq};
-        my $stop  = $stop_HHR->{$mdl}{$seq};
-        if($start < 0 || $stop < 0) { 
-          # first, take care of off-by-one we introduced for coordinates that wrap around start (e.g. -2..3 in a length 
-          # 10 genome is really 9..10..11..12..13 in duplicated genome, not 8..13)
-          if($start < 0) { $start += 1; }
-          if($stop  < 0) { $stop  += 1; }
-          $start += $seqlen_HR->{$accn};
-          $stop  += $seqlen_HR->{$accn};
-        }
-        push(@fetch_AA, [$newname, $start, $stop, $seq]);
-        $nseq++;
-      }
-    }
-    if($nseq > 0) { 
-      my $cur_fafile = $out_aln_root . $out_key . ".fa";
-      $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
-      # printf("Saved $nseq sequences to $cur_fafile.\n");
-      
-      # create the alignment
-      my $cur_stkfile = $out_aln_root . $out_key . ".stk";
       my $cmd = "$fetch $model_db $mdl | $align - $cur_fafile > $cur_stkfile";
       #print $cmd . "\n";
       if($do_skip) { 
@@ -2978,105 +2838,6 @@ sub get_nres_overlap {
   return; # NOT REACHED
 }
 
-
-# Subroutine: printColumnHeaderExplanations()
-# Args:       $do_oseq: '1' if -oseq was enabled
-#
-# Returns:    void
-
-sub printColumnHeaderExplanations {
-  my $sub_name = "printColumnHeaderExplanations";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($do_oseq, $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap) = @_; 
-  
-  print("#\n");
-  print("# Explanations of column headings (in left to right order):\n");
-
-  my $width = 35;
-
-  printf("# %-*s %s\n", $width, "\"accession\":", "GenBank accession for genomic sequence");
-  printf("# %-*s %s\n", $width, "\"totlen\":",    "total length (nt) for accession");
-
-  if($do_oseq) {
-    printf("#\n");
-    printf("# %-*s %s\n", $width, "\"origin sequence: #\":",      "number of occurences of origin sequence (input with -oseq) in genome");
-    printf("# %-*s %s\n", $width, "\"origin sequence: start\":",  "start position of lone occurence of origin sequence (if only 1 exists)");
-    printf("# %-*s %s\n", $width, "\"origin sequence: stop\":",   "stop  position of lone occurence of origin sequence (if only 1 exists)");
-    printf("# %-*s %s\n", $width, "\"origin sequence: offst\":",  "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)");
-    printf("# %-*s %s\n", $width, "\"origin sequence: PF\":",     "'P' (for PASS) if there is exactly 1 occurence of the offset, else 'F' for FAIL");
-  }
-
-  printf("#\n");
-  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: start<j>\":", "start position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing annotation");
-  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: stop<j>\":",  "stop  position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing annotation");
-
-  if(! $do_nofid) { 
-    printf("# %-*s %s\n", $width, "\"CDS #<i>: fid<j>\":",  "fractional identity between exon #<j> of CDS #<i> and reference genome");
-  }
-
-  if(! $do_nomdlb) { 
-    printf("# %-*s %s\n", $width, "\"CDS #<i>: md<j>\":",  "annotation indicating if alignment to reference extends to 5' and 3' end of reference exon.");
-    printf("# %-*s %s\n", $width, "",                      "first character pertains to 5' end and second character pertains to 3' end.");
-    printf("# %-*s %s\n", $width, "",                      "possible values for each of the two characters:");
-    printf("# %-*s %s\n", $width, "",                      "  \".\":   alignment extends to boundary of reference");
-    printf("# %-*s %s\n", $width, "",                      "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)");
-    printf("# %-*s %s\n", $width, "",                      "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference");
-  }
-
-  printf("# %-*s %s\n", $width, "\"CDS #<i>: length\":",   "length of CDS #<i> (all exons summed)");
-
-  if(! $do_noss3) { 
-    print("#\n");
-    printf("# %-*s %s\n", $width, "\"CDS #<i>: SS3\":",   "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3");
-    printf("# %-*s %s\n", $width, "",                      "first  character: '.' if predicted CDS has a valid start codon, else '!'");
-    printf("# %-*s %s\n", $width, "",                      "second character: '.' if predicted CDS has a valid stop  codon, else '!'");
-    printf("# %-*s %s\n", $width, "",                      "third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'");
-  }
-
-  if(! $do_nostop) { 
-    printf("# %-*s %s\n", $width, "\"CDS #<i>: stp\":",   "the predicted stop codon for this CDS");
-  }
-
-  printf("# %-*s %s\n", $width, "\"CDS #<i>: PF\":",      "annotation indicating if this exon PASSED ('P') or FAILED ('F')");
-  printf("# %-*s %s\n", $width, "",                       "  a CDS PASSES ('P') if and only if ALL of its exons have a valid start codon,");
-  printf("# %-*s %s\n", $width, "",                       "  a valid stop codon, are lengths that are a multiple of 3, and have an");
-  printf("# %-*s %s\n", $width, "",                       "  alignment to the corresponding reference exon that extends to the 5'");
-  printf("# %-*s %s\n", $width, "",                       "  and 3' boundary of the reference annotation.");
-  printf("# %-*s %s\n", $width, "",                       "  If >= 1 of these conditions is not met then the CDS FAILS ('F').");
-
-  print("#\n");
-  printf("# %-*s %s\n", $width, "\"totlen\":",            "total length (nt) for accession (repeated for convenience)"); 
-  
-  if(! $do_noexist) { 
-    printf("#\n");
-    printf("# %-*s %s\n", $width, "\"existing annotation: cds\"",   "number of CDS in the existing NCBI annotation for this accession");
-    printf("# %-*s %s\n", $width, "\"existing annotation: exons\"", "total number of exons in the existing NCBI annotation for this accession");
-    printf("# %-*s %s\n", $width, "\"existing annotation: match\"", "number of exons in existing NCBI annotation for which existing and predicted annotation agree exactly");
-  }
-
-  if(! $do_noolap) { 
-    printf("#\n");
-    printf("# %-*s %s\n", $width, "\"overlaps\?\"",   "text describing which (if any) of the predicted exons overlap with each other");
-    printf("# %-*s %s\n", $width, "",                 "first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference");
-    printf("# %-*s %s\n", $width, "",                 "                   'F' for FAIL if it does not");
-    printf("# %-*s %s\n", $width, "",                 "second character:  number of overlaps between any two exons");
-    printf("# %-*s %s\n", $width, "",                 "remainder of line: text explaining which exons overlap");
-    printf("# %-*s %s\n", $width, "",                 "  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand");
-  }  
-
-  print("#\n");
-  printf("# %-*s %s\n", $width, "\"result\":",            "\"PASS\" or \"FAIL\". \"PASS\" if and only if all tests for this accession PASSED ('P')");
-  printf("# %-*s %s\n", $width, "",                       "as indicated in the \"PF\" columns. Followed by the individual P/F results in order.");
-  if($do_noolap) { 
-    printf("# %-*s %s\n", $width, "",                       "Final P/F in the results pertains to the overlap check: 'P' if this accession has the same");
-    printf("# %-*s %s\n", $width, "",                       "set of overlaps as the reference accession, and 'F' if not.");
-  }    
-
-  return; 
-}
-
 # Subroutine: updateGapArray()
 #
 # Synopsis:   Given an rfpos that we have a gap in, update a 
@@ -3122,403 +2883,6 @@ sub updateGapArray {
   return;
 }
 
-# Subroutine: debugPrintGapArray()
-#
-# Synopsis:   Print a gap array, for debugging purposes.
-#
-# Args:       $AR:            reference to the array to update
-#             $rfpos:         reference position the gap occurs at or after
-#             $is_delete:     '1' if we're updating a delete array, else we're
-#                             updating an insert array (we do the update slightly
-#                             differently for each type)
-#
-# Returns:    void
-#
-sub debugPrintGapArray {
-  my $sub_name = "debugPrintGapArray";
-  my $nargs_exp = 1;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($AR) = @_;
-
-  if(defined $AR) { 
-    my $nel = scalar(@{$AR});
-    if($nel > 0) { 
-      for(my $zz = 0; $zz < scalar(@{$AR}); $zz++) { 
-        printf("$AR->[$zz]\n");
-      }
-    }
-  }
-  return;
-}
-
-# Subroutine: outputGapInfo()
-#
-# Synopsis:   Output gap information for all predicted CDS in a single sequence 
-#             to a file handle.
-#
-# Args:       $perseq_FH:          output file handle to print per-sequence gap info to, undef to not print perseq info
-#             $pergap_FH:          output file handle to print per-gap info to
-#             $do_perseq_tbl:      '1' to output per sequence gaps as a table, '0' to print a list
-#             $do_gap_all:         '1' to output per gap info for all gaps
-#             $do_gap_not3:        '1' to output per gap info for gaps that are not a multiple of 3, not for all gaps
-#             $do_gap_special:     '1' to output per gap info for special gaps that are possibly causative of a frameshift
-#                                  Only 1 of $pergap_all, $pergap_not3, and $pergap_special can be '1'.
-#             $mdl_AR:             reference to array of all model names
-#             $seq_AR:             reference to array of all sequence names
-#             $mdllen_HR:          ref to hash of model lengths
-#             $hmm2cds_map_AR:     ref to array that maps each hmm to a CDS
-#             $refdel_HHAR:        ref to 2D hash where value is an array, each element is
-#                                  an rf position that is deleted in the alignment of the $seq_accn
-#                                  pre-filled
-#             $refins_HHAR:        ref to 2D hash where value is an array, each element is
-#                                  a string <rfpos>:<ct> where <rfpos> is a rf pos in the alignment
-#                                  after which $seq_accn has an insert and <ct> is the number of inserted
-#                                  positions.
-#
-# Returns:    void
-#
-sub outputGapInfo {
-  my $sub_name = "outputGapInfo";
-  my $nargs_exp = 12;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
- 
-  my ($perseq_FH, $pergap_FH, $do_perseq_tbl, $do_gap_all, $do_gap_not3, $do_gap_special, $mdl_AR, $seq_AR, $mdllen_HR, $hmm2cds_map_AR, $refdel_HHAR, $refins_HHAR) = @_;
-
-  if($do_gap_all) {
-    if($do_gap_not3 || $do_gap_special) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
-  }
-  elsif($do_gap_not3) { 
-    if($do_gap_all || $do_gap_special) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
-  }
-  elsif($do_gap_special) { 
-    if($do_gap_all || $do_gap_not3) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
-  }
-  else { 
-    die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; 
-  }
- 
-  my @gapstr_AA = ();           # [0..$nseq-1][0..$ncds-1]: string describing all gaps for this sequence and this CDS
-  my @w_gapstr_A = ();          # [0..$i..$ncds-1] max width of $gapstr_AA[$0..nseq-1][$i] for cds $i over all sequences
-
-  my @tot_gap_length_AA = ();   # [0..$nseq-1][0..$ncds-1]: total number of gap positions for this sequence and this CDS
-  my @w_tot_gap_length_A = ();  # [0..$i..$ncds-1] max width of $tot_gap_length_AA[$0..nseq-1][$i] for cds $i over all sequences
-
-  my @net_gap_length_AA = ();   # [0..$nseq-1][0..$ncds-1]: net number of gap positions for this sequence and this CDS
-  my @w_net_gap_length_A = ();  # [0..$i..$ncds-1] max width of $net_gap_length_AA[$0..nseq-1][$i] for cds $i over all sequences
-
-  my @cds_gapstr_AH      = ();  # [0..$i..$ncds-1]: hash w/key: gapstring for a single position, value: number of times that gapstring occurs in any of @gapstr_AA for CDS $i
-  
-  my $ch_gapstr         = "string";
-  my $ch_tot_gap_length = "tot";
-  my $ch_net_gap_length = "net";
-
-  $w_gapstr_A[0]         = length($ch_gapstr);
-  $w_tot_gap_length_A[0] = length($ch_tot_gap_length);
-  $w_net_gap_length_A[0] = length($ch_net_gap_length);
-  %{$cds_gapstr_AH[0]}   = ();
-
-  my $width_seq = length("#accession");
-  my $cds_idx = 0;
-
-  for(my $i = 0; $i < scalar(@{$seq_AR}); $i++) { 
-    my $seq = $seq_AR->[$i];
-    my $seq2print = $seq;
-    $seq2print =~ s/\:.+$//;
-    if(length($seq2print) > $width_seq) { 
-      $width_seq = length($seq2print);
-    }
-    @{$gapstr_AA[$i]} = ();
-    my $offset = 0;
-    my $ins_idx = 0;
-    my $del_idx = 0;
-    my $next_ins_str   = undef;
-    my $next_del_str   = undef;
-    my $next_ins_rfpos = undef;
-    my $next_del_rfpos = undef;
-    my $next_ins_count = undef;
-    my $next_del_count = undef;
-    my $nhmm = scalar(@{$hmm2cds_map_AR});
-    my $gapstr = "";
-    my $substr;
-    my $tot_gap_length = 0;
-    my $net_gap_length = 0;
-    $cds_idx = 0;
-
-    for(my $h = 0; $h < $nhmm; $h++) { 
-      my $mdl = $mdl_AR->[$h];
-      my $ndel = (exists $refdel_HHAR->{$mdl}{$seq}) ? scalar(@{$refdel_HHAR->{$mdl}{$seq}}) : 0;
-      my $nins = (exists $refins_HHAR->{$mdl}{$seq}) ? scalar(@{$refins_HHAR->{$mdl}{$seq}}) : 0;
-      my $hmm_is_final = (($h == ($nhmm-1)) || ($hmm2cds_map_AR->[($h+1)] != $hmm2cds_map_AR->[$h])) ? 1 : 0; 
-      my $hmm_is_first = (($h == 0)         || ($hmm2cds_map_AR->[($h-1)] != $hmm2cds_map_AR->[$h])) ? 1 : 0; 
-      $ins_idx = 0;
-      $del_idx = 0;
-      $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
-      $next_ins_str = ($ins_idx < $nins) ? $refins_HHAR->{$mdl}{$seq}[$ins_idx] : undef;
-      
-      while(defined $next_ins_str || defined $next_del_str) { 
-        # printf("next_ins_str: %s\n", (defined $next_ins_str) ? $next_ins_str : "undefined");
-        # printf("next_del_str: %s\n", (defined $next_del_str) ? $next_del_str : "undefined");
-        ($next_del_rfpos, $next_del_count) = (defined $next_del_str) ? split(":", $refdel_HHAR->{$mdl}{$seq}[$del_idx]) : (undef, undef);
-        ($next_ins_rfpos, $next_ins_count) = (defined $next_ins_str) ? split(":", $refins_HHAR->{$mdl}{$seq}[$ins_idx]) : (undef, undef);
-        if(defined $next_del_rfpos) { $next_del_rfpos += $offset; }
-        if(defined $next_ins_rfpos) { $next_ins_rfpos += $offset; }
-        
-        if($gapstr ne "") { $gapstr .= ","; }
-        if(defined $next_ins_str && defined $next_del_str) { 
-          if($next_del_rfpos <= $next_ins_rfpos) { # delete comes first, print it
-            $substr = "D" . $next_del_rfpos . ":" . $next_del_count;
-            if($do_gap_all || (($next_del_count % 3) != 0)) { 
-              $gapstr .= $substr;
-              $tot_gap_length += $next_del_count;
-              $net_gap_length -= $next_del_count;
-              if(! $do_gap_special) { 
-                $cds_gapstr_AH[$cds_idx]{$substr}++;
-              }
-            }
-            $del_idx++;
-            $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
-          }
-          elsif($next_ins_rfpos < $next_del_rfpos) { # insert comes first, print it
-            $substr = "I" . $next_ins_rfpos . ":" . $next_ins_count;
-            if($do_gap_all || (($next_ins_count % 3) != 0)) { 
-              $gapstr .= $substr;
-              $tot_gap_length += $next_ins_count;
-              $net_gap_length += $next_ins_count;
-              if(! $do_gap_special) { 
-                $cds_gapstr_AH[$cds_idx]{$substr}++;
-              }
-            }
-            $ins_idx++;
-            $next_ins_str = ($ins_idx < $nins) ? $refins_HHAR->{$mdl}{$seq}[$ins_idx] : undef;
-          }
-        }
-        elsif(defined $next_del_str) { # $next_ins is undefined
-          $substr = "D" . $next_del_rfpos . ":" . $next_del_count;
-          if($do_gap_all || (($next_del_count % 3) != 0)) { 
-            $gapstr .= $substr;
-            $tot_gap_length += $next_del_count;
-            $net_gap_length -= $next_del_count;
-            if(! $do_gap_special) {
-              $cds_gapstr_AH[$cds_idx]{$substr}++;
-            }
-          }
-          $del_idx++;
-          $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
-        }
-        elsif(defined $next_ins_str) { # $next_del is undefined
-          $substr = "I" . $next_ins_rfpos . ":" . $next_ins_count;
-          if($do_gap_all | (($next_ins_count % 3) != 0))  { 
-            $gapstr .= $substr;
-            $tot_gap_length += $next_ins_count;
-            $net_gap_length += $next_ins_count;
-            if(! $do_gap_special) { 
-              $cds_gapstr_AH[$cds_idx]{$substr}++;
-            }
-          }
-          $ins_idx++;
-          $next_ins_str = ($ins_idx < $nins) ? $refins_HHAR->{$mdl}{$seq}[$ins_idx] : undef;
-        }        
-      } # end of 'while(defined $next_ins_str || defined $next_del_str) { 
-      
-      $offset += $mdllen_HR->{$mdl};
-      
-      if($hmm_is_final) {
-        if($gapstr eq "") { $gapstr = "-"; }
-
-        # important to update $gapstr here, before we store it if $do_gap_special is true
-        if($do_gap_special) { 
-          # printf("calling findSpecialGap with $gapstr\n");
-          $gapstr = findSpecialGap($gapstr);
-          $net_gap_length = $tot_gap_length;
-          if($gapstr ne "?" && $gapstr ne "-") { 
-            my @el_A = split(",", $gapstr); 
-            foreach my $el (@el_A) { 
-              $cds_gapstr_AH[$cds_idx]{$el}++;
-            }
-          }
-        }
-
-        push(@{$gapstr_AA[$i]}, $gapstr);
-        if(length($gapstr) > $w_gapstr_A[$cds_idx]) { $w_gapstr_A[$cds_idx] = length($gapstr); }
-
-        push(@{$tot_gap_length_AA[$i]}, $tot_gap_length);
-        if(length($tot_gap_length) > $w_tot_gap_length_A[$cds_idx]) { $w_tot_gap_length_A[$cds_idx] = length($tot_gap_length); }
-        $tot_gap_length = 0;
-
-        push(@{$net_gap_length_AA[$i]}, $net_gap_length);
-        if(length($net_gap_length) > $w_net_gap_length_A[$cds_idx]) { $w_net_gap_length_A[$cds_idx] = length($net_gap_length); }
-        $net_gap_length = 0;
-
-        $gapstr = "";
-        $offset = 0;
-        $cds_idx++;
-
-        if(scalar(@w_gapstr_A)         <= $cds_idx) { $w_gapstr_A[$cds_idx]         = length($ch_gapstr); }
-        if(scalar(@w_tot_gap_length_A) <= $cds_idx) { $w_tot_gap_length_A[$cds_idx] = length($ch_tot_gap_length); }
-        if(scalar(@w_net_gap_length_A) <= $cds_idx) { $w_net_gap_length_A[$cds_idx] = length($ch_net_gap_length); }
-        if(scalar(@cds_gapstr_AH)      <= $cds_idx) { %{$cds_gapstr_AH[$cds_idx]}   = (); }
-      }
-    }
-  }
-  my $ncds = $cds_idx;
-
-  #################################################################
-  # Output table of all gap info
-  # output line 1 of the column headers:
-  if($do_gap_all) { 
-    printf $perseq_FH ("# List of all gaps in alignment of each sequence:\n#\n");
-  }
-  elsif($do_gap_not3) { 
-    printf $perseq_FH ("# List of all gaps with length that is not a multiple of 3 in alignment of each sequence:\n#\n");
-  }
-  else { # $do_gap_special 
-    printf $perseq_FH ("# List of all gaps that may solely explain a CDS' length not being a multiple of 3, for each sequence:\n#\n");
-  }
-
-  if(! $do_gap_special) { 
-    printf $perseq_FH  ("%-*s  ", $width_seq, "#");
-    for(my $c = 0; $c < $ncds; $c++) { 
-      my $w_cur = $w_tot_gap_length_A[$c] + 2 + $w_net_gap_length_A[$c] + 2 + $w_gapstr_A[$c];
-      if($c > 0) { print $perseq_FH "  "; }
-      printf $perseq_FH ("%-*s", $w_cur, "CDS#" . ($c+1));
-    }
-    print $perseq_FH "\n";
-    
-    # output line 2 (dashes under line 1 of column headers)
-    printf $perseq_FH ("%-*s  ", $width_seq, "#");
-    for(my $c = 0; $c < $ncds; $c++) { 
-      my $w_cur = $w_tot_gap_length_A[$c] + 2 + $w_net_gap_length_A[$c] + 2 + $w_gapstr_A[$c];
-      if($c > 0) { print $perseq_FH "  "; }
-      printf $perseq_FH ("%-*s", $w_cur, monocharacterString($w_cur, "="));
-    }    
-    print $perseq_FH "\n";
-  }
-
-  # output line 3 of the column headers:
-  printf $perseq_FH ("%-*s  ", $width_seq, "#accession");
-  for(my $c = 0; $c < $ncds; $c++) { 
-    if($c > 0) { print $perseq_FH "  "; }
-    if(! $do_gap_special) { 
-      printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$c], $ch_tot_gap_length);
-      printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$c], $ch_net_gap_length);
-      printf $perseq_FH ("%-*s", $w_gapstr_A[$c], $ch_gapstr);
-    }
-    else { 
-      printf $perseq_FH ("%-*s", $w_gapstr_A[$c], "CDS#" . ($c+1));
-    }
-  }
-  print $perseq_FH "\n";
-
-  # output line 4 (dashes under line 3 of column headers)
-  printf $perseq_FH ("%-*s  ", $width_seq, "#" . monocharacterString($width_seq-1, "-"));
-  for(my $c = 0; $c < $ncds; $c++) { 
-    if($c > 0) { print $perseq_FH "  "; }
-    if(!  $do_gap_special) { 
-      printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$c], monocharacterString($w_tot_gap_length_A[$c], "-"));
-      printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$c], monocharacterString($w_net_gap_length_A[$c], "-"));
-    }
-    printf $perseq_FH ("%-*s", $w_gapstr_A[$c], monocharacterString($w_gapstr_A[$c], "-"));
-  }
-  print $perseq_FH "\n";
-
-  # output actual data, for each sequence
-  for(my $i = 0; $i < scalar(@{$seq_AR}); $i++) { 
-    my $seq2print = $seq_AR->[$i];
-    $seq2print =~ s/\:.+$//;
-    printf $perseq_FH ("%-*s  ", $width_seq, $seq2print);
-    for(my $c = 0; $c < $ncds; $c++) { 
-      if($c > 0) { print $perseq_FH "  "; }
-      if(! $do_gap_special) { 
-        printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$c], $tot_gap_length_AA[$i][$c]);
-        printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$c], $net_gap_length_AA[$i][$c]);
-      }
-      printf $perseq_FH ("%-*s", $w_gapstr_A[$c], $gapstr_AA[$i][$c]);
-    }
-    print $perseq_FH ("\n");
-  }
-
-  # output explanatory text
-  print $perseq_FH "#\n";
-  print $perseq_FH ("# Explanation of the above table:\n");
-  if($do_gap_all) { 
-    print $perseq_FH ("# The table includes information on all gaps that exist between all pairwise alignments of\n");
-    print $perseq_FH ("# the reference CDS and the predicted homologous CDS for each sequence.\n");
-  }
-  elsif($do_gap_not3) { 
-    print $perseq_FH ("# The table includes information on all gaps of lengths that are not multiples of 3 that exist\n");
-    print $perseq_FH ("# between all pairwise alignments of the reference CDS and the predicted homologous CDS for each sequence.\n");
-  }
-  else { 
-    print $perseq_FH ("# The table includes information on some gaps that can solely explain a CDS not being a multiple of length 3.\n");
-    print $perseq_FH ("# This is (probably) not an exhaustive list of all such gaps.\n");
-    print $perseq_FH ("# Specifically it is only gaps X in a CDS Y, such that the following criteria are met:\n");
-    print $perseq_FH ("#   - length of CDS Y is not a multiple of 3\n");
-    print $perseq_FH ("#   - if you remove only X from list of all gaps, total CDS length of Y becomes a multiple of 3\n");
-    print $perseq_FH ("#       with length difference of D with reference CDS\n");
-    print $perseq_FH ("#    - there are no other gaps Z such that if you remove only Z then length of Y becomes a multiple\n");
-    print $perseq_FH ("#       of 3 with length difference D2 from reference where D2 < D.\n");
-  }
-  print $perseq_FH ("#\n");
-  if($do_gap_all || $do_gap_not3) { 
-    printf $perseq_FH ("# There are 3 columns under each header \"CDS#<n> (%s)\" named \"tot\", \"net\",\n", ($do_gap_all) ? "all gaps" : "gaps %3 != 0");
-    print $perseq_FH ("# and \"string\".\n");
-    print $perseq_FH ("# The \"tot\" columns list the total number of gap positions in either sequence in the pairwise alignment.\n");
-    print $perseq_FH ("# The \"net\" columns list the net number of the listed gaps in the pairwise alignment; this is the number\n");
-    print $perseq_FH ("#   of gaps in the reference sequence minus the number of gaps in the current sequence (inserts minus deletes)\n");
-    print $perseq_FH ("# The \"string\" columns include a list of <n> tokens, each of which describes a gap of length >= 1 nucleotide.\n");
-  }
-  print $perseq_FH ("#\n");
-  print $perseq_FH ("# Tokens are in the form: <char><position><length>\n");
-  print $perseq_FH ("#   <char>     is 'I' for an insertion relative to the reference CDS (gap in reference sequence)\n");
-  print $perseq_FH ("#              or 'D' for a  deletion  relative to the reference CDS (gap in current sequence)\n");
-  print $perseq_FH ("#   <position> is the nucleotide position of the gap in reference coordinates.\n");
-  print $perseq_FH ("#              For insertions this is the reference position after which the insertion occurs.\n");
-  print $perseq_FH ("#              For deletions  this is the first reference position for this deletion.\n");
-  print $perseq_FH ("#   <length>   length of the gap in nucleotides.\n");
-  print $perseq_FH ("#              For insertions this is the number of nucleotides inserted relative to the reference\n");
-  print $perseq_FH ("#              For deletions  this is the number of reference positions deleted.\n");
-  print $perseq_FH ("#\n");
-  if($do_gap_special) { 
-    print $perseq_FH ("#\n");
-    print $perseq_FH ("# \"-\" tokens indicate the CDS is a multiple of length 3\n");
-    print $perseq_FH ("# \"?\" tokens indicate the CDS is not a multiple of length 3, but that no gaps that satisfy our criteria exist.\n");
-    print $perseq_FH ("#\n");
-  }
-
-  # Now the per gap information
-  if($do_gap_all) { 
-    printf $pergap_FH ("# Counts of all gaps:\n#\n");
-  }
-  elsif($do_gap_not3) { 
-    printf $pergap_FH ("# Counts of gaps that have length that is not a multiple of 3:\n#\n");
-  }
-  else { # $do_gap_special == 1
-    printf $pergap_FH ("# Counts of gaps that are special (responsible for net gap length that is not a multiple of 3):\n#\n");
-    print $perseq_FH ("# Specifically, these are counts of gaps X in a CDS Y, such that the following criteria are met:\n");
-    print $perseq_FH ("#   - length of CDS Y is not a multiple of 3\n");
-    print $perseq_FH ("#   - if you remove only X from list of all gaps, total CDS length of Y becomes a multiple of 3\n");
-    print $perseq_FH ("#       with length difference of D with reference CDS\n");
-    print $perseq_FH ("#    - there are no other gaps Z such that if you remove only Z then length of Y becomes a multiple\n");
-    print $perseq_FH ("#       of 3 with length difference D2 from reference where D2 < D.\n");
-    print $perseq_FH ("#\n");
-  }
-  my $nprinted = 0;
-  for(my $c = 0; $c < $ncds; $c++) { 
-    if((scalar(keys %{$cds_gapstr_AH[$c]})) > 0) { 
-      foreach my $key (sort keys %{$cds_gapstr_AH[$c]}) { 
-        printf $pergap_FH ("CDS#" . ($c+1) . " " . $key . " " . $cds_gapstr_AH[$c]{$key} . "\n");
-        $nprinted++;
-      }
-      printf $pergap_FH ("#\n");
-    }
-  }
-  if($nprinted == 0) { 
-    printf $pergap_FH ("# NONE\n");
-  }
-
-  return;
-}
 
 # Subroutine: findSpecialGap()
 #
@@ -3537,7 +2901,7 @@ sub outputGapInfo {
 #               or '-' if the predicted length of the CDS is modulo 3 if we include all gaps
 #               or '?' if the predicted length of the CDS is not modulo 3 but there is no
 #               special gap that can explain the non-modulo-3ness.
-
+#
 #             If the net gap length is zero modulo 3, return (0, "-").
 #             If the net gap length is nonzero modulo 3, and there's exactly 1 gap that equals the net length modulo 3, return its length and the string..
 #             If the net gap length is nonzero modulo 3, and there's not exactly 1 gap that equals the net length modulo 3, return (0, "?");
@@ -3693,7 +3057,7 @@ sub wrapperCombineExonsIntoCDS {
 
   my ($seconds, $microseconds) = gettimeofday();
   my $start_time = ($seconds + ($microseconds / 1000000.));
-  printf("%-50s ... ", "# Combining multi-exon $key CDS ");
+  printf("%-65s ... ", "# Combining multi-exon $key CDS ");
 
   my @tmp_exon_fafile_A = (); # temporary array of exon fafiles for all exons in current CDS
   
@@ -4151,6 +3515,502 @@ sub outputSeqRowHeadings {
   printf("  %-*s", $width_result, monocharacterString($width_result, "-"));
   
   print "\n";
+}
+
+# Subroutine: printColumnHeaderExplanations()
+# Args:       $do_oseq: '1' if -oseq was enabled
+#
+# Returns:    void
+
+sub printColumnHeaderExplanations {
+  my $sub_name = "printColumnHeaderExplanations";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($do_oseq, $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap) = @_; 
+  
+  print("#\n");
+  print("# Explanations of column headings (in left to right order):\n");
+
+  my $width = 35;
+
+  printf("# %-*s %s\n", $width, "\"accession\":", "GenBank accession for genomic sequence");
+  printf("# %-*s %s\n", $width, "\"totlen\":",    "total length (nt) for accession");
+
+  if($do_oseq) {
+    printf("#\n");
+    printf("# %-*s %s\n", $width, "\"origin sequence: #\":",      "number of occurences of origin sequence (input with -oseq) in genome");
+    printf("# %-*s %s\n", $width, "\"origin sequence: start\":",  "start position of lone occurence of origin sequence (if only 1 exists)");
+    printf("# %-*s %s\n", $width, "\"origin sequence: stop\":",   "stop  position of lone occurence of origin sequence (if only 1 exists)");
+    printf("# %-*s %s\n", $width, "\"origin sequence: offst\":",  "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)");
+    printf("# %-*s %s\n", $width, "\"origin sequence: PF\":",     "'P' (for PASS) if there is exactly 1 occurence of the offset, else 'F' for FAIL");
+  }
+
+  printf("#\n");
+  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: start<j>\":", "start position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing annotation");
+  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: stop<j>\":",  "stop  position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing annotation");
+
+  if(! $do_nofid) { 
+    printf("# %-*s %s\n", $width, "\"CDS #<i>: fid<j>\":",  "fractional identity between exon #<j> of CDS #<i> and reference genome");
+  }
+
+  if(! $do_nomdlb) { 
+    printf("# %-*s %s\n", $width, "\"CDS #<i>: md<j>\":",  "annotation indicating if alignment to reference extends to 5' and 3' end of reference exon.");
+    printf("# %-*s %s\n", $width, "",                      "first character pertains to 5' end and second character pertains to 3' end.");
+    printf("# %-*s %s\n", $width, "",                      "possible values for each of the two characters:");
+    printf("# %-*s %s\n", $width, "",                      "  \".\":   alignment extends to boundary of reference");
+    printf("# %-*s %s\n", $width, "",                      "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)");
+    printf("# %-*s %s\n", $width, "",                      "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference");
+  }
+
+  printf("# %-*s %s\n", $width, "\"CDS #<i>: length\":",   "length of CDS #<i> (all exons summed)");
+
+  if(! $do_noss3) { 
+    print("#\n");
+    printf("# %-*s %s\n", $width, "\"CDS #<i>: SS3\":",   "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3");
+    printf("# %-*s %s\n", $width, "",                      "first  character: '.' if predicted CDS has a valid start codon, else '!'");
+    printf("# %-*s %s\n", $width, "",                      "second character: '.' if predicted CDS has a valid stop  codon, else '!'");
+    printf("# %-*s %s\n", $width, "",                      "third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'");
+  }
+
+  if(! $do_nostop) { 
+    printf("# %-*s %s\n", $width, "\"CDS #<i>: stp\":",   "the predicted stop codon for this CDS");
+  }
+
+  printf("# %-*s %s\n", $width, "\"CDS #<i>: PF\":",      "annotation indicating if this exon PASSED ('P') or FAILED ('F')");
+  printf("# %-*s %s\n", $width, "",                       "  a CDS PASSES ('P') if and only if ALL of its exons have a valid start codon,");
+  printf("# %-*s %s\n", $width, "",                       "  a valid stop codon, are lengths that are a multiple of 3, and have an");
+  printf("# %-*s %s\n", $width, "",                       "  alignment to the corresponding reference exon that extends to the 5'");
+  printf("# %-*s %s\n", $width, "",                       "  and 3' boundary of the reference annotation.");
+  printf("# %-*s %s\n", $width, "",                       "  If >= 1 of these conditions is not met then the CDS FAILS ('F').");
+
+  print("#\n");
+  printf("# %-*s %s\n", $width, "\"totlen\":",            "total length (nt) for accession (repeated for convenience)"); 
+  
+  if(! $do_noexist) { 
+    printf("#\n");
+    printf("# %-*s %s\n", $width, "\"existing annotation: cds\"",   "number of CDS in the existing NCBI annotation for this accession");
+    printf("# %-*s %s\n", $width, "\"existing annotation: exons\"", "total number of exons in the existing NCBI annotation for this accession");
+    printf("# %-*s %s\n", $width, "\"existing annotation: match\"", "number of exons in existing NCBI annotation for which existing and predicted annotation agree exactly");
+  }
+
+  if(! $do_noolap) { 
+    printf("#\n");
+    printf("# %-*s %s\n", $width, "\"overlaps\?\"",   "text describing which (if any) of the predicted exons overlap with each other");
+    printf("# %-*s %s\n", $width, "",                 "first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference");
+    printf("# %-*s %s\n", $width, "",                 "                   'F' for FAIL if it does not");
+    printf("# %-*s %s\n", $width, "",                 "second character:  number of overlaps between any two exons");
+    printf("# %-*s %s\n", $width, "",                 "remainder of line: text explaining which exons overlap");
+    printf("# %-*s %s\n", $width, "",                 "  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand");
+  }  
+
+  print("#\n");
+  printf("# %-*s %s\n", $width, "\"result\":",            "\"PASS\" or \"FAIL\". \"PASS\" if and only if all tests for this accession PASSED ('P')");
+  printf("# %-*s %s\n", $width, "",                       "as indicated in the \"PF\" columns. Followed by the individual P/F results in order.");
+  if($do_noolap) { 
+    printf("# %-*s %s\n", $width, "",                       "Final P/F in the results pertains to the overlap check: 'P' if this accession has the same");
+    printf("# %-*s %s\n", $width, "",                       "set of overlaps as the reference accession, and 'F' if not.");
+  }    
+
+  return; 
+}
+
+# Subroutine: debugPrintGapArray()
+#
+# Synopsis:   Print a gap array, for debugging purposes.
+#
+# Args:       $AR:            reference to the array to update
+#             $rfpos:         reference position the gap occurs at or after
+#             $is_delete:     '1' if we're updating a delete array, else we're
+#                             updating an insert array (we do the update slightly
+#                             differently for each type)
+#
+# Returns:    void
+#
+sub debugPrintGapArray {
+  my $sub_name = "debugPrintGapArray";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($AR) = @_;
+
+  if(defined $AR) { 
+    my $nel = scalar(@{$AR});
+    if($nel > 0) { 
+      for(my $zz = 0; $zz < scalar(@{$AR}); $zz++) { 
+        printf("$AR->[$zz]\n");
+      }
+    }
+  }
+  return;
+}
+
+# Subroutine: outputGapInfo()
+#
+# Synopsis:   Output gap information for all predicted CDS in a single sequence 
+#             to a file handle.
+#
+# Args:       $perseq_FH:          output file handle to print per-sequence gap info to, undef to not print perseq info
+#             $pergap_FH:          output file handle to print per-gap info to
+#             $do_perseq_tbl:      '1' to output per sequence gaps as a table, '0' to print a list
+#             $do_gap_all:         '1' to output per gap info for all gaps
+#             $do_gap_not3:        '1' to output per gap info for gaps that are not a multiple of 3, not for all gaps
+#             $do_gap_special:     '1' to output per gap info for special gaps that are possibly causative of a frameshift
+#                                  Only 1 of $pergap_all, $pergap_not3, and $pergap_special can be '1'.
+#             $mdl_AR:             reference to array of all model names
+#             $seq_AR:             reference to array of all sequence names
+#             $mdllen_HR:          ref to hash of model lengths
+#             $hmm2cds_map_AR:     ref to array that maps each hmm to a CDS
+#             $refdel_HHAR:        ref to 2D hash where value is an array, each element is
+#                                  an rf position that is deleted in the alignment of the $seq_accn
+#                                  pre-filled
+#             $refins_HHAR:        ref to 2D hash where value is an array, each element is
+#                                  a string <rfpos>:<ct> where <rfpos> is a rf pos in the alignment
+#                                  after which $seq_accn has an insert and <ct> is the number of inserted
+#                                  positions.
+#
+# Returns:    void
+#
+sub outputGapInfo {
+  my $sub_name = "outputGapInfo";
+  my $nargs_exp = 12;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+ 
+  my ($perseq_FH, $pergap_FH, $do_perseq_tbl, $do_gap_all, $do_gap_not3, $do_gap_special, $mdl_AR, $seq_AR, $mdllen_HR, $hmm2cds_map_AR, $refdel_HHAR, $refins_HHAR) = @_;
+
+  if($do_gap_all) {
+    if($do_gap_not3 || $do_gap_special) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
+  }
+  elsif($do_gap_not3) { 
+    if($do_gap_all || $do_gap_special) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
+  }
+  elsif($do_gap_special) { 
+    if($do_gap_all || $do_gap_not3) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
+  }
+  else { 
+    die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; 
+  }
+ 
+  my @gapstr_AA = ();           # [0..$nseq-1][0..$ncds-1]: string describing all gaps for this sequence and this CDS
+  my @w_gapstr_A = ();          # [0..$i..$ncds-1] max width of $gapstr_AA[$0..nseq-1][$i] for cds $i over all sequences
+
+  my @tot_gap_length_AA = ();   # [0..$nseq-1][0..$ncds-1]: total number of gap positions for this sequence and this CDS
+  my @w_tot_gap_length_A = ();  # [0..$i..$ncds-1] max width of $tot_gap_length_AA[$0..nseq-1][$i] for cds $i over all sequences
+
+  my @net_gap_length_AA = ();   # [0..$nseq-1][0..$ncds-1]: net number of gap positions for this sequence and this CDS
+  my @w_net_gap_length_A = ();  # [0..$i..$ncds-1] max width of $net_gap_length_AA[$0..nseq-1][$i] for cds $i over all sequences
+
+  my @cds_gapstr_AH      = ();  # [0..$i..$ncds-1]: hash w/key: gapstring for a single position, value: number of times that gapstring occurs in any of @gapstr_AA for CDS $i
+  
+  my $ch_gapstr         = "string";
+  my $ch_tot_gap_length = "tot";
+  my $ch_net_gap_length = "net";
+
+  $w_gapstr_A[0]         = length($ch_gapstr);
+  $w_tot_gap_length_A[0] = length($ch_tot_gap_length);
+  $w_net_gap_length_A[0] = length($ch_net_gap_length);
+  %{$cds_gapstr_AH[0]}   = ();
+
+  my $width_seq = length("#accession");
+  my $cds_idx = 0;
+
+  for(my $i = 0; $i < scalar(@{$seq_AR}); $i++) { 
+    my $seq = $seq_AR->[$i];
+    my $seq2print = $seq;
+    $seq2print =~ s/\:.+$//;
+    if(length($seq2print) > $width_seq) { 
+      $width_seq = length($seq2print);
+    }
+    @{$gapstr_AA[$i]} = ();
+    my $offset = 0;
+    my $ins_idx = 0;
+    my $del_idx = 0;
+    my $next_ins_str   = undef;
+    my $next_del_str   = undef;
+    my $next_ins_rfpos = undef;
+    my $next_del_rfpos = undef;
+    my $next_ins_count = undef;
+    my $next_del_count = undef;
+    my $nhmm = scalar(@{$hmm2cds_map_AR});
+    my $gapstr = "";
+    my $substr;
+    my $tot_gap_length = 0;
+    my $net_gap_length = 0;
+    $cds_idx = 0;
+
+    for(my $h = 0; $h < $nhmm; $h++) { 
+      my $mdl = $mdl_AR->[$h];
+      my $ndel = (exists $refdel_HHAR->{$mdl}{$seq}) ? scalar(@{$refdel_HHAR->{$mdl}{$seq}}) : 0;
+      my $nins = (exists $refins_HHAR->{$mdl}{$seq}) ? scalar(@{$refins_HHAR->{$mdl}{$seq}}) : 0;
+      my $hmm_is_final = (($h == ($nhmm-1)) || ($hmm2cds_map_AR->[($h+1)] != $hmm2cds_map_AR->[$h])) ? 1 : 0; 
+      my $hmm_is_first = (($h == 0)         || ($hmm2cds_map_AR->[($h-1)] != $hmm2cds_map_AR->[$h])) ? 1 : 0; 
+      $ins_idx = 0;
+      $del_idx = 0;
+      $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
+      $next_ins_str = ($ins_idx < $nins) ? $refins_HHAR->{$mdl}{$seq}[$ins_idx] : undef;
+      
+      while(defined $next_ins_str || defined $next_del_str) { 
+        # printf("next_ins_str: %s\n", (defined $next_ins_str) ? $next_ins_str : "undefined");
+        # printf("next_del_str: %s\n", (defined $next_del_str) ? $next_del_str : "undefined");
+        ($next_del_rfpos, $next_del_count) = (defined $next_del_str) ? split(":", $refdel_HHAR->{$mdl}{$seq}[$del_idx]) : (undef, undef);
+        ($next_ins_rfpos, $next_ins_count) = (defined $next_ins_str) ? split(":", $refins_HHAR->{$mdl}{$seq}[$ins_idx]) : (undef, undef);
+        if(defined $next_del_rfpos) { $next_del_rfpos += $offset; }
+        if(defined $next_ins_rfpos) { $next_ins_rfpos += $offset; }
+        
+        if($gapstr ne "") { $gapstr .= ","; }
+        if(defined $next_ins_str && defined $next_del_str) { 
+          if($next_del_rfpos <= $next_ins_rfpos) { # delete comes first, print it
+            $substr = "D" . $next_del_rfpos . ":" . $next_del_count;
+            if($do_gap_all || (($next_del_count % 3) != 0)) { 
+              $gapstr .= $substr;
+              $tot_gap_length += $next_del_count;
+              $net_gap_length -= $next_del_count;
+              if(! $do_gap_special) { 
+                $cds_gapstr_AH[$cds_idx]{$substr}++;
+              }
+            }
+            $del_idx++;
+            $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
+          }
+          elsif($next_ins_rfpos < $next_del_rfpos) { # insert comes first, print it
+            $substr = "I" . $next_ins_rfpos . ":" . $next_ins_count;
+            if($do_gap_all || (($next_ins_count % 3) != 0)) { 
+              $gapstr .= $substr;
+              $tot_gap_length += $next_ins_count;
+              $net_gap_length += $next_ins_count;
+              if(! $do_gap_special) { 
+                $cds_gapstr_AH[$cds_idx]{$substr}++;
+              }
+            }
+            $ins_idx++;
+            $next_ins_str = ($ins_idx < $nins) ? $refins_HHAR->{$mdl}{$seq}[$ins_idx] : undef;
+          }
+        }
+        elsif(defined $next_del_str) { # $next_ins is undefined
+          $substr = "D" . $next_del_rfpos . ":" . $next_del_count;
+          if($do_gap_all || (($next_del_count % 3) != 0)) { 
+            $gapstr .= $substr;
+            $tot_gap_length += $next_del_count;
+            $net_gap_length -= $next_del_count;
+            if(! $do_gap_special) {
+              $cds_gapstr_AH[$cds_idx]{$substr}++;
+            }
+          }
+          $del_idx++;
+          $next_del_str = ($del_idx < $ndel) ? $refdel_HHAR->{$mdl}{$seq}[$del_idx] : undef;
+        }
+        elsif(defined $next_ins_str) { # $next_del is undefined
+          $substr = "I" . $next_ins_rfpos . ":" . $next_ins_count;
+          if($do_gap_all | (($next_ins_count % 3) != 0))  { 
+            $gapstr .= $substr;
+            $tot_gap_length += $next_ins_count;
+            $net_gap_length += $next_ins_count;
+            if(! $do_gap_special) { 
+              $cds_gapstr_AH[$cds_idx]{$substr}++;
+            }
+          }
+          $ins_idx++;
+          $next_ins_str = ($ins_idx < $nins) ? $refins_HHAR->{$mdl}{$seq}[$ins_idx] : undef;
+        }        
+      } # end of 'while(defined $next_ins_str || defined $next_del_str) { 
+      
+      $offset += $mdllen_HR->{$mdl};
+      
+      if($hmm_is_final) {
+        if($gapstr eq "") { $gapstr = "-"; }
+
+        # important to update $gapstr here, before we store it if $do_gap_special is true
+        if($do_gap_special) { 
+          # printf("calling findSpecialGap with $gapstr\n");
+          $gapstr = findSpecialGap($gapstr);
+          $net_gap_length = $tot_gap_length;
+          if($gapstr ne "?" && $gapstr ne "-") { 
+            my @el_A = split(",", $gapstr); 
+            foreach my $el (@el_A) { 
+              $cds_gapstr_AH[$cds_idx]{$el}++;
+            }
+          }
+        }
+
+        push(@{$gapstr_AA[$i]}, $gapstr);
+        if(length($gapstr) > $w_gapstr_A[$cds_idx]) { $w_gapstr_A[$cds_idx] = length($gapstr); }
+
+        push(@{$tot_gap_length_AA[$i]}, $tot_gap_length);
+        if(length($tot_gap_length) > $w_tot_gap_length_A[$cds_idx]) { $w_tot_gap_length_A[$cds_idx] = length($tot_gap_length); }
+        $tot_gap_length = 0;
+
+        push(@{$net_gap_length_AA[$i]}, $net_gap_length);
+        if(length($net_gap_length) > $w_net_gap_length_A[$cds_idx]) { $w_net_gap_length_A[$cds_idx] = length($net_gap_length); }
+        $net_gap_length = 0;
+
+        $gapstr = "";
+        $offset = 0;
+        $cds_idx++;
+
+        if(scalar(@w_gapstr_A)         <= $cds_idx) { $w_gapstr_A[$cds_idx]         = length($ch_gapstr); }
+        if(scalar(@w_tot_gap_length_A) <= $cds_idx) { $w_tot_gap_length_A[$cds_idx] = length($ch_tot_gap_length); }
+        if(scalar(@w_net_gap_length_A) <= $cds_idx) { $w_net_gap_length_A[$cds_idx] = length($ch_net_gap_length); }
+        if(scalar(@cds_gapstr_AH)      <= $cds_idx) { %{$cds_gapstr_AH[$cds_idx]}   = (); }
+      }
+    }
+  }
+  my $ncds = $cds_idx;
+
+  #################################################################
+  # Output table of all gap info
+  # output line 1 of the column headers:
+  if($do_gap_all) { 
+    printf $perseq_FH ("# List of all gaps in alignment of each sequence:\n#\n");
+  }
+  elsif($do_gap_not3) { 
+    printf $perseq_FH ("# List of all gaps with length that is not a multiple of 3 in alignment of each sequence:\n#\n");
+  }
+  else { # $do_gap_special 
+    printf $perseq_FH ("# List of all gaps that may solely explain a CDS' length not being a multiple of 3, for each sequence:\n#\n");
+  }
+
+  if(! $do_gap_special) { 
+    printf $perseq_FH  ("%-*s  ", $width_seq, "#");
+    for(my $c = 0; $c < $ncds; $c++) { 
+      my $w_cur = $w_tot_gap_length_A[$c] + 2 + $w_net_gap_length_A[$c] + 2 + $w_gapstr_A[$c];
+      if($c > 0) { print $perseq_FH "  "; }
+      printf $perseq_FH ("%-*s", $w_cur, "CDS#" . ($c+1));
+    }
+    print $perseq_FH "\n";
+    
+    # output line 2 (dashes under line 1 of column headers)
+    printf $perseq_FH ("%-*s  ", $width_seq, "#");
+    for(my $c = 0; $c < $ncds; $c++) { 
+      my $w_cur = $w_tot_gap_length_A[$c] + 2 + $w_net_gap_length_A[$c] + 2 + $w_gapstr_A[$c];
+      if($c > 0) { print $perseq_FH "  "; }
+      printf $perseq_FH ("%-*s", $w_cur, monocharacterString($w_cur, "="));
+    }    
+    print $perseq_FH "\n";
+  }
+
+  # output line 3 of the column headers:
+  printf $perseq_FH ("%-*s  ", $width_seq, "#accession");
+  for(my $c = 0; $c < $ncds; $c++) { 
+    if($c > 0) { print $perseq_FH "  "; }
+    if(! $do_gap_special) { 
+      printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$c], $ch_tot_gap_length);
+      printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$c], $ch_net_gap_length);
+      printf $perseq_FH ("%-*s", $w_gapstr_A[$c], $ch_gapstr);
+    }
+    else { 
+      printf $perseq_FH ("%-*s", $w_gapstr_A[$c], "CDS#" . ($c+1));
+    }
+  }
+  print $perseq_FH "\n";
+
+  # output line 4 (dashes under line 3 of column headers)
+  printf $perseq_FH ("%-*s  ", $width_seq, "#" . monocharacterString($width_seq-1, "-"));
+  for(my $c = 0; $c < $ncds; $c++) { 
+    if($c > 0) { print $perseq_FH "  "; }
+    if(!  $do_gap_special) { 
+      printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$c], monocharacterString($w_tot_gap_length_A[$c], "-"));
+      printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$c], monocharacterString($w_net_gap_length_A[$c], "-"));
+    }
+    printf $perseq_FH ("%-*s", $w_gapstr_A[$c], monocharacterString($w_gapstr_A[$c], "-"));
+  }
+  print $perseq_FH "\n";
+
+  # output actual data, for each sequence
+  for(my $i = 0; $i < scalar(@{$seq_AR}); $i++) { 
+    my $seq2print = $seq_AR->[$i];
+    $seq2print =~ s/\:.+$//;
+    printf $perseq_FH ("%-*s  ", $width_seq, $seq2print);
+    for(my $c = 0; $c < $ncds; $c++) { 
+      if($c > 0) { print $perseq_FH "  "; }
+      if(! $do_gap_special) { 
+        printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$c], $tot_gap_length_AA[$i][$c]);
+        printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$c], $net_gap_length_AA[$i][$c]);
+      }
+      printf $perseq_FH ("%-*s", $w_gapstr_A[$c], $gapstr_AA[$i][$c]);
+    }
+    print $perseq_FH ("\n");
+  }
+
+  # output explanatory text
+  print $perseq_FH "#\n";
+  print $perseq_FH ("# Explanation of the above table:\n");
+  if($do_gap_all) { 
+    print $perseq_FH ("# The table includes information on all gaps that exist between all pairwise alignments of\n");
+    print $perseq_FH ("# the reference CDS and the predicted homologous CDS for each sequence.\n");
+  }
+  elsif($do_gap_not3) { 
+    print $perseq_FH ("# The table includes information on all gaps of lengths that are not multiples of 3 that exist\n");
+    print $perseq_FH ("# between all pairwise alignments of the reference CDS and the predicted homologous CDS for each sequence.\n");
+  }
+  else { 
+    print $perseq_FH ("# The table includes information on some gaps that can solely explain a CDS not being a multiple of length 3.\n");
+    print $perseq_FH ("# This is (probably) not an exhaustive list of all such gaps.\n");
+    print $perseq_FH ("# Specifically it is only gaps X in a CDS Y, such that the following criteria are met:\n");
+    print $perseq_FH ("#   - length of CDS Y is not a multiple of 3\n");
+    print $perseq_FH ("#   - if you remove only X from list of all gaps, total CDS length of Y becomes a multiple of 3\n");
+    print $perseq_FH ("#       with length difference of D with reference CDS\n");
+    print $perseq_FH ("#    - there are no other gaps Z such that if you remove only Z then length of Y becomes a multiple\n");
+    print $perseq_FH ("#       of 3 with length difference D2 from reference where D2 < D.\n");
+  }
+  print $perseq_FH ("#\n");
+  if($do_gap_all || $do_gap_not3) { 
+    printf $perseq_FH ("# There are 3 columns under each header \"CDS#<n> (%s)\" named \"tot\", \"net\",\n", ($do_gap_all) ? "all gaps" : "gaps %3 != 0");
+    print $perseq_FH ("# and \"string\".\n");
+    print $perseq_FH ("# The \"tot\" columns list the total number of gap positions in either sequence in the pairwise alignment.\n");
+    print $perseq_FH ("# The \"net\" columns list the net number of the listed gaps in the pairwise alignment; this is the number\n");
+    print $perseq_FH ("#   of gaps in the reference sequence minus the number of gaps in the current sequence (inserts minus deletes)\n");
+    print $perseq_FH ("# The \"string\" columns include a list of <n> tokens, each of which describes a gap of length >= 1 nucleotide.\n");
+  }
+  print $perseq_FH ("#\n");
+  print $perseq_FH ("# Tokens are in the form: <char><position><length>\n");
+  print $perseq_FH ("#   <char>     is 'I' for an insertion relative to the reference CDS (gap in reference sequence)\n");
+  print $perseq_FH ("#              or 'D' for a  deletion  relative to the reference CDS (gap in current sequence)\n");
+  print $perseq_FH ("#   <position> is the nucleotide position of the gap in reference coordinates.\n");
+  print $perseq_FH ("#              For insertions this is the reference position after which the insertion occurs.\n");
+  print $perseq_FH ("#              For deletions  this is the first reference position for this deletion.\n");
+  print $perseq_FH ("#   <length>   length of the gap in nucleotides.\n");
+  print $perseq_FH ("#              For insertions this is the number of nucleotides inserted relative to the reference\n");
+  print $perseq_FH ("#              For deletions  this is the number of reference positions deleted.\n");
+  print $perseq_FH ("#\n");
+  if($do_gap_special) { 
+    print $perseq_FH ("#\n");
+    print $perseq_FH ("# \"-\" tokens indicate the CDS is a multiple of length 3\n");
+    print $perseq_FH ("# \"?\" tokens indicate the CDS is not a multiple of length 3, but that no gaps that satisfy our criteria exist.\n");
+    print $perseq_FH ("#\n");
+  }
+
+  # Now the per gap information
+  if($do_gap_all) { 
+    printf $pergap_FH ("# Counts of all gaps:\n#\n");
+  }
+  elsif($do_gap_not3) { 
+    printf $pergap_FH ("# Counts of gaps that have length that is not a multiple of 3:\n#\n");
+  }
+  else { # $do_gap_special == 1
+    printf $pergap_FH ("# Counts of gaps that are special (responsible for net gap length that is not a multiple of 3):\n#\n");
+    print $perseq_FH ("# Specifically, these are counts of gaps X in a CDS Y, such that the following criteria are met:\n");
+    print $perseq_FH ("#   - length of CDS Y is not a multiple of 3\n");
+    print $perseq_FH ("#   - if you remove only X from list of all gaps, total CDS length of Y becomes a multiple of 3\n");
+    print $perseq_FH ("#       with length difference of D with reference CDS\n");
+    print $perseq_FH ("#    - there are no other gaps Z such that if you remove only Z then length of Y becomes a multiple\n");
+    print $perseq_FH ("#       of 3 with length difference D2 from reference where D2 < D.\n");
+    print $perseq_FH ("#\n");
+  }
+  my $nprinted = 0;
+  for(my $c = 0; $c < $ncds; $c++) { 
+    if((scalar(keys %{$cds_gapstr_AH[$c]})) > 0) { 
+      foreach my $key (sort keys %{$cds_gapstr_AH[$c]}) { 
+        printf $pergap_FH ("CDS#" . ($c+1) . " " . $key . " " . $cds_gapstr_AH[$c]{$key} . "\n");
+        $nprinted++;
+      }
+      printf $pergap_FH ("#\n");
+    }
+  }
+  if($nprinted == 0) { 
+    printf $pergap_FH ("# NONE\n");
+  }
+
+  return;
 }
 ###########################################################
 
