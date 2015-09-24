@@ -767,7 +767,9 @@ if(! $do_nocorrect) {
     # translate into AA sequences
     my $tmp_esl_translate_output = $cur_fafile;
     $tmp_esl_translate_output    =~ s/\.cds/\.esl-translate/;
-    $cmd = $esl_translate . " --watson $cur_fafile | grep ^\\> | grep \"frame=1\" > $tmp_esl_translate_output";
+    # --watson specifies only translate top strand (not reverse strand)
+    # -m specifies only AUG allowed as start
+    $cmd = $esl_translate . " --watson -m $cur_fafile | grep ^\\> | grep \"frame=1\" > $tmp_esl_translate_output";
     runCommand($cmd, 0);
 
     # now based on the esl-translate deflines, determine if there are any internal starts or stops
@@ -775,7 +777,7 @@ if(! $do_nocorrect) {
     # --watson, so we should only see at most 1 translation of each sequence
     open(IN, $tmp_esl_translate_output) || die "ERROR unable to open $tmp_esl_translate_output for reading";
     while(my $line = <IN>) { 
-      parseEslTranslateDefline($line, \$coords_from, \$coords_to, \$source_accn, \$source_length);
+      parseEslTranslateDefline($line, \$coords_from, \$coords_to, \$source_accn, undef, \$source_length);
       # keep longest translated stretch
       my $coords_len = ($coords_to - $coords_from + 1);
       if((! exists $corr_cds_start_AH[$c]{$source_accn}) || ($coords_len > $coords_len_AH[$c]{$source_accn})) { 
@@ -862,8 +864,11 @@ if(! $do_nocorrect) {
                 }
                 $found_exon = 1;
                 $did_corr_exon_start_AH[$h]{$accn} = 1;
-                printf("p_start_HH{$mdl}{$seq_accn} exon %d: $p_start_HH{$mdl}{$seq_accn}\n", ($h-$first_hmm+1));
-                printf("c_start_HH{$mdl}{$seq_accn} exon %d: $c_start_HH{$mdl}{$seq_accn}\n", ($h-$first_hmm+1));
+                #printf("corr_start: $corr_start\n");
+                #printf("len_so_far: $len_so_far\n");
+                #printf("exon_len_A[$hp]: $exon_len_A[$hp]\n");
+                #printf("p_start_HH{$mdl}{$seq_accn} exon %d: $p_start_HH{$mdl}{$seq_accn}\n", ($h-$first_hmm+1));
+                #printf("c_start_HH{$mdl}{$seq_accn} exon %d: $c_start_HH{$mdl}{$seq_accn}\n", ($h-$first_hmm+1));
               }
             }
           }
@@ -929,7 +934,10 @@ for(my $c = 0; $c < $ref_ncds; $c++) {
   $aa_full_fafile     =~ s/\.cds/\.aa.full/;
   # $aa_trunc_fafile    =~ s/\.cds/\.aa.trunc/;
   
-  $cmd = $esl_translate . " --watson $cur_fafile > $tmp_aa_fafile";
+  # --watson specifies only translate top strand (not reverse strand)
+  # -m specifies only AUG allowed as start
+  $cmd = $esl_translate . " --watson -m $cur_fafile > $tmp_aa_fafile";
+  
   runCommand($cmd, 0);
 
   # now we have to parse that file to only keep the full length protein seqs
@@ -1147,7 +1155,8 @@ for(my $a = 0; $a < $naccn; $a++) {
         $hit_length -= 1;
       }
 
-      # HERE HERE 
+      # TODO: MODIFY ANNOTATION FOR EXONS WITHOUT CORRECTED STARTS OR STOPS IN CDS WITH
+      #       OTHER EXONS THAT HAVE CORRECTED STARTS OR STOPS
       $predicted_string .= sprintf("%8s %8s",
                                    ($start_match ? " " . $start . " " : "[" . $start . "]"), 
                                    ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"));
@@ -3843,7 +3852,7 @@ sub parseEslTranslateOutput {
   my $line = <IN>;
   while(defined $line) { 
     if($line =~ m/^\>/) { 
-      parseEslTranslateDefline($line, \$coords_from, \$coords_to, \$source_name, \$source_length);
+      parseEslTranslateDefline($line, \$coords_from, \$coords_to, \$source_name, \$source_coords, \$source_length);
 
       $coords_length = ($coords_to - $coords_from) + 1;
       # now determine if this protein passes or not
@@ -3861,8 +3870,9 @@ sub parseEslTranslateOutput {
         $print_flag = 1;
       }
       
-      if($print_flag) { 
-        print OUT $line; 
+      if($print_flag) { # print out new sequence name
+        # print OUT $line; 
+        printf OUT (">%s/%s-translated\n", $source_name, $source_coords);
         $nprot++;
         $prot_HR->{$source_name}++;
         if($prot_HR->{$source_name} > 1) { 
@@ -3895,6 +3905,7 @@ sub parseEslTranslateOutput {
 #             $coords_from_R:        ref to coordinate of start nt of translation, filled here, can be undef
 #             $coords_to_R:          ref to coordinate of stop  nt of translation, filled here, can be undef
 #             $source_name_R:        ref to name of source CDS, filled here, can be undef
+#             $source_coords_R:      ref to coordinates part of name of source CDS, filled here, can be undef
 #             $source_len_R:         ref to coordinate of length of source CDS, filled here, can be undef
 #
 # Returns:    void
@@ -3902,10 +3913,10 @@ sub parseEslTranslateOutput {
 #
 sub parseEslTranslateDefline {
   my $sub_name = "parseEslTranslateDefline";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($line, $coords_from_R, $coords_to_R, $source_name_R, $source_len_R) = @_;
+  my ($line, $coords_from_R, $coords_to_R, $source_name_R, $source_coords_R, $source_len_R) = @_;
 
   my ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame, $source_len);
 
@@ -3935,10 +3946,11 @@ sub parseEslTranslateDefline {
     die "ERROR in $sub_name, unable to parse header line: $line";
   }
 
-  if(defined $coords_from_R) { $$coords_from_R = $coords_from; }
-  if(defined $coords_to_R)   { $$coords_to_R   = $coords_to;   }
-  if(defined $source_name_R) { $$source_name_R = $source_name; }
-  if(defined $source_len_R)  { $$source_len_R  = $source_len;  }
+  if(defined $coords_from_R)   { $$coords_from_R   = $coords_from; }
+  if(defined $coords_to_R)     { $$coords_to_R     = $coords_to;   }
+  if(defined $source_name_R)   { $$source_name_R   = $source_name; }
+  if(defined $source_coords_R) { $$source_coords_R = $source_coords; }
+  if(defined $source_len_R)    { $$source_len_R    = $source_len;  }
   return;
 }
 
