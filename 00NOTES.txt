@@ -336,7 +336,7 @@ tail -n1 NC_001346/NC_001346.ref.cmcalibrate
 # not need to refetch the genome sequence files, which can be a slow
 # step if there are many.
 #
-perl dnaorg_annotate_genomes.pl -skipfetch -model NC_001346/NC_001346.ref.cm -c NC_001346 NC_001346.ntlist
+perl dnaorg_annotate_genomes.pl -skipfetch -model NC_001346/NC_001346.ref.cm NC_001346 NC_001346.ntlist
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## dnaorg_annotate_genomes.pl: Annotate genomes based on a reference and homology search
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
