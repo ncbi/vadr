@@ -629,50 +629,8 @@ for(my $a = 0; $a < $naccn; $a++) {
   my @act_exon_starts_AA = (); # [0..$ncds-1][0..$nexons-1] start positions of actual annotations of exons for this accn, $nexons is CDS specific
   my @act_exon_stops_AA  = (); # [0..$ncds-1][0..$nexons-1] stop  positions of actual annotations of exons for this accn, $nexons is CDS specific
   my $tot_nexons = 0;
-  if(exists ($cds_tbl_HHA{$accn})) { 
-    ($ncds, $npos, $nneg, $nunc, $nbth, $strand_str) = getStrandStats(\%cds_tbl_HHA, $accn);
-    my @cds_len_A = ();
-    my @cds_coords_A = ();
-    my @cds_product_A = ();
-    getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $accn, \@cds_len_A, \@cds_coords_A);
-    getQualifierValues(\%cds_tbl_HHA, $accn, "product", \@cds_product_A);
-    for(my $i = 0; $i < $ncds; $i++) { 
-      # determine start and stop positions of all exons
-      my @starts_A = ();
-      my @stops_A  = ();
-      my $nexons   = 0;
-      @{$act_exon_starts_AA[$i]} = ();
-      @{$act_exon_stops_AA[$i]}  = ();
-      startStopsFromCoords($cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
 
-      my $strand = substr($strand_str, $i, 1);
-      if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
-        @starts_A = reverse @starts_A;           # exons will be in reverse order, b/c we're on the negative strand
-        @stops_A  = reverse @stops_A;            # exons will be in reverse order, b/c we're on the negative strand
-        @{$act_exon_starts_AA[$i]} = @stops_A;  # save stops  to starts array b/c we're on the negative strand
-        @{$act_exon_stops_AA[$i]}  = @starts_A; # save starts to stops  array b/c we're on the negative strand
-      }
-      else { 
-        @{$act_exon_starts_AA[$i]} = @starts_A;
-        @{$act_exon_stops_AA[$i]}  = @stops_A;
-      }
-      $tot_nexons += $nexons;
-    }
-
-    # printf("\n");
-    # printf("$accn\n");
-    # for(my $zz = 0; $zz < scalar(@act_exon_starts_AA); $zz++) { 
-    #  for(my $zzz = 0; $zzz < scalar(@{$act_exon_starts_AA[$zz]}); $zzz++) { 
-    #    printf("act_exon_AA[$zz][$zzz]: $act_exon_starts_AA[$zz][$zzz]  $act_exon_stops_AA[$zz][$zzz]\n");
-    #  }
-    #  printf("\n");
-    #}
-    #printf("\n");
-  }
-  else { 
-    $ncds       = 0;
-    $tot_nexons = 0;
-  }
+  getActualAnnotations($accn, \%cds_tbl_HHA, \@act_exon_starts_AA, \@act_exon_stops_AA, \$tot_nexons, \$ncds);
 
   ############################################################
   # Create the predicted annotation portion of the output line
@@ -699,29 +657,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   my @ol_strand_A = ();  # [0..$nhmm-1]: strand position of CDS/exon for use when checking for overlaps
  
   ###############################################################
-  # create the origin sequence portion of the output line, if nec
-  my $oseq_string = "";
-  if(defined $origin_seq) { 
-    my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
-    if($norigin == 1) { 
-      my ($ostart, $ostop) = split(":", $origin_coords_HA{$accn}[0]);
-      my $predicted_offset = ($ostart < 0) ? ($ostart + $origin_offset) : ($ostart + $origin_offset - 1);
-      # $predicted_offset is now number of nts to shift origin in counterclockwise direction
-      if($predicted_offset > ($totlen_H{$accn} / 2)) { # simpler (shorter distance) to move origin clockwise
-        $predicted_offset = ($totlen_H{$accn} - $predicted_offset + 1);
-      }
-      else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
-        $predicted_offset *= -1;
-      }
-      $pass_fail_char = "P";
-      $oseq_string .= sprintf("%2d %5d %5d %5d  %s  ", 1, $ostart, $ostop, $predicted_offset, "P");
-    }
-    else { 
-      $pass_fail_char = "F";
-      $oseq_string .= sprintf("%2d %5s %5s %5s  %s  ", $norigin, "-", "-", "-", "F");
-    }
-    $pass_fail_str .= $pass_fail_char;
-  }
+  my $oseq_string = getOseqOutput($origin_seq, $origin_offset, \%origin_coords_HA);
   print $oseq_string;
   ###############################################################
 
@@ -3289,4 +3225,122 @@ sub outputSeqRowHeadings {
   
   print "\n";
 }
-###########################################################
+
+#
+# Subroutine: getActualAnnotations()
+#
+# Synopsis:   Store actual annotations for an accession in preparation for outputting
+#             a summary for this accession.
+#
+# Args:       $accn:                accession
+#             $cds_tbl_HHAR:        ref to cds_tbl_HHA
+#             $act_exon_starts_AAR: FILLED HERE [0..$ncds-1][0..$nexons-1] start positions of actual annotations of exons for this accn, $nexons is CDS specific
+#             $act_exon_stops_AAR:  FILLED HERE [0..$ncds-1][0..$nexons-1] stop  positions of actual annotations of exons for this accn, $nexons is CDS specific
+#             $tot_nexons_R:        FILLED HERE, total number of annotated exons for this accession
+#             $ncds_R:              FILLED HERE, number of CDS for this accession
+#
+sub getActualAnnotations { 
+  my $sub_name = "getActualAnnotations";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($accn, $cds_tbl_HHAR, $act_exon_starts_AAR, $act_exon_stops_AAR, $tot_nexons_R, $ncds_R) = @_;
+
+  my ($ncds, $npos, $nneg, $nunc, $nbth, $strand_str, $tot_nexons); 
+
+  if(exists ($cds_tbl_HHAR->{$accn})) { 
+    ($ncds, $npos, $nneg, $nunc, $nbth, $strand_str) = getStrandStats($cds_tbl_HHAR, $accn);
+    my @cds_len_A = ();
+    my @cds_coords_A = ();
+    my @cds_product_A = ();
+    getLengthStatsAndCoordStrings($cds_tbl_HHAR, $accn, \@cds_len_A, \@cds_coords_A);
+    getQualifierValues($cds_tbl_HHAR, $accn, "product", \@cds_product_A);
+    for(my $i = 0; $i < $ncds; $i++) { 
+      # determine start and stop positions of all exons
+      my @starts_A = ();
+      my @stops_A  = ();
+      my $nexons   = 0;
+      @{$act_exon_starts_AAR->[$i]} = ();
+      @{$act_exon_stops_AAR->[$i]}  = ();
+      startStopsFromCoords($cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
+      
+      my $strand = substr($strand_str, $i, 1);
+      if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
+        @starts_A = reverse @starts_A;             # exons will be in reverse order, b/c we're on the negative strand
+        @stops_A  = reverse @stops_A;              # exons will be in reverse order, b/c we're on the negative strand
+        @{$act_exon_starts_AAR->[$i]} = @stops_A;  # save stops  to starts array b/c we're on the negative strand
+        @{$act_exon_stops_AAR->[$i]}  = @starts_A; # save starts to stops  array b/c we're on the negative strand
+      }
+      else { 
+        @{$act_exon_starts_AAR->[$i]} = @starts_A;
+        @{$act_exon_stops_AAR->[$i]}  = @stops_A;
+      }
+      $tot_nexons += $nexons;
+    }
+
+    # printf("\n");
+    # printf("$accn\n");
+    # for(my $zz = 0; $zz < scalar(@act_exon_starts_AA); $zz++) { 
+    #  for(my $zzz = 0; $zzz < scalar(@{$act_exon_starts_AA[$zz]}); $zzz++) { 
+    #    printf("act_exon_AA[$zz][$zzz]: $act_exon_starts_AA[$zz][$zzz]  $act_exon_stops_AA[$zz][$zzz]\n");
+    #  }
+    #  printf("\n");
+    #}
+    #printf("\n");
+  }
+  else { 
+    $ncds       = 0;
+    $tot_nexons = 0;
+  }
+
+  $$ncds_R       = $ncds;
+  $$tot_nexons_R = $tot_nexons;
+
+  return;
+}
+
+#
+# Subroutine: getOseqOutput()
+#
+# Synopsis:   Determine output related to the -oseq option, describing the existence and position
+#             of the origin sequence in the genome.
+#
+# Args:       $accn:                accession we're working on
+#             $origin_seq:          the origin sequence, or undef if -oseq not used
+#             $origin_offset:       offset of origin in genome, or undef if -oseq not used
+#             $origin_coords_HAR:   ref to origin_coords_HA hash of arrays
+#             $pass_fail_str_R:     ref to growin pass_fail string, to possibly add to
+#
+sub getOseqOutput {
+  my $sub_name = "getOseqOutput";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($accn, $origin_seq, $origin_offset, $origin_coords_HAR, $pass_fail_str_R) = @_;
+
+  my $oseq_string = "";
+  my $pass_fail_char = "";
+  if(defined $origin_seq) { 
+    my $norigin = (exists $origin_coords_HAR->{$accn}) ? scalar(@{$origin_coords_HAR->{$accn}}) : 0;;
+    if($norigin == 1) { 
+      my ($ostart, $ostop) = split(":", $origin_coords_HAR->{$accn}[0]);
+      my $predicted_offset = ($ostart < 0) ? ($ostart + $origin_offset) : ($ostart + $origin_offset - 1);
+      # $predicted_offset is now number of nts to shift origin in counterclockwise direction
+      if($predicted_offset > ($totlen_H{$accn} / 2)) { # simpler (shorter distance) to move origin clockwise
+        $predicted_offset = ($totlen_H{$accn} - $predicted_offset + 1);
+      }
+      else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
+        $predicted_offset *= -1;
+      }
+      $pass_fail_char = "P";
+      $oseq_string .= sprintf("%2d %5d %5d %5d  %s  ", 1, $ostart, $ostop, $predicted_offset, "P");
+    }
+    else { 
+      $pass_fail_char = "F";
+      $oseq_string .= sprintf("%2d %5s %5s %5s  %s  ", $norigin, "-", "-", "-", "F");
+    }
+    $$pass_fail_str_R .= $pass_fail_char;
+  }
+  
+  return $oseq_string;
+}
