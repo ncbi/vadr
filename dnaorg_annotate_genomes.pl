@@ -33,6 +33,7 @@ $usage .= "  -strict    : require matching annotations to match CDS/exon index\n
 $usage .= "  -nodup     : do not duplicate each genome to allow identification of features that span stop..start\n";
 $usage .= "  -notexon   : do not use exon-specific models\n";
 $usage .= "  -onlybuild : exit after building reference models\n";
+$usage .= "  -skipbuild : skip the build and calibration step because you already did an -onlybuild run\n";
 $usage .= "  -model <s> : use model file <s>, instead of building one\n";
 $usage .= "\n OPTIONS CONTROLLING OUTPUT TABLE:\n";
 $usage .= "  -c         : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)\n";
@@ -51,12 +52,13 @@ $usage .= "  -hmmenv  : use HMM envelope boundaries for predicted annotations, d
 $usage .= "\n OPTIONS SPECIFIC TO INFERNAL:\n";
 $usage .= "  -iglocal      : use the -g option with cmsearch for glocal searches\n";
 $usage .= "  -cslow        : use default cmcalibrate parameters, not parameters optimized for speed\n";
-$usage .= "  -ccluster     : submit calibration to cluster and exit (requires --onlybuild)\n";
+$usage .= "  -ccluster     : submit calibration jobs for each CM to cluster and exit (requires --onlybuild)\n";
+$usage .= "  -ccombine     : combine all (just calibrated) models and exited.\n";
 $usage .= "  -scluster <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes\n";
 $usage .= "                  (changeable with -swait) before concatenating all the output files and continuing\n";
 $usage .= "  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]\n";
 $usage .= "\n OPTIONS USEFUL FOR DEVELOPMENT/DEBUGGING:\n";
-$usage .= "  -skipfetch : use existing cmscan/hmmscan results, don't actually run it\n";
+$usage .= "  -skipfetch : don't fetch whole genome sequences, we already have them from a previous run\n";
 $usage .= "  -skipscan  : use existing cmscan/hmmscan results, don't actually run it\n";
 $usage .= "  -skipaln   : use existing cmscan/hmmscan and alignment results, don't actually run it\n";
 
@@ -72,12 +74,12 @@ my $hmmfetch        = $hmmer_exec_dir  . "hmmfetch";
 my $nhmmscan        = $hmmer_exec_dir  . "nhmmscan";
 my $cmbuild         = $inf_exec_dir . "cmbuild";
 my $cmcalibrate     = $inf_exec_dir . "cmcalibrate";
+my $cmfetch         = $inf_exec_dir . "cmfetch";
 my $cmpress         = $inf_exec_dir . "cmpress";
 my $cmscan          = $inf_exec_dir . "cmscan";
 my $cmalign         = $inf_exec_dir . "cmalign";
-my $cmfetch         = $inf_exec_dir . "cmfetch";
 
-foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmpress, $cmscan, $esl_translate, $esl_ssplit) { 
+foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmfetch, $cmpress, $cmscan, $esl_translate, $esl_ssplit) { 
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
@@ -89,6 +91,7 @@ my $do_strict    = 0; # set to '1' if -strict     enabled, matching annotations 
 my $do_nodup     = 0; # set to '1' if -nodup      enabled, do not duplicate each genome, else do 
 my $do_notexon   = 0; # set to '1' if -noexon     enabled, do not use exon-specific models, else do
 my $do_onlybuild = 0; # set to '1' if -onlybuild  enabled, exit after building the model
+my $do_skipbuild = 0; # set to '1' if -skipbuild  enabled, skip the build step
 my $in_model_db  = undef; # defined if -model <s> enabled, use <s> as the model file instead of building one
 # options for controlling output table
 my $do_concise   = 0; # set to '1' if -c       enabled, invoke concise output mode, set's all $do_no* variables below to '1'
@@ -124,6 +127,7 @@ my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan a
             "nodup"     => \$do_nodup,
             "notexon"   => \$do_notexon,
             "onlybuild" => \$do_onlybuild,
+            "skipbuild" => \$do_skipbuild,
             "model=s"   => \$in_model_db,
             "c"         => \$do_concise,
             "nomdlb"    => \$do_nomdlb,
@@ -186,6 +190,10 @@ if($do_onlybuild) {
   $opts_used_short .= "-onlybuild ";
   $opts_used_long  .= "# option:  exit after model construction step [-onlybuild]\n";
 }
+if($do_skipbuild) { 
+  $opts_used_short .= "-skipbuild ";
+  $opts_used_long  .= "# option:  skipping the build step [-skipbuild]\n";
+}
 if(defined $in_model_db) { 
   $opts_used_short .= "-model $in_model_db ";
   $opts_used_long  .= "# option:  use model in $in_model_db instead of building one here [-model]\n";
@@ -244,7 +252,7 @@ if($do_cslow) {
 }
 if($do_ccluster) { 
   $opts_used_short .= "-ccluster ";
-  $opts_used_long  .= "# option:  submit calibration job to cluster [-ccluster]\n";
+  $opts_used_long  .= "# option:  submitting calibration jobs to cluster [-ccluster]\n";
 }
 if(defined $scluster_njobs) { 
   $do_scluster = 1;
@@ -287,6 +295,12 @@ if($do_scluster && ($do_skipaln || $do_skipscan)) {
 if($do_scluster && $do_hmmer) { 
   die "ERROR -scluster and -hmmer are incompatible";
 }
+if($do_onlybuild && $do_skipbuild) { 
+  die "ERROR -onlybuild and -skipbuild are incompatible";
+}
+if($do_onlybuild && (defined $in_model_db)) { 
+  die "ERROR -onlybuild and -model are incompatible";
+}
 
 # check that options that must occur in combination, do
 if($do_ccluster && (! $do_onlybuild)) { 
@@ -294,6 +308,9 @@ if($do_ccluster && (! $do_onlybuild)) {
 }
 if(($scluster_wait != $df_scluster_wait) && (! $do_scluster)) { 
   die "ERROR -swait must be used in combination with -scluster"; 
+}
+if((defined $in_model_db) && (! $do_skipbuild)) {
+  die "ERROR -skipbuild must be used in combination with -model"; 
 }
 
 # check that input files related to options actually exist
@@ -517,6 +534,8 @@ my @cds_out_product_A = (); # [0..$ref_ncds-1]: array of 'CDS:product' qualifier
 my %mdllen_H          = (); # key: model name from @model_A, value is model length
 my @ref_nexons_A      = (); # [0..$c..$ref_ncds-1]: number of exons in CDS $c+1
 my $ref_tot_nexons    = 0;  # total number of exons in all CDS
+my @indi_ref_name_A   = (); # [0..$nhmm-1]: name of individual stockholm alignments and models
+my @indi_cksum_stk_A  = (); # [0..$nhmm-1]: checksum's of each named individual stockholm alignment
 
 # for each reference CDS, fetch each exon (or the full CDS if -notexon enabled)
 for(my $i = 0; $i < $ref_ncds; $i++) { 
@@ -576,7 +595,9 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
     # annotate the stockholm file with a blank SS and with a name
     my $do_blank_ss = (! $do_hmmer); # add a blank SS_cons line if we're using Infernal
     my $cur_named_stkfile = $cur_out_root . ".named.stk";
-    my $mdllen = annotateStockholmAlignment($cur_name_root, $do_blank_ss, $cur_stkfile, $cur_named_stkfile);
+    my ($mdllen, $cksum) = annotateStockholmAlignment($cur_name_root, $do_blank_ss, $cur_stkfile, $cur_named_stkfile);
+    push(@indi_ref_name_A, $cur_name_root);
+    push(@indi_cksum_stk_A, $cksum);
 
     # store information on this model's name for output purposes
     if($e == ($nexons-1)) { 
@@ -613,13 +634,73 @@ printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 ######################
 my $model_db; # model database file, either HMMs or CMs
 
-# first, create the model database, unless it was passed in:
-if(defined $in_model_db) { 
-  $model_db = $in_model_db;
+# first, create the model database, unless we're skipping that step
+if($do_skipbuild) { 
+  if(defined $in_model_db) { 
+    $model_db = $in_model_db;
+    if(! -s $model_db) { die "ERROR: -model used but $in_model_db file does not exist"; }
+  }
+  else { 
+    # -model not used, but we're trying to skip the build step
+    # make sure we already have the CM DB file already (case 1: this will likely be true
+    # if we've run this script with -skipbuild for this dataset >= 1 times already)
+    # or if not (this will likely be true if we've run this script 0 times with 
+    # -skipbuild already), then create that file by concatenating the individually
+    # calibrated model files we created on the previous run of this scrip with
+    # -onlybuild -scluster.
+    $model_db = $out_root . ".ref.cm";
+    if(! -s $model_db) { 
+      # case 2
+      # concatenate the files into a CM DB and run cmpress on it
+      for(my $i = 0; $i < $nhmm; $i++) { 
+        my $indi_model = $out_root . ".ref.$i.cm";
+        if(! -s ($indi_model)) { 
+          die "ERROR: -skipbuild used but model db file $model_db does not exist, nor does individual model $indi_model;\nMake sure you've already run this script with -onlybuild -ccluster on this dataset -- it doesn't seem like you have.";
+        }
+      }
+      my $cat_cmd = "cat $out_root.ref.0.cm > $model_db";
+      for(my $i = 1; $i < $nhmm; $i++) { 
+        $cat_cmd = "cat $out_root.ref.$i.cm >> $model_db";
+      }
+      # remove the binary files, possibly from an earlier cmbuild/cmpress:
+      for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
+        my $file = $out_root . ".cm." . $suffix;
+        if(-e $file) { unlink $file; }
+      }
+      my $cmpress_cmd = "$cmpress $model_db > $model_db.cmpress";
+      # we do have all the models if we get here, so concatenate them and press it
+      printf("%-65s ... ", "# Running cmpress");
+      my $secs_elapsed = runCommand($cmpress_cmd, 0);
+      #printf("\n$cmpress_cmd\n");
+      printf("done [%.1f seconds]\n", $secs_elapsed);
+    }
+  }
+  # now we know we have the model file, extract the checksum values
+  # and check them against the individual stockholm alignment checksum values
+
+  ($seconds, $microseconds) = gettimeofday();
+  my $cur_start_time = ($seconds + ($microseconds / 1000000.));
+  printf("%-65s ... ", "# Validating CM file was built from correct alignment files");
+  my $cksum_file = $model_db . ".cksum";
+  $cmd = "grep ^CKSUM $model_db | awk '{ print \$2 '} > $cksum_file";
+  runCommand($cmd, 0);
+  open(CKSUM, $cksum_file) || die "ERROR unable to open $cksum_file for reading";
+  my $i = 0;
+  while(my $cksum = <CKSUM>) { 
+    chomp $cksum;
+    if($cksum != $indi_cksum_stk_A[$i]) { 
+      die sprintf("ERROR checksum mismatch for CM %d (CM: %d != alignment: %d)", $i+1, $cksum, $indi_cksum_stk_A[$i]); 
+    }
+    $i++;
+  }
+  close(CKSUM);
+  ($seconds, $microseconds) = gettimeofday();
+  my $cur_stop_time = ($seconds + ($microseconds / 1000000.));
+  printf("done. [%.1f seconds]\n", ($cur_stop_time - $cur_start_time));
 }
 else { 
-  if(! $do_hmmer) { 
-    createCmDb($cmbuild, $cmcalibrate, $cmpress, $nhmm, $do_cslow, $do_ccluster, $all_stk_file, $out_root . ".ref");
+  if(! $do_hmmer) { # use Infernal (default)
+    createCmDb($cmbuild, $cmcalibrate, $cmpress, $cmfetch, $nhmm, $do_cslow, $do_ccluster, $all_stk_file, $out_root . ".ref", \@indi_ref_name_A);
     if($do_onlybuild) { 
       printf("#\n# Model calibration %s. Exiting.\n", ($do_ccluster) ? "job submitted" : "complete");
       exit 0;
@@ -730,26 +811,22 @@ my @pred_cds_fafile_A = (); # array of predicted CDS sequence files, filled belo
 wrapperCombineExonsIntoCDS($nhmm, $dir, "predicted", \@model_A, \@hmm2cds_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@pred_cds_fafile_A);
 
 ###########################################################################
-# CORRECT PREDICTIONS
+# CORRECT PREDICTIONS 
 # - look for internal starts and stops and make corrections based on those
 # - combine new exons into new CDS
 ###########################################################################
-($seconds, $microseconds) = gettimeofday();
-my $start_time = ($seconds + ($microseconds / 1000000.));
-printf("%-65s ... ", "# Translating predicted CDS to identify internal starts/stops");
-
 my $source_accn;   # name of CDS sequence that was translated
 my $source_length; # length of CDS sequence that was translated
 my $coords_from;   # start nt coordinate of current translation
 my $coords_to;     # stop nt coordinate of current translation
 my @corr_cds_start_AH = ();  # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
-                         # are number of nucleotides that the prediction of the start coordinate should be corrected
-                         # based on an esl-translate translation of the predicted CDS sequence, values can be negative
-                         # or positive
+                             # are number of nucleotides that the prediction of the start coordinate should be corrected
+                             # based on an esl-translate translation of the predicted CDS sequence, values can be negative
+                             # or positive
 my @corr_cds_stop_AH = ();   # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
-                         # are number of nucleotides that the prediction of the stop coordinate should be corrected
-                         # based on an esl-translate translation of the predicted CDS sequence, values can be negative
-                         # or positive
+                             # are number of nucleotides that the prediction of the stop coordinate should be corrected
+                             # based on an esl-translate translation of the predicted CDS sequence, values can be negative
+                             # or positive
 my @coords_len_AH = ();  # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
                          # are lengths of translated protein sequences (in nucleotides corresponding to values in $corr_cds_start_AH
                          # and $corr_cds_stop_AH
@@ -757,12 +834,16 @@ my @did_corr_exon_start_AH = ();  # [0..$i..ref_nexons-1], each element is a has
                                   # are '1' if this exon's start position was corrected
 my @did_corr_exon_stop_AH = ();   # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
                                   # are '1' if this exon's stop position was corrected
-my %c_start_HH = (); # corrected start positions of hits, start with a copy of p_start_HH
-my %c_stop_HH  = ();  # corrected stop positions of hits,  start with a copy of p_stop_HH
+my %c_start_HH = ();        # corrected start positions of hits, start with a copy of p_start_HH
+my %c_stop_HH  = ();        # corrected stop positions of hits,  start with a copy of p_stop_HH
 my %corr_fafile_H = ();     # hash of names of fasta files for corrected exon sequences, keys: model name from @model_A, value: name of file
 my @corr_cds_fafile_A = (); # array of corrected CDS sequence files, filled below
 
-if(! $do_nocorrect) { 
+if((! $do_nocorrect) && (! $do_matpept)) { 
+  ($seconds, $microseconds) = gettimeofday();
+  $start_time = ($seconds + ($microseconds / 1000000.));
+  printf("%-65s ... ", "# Translating predicted CDS to identify internal starts/stops");
+
   # translate predicted CDS sequences using esl-translate to see if any corrections to predictions are necessary
   for(my $c = 0; $c < $ref_ncds; $c++) { 
     # determine first and final HMM for this 
@@ -911,7 +992,7 @@ if(! $do_nocorrect) {
     } # end of loop over CDS
   } # end of loop over sequences
   ($seconds, $microseconds) = gettimeofday();
-  my $stop_time = ($seconds + ($microseconds / 1000000.));
+  $stop_time = ($seconds + ($microseconds / 1000000.));
   printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
   # fetch corrected hits into new files
@@ -933,7 +1014,7 @@ my @truncprot_AH   = (); # [0..$i..ncds-1], each element is a hash with keys $ke
                            # of number of non-full length protein sequences we have for CDS $i for key $key. Values should
                            # always be '1', more than '1' is an error, and we never create a value of '0'.
 for(my $c = 0; $c < $ref_ncds; $c++) { 
-  my $cur_fafile = ($do_nocorrect) ? $pred_cds_fafile_A[$c] : $corr_cds_fafile_A[$c];
+  my $cur_fafile = ($do_nocorrect || $do_matpept) ? $pred_cds_fafile_A[$c] : $corr_cds_fafile_A[$c];
   # translate into AA sequences
   my $tmp_aa_fafile   = $cur_fafile;
   my $aa_full_fafile  = $cur_fafile;
@@ -967,12 +1048,12 @@ for(my $c = 0; $c < $ref_ncds; $c++) {
 #############################
 if($do_hmmer) { 
   alignHits($hmmalign, $hmmfetch, $model_db, $do_skipaln, \@model_A, \@seq_accn_A, 
-            (($do_nocorrect) ? \%pred_fafile_H : \%corr_fafile_H), 
+            (($do_nocorrect || $do_matpept) ? \%pred_fafile_H : \%corr_fafile_H), 
             \%p_start_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA);
 }
 else { 
   alignHits($cmalign, $cmfetch, $model_db, $do_skipaln, \@model_A, \@seq_accn_A, 
-            (($do_nocorrect) ? \%pred_fafile_H : \%corr_fafile_H), 
+            (($do_nocorrect || $do_matpept) ? \%pred_fafile_H : \%corr_fafile_H), 
             \%p_start_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA);
 }
 
@@ -1065,11 +1146,14 @@ for(my $a = 0; $a < $naccn; $a++) {
     if(exists $p_start_HH{$model}{$seq_accn}) { 
       my $start_corrected_exon = (exists $did_corr_exon_start_AH[$h]{$accn}) ? 1 : 0;
       my $stop_corrected_exon  = (exists $did_corr_exon_stop_AH[$h]{$accn})  ? 1 : 0;
-      my $start_corrected_cds  = ($corr_cds_start_AH[$hmm2cds_map_A[$h]]{$accn} != 0) ? 1 : 0;
-      my $stop_corrected_cds   = ($corr_cds_stop_AH[$hmm2cds_map_A[$h]]{$accn}  != 0) ? 1 : 0;
-
-      my $start    = ($do_nocorrect) ? $p_start_HH{$model}{$seq_accn} : $c_start_HH{$model}{$seq_accn};
-      my $stop     = ($do_nocorrect) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
+      my $start_corrected_cds = 0; # possibly redefined below
+      my $stop_corrected_cds  = 0; # possibly redefined below
+      if((! $do_nocorrect) && (! $do_matpept)) { 
+        $start_corrected_cds  = ($corr_cds_start_AH[$hmm2cds_map_A[$h]]{$accn} != 0) ? 1 : 0;
+        $stop_corrected_cds   = ($corr_cds_stop_AH[$hmm2cds_map_A[$h]]{$accn}  != 0) ? 1 : 0;
+      }
+      my $start    = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$seq_accn} : $c_start_HH{$model}{$seq_accn};
+      my $stop     = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
       my $hangover = $p_hangover_HH{$model}{$seq_accn};
 
       my ($hang5, $hang3) = split(":", $hangover);
@@ -1107,7 +1191,7 @@ for(my $a = 0; $a < $naccn; $a++) {
                                    ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"));
       if(! $do_nofid) { 
         $predicted_string .= sprintf(" %5.3f",
-                                   $p_fid2ref_HH{$model}{$seq_accn});
+                                     $p_fid2ref_HH{$model}{$seq_accn});
       }
       $tot_fid += $p_fid2ref_HH{$model}{$seq_accn};
       $n_fid++;
@@ -1782,21 +1866,24 @@ sub createHmmDb {
 # Args:       $cmbuild:          path to 'cmbuild' executable
 #             $cmcalibrate:      path to 'cmcalibrate' executable
 #             $cmpress:          path to 'cmpress' executable
+#             $cmfetch:          path to 'cmfetch' executable
 #             $nmodel:           number of models we're creating/calibrating
 #             $do_calib_slow:    '1' to calibrate using default parameters instead of
 #                                options to make it go much faster
 #             $do_calib_cluster: '1' to submit calibration job to cluster, '0' to do it locally
 #             $stk_file:         stockholm DB file
 #             $out_root:         string for naming output files
+#             $indi_name_AR:     ref to array of individual model names, we only use this if 
+#                                $do_calib_cluster is true.
 #
 # Returns:    void
 #
 sub createCmDb { 
   my $sub_name = "createCmDb()";
-  my $nargs_exp = 8;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($cmbuild, $cmcalibrate, $cmpress, $nmodel, $do_calib_slow, $do_calib_cluster, $stk_file, $out_root) = @_;
+  my ($cmbuild, $cmcalibrate, $cmpress, $cmfetch, $nmodel, $do_calib_slow, $do_calib_cluster, $stk_file, $out_root, $indi_name_AR) = @_;
 
   if(! -s $stk_file)  { die "ERROR in $sub_name, $stk_file file does not exist or is empty"; }
 
@@ -1810,29 +1897,32 @@ sub createCmDb {
   my ($cmcalibrate_opts, $cmcalibrate_cmd);
   my ($cmpress_opts,     $cmpress_cmd);
 
+  # build step:
   $cmbuild_opts = "-F";
   $cmbuild_cmd  = "$cmbuild $cmbuild_opts $out_root.cm $stk_file > $out_root.cmbuild";
-
-  $cmcalibrate_opts = " --cpu 4 ";
-  if(! $do_calib_slow) { $cmcalibrate_opts .= " -L 0.04 "; }
-  $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
-  
-  $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
-
-  # first build the models
   printf("%-65s ... ", sprintf("# Running cmbuild to build %d CMs", $nmodel));
   my $secs_elapsed = runCommand($cmbuild_cmd, 0);
   printf("done. [%.1f seconds]\n", $secs_elapsed);
 
+  # calibration step:
+  $cmcalibrate_opts = " --cpu 4 ";
+  if(! $do_calib_slow) { $cmcalibrate_opts .= " -L 0.04 "; }
+  $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
+  
   if($do_calib_cluster) { 
-    # submit a job to the cluster and exit. 
-    my $out_tail = $out_root;
-    $out_tail =~ s/^.+\///;
-    my $jobname = "cp." . $out_tail;
-    my $errfile = $out_root . ".err";
-    my $cluster_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . ";" . $cmpress_cmd . ";\"\n";
-    # print("$cluster_cmd\n");
-    runCommand($cluster_cmd, 0);
+    # split up model file into individual CM files, then submit a job to calibrate each one, and exit. 
+    for(my $i = 0; $i < $nmodel; $i++) { 
+      my $cmfetch_cmd = "$cmfetch $out_root.cm $indi_name_AR->[$i] > $out_root.$i.cm";
+      runCommand($cmfetch_cmd, 0);
+      my $out_tail    = $out_root;
+      $out_tail       =~ s/^.+\///;
+      my $jobname     = "c." . $out_tail . $i;
+      my $errfile     = $out_root . "." . $i . ".err";
+      $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.$i.cm > $out_root.$i.cmcalibrate";
+      my $cluster_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . "\"\n";
+      # print("$cluster_cmd\n");
+      runCommand($cluster_cmd, 0);
+    }
   }
   else { 
     # calibrate the model
@@ -1842,6 +1932,7 @@ sub createCmDb {
     printf("done. [%.1f seconds]\n", $secs_elapsed);
 
     # press the model
+    $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
     printf("%-65s ... ", "# Running cmpress");
     $secs_elapsed = runCommand($cmpress_cmd, 0);
     #printf("\n$cmpress_cmd\n");
@@ -1927,7 +2018,9 @@ sub runCmscan {
 
   my $opts = "";
   if($do_iglocal) { $opts .= "-g "; }
-  $opts .= " --cpu 0 --rfam --tblout $tblout_file --verbose --nohmmonly ";
+  #$opts .= " --cpu 0 --rfam --tblout $tblout_file --verbose --nohmmonly ";
+  # opts: nhmmer F1, F2, F2b, F3 and F3b; Infernal --rfam F4, F4b, F5, and F6
+  $opts .= " --cpu 0 --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 --tblout $tblout_file --verbose --nohmmonly ";
   if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
 
   if(! -s $model_db)   { die "ERROR in $sub_name, $model_db file does not exist or is empty"; }
@@ -1965,7 +2058,9 @@ sub runCmscan {
 #             $in_file:       input stockholm alignment
 #             $out_file:      output stockholm alignment to create
 #
-# Returns:    alignment length
+# Returns:    Two values:
+#             alignment length 
+#             checksum of alignment
 #
 sub annotateStockholmAlignment {
   my $sub_name = "annotateStockholmAlignment";
@@ -1987,7 +2082,7 @@ sub annotateStockholmAlignment {
   $msa->write_msa($out_file);
 
   # printf("done. [$out_file]\n");
-  return $msa->alen;
+  return ($msa->alen, $msa->checksum);
 }
 
 # Subroutine: parseNhmmscanTblout
@@ -2586,7 +2681,7 @@ sub alignHits {
       foreach my $seq (@{$seq_order_AR}) { 
         if(exists $start_HHR->{$mdl}{$seq}) { 
           $fid2ref_HHR->{$mdl}{$seq} = $msa->pairwise_identity($i, $j);
-          # printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
+          printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
 
           # determine the RF positions that are gaps in this sequence
           # and the positions of the inserted residues in this sequence
