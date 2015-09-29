@@ -37,6 +37,9 @@ $usage .= "  -skipbuild : skip the build and calibration step because you alread
 $usage .= "  -model <s> : use model file <s>, instead of building one\n";
 $usage .= "\n OPTIONS CONTROLLING OUTPUT TABLE:\n";
 $usage .= "  -c         : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)\n";
+$usage .= "  -seqrow    : force sequence-as-rows    output mode (default for <= 5 models)\n";
+$usage .= "  -seqcol    : force sequence-as-columns output mode (default for >  5 models)\n";
+$usage .= "  -nseqcol   : with -seqcol, number of sequences per page of output (default: 10)\n";
 $usage .= "  -nomdlb    : do not add model boundary annotation to output\n";
 $usage .= "  -noexist   : do not include information on existing annotation\n";
 $usage .= "  -nobrack   : do not include brackets around predicted annotations that do not match existing\n";
@@ -95,6 +98,10 @@ my $do_skipbuild = 0; # set to '1' if -skipbuild  enabled, skip the build step
 my $in_model_db  = undef; # defined if -model <s> enabled, use <s> as the model file instead of building one
 # options for controlling output table
 my $do_concise   = 0; # set to '1' if -c       enabled, invoke concise output mode, set's all $do_no* variables below to '1'
+my $do_seqrow    = 0; # set to '1' if -seqrow  enabled, force sequence-as-rows output model
+my $do_seqcol    = 0; # set to '1' if -seqcol  enabled, force sequence-as-cols output model
+my $df_nseqcol   = 10;          # default number of sequences to a page in sequence-as-cols mode
+my $nseqcol      = $df_nseqcol; # changed to <n> if -nseqcol <n> enabled, set number of sequences per page in sequence-as-cols mode to $nseqcol
 my $do_nomdlb    = 0; # set to '1' if -nomdlb  or -c enabled, do not print HMM boundary info for annotations, else do
 my $do_noexist   = 0; # set to '1' if -noexist or -c enabled, do not output information on existing annotations
 my $do_nobrack   = 0; # set to '1' if -nobrack or -c enabled, do not output brackets around predicted annotations that do not match any existing annotation
@@ -130,6 +137,9 @@ my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan a
             "skipbuild" => \$do_skipbuild,
             "model=s"   => \$in_model_db,
             "c"         => \$do_concise,
+            "seqrow"    => \$do_seqrow,
+            "seqcol"    => \$do_seqcol,
+            "nseqcol=s" => \$nseqcol,
             "nomdlb"    => \$do_nomdlb,
             "noexist"   => \$do_noexist,
             "nobrack"   => \$do_nobrack,
@@ -201,6 +211,18 @@ if(defined $in_model_db) {
 if($do_concise) { 
   $opts_used_short .= "-c ";
   $opts_used_long  .= "# option:  concise output mode [-c]\n";
+}
+if($do_seqrow) { 
+  $opts_used_short .= "-seqrow ";
+  $opts_used_long  .= "# option:  forcing seqs-as-rows output mode [-seqrow]\n";
+}
+if($do_seqcol) { 
+  $opts_used_short .= "-seqcol ";
+  $opts_used_long  .= "# option:  forcing seqs-as-columns output mode [-seqcol]\n";
+}
+if($nseqcol ne $df_nseqcol) { 
+  $opts_used_short .= "-nseqcol $nseqcol";
+  $opts_used_long  .= "# option:  setting number of sequences per output page to $nseqcol [-nseqcol]\n";
 }
 if($do_nomdlb) { 
   $opts_used_short .= "-nomdlb ";
@@ -311,6 +333,10 @@ if(($scluster_wait != $df_scluster_wait) && (! $do_scluster)) {
 }
 if((defined $in_model_db) && (! $do_skipbuild)) {
   die "ERROR -skipbuild must be used in combination with -model"; 
+}
+# check that options that must occur in combination, do
+if($nseqcol ne $df_nseqcol && (! $do_seqcol)) { 
+  die "ERROR -nseqcol must be used in combination with -seqcol";
 }
 
 # check that input files related to options actually exist
@@ -628,6 +654,18 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
 ($seconds, $microseconds) = gettimeofday();
 my $stop_time = ($seconds + ($microseconds / 1000000.));
 printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
+
+# Now that we know the number of models, 
+# determine the output mode if it was not specified on the cmdline:
+my $df_max_nseqrow = 5;
+if((! $do_seqrow) && (! $do_seqcol)) { 
+  if($nhmm <= $df_max_nseqrow) { 
+    $do_seqrow = 1; 
+  }
+  else { 
+    $do_seqcol = 1;
+  }
+}
 
 ######################
 # HOMOLOGY SEARCH STEP
@@ -1060,26 +1098,55 @@ else {
 #########################
 # OUTPUT ANNOTATION TABLE
 #########################
+print "#\n";
 
-if(1) { # output sequences as rows 
-  outputSeqRowHeadings($do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, \@hmm2cds_map_A, \@hmm2exon_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@cds_out_short_A, \@cds_out_product_A);
+my @out_col_header_AA = (); # used only if $do_seqrow
+                            # ref to 2D array of output tokens for column headers
+                            # first dim: [0..4], 0, 1, and 3 are arrays of header tokens, 2 and 4 are dashed lines that are
+my @out_row_header_A  = (); # used only if $do_seqcol
+                            # ref to array of output tokens for column or row headers
+getHeadings($do_seqrow, $do_seqcol, $do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, 
+            \@hmm2cds_map_A, \@hmm2exon_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@cds_out_short_A, \@cds_out_product_A,
+            ($do_seqrow) ? (\@out_col_header_AA) : undef,
+            ($do_seqcol) ? (\@out_row_header_A)  : undef);
+
+if($do_seqrow) { # output sequences as rows 
+  for(my $i = 0; $i < 5; $i++) { 
+    print "#";
+    my $ncols = scalar(@{$out_col_header_AA[$i]});
+    for(my $j = 0; $j < $ncols; $j++) { 
+      print $out_col_header_AA[$i][$j];
+    }
+    print "\n";
+  }
 }
-# eventually we may have additional output modes here, not just 1 seq per row
-#
-#######################################################################
-# Pass through all accessions, and output predicted annotation for each
-#######################################################################
+
+########################################################################
+# Pass through all accessions, and gather and output annotation for each
+########################################################################
 my @ref_ol_AA = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
 my $width;          # width of a field
+# data structures necessary only for seqs-as-columns output mode (if $do_seqcol) is TRUE
+my @ref_out_A   = (); # array of output fields for the reference accession, used if $do_seqcol
+my @page_accn_A = (); # [0..$cur_pagesize]2D array, each element is an array of output tokens for one accession
+my @page_out_AA = (); # 2D array, [0..$a..$cur_pagesize-1][0..(ntoks-1)] first dimension is of size $cur_pagesize, 
+                      # each element is an array of output tokens for accession $page_accn_A[$a]
+my $cur_pagesize = 0; # current number of accessions we have info for in page_out_AA (size of first dimension in page_out_AA)
+                      # when this hits $nseqcol, we dump the output
+my $npages = 0;       # number of pages output, only used if $do_seqcol
 
 for(my $a = 0; $a < $naccn; $a++) { 
-  my $accn = $accn_A[$a];
-  my $seq_accn = $seq_accn_A[$a];
+  my $accn      = $accn_A[$a];
+  my $seq_accn  = $seq_accn_A[$a];
+  my @cur_out_A = (); # array of current tokens to print
+
   # sanity checks
   if(! exists $totlen_H{$accn}) { die "ERROR accession $accn does not exist in the length file $length_file"; }
   
   # Create the initial portion of the output line, the accession and length
-  printf("%-20s  %6d ", $accn, $totlen_H{$accn});
+  push(@cur_out_A, sprintf("%-5d  ", ($a+1)));
+  push(@cur_out_A, sprintf("%-20s  ", $accn)); 
+  push(@cur_out_A, sprintf("%6d ", $totlen_H{$accn}));
 
   #########################################################
   # Get information on the actual annotation of this genome
@@ -1101,8 +1168,9 @@ for(my $a = 0; $a < $naccn; $a++) {
   my $start_codon_char;
   my $stop_codon_char;
   my $multiple_of_3_char;
-  my $ss3_yes_char = ".";
-  my $ss3_no_char  = "!";
+  my $ss3_yes_char    = ".";
+  my $ss3_unsure_char = "?";
+  my $ss3_no_char     = "!";
   my $hit_length;
   my $at_least_one_fail; # set to '1' for each CDS if any of the 'tests' for that CDS fail
   my $pass_fail_char; # "P" or "F"
@@ -1115,8 +1183,14 @@ for(my $a = 0; $a < $naccn; $a++) {
   my @ol_strand_A = ();  # [0..$nhmm-1]: strand position of CDS/exon for use when checking for overlaps
  
   ###############################################################
-  my $oseq_string = getOseqOutput($origin_seq, $origin_offset, \%origin_coords_HA);
-  print $oseq_string;
+  if(defined $origin_seq) { 
+    my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail) = getOseqOutput($accn, $origin_seq, $origin_offset, \%origin_coords_HA);
+    push(@cur_out_A, sprintf("%2d ", $oseq_ct));
+    push(@cur_out_A, sprintf("%5s ", $oseq_start));
+    push(@cur_out_A, sprintf("%5s ", $oseq_stop));
+    push(@cur_out_A, sprintf("%5s ", $oseq_offset));
+    push(@cur_out_A, sprintf(" %s", $oseq_passfail));
+  }
   ###############################################################
 
   # now the per-exon predictions:
@@ -1186,20 +1260,18 @@ for(my $a = 0; $a < $naccn; $a++) {
 
       # TODO: MODIFY ANNOTATION FOR EXONS WITHOUT CORRECTED STARTS OR STOPS IN CDS WITH
       #       OTHER EXONS THAT HAVE CORRECTED STARTS OR STOPS
-      $predicted_string .= sprintf("%8s %8s",
-                                   ($start_match ? " " . $start . " " : "[" . $start . "]"), 
-                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"));
+      push(@cur_out_A, sprintf("  %8s ", ($start_match ? " " . $start . " " : "[" . $start . "]")));
+      push(@cur_out_A, sprintf("%8s",  ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]")));
       if(! $do_nofid) { 
-        $predicted_string .= sprintf(" %5.3f",
-                                     $p_fid2ref_HH{$model}{$seq_accn});
+        push(@cur_out_A, sprintf(" %5.3f", $p_fid2ref_HH{$model}{$seq_accn}));
       }
       $tot_fid += $p_fid2ref_HH{$model}{$seq_accn};
       $n_fid++;
 
       if(! $do_nomdlb) { 
-        $predicted_string .= "  " . $hang5 . $hang3;
+        push(@cur_out_A, "  " . $hang5 . $hang3);
       }        
-                                   
+
       if($hmm_is_first_A[$h]) { # determine $start_codon_char
         if($p_strand_HH{$model}{$seq_accn} eq "-") { 
           $start_codon_posn = (($start-2) < 0) ? $start + $totlen_H{$accn} + 1 : $start;
@@ -1208,7 +1280,10 @@ for(my $a = 0; $a < $naccn; $a++) {
           $start_codon_posn = ($start < 0) ? $start + $totlen_H{$accn} + 1 : $start;
         }
         $start_codon = fetchCodon($sqfile, $seq_accn, $start_codon_posn, $p_strand_HH{$model}{$seq_accn});
-        if($start_codon eq "ATG") { 
+        if($do_matpept) { 
+          $start_codon_char = $ss3_unsure_char;
+        }
+        elsif($start_codon eq "ATG") { 
           $start_codon_char = $ss3_yes_char;
         }
         else { 
@@ -1222,11 +1297,14 @@ for(my $a = 0; $a < $naccn; $a++) {
           $stop_codon_posn    = ($stop < 0) ? ($stop + $totlen_H{$accn}) + 1 + 2 : $stop + 2;
         }
         else { 
-          $stop_codon_posn    = (($stop-2) < 0) ? ($stop + $totlen_H{$accn}) + 1 - 2 : $stop - 2;
+          $stop_codon_posn = (($stop-2) < 0) ? ($stop + $totlen_H{$accn}) + 1 - 2 : $stop - 2;
         }
-        $stop_codon         = fetchCodon($sqfile, $seq_accn, $stop_codon_posn, $p_strand_HH{$model}{$seq_accn});
+        $stop_codon = fetchCodon($sqfile, $seq_accn, $stop_codon_posn, $p_strand_HH{$model}{$seq_accn});
 
-        if($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") { 
+        if($do_matpept) { 
+          $stop_codon_char = $ss3_unsure_char;
+        }
+        elsif($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") { 
           $stop_codon_char = $ss3_yes_char;
         }
         else { 
@@ -1241,12 +1319,12 @@ for(my $a = 0; $a < $naccn; $a++) {
           $at_least_one_fail = 1;
         }
         # append the ss3 (start/stop/multiple of 3 info)
-        $predicted_string .= sprintf(" %6d", $hit_length);
+        push(@cur_out_A, sprintf(" %6d", $hit_length));
         if(! $do_noss3) { 
-          $predicted_string .= sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char);
+          push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
         }
         if(! $do_nostop) { 
-          $predicted_string .= sprintf(" %3s", $stop_codon);
+          push(@cur_out_A, sprintf(" %3s", $stop_codon));
         }
 
         if($at_least_one_fail) { 
@@ -1270,7 +1348,7 @@ for(my $a = 0; $a < $naccn; $a++) {
           ###}
         }
         $pass_fail_char = ($at_least_one_fail) ? "F" : "P";
-        $predicted_string .= sprintf(" %2s", $pass_fail_char);
+        push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
         $pass_fail_str .= $pass_fail_char;
       }
 
@@ -1284,22 +1362,23 @@ for(my $a = 0; $a < $naccn; $a++) {
       # printf("no hits for $model $seq_accn\n");
       if($do_nomdlb) { 
         $width = ($hmm_is_final_A[$h]) ? 34 : 23;
-        $predicted_string .= sprintf("%*s", $width, "NO PREDICTION");
+        push(@cur_out_A, sprintf("%*s", $width, "NO PREDICTION"));
       }
       else { 
         $width = ($hmm_is_final_A[$h]) ? 38 : 27;
-        $predicted_string .= sprintf("%*s", $width, "NO PREDICTION");
+        push(@cur_out_A, sprintf("%*s", $width, "NO PREDICTION"));
       }
     }
   }
-  print $predicted_string;
 
-  printf("  %6d", $totlen_H{$accn});
-  printf("  %5.3f", $tot_fid / $n_fid);
+  push(@cur_out_A, sprintf("  %6d", $totlen_H{$accn}));
+  push(@cur_out_A, sprintf("  %5.3f", $tot_fid / $n_fid));
 
   # output number of actually annotated CDS and summed total of exons in those CDS, if nec
   if(! $do_noexist) { 
-    printf("  %5d  %5d  %5d", $ncds, $tot_nexons, $nmatch_boundaries);
+    push(@cur_out_A, sprintf("  %5d", $ncds));
+    push(@cur_out_A, sprintf("  %5d", $tot_nexons));
+    push(@cur_out_A, sprintf("  %5d", $nmatch_boundaries));
   }
 
   # check for overlaps
@@ -1317,21 +1396,47 @@ for(my $a = 0; $a < $naccn; $a++) {
 
   # output overlap info, if nec
   if((! $do_noolap) && ($overlap_notes ne "")) { 
-    printf("  %20s", $overlap_notes);
+    push(@cur_out_A, sprintf("  %20s", $overlap_notes));
   }
 
   my $result_str = ($pass_fail_str =~ m/F/) ? "FAIL" : "PASS";
   $result_str .= " " . $pass_fail_str;
-  printf("  %s", $result_str);
+  push(@cur_out_A, sprintf("  %s", $result_str));
 
-  print "\n";
+  if($do_seqrow) { 
+    foreach my $el (@cur_out_A) { 
+      print $el;
+    }
+    print "\n";
+  }
+  elsif($do_seqcol) { 
+    if($a == 0) { 
+      # copy reference info if this is the reference
+      @ref_out_A = @cur_out_A; 
+    } 
+    else { 
+      push(@page_out_AA, [@cur_out_A]);
+      $cur_pagesize++;
+    }
+    if(($cur_pagesize+1) == $nseqcol) { 
+      $npages++;
+      outputSeqAsColumnsPage(\@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages);
+      @page_out_AA = ();
+      $cur_pagesize = 0;
+    }
+  }
+}
+# print final page (if non-empty)
+if(($do_seqcol) && ($cur_pagesize > 0)) { 
+  $npages++;
+  outputSeqAsColumnsPage(\@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages);
 }
 
 ##########################
 # OUTPUT EXPLANATORY TEXT 
 ##########################
 if(! $do_noexp) { 
-  printColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
+  outputColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
 }
 
 ###########################
@@ -2681,7 +2786,7 @@ sub alignHits {
       foreach my $seq (@{$seq_order_AR}) { 
         if(exists $start_HHR->{$mdl}{$seq}) { 
           $fid2ref_HHR->{$mdl}{$seq} = $msa->pairwise_identity($i, $j);
-          printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
+          # printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
 
           # determine the RF positions that are gaps in this sequence
           # and the positions of the inserted residues in this sequence
@@ -3352,199 +3457,378 @@ sub parseEslTranslateDefline {
 # OUTPUT subroutines #
 ######################
 #
-# Subroutine: outputSeqRowHeadings()
+# Subroutine: getHeadings()
 #
 # Synopsis:   For 'sequences are rows' tabular output, output the headings.
 #
-# Args:       $do_nofid:           '1' if we're not printing fractional ids, else '0'
+# Args:       $do_seqrow:          '1' if we're outputting in sequence-as-rows mode
+#             $do_seqcol:          '1' if we're outputting in sequence-as-columns mode
+#             $do_nofid:           '1' if we're not printing fractional ids, else '0'
 #             $do_mdlb:            '1' if we're not printing model boundaries, else '0'
 #             $do_noss3:           '1' if we're not printing SS3 columns, else '0'
 #             $do_nostop:          '1' if we're not printing Stop codons, else '0'
 #             $origin_seq:         origin sequence, or undef if ! defined
 #             $ref_tot_nexons:     number of total exons in reference
 #             $nhmm:               number of total HMMs
-#             $hmm2cds_map_AR:     ref to @hmm2cds_map array
-#             $hmm2exon_map_AR:    ref to @hmm2exon_map array
-#             $hmm_is_final_AR:    ref to @hmm_is_final_A
-#             $hmm_is_first_AR:    ref to @hmm_is_first_A
-#             $cds_out_short_AR:   ref to @cds_out_short_A
-#             $cds_out_product_AR: ref to @cds_out_short_A
-#
-sub outputSeqRowHeadings {
-  my $sub_name = "outputSeqRowHeadings";
-  my $nargs_exp = 13;
+#             $hmm2cds_map_AR:     ref to @hmm2cds_map array, already filled
+#             $hmm2exon_map_AR:    ref to @hmm2exon_map array, already filled
+#             $hmm_is_final_AR:    ref to @hmm_is_final_A, already filled
+#             $hmm_is_first_AR:    ref to @hmm_is_first_A, already filled
+#             $cds_out_short_AR:   ref to @cds_out_short_A, already filled
+#             $cds_out_product_AR: ref to @cds_out_product_A, already filled
+#             $out_col_header_AAR: ref to 2D array of column headers, filled here
+#                                  undef unless $do_seqrow is '1'
+#             $out_row_header_AR:  ref to 1D array of row headers, filled here
+#                                  undef unless $do_seqcol is '1'
+sub getHeadings {
+  my $sub_name = "getHeadings";
+  my $nargs_exp = 17;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($do_nofid, $do_mdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, $hmm2cds_map_AR, $hmm2exon_map_AR, $hmm_is_first_AR, $hmm_is_final_AR, $cds_out_short_AR, $cds_out_product_AR) = @_;
+  my ($do_seqrow, $do_seqcol, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, $hmm2cds_map_AR, $hmm2exon_map_AR, $hmm_is_first_AR, $hmm_is_final_AR, $cds_out_short_AR, $cds_out_product_AR, $out_col_header_AAR, $out_row_header_AR) = @_;
+
+  # contract checks
+  if($do_seqrow     &&    $do_seqcol)  { die "ERROR in $sub_name, both $do_seqrow and $do_seqcol are '1'"; }
+  if((! $do_seqrow) && (! $do_seqcol)) { die "ERROR in $sub_name, neither $do_seqrow nor $do_seqcol are '1'"; }
+  if($do_seqrow && (! defined $out_col_header_AAR)) { die "ERROR in $sub_name, $do_seqrow is '1' but out_col_header_AAR is undefined"; }
+  if($do_seqrow && defined $out_row_header_AR)      { die "ERROR in $sub_name, $do_seqrow is '1' but out_row_header_AR is defined"; }
+  if($do_seqcol && (! defined $out_row_header_AR))  { die "ERROR in $sub_name, $do_seqcol is '1' but out_row_header_AR is undefined"; }
+  if($do_seqcol && defined $out_col_header_AAR)     { die "ERROR in $sub_name, $do_seqcol is '1' but out_col_header_AAR is defined"; }
 
   my $width;  # width of a field
   my $pad;    # string of all spaces used for pretty formatting
   my $width_result = 5 + $ref_tot_nexons + 2;
+  my $row_div_char = ":";
 
-  # line 1 of column headers
-  printf("%-20s  %6s", "#", "");
+## If $do_seqrow: 
+## We store the column headers in a 2D array @{$out_col_header_AAR}
+## The first dimension is of size 5, one array for each 'line' of
+## output in the sequence-per-row output format. The 2nd dimension
+## arrays are different sizes because at higher levels single
+## columns can pertain to multiple columns at lower levels, for
+## example, "origin sequence" at level 2 pertains to all of "#", 
+## "start", "stop", "offst", and "PF" at level 4. When we output
+## the headings we don't have to know the relationship between
+## the levels, we simply format them to the proper width and
+## print them.
+##
+## Example of sequence-per-row output:
+#                                                                      CDS #1 [single exon; +]                          CDS #2 [2 exons; -]                                        
+#                                          origin sequence                 movement protein                        replication-associated protein                                        existing annotation
+#                                   ----------------------  ---------------------------------------------  --------------------------------------------------------------------------    -------------------                   
+# idx accession           totlen  # start  stop offst PF    start1    stop1  fid1 md1 length SS3 stp PF    start1    stop1  fid1 md1   start2    stop2  fid2 md2 length SS3 stp PF     cds   exons  match             overlaps?  result      
+#---- -------------------  ------ -- ----- ----- ----- --  -------- -------- ----- --- ------ --- --- --  -------- -------- ----- ---   ------    ------ ---- --- ------ --- --- --     ----- -----  -----   -------------------  ------------
+#
+#
+## If $do_seqrow: 
+##  We store the row headers in a 1D array @{$out_row_header_AR}.
+##  We have the same values as in the column headers, but each
+##  level is concatenated together per row. Here's the row header
+##  information that pertains to the example column header example
+##  above.
+#
+#  idx
+#  accession
+#  totlen
+#  origin sequence:#
+#  origin sequence:start
+#  origin sequence:stop
+#  origin sequence:offst
+#  origin sequence:PF
+#  CDS #1 [single exon; +]:movement protein:start1
+#  CDS #1 [single exon; +]:movement protein:stop1
+#  CDS #1 [single exon; +]:movement protein:fid1
+#  CDS #1 [single exon; +]:movement protein:md1
+#  CDS #1 [single exon; +]:movement protein:length
+#  CDS #1 [single exon; +]:movement protein:SS3
+#  CDS #1 [single exon; +]:movement protein:stp
+#  CDS #1 [single exon; +]:movement protein:PF
+#  CDS #2 [2 exons; -]:replication associated protein:start1
+#  CDS #2 [2 exons; -]:replication associated protein:stop1
+#  CDS #2 [2 exons; -]:replication associated protein:fid1
+#  CDS #2 [2 exons; -]:replication associated protein:md1
+#  CDS #2 [2 exons; -]:replication associated protein:start2
+#  CDS #2 [2 exons; -]:replication associated protein:stop2
+#  CDS #2 [2 exons; -]:replication associated protein:fid2
+#  CDS #2 [2 exons; -]:replication associated protein:md2
+#  CDS #2 [2 exons; -]:replication associated protein:length
+#  CDS #2 [2 exons; -]:replication associated protein:SS3
+#  CDS #2 [2 exons; -]:replication associated protein:stp
+#  CDS #2 [2 exons; -]:replication associated protein:PF
+#  existing annotation:cds
+#  existing annotation:exons
+#  existing annotation:match
+#  overlaps?
+#  result
+
+  my $tok1; # first  level token (line 1 of column headers) 
+  my $tok2; # second level token (line 2 of column headers) 
+  my $tok3; # third  level token (line 3 of column headers) 
+  my $tok4; # fourth level token (line 4 of column headers) 
+  my $tok5; # fifth  level token (line 5 of column headers) 
+
+  # column/row #2: 'idx'
+  $tok1 = sprintf("%-4s  ", "");
+  $tok2 = $tok1;
+  $tok3 = $tok1;
+  $tok4 = sprintf("%-4s  ", " idx");
+  $tok5 = sprintf("%-4s  ", "----");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  # column/row #2: 'accession'
+  $tok1 = sprintf("%-19s  ", "");
+  $tok2 = $tok1;
+  $tok3 = $tok1;
+  $tok4 = sprintf("%-19s  ", " accession");
+  $tok5 = sprintf("%-19s  ", "-------------------");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  # column/row #3: 'totlen'
+  $tok1 = sprintf("%-6s", "");
+  $tok2 = $tok1;
+  $tok3 = $tok1;
+  $tok4 = sprintf("%-6s", "totlen");
+  $tok5 = sprintf("%-6s", "------");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
   if(defined $origin_seq) { 
-    printf("  %22s", "");
-  }
-  # for each CDS, output the topmost column header
+    # column/row #4: 'origin sequence:#'
+    $tok1 = sprintf("  %22s", "");
+    $tok2 = sprintf("  %22s", "   origin sequence");
+    $tok3 = sprintf("  %22s", "----------------------");
+    $tok4 = sprintf(" %2s", " #");
+    $tok5 = sprintf(" %2s", "--");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    # column/row #5: 'origin sequence:start'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "start");
+    $tok5 = sprintf(" %5s", "-----");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+
+    # column/row #6: 'origin sequence:stop'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "stop");
+    $tok5 = sprintf(" %5s", "-----");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    # column/row #7: 'origin sequence:offst'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "offst");
+    $tok5 = sprintf(" %5s", "-----");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    # column/row #7: 'origin sequence:PF'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %2s", "PF");
+    $tok5 = sprintf(" %2s", "--");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+  } # end of 'if(defined $orig_seq)'
+
+  # create columns for CDS
   $width = 0;
   for(my $h = 0; $h < $nhmm; $h++) { 
     $width += 18;
     my $cds_i = $hmm2cds_map_AR->[$h];
-    if(! $do_nofid)  { $width += 6; }
-    if(! $do_nomdlb) { $width += 4; }
-    if($hmm_is_final_AR->[$h]) { 
-      $width += 7;
-      if(! $do_noss3)  { $width += 4; }
-      if(! $do_nostop) { $width += 4; }
-      printf("    %*s", $width, $cds_out_short_AR->[$cds_i] . monocharacterString(($width-length($cds_out_short_AR->[$cds_i]))/2, " "));
-      $width = 0;
-    }
-  }
-  printf("  %6s", "");
-  printf("  %5s", "");
-  if(! $do_noexist) { 
-    printf("    %19s", "");
-  }
-  printf("  %*s", $width_result, "");
-  printf("\n");
-  
-  # line 2 of column headers
-  printf("%-20s  %6s", "#", "");
-  if(defined $origin_seq) { 
-    printf("  %22s", "   origin sequence");
-  }
-  # for each CDS, output the second column header
-  $width = 0;
-  for(my $h = 0; $h < $nhmm; $h++) { 
-    $pad = "";
-    $width += 18;
-    my $cds_i = $hmm2cds_map_AR->[$h];
-    if(! $do_nofid)  { $width += 6; }
-    if(! $do_nomdlb) { $width += 4; }
-    if($hmm_is_final_AR->[$h]) { 
-      $width += 7;
-      if(! $do_noss3)  { $width += 4; }
-      if(! $do_nostop) { $width += 4; }
-      printf("    %*s", $width, substr($cds_out_product_AR->[$cds_i], 0, $width) . monocharacterString(($width-length($cds_out_product_AR->[$cds_i]))/2, " "));
-      $width = 0;
-    }
-    else { 
-      $width += 2;
-    }
-  }
-  printf("  %6s", "");
-  printf("  %5s", "");
-  if(! $do_noexist) { 
-    printf(" %19s", "existing annotation");
-  }
-  printf("  %*s", $width_result, "");
-  printf("\n");
-  
-  # line 3 of column headers 
-  printf("%-20s  %6s", "#", "");
-  if(defined $origin_seq) { 
-    printf("  %22s", "----------------------");
-  }
-  $width = 0;
-  for(my $h = 0; $h < $nhmm; $h++) { 
-    $width += 18;
     if(! $do_nofid)  { $width += 6; }
     if(! $do_nomdlb) { $width += 4; }
     if($hmm_is_final_AR->[$h]) { 
       $width += 9;
       if(! $do_noss3)  { $width += 4; }
       if(! $do_nostop) { $width += 4; }
-      printf("  %s", monocharacterString($width, "-"));
-      $width = 0;
+      $tok1 = sprintf("  %*s", $width, $cds_out_short_AR->[$cds_i] . monocharacterString(($width-length($cds_out_short_AR->[$cds_i]))/2, " "));
+      $tok2 = sprintf("  %*s", $width, substr($cds_out_product_AR->[$cds_i], 0, $width) . monocharacterString(($width-length($cds_out_product_AR->[$cds_i]))/2, " "));
+      $tok3 = sprintf("  %s", monocharacterString($width, "-"));
+      $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $hmm2exon_map_AR->[$h]+1));
+      $tok5 = sprintf("  %8s", "--------");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      $width = 0; # reset width, this is impt
     }
-    else { 
+    else { # not the final exon, still need start coordinate
       $width += 1;
+      $tok1 = sprintf("    %s", $cds_out_short_AR->[$cds_i]);   # used only for getHeadingsSeqColHelper
+      $tok2 = sprintf("    %s", $cds_out_product_AR->[$cds_i]); # used only for getHeadingsSeqColHelper
+      $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $hmm2exon_map_AR->[$h]+1));
+      $tok5 = sprintf("  %8s", "--------");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
-  }
-#    printf("  %6s  %-*s", "", $width_result, "");
-  printf("  %6s", "");
-  printf("  %5s", "");
-  if(! $do_noexist) { 
-    printf("  %19s", "-------------------");
-  }
-  printf("  %-*s", $width_result, "");
-  printf("\n");
-  
-  # line 4 of column headers
-  printf("%-20s  %6s", "# accession", "totlen");
-  if(defined $origin_seq) {
-    printf(" %2s %5s %5s %5s %2s", " #", "start", "stop", "offst", "PF");
-  }
-  for(my $h = 0; $h < $nhmm; $h++) { 
-    printf("  %8s %8s", 
-           sprintf("%s%s", "start", $hmm2exon_map_AR->[$h]+1), 
-           sprintf("%s%s", "stop",  $hmm2exon_map_AR->[$h]+1));
+
+    # stop, fid, and md rows take place for all exons
+    # only token 4 changes
+    $tok4 = sprintf(" %8s", sprintf("%s%s", "stop", $hmm2exon_map_AR->[$h]+1));
+    $tok5 = sprintf(" %8s", "--------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+    
     if(! $do_nofid) { 
-      printf(" %5s", sprintf("%s%s", "fid", $hmm2exon_map_AR->[$h]+1));
+      $tok4 = sprintf(" %5s", sprintf("%s%s", "fid", $hmm2exon_map_AR->[$h]+1));
+      $tok5 = sprintf(" %5s", "-----");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
+    
     if(! $do_nomdlb) { 
-      printf(" %3s", sprintf("%s%s", "md", $hmm2exon_map_AR->[$h]+1));
+      $tok4 = sprintf(" %3s", sprintf("%s%s", "md", $hmm2exon_map_AR->[$h]+1));
+      $tok5 = sprintf(" %3s", "---");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
+
     if($hmm_is_final_AR->[$h]) { 
-      printf(" %6s", "length");
+      $tok4 = sprintf(" %6s", "length");
+      $tok5 = sprintf(" %6s", "------");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      
       if(! $do_noss3) { 
-        printf(" %3s", "SS3");
+        $tok4 = sprintf(" %3s", "ss3");
+        $tok5 = sprintf(" %3s", "---");
+        if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       }
+      
       if(! $do_nostop) { 
-        printf(" %3s", "stp");
+        $tok4 = sprintf(" %3s", "stp");
+        $tok5 = sprintf(" %3s", "---");
+        if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       }
-      printf(" %2s", "PF");
+      
+      $tok4 = sprintf(" %2s", "PF");
+      $tok5 = sprintf(" %2s", "--");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
   }
-  printf("  %6s", "totlen");
-  printf("  %5s", "avgid");    
-  if(! $do_noexist) { 
-    printf("  %5s  %5s  %5s", "cds", "exons", "match");
-  }
-  if(! $do_noolap) { 
-    printf("  %20s", " overlaps?");
-  }
+
+  # "totlen"
+  $tok1 = sprintf("  %6s", "");
+  $tok2 = sprintf("  %6s", "");
+  $tok3 = sprintf("  %6s", "");
+  $tok4 = sprintf("  %6s", "totlen");
+  $tok5 = sprintf("  %6s", "------");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  # "avgid"
+  # existing annotation
+  $tok1 = sprintf("  %5s", "");
+  $tok2 = sprintf("  %5s", "");
+  $tok3 = sprintf("  %5s", "");
+  $tok4 = sprintf("  %5s", "avgid");
+  $tok5 = sprintf("  %5s", "-----");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  # existing annotation
+  $tok1 = sprintf("  %19s", "");
+  $tok2 = sprintf("  %19s", "existing annotation");
+  $tok3 = sprintf("  %19s", "-------------------");
+  $tok4 = sprintf("  %5s", "cds");
+  $tok5 = sprintf("  %5s", "-----");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+  $tok4 = sprintf("  %5s", "exons");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+  $tok4 = sprintf("  %5s", "match");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+  # overlaps?
+  $tok1 = sprintf("  %20s", "");
+  $tok2 = sprintf("  %20s", "");
+  $tok3 = sprintf("  %20s", "");
+  $tok4 = sprintf("  %20s", " overlaps?");
+  $tok5 = sprintf("  %20s", "--------------------");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  # result
+  $tok1 = sprintf("  %*s",  $width_result, "");
+  $tok2 = sprintf("  %*s",  $width_result, "");
+  $tok3 = sprintf("  %*s",  $width_result, "");
+  $tok4 = sprintf("  %-*s", $width_result, "result");
+  $tok5 = sprintf("  %-*s", $width_result, monocharacterString($width_result, "-"));
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  return;
+}
+
+#
+# Subroutine: getHeadingsSeqRowHelper()
+#
+# Synopsis:   Helper function for getHeadings() when used in sequences-as-rows mode.
+#             Given up to 5 tokens, add them to the appropriate place in @{$out_col_header_AAR}.
+#
+# Args:       $out_col_header_AAR:  ref to output column header 2D array
+#             $tok1:                token 1, can be undef
+#             $tok2:                token 2, can be undef
+#             $tok3:                token 3, can be undef
+#             $tok4:                token 4, can be undef
+#             $tok5:                token 5, can be undef
+#
+sub getHeadingsSeqRowHelper { 
+  my $sub_name = "getHeadingsSeqRowHelper";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_col_header_AAR, $tok1, $tok2, $tok3, $tok4, $tok5) = @_;
+
+  if(defined $tok1) { push(@{$out_col_header_AAR->[0]}, $tok1); }
+  if(defined $tok2) { push(@{$out_col_header_AAR->[1]}, $tok2); }
+  if(defined $tok3) { push(@{$out_col_header_AAR->[2]}, $tok3); }
+  if(defined $tok4) { push(@{$out_col_header_AAR->[3]}, $tok4); }
+  if(defined $tok5) { push(@{$out_col_header_AAR->[4]}, $tok5); }
   
-  printf("  %-*s", $width_result, "result");
-  print "\n";
-  
-  # line 5 of column headers
-  printf("%-20s  %6s", "#-------------------", "------");
-  if(defined $origin_seq) {
-    printf(" %2s %5s %5s %5s %2s", "--", "-----", "-----", "-----", "--");
-  }
-  for(my $h = 0; $h < $nhmm; $h++) { 
-    printf("  %8s %8s", "--------", "--------");
-    if(! $do_nofid) { 
-      printf(" %5s", "-----");
-    }
-    if(! $do_nomdlb) { 
-      printf(" %3s", "---");
-    }
-    if($hmm_is_final_AR->[$h]) { 
-      printf(" %6s", "------");
-      if(! $do_noss3) { 
-        printf(" %3s", "---");
-      }
-      if(! $do_nostop) { 
-        printf(" %3s", "---");
-      }
-      printf(" --");
-    }
-  }
-  printf("  %6s", "------");
-  printf("  %5s", "-----");
-  
-  if(! $do_noexist) { 
-    printf("  %5s  %5s  %5s", "-----", "-----", "-----");
-  }
-  if(! $do_noolap) { 
-    printf("  %20s", monocharacterString(20, "-"));
-  }
-  printf("  %-*s", $width_result, monocharacterString($width_result, "-"));
-  
-  print "\n";
+  return;
+}
+
+#
+# Subroutine: getHeadingsSeqColHelper()
+#
+# Synopsis:   Helper function for getHeadings() when used in sequences-as-columns mode.
+#             Given up to 5 tokens, add them to the appropriate place in @{$out_row_header_AR}.
+#
+# Args:       $out_row_header_AR:  ref to output column header 2D array
+#             $div_char:           divider character to put between tokens
+#             $tok1:               token 1, can be undef
+#             $tok2:               token 2, can be undef
+#             $tok3:               token 3, can be undef
+#             
+sub getHeadingsSeqColHelper { 
+  my $sub_name = "getHeadingsSeqColHelper";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_row_header_AR, $div_char, $tok1, $tok2, $tok3) = @_;
+
+  # remove whitespace at beginning and end of tokens
+  if(defined $tok1) { $tok1 =~ s/^\s+//; $tok1 =~ s/\s+$//; }
+  if(defined $tok2) { $tok2 =~ s/^\s+//; $tok2 =~ s/\s+$//; }
+  if(defined $tok3) { $tok3 =~ s/^\s+//; $tok3 =~ s/\s+$//; }
+
+  my $toadd = $tok1;
+  if(defined $tok2) { $toadd .= $div_char . $tok2; }
+  if(defined $tok3) { $toadd .= $div_char . $tok3; }
+
+  push(@{$out_row_header_AR}, $toadd); 
+
+  return;
 }
 
 #
@@ -3628,51 +3912,62 @@ sub getActualAnnotations {
 #
 # Args:       $accn:                accession we're working on
 #             $origin_seq:          the origin sequence, or undef if -oseq not used
-#             $origin_offset:       offset of origin in genome, or undef if -oseq not used
+#             $origin_offset:       offset of origin in reference genome, or undef if -oseq not used
 #             $origin_coords_HAR:   ref to origin_coords_HA hash of arrays
-#             $pass_fail_str_R:     ref to growin pass_fail string, to possibly add to
 #
+# Returns: 5 values:
+#          $oseq_ct:       number of occurences of origin sequence found
+#          $oseq_start:    start position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_stop:     stop  position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_offset:   offset position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_passfail: 'P' if $oseq_ct is 1, else 'F'
+# 
 sub getOseqOutput {
   my $sub_name = "getOseqOutput";
-  my $nargs_exp = 3;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($accn, $origin_seq, $origin_offset, $origin_coords_HAR, $pass_fail_str_R) = @_;
+  my ($accn, $origin_seq, $origin_offset, $origin_coords_HAR) = @_;
 
-  my $oseq_string = "";
-  my $pass_fail_char = "";
-  if(defined $origin_seq) { 
-    my $norigin = (exists $origin_coords_HAR->{$accn}) ? scalar(@{$origin_coords_HAR->{$accn}}) : 0;;
-    if($norigin == 1) { 
-      my ($ostart, $ostop) = split(":", $origin_coords_HAR->{$accn}[0]);
-      my $predicted_offset = ($ostart < 0) ? ($ostart + $origin_offset) : ($ostart + $origin_offset - 1);
-      # $predicted_offset is now number of nts to shift origin in counterclockwise direction
-      if($predicted_offset > ($totlen_H{$accn} / 2)) { # simpler (shorter distance) to move origin clockwise
-        $predicted_offset = ($totlen_H{$accn} - $predicted_offset + 1);
-      }
-      else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
-        $predicted_offset *= -1;
-      }
-      $pass_fail_char = "P";
-      $oseq_string .= sprintf("%2d %5d %5d %5d  %s  ", 1, $ostart, $ostop, $predicted_offset, "P");
+  if(! defined $origin_seq)    { die "ERROR in $sub_name but origin sequence is undefined" }
+  if(! defined $origin_offset) { die "ERROR in $sub_name but origin offset is undefined" }
+
+  my $oseq_ct = (exists $origin_coords_HAR->{$accn}) ? scalar(@{$origin_coords_HAR->{$accn}}) : 0;;
+  my $oseq_start    = "-"; # changed below if $oseq_ct == 1
+  my $oseq_stop     = "-"; # changed below if $oseq_ct == 1
+  my $oseq_offset   = "-"; # changed below if $oseq_ct == 1
+  my $oseq_passfail = "F"; # changed below if $oseq_ct == 1
+
+  if($oseq_ct == 1) { 
+    ($oseq_start, $oseq_stop) = split(":", $origin_coords_HAR->{$accn}[0]);
+    $oseq_offset = ($oseq_start < 0) ? ($oseq_start + $origin_offset) : ($oseq_start + $origin_offset - 1);
+    # $oseq_offset is now number of nts to shift origin in counterclockwise direction
+    if($oseq_offset > ($totlen_H{$accn} / 2)) { # simpler (shorter distance) to move origin clockwise
+      $oseq_offset = ($totlen_H{$accn} - $oseq_offset + 1);
     }
-    else { 
-      $pass_fail_char = "F";
-      $oseq_string .= sprintf("%2d %5s %5s %5s  %s  ", $norigin, "-", "-", "-", "F");
+    else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
+      $oseq_offset *= -1;
     }
-    $$pass_fail_str_R .= $pass_fail_char;
+    $oseq_passfail = "P";
   }
-  
-  return $oseq_string;
+
+  return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail);
 }
 
-# Subroutine: printColumnHeaderExplanations()
-# Args:       $do_oseq: '1' if -oseq was enabled
+# Subroutine: outputColumnHeaderExplanations()
+# Args:       $do_oseq:    '1' if -oseq was enabled
+#             $do_nomdlb:  '1' if -nomdlb was enabled
+#             $do_noexist: '1' if -noexist was enabled
+#             $do_nobrack: '1' if -nobrack was enabled
+#             $do_nostop:  '1' if -nostop was enabled
+#             $do_nofid:   '1' if -nofid was enabled
+#             $do_noss3:   '1' if -noss3 was enabled
+#             $do_noolap:  '1' if -noolap was enabled
 #
 # Returns:    void
 
-sub printColumnHeaderExplanations {
-  my $sub_name = "printColumnHeaderExplanations";
+sub outputColumnHeaderExplanations {
+  my $sub_name = "outputColumnHeaderExplanations";
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -3683,6 +3978,7 @@ sub printColumnHeaderExplanations {
 
   my $width = 35;
 
+  printf("# %-*s %s\n", $width, "\"idx\":",       "index of genome in list");
   printf("# %-*s %s\n", $width, "\"accession\":", "GenBank accession for genomic sequence");
   printf("# %-*s %s\n", $width, "\"totlen\":",    "total length (nt) for accession");
 
@@ -4161,5 +4457,78 @@ sub outputGapInfo {
 
   return;
 }
+
+# Subroutine: outputSeqAsColumnsPage()
+#
+# Synopsis:   Output a 'page' of annotation information with sequences as columns
+#
+# Args:       $header_AR:     reference to array of row headers
+#             $out_AAR:       reference to the 2D array of output tokens for
+#                             current sequences for the page
+#             $ref_out_AR:    reference to array of output tokens for reference
+#             $page_idx:      page number
+#
+# Returns:    void
+#
+sub outputSeqAsColumnsPage {
+  my $sub_name = "outputSeqAsColumnsPage";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($header_AR, $out_AAR, $ref_out_AR, $page_idx) = @_;
+
+  my $nseq = scalar(@{$out_AAR});
+  my $AR; # reference to current array we are printing
+
+  my @cwidth_A = (); # max width of each column (max width of all tokens for each sequence) 
+  my ($ntok, $el);
+  my $nrow = scalar(@{$header_AR});
+
+  # first, make sure all sequences have same number of output tokens as we have row headers,
+  # and determine maximum width of all tokens for each sequence
+  for(my $i = 0; $i <= $nseq; $i++) { 
+    # first column is reference, then come the other seqs
+    $AR = ($i == 0) ? $ref_out_AR : \@{$out_AAR->[$i-1]}; 
+    $cwidth_A[$i] = 0;
+    $ntok = scalar(@{$AR});
+    if($ntok != $nrow) { die sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok); }
+    foreach $el (@{$AR}) { 
+      $el =~ s/^\s+//; # remove leading whitespace
+      $el =~ s/\s+$//; # remove trailing whitespace
+      if(length($el) > $cwidth_A[$i]) { 
+        $cwidth_A[$i] = length($el);
+      }
+    }
+  }
+  for(my $i = 0; $i <= $nseq; $i++) { 
+    $cwidth_A[$i] += 2; # add 2 spaces for in-between columns
+  }
+
+  # determine max width of all row headers:
+  my $hwidth = 0;
+  for(my $r = 0; $r < $nrow; $r++) { 
+    if(length($header_AR->[$r]) > $hwidth) { 
+      $hwidth = length($header_AR->[$r]);
+    }
+  }
+  $hwidth += 2;
+
+  for(my $r = 0; $r < $nrow; $r++) { 
+    printf("%-*s", $hwidth, $header_AR->[$r]);
+    for(my $i = 0; $i <= $nseq; $i++) { 
+      # first column is reference, then come the other seqs
+      $AR = ($i == 0) ? $ref_out_AR : \@{$out_AAR->[$i-1]}; 
+      $el = $AR->[$r];
+      $el =~ s/\s+//g;
+      printf("%*s", $cwidth_A[$i], $AR->[$r]);
+    }
+    printf("\n");
+  }
+  print "#\n";
+  printf("# end of page %d\n", $page_idx);
+  print "#\n";
+  return;
+}
+
 ###########################################################
 
