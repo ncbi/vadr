@@ -408,8 +408,6 @@ while(my $accn = <IN>) {
 }
 close(IN); 
 
-my $head_accn = $accn_A[0];
-
 ##################################
 # parse the table and length files
 ##################################
@@ -433,6 +431,9 @@ if($do_matpept) {
 else {
   parseTable($cds_tbl_file, \%cds_tbl_HHA);
 }
+
+# if we're in matpept mode, determine which peptides should be adjacent to each other at 
+# the nucleotide level
 
 #######################
 # variable declarations
@@ -538,6 +539,11 @@ getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $ref_accn, \@ref_cds_len_A, \@ref_c
 getQualifierValues(\%cds_tbl_HHA, $ref_accn, "product", \@ref_cds_product_A);
 $ref_ncds = scalar(@ref_cds_len_A);
 
+## if we're in matpept mode, determine which peptides should be adjacent to each other
+##my %adj2cds_5p_H = (); # key is CDS/peptide index in ref_cds* data structures, value is index of CDS/peptide that is immediately adjacent 5', if any
+##my %adj2cds_3p_H = (); # key is CDS/peptide index in ref_cds* data structures, value is index of CDS/peptide that is immediately adjacent 3', if any
+##matpeptFindAdjacentPeptides(\@ref_cds_coords_A, \%adj2cds_5p_H, \%adj2cds_3p_H);
+
 my $all_stk_file = $out_root . ".ref.all.stk";
 
 ($seconds, $microseconds) = gettimeofday();
@@ -572,6 +578,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
   my @stops_A  = ();
   my $nexons   = 0;
   startStopsFromCoords($ref_cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
+  if($do_matpept && $nexons > 1) { die "ERROR multi-exon CDS in matpept mode"; }
   push(@ref_nexons_A, $nexons);
   $ref_tot_nexons += $nexons;
 
@@ -1124,8 +1131,14 @@ if($do_seqrow) { # output sequences as rows
 ########################################################################
 # Pass through all accessions, and gather and output annotation for each
 ########################################################################
-my @ref_ol_AA = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
-my $width;          # width of a field
+my @ref_ol_AA    = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
+my @ref_adj_AA   = (); # 2D array that describes the adjacencies in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j are adjacent,
+                       # only used if $do_matpept
+my @ref_start_A  = (); # [0..$h..$nhmm-1]: predicted start  for reference for model $h
+my @ref_stop_A   = (); # [0..$h..$nhmm-1]: predicted stop   for reference for model $h
+my @ref_strand_A = (); # [0..$h..$nhmm-1]: predicted strand for reference for model $h
+my $width;             # width of a field
+
 # data structures necessary only for seqs-as-columns output mode (if $do_seqcol) is TRUE
 my @ref_out_A   = (); # array of output fields for the reference accession, used if $do_seqcol
 my @page_accn_A = (); # [0..$cur_pagesize]2D array, each element is an array of output tokens for one accession
@@ -1175,13 +1188,13 @@ for(my $a = 0; $a < $naccn; $a++) {
   my $at_least_one_fail; # set to '1' for each CDS if any of the 'tests' for that CDS fail
   my $pass_fail_char; # "P" or "F"
   my $pass_fail_str;  # string of pass_fail_chars
+  my @cur_name_A   = (); # [0..$h..$nhmm-1]: short name model $h
+  my @cur_start_A  = (); # [0..$h..$nhmm-1]: predicted start  for model $h
+  my @cur_stop_A   = (); # [0..$h..$nhmm-1]: predicted stop   for model $h
+  my @cur_strand_A = (); # [0..$h..$nhmm-1]: predicted strand for model $h
+  my @cur_adj_AA   = (); # [0..$h..$nhmm-1][0..$hp..$nhmm-1]: '1' if $h and $hp predictions are 'adjacent' 
+                         # adjacent means that min distance between any two nt in each prediction is 1
 
-  # data structures we use for checking for overlapping annotation
-  my @ol_name_A   = ();  # [0..$nhmm-1]: name of CDS/exons to print if/when outputting information on overlaps
-  my @ol_start_A  = ();  # [0..$nhmm-1]: start  position of CDS/exon for use when checking for overlaps
-  my @ol_stop_A   = ();  # [0..$nhmm-1]: stop   position of CDS/exon for use when checking for overlaps
-  my @ol_strand_A = ();  # [0..$nhmm-1]: strand position of CDS/exon for use when checking for overlaps
- 
   ###############################################################
   if(defined $origin_seq) { 
     my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail) = getOseqOutput($accn, $origin_seq, $origin_offset, \%origin_coords_HA);
@@ -1200,6 +1213,37 @@ for(my $a = 0; $a < $naccn; $a++) {
   # arrays of data structures that pertain to all exons of current CDS
   my @cur_model_A = (); # array of all model names of exons in current CDS
   my $cur_nexons  = 0;  # number of exons in current CDS
+
+  # first, get starts, stops and strands for all models, so we can determine
+  # adjacencies if necessary (if $do_matpept)
+  for(my $h = 0; $h < $nhmm; $h++) { 
+    my $model  = $model_A[$h];
+    my ($start, $stop, $strand);
+    if(exists $p_start_HH{$model}{$seq_accn}) { 
+      $start  = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$seq_accn} : $c_start_HH{$model}{$seq_accn};
+      $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
+      $strand = $p_strand_HH{$model}{$seq_accn};
+    }
+    else { 
+      $start  = 0;
+      $stop   = 0;
+      $strand = "?";
+    }
+    push(@cur_name_A,   sprintf "%d.%d", $hmm2cds_map_A[$h]+1, $hmm2exon_map_A[$h]+1);
+    push(@cur_start_A,  $start);
+    push(@cur_stop_A,   $stop);
+    push(@cur_strand_A, $strand);
+    if($a == 0) { 
+      @ref_start_A  = @cur_start_A;
+      @ref_stop_A   = @cur_stop_A;
+      @ref_strand_A = @cur_strand_A;
+    }
+  }
+  if($do_matpept) {
+    # get adjacency information
+    checkForOverlapsOrAdjacencies(1, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_adj_AA);
+    if($a == 0) { @ref_adj_AA = @cur_adj_AA; }
+  }
 
   for(my $h = 0; $h < $nhmm; $h++) { 
     my $model   = $model_A[$h];
@@ -1281,13 +1325,20 @@ for(my $a = 0; $a < $naccn; $a++) {
         }
         $start_codon = fetchCodon($sqfile, $seq_accn, $start_codon_posn, $p_strand_HH{$model}{$seq_accn});
         if($do_matpept) { 
-          $start_codon_char = $ss3_unsure_char;
+          if((($h-1) > 0) && ($ref_adj_AA[$h-1][$h])) { # in reference, previous mat_peptide is adjacent to this one
+            $start_codon_char = ($cur_adj_AA[$h-1][$h]) ? $ss3_yes_char : $ss3_no_char;
+          }
+          elsif($h == 0) { # first mat_peptide, look for start codon
+            $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
+          }
+          else { 
+            $start_codon_char = $ss3_unsure_char; # not adjacent, and not supposed to have an ATG that we know of
+          }
         }
-        elsif($start_codon eq "ATG") { 
-          $start_codon_char = $ss3_yes_char;
+        else { # ! $do_matpept
+          $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
         }
-        else { 
-          $start_codon_char = $ss3_no_char;
+        if($start_codon_char eq $ss3_no_char) { 
           $at_least_one_fail = 1;
         }
       }
@@ -1302,22 +1353,29 @@ for(my $a = 0; $a < $naccn; $a++) {
         $stop_codon = fetchCodon($sqfile, $seq_accn, $stop_codon_posn, $p_strand_HH{$model}{$seq_accn});
 
         if($do_matpept) { 
-          $stop_codon_char = $ss3_unsure_char;
+          if((($h+1) < $nhmm) && ($ref_adj_AA[$h][$h+1])) { # in reference, next mat_peptide is adjacent to this one
+            $stop_codon_char = ($cur_adj_AA[$h][$h+1]) ? $ss3_yes_char : $ss3_no_char;
+          }
+          # TODO: reexamine this, for Dengue, final matpept encoding seq DOES NOT end with a valid stop, so don't enforce it
+          #elsif($h == ($nhmm-1)) { # final mat_peptide, look for stop codon
+          #$stop_codon_char = ($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
+        #}
+          else { 
+            $stop_codon_char = $ss3_unsure_char; # not adjacent, and not supposed to have a stop that we know of
+          }
         }
-        elsif($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") { 
-          $stop_codon_char = $ss3_yes_char;
+        else { # ! $do_matpept
+          $stop_codon_char = ($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
         }
-        else { 
-          $stop_codon_char = $ss3_no_char;
+        if($stop_codon_char eq $ss3_no_char) { 
           $at_least_one_fail = 1;
         }
-        if(($hit_length % 3) == 0) { 
-          $multiple_of_3_char = $ss3_yes_char;
-        }
-        else { 
-          $multiple_of_3_char = $ss3_no_char;
+
+        $multiple_of_3_char = (($hit_length % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
+        if($multiple_of_3_char eq $ss3_no_char) { 
           $at_least_one_fail = 1;
         }
+
         # append the ss3 (start/stop/multiple of 3 info)
         push(@cur_out_A, sprintf(" %6d", $hit_length));
         if(! $do_noss3) { 
@@ -1351,12 +1409,6 @@ for(my $a = 0; $a < $naccn; $a++) {
         push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
         $pass_fail_str .= $pass_fail_char;
       }
-
-      # save information for overlap check
-      push(@ol_name_A, sprintf "%d.%d", $hmm2cds_map_A[$h]+1, $hmm2exon_map_A[$h]+1);
-      push(@ol_start_A, $start);
-      push(@ol_stop_A,  $stop);
-      push(@ol_strand_A, $p_strand_HH{$model}{$seq_accn});
     }
     else { 
       # printf("no hits for $model $seq_accn\n");
@@ -1383,21 +1435,31 @@ for(my $a = 0; $a < $naccn; $a++) {
 
   # check for overlaps
   my $overlap_notes;
+  my @ol_AA = ();
+  checkForOverlapsOrAdjacencies(0, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@ol_AA); # '0': do overlap not adjacency
   if($a == 0) { 
-    # the reference, determine which overlaps are allowed, we'll fill @allowed_ol_AA in checkForOverlaps
-    ($pass_fail_char, $overlap_notes) = checkForOverlaps(\@ol_name_A, \@ol_start_A, \@ol_stop_A, \@ol_strand_A, undef, \@ref_ol_AA);
+    @ref_ol_AA = @ol_AA;
   }
-  else { 
-    # not the reference, we'll determine if this accession 'passes' the overlap test based on whether it's observed
-    # overlaps match those in \@allowed_ol_AA exactly or not
-    ($pass_fail_char, $overlap_notes) = checkForOverlaps(\@ol_name_A, \@ol_start_A, \@ol_stop_A, \@ol_strand_A, \@ref_ol_AA, undef);
-  }
+  ($pass_fail_char, $overlap_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, \@ref_ol_AA, \@ol_AA);
   $pass_fail_str .= $pass_fail_char;
 
   # output overlap info, if nec
   if((! $do_noolap) && ($overlap_notes ne "")) { 
     push(@cur_out_A, sprintf("  %20s", $overlap_notes));
   }
+
+  #### check for adjacencies
+  ###my $adjacency_notes; 
+  ###my @adj_AA = (); # 2D array that describes adjacencies in current accession
+  ###if($do_matpept) { # determine adjacencies
+  ###checkForOverlapsOrAdjacencies(1, \@ol_start_A, \@ol_stop_A, \@ol_strand_A, \@adj_AA);
+  ###if($a == 0) { 
+  ###@ref_adj_AA = @ol_AA;
+  ###}
+  ###exit 0;
+  ###($pass_fail_char, $adjacency_notes) = compareOverlapsOrAdjacencies(\@ol_name_A, \@ref_adj_AA, \@adj_AA);
+  ###$pass_fail_str .= $pass_fail_char;
+  ###}
 
   my $result_str = ($pass_fail_str =~ m/F/) ? "FAIL" : "PASS";
   $result_str .= " " . $pass_fail_str;
@@ -2833,100 +2895,128 @@ sub alignHits {
   return;
 }
 
-# Subroutine: checkForOverlaps()
+# Subroutine: checkForOverlapsOrAdjacencies()
 #
 # Synopsis:   Given refs to three arrays that describe 
-#             a list of hits, check if any of them overlap.
+#             a list of hits, check if any of them overlap or
+#             are adjacent to each other.
 #
-# Args:       $name_AR:         ref to array of short names for each annotation
-#             $start_AR:        ref to array of start positions
-#             $stop_AR:         ref to array of stop positions
-#             $strand_AR:       ref to array of strands
-#             $expected_ol_AAR: ref to 2D array of expected overlaps $expected_ol_AAR->[$i][$j] is '1' if 
-#                               those two exons are expected to overlap, PRE-FILLED, 
-#                               can be undefined
-#             $return_ol_AAR:   ref to 2D array of observed overlaps $observed_ol_AAR->[$i][$j] is '1' if 
-#                               those two exons are observed to overlap here, FILLED HERE,
-#                               can be undefined
+# Args:       $do_adj:         '1' to not check for overlaps but rather check for adjacency
+#                              $j is adjacent to $i if the minimum distance between any nt
+#                              in $i and any nt in $j is exactly 1 nt.
+#             $enforce_strand: '1' to enforce that overlaps or adjacencies are only valid if on same strand
+#             $start_AR:       ref to array of start positions
+#             $stop_AR:        ref to array of stop positions
+#             $strand_AR:      ref to array of strands
+#             $observed_AAR:   ref to 2D array of observed overlaps or adjacencies
+#                              $observed_AAR->[$i][$j] is '1' if 
+#                              those two exons are observed to overlap or be adjacecent
+#                              FILLED HERE
 # 
-# Returns:    Two values:
-#             $pass_fail_char: "P" if overlaps match those in $expected_ol_AAR, else "F"
-#                              if $expected_ol_AAR is undef, always return "P"
-#             $overlap_notes:  string describing the overlaps, empty string ("") if no overlaps.
+# Returns:    void, fills $observed_AAR;
 #
-sub checkForOverlaps {
-  my $sub_name = "checkForOverlaps";
-  my $nargs_exp = 6;
+sub checkForOverlapsOrAdjacencies {
+  my $sub_name = "checkForOverlapsOrAdjacencies";
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($name_AR, $start_AR, $stop_AR, $strand_AR, $expected_ol_AAR, $return_ol_AAR) = @_;
+  my ($do_adj, $start_AR, $stop_AR, $strand_AR, $observed_AAR) = @_;
 
-  my $ret_str = "";
-
-  my @observed_ol_AA = (); # [$i][$j] is '1' if we observe an overlap between $i and $j (or $j and $i), else 0
-
-  my $nhits = scalar(@{$name_AR});
+  my $nhits = scalar(@{$start_AR});
 
   # initialize
   for(my $i = 0; $i < $nhits; $i++) { 
     for(my $j = 0; $j < $nhits; $j++) { 
-      $observed_ol_AA[$i][$j] = 0;
+      $observed_AAR->[$i][$j] = 0;
     }
   }
 
-  my $noverlaps = 0;
+  my $nres_overlap;  # number of nucleotides two exons overlap by
+  my $nres_distance; # distance between two closest nucleotides in two exons
   for(my $i = 0; $i < $nhits; $i++) { 
     my $start_i  = $start_AR->[$i];
     my $stop_i   = $stop_AR->[$i];
-    if($start_i > $stop_i) { 
-      my $tmp  = $start_i;
-      $start_i = $stop_i;
-      $stop_i  = $tmp;
+    my $strand_i = "+";
+    if($start_i > $stop_i) { # swap them
+      my $tmp   = $start_i;
+      $start_i  = $stop_i;
+      $stop_i   = $tmp;
+      $strand_i = "-";
     }
     for(my $j = $i+1; $j < $nhits; $j++) { 
       my $start_j  = $start_AR->[$j];
       my $stop_j   = $stop_AR->[$j];
-      if($start_j > $stop_j) { 
-        my $tmp  = $start_j;
-        $start_j = $stop_j;
-        $stop_j  = $tmp;
+      my $strand_j = "+";
+      if($start_j > $stop_j) { # swap them
+        my $tmp   = $start_j;
+        $start_j  = $stop_j;
+        $stop_j   = $tmp;
+        $strand_j = "-";
       }
-      my $nres_overlap = get_nres_overlap($start_i, $stop_i, $start_j, $stop_j);
-      if($nres_overlap > 0) { 
-        $noverlaps++;
-        $observed_ol_AA[$i][$j] = 1;
-        $observed_ol_AA[$j][$i] = 1;
-        # $ret_str .= sprintf("%s overlaps with %s (%s);", $name_AR->[$i], $name_AR->[$j], ($strand_AR->[$i] eq $strand_AR->[$j]) ? "same strand" : "opposite strands");
-        if($ret_str ne "") { 
-          $ret_str .= " ";
+      my $found_ol_or_adj = 0;
+      if($strand_i eq $strand_j) { 
+        $nres_overlap  = getOverlap ($start_i, $stop_i, $start_j, $stop_j);
+        $nres_distance = getDistance($start_i, $stop_i, $start_j, $stop_j);
+        if(((! $do_adj) && ($nres_overlap > 0)) ||
+           ((  $do_adj) && ($nres_distance == 1))) { 
+          $observed_AAR->[$i][$j] = 1;
+          $observed_AAR->[$j][$i] = 1;
+          # printf("found %s between $i and $j\n", ($do_adj) ? "adjacency" : "overlap");
+          $found_ol_or_adj = 1;
         }
-        $ret_str .= sprintf("%s/%s", $name_AR->[$i], $name_AR->[$j]); 
       }
-      else { # no overlap
-        $observed_ol_AA[$i][$j] = 0;
-        $observed_ol_AA[$j][$i] = 0;
+      if(! $found_ol_or_adj) { # no overlap or adjacency
+        $observed_AAR->[$i][$j] = 0;
+        $observed_AAR->[$j][$i] = 0;
       }
     }
   }
 
-  # check @observed_ol_AA against @{$expected_ol_AAR} and/or
-  # copy @observed_ol_AA to @{$return_ol_AAR}
+  return;
+}
+
+# Subroutine: compareOverlapsOrAdjacencies()
+#
+# Synopsis:   Compare one 2D array describing overlaps or adjacencies
+#             to another.
+#
+# Args:       $name_AR:      ref to array of short names for each annotation
+#             $expected_AAR: ref to 2D array of expected overlaps $expected_ol_AAR->[$i][$j] is '1' if 
+#                            those two exons are expected to overlap or be adjacent, PRE-FILLED
+#             $observed_AAR: ref to 2D array of test overlaps $observed_ol_AAR->[$i][$j] is '1' if 
+#                            those two exons are observed to overlap or be adjacent, PRE-FILLED
+#             
+# Returns:    Two values:
+#             $pass_fail_char: "P" if overlaps/adjacencies match b/t observed and expected, else "F"
+#             $notes:          string describing the overlaps/adjacencies, empty string ("") if no overlaps.
+#
+sub compareOverlapsOrAdjacencies {
+  my $sub_name = "compareOverlapsOrAdjacencies";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($name_AR, $expected_AAR, $observed_AAR) = @_;
+
+  my $size = scalar(@{$name_AR});
+  my $ret_str = "";
+  my $nfound = 0;
+
+  # check @observed_AA against @{$expected_AAR}
   my $pass_fail_char = "P";
-  for(my $i = 0; $i < $nhits; $i++) { 
-    for(my $j = 0; $j < $nhits; $j++) { 
-      if(defined $expected_ol_AAR) { 
-        if($observed_ol_AA[$i][$j] ne $expected_ol_AAR->[$i][$j]) { 
-          $pass_fail_char = "F";
-        }
+  for(my $i = 0; $i < $size; $i++) { 
+    for(my $j = 0; $j < $size; $j++) { 
+      if($observed_AAR->[$i][$j] ne $expected_AAR->[$i][$j]) { 
+        $pass_fail_char = "F";
       }
-      if(defined $return_ol_AAR) {
-        $return_ol_AAR->[$i][$j] = $observed_ol_AA[$i][$j];
+      if($observed_AAR->[$i][$j] && ($i < $j)) { 
+        $ret_str .= sprintf("%s/%s", $name_AR->[$i], $name_AR->[$j]); 
+        $nfound++;
       }
     }
   }
 
   if($ret_str ne "") { 
-    $ret_str = $pass_fail_char . " " . $noverlaps . " " . $ret_str;
+    $ret_str = $pass_fail_char . " " . $nfound . " " . $ret_str;
   }
 
   return ($pass_fail_char, $ret_str);
@@ -2969,6 +3059,94 @@ sub get_nres_overlap {
   if($end1 <   $end2) { return ($end1 - $start2 + 1); }  # case 2
   if($end2 <=  $end1) { return ($end2 - $start2 + 1); }  # case 3
   die "Unforeseen case in get_nres_overlap $start1..$end1 and $start2..$end2";
+
+  return; # NOT REACHED
+}
+
+# Subroutine: getOverlap()
+# Args:       $start1: start position of hit 1 (must be <= $end1)
+#             $end1:   end   position of hit 1 (must be >= $end1)
+#             $start2: start position of hit 2 (must be <= $end2)
+#             $end2:   end   position of hit 2 (must be >= $end2)
+#
+# Returns:    Number of nucleotides of overlap between hit1 and hit2,
+#             0 if none
+# Dies:       if $end1 < $start1 or $end2 < $start2.
+
+sub getOverlap {
+  my $sub_name = "getOverlap";
+  my $nargs_exp = 4;
+  if(scalar(@_) != 4) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($start1, $end1, $start2, $end2) = @_; 
+
+  #printf("in $sub_name $start1..$end1 $start2..$end2\n");
+
+  if($start1 > $end1) { die "ERROR in $sub_name start1 > end1 ($start1 > $end1)"; }
+  if($start2 > $end2) { die "ERROR in $sub_name start2 > end2 ($start2 > $end2)"; }
+
+  # Given: $start1 <= $end1 and $start2 <= $end2.
+  
+  # Swap if nec so that $start1 <= $start2.
+  if($start1 > $start2) { 
+    my $tmp;
+    $tmp   = $start1; $start1 = $start2; $start2 = $tmp;
+    $tmp   =   $end1;   $end1 =   $end2;   $end2 = $tmp;
+  }
+  
+  # 3 possible cases:
+  # Case 1. $start1 <=   $end1 <  $start2 <=   $end2  Overlap is 0
+  # Case 2. $start1 <= $start2 <=   $end1 <    $end2  
+  # Case 3. $start1 <= $start2 <=   $end2 <=   $end1
+  if($end1 < $start2) { return 0; }                      # case 1
+  if($end1 <   $end2) { return ($end1 - $start2 + 1); }  # case 2
+  if($end2 <=  $end1) { return ($end2 - $start2 + 1); }  # case 3
+  die "ERROR in $sub_name, unforeseen case in $start1..$end1 and $start2..$end2";
+
+  return; # NOT REACHED
+}
+
+# Subroutine: getDistance()
+# Args:       $start1: start position of hit 1 (must be <= $end1)
+#             $end1:   end   position of hit 1 (must be >= $end1)
+#             $start2: start position of hit 2 (must be <= $end2)
+#             $end2:   end   position of hit 2 (must be >= $end2)
+#
+# Returns:    Distance between closest nucleotides in hit1 and hit2,
+#             where hit1 = start1..end1 and hit2 = start2..end2.
+#             If they overlap, return 0. 
+#
+# Dies:       if $end1 < $start1 or $end2 < $start2.
+
+sub getDistance {
+  my $sub_name = "getDistance";
+  my $nargs_exp = 4;
+  if(scalar(@_) != 4) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($start1, $end1, $start2, $end2) = @_; 
+
+  #printf("in $sub_name $start1..$end1 $start2..$end2\n");
+
+  if($start1 > $end1) { die "ERROR in $sub_name start1 > end1 ($start1 > $end1)"; }
+  if($start2 > $end2) { die "ERROR in $sub_name start2 > end2 ($start2 > $end2)"; }
+
+  # Given: $start1 <= $end1 and $start2 <= $end2.
+  
+  # Swap if nec so that $start1 <= $start2.
+  if($start1 > $start2) { 
+    my $tmp;
+    $tmp   = $start1; $start1 = $start2; $start2 = $tmp;
+    $tmp   =   $end1;   $end1 =   $end2;   $end2 = $tmp;
+  }
+  
+  # 3 possible cases:
+  # Case 1. $start1 <=   $end1 <  $start2 <=   $end2  distance is $start2-$end1
+  # Case 2. $start1 <= $start2 <=   $end1 <    $end2  overlap: return 0
+  # Case 3. $start1 <= $start2 <=   $end2 <=   $end1  overlap: return 0
+  if($end1 < $start2) { return $start2-$end1; } # case 1
+  if($end1 <   $end2) { return 0; }             # case 2
+  if($end2 <=  $end1) { return 0; }             # case 3
+  die "ERROR in $sub_name, unforeseen case in $start1..$end1 and $start2..$end2";
 
   return; # NOT REACHED
 }
@@ -3412,6 +3590,70 @@ sub parseEslTranslateOutput {
 #
 sub parseEslTranslateDefline {
   my $sub_name = "parseEslTranslateDefline";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($line, $coords_from_R, $coords_to_R, $source_name_R, $source_coords_R, $source_len_R) = @_;
+
+  my ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame, $source_len);
+
+  # example $line's:
+  #>orf1 source=NC_001346/150-455 coords=1..303 length=101 frame=1  
+  # OR
+  #>orf1 source=NC_001346/2527-1886,1793-1353 coords=87..161 length=25 frame=3  
+  if($line =~ /^\>orf\d+\s+source\=(\S+)\/(\S+)\s+coords\=(\d+)\.\.(\d+)\s+length\=(\d+)\s+frame=(\d+)/) { 
+    ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame) = ($1, $2, $3, $4, $5, $6);
+    # $source_coords = '150-455' or
+    # $source_coords = '2527-1886,1793-1353'
+    my @source_coords_A = split(",", $source_coords);
+    $source_len = 0;
+    foreach my $cur_coords (@source_coords_A) { 
+      if($cur_coords =~ m/^(\-?\d+)\-(\-?\d+)$/) { 
+        my($cur_from, $cur_to) = ($1, $2);
+        $source_len += ($cur_from < $cur_to) ? ($cur_to - $cur_from + 1) : ($cur_from - $cur_to + 1);
+        if(($cur_from < 0) && ($cur_to > 0)) { $source_len--; } # fix off-by-one introduced by negative indexing in sequence position
+        if(($cur_from > 0) && ($cur_to < 0)) { $source_len--; } # fix off-by-one introduced by negative indexing in sequence position
+      }
+      else { 
+        die "ERROR in $sub_name, unable to parse source coordinates in header line: $line";
+      }
+    }
+  }
+  else { 
+    die "ERROR in $sub_name, unable to parse header line: $line";
+  }
+
+  if(defined $coords_from_R)   { $$coords_from_R   = $coords_from; }
+  if(defined $coords_to_R)     { $$coords_to_R     = $coords_to;   }
+  if(defined $source_name_R)   { $$source_name_R   = $source_name; }
+  if(defined $source_coords_R) { $$source_coords_R = $source_coords; }
+  if(defined $source_len_R)    { $$source_len_R    = $source_len;  }
+  return;
+}
+
+# Subroutine: matpeptFindAdjacentPeptides()
+#
+# Synopsis:   Find which peptides/CDS are adjacent to each other in the
+#             reference and update %{$adj2cds_5p_H} and %{$adj2cds_3p_H}
+#             with that information.
+#
+# Args:       $ref_cds_coords_AR:    reference to reference coordinates for each CDS/peptide
+#             $adj2cds_5p_HR:        ref to hash: key is index $i of cds in @{$ref_cds_coords_AR} and value
+#                                    is $j: index of cds that it is immediately adjacent to on 5' end,
+#                                    that is final nt of $j is immediately before first nt of $i
+#                                    FILLED HERE
+#             $adj2cds_3p_HR:        ref to hash: key is index $i of cds in @{$ref_cds_coords_AR} and value
+#                                    is $j: index of cds that it is immediately adjacent to on 3' end,
+#                                    that is first nt of $j is immediately after final nt of $i
+#                                    FILLED HERE
+#
+#             If more than one CDS is immediately adjacent to another, we store the one that is longest
+#
+# Returns:    void
+# Dies:       if more than one CDS is immediately adjacent to any other
+#
+sub matpeptFindAdjacentPeptides {
+  my $sub_name = "matpeptFindAdjacentPeptides";
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
