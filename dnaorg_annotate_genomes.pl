@@ -1112,7 +1112,7 @@ my @out_col_header_AA = (); # used only if $do_seqrow
                             # first dim: [0..4], 0, 1, and 3 are arrays of header tokens, 2 and 4 are dashed lines that are
 my @out_row_header_A  = (); # used only if $do_seqcol
                             # ref to array of output tokens for column or row headers
-getHeadings($do_seqrow, $do_seqcol, $do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, 
+getHeadings($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, 
             \@hmm2cds_map_A, \@hmm2exon_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@cds_out_short_A, \@cds_out_product_A,
             ($do_seqrow) ? (\@out_col_header_AA) : undef,
             ($do_seqcol) ? (\@out_row_header_A)  : undef);
@@ -1242,9 +1242,29 @@ for(my $a = 0; $a < $naccn; $a++) {
   if($do_matpept) {
     # get adjacency information
     checkForOverlapsOrAdjacencies(1, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_adj_AA);
-    if($a == 0) { @ref_adj_AA = @cur_adj_AA; }
+   if($a == 0) { @ref_adj_AA = @cur_adj_AA; }
   }
 
+  # handle 5' UTR, if $do_matpept
+  if($do_matpept) { 
+    if($cur_start_A[0] == 0) { # no annotated first matpept, 
+      push(@cur_out_A, sprintf("  %6s", "?")); # start
+      push(@cur_out_A, sprintf(" %6s", "?"));  # stop
+      push(@cur_out_A, sprintf(" %6s", "?"));  # length
+    }
+    elsif($cur_start_A[0] == 1) { # 1st matpept starts at nt 1!
+      push(@cur_out_A, sprintf("  %6d", 0)); # start 
+      push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+      push(@cur_out_A, sprintf("  %6d", 0)); # length
+    }
+    else { # 1st matpept does not start at nt 1!
+      push(@cur_out_A, sprintf("  %6d", 1)); # start 
+      push(@cur_out_A, sprintf("  %6d", $cur_start_A[0]-1)); # stop 
+      push(@cur_out_A, sprintf("  %6d", $cur_start_A[0]-1)); # length
+    }
+  }    
+
+  # now go through each model and collect output tokens
   for(my $h = 0; $h < $nhmm; $h++) { 
     my $model   = $model_A[$h];
     my $cds_i   = $hmm2cds_map_A[$h];
@@ -1423,6 +1443,26 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
   }
 
+  # handle 3' UTR, if $do_matpept
+  if($do_matpept) { 
+    if($cur_stop_A[($nhmm-1)] == 0) { # no annotated final matpept
+      push(@cur_out_A, sprintf("  %6s", "?")); # start
+      push(@cur_out_A, sprintf(" %6s", "?"));  # stop
+      push(@cur_out_A, sprintf(" %6s", "?"));  # length
+    }
+    elsif($cur_stop_A[($nhmm-1)] == $totlen_H{$accn}) { # final matpept stops at final nt!
+      push(@cur_out_A, sprintf("  %6d", 0)); # start 
+      push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+      push(@cur_out_A, sprintf("  %6d", 0)); # length
+    }
+    else { # final matpept does not stop at final nt
+      push(@cur_out_A, sprintf("  %6d", $cur_stop_A[($nhmm-1)]+1)); # start 
+      push(@cur_out_A, sprintf("  %6d", $totlen_H{$accn})); # stop 
+      push(@cur_out_A, sprintf("  %6d", ($totlen_H{$accn} - ($cur_stop_A[($nhmm-1)]+1) + 1))); # length
+    }
+  }    
+
+  # total length
   push(@cur_out_A, sprintf("  %6d", $totlen_H{$accn}));
   push(@cur_out_A, sprintf("  %5.3f", $tot_fid / $n_fid));
 
@@ -3705,6 +3745,7 @@ sub matpeptFindAdjacentPeptides {
 #
 # Args:       $do_seqrow:          '1' if we're outputting in sequence-as-rows mode
 #             $do_seqcol:          '1' if we're outputting in sequence-as-columns mode
+#             $do_matpept:         '1' if we're in matpept mode
 #             $do_nofid:           '1' if we're not printing fractional ids, else '0'
 #             $do_mdlb:            '1' if we're not printing model boundaries, else '0'
 #             $do_noss3:           '1' if we're not printing SS3 columns, else '0'
@@ -3724,10 +3765,10 @@ sub matpeptFindAdjacentPeptides {
 #                                  undef unless $do_seqcol is '1'
 sub getHeadings {
   my $sub_name = "getHeadings";
-  my $nargs_exp = 17;
+  my $nargs_exp = 18;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($do_seqrow, $do_seqcol, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, $hmm2cds_map_AR, $hmm2exon_map_AR, $hmm_is_first_AR, $hmm_is_final_AR, $cds_out_short_AR, $cds_out_product_AR, $out_col_header_AAR, $out_row_header_AR) = @_;
+  my ($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, $hmm2cds_map_AR, $hmm2exon_map_AR, $hmm_is_first_AR, $hmm_is_final_AR, $cds_out_short_AR, $cds_out_product_AR, $out_col_header_AAR, $out_row_header_AR) = @_;
 
   # contract checks
   if($do_seqrow     &&    $do_seqcol)  { die "ERROR in $sub_name, both $do_seqrow and $do_seqcol are '1'"; }
@@ -3876,6 +3917,28 @@ sub getHeadings {
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
   } # end of 'if(defined $orig_seq)'
 
+  # create columns for 5'UTR, if $do_matpept:
+  if($do_matpept) { 
+    $width = 6 + 1 + 6 + 1 + 6; #20
+    $tok1 = sprintf("  %*s", $width, "");
+    $tok2 = sprintf("         %*s", $width, "5' UTR");
+    $tok3 = sprintf("  %*s", $width, monocharacterString($width, "-"));
+    $tok4 = sprintf("  %6s", "start");
+    $tok5 = sprintf("  ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    $tok4 = sprintf(" %6s", "stop");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    $tok4 = sprintf(" %6s", "length");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+  }
+
   # create columns for CDS
   $width = 0;
   for(my $h = 0; $h < $nhmm; $h++) { 
@@ -3952,6 +4015,28 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
+  }
+
+  # create columns for 3'UTR, if $do_matpept:
+  if($do_matpept) { 
+    $width = 6 + 1 + 6 + 1 + 6; #20
+    $tok1 = sprintf("  %*s", $width, "");
+    $tok2 = sprintf("         %*s", $width, "3' UTR");
+    $tok3 = sprintf("  %*s", $width, monocharacterString($width, "-"));
+    $tok4 = sprintf("  %6s", "start");
+    $tok5 = sprintf("  ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    $tok4 = sprintf(" %6s", "stop");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    $tok4 = sprintf(" %6s", "length");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
   }
 
   # "totlen"
