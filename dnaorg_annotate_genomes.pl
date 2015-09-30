@@ -56,7 +56,6 @@ $usage .= "\n OPTIONS SPECIFIC TO INFERNAL:\n";
 $usage .= "  -iglocal      : use the -g option with cmsearch for glocal searches\n";
 $usage .= "  -cslow        : use default cmcalibrate parameters, not parameters optimized for speed\n";
 $usage .= "  -ccluster     : submit calibration jobs for each CM to cluster and exit (requires --onlybuild)\n";
-$usage .= "  -ccombine     : combine all (just calibrated) models and exited.\n";
 $usage .= "  -scluster <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes\n";
 $usage .= "                  (changeable with -swait) before concatenating all the output files and continuing\n";
 $usage .= "  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]\n";
@@ -558,6 +557,7 @@ my @hmm2cds_map_A = ();     # [0..h..$nhmm-1]: $i: HMM ($h+1) maps to reference 
 my @hmm2exon_map_A = ();    # [0..h..$nhmm-1]: $e: HMM ($h+1) maps to exon ($e+1) of reference cds $hmm2cds_map_A[$h]+1
 my @hmm_is_first_A = ();    # [0..h..$nhmm-1]: '1' if HMM ($h+1) is the first one for cds $hmm2cds_map_A[$h], else 0
 my @hmm_is_final_A = ();    # [0..h..$nhmm-1]: '1' if HMM ($h+1) is the final one for cds $hmm2cds_map_A[$h], else 0
+my @hmm_is_primary_A = ();  # [0..h..$nhmm-1]: '1' if HMM ($h+1) is for a primary matpept, else 0, only created/used if $do_matpept
 my @cds2first_hmm_A = ();   # [0..$c..ncds-1]: $h, first exon of CDS $c+1 is modeled by HMM $h+1
 my @cds2final_hmm_A = ();   # [0..$c..ncds-1]: $h, final exon of CDS $c+1 is modeled by HMM $h+1
 my @model_A = ();           # [0..$nhmm-1]: array of model HMM names, also name of stockholm alignments used to build those HMMs
@@ -634,7 +634,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
 
     # store information on this model's name for output purposes
     if($e == ($nexons-1)) { 
-      my $short = sprintf("CDS #%d", ($i+1));
+      my $short = ($do_matpept) ? sprintf("MP #%d", ($i+1)) : sprintf("CDS #%d", ($i+1));
       if($act_nexons > 1) { $short .= " [$act_nexons exons; $strand]"; }
       else                { $short .= " [single exon; $strand]"; }
       push(@cds_out_short_A,   $short);
@@ -704,8 +704,10 @@ if($do_skipbuild) {
         }
       }
       my $cat_cmd = "cat $out_root.ref.0.cm > $model_db";
+      runCommand($cat_cmd, 0);
       for(my $i = 1; $i < $nhmm; $i++) { 
         $cat_cmd = "cat $out_root.ref.$i.cm >> $model_db";
+        runCommand($cat_cmd, 0);
       }
       # remove the binary files, possibly from an earlier cmbuild/cmpress:
       for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
@@ -717,7 +719,7 @@ if($do_skipbuild) {
       printf("%-65s ... ", "# Running cmpress");
       my $secs_elapsed = runCommand($cmpress_cmd, 0);
       #printf("\n$cmpress_cmd\n");
-      printf("done [%.1f seconds]\n", $secs_elapsed);
+      printf("done. [%.1f seconds]\n", $secs_elapsed);
     }
   }
   # now we know we have the model file, extract the checksum values
@@ -747,7 +749,7 @@ else {
   if(! $do_hmmer) { # use Infernal (default)
     createCmDb($cmbuild, $cmcalibrate, $cmpress, $cmfetch, $nhmm, $do_cslow, $do_ccluster, $all_stk_file, $out_root . ".ref", \@indi_ref_name_A);
     if($do_onlybuild) { 
-      printf("#\n# Model calibration %s. Exiting.\n", ($do_ccluster) ? "job submitted" : "complete");
+      printf("#\n# Model calibration %s. Exiting.\n", ($do_ccluster) ? "job(s) submitted" : "complete");
       exit 0;
     }
     $model_db = $out_root . ".ref.cm";
@@ -1131,13 +1133,16 @@ if($do_seqrow) { # output sequences as rows
 ########################################################################
 # Pass through all accessions, and gather and output annotation for each
 ########################################################################
-my @ref_ol_AA    = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
-my @ref_adj_AA   = (); # 2D array that describes the adjacencies in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j are adjacent,
-                       # only used if $do_matpept
-my @ref_start_A  = (); # [0..$h..$nhmm-1]: predicted start  for reference for model $h
-my @ref_stop_A   = (); # [0..$h..$nhmm-1]: predicted stop   for reference for model $h
-my @ref_strand_A = (); # [0..$h..$nhmm-1]: predicted strand for reference for model $h
-my $width;             # width of a field
+my @ref_ol_AA     = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
+my @ref_adj_AA    = (); # 2D array that describes the adjacencies in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j are adjacent,
+                        # only used if $do_matpept
+my @ref_prv_adj_A = (); # [0..$h..$nhmm-1]: $i, hmm $i is previous and adjacent to $h, $i and $h are both primary peptides
+my @ref_nxt_adj_A = (); # [0..$h..$nhmm-1]: $i, hmm $i is after    and adjacent to $h, $i and $h are both primary peptides
+my @ref_start_A   = (); # [0..$h..$nhmm-1]: predicted start  for reference for model $h
+my @ref_stop_A    = (); # [0..$h..$nhmm-1]: predicted stop   for reference for model $h
+my @ref_strand_A  = (); # [0..$h..$nhmm-1]: predicted strand for reference for model $h
+my @ref_len_A     = (); # [0..$h..$nhmm-1]: predicted length for reference for model $h
+my $width;              # width of a field
 
 # data structures necessary only for seqs-as-columns output mode (if $do_seqcol) is TRUE
 my @ref_out_A   = (); # array of output fields for the reference accession, used if $do_seqcol
@@ -1192,6 +1197,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   my @cur_start_A  = (); # [0..$h..$nhmm-1]: predicted start  for model $h
   my @cur_stop_A   = (); # [0..$h..$nhmm-1]: predicted stop   for model $h
   my @cur_strand_A = (); # [0..$h..$nhmm-1]: predicted strand for model $h
+  my @cur_len_A    = (); # [0..$h..$nhmm-1]: predicted length for model $h
   my @cur_adj_AA   = (); # [0..$h..$nhmm-1][0..$hp..$nhmm-1]: '1' if $h and $hp predictions are 'adjacent' 
                          # adjacent means that min distance between any two nt in each prediction is 1
 
@@ -1233,17 +1239,38 @@ for(my $a = 0; $a < $naccn; $a++) {
     push(@cur_start_A,  $start);
     push(@cur_stop_A,   $stop);
     push(@cur_strand_A, $strand);
+    push(@cur_len_A,    (abs($stop-$start) + 1));
     if($a == 0) { 
       @ref_start_A  = @cur_start_A;
       @ref_stop_A   = @cur_stop_A;
       @ref_strand_A = @cur_strand_A;
+      @ref_len_A    = @cur_len_A;
     }
   }
+
+  # check for overlaps
+  my @ol_AA = ();
+  checkForOverlapsOrAdjacencies(0, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@ol_AA); # '0': do overlap not adjacency
+  if($a == 0) { 
+    @ref_ol_AA = @ol_AA; 
+    if($do_matpept) { # determine which models are for primary mature peptides 
+      matpeptFindPrimaryPeptides(\@ref_ol_AA, \@ref_len_A, \@hmm_is_primary_A);
+    }      
+  }
+  # check for adjacencies if necessary
   if($do_matpept) {
     # get adjacency information
     checkForOverlapsOrAdjacencies(1, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_adj_AA);
-   if($a == 0) { @ref_adj_AA = @cur_adj_AA; }
+    if($a == 0) { 
+      @ref_adj_AA = @cur_adj_AA;
+      # for all primary peptides: we assume there is at most 1 peptide before it that is adjacent 
+      # and at most 1 other peptide after it that is adjacent, determine what those are and 
+      # store them
+      matpeptFindPrimaryAdjacencies(\@ref_adj_AA, \@hmm_is_primary_A, \@ref_prv_adj_A, \@ref_nxt_adj_A);
+    }
   }
+
+
 
   # handle 5' UTR, if $do_matpept
   if($do_matpept) { 
@@ -1345,8 +1372,8 @@ for(my $a = 0; $a < $naccn; $a++) {
         }
         $start_codon = fetchCodon($sqfile, $seq_accn, $start_codon_posn, $p_strand_HH{$model}{$seq_accn});
         if($do_matpept) { 
-          if((($h-1) > 0) && ($ref_adj_AA[$h-1][$h])) { # in reference, previous mat_peptide is adjacent to this one
-            $start_codon_char = ($cur_adj_AA[$h-1][$h]) ? $ss3_yes_char : $ss3_no_char;
+          if($ref_prv_adj_A[$h] != -1) { # in reference, primary mat_peptide $prv_adj_A[$h] is adjacent to this one
+            $start_codon_char = ($cur_adj_AA[$ref_prv_adj_A[$h]][$h]) ? $ss3_yes_char : $ss3_no_char;
           }
           elsif($h == 0) { # first mat_peptide, look for start codon
             $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
@@ -1373,8 +1400,8 @@ for(my $a = 0; $a < $naccn; $a++) {
         $stop_codon = fetchCodon($sqfile, $seq_accn, $stop_codon_posn, $p_strand_HH{$model}{$seq_accn});
 
         if($do_matpept) { 
-          if((($h+1) < $nhmm) && ($ref_adj_AA[$h][$h+1])) { # in reference, next mat_peptide is adjacent to this one
-            $stop_codon_char = ($cur_adj_AA[$h][$h+1]) ? $ss3_yes_char : $ss3_no_char;
+          if($ref_nxt_adj_A[$h] != -1) { # in reference, primary mat_peptide $nxt_adj_A[$h] is adjacent to this one
+            $stop_codon_char = ($cur_adj_AA[$h][$ref_nxt_adj_A[$h]]) ? $ss3_yes_char : $ss3_no_char;
           }
           # TODO: reexamine this, for Dengue, final matpept encoding seq DOES NOT end with a valid stop, so don't enforce it
           #elsif($h == ($nhmm-1)) { # final mat_peptide, look for stop codon
@@ -1473,17 +1500,11 @@ for(my $a = 0; $a < $naccn; $a++) {
     push(@cur_out_A, sprintf("  %5d", $nmatch_boundaries));
   }
 
-  # check for overlaps
-  my $overlap_notes;
-  my @ol_AA = ();
-  checkForOverlapsOrAdjacencies(0, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@ol_AA); # '0': do overlap not adjacency
-  if($a == 0) { 
-    @ref_ol_AA = @ol_AA;
-  }
-  ($pass_fail_char, $overlap_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, \@ref_ol_AA, \@ol_AA);
-  $pass_fail_str .= $pass_fail_char;
-
   # output overlap info, if nec
+  my $ol_pass_fail_char;
+  my $overlap_notes = undef;
+  ($ol_pass_fail_char, $overlap_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, \@ref_ol_AA, \@ol_AA);
+  $pass_fail_str .= $ol_pass_fail_char;
   if((! $do_noolap) && ($overlap_notes ne "")) { 
     push(@cur_out_A, sprintf("  %20s", $overlap_notes));
   }
@@ -2130,6 +2151,9 @@ sub createCmDb {
       # print("$cluster_cmd\n");
       runCommand($cluster_cmd, 0);
     }
+    # final step, remove the master CM file, so we can create a new one
+    $cmd = "rm $out_root.cm";
+    runCommand($cmd, 0);
   }
   else { 
     # calibrate the model
@@ -3001,7 +3025,7 @@ sub checkForOverlapsOrAdjacencies {
            ((  $do_adj) && ($nres_distance == 1))) { 
           $observed_AAR->[$i][$j] = 1;
           $observed_AAR->[$j][$i] = 1;
-          # printf("found %s between $i and $j\n", ($do_adj) ? "adjacency" : "overlap");
+          # printf("found %s between $i  and $j ($start_i..$stop_i and $start_j..$stop_j)\n", ($do_adj) ? "adjacency" : "overlap");
           $found_ol_or_adj = 1;
         }
       }
@@ -3734,6 +3758,99 @@ sub matpeptFindAdjacentPeptides {
   if(defined $source_len_R)    { $$source_len_R    = $source_len;  }
   return;
 }
+
+# Subroutine: matpeptFindPrimaryPeptides()
+#
+# Synopsis:   Find which peptides/CDS are 'primary'. A peptide is primary
+#             if no other longer peptide overlaps with it.
+#
+# Args:       $ref_ol_AAR:         [0..$i..$nhmm-1][0..$j..$nhmm-1]: 1 if $i and $j overlap, else 0, PRE-FILLED
+#             $ref_len_AR:         [0..$i..$nhmm-1]: length of predicted peptide $i (in nt), PRE-FILLED
+#             $pept_is_primary_AR: [0..$i..$nhmm-1]: '1' if $i is a primary peptide, else 0, FILLED HERE
+#
+# Returns:    void, fills @{$hmm_is_primary_AR}
+#
+sub matpeptFindPrimaryPeptides {
+  my $sub_name = "matpeptFindPrimaryPeptides";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ref_ol_AAR, $ref_len_AR, $pept_is_primary_AR) = @_;
+
+  my $npept = scalar(@{$ref_len_AR});
+  for(my $i = 0; $i < $npept; $i++) {
+    my $is_primary = 1; # until proven otherwise
+    my $ilen = $ref_len_AR->[$i];
+    for(my $j = 0; $j < $npept; $j++) {
+      if($ref_ol_AAR->[$i][$j] && $ref_len_AR->[$j] > $ilen) { 
+        $is_primary = 0;
+      }
+    }
+    $pept_is_primary_AR->[$i] = ($is_primary) ? 1 : 0;
+    # if($pept_is_primary_AR->[$i]) { printf("pept $i is primary!\n"); }
+  }
+
+  return;
+}
+
+# Subroutine: matpeptFindPrimaryAdjacencies()
+#
+# Synopsis:   For each 'primary' peptide $i, find the other primary peptide that is adjacent before it
+#             (and store it in $prv_adj_A[$i]) if any, and find the other primary peptide that is 
+#             adjacent after it (and store it in $nxt_adj_A[$i]), if any. Here $i is before $j if $i < $j
+#             and $i is after $j if $i > $j.
+#
+# Args:       $ref_adj_AAR:        [0..$i..$nhmm-1][0..$j..$nhmm-1]: 1 if $i and $j are adjacent, else 0, PRE-FILLED
+#             $pept_is_primary_AR: [0..$i..$nhmm-1]: '1' if $i is a primary peptide, else 0, PRE-FILLED
+#             $prv_adj_AR:         [0..$i..$nhmm-1]: $j if $j < $i and $i and $j are adjacent and $i and $j are primary peptides, FILLED HERE
+#             $nxt_adj_AR:         [0..$i..$nhmm-1]: $j if $j > $i and $i and $j are adjacent and $i and $j are primary peptides, FILLED HERE
+#
+# Returns:    void, fills @{$prv_adj_AR} and @{$nxt_adj_AR}
+# Dies:       if a primary peptide $i has more than 1 other primary adjacent peptides $j1 and $j2 such that $j1 < $i and $j2 < $i
+#             if a primary peptide $i has more than 1 other primary adjacent peptides $j1 and $j2 such that $j1 > $i and $j2 > $i
+#             both of these cases are expected to not happen
+#
+sub matpeptFindPrimaryAdjacencies {
+  my $sub_name = "matpeptFindPrimaryAdjacencies";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ref_adj_AAR, $pept_is_primary_AR, $prv_adj_AR, $nxt_adj_AR) = @_;
+
+  my $npept = scalar(@{$pept_is_primary_AR});
+  my ($i, $j);
+  for($i = 0; $i < $npept; $i++) {
+    $prv_adj_AR->[$i] = -1;
+    $nxt_adj_AR->[$i] = -1;
+    if($pept_is_primary_AR->[$i]) { 
+      # look for previous peptide
+      for($j = 0; $j < $i; $j++) { 
+        if($pept_is_primary_AR->[$j] && $ref_adj_AAR->[$i][$j]) { 
+          if($prv_adj_AR->[$i] != -1) { 
+            die sprintf("ERROR in $sub_name, found two primary peptides %d and %d which are prior to and adjacent to primary peptide %d\n", 
+                        $prv_adj_AR->[$i], $j, $i);
+          }
+          $prv_adj_AR->[$i] = $j;
+          # printf("set prv_adj_AR->[$i] to $j\n");
+        }
+      }
+      # look for next peptide
+      for($j = $i+1; $j < $npept; $j++) { 
+        if($pept_is_primary_AR->[$j] && $ref_adj_AAR->[$i][$j]) { 
+          if($nxt_adj_AR->[$i] != -1) { 
+            die sprintf("ERROR in $sub_name, found two primary peptides %d and %d which are after than and adjacent to primary peptide %d\n", 
+                        $nxt_adj_AR->[$i], $j, $i);
+          }
+          $nxt_adj_AR->[$i] = $j;
+          # printf("set nxt_adj_AR->[$i] to $j\n");
+        }
+      }
+    }
+  }
+
+  return;
+}
+
 
 ######################
 # OUTPUT subroutines #
