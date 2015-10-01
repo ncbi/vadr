@@ -4961,7 +4961,7 @@ sub outputSeqAsColumnsPage {
     $AR = ($i == 0) ? $ref_out_AR : \@{$out_AAR->[$i-1]}; 
     $cwidth_A[$i] = 0;
     $ntok = scalar(@{$AR});
-    # if($ntok != $nrow) { die sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok); }
+    if($ntok != $nrow) { die sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok); }
     foreach $el (@{$AR}) { 
       $el =~ s/^\s+//; # remove leading whitespace
       $el =~ s/\s+$//; # remove trailing whitespace
