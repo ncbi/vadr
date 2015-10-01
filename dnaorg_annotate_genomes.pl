@@ -3089,6 +3089,9 @@ sub compareOverlapsOrAdjacencies {
         $pass_fail_char = "F";
       }
       if($observed_AAR->[$i][$j] && ($i < $j)) { 
+        if($ret_str ne "") { 
+          $ret_str .= ",";
+        }
         $ret_str .= sprintf("%s/%s", $name_AR->[$i], $name_AR->[$j]); 
         $nfound++;
       }
