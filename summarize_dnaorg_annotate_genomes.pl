@@ -13,16 +13,13 @@ $usage .= " This script summarizes an output file created by dnaorg_annotate_gen
 $usage .= " by listing counts of each value observed for each category.\n";
 $usage .= " BASIC OPTIONS:\n";
 $usage .= "  -passfail : only print counts of PF and result values\n";
-#$usage .= "  -matpept   : use mat_peptide info instead of CDS info\n";
 $usage .= "\n";
 
 # general options:
 my $do_passfail = 0; # set to '1' if -passfail enabled, only print counts for 'PF' and 'result' values
-#my $do_matpept   = 0; # set to '1' if -matpept    enabled, genome has a single polyprotein, use mat_peptide info, not CDS
 
-#&GetOptions("nocorrect" => \$do_nocorrect,
-#            "skipaln"   => \$do_skipaln) ||
-#    die "Unknown option";
+&GetOptions("passfail" => \$do_passfail) ||
+    die "Unknown option";
 
 if(scalar(@ARGV) != 1) { die $usage; }
 my ($infile) = (@ARGV);
@@ -56,6 +53,9 @@ if($do_seqcol) {
         my @el_A = split(/\s+/, $line);
         $naccn = scalar(@el_A) - 1; # number of accessions we expect in each subsequent line
       }
+      elsif($line =~ m/^accession/) { 
+        ; # do nothing
+      }
       else { # normal line
         ## example: 
         # MP #14 [single exon; +]:RNA-dependent RNA polymerase NS5:start1                         7565                [7193]
@@ -71,6 +71,7 @@ if($do_seqcol) {
         for(my $i = 0; $i < ($naccn * $ntok_per_accn); $i++) { 
           $key =~ s/\S+\s*$//; # remove final token, ($naccn * $ntok_per_accn) times to get key
         }
+        $key =~ s/\s+$//;
         # initialize count hash for this key if it doesn't already exist
         if(! exists $key_ct_HH{$key}) {
           %{$key_ct_HH{$key}} = ();
@@ -112,10 +113,12 @@ if($do_seqcol) {
 
 # output summary
 foreach $key (@key_order_A) { 
-  printf("$key\n");
-  foreach $value (@{$value_order_HA{$key}}) { 
-    printf("\t%-*s %d\n", $wvalue_H{$key}, $value, $key_ct_HH{$key}{$value});
+  if((! $do_passfail) || ($key =~ m/PF$/) || ($key eq "result")) { 
+    printf("$key\n");
+    foreach $value (@{$value_order_HA{$key}}) { 
+      printf("%-*s %d\n", $wvalue_H{$key}, $value, $key_ct_HH{$key}{$value});
+    }
+    printf("\n");
   }
-  printf("\n");
 }
 
