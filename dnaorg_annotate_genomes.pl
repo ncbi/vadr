@@ -1462,13 +1462,26 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
     else { 
       # printf("no hits for $model $seq_accn\n");
-      if($do_nomdlb) { 
-        $width = ($hmm_is_final_A[$h]) ? 34 : 23;
-        push(@cur_out_A, sprintf("%*s", $width, "NO PREDICTION"));
+      $at_least_one_fail = 1;
+      push(@cur_out_A, sprintf("  %8s ", "NP")); # start position
+      push(@cur_out_A, sprintf("%8s",  "NP"));   # stop position
+      if(! $do_nofid) { 
+        push(@cur_out_A, sprintf(" %5s", "NP")); # fid
+      }        
+      if(! $do_nomdlb) { 
+        push(@cur_out_A, "  NP"); # model boundaries
       }
-      else { 
-        $width = ($hmm_is_final_A[$h]) ? 38 : 27;
-        push(@cur_out_A, sprintf("%*s", $width, "NO PREDICTION"));
+      if($hmm_is_final_A[$h]) { 
+        push(@cur_out_A, sprintf(" %6s", "NP")); # length
+        if(! $do_noss3) { 
+          push(@cur_out_A, "  NP"); # ss3
+        }
+        if(! $do_nostop) { 
+          push(@cur_out_A, sprintf(" %3s", "NP")); # stop
+        }
+        $pass_fail_char = "F";
+        push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
+        $pass_fail_str .= $pass_fail_char;
       }
     }
   }
@@ -3407,12 +3420,12 @@ sub splitFastaFile {
   if(! -x $esl_ssplit) { die "ERROR the $esl_ssplit file is not executable"; }
 
   my $outfile = $fafile . ".esl-ssplit";
-  my $cmd = "$esl_ssplit -v -n $fafile $nfiles > /dev/null";
+  my $cmd = "$esl_ssplit -v -n $fafile $nfiles > $outfile";
   runCommand($cmd, 0);
   # parse output to determine exactly how many files were created:
   open(IN, $outfile) || die "ERROR unable to open $outfile for reading";
   my $nfiles_created = 0;
-  while($line = <IN>) { # we'll have one line per file created
+  while(my $line = <IN>) { # we'll have one line per file created
     $nfiles_created++;
   }
   close(IN);
@@ -4948,7 +4961,7 @@ sub outputSeqAsColumnsPage {
     $AR = ($i == 0) ? $ref_out_AR : \@{$out_AAR->[$i-1]}; 
     $cwidth_A[$i] = 0;
     $ntok = scalar(@{$AR});
-    if($ntok != $nrow) { die sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok); }
+    # if($ntok != $nrow) { die sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok); }
     foreach $el (@{$AR}) { 
       $el =~ s/^\s+//; # remove leading whitespace
       $el =~ s/\s+$//; # remove trailing whitespace
