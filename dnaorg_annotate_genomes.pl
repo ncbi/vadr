@@ -795,7 +795,10 @@ else {
     runCmscan($cmscan, $do_iglocal, ($do_skipscan || $do_skipaln), 0, $model_db, $gnm_fasta_file, $tblout, $stdout);
   }
   else { # we need to split up the genome fasta file and submit a different cmscan job for each fasta file
-    splitFastaFile($esl_ssplit, $gnm_fasta_file, $scluster_njobs);
+    # note we may redefined $scluster_njobs here, splitFastaFile will return actual number of fasta files created, 
+    # which can differ from the requested amount (which is $sncluster_njobs) that we pass in
+    my $nfasta_created = splitFastaFile($esl_ssplit, $gnm_fasta_file, $scluster_njobs);
+    $scluster_njobs = $nfasta_created;
     # now submit a job for each
     printf("%-65s ... ", sprintf("# Submitting %d cmscan jobs", $scluster_njobs));
     for(my $z = 1; $z <= $scluster_njobs; $z++) { 
@@ -3389,7 +3392,8 @@ sub findSpecialGap {
 #             $fafile:       fasta file to split up
 #             $nfiles:       number of files to split $fafile into
 #
-# Returns:    void
+# Returns:    Number of files actually created (can differ from requested
+#             amount (which is $nfiles)).
 # Dies:       if command fails or there is some other problem
 #
 sub splitFastaFile {
@@ -3402,10 +3406,19 @@ sub splitFastaFile {
   if(! -s $esl_ssplit) { die "ERROR the $esl_ssplit file does not exist or is empty"; }
   if(! -x $esl_ssplit) { die "ERROR the $esl_ssplit file is not executable"; }
 
-  my $cmd = "$esl_ssplit -n $fafile $nfiles > /dev/null";
+  my $outfile = $fafile . ".esl-ssplit";
+  my $cmd = "$esl_ssplit -v -n $fafile $nfiles > /dev/null";
   runCommand($cmd, 0);
+  # parse output to determine exactly how many files were created:
+  open(IN, $outfile) || die "ERROR unable to open $outfile for reading";
+  my $nfiles_created = 0;
+  while($line = <IN>) { # we'll have one line per file created
+    $nfiles_created++;
+  }
+  close(IN);
+  unlink $outfile;
 
-  return;
+  return $nfiles_created;
 }
 
 # Subroutine: wrapperCombineExonsIntoCDS()
