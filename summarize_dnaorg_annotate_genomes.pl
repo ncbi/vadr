@@ -15,23 +15,32 @@ $usage .= " BASIC OPTIONS:\n";
 $usage .= "  -passfail    : only print counts of PF and result values\n";
 $usage .= "  -outkey <s>  : save file with values for each accession for keys matching <s>\n";
 $usage .= "  -outname <s> : name output file <s>\n";
+$usage .= "  -avgfid      : only print average fractional identities\n";
 $usage .= "\n";
 
 # general options:
 my $do_passfail = 0;     # set to '1' if -passfail enabled, only print counts for 'PF' and 'result' values
 my $out_key     = undef; # defined if -outkey used
 my $out_name    = undef; # defined if -outname used
+my $do_avgfid   = 0;     # set to '1' if -avgfid used
 
 &GetOptions("passfail"  => \$do_passfail,
             "outkey=s"  => \$out_key,
-            "outname=s" => \$out_name) ||
+            "outname=s" => \$out_name, 
+            "avgfid"    => \$do_avgfid) ||
     die "Unknown option";
 
 if(scalar(@ARGV) != 1) { die $usage; }
 my ($infile) = (@ARGV);
 
+# check for required option combinations
 if((  defined $out_key) && (! defined $out_name)) { die "ERROR -outname requires -outkey also used"; }
 if((! defined $out_key) && (  defined $out_name)) { die "ERROR -outkey requires -outname also used"; }
+
+# check for incompatible option combinations
+if($do_passfail && $do_avgfid) { 
+  die "ERROR -passfail and -avgfid cannot be used in combination";
+}
 
 if(defined $out_name) { 
   open(OUT, ">", $out_name) || die "ERROR unable to open $out_name for writing"; 
@@ -52,6 +61,11 @@ my $value;
 my @cur_accn_A = ();       # current accessions for this page, cleared when we see a 'result' line
 my %processed_accn_H = (); # key is an accession, value is '1' if we've already processed this accession,
                            # this allows us to not multiple count the reference even though it appears many times in the output
+my %sum_fid_H = ();        # hash, key is 1st dim key from key_ct_HH, value is sum of all fids for this key
+my %ct_fid_H  = ();        # hash, key is 1st dim key from key_ct_HH, value is number of valid fids for this key (will not equal $tot_naccn if any non-predictions exist)
+my %totct_fid_H  = ();     # hash, key is 1st dim key from key_ct_HH, value is number of fids lines (including NP) for this key (should equal $tot_naccn)
+my $tot_naccn = 0;         # total number of processed accessions (each accession is processed only once, even if they're are duplicates, i.e. the ref accn)
+
 open(IN, $infile) || die "ERROR unable to open $infile for writing";
 
 my %skip_value_H = ();
@@ -133,6 +147,16 @@ if($do_seqcol) {
             else { 
               $key_ct_HH{$key}{$value}++;
             }
+            if(($do_avgfid) && (($key =~ m/fid/) || ($key =~ m/avgid/))) { 
+              if($value =~ m/\d*\.\d\d\d/) { 
+                $sum_fid_H{$key} += $value;
+                $ct_fid_H{$key}++;
+              }
+              elsif($value ne "NP") { 
+                die ("ERROR unable to parse fid value $value for key: $key");
+              }
+              $totct_fid_H{$key}++;
+            }
             if($out_match) { 
               print OUT $cur_accn . " " . $value . "\n"; 
             }
@@ -141,7 +165,10 @@ if($do_seqcol) {
         } # end of 'for(my $i = $first_accn; $i < ($first_accn + ($naccn * $ntok_per_accn)); $i++) {'
         if($is_result_line) { # we're done with this page, store all accessions as having been processed
           foreach my $accn (@cur_accn_A) { 
-            $processed_accn_H{$accn} = 1; 
+            if(! exists $processed_accn_H{$accn}) { 
+              $processed_accn_H{$accn} = 1; 
+              $tot_naccn++;
+            }
           }
           @cur_accn_A = (); # move onto next page with blank cur_accn_A
         }
@@ -151,13 +178,25 @@ if($do_seqcol) {
 }
 
 # output summary
-foreach $key (@key_order_A) { 
-  if((! $do_passfail) || ($key =~ m/PF$/) || ($key =~ m/overlaps/) || ($key eq "result")) { 
-    printf("$key\n");
-    foreach $value (@{$value_order_HA{$key}}) { 
-      printf("%-*s %d\n", $wvalue_H{$key}, $value, $key_ct_HH{$key}{$value});
+if(! $do_avgfid) { 
+  foreach $key (@key_order_A) { 
+    if((! $do_passfail) || ($key =~ m/PF$/) || ($key =~ m/overlaps/) || ($key eq "result")) { 
+      printf("$key\n");
+      foreach $value (@{$value_order_HA{$key}}) { 
+        printf("%-*s %d\n", $wvalue_H{$key}, $value, $key_ct_HH{$key}{$value});
+      }
+      printf("\n");
     }
-    printf("\n");
+  }
+}
+elsif($do_avgfid) { 
+  foreach $key (@key_order_A) { 
+    if(($key =~ m/fid/) || ($key =~ m/avgid/)) { 
+      if(! exists $ct_fid_H{$key})         { die "ERROR, no fids counted for $key"; }
+      if($totct_fid_H{$key} != $tot_naccn) { die sprintf("ERROR, read incorrect number of fids for key (%d != %d)\n", $totct_fid_H{$key}, $tot_naccn); }
+      my $avgfid = $sum_fid_H{$key} / $ct_fid_H{$key};
+      printf("%5.3f $key\n", $avgfid);
+    }
   }
 }
 
