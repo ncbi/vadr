@@ -2763,7 +2763,7 @@ sub monocharacterString {
   my $sub_name = "monocharacterString";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
+  
   my ($len, $char) = @_;
 
   my $ret_str = "";
