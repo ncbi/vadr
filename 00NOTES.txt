@@ -680,6 +680,16 @@ TODOs:
 - fix option output as per Alejandro's suggestions, see them above 
   labelled as SUGGESTION and QUESTION in the options above.
 
+- fix CDS/matpept confusion in variable names
+
+- fix 'hmm' name confusion in variable names
+
+- add check for duplicate accessions, possibly in parseLength()
+
+- tidy up findSeqInFile as per AS' suggestions
+
+- add comments about position of '|' in origin seq
+
 #############################################
 # Last updated: EPN, Fri May 29 14:42:39 2015
 #############################################
