@@ -4,7 +4,16 @@
 #
 # Example of running dnaorg_annotate_genomes.pl to annotate viral genomes
 # of species X given a single reference sequence for X.
+# In this context, the meaning of "reference" sequence is that it has
+# all the annotations expected and for circular genomes that position
+# 1 is consistent with the accepted convention about where the origin
+# should be. The overarching objective of dnaorg_annotate_genomes.pl
+# is to compute all information needed to produce annotations and
+# output that information via tables and FASTA files; 
+# 
+# dnaorg_annotate_genomes.pl does not produce an updated GenBank flat file.
 #
+##
 # Regarding line prefixes in this file:
 # '#':  a comment line (text written just for this file).
 # "##": line output from a command
@@ -61,6 +70,12 @@
 # the scripts it calls.
 #
 # The NCBI JIRA tickets VIV-254 and VIV-272 may also be relevant.
+# Both tickets contain sample annotations. VIV-254 is more focused on
+# what bioinformatics problems to solve, the genomics of specific
+# viruses, and discussion of what makes an annotation correct and
+# complete. VIV-272 is about engineering the output of
+# dnaorg_annotate_genomes.pl, so that this output is unambiguously
+# suitable as input to other software tools yet to be written.
 # 
 #######################
 # Prerequisites
@@ -94,8 +109,11 @@ source /panfs/pan1/dnaorg/programs/setup-bio-easel.csh.sh
 #  -nocorrect : do not correct annotations based on internal start/stop codons in predicted exons/CDS
 #  -matpept   : use mat_peptide info instead of CDS info
 #  -oseq <s>  : identify origin sequence <s> in genomes, put | at site of origin, e.g. TAATATT|AC
+QUESTION: Is it permitted that the | is that first or last token of the string?
+QUESTION: Are any types of Perl regular expression permitted as values to -oseq or just strings with nucleotides and a single |? 
 #  -strict    : require matching annotations to match CDS/exon index
 #  -nodup     : do not duplicate each genome to allow identification of features that span stop..start
+QUESTION: What does duplication mean in this context?
 #  -notexon   : do not use exon-specific models
 #  -onlybuild : exit after building reference models
 #  -model <s> : use model file <s>, instead of building one
@@ -104,11 +122,13 @@ source /panfs/pan1/dnaorg/programs/setup-bio-easel.csh.sh
 #  -c         : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)
 #  -nomdlb    : do not add model boundary annotation to output
 #  -noexist   : do not include information on existing annotation
+SUGGESTION: Replace "existing annotation" with "exisiting Genbank annotation" here and elsewhere. For some genomes, Rodney's group does already have other annotations.
 #  -nobrack   : do not include brackets around predicted annotations that do not match existing
 #  -nostop    : do not output stop codon for each predicted CDS
 #  -nofid     : do not output fractional identity relative to reference for each CDS/exon
 #  -noss3     : do not output results of start codon, stop codon and multiple of 3 tests
 #  -noolap    : do not output overlap information
+QUESTION: What is "overlap information in this context"
 #  -noexp     : do not output explanation of column headings
 #
 # OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:
@@ -121,6 +141,7 @@ source /panfs/pan1/dnaorg/programs/setup-bio-easel.csh.sh
 #  -iglocal      : use the -g option with cmsearch for glocal searches
 #  -cslow        : use default cmcalibrate parameters, not parameters optimized for speed
 #  -ccluster     : submit calibration to cluster and exit (requires --onlybuild)
+SUGGESTION: NCBI nomenclature convention is to use "farm" or "compute farm" everywhere you currently have "cluster"
 #  -scluster <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes
 #                  (changeable with -swait) before concatenating all the output files and continuing
 #  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]
@@ -129,7 +150,19 @@ source /panfs/pan1/dnaorg/programs/setup-bio-easel.csh.sh
 #  -skipfetch : use existing cmscan/hmmscan results, don't actually run it
 #  -skipscan  : use existing cmscan/hmmscan results, don't actually run it
 #  -skipaln   : use existing cmscan/hmmscan and alignment results, don't actually run it
+#---------------------
+# Extra notes on these options (not part of output from script):
 #
+# The option -oseq is relevant for circular genomes. The nucleotide
+# immediately to the right of | is deemed to be position 1; the
+# nucleotide immediately to the left of the | is the highest numbered
+# position; there is no position 0.
+# 
+# The conventions for the directory names and file names in which the
+# existing results should be found are given in the Section entitled
+# 'Output files' below.
+# 
+# 
 #################################
 # Example run:
 #
@@ -165,6 +198,18 @@ cat NC_001346.ntlist
 ##HQ693446
 ##HQ693435
 # 
+#
+# In this example, I run all of the three steps consecutively. It can
+# be useful to do STEP 0 and STEP1 in one run and come back later to
+# do STEP2 in a later run. STEP1 depends only on the reference genome
+# that must be the first entry in the input file. Therefore, not only
+# can one do STEP2 seperately, but one can also do STEP2 by itself
+# with multiple different input files that all have the same reference
+# on the first line. Running STEP2 multiple times could be useful for
+# either incremental processing of newly received genomes or parallel
+# processing. A better parallel processing approach is described in
+# the section entitled "Parallelizing the cmscan step with -scluster."
+#
 #---------------------------------------------------
 # STEP 0. Running dnaorg_virus_wrapper.pl: 
 ##
@@ -223,6 +268,15 @@ ls -ltr NC_001346/NC_001346.CDS.tbl
 # information. Of particular relevance is the CDS annotation information
 # for the reference accession (the first accession listed in the .ntlist
 # file: NC_001346).
+#
+#
+# Until further notice "CDS" is used also for "mature peptides" that
+# are cleaved from larger proteins, although the Genbank convention is
+# to distinguish the two quoted terms. Whether they will be
+# distinguished in later versions of this software or only need to be
+# distinguished in downstream software that actually produces text
+# annotations remains to be determined.
+#
 #
 # --------------------------------------------------
 # STEP 1. Run dnaorg_annotate_genomes.pl with the 
@@ -310,6 +364,13 @@ qstat
 # 'qstat' returns nothing it means that the calibration job is finished.
 # 
 # This job takes about 25 minutes to finish.
+#
+# The 25 minutes is the sum of times needed for the 5 models, whereas
+# the estimate above for 1:40 is for the first model only. In this
+# usage the different models are calibrated sequentially. 
+# See the section entitled "Parallelizing the cmscan step with
+# -scluster" for information on parallelizing the cmscan step.
+#
 # You can tell if it successfully finished by the final line of the
 # output file:
 tail -n1 NC_001346/NC_001346.ref.cmcalibrate 
@@ -527,6 +588,52 @@ perl dnaorg_annotate_genomes.pl -skipfetch -model NC_001346/NC_001346.ref.cm NC_
 # NC_001346.gap.pergap-special.txt: list of counts of all 'special'
 #   gaps, organized per gap (each line is a different gap).
 #
+#
+# TODO: add section explaining gap notation!
+#
+##############################################
+# Parallelizing the cmscan step with -scluster
+##############################################
+#
+# The -scluster <n> option allows parallelism of the cmscan step into
+# <n> cluster jobs. From the usage above:
+#
+##  -scluster <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes
+##                  (changeable with -swait) before concatenating all the output files and continuing
+##  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]
+# 
+# If -scluster is used, the script will submit the <n> jobs and wait 
+# up to 3 minutes for all jobs to finish (checking if they are
+# finished every 15 seconds). Once they are finished it will
+# concatenate the results and carry on as usual. The -swait <m> option 
+# can be used to change the maximum wait time to <m> minutes.
+#
+##############################################################
+## Reproducibility and order-dependence of list of accessions
+##############################################################
+# 
+# The results of the script are completely reproducible if the
+# following two criteria are met:
+# 
+# 1) the same reference accession is listed as the first accession
+# 2) none of the accessions have changed annotation, i.e. no versions
+#    have changed for any of the accessions.
+# 
+# I realize (2) is a limitation and a TODO below is to have the
+# script record not just accessions but versions as well, so the user
+# will know when a version has changed.
+#
+# Note that it is the preliminary step of dnaorg_virus_wrapper.pl
+# (STEP 0 in the example run above) that collects data from the NCBI
+# database. If versions of accessions change it will be the output of
+# that step that will change, and subsequently affect the results of
+# dnaorg_annotate_genomes.pl step. 
+#
+# The calibration step includes a simulation that does use randome
+# numbers, but this does not threaten reproducibility because in the
+# present usage, there is a single seed to the randome number
+# generator and the seed is assigned deterministically.
+# 
 ##################################################
 ## Naming convention for sequences in fasta files
 ##################################################
@@ -566,6 +673,12 @@ TODOs:
 
 - with -ccluster allow each calibration to occur separately, so they
   finish faster.
+
+- add version to accessions, and check that they are up-to-date somehow
+  at beginning of run
+
+- fix option output as per Alejandro's suggestions, see them above 
+  labelled as SUGGESTION and QUESTION in the options above.
 
 #############################################
 # Last updated: EPN, Fri May 29 14:42:39 2015
