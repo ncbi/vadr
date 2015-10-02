@@ -33,9 +33,13 @@ $usage .= "  -strict    : require matching annotations to match CDS/exon index\n
 $usage .= "  -nodup     : do not duplicate each genome to allow identification of features that span stop..start\n";
 $usage .= "  -notexon   : do not use exon-specific models\n";
 $usage .= "  -onlybuild : exit after building reference models\n";
+$usage .= "  -skipbuild : skip the build and calibration step because you already did an -onlybuild run\n";
 $usage .= "  -model <s> : use model file <s>, instead of building one\n";
 $usage .= "\n OPTIONS CONTROLLING OUTPUT TABLE:\n";
 $usage .= "  -c         : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)\n";
+$usage .= "  -seqrow    : force sequence-as-rows    output mode (default for <= 5 models)\n";
+$usage .= "  -seqcol    : force sequence-as-columns output mode (default for >  5 models)\n";
+$usage .= "  -nseqcol   : with -seqcol, number of sequences per page of output (default: 10)\n";
 $usage .= "  -nomdlb    : do not add model boundary annotation to output\n";
 $usage .= "  -noexist   : do not include information on existing annotation\n";
 $usage .= "  -nobrack   : do not include brackets around predicted annotations that do not match existing\n";
@@ -51,12 +55,12 @@ $usage .= "  -hmmenv  : use HMM envelope boundaries for predicted annotations, d
 $usage .= "\n OPTIONS SPECIFIC TO INFERNAL:\n";
 $usage .= "  -iglocal      : use the -g option with cmsearch for glocal searches\n";
 $usage .= "  -cslow        : use default cmcalibrate parameters, not parameters optimized for speed\n";
-$usage .= "  -ccluster     : submit calibration to cluster and exit (requires --onlybuild)\n";
+$usage .= "  -ccluster     : submit calibration jobs for each CM to cluster and exit (requires --onlybuild)\n";
 $usage .= "  -scluster <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes\n";
 $usage .= "                  (changeable with -swait) before concatenating all the output files and continuing\n";
 $usage .= "  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]\n";
 $usage .= "\n OPTIONS USEFUL FOR DEVELOPMENT/DEBUGGING:\n";
-$usage .= "  -skipfetch : use existing cmscan/hmmscan results, don't actually run it\n";
+$usage .= "  -skipfetch : don't fetch whole genome sequences, we already have them from a previous run\n";
 $usage .= "  -skipscan  : use existing cmscan/hmmscan results, don't actually run it\n";
 $usage .= "  -skipaln   : use existing cmscan/hmmscan and alignment results, don't actually run it\n";
 
@@ -72,12 +76,12 @@ my $hmmfetch        = $hmmer_exec_dir  . "hmmfetch";
 my $nhmmscan        = $hmmer_exec_dir  . "nhmmscan";
 my $cmbuild         = $inf_exec_dir . "cmbuild";
 my $cmcalibrate     = $inf_exec_dir . "cmcalibrate";
+my $cmfetch         = $inf_exec_dir . "cmfetch";
 my $cmpress         = $inf_exec_dir . "cmpress";
 my $cmscan          = $inf_exec_dir . "cmscan";
 my $cmalign         = $inf_exec_dir . "cmalign";
-my $cmfetch         = $inf_exec_dir . "cmfetch";
 
-foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmpress, $cmscan, $esl_translate, $esl_ssplit) { 
+foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmfetch, $cmpress, $cmscan, $esl_translate, $esl_ssplit) { 
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
@@ -89,9 +93,14 @@ my $do_strict    = 0; # set to '1' if -strict     enabled, matching annotations 
 my $do_nodup     = 0; # set to '1' if -nodup      enabled, do not duplicate each genome, else do 
 my $do_notexon   = 0; # set to '1' if -noexon     enabled, do not use exon-specific models, else do
 my $do_onlybuild = 0; # set to '1' if -onlybuild  enabled, exit after building the model
+my $do_skipbuild = 0; # set to '1' if -skipbuild  enabled, skip the build step
 my $in_model_db  = undef; # defined if -model <s> enabled, use <s> as the model file instead of building one
 # options for controlling output table
 my $do_concise   = 0; # set to '1' if -c       enabled, invoke concise output mode, set's all $do_no* variables below to '1'
+my $do_seqrow    = 0; # set to '1' if -seqrow  enabled, force sequence-as-rows output model
+my $do_seqcol    = 0; # set to '1' if -seqcol  enabled, force sequence-as-cols output model
+my $df_nseqcol   = 10;          # default number of sequences to a page in sequence-as-cols mode
+my $nseqcol      = $df_nseqcol; # changed to <n> if -nseqcol <n> enabled, set number of sequences per page in sequence-as-cols mode to $nseqcol
 my $do_nomdlb    = 0; # set to '1' if -nomdlb  or -c enabled, do not print HMM boundary info for annotations, else do
 my $do_noexist   = 0; # set to '1' if -noexist or -c enabled, do not output information on existing annotations
 my $do_nobrack   = 0; # set to '1' if -nobrack or -c enabled, do not output brackets around predicted annotations that do not match any existing annotation
@@ -124,8 +133,12 @@ my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan a
             "nodup"     => \$do_nodup,
             "notexon"   => \$do_notexon,
             "onlybuild" => \$do_onlybuild,
+            "skipbuild" => \$do_skipbuild,
             "model=s"   => \$in_model_db,
             "c"         => \$do_concise,
+            "seqrow"    => \$do_seqrow,
+            "seqcol"    => \$do_seqcol,
+            "nseqcol=s" => \$nseqcol,
             "nomdlb"    => \$do_nomdlb,
             "noexist"   => \$do_noexist,
             "nobrack"   => \$do_nobrack,
@@ -186,6 +199,10 @@ if($do_onlybuild) {
   $opts_used_short .= "-onlybuild ";
   $opts_used_long  .= "# option:  exit after model construction step [-onlybuild]\n";
 }
+if($do_skipbuild) { 
+  $opts_used_short .= "-skipbuild ";
+  $opts_used_long  .= "# option:  skipping the build step [-skipbuild]\n";
+}
 if(defined $in_model_db) { 
   $opts_used_short .= "-model $in_model_db ";
   $opts_used_long  .= "# option:  use model in $in_model_db instead of building one here [-model]\n";
@@ -193,6 +210,18 @@ if(defined $in_model_db) {
 if($do_concise) { 
   $opts_used_short .= "-c ";
   $opts_used_long  .= "# option:  concise output mode [-c]\n";
+}
+if($do_seqrow) { 
+  $opts_used_short .= "-seqrow ";
+  $opts_used_long  .= "# option:  forcing seqs-as-rows output mode [-seqrow]\n";
+}
+if($do_seqcol) { 
+  $opts_used_short .= "-seqcol ";
+  $opts_used_long  .= "# option:  forcing seqs-as-columns output mode [-seqcol]\n";
+}
+if($nseqcol ne $df_nseqcol) { 
+  $opts_used_short .= "-nseqcol $nseqcol";
+  $opts_used_long  .= "# option:  setting number of sequences per output page to $nseqcol [-nseqcol]\n";
 }
 if($do_nomdlb) { 
   $opts_used_short .= "-nomdlb ";
@@ -244,7 +273,7 @@ if($do_cslow) {
 }
 if($do_ccluster) { 
   $opts_used_short .= "-ccluster ";
-  $opts_used_long  .= "# option:  submit calibration job to cluster [-ccluster]\n";
+  $opts_used_long  .= "# option:  submitting calibration jobs to cluster [-ccluster]\n";
 }
 if(defined $scluster_njobs) { 
   $do_scluster = 1;
@@ -287,6 +316,12 @@ if($do_scluster && ($do_skipaln || $do_skipscan)) {
 if($do_scluster && $do_hmmer) { 
   die "ERROR -scluster and -hmmer are incompatible";
 }
+if($do_onlybuild && $do_skipbuild) { 
+  die "ERROR -onlybuild and -skipbuild are incompatible";
+}
+if($do_onlybuild && (defined $in_model_db)) { 
+  die "ERROR -onlybuild and -model are incompatible";
+}
 
 # check that options that must occur in combination, do
 if($do_ccluster && (! $do_onlybuild)) { 
@@ -294,6 +329,13 @@ if($do_ccluster && (! $do_onlybuild)) {
 }
 if(($scluster_wait != $df_scluster_wait) && (! $do_scluster)) { 
   die "ERROR -swait must be used in combination with -scluster"; 
+}
+if((defined $in_model_db) && (! $do_skipbuild)) {
+  die "ERROR -skipbuild must be used in combination with -model"; 
+}
+# check that options that must occur in combination, do
+if($nseqcol ne $df_nseqcol && (! $do_seqcol)) { 
+  die "ERROR -nseqcol must be used in combination with -seqcol";
 }
 
 # check that input files related to options actually exist
@@ -365,8 +407,6 @@ while(my $accn = <IN>) {
 }
 close(IN); 
 
-my $head_accn = $accn_A[0];
-
 ##################################
 # parse the table and length files
 ##################################
@@ -390,6 +430,9 @@ if($do_matpept) {
 else {
   parseTable($cds_tbl_file, \%cds_tbl_HHA);
 }
+
+# if we're in matpept mode, determine which peptides should be adjacent to each other at 
+# the nucleotide level
 
 #######################
 # variable declarations
@@ -495,6 +538,11 @@ getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $ref_accn, \@ref_cds_len_A, \@ref_c
 getQualifierValues(\%cds_tbl_HHA, $ref_accn, "product", \@ref_cds_product_A);
 $ref_ncds = scalar(@ref_cds_len_A);
 
+## if we're in matpept mode, determine which peptides should be adjacent to each other
+##my %adj2cds_5p_H = (); # key is CDS/peptide index in ref_cds* data structures, value is index of CDS/peptide that is immediately adjacent 5', if any
+##my %adj2cds_3p_H = (); # key is CDS/peptide index in ref_cds* data structures, value is index of CDS/peptide that is immediately adjacent 3', if any
+##matpeptFindAdjacentPeptides(\@ref_cds_coords_A, \%adj2cds_5p_H, \%adj2cds_3p_H);
+
 my $all_stk_file = $out_root . ".ref.all.stk";
 
 ($seconds, $microseconds) = gettimeofday();
@@ -509,6 +557,7 @@ my @hmm2cds_map_A = ();     # [0..h..$nhmm-1]: $i: HMM ($h+1) maps to reference 
 my @hmm2exon_map_A = ();    # [0..h..$nhmm-1]: $e: HMM ($h+1) maps to exon ($e+1) of reference cds $hmm2cds_map_A[$h]+1
 my @hmm_is_first_A = ();    # [0..h..$nhmm-1]: '1' if HMM ($h+1) is the first one for cds $hmm2cds_map_A[$h], else 0
 my @hmm_is_final_A = ();    # [0..h..$nhmm-1]: '1' if HMM ($h+1) is the final one for cds $hmm2cds_map_A[$h], else 0
+my @hmm_is_primary_A = ();  # [0..h..$nhmm-1]: '1' if HMM ($h+1) is for a primary matpept, else 0, only created/used if $do_matpept
 my @cds2first_hmm_A = ();   # [0..$c..ncds-1]: $h, first exon of CDS $c+1 is modeled by HMM $h+1
 my @cds2final_hmm_A = ();   # [0..$c..ncds-1]: $h, final exon of CDS $c+1 is modeled by HMM $h+1
 my @model_A = ();           # [0..$nhmm-1]: array of model HMM names, also name of stockholm alignments used to build those HMMs
@@ -517,6 +566,8 @@ my @cds_out_product_A = (); # [0..$ref_ncds-1]: array of 'CDS:product' qualifier
 my %mdllen_H          = (); # key: model name from @model_A, value is model length
 my @ref_nexons_A      = (); # [0..$c..$ref_ncds-1]: number of exons in CDS $c+1
 my $ref_tot_nexons    = 0;  # total number of exons in all CDS
+my @indi_ref_name_A   = (); # [0..$nhmm-1]: name of individual stockholm alignments and models
+my @indi_cksum_stk_A  = (); # [0..$nhmm-1]: checksum's of each named individual stockholm alignment
 
 # for each reference CDS, fetch each exon (or the full CDS if -notexon enabled)
 for(my $i = 0; $i < $ref_ncds; $i++) { 
@@ -527,6 +578,7 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
   my @stops_A  = ();
   my $nexons   = 0;
   startStopsFromCoords($ref_cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
+  if($do_matpept && $nexons > 1) { die "ERROR multi-exon CDS in matpept mode"; }
   push(@ref_nexons_A, $nexons);
   $ref_tot_nexons += $nexons;
 
@@ -576,11 +628,13 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
     # annotate the stockholm file with a blank SS and with a name
     my $do_blank_ss = (! $do_hmmer); # add a blank SS_cons line if we're using Infernal
     my $cur_named_stkfile = $cur_out_root . ".named.stk";
-    my $mdllen = annotateStockholmAlignment($cur_name_root, $do_blank_ss, $cur_stkfile, $cur_named_stkfile);
+    my ($mdllen, $cksum) = annotateStockholmAlignment($cur_name_root, $do_blank_ss, $cur_stkfile, $cur_named_stkfile);
+    push(@indi_ref_name_A, $cur_name_root);
+    push(@indi_cksum_stk_A, $cksum);
 
     # store information on this model's name for output purposes
     if($e == ($nexons-1)) { 
-      my $short = sprintf("CDS #%d", ($i+1));
+      my $short = ($do_matpept) ? sprintf("MP #%d", ($i+1)) : sprintf("CDS #%d", ($i+1));
       if($act_nexons > 1) { $short .= " [$act_nexons exons; $strand]"; }
       else                { $short .= " [single exon; $strand]"; }
       push(@cds_out_short_A,   $short);
@@ -608,20 +662,94 @@ for(my $i = 0; $i < $ref_ncds; $i++) {
 my $stop_time = ($seconds + ($microseconds / 1000000.));
 printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
+# Now that we know the number of models, 
+# determine the output mode if it was not specified on the cmdline:
+my $df_max_nseqrow = 5;
+if((! $do_seqrow) && (! $do_seqcol)) { 
+  if($nhmm <= $df_max_nseqrow) { 
+    $do_seqrow = 1; 
+  }
+  else { 
+    $do_seqcol = 1;
+  }
+}
+
 ######################
 # HOMOLOGY SEARCH STEP
 ######################
 my $model_db; # model database file, either HMMs or CMs
 
-# first, create the model database, unless it was passed in:
-if(defined $in_model_db) { 
-  $model_db = $in_model_db;
+# first, create the model database, unless we're skipping that step
+if($do_skipbuild) { 
+  if(defined $in_model_db) { 
+    $model_db = $in_model_db;
+    if(! -s $model_db) { die "ERROR: -model used but $in_model_db file does not exist"; }
+  }
+  else { 
+    # -model not used, but we're trying to skip the build step
+    # make sure we already have the CM DB file already (case 1: this will likely be true
+    # if we've run this script with -skipbuild for this dataset >= 1 times already)
+    # or if not (this will likely be true if we've run this script 0 times with 
+    # -skipbuild already), then create that file by concatenating the individually
+    # calibrated model files we created on the previous run of this scrip with
+    # -onlybuild -scluster.
+    $model_db = $out_root . ".ref.cm";
+    if(! -s $model_db) { 
+      # case 2
+      # concatenate the files into a CM DB and run cmpress on it
+      for(my $i = 0; $i < $nhmm; $i++) { 
+        my $indi_model = $out_root . ".ref.$i.cm";
+        if(! -s ($indi_model)) { 
+          die "ERROR: -skipbuild used but model db file $model_db does not exist, nor does individual model $indi_model;\nMake sure you've already run this script with -onlybuild -ccluster on this dataset -- it doesn't seem like you have.";
+        }
+      }
+      my $cat_cmd = "cat $out_root.ref.0.cm > $model_db";
+      runCommand($cat_cmd, 0);
+      for(my $i = 1; $i < $nhmm; $i++) { 
+        $cat_cmd = "cat $out_root.ref.$i.cm >> $model_db";
+        runCommand($cat_cmd, 0);
+      }
+      # remove the binary files, possibly from an earlier cmbuild/cmpress:
+      for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
+        my $file = $out_root . ".cm." . $suffix;
+        if(-e $file) { unlink $file; }
+      }
+      my $cmpress_cmd = "$cmpress $model_db > $model_db.cmpress";
+      # we do have all the models if we get here, so concatenate them and press it
+      printf("%-65s ... ", "# Running cmpress");
+      my $secs_elapsed = runCommand($cmpress_cmd, 0);
+      #printf("\n$cmpress_cmd\n");
+      printf("done. [%.1f seconds]\n", $secs_elapsed);
+    }
+  }
+  # now we know we have the model file, extract the checksum values
+  # and check them against the individual stockholm alignment checksum values
+
+  ($seconds, $microseconds) = gettimeofday();
+  my $cur_start_time = ($seconds + ($microseconds / 1000000.));
+  printf("%-65s ... ", "# Validating CM file was built from correct alignment files");
+  my $cksum_file = $model_db . ".cksum";
+  $cmd = "grep ^CKSUM $model_db | awk '{ print \$2 '} > $cksum_file";
+  runCommand($cmd, 0);
+  open(CKSUM, $cksum_file) || die "ERROR unable to open $cksum_file for reading";
+  my $i = 0;
+  while(my $cksum = <CKSUM>) { 
+    chomp $cksum;
+    if($cksum != $indi_cksum_stk_A[$i]) { 
+      die sprintf("ERROR checksum mismatch for CM %d (CM: %d != alignment: %d)", $i+1, $cksum, $indi_cksum_stk_A[$i]); 
+    }
+    $i++;
+  }
+  close(CKSUM);
+  ($seconds, $microseconds) = gettimeofday();
+  my $cur_stop_time = ($seconds + ($microseconds / 1000000.));
+  printf("done. [%.1f seconds]\n", ($cur_stop_time - $cur_start_time));
 }
 else { 
-  if(! $do_hmmer) { 
-    createCmDb($cmbuild, $cmcalibrate, $cmpress, $nhmm, $do_cslow, $do_ccluster, $all_stk_file, $out_root . ".ref");
+  if(! $do_hmmer) { # use Infernal (default)
+    createCmDb($cmbuild, $cmcalibrate, $cmpress, $cmfetch, $nhmm, $do_cslow, $do_ccluster, $all_stk_file, $out_root . ".ref", \@indi_ref_name_A);
     if($do_onlybuild) { 
-      printf("#\n# Model calibration %s. Exiting.\n", ($do_ccluster) ? "job submitted" : "complete");
+      printf("#\n# Model calibration %s. Exiting.\n", ($do_ccluster) ? "job(s) submitted" : "complete");
       exit 0;
     }
     $model_db = $out_root . ".ref.cm";
@@ -667,7 +795,10 @@ else {
     runCmscan($cmscan, $do_iglocal, ($do_skipscan || $do_skipaln), 0, $model_db, $gnm_fasta_file, $tblout, $stdout);
   }
   else { # we need to split up the genome fasta file and submit a different cmscan job for each fasta file
-    splitFastaFile($esl_ssplit, $gnm_fasta_file, $scluster_njobs);
+    # note we may redefined $scluster_njobs here, splitFastaFile will return actual number of fasta files created, 
+    # which can differ from the requested amount (which is $sncluster_njobs) that we pass in
+    my $nfasta_created = splitFastaFile($esl_ssplit, $gnm_fasta_file, $scluster_njobs);
+    $scluster_njobs = $nfasta_created;
     # now submit a job for each
     printf("%-65s ... ", sprintf("# Submitting %d cmscan jobs", $scluster_njobs));
     for(my $z = 1; $z <= $scluster_njobs; $z++) { 
@@ -730,26 +861,22 @@ my @pred_cds_fafile_A = (); # array of predicted CDS sequence files, filled belo
 wrapperCombineExonsIntoCDS($nhmm, $dir, "predicted", \@model_A, \@hmm2cds_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@pred_cds_fafile_A);
 
 ###########################################################################
-# CORRECT PREDICTIONS
+# CORRECT PREDICTIONS 
 # - look for internal starts and stops and make corrections based on those
 # - combine new exons into new CDS
 ###########################################################################
-($seconds, $microseconds) = gettimeofday();
-my $start_time = ($seconds + ($microseconds / 1000000.));
-printf("%-65s ... ", "# Translating predicted CDS to identify internal starts/stops");
-
 my $source_accn;   # name of CDS sequence that was translated
 my $source_length; # length of CDS sequence that was translated
 my $coords_from;   # start nt coordinate of current translation
 my $coords_to;     # stop nt coordinate of current translation
 my @corr_cds_start_AH = ();  # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
-                         # are number of nucleotides that the prediction of the start coordinate should be corrected
-                         # based on an esl-translate translation of the predicted CDS sequence, values can be negative
-                         # or positive
+                             # are number of nucleotides that the prediction of the start coordinate should be corrected
+                             # based on an esl-translate translation of the predicted CDS sequence, values can be negative
+                             # or positive
 my @corr_cds_stop_AH = ();   # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
-                         # are number of nucleotides that the prediction of the stop coordinate should be corrected
-                         # based on an esl-translate translation of the predicted CDS sequence, values can be negative
-                         # or positive
+                             # are number of nucleotides that the prediction of the stop coordinate should be corrected
+                             # based on an esl-translate translation of the predicted CDS sequence, values can be negative
+                             # or positive
 my @coords_len_AH = ();  # [0..$i..ncds-1], each element is a hash with keys $key as sequence accessions and values 
                          # are lengths of translated protein sequences (in nucleotides corresponding to values in $corr_cds_start_AH
                          # and $corr_cds_stop_AH
@@ -757,12 +884,16 @@ my @did_corr_exon_start_AH = ();  # [0..$i..ref_nexons-1], each element is a has
                                   # are '1' if this exon's start position was corrected
 my @did_corr_exon_stop_AH = ();   # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
                                   # are '1' if this exon's stop position was corrected
-my %c_start_HH = (); # corrected start positions of hits, start with a copy of p_start_HH
-my %c_stop_HH  = ();  # corrected stop positions of hits,  start with a copy of p_stop_HH
+my %c_start_HH = ();        # corrected start positions of hits, start with a copy of p_start_HH
+my %c_stop_HH  = ();        # corrected stop positions of hits,  start with a copy of p_stop_HH
 my %corr_fafile_H = ();     # hash of names of fasta files for corrected exon sequences, keys: model name from @model_A, value: name of file
 my @corr_cds_fafile_A = (); # array of corrected CDS sequence files, filled below
 
-if(! $do_nocorrect) { 
+if((! $do_nocorrect) && (! $do_matpept)) { 
+  ($seconds, $microseconds) = gettimeofday();
+  $start_time = ($seconds + ($microseconds / 1000000.));
+  printf("%-65s ... ", "# Translating predicted CDS to identify internal starts/stops");
+
   # translate predicted CDS sequences using esl-translate to see if any corrections to predictions are necessary
   for(my $c = 0; $c < $ref_ncds; $c++) { 
     # determine first and final HMM for this 
@@ -911,7 +1042,7 @@ if(! $do_nocorrect) {
     } # end of loop over CDS
   } # end of loop over sequences
   ($seconds, $microseconds) = gettimeofday();
-  my $stop_time = ($seconds + ($microseconds / 1000000.));
+  $stop_time = ($seconds + ($microseconds / 1000000.));
   printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
   # fetch corrected hits into new files
@@ -933,7 +1064,7 @@ my @truncprot_AH   = (); # [0..$i..ncds-1], each element is a hash with keys $ke
                            # of number of non-full length protein sequences we have for CDS $i for key $key. Values should
                            # always be '1', more than '1' is an error, and we never create a value of '0'.
 for(my $c = 0; $c < $ref_ncds; $c++) { 
-  my $cur_fafile = ($do_nocorrect) ? $pred_cds_fafile_A[$c] : $corr_cds_fafile_A[$c];
+  my $cur_fafile = ($do_nocorrect || $do_matpept) ? $pred_cds_fafile_A[$c] : $corr_cds_fafile_A[$c];
   # translate into AA sequences
   my $tmp_aa_fafile   = $cur_fafile;
   my $aa_full_fafile  = $cur_fafile;
@@ -967,38 +1098,76 @@ for(my $c = 0; $c < $ref_ncds; $c++) {
 #############################
 if($do_hmmer) { 
   alignHits($hmmalign, $hmmfetch, $model_db, $do_skipaln, \@model_A, \@seq_accn_A, 
-            (($do_nocorrect) ? \%pred_fafile_H : \%corr_fafile_H), 
+            (($do_nocorrect || $do_matpept) ? \%pred_fafile_H : \%corr_fafile_H), 
             \%p_start_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA);
 }
 else { 
   alignHits($cmalign, $cmfetch, $model_db, $do_skipaln, \@model_A, \@seq_accn_A, 
-            (($do_nocorrect) ? \%pred_fafile_H : \%corr_fafile_H), 
+            (($do_nocorrect || $do_matpept) ? \%pred_fafile_H : \%corr_fafile_H), 
             \%p_start_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA);
 }
 
 #########################
 # OUTPUT ANNOTATION TABLE
 #########################
+print "#\n";
 
-if(1) { # output sequences as rows 
-  outputSeqRowHeadings($do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, \@hmm2cds_map_A, \@hmm2exon_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@cds_out_short_A, \@cds_out_product_A);
+my @out_col_header_AA = (); # used only if $do_seqrow
+                            # ref to 2D array of output tokens for column headers
+                            # first dim: [0..4], 0, 1, and 3 are arrays of header tokens, 2 and 4 are dashed lines that are
+my @out_row_header_A  = (); # used only if $do_seqcol
+                            # ref to array of output tokens for column or row headers
+getHeadings($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, 
+            \@hmm2cds_map_A, \@hmm2exon_map_A, \@hmm_is_first_A, \@hmm_is_final_A, \@cds_out_short_A, \@cds_out_product_A,
+            ($do_seqrow) ? (\@out_col_header_AA) : undef,
+            ($do_seqcol) ? (\@out_row_header_A)  : undef);
+
+if($do_seqrow) { # output sequences as rows 
+  for(my $i = 0; $i < 5; $i++) { 
+    print "#";
+    my $ncols = scalar(@{$out_col_header_AA[$i]});
+    for(my $j = 0; $j < $ncols; $j++) { 
+      print $out_col_header_AA[$i][$j];
+    }
+    print "\n";
+  }
 }
-# eventually we may have additional output modes here, not just 1 seq per row
-#
-#######################################################################
-# Pass through all accessions, and output predicted annotation for each
-#######################################################################
-my @ref_ol_AA = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
-my $width;          # width of a field
+
+########################################################################
+# Pass through all accessions, and gather and output annotation for each
+########################################################################
+my @ref_ol_AA     = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
+my @ref_adj_AA    = (); # 2D array that describes the adjacencies in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j are adjacent,
+                        # only used if $do_matpept
+my @ref_prv_adj_A = (); # [0..$h..$nhmm-1]: $i, hmm $i is previous and adjacent to $h, $i and $h are both primary peptides
+my @ref_nxt_adj_A = (); # [0..$h..$nhmm-1]: $i, hmm $i is after    and adjacent to $h, $i and $h are both primary peptides
+my @ref_start_A   = (); # [0..$h..$nhmm-1]: predicted start  for reference for model $h
+my @ref_stop_A    = (); # [0..$h..$nhmm-1]: predicted stop   for reference for model $h
+my @ref_strand_A  = (); # [0..$h..$nhmm-1]: predicted strand for reference for model $h
+my @ref_len_A     = (); # [0..$h..$nhmm-1]: predicted length for reference for model $h
+my $width;              # width of a field
+
+# data structures necessary only for seqs-as-columns output mode (if $do_seqcol) is TRUE
+my @ref_out_A   = (); # array of output fields for the reference accession, used if $do_seqcol
+my @page_accn_A = (); # [0..$cur_pagesize]2D array, each element is an array of output tokens for one accession
+my @page_out_AA = (); # 2D array, [0..$a..$cur_pagesize-1][0..(ntoks-1)] first dimension is of size $cur_pagesize, 
+                      # each element is an array of output tokens for accession $page_accn_A[$a]
+my $cur_pagesize = 0; # current number of accessions we have info for in page_out_AA (size of first dimension in page_out_AA)
+                      # when this hits $nseqcol, we dump the output
+my $npages = 0;       # number of pages output, only used if $do_seqcol
 
 for(my $a = 0; $a < $naccn; $a++) { 
-  my $accn = $accn_A[$a];
-  my $seq_accn = $seq_accn_A[$a];
+  my $accn      = $accn_A[$a];
+  my $seq_accn  = $seq_accn_A[$a];
+  my @cur_out_A = (); # array of current tokens to print
+
   # sanity checks
   if(! exists $totlen_H{$accn}) { die "ERROR accession $accn does not exist in the length file $length_file"; }
   
   # Create the initial portion of the output line, the accession and length
-  printf("%-20s  %6d ", $accn, $totlen_H{$accn});
+  push(@cur_out_A, sprintf("%-5d  ", ($a+1)));
+  push(@cur_out_A, sprintf("%-20s  ", $accn)); 
+  push(@cur_out_A, sprintf("%6d ", $totlen_H{$accn}));
 
   #########################################################
   # Get information on the actual annotation of this genome
@@ -1006,51 +1175,8 @@ for(my $a = 0; $a < $naccn; $a++) {
   my @act_exon_starts_AA = (); # [0..$ncds-1][0..$nexons-1] start positions of actual annotations of exons for this accn, $nexons is CDS specific
   my @act_exon_stops_AA  = (); # [0..$ncds-1][0..$nexons-1] stop  positions of actual annotations of exons for this accn, $nexons is CDS specific
   my $tot_nexons = 0;
-  if(exists ($cds_tbl_HHA{$accn})) { 
-    ($ncds, $npos, $nneg, $nunc, $nbth, $strand_str) = getStrandStats(\%cds_tbl_HHA, $accn);
-    my @cds_len_A = ();
-    my @cds_coords_A = ();
-    my @cds_product_A = ();
-    getLengthStatsAndCoordStrings(\%cds_tbl_HHA, $accn, \@cds_len_A, \@cds_coords_A);
-    getQualifierValues(\%cds_tbl_HHA, $accn, "product", \@cds_product_A);
-    for(my $i = 0; $i < $ncds; $i++) { 
-      # determine start and stop positions of all exons
-      my @starts_A = ();
-      my @stops_A  = ();
-      my $nexons   = 0;
-      @{$act_exon_starts_AA[$i]} = ();
-      @{$act_exon_stops_AA[$i]}  = ();
-      startStopsFromCoords($cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
 
-      my $strand = substr($strand_str, $i, 1);
-      if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
-        @starts_A = reverse @starts_A;          # exons will be in reverse order, b/c we're on the negative strand
-        @stops_A  = reverse @stops_A;           # exons will be in reverse order, b/c we're on the negative strand
-        @{$act_exon_starts_AA[$i]} = @stops_A;  # save stops  to starts array b/c we're on the negative strand
-        @{$act_exon_stops_AA[$i]}  = @starts_A; # save starts to stops  array b/c we're on the negative strand
-      }
-      else { 
-        @{$act_exon_starts_AA[$i]} = @starts_A;
-        @{$act_exon_stops_AA[$i]}  = @stops_A;
-      }
-      $tot_nexons += $nexons;
-    }
-
-    # Debugging print statements:
-    # printf("\n");
-    # printf("$accn\n");
-    # for(my $zz = 0; $zz < scalar(@act_exon_starts_AA); $zz++) { 
-    #  for(my $zzz = 0; $zzz < scalar(@{$act_exon_starts_AA[$zz]}); $zzz++) { 
-    #    printf("act_exon_AA[$zz][$zzz]: $act_exon_starts_AA[$zz][$zzz]  $act_exon_stops_AA[$zz][$zzz]\n");
-    #  }
-    #  printf("\n");
-    #}
-    #printf("\n");
-  }
-  else { 
-    $ncds       = 0;
-    $tot_nexons = 0;
-  }
+  getActualAnnotations($accn, \%cds_tbl_HHA, \@act_exon_starts_AA, \@act_exon_stops_AA, \$tot_nexons, \$ncds);
 
   ############################################################
   # Create the predicted annotation portion of the output line
@@ -1063,44 +1189,30 @@ for(my $a = 0; $a < $naccn; $a++) {
   my $start_codon_char;
   my $stop_codon_char;
   my $multiple_of_3_char;
-  my $ss3_yes_char = ".";
-  my $ss3_no_char  = "!";
+  my $ss3_yes_char    = ".";
+  my $ss3_unsure_char = "?";
+  my $ss3_no_char     = "!";
   my $hit_length;
   my $at_least_one_fail; # set to '1' for each CDS if any of the 'tests' for that CDS fail
   my $pass_fail_char; # "P" or "F"
   my $pass_fail_str;  # string of pass_fail_chars
+  my @cur_name_A   = (); # [0..$h..$nhmm-1]: short name model $h
+  my @cur_start_A  = (); # [0..$h..$nhmm-1]: predicted start  for model $h
+  my @cur_stop_A   = (); # [0..$h..$nhmm-1]: predicted stop   for model $h
+  my @cur_strand_A = (); # [0..$h..$nhmm-1]: predicted strand for model $h
+  my @cur_len_A    = (); # [0..$h..$nhmm-1]: predicted length for model $h
+  my @cur_adj_AA   = (); # [0..$h..$nhmm-1][0..$hp..$nhmm-1]: '1' if $h and $hp predictions are 'adjacent' 
+                         # adjacent means that min distance between any two nt in each prediction is 1
 
-  # data structures we use for checking for overlapping annotation
-  my @ol_name_A   = ();  # [0..$nhmm-1]: name of CDS/exons to print if/when outputting information on overlaps
-  my @ol_start_A  = ();  # [0..$nhmm-1]: start  position of CDS/exon for use when checking for overlaps
-  my @ol_stop_A   = ();  # [0..$nhmm-1]: stop   position of CDS/exon for use when checking for overlaps
-  my @ol_strand_A = ();  # [0..$nhmm-1]: strand position of CDS/exon for use when checking for overlaps
- 
   ###############################################################
-  # create the origin sequence portion of the output line, if nec
-  my $oseq_string = "";
   if(defined $origin_seq) { 
-    my $norigin = (exists $origin_coords_HA{$accn}) ? scalar(@{$origin_coords_HA{$accn}}) : 0;;
-    if($norigin == 1) { 
-      my ($ostart, $ostop) = split(":", $origin_coords_HA{$accn}[0]);
-      my $predicted_offset = ($ostart < 0) ? ($ostart + $origin_offset) : ($ostart + $origin_offset - 1);
-      # $predicted_offset is now number of nts to shift origin in counterclockwise direction
-      if($predicted_offset > ($totlen_H{$accn} / 2)) { # simpler (shorter distance) to move origin clockwise
-        $predicted_offset = ($totlen_H{$accn} - $predicted_offset + 1);
-      }
-      else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
-        $predicted_offset *= -1;
-      }
-      $pass_fail_char = "P";
-      $oseq_string .= sprintf("%2d %5d %5d %5d  %s  ", 1, $ostart, $ostop, $predicted_offset, "P");
-    }
-    else { 
-      $pass_fail_char = "F";
-      $oseq_string .= sprintf("%2d %5s %5s %5s  %s  ", $norigin, "-", "-", "-", "F");
-    }
-    $pass_fail_str .= $pass_fail_char;
+    my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail) = getOseqOutput($accn, $origin_seq, $origin_offset, \%origin_coords_HA);
+    push(@cur_out_A, sprintf("%2d ", $oseq_ct));
+    push(@cur_out_A, sprintf("%5s ", $oseq_start));
+    push(@cur_out_A, sprintf("%5s ", $oseq_stop));
+    push(@cur_out_A, sprintf("%5s ", $oseq_offset));
+    push(@cur_out_A, sprintf(" %s", $oseq_passfail));
   }
-  print $oseq_string;
   ###############################################################
 
   # now the per-exon predictions:
@@ -1111,6 +1223,78 @@ for(my $a = 0; $a < $naccn; $a++) {
   my @cur_model_A = (); # array of all model names of exons in current CDS
   my $cur_nexons  = 0;  # number of exons in current CDS
 
+  # first, get starts, stops and strands for all models, so we can determine
+  # adjacencies if necessary (if $do_matpept)
+  for(my $h = 0; $h < $nhmm; $h++) { 
+    my $model  = $model_A[$h];
+    my ($start, $stop, $strand);
+    if(exists $p_start_HH{$model}{$seq_accn}) { 
+      $start  = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$seq_accn} : $c_start_HH{$model}{$seq_accn};
+      $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
+      $strand = $p_strand_HH{$model}{$seq_accn};
+    }
+    else { 
+      $start  = 0;
+      $stop   = 0;
+      $strand = "?";
+    }
+    push(@cur_name_A,   sprintf "%d.%d", $hmm2cds_map_A[$h]+1, $hmm2exon_map_A[$h]+1);
+    push(@cur_start_A,  $start);
+    push(@cur_stop_A,   $stop);
+    push(@cur_strand_A, $strand);
+    push(@cur_len_A,    (abs($stop-$start) + 1));
+    if($a == 0) { 
+      @ref_start_A  = @cur_start_A;
+      @ref_stop_A   = @cur_stop_A;
+      @ref_strand_A = @cur_strand_A;
+      @ref_len_A    = @cur_len_A;
+    }
+  }
+
+  # check for overlaps
+  my @ol_AA = ();
+  checkForOverlapsOrAdjacencies(0, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@ol_AA); # '0': do overlap not adjacency
+  if($a == 0) { 
+    @ref_ol_AA = @ol_AA; 
+    if($do_matpept) { # determine which models are for primary mature peptides 
+      matpeptFindPrimaryPeptides(\@ref_ol_AA, \@ref_len_A, \@hmm_is_primary_A);
+    }      
+  }
+  # check for adjacencies if necessary
+  if($do_matpept) {
+    # get adjacency information
+    checkForOverlapsOrAdjacencies(1, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_adj_AA);
+    if($a == 0) { 
+      @ref_adj_AA = @cur_adj_AA;
+      # for all primary peptides: we assume there is at most 1 peptide before it that is adjacent 
+      # and at most 1 other peptide after it that is adjacent, determine what those are and 
+      # store them
+      matpeptFindPrimaryAdjacencies(\@ref_adj_AA, \@hmm_is_primary_A, \@ref_prv_adj_A, \@ref_nxt_adj_A);
+    }
+  }
+
+
+
+  # handle 5' UTR, if $do_matpept
+  if($do_matpept) { 
+    if($cur_start_A[0] == 0) { # no annotated first matpept, 
+      push(@cur_out_A, sprintf("  %6s", "?")); # start
+      push(@cur_out_A, sprintf(" %6s", "?"));  # stop
+      push(@cur_out_A, sprintf(" %6s", "?"));  # length
+    }
+    elsif($cur_start_A[0] == 1) { # 1st matpept starts at nt 1!
+      push(@cur_out_A, sprintf("  %6d", 0)); # start 
+      push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+      push(@cur_out_A, sprintf("  %6d", 0)); # length
+    }
+    else { # 1st matpept does not start at nt 1!
+      push(@cur_out_A, sprintf("  %6d", 1)); # start 
+      push(@cur_out_A, sprintf("  %6d", $cur_start_A[0]-1)); # stop 
+      push(@cur_out_A, sprintf("  %6d", $cur_start_A[0]-1)); # length
+    }
+  }    
+
+  # now go through each model and collect output tokens
   for(my $h = 0; $h < $nhmm; $h++) { 
     my $model   = $model_A[$h];
     my $cds_i   = $hmm2cds_map_A[$h];
@@ -1130,11 +1314,14 @@ for(my $a = 0; $a < $naccn; $a++) {
     if(exists $p_start_HH{$model}{$seq_accn}) { 
       my $start_corrected_exon = (exists $did_corr_exon_start_AH[$h]{$accn}) ? 1 : 0;
       my $stop_corrected_exon  = (exists $did_corr_exon_stop_AH[$h]{$accn})  ? 1 : 0;
-      my $start_corrected_cds  = ($corr_cds_start_AH[$hmm2cds_map_A[$h]]{$accn} != 0) ? 1 : 0;
-      my $stop_corrected_cds   = ($corr_cds_stop_AH[$hmm2cds_map_A[$h]]{$accn}  != 0) ? 1 : 0;
-
-      my $start    = ($do_nocorrect) ? $p_start_HH{$model}{$seq_accn} : $c_start_HH{$model}{$seq_accn};
-      my $stop     = ($do_nocorrect) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
+      my $start_corrected_cds = 0; # possibly redefined below
+      my $stop_corrected_cds  = 0; # possibly redefined below
+      if((! $do_nocorrect) && (! $do_matpept)) { 
+        $start_corrected_cds  = ($corr_cds_start_AH[$hmm2cds_map_A[$h]]{$accn} != 0) ? 1 : 0;
+        $stop_corrected_cds   = ($corr_cds_stop_AH[$hmm2cds_map_A[$h]]{$accn}  != 0) ? 1 : 0;
+      }
+      my $start    = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$seq_accn} : $c_start_HH{$model}{$seq_accn};
+      my $stop     = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
       my $hangover = $p_hangover_HH{$model}{$seq_accn};
 
       my ($hang5, $hang3) = split(":", $hangover);
@@ -1167,20 +1354,18 @@ for(my $a = 0; $a < $naccn; $a++) {
 
       # TODO: MODIFY ANNOTATION FOR EXONS WITHOUT CORRECTED STARTS OR STOPS IN CDS WITH
       #       OTHER EXONS THAT HAVE CORRECTED STARTS OR STOPS
-      $predicted_string .= sprintf("%8s %8s",
-                                   ($start_match ? " " . $start . " " : "[" . $start . "]"), 
-                                   ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]"));
+      push(@cur_out_A, sprintf("  %8s ", ($start_match ? " " . $start . " " : "[" . $start . "]")));
+      push(@cur_out_A, sprintf("%8s",  ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]")));
       if(! $do_nofid) { 
-        $predicted_string .= sprintf(" %5.3f",
-                                   $p_fid2ref_HH{$model}{$seq_accn});
+        push(@cur_out_A, sprintf(" %5.3f", $p_fid2ref_HH{$model}{$seq_accn}));
       }
       $tot_fid += $p_fid2ref_HH{$model}{$seq_accn};
       $n_fid++;
 
       if(! $do_nomdlb) { 
-        $predicted_string .= "  " . $hang5 . $hang3;
+        push(@cur_out_A, "  " . $hang5 . $hang3);
       }        
-                                   
+
       if($hmm_is_first_A[$h]) { # determine $start_codon_char
         if($p_strand_HH{$model}{$seq_accn} eq "-") { 
           $start_codon_posn = (($start-2) < 0) ? $start + $totlen_H{$accn} + 1 : $start;
@@ -1189,11 +1374,21 @@ for(my $a = 0; $a < $naccn; $a++) {
           $start_codon_posn = ($start < 0) ? $start + $totlen_H{$accn} + 1 : $start;
         }
         $start_codon = fetchCodon($sqfile, $seq_accn, $start_codon_posn, $p_strand_HH{$model}{$seq_accn});
-        if($start_codon eq "ATG") { 
-          $start_codon_char = $ss3_yes_char;
+        if($do_matpept) { 
+          if($ref_prv_adj_A[$h] != -1) { # in reference, primary mat_peptide $prv_adj_A[$h] is adjacent to this one
+            $start_codon_char = ($cur_adj_AA[$ref_prv_adj_A[$h]][$h]) ? $ss3_yes_char : $ss3_no_char;
+          }
+          elsif($h == 0) { # first mat_peptide, look for start codon
+            $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
+          }
+          else { 
+            $start_codon_char = $ss3_unsure_char; # not adjacent, and not supposed to have an ATG that we know of
+          }
         }
-        else { 
-          $start_codon_char = $ss3_no_char;
+        else { # ! $do_matpept
+          $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
+        }
+        if($start_codon_char eq $ss3_no_char) { 
           $at_least_one_fail = 1;
         }
       }
@@ -1203,31 +1398,41 @@ for(my $a = 0; $a < $naccn; $a++) {
           $stop_codon_posn    = ($stop < 0) ? ($stop + $totlen_H{$accn}) + 1 + 2 : $stop + 2;
         }
         else { 
-          $stop_codon_posn    = (($stop-2) < 0) ? ($stop + $totlen_H{$accn}) + 1 - 2 : $stop - 2;
+          $stop_codon_posn = (($stop-2) < 0) ? ($stop + $totlen_H{$accn}) + 1 - 2 : $stop - 2;
         }
-        $stop_codon         = fetchCodon($sqfile, $seq_accn, $stop_codon_posn, $p_strand_HH{$model}{$seq_accn});
+        $stop_codon = fetchCodon($sqfile, $seq_accn, $stop_codon_posn, $p_strand_HH{$model}{$seq_accn});
 
-        if($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") { 
-          $stop_codon_char = $ss3_yes_char;
+        if($do_matpept) { 
+          if($ref_nxt_adj_A[$h] != -1) { # in reference, primary mat_peptide $nxt_adj_A[$h] is adjacent to this one
+            $stop_codon_char = ($cur_adj_AA[$h][$ref_nxt_adj_A[$h]]) ? $ss3_yes_char : $ss3_no_char;
+          }
+          # TODO: reexamine this, for Dengue, final matpept encoding seq DOES NOT end with a valid stop, so don't enforce it
+          #elsif($h == ($nhmm-1)) { # final mat_peptide, look for stop codon
+          #$stop_codon_char = ($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
+        #}
+          else { 
+            $stop_codon_char = $ss3_unsure_char; # not adjacent, and not supposed to have a stop that we know of
+          }
         }
-        else { 
-          $stop_codon_char = $ss3_no_char;
+        else { # ! $do_matpept
+          $stop_codon_char = ($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
+        }
+        if($stop_codon_char eq $ss3_no_char) { 
           $at_least_one_fail = 1;
         }
-        if(($hit_length % 3) == 0) { 
-          $multiple_of_3_char = $ss3_yes_char;
-        }
-        else { 
-          $multiple_of_3_char = $ss3_no_char;
+
+        $multiple_of_3_char = (($hit_length % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
+        if($multiple_of_3_char eq $ss3_no_char) { 
           $at_least_one_fail = 1;
         }
+
         # append the ss3 (start/stop/multiple of 3 info)
-        $predicted_string .= sprintf(" %6d", $hit_length);
+        push(@cur_out_A, sprintf(" %6d", $hit_length));
         if(! $do_noss3) { 
-          $predicted_string .= sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char);
+          push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
         }
         if(! $do_nostop) { 
-          $predicted_string .= sprintf(" %3s", $stop_codon);
+          push(@cur_out_A, sprintf(" %3s", $stop_codon));
         }
 
         if($at_least_one_fail) { 
@@ -1251,68 +1456,126 @@ for(my $a = 0; $a < $naccn; $a++) {
           ###}
         }
         $pass_fail_char = ($at_least_one_fail) ? "F" : "P";
-        $predicted_string .= sprintf(" %2s", $pass_fail_char);
+        push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
         $pass_fail_str .= $pass_fail_char;
       }
-
-      # save information for overlap check
-      push(@ol_name_A, sprintf "%d.%d", $hmm2cds_map_A[$h]+1, $hmm2exon_map_A[$h]+1);
-      push(@ol_start_A, $start);
-      push(@ol_stop_A,  $stop);
-      push(@ol_strand_A, $p_strand_HH{$model}{$seq_accn});
     }
     else { 
       # printf("no hits for $model $seq_accn\n");
-      if($do_nomdlb) { 
-        $width = ($hmm_is_final_A[$h]) ? 34 : 23;
-        $predicted_string .= sprintf("%*s", $width, "NO PREDICTION");
+      $at_least_one_fail = 1;
+      push(@cur_out_A, sprintf("  %8s ", "NP")); # start position
+      push(@cur_out_A, sprintf("%8s",  "NP"));   # stop position
+      if(! $do_nofid) { 
+        push(@cur_out_A, sprintf(" %5s", "NP")); # fid
+      }        
+      if(! $do_nomdlb) { 
+        push(@cur_out_A, "  NP"); # model boundaries
       }
-      else { 
-        $width = ($hmm_is_final_A[$h]) ? 38 : 27;
-        $predicted_string .= sprintf("%*s", $width, "NO PREDICTION");
+      if($hmm_is_final_A[$h]) { 
+        push(@cur_out_A, sprintf(" %6s", "NP")); # length
+        if(! $do_noss3) { 
+          push(@cur_out_A, "  NP"); # ss3
+        }
+        if(! $do_nostop) { 
+          push(@cur_out_A, sprintf(" %3s", "NP")); # stop
+        }
+        $pass_fail_char = "F";
+        push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
+        $pass_fail_str .= $pass_fail_char;
       }
     }
   }
-  print $predicted_string;
 
-  printf("  %6d", $totlen_H{$accn});
-  printf("  %5.3f", $tot_fid / $n_fid);
+  # handle 3' UTR, if $do_matpept
+  if($do_matpept) { 
+    if($cur_stop_A[($nhmm-1)] == 0) { # no annotated final matpept
+      push(@cur_out_A, sprintf("  %6s", "?")); # start
+      push(@cur_out_A, sprintf(" %6s", "?"));  # stop
+      push(@cur_out_A, sprintf(" %6s", "?"));  # length
+    }
+    elsif($cur_stop_A[($nhmm-1)] == $totlen_H{$accn}) { # final matpept stops at final nt!
+      push(@cur_out_A, sprintf("  %6d", 0)); # start 
+      push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+      push(@cur_out_A, sprintf("  %6d", 0)); # length
+    }
+    else { # final matpept does not stop at final nt
+      push(@cur_out_A, sprintf("  %6d", $cur_stop_A[($nhmm-1)]+1)); # start 
+      push(@cur_out_A, sprintf("  %6d", $totlen_H{$accn})); # stop 
+      push(@cur_out_A, sprintf("  %6d", ($totlen_H{$accn} - ($cur_stop_A[($nhmm-1)]+1) + 1))); # length
+    }
+  }    
+
+  # total length
+  push(@cur_out_A, sprintf("  %6d", $totlen_H{$accn}));
+  push(@cur_out_A, sprintf("  %5.3f", $tot_fid / $n_fid));
 
   # output number of actually annotated CDS and summed total of exons in those CDS, if nec
   if(! $do_noexist) { 
-    printf("  %5d  %5d  %5d", $ncds, $tot_nexons, $nmatch_boundaries);
+    push(@cur_out_A, sprintf("  %5d", $ncds));
+    push(@cur_out_A, sprintf("  %5d", $tot_nexons));
+    push(@cur_out_A, sprintf("  %5d", $nmatch_boundaries));
   }
-
-  # check for overlaps
-  my $overlap_notes;
-  if($a == 0) { 
-    # the reference, determine which overlaps are allowed, we'll fill @allowed_ol_AA in checkForOverlaps
-    ($pass_fail_char, $overlap_notes) = checkForOverlaps(\@ol_name_A, \@ol_start_A, \@ol_stop_A, \@ol_strand_A, undef, \@ref_ol_AA);
-  }
-  else { 
-    # not the reference, we'll determine if this accession 'passes' the overlap test based on whether it's observed
-    # overlaps match those in \@allowed_ol_AA exactly or not
-    ($pass_fail_char, $overlap_notes) = checkForOverlaps(\@ol_name_A, \@ol_start_A, \@ol_stop_A, \@ol_strand_A, \@ref_ol_AA, undef);
-  }
-  $pass_fail_str .= $pass_fail_char;
 
   # output overlap info, if nec
+  my $ol_pass_fail_char;
+  my $overlap_notes = undef;
+  ($ol_pass_fail_char, $overlap_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, \@ref_ol_AA, \@ol_AA);
+  $pass_fail_str .= $ol_pass_fail_char;
   if((! $do_noolap) && ($overlap_notes ne "")) { 
-    printf("  %20s", $overlap_notes);
+    push(@cur_out_A, sprintf("  %20s", $overlap_notes));
   }
+
+  #### check for adjacencies
+  ###my $adjacency_notes; 
+  ###my @adj_AA = (); # 2D array that describes adjacencies in current accession
+  ###if($do_matpept) { # determine adjacencies
+  ###checkForOverlapsOrAdjacencies(1, \@ol_start_A, \@ol_stop_A, \@ol_strand_A, \@adj_AA);
+  ###if($a == 0) { 
+  ###@ref_adj_AA = @ol_AA;
+  ###}
+  ###exit 0;
+  ###($pass_fail_char, $adjacency_notes) = compareOverlapsOrAdjacencies(\@ol_name_A, \@ref_adj_AA, \@adj_AA);
+  ###$pass_fail_str .= $pass_fail_char;
+  ###}
 
   my $result_str = ($pass_fail_str =~ m/F/) ? "FAIL" : "PASS";
   $result_str .= " " . $pass_fail_str;
-  printf("  %s", $result_str);
+  push(@cur_out_A, sprintf("  %s", $result_str));
 
-  print "\n";
+  if($do_seqrow) { 
+    foreach my $el (@cur_out_A) { 
+      print $el;
+    }
+    print "\n";
+  }
+  elsif($do_seqcol) { 
+    if($a == 0) { 
+      # copy reference info if this is the reference
+      @ref_out_A = @cur_out_A; 
+    } 
+    else { 
+      push(@page_out_AA, [@cur_out_A]);
+      $cur_pagesize++;
+    }
+    if(($cur_pagesize+1) == $nseqcol) { 
+      $npages++;
+      outputSeqAsColumnsPage(\@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages);
+      @page_out_AA = ();
+      $cur_pagesize = 0;
+    }
+  }
+}
+# print final page (if non-empty)
+if(($do_seqcol) && ($cur_pagesize > 0)) { 
+  $npages++;
+  outputSeqAsColumnsPage(\@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages);
 }
 
 ##########################
 # OUTPUT EXPLANATORY TEXT 
 ##########################
 if(! $do_noexp) { 
-  printColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
+  outputColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
 }
 
 ###########################
@@ -1847,21 +2110,24 @@ sub createHmmDb {
 # Args:       $cmbuild:          path to 'cmbuild' executable
 #             $cmcalibrate:      path to 'cmcalibrate' executable
 #             $cmpress:          path to 'cmpress' executable
+#             $cmfetch:          path to 'cmfetch' executable
 #             $nmodel:           number of models we're creating/calibrating
 #             $do_calib_slow:    '1' to calibrate using default parameters instead of
 #                                options to make it go much faster
 #             $do_calib_cluster: '1' to submit calibration job to cluster, '0' to do it locally
 #             $stk_file:         stockholm DB file
 #             $out_root:         string for naming output files
+#             $indi_name_AR:     ref to array of individual model names, we only use this if 
+#                                $do_calib_cluster is true.
 #
 # Returns:    void
 #
 sub createCmDb { 
   my $sub_name = "createCmDb()";
-  my $nargs_exp = 8;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($cmbuild, $cmcalibrate, $cmpress, $nmodel, $do_calib_slow, $do_calib_cluster, $stk_file, $out_root) = @_;
+  my ($cmbuild, $cmcalibrate, $cmpress, $cmfetch, $nmodel, $do_calib_slow, $do_calib_cluster, $stk_file, $out_root, $indi_name_AR) = @_;
 
   if(! -s $stk_file)  { die "ERROR in $sub_name, $stk_file file does not exist or is empty"; }
 
@@ -1875,29 +2141,35 @@ sub createCmDb {
   my ($cmcalibrate_opts, $cmcalibrate_cmd);
   my ($cmpress_opts,     $cmpress_cmd);
 
+  # build step:
   $cmbuild_opts = "-F";
   $cmbuild_cmd  = "$cmbuild $cmbuild_opts $out_root.cm $stk_file > $out_root.cmbuild";
-
-  $cmcalibrate_opts = " --cpu 4 ";
-  if(! $do_calib_slow) { $cmcalibrate_opts .= " -L 0.04 "; }
-  $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
-  
-  $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
-
-  # first build the models
   printf("%-65s ... ", sprintf("# Running cmbuild to build %d CMs", $nmodel));
   my $secs_elapsed = runCommand($cmbuild_cmd, 0);
   printf("done. [%.1f seconds]\n", $secs_elapsed);
 
+  # calibration step:
+  $cmcalibrate_opts = " --cpu 4 ";
+  if(! $do_calib_slow) { $cmcalibrate_opts .= " -L 0.04 "; }
+  $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
+  
   if($do_calib_cluster) { 
-    # submit a job to the cluster and exit. 
-    my $out_tail = $out_root;
-    $out_tail =~ s/^.+\///;
-    my $jobname = "cp." . $out_tail;
-    my $errfile = $out_root . ".err";
-    my $cluster_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . ";" . $cmpress_cmd . ";\"\n";
-    # print("$cluster_cmd\n");
-    runCommand($cluster_cmd, 0);
+    # split up model file into individual CM files, then submit a job to calibrate each one, and exit. 
+    for(my $i = 0; $i < $nmodel; $i++) { 
+      my $cmfetch_cmd = "$cmfetch $out_root.cm $indi_name_AR->[$i] > $out_root.$i.cm";
+      runCommand($cmfetch_cmd, 0);
+      my $out_tail    = $out_root;
+      $out_tail       =~ s/^.+\///;
+      my $jobname     = "c." . $out_tail . $i;
+      my $errfile     = $out_root . "." . $i . ".err";
+      $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.$i.cm > $out_root.$i.cmcalibrate";
+      my $cluster_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . "\"\n";
+      # print("$cluster_cmd\n");
+      runCommand($cluster_cmd, 0);
+    }
+    # final step, remove the master CM file, so we can create a new one
+    $cmd = "rm $out_root.cm";
+    runCommand($cmd, 0);
   }
   else { 
     # calibrate the model
@@ -1907,6 +2179,7 @@ sub createCmDb {
     printf("done. [%.1f seconds]\n", $secs_elapsed);
 
     # press the model
+    $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
     printf("%-65s ... ", "# Running cmpress");
     $secs_elapsed = runCommand($cmpress_cmd, 0);
     #printf("\n$cmpress_cmd\n");
@@ -1992,7 +2265,9 @@ sub runCmscan {
 
   my $opts = "";
   if($do_iglocal) { $opts .= "-g "; }
-  $opts .= " --cpu 0 --rfam --tblout $tblout_file --verbose --nohmmonly ";
+  #$opts .= " --cpu 0 --rfam --tblout $tblout_file --verbose --nohmmonly ";
+  # opts: nhmmer F1, F2, F2b, F3 and F3b; Infernal --rfam F4, F4b, F5, and F6
+  $opts .= " --cpu 0 --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 --tblout $tblout_file --verbose --nohmmonly ";
   if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
 
   if(! -s $model_db)   { die "ERROR in $sub_name, $model_db file does not exist or is empty"; }
@@ -2030,7 +2305,9 @@ sub runCmscan {
 #             $in_file:       input stockholm alignment
 #             $out_file:      output stockholm alignment to create
 #
-# Returns:    alignment length
+# Returns:    Two values:
+#             alignment length 
+#             checksum of alignment
 #
 sub annotateStockholmAlignment {
   my $sub_name = "annotateStockholmAlignment";
@@ -2052,7 +2329,7 @@ sub annotateStockholmAlignment {
   $msa->write_msa($out_file);
 
   # printf("done. [$out_file]\n");
-  return $msa->alen;
+  return ($msa->alen, $msa->checksum);
 }
 
 # Subroutine: parseNhmmscanTblout
@@ -2486,7 +2763,7 @@ sub monocharacterString {
   my $sub_name = "monocharacterString";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
+  
   my ($len, $char) = @_;
 
   my $ret_str = "";
@@ -2698,100 +2975,131 @@ sub alignHits {
   return;
 }
 
-# Subroutine: checkForOverlaps()
+# Subroutine: checkForOverlapsOrAdjacencies()
 #
 # Synopsis:   Given refs to three arrays that describe 
-#             a list of hits, check if any of them overlap.
+#             a list of hits, check if any of them overlap or
+#             are adjacent to each other.
 #
-# Args:       $name_AR:         ref to array of short names for each annotation
-#             $start_AR:        ref to array of start positions
-#             $stop_AR:         ref to array of stop positions
-#             $strand_AR:       ref to array of strands
-#             $expected_ol_AAR: ref to 2D array of expected overlaps $expected_ol_AAR->[$i][$j] is '1' if 
-#                               those two exons are expected to overlap, PRE-FILLED, 
-#                               can be undefined
-#             $return_ol_AAR:   ref to 2D array of observed overlaps $observed_ol_AAR->[$i][$j] is '1' if 
-#                               those two exons are observed to overlap here, FILLED HERE,
-#                               can be undefined
+# Args:       $do_adj:         '1' to not check for overlaps but rather check for adjacency
+#                              $j is adjacent to $i if the minimum distance between any nt
+#                              in $i and any nt in $j is exactly 1 nt.
+#             $enforce_strand: '1' to enforce that overlaps or adjacencies are only valid if on same strand
+#             $start_AR:       ref to array of start positions
+#             $stop_AR:        ref to array of stop positions
+#             $strand_AR:      ref to array of strands
+#             $observed_AAR:   ref to 2D array of observed overlaps or adjacencies
+#                              $observed_AAR->[$i][$j] is '1' if 
+#                              those two exons are observed to overlap or be adjacecent
+#                              FILLED HERE
 # 
-# Returns:    Two values:
-#             $pass_fail_char: "P" if overlaps match those in $expected_ol_AAR, else "F"
-#                              if $expected_ol_AAR is undef, always return "P"
-#             $overlap_notes:  string describing the overlaps, empty string ("") if no overlaps.
+# Returns:    void, fills $observed_AAR;
 #
-sub checkForOverlaps {
-  my $sub_name = "checkForOverlaps";
-  my $nargs_exp = 6;
+sub checkForOverlapsOrAdjacencies {
+  my $sub_name = "checkForOverlapsOrAdjacencies";
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($name_AR, $start_AR, $stop_AR, $strand_AR, $expected_ol_AAR, $return_ol_AAR) = @_;
+  my ($do_adj, $start_AR, $stop_AR, $strand_AR, $observed_AAR) = @_;
 
-  my $ret_str = "";
-
-  my @observed_ol_AA = (); # [$i][$j] is '1' if we observe an overlap between $i and $j (or $j and $i), else 0
-
-  my $nhits = scalar(@{$name_AR});
+  my $nhits = scalar(@{$start_AR});
 
   # initialize
   for(my $i = 0; $i < $nhits; $i++) { 
     for(my $j = 0; $j < $nhits; $j++) { 
-      $observed_ol_AA[$i][$j] = 0;
+      $observed_AAR->[$i][$j] = 0;
     }
   }
 
-  my $noverlaps = 0;
+  my $nres_overlap;  # number of nucleotides two exons overlap by
+  my $nres_distance; # distance between two closest nucleotides in two exons
   for(my $i = 0; $i < $nhits; $i++) { 
     my $start_i  = $start_AR->[$i];
     my $stop_i   = $stop_AR->[$i];
-    if($start_i > $stop_i) { 
-      my $tmp  = $start_i;
-      $start_i = $stop_i;
-      $stop_i  = $tmp;
+    my $strand_i = "+";
+    if($start_i > $stop_i) { # swap them
+      my $tmp   = $start_i;
+      $start_i  = $stop_i;
+      $stop_i   = $tmp;
+      $strand_i = "-";
     }
     for(my $j = $i+1; $j < $nhits; $j++) { 
       my $start_j  = $start_AR->[$j];
       my $stop_j   = $stop_AR->[$j];
-      if($start_j > $stop_j) { 
-        my $tmp  = $start_j;
-        $start_j = $stop_j;
-        $stop_j  = $tmp;
+      my $strand_j = "+";
+      if($start_j > $stop_j) { # swap them
+        my $tmp   = $start_j;
+        $start_j  = $stop_j;
+        $stop_j   = $tmp;
+        $strand_j = "-";
       }
-      my $nres_overlap = get_nres_overlap($start_i, $stop_i, $start_j, $stop_j);
-      if($nres_overlap > 0) { 
-        $noverlaps++;
-        $observed_ol_AA[$i][$j] = 1;
-        $observed_ol_AA[$j][$i] = 1;
-        # $ret_str .= sprintf("%s overlaps with %s (%s);", $name_AR->[$i], $name_AR->[$j], ($strand_AR->[$i] eq $strand_AR->[$j]) ? "same strand" : "opposite strands");
-        if($ret_str ne "") { 
-          $ret_str .= " ";
+      my $found_ol_or_adj = 0;
+      if($strand_i eq $strand_j) { 
+        $nres_overlap  = getOverlap ($start_i, $stop_i, $start_j, $stop_j);
+        $nres_distance = getDistance($start_i, $stop_i, $start_j, $stop_j);
+        if(((! $do_adj) && ($nres_overlap > 0)) ||
+           ((  $do_adj) && ($nres_distance == 1))) { 
+          $observed_AAR->[$i][$j] = 1;
+          $observed_AAR->[$j][$i] = 1;
+          # printf("found %s between $i  and $j ($start_i..$stop_i and $start_j..$stop_j)\n", ($do_adj) ? "adjacency" : "overlap");
+          $found_ol_or_adj = 1;
         }
-        $ret_str .= sprintf("%s/%s", $name_AR->[$i], $name_AR->[$j]); 
       }
-      else { # no overlap
-        $observed_ol_AA[$i][$j] = 0;
-        $observed_ol_AA[$j][$i] = 0;
+      if(! $found_ol_or_adj) { # no overlap or adjacency
+        $observed_AAR->[$i][$j] = 0;
+        $observed_AAR->[$j][$i] = 0;
       }
     }
   }
 
-  # check @observed_ol_AA against @{$expected_ol_AAR} and/or
-  # copy @observed_ol_AA to @{$return_ol_AAR}
+  return;
+}
+
+# Subroutine: compareOverlapsOrAdjacencies()
+#
+# Synopsis:   Compare one 2D array describing overlaps or adjacencies
+#             to another.
+#
+# Args:       $name_AR:      ref to array of short names for each annotation
+#             $expected_AAR: ref to 2D array of expected overlaps $expected_ol_AAR->[$i][$j] is '1' if 
+#                            those two exons are expected to overlap or be adjacent, PRE-FILLED
+#             $observed_AAR: ref to 2D array of test overlaps $observed_ol_AAR->[$i][$j] is '1' if 
+#                            those two exons are observed to overlap or be adjacent, PRE-FILLED
+#             
+# Returns:    Two values:
+#             $pass_fail_char: "P" if overlaps/adjacencies match b/t observed and expected, else "F"
+#             $notes:          string describing the overlaps/adjacencies, empty string ("") if no overlaps.
+#
+sub compareOverlapsOrAdjacencies {
+  my $sub_name = "compareOverlapsOrAdjacencies";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($name_AR, $expected_AAR, $observed_AAR) = @_;
+
+  my $size = scalar(@{$name_AR});
+  my $ret_str = "";
+  my $nfound = 0;
+
+  # check @observed_AA against @{$expected_AAR}
   my $pass_fail_char = "P";
-  for(my $i = 0; $i < $nhits; $i++) { 
-    for(my $j = 0; $j < $nhits; $j++) { 
-      if(defined $expected_ol_AAR) { 
-        if($observed_ol_AA[$i][$j] ne $expected_ol_AAR->[$i][$j]) { 
-          $pass_fail_char = "F";
-        }
+  for(my $i = 0; $i < $size; $i++) { 
+    for(my $j = 0; $j < $size; $j++) { 
+      if($observed_AAR->[$i][$j] ne $expected_AAR->[$i][$j]) { 
+        $pass_fail_char = "F";
       }
-      if(defined $return_ol_AAR) {
-        $return_ol_AAR->[$i][$j] = $observed_ol_AA[$i][$j];
+      if($observed_AAR->[$i][$j] && ($i < $j)) { 
+        if($ret_str ne "") { 
+          $ret_str .= ",";
+        }
+        $ret_str .= sprintf("%s/%s", $name_AR->[$i], $name_AR->[$j]); 
+        $nfound++;
       }
     }
   }
 
   if($ret_str ne "") { 
-    $ret_str = $pass_fail_char . " " . $noverlaps . " " . $ret_str;
+    $ret_str = $pass_fail_char . " " . $nfound . " " . $ret_str;
   }
 
   return ($pass_fail_char, $ret_str);
@@ -2834,6 +3142,94 @@ sub get_nres_overlap {
   if($end1 <   $end2) { return ($end1 - $start2 + 1); }  # case 2
   if($end2 <=  $end1) { return ($end2 - $start2 + 1); }  # case 3
   die "Unforeseen case in get_nres_overlap $start1..$end1 and $start2..$end2";
+
+  return; # NOT REACHED
+}
+
+# Subroutine: getOverlap()
+# Args:       $start1: start position of hit 1 (must be <= $end1)
+#             $end1:   end   position of hit 1 (must be >= $end1)
+#             $start2: start position of hit 2 (must be <= $end2)
+#             $end2:   end   position of hit 2 (must be >= $end2)
+#
+# Returns:    Number of nucleotides of overlap between hit1 and hit2,
+#             0 if none
+# Dies:       if $end1 < $start1 or $end2 < $start2.
+
+sub getOverlap {
+  my $sub_name = "getOverlap";
+  my $nargs_exp = 4;
+  if(scalar(@_) != 4) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($start1, $end1, $start2, $end2) = @_; 
+
+  #printf("in $sub_name $start1..$end1 $start2..$end2\n");
+
+  if($start1 > $end1) { die "ERROR in $sub_name start1 > end1 ($start1 > $end1)"; }
+  if($start2 > $end2) { die "ERROR in $sub_name start2 > end2 ($start2 > $end2)"; }
+
+  # Given: $start1 <= $end1 and $start2 <= $end2.
+  
+  # Swap if nec so that $start1 <= $start2.
+  if($start1 > $start2) { 
+    my $tmp;
+    $tmp   = $start1; $start1 = $start2; $start2 = $tmp;
+    $tmp   =   $end1;   $end1 =   $end2;   $end2 = $tmp;
+  }
+  
+  # 3 possible cases:
+  # Case 1. $start1 <=   $end1 <  $start2 <=   $end2  Overlap is 0
+  # Case 2. $start1 <= $start2 <=   $end1 <    $end2  
+  # Case 3. $start1 <= $start2 <=   $end2 <=   $end1
+  if($end1 < $start2) { return 0; }                      # case 1
+  if($end1 <   $end2) { return ($end1 - $start2 + 1); }  # case 2
+  if($end2 <=  $end1) { return ($end2 - $start2 + 1); }  # case 3
+  die "ERROR in $sub_name, unforeseen case in $start1..$end1 and $start2..$end2";
+
+  return; # NOT REACHED
+}
+
+# Subroutine: getDistance()
+# Args:       $start1: start position of hit 1 (must be <= $end1)
+#             $end1:   end   position of hit 1 (must be >= $end1)
+#             $start2: start position of hit 2 (must be <= $end2)
+#             $end2:   end   position of hit 2 (must be >= $end2)
+#
+# Returns:    Distance between closest nucleotides in hit1 and hit2,
+#             where hit1 = start1..end1 and hit2 = start2..end2.
+#             If they overlap, return 0. 
+#
+# Dies:       if $end1 < $start1 or $end2 < $start2.
+
+sub getDistance {
+  my $sub_name = "getDistance";
+  my $nargs_exp = 4;
+  if(scalar(@_) != 4) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($start1, $end1, $start2, $end2) = @_; 
+
+  #printf("in $sub_name $start1..$end1 $start2..$end2\n");
+
+  if($start1 > $end1) { die "ERROR in $sub_name start1 > end1 ($start1 > $end1)"; }
+  if($start2 > $end2) { die "ERROR in $sub_name start2 > end2 ($start2 > $end2)"; }
+
+  # Given: $start1 <= $end1 and $start2 <= $end2.
+  
+  # Swap if nec so that $start1 <= $start2.
+  if($start1 > $start2) { 
+    my $tmp;
+    $tmp   = $start1; $start1 = $start2; $start2 = $tmp;
+    $tmp   =   $end1;   $end1 =   $end2;   $end2 = $tmp;
+  }
+  
+  # 3 possible cases:
+  # Case 1. $start1 <=   $end1 <  $start2 <=   $end2  distance is $start2-$end1
+  # Case 2. $start1 <= $start2 <=   $end1 <    $end2  overlap: return 0
+  # Case 3. $start1 <= $start2 <=   $end2 <=   $end1  overlap: return 0
+  if($end1 < $start2) { return $start2-$end1; } # case 1
+  if($end1 <   $end2) { return 0; }             # case 2
+  if($end2 <=  $end1) { return 0; }             # case 3
+  die "ERROR in $sub_name, unforeseen case in $start1..$end1 and $start2..$end2";
 
   return; # NOT REACHED
 }
@@ -3012,7 +3408,8 @@ sub findSpecialGap {
 #             $fafile:       fasta file to split up
 #             $nfiles:       number of files to split $fafile into
 #
-# Returns:    void
+# Returns:    Number of files actually created (can differ from requested
+#             amount (which is $nfiles)).
 # Dies:       if command fails or there is some other problem
 #
 sub splitFastaFile {
@@ -3025,10 +3422,19 @@ sub splitFastaFile {
   if(! -s $esl_ssplit) { die "ERROR the $esl_ssplit file does not exist or is empty"; }
   if(! -x $esl_ssplit) { die "ERROR the $esl_ssplit file is not executable"; }
 
-  my $cmd = "$esl_ssplit -n $fafile $nfiles > /dev/null";
+  my $outfile = $fafile . ".esl-ssplit";
+  my $cmd = "$esl_ssplit -v -n $fafile $nfiles > $outfile";
   runCommand($cmd, 0);
+  # parse output to determine exactly how many files were created:
+  open(IN, $outfile) || die "ERROR unable to open $outfile for reading";
+  my $nfiles_created = 0;
+  while(my $line = <IN>) { # we'll have one line per file created
+    $nfiles_created++;
+  }
+  close(IN);
+  unlink $outfile;
 
-  return;
+  return $nfiles_created;
 }
 
 # Subroutine: wrapperCombineExonsIntoCDS()
@@ -3318,212 +3724,723 @@ sub parseEslTranslateDefline {
   return;
 }
 
+# Subroutine: matpeptFindAdjacentPeptides()
+#
+# Synopsis:   Find which peptides/CDS are adjacent to each other in the
+#             reference and update %{$adj2cds_5p_H} and %{$adj2cds_3p_H}
+#             with that information.
+#
+# Args:       $ref_cds_coords_AR:    reference to reference coordinates for each CDS/peptide
+#             $adj2cds_5p_HR:        ref to hash: key is index $i of cds in @{$ref_cds_coords_AR} and value
+#                                    is $j: index of cds that it is immediately adjacent to on 5' end,
+#                                    that is final nt of $j is immediately before first nt of $i
+#                                    FILLED HERE
+#             $adj2cds_3p_HR:        ref to hash: key is index $i of cds in @{$ref_cds_coords_AR} and value
+#                                    is $j: index of cds that it is immediately adjacent to on 3' end,
+#                                    that is first nt of $j is immediately after final nt of $i
+#                                    FILLED HERE
+#
+#             If more than one CDS is immediately adjacent to another, we store the one that is longest
+#
+# Returns:    void
+# Dies:       if more than one CDS is immediately adjacent to any other
+#
+sub matpeptFindAdjacentPeptides {
+  my $sub_name = "matpeptFindAdjacentPeptides";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($line, $coords_from_R, $coords_to_R, $source_name_R, $source_coords_R, $source_len_R) = @_;
+
+  my ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame, $source_len);
+
+  # example $line's:
+  #>orf1 source=NC_001346/150-455 coords=1..303 length=101 frame=1  
+  # OR
+  #>orf1 source=NC_001346/2527-1886,1793-1353 coords=87..161 length=25 frame=3  
+  if($line =~ /^\>orf\d+\s+source\=(\S+)\/(\S+)\s+coords\=(\d+)\.\.(\d+)\s+length\=(\d+)\s+frame=(\d+)/) { 
+    ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame) = ($1, $2, $3, $4, $5, $6);
+    # $source_coords = '150-455' or
+    # $source_coords = '2527-1886,1793-1353'
+    my @source_coords_A = split(",", $source_coords);
+    $source_len = 0;
+    foreach my $cur_coords (@source_coords_A) { 
+      if($cur_coords =~ m/^(\-?\d+)\-(\-?\d+)$/) { 
+        my($cur_from, $cur_to) = ($1, $2);
+        $source_len += ($cur_from < $cur_to) ? ($cur_to - $cur_from + 1) : ($cur_from - $cur_to + 1);
+        if(($cur_from < 0) && ($cur_to > 0)) { $source_len--; } # fix off-by-one introduced by negative indexing in sequence position
+        if(($cur_from > 0) && ($cur_to < 0)) { $source_len--; } # fix off-by-one introduced by negative indexing in sequence position
+      }
+      else { 
+        die "ERROR in $sub_name, unable to parse source coordinates in header line: $line";
+      }
+    }
+  }
+  else { 
+    die "ERROR in $sub_name, unable to parse header line: $line";
+  }
+
+  if(defined $coords_from_R)   { $$coords_from_R   = $coords_from; }
+  if(defined $coords_to_R)     { $$coords_to_R     = $coords_to;   }
+  if(defined $source_name_R)   { $$source_name_R   = $source_name; }
+  if(defined $source_coords_R) { $$source_coords_R = $source_coords; }
+  if(defined $source_len_R)    { $$source_len_R    = $source_len;  }
+  return;
+}
+
+# Subroutine: matpeptFindPrimaryPeptides()
+#
+# Synopsis:   Find which peptides/CDS are 'primary'. A peptide is primary
+#             if no other longer peptide overlaps with it.
+#
+# Args:       $ref_ol_AAR:         [0..$i..$nhmm-1][0..$j..$nhmm-1]: 1 if $i and $j overlap, else 0, PRE-FILLED
+#             $ref_len_AR:         [0..$i..$nhmm-1]: length of predicted peptide $i (in nt), PRE-FILLED
+#             $pept_is_primary_AR: [0..$i..$nhmm-1]: '1' if $i is a primary peptide, else 0, FILLED HERE
+#
+# Returns:    void, fills @{$hmm_is_primary_AR}
+#
+sub matpeptFindPrimaryPeptides {
+  my $sub_name = "matpeptFindPrimaryPeptides";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ref_ol_AAR, $ref_len_AR, $pept_is_primary_AR) = @_;
+
+  my $npept = scalar(@{$ref_len_AR});
+  for(my $i = 0; $i < $npept; $i++) {
+    my $is_primary = 1; # until proven otherwise
+    my $ilen = $ref_len_AR->[$i];
+    for(my $j = 0; $j < $npept; $j++) {
+      if($ref_ol_AAR->[$i][$j] && $ref_len_AR->[$j] > $ilen) { 
+        $is_primary = 0;
+      }
+    }
+    $pept_is_primary_AR->[$i] = ($is_primary) ? 1 : 0;
+    # if($pept_is_primary_AR->[$i]) { printf("pept $i is primary!\n"); }
+  }
+
+  return;
+}
+
+# Subroutine: matpeptFindPrimaryAdjacencies()
+#
+# Synopsis:   For each 'primary' peptide $i, find the other primary peptide that is adjacent before it
+#             (and store it in $prv_adj_A[$i]) if any, and find the other primary peptide that is 
+#             adjacent after it (and store it in $nxt_adj_A[$i]), if any. Here $i is before $j if $i < $j
+#             and $i is after $j if $i > $j.
+#
+# Args:       $ref_adj_AAR:        [0..$i..$nhmm-1][0..$j..$nhmm-1]: 1 if $i and $j are adjacent, else 0, PRE-FILLED
+#             $pept_is_primary_AR: [0..$i..$nhmm-1]: '1' if $i is a primary peptide, else 0, PRE-FILLED
+#             $prv_adj_AR:         [0..$i..$nhmm-1]: $j if $j < $i and $i and $j are adjacent and $i and $j are primary peptides, FILLED HERE
+#             $nxt_adj_AR:         [0..$i..$nhmm-1]: $j if $j > $i and $i and $j are adjacent and $i and $j are primary peptides, FILLED HERE
+#
+# Returns:    void, fills @{$prv_adj_AR} and @{$nxt_adj_AR}
+# Dies:       if a primary peptide $i has more than 1 other primary adjacent peptides $j1 and $j2 such that $j1 < $i and $j2 < $i
+#             if a primary peptide $i has more than 1 other primary adjacent peptides $j1 and $j2 such that $j1 > $i and $j2 > $i
+#             both of these cases are expected to not happen
+#
+sub matpeptFindPrimaryAdjacencies {
+  my $sub_name = "matpeptFindPrimaryAdjacencies";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ref_adj_AAR, $pept_is_primary_AR, $prv_adj_AR, $nxt_adj_AR) = @_;
+
+  my $npept = scalar(@{$pept_is_primary_AR});
+  my ($i, $j);
+  for($i = 0; $i < $npept; $i++) {
+    $prv_adj_AR->[$i] = -1;
+    $nxt_adj_AR->[$i] = -1;
+    if($pept_is_primary_AR->[$i]) { 
+      # look for previous peptide
+      for($j = 0; $j < $i; $j++) { 
+        if($pept_is_primary_AR->[$j] && $ref_adj_AAR->[$i][$j]) { 
+          if($prv_adj_AR->[$i] != -1) { 
+            die sprintf("ERROR in $sub_name, found two primary peptides %d and %d which are prior to and adjacent to primary peptide %d\n", 
+                        $prv_adj_AR->[$i], $j, $i);
+          }
+          $prv_adj_AR->[$i] = $j;
+          # printf("set prv_adj_AR->[$i] to $j\n");
+        }
+      }
+      # look for next peptide
+      for($j = $i+1; $j < $npept; $j++) { 
+        if($pept_is_primary_AR->[$j] && $ref_adj_AAR->[$i][$j]) { 
+          if($nxt_adj_AR->[$i] != -1) { 
+            die sprintf("ERROR in $sub_name, found two primary peptides %d and %d which are after than and adjacent to primary peptide %d\n", 
+                        $nxt_adj_AR->[$i], $j, $i);
+          }
+          $nxt_adj_AR->[$i] = $j;
+          # printf("set nxt_adj_AR->[$i] to $j\n");
+        }
+      }
+    }
+  }
+
+  return;
+}
+
+
 ######################
 # OUTPUT subroutines #
 ######################
 #
-# Subroutine: outputSeqRowHeadings()
+# Subroutine: getHeadings()
 #
 # Synopsis:   For 'sequences are rows' tabular output, output the headings.
 #
-# Args:       $do_nofid:           '1' if we're not printing fractional ids, else '0'
+# Args:       $do_seqrow:          '1' if we're outputting in sequence-as-rows mode
+#             $do_seqcol:          '1' if we're outputting in sequence-as-columns mode
+#             $do_matpept:         '1' if we're in matpept mode
+#             $do_nofid:           '1' if we're not printing fractional ids, else '0'
 #             $do_mdlb:            '1' if we're not printing model boundaries, else '0'
 #             $do_noss3:           '1' if we're not printing SS3 columns, else '0'
 #             $do_nostop:          '1' if we're not printing Stop codons, else '0'
 #             $origin_seq:         origin sequence, or undef if ! defined
 #             $ref_tot_nexons:     number of total exons in reference
 #             $nhmm:               number of total HMMs
-#             $hmm2cds_map_AR:     ref to @hmm2cds_map array
-#             $hmm2exon_map_AR:    ref to @hmm2exon_map array
-#             $hmm_is_final_AR:    ref to @hmm_is_final_A
-#             $hmm_is_first_AR:    ref to @hmm_is_first_A
-#             $cds_out_short_AR:   ref to @cds_out_short_A
-#             $cds_out_product_AR: ref to @cds_out_short_A
-#
-sub outputSeqRowHeadings {
-  my $sub_name = "outputSeqRowHeadings";
-  my $nargs_exp = 13;
+#             $hmm2cds_map_AR:     ref to @hmm2cds_map array, already filled
+#             $hmm2exon_map_AR:    ref to @hmm2exon_map array, already filled
+#             $hmm_is_final_AR:    ref to @hmm_is_final_A, already filled
+#             $hmm_is_first_AR:    ref to @hmm_is_first_A, already filled
+#             $cds_out_short_AR:   ref to @cds_out_short_A, already filled
+#             $cds_out_product_AR: ref to @cds_out_product_A, already filled
+#             $out_col_header_AAR: ref to 2D array of column headers, filled here
+#                                  undef unless $do_seqrow is '1'
+#             $out_row_header_AR:  ref to 1D array of row headers, filled here
+#                                  undef unless $do_seqcol is '1'
+sub getHeadings {
+  my $sub_name = "getHeadings";
+  my $nargs_exp = 18;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($do_nofid, $do_mdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, $hmm2cds_map_AR, $hmm2exon_map_AR, $hmm_is_first_AR, $hmm_is_final_AR, $cds_out_short_AR, $cds_out_product_AR) = @_;
+  my ($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nhmm, $hmm2cds_map_AR, $hmm2exon_map_AR, $hmm_is_first_AR, $hmm_is_final_AR, $cds_out_short_AR, $cds_out_product_AR, $out_col_header_AAR, $out_row_header_AR) = @_;
+
+  # contract checks
+  if($do_seqrow     &&    $do_seqcol)  { die "ERROR in $sub_name, both $do_seqrow and $do_seqcol are '1'"; }
+  if((! $do_seqrow) && (! $do_seqcol)) { die "ERROR in $sub_name, neither $do_seqrow nor $do_seqcol are '1'"; }
+  if($do_seqrow && (! defined $out_col_header_AAR)) { die "ERROR in $sub_name, $do_seqrow is '1' but out_col_header_AAR is undefined"; }
+  if($do_seqrow && defined $out_row_header_AR)      { die "ERROR in $sub_name, $do_seqrow is '1' but out_row_header_AR is defined"; }
+  if($do_seqcol && (! defined $out_row_header_AR))  { die "ERROR in $sub_name, $do_seqcol is '1' but out_row_header_AR is undefined"; }
+  if($do_seqcol && defined $out_col_header_AAR)     { die "ERROR in $sub_name, $do_seqcol is '1' but out_col_header_AAR is defined"; }
 
   my $width;  # width of a field
   my $pad;    # string of all spaces used for pretty formatting
   my $width_result = 5 + $ref_tot_nexons + 2;
+  my $row_div_char = ":";
 
-  # line 1 of column headers
-  printf("%-20s  %6s", "#", "");
+## If $do_seqrow: 
+## We store the column headers in a 2D array @{$out_col_header_AAR}
+## The first dimension is of size 5, one array for each 'line' of
+## output in the sequence-per-row output format. The 2nd dimension
+## arrays are different sizes because at higher levels single
+## columns can pertain to multiple columns at lower levels, for
+## example, "origin sequence" at level 2 pertains to all of "#", 
+## "start", "stop", "offst", and "PF" at level 4. When we output
+## the headings we don't have to know the relationship between
+## the levels, we simply format them to the proper width and
+## print them.
+##
+## Example of sequence-per-row output:
+#                                                                      CDS #1 [single exon; +]                          CDS #2 [2 exons; -]                                        
+#                                          origin sequence                 movement protein                        replication-associated protein                                        existing annotation
+#                                   ----------------------  ---------------------------------------------  --------------------------------------------------------------------------    -------------------                   
+# idx accession           totlen  # start  stop offst PF    start1    stop1  fid1 md1 length SS3 stp PF    start1    stop1  fid1 md1   start2    stop2  fid2 md2 length SS3 stp PF     cds   exons  match             overlaps?  result      
+#---- -------------------  ------ -- ----- ----- ----- --  -------- -------- ----- --- ------ --- --- --  -------- -------- ----- ---   ------    ------ ---- --- ------ --- --- --     ----- -----  -----   -------------------  ------------
+#
+#
+## If $do_seqrow: 
+##  We store the row headers in a 1D array @{$out_row_header_AR}.
+##  We have the same values as in the column headers, but each
+##  level is concatenated together per row. Here's the row header
+##  information that pertains to the example column header example
+##  above.
+#
+#  idx
+#  accession
+#  totlen
+#  origin sequence:#
+#  origin sequence:start
+#  origin sequence:stop
+#  origin sequence:offst
+#  origin sequence:PF
+#  CDS #1 [single exon; +]:movement protein:start1
+#  CDS #1 [single exon; +]:movement protein:stop1
+#  CDS #1 [single exon; +]:movement protein:fid1
+#  CDS #1 [single exon; +]:movement protein:md1
+#  CDS #1 [single exon; +]:movement protein:length
+#  CDS #1 [single exon; +]:movement protein:SS3
+#  CDS #1 [single exon; +]:movement protein:stp
+#  CDS #1 [single exon; +]:movement protein:PF
+#  CDS #2 [2 exons; -]:replication associated protein:start1
+#  CDS #2 [2 exons; -]:replication associated protein:stop1
+#  CDS #2 [2 exons; -]:replication associated protein:fid1
+#  CDS #2 [2 exons; -]:replication associated protein:md1
+#  CDS #2 [2 exons; -]:replication associated protein:start2
+#  CDS #2 [2 exons; -]:replication associated protein:stop2
+#  CDS #2 [2 exons; -]:replication associated protein:fid2
+#  CDS #2 [2 exons; -]:replication associated protein:md2
+#  CDS #2 [2 exons; -]:replication associated protein:length
+#  CDS #2 [2 exons; -]:replication associated protein:SS3
+#  CDS #2 [2 exons; -]:replication associated protein:stp
+#  CDS #2 [2 exons; -]:replication associated protein:PF
+#  existing annotation:cds
+#  existing annotation:exons
+#  existing annotation:match
+#  overlaps?
+#  result
+
+  my $tok1; # first  level token (line 1 of column headers) 
+  my $tok2; # second level token (line 2 of column headers) 
+  my $tok3; # third  level token (line 3 of column headers) 
+  my $tok4; # fourth level token (line 4 of column headers) 
+  my $tok5; # fifth  level token (line 5 of column headers) 
+
+  # column/row #2: 'idx'
+  $tok1 = sprintf("%-4s  ", "");
+  $tok2 = $tok1;
+  $tok3 = $tok1;
+  $tok4 = sprintf("%-4s  ", " idx");
+  $tok5 = sprintf("%-4s  ", "----");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  # column/row #2: 'accession'
+  $tok1 = sprintf("%-19s  ", "");
+  $tok2 = $tok1;
+  $tok3 = $tok1;
+  $tok4 = sprintf("%-19s  ", " accession");
+  $tok5 = sprintf("%-19s  ", "-------------------");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  # column/row #3: 'totlen'
+  $tok1 = sprintf("%-6s", "");
+  $tok2 = $tok1;
+  $tok3 = $tok1;
+  $tok4 = sprintf("%-6s", "totlen");
+  $tok5 = sprintf("%-6s", "------");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
   if(defined $origin_seq) { 
-    printf("  %22s", "");
+    # column/row #4: 'origin sequence:#'
+    $tok1 = sprintf("  %22s", "");
+    $tok2 = sprintf("  %22s", "   origin sequence");
+    $tok3 = sprintf("  %22s", "----------------------");
+    $tok4 = sprintf(" %2s", " #");
+    $tok5 = sprintf(" %2s", "--");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    # column/row #5: 'origin sequence:start'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "start");
+    $tok5 = sprintf(" %5s", "-----");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+
+    # column/row #6: 'origin sequence:stop'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "stop");
+    $tok5 = sprintf(" %5s", "-----");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    # column/row #7: 'origin sequence:offst'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "offst");
+    $tok5 = sprintf(" %5s", "-----");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    # column/row #7: 'origin sequence:PF'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %2s", "PF");
+    $tok5 = sprintf(" %2s", "--");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+  } # end of 'if(defined $orig_seq)'
+
+  # create columns for 5'UTR, if $do_matpept:
+  if($do_matpept) { 
+    $width = 6 + 1 + 6 + 1 + 6; #20
+    $tok1 = sprintf("  %*s", $width, "");
+    $tok2 = sprintf("         %*s", $width, "5' UTR");
+    $tok3 = sprintf("  %*s", $width, monocharacterString($width, "-"));
+    $tok4 = sprintf("  %6s", "start");
+    $tok5 = sprintf("  ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    $tok4 = sprintf(" %6s", "stop");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    $tok4 = sprintf(" %6s", "length");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
   }
-  # for each CDS, output the topmost column header
+
+  # create columns for CDS
   $width = 0;
   for(my $h = 0; $h < $nhmm; $h++) { 
     $width += 18;
     my $cds_i = $hmm2cds_map_AR->[$h];
-    if(! $do_nofid)  { $width += 6; }
-    if(! $do_nomdlb) { $width += 4; }
-    if($hmm_is_final_AR->[$h]) { 
-      $width += 7;
-      if(! $do_noss3)  { $width += 4; }
-      if(! $do_nostop) { $width += 4; }
-      printf("    %*s", $width, $cds_out_short_AR->[$cds_i] . monocharacterString(($width-length($cds_out_short_AR->[$cds_i]))/2, " "));
-      $width = 0;
-    }
-  }
-  printf("  %6s", "");
-  printf("  %5s", "");
-  if(! $do_noexist) { 
-    printf("    %19s", "");
-  }
-  printf("  %*s", $width_result, "");
-  printf("\n");
-  
-  # line 2 of column headers
-  printf("%-20s  %6s", "#", "");
-  if(defined $origin_seq) { 
-    printf("  %22s", "   origin sequence");
-  }
-  # for each CDS, output the second column header
-  $width = 0;
-  for(my $h = 0; $h < $nhmm; $h++) { 
-    $pad = "";
-    $width += 18;
-    my $cds_i = $hmm2cds_map_AR->[$h];
-    if(! $do_nofid)  { $width += 6; }
-    if(! $do_nomdlb) { $width += 4; }
-    if($hmm_is_final_AR->[$h]) { 
-      $width += 7;
-      if(! $do_noss3)  { $width += 4; }
-      if(! $do_nostop) { $width += 4; }
-      printf("    %*s", $width, substr($cds_out_product_AR->[$cds_i], 0, $width) . monocharacterString(($width-length($cds_out_product_AR->[$cds_i]))/2, " "));
-      $width = 0;
-    }
-    else { 
-      $width += 2;
-    }
-  }
-  printf("  %6s", "");
-  printf("  %5s", "");
-  if(! $do_noexist) { 
-    printf(" %19s", "existing annotation");
-  }
-  printf("  %*s", $width_result, "");
-  printf("\n");
-  
-  # line 3 of column headers 
-  printf("%-20s  %6s", "#", "");
-  if(defined $origin_seq) { 
-    printf("  %22s", "----------------------");
-  }
-  $width = 0;
-  for(my $h = 0; $h < $nhmm; $h++) { 
-    $width += 18;
     if(! $do_nofid)  { $width += 6; }
     if(! $do_nomdlb) { $width += 4; }
     if($hmm_is_final_AR->[$h]) { 
       $width += 9;
       if(! $do_noss3)  { $width += 4; }
       if(! $do_nostop) { $width += 4; }
-      printf("  %s", monocharacterString($width, "-"));
-      $width = 0;
+      $tok1 = sprintf("  %*s", $width, $cds_out_short_AR->[$cds_i] . monocharacterString(($width-length($cds_out_short_AR->[$cds_i]))/2, " "));
+      $tok2 = sprintf("  %*s", $width, substr($cds_out_product_AR->[$cds_i], 0, $width) . monocharacterString(($width-length($cds_out_product_AR->[$cds_i]))/2, " "));
+      $tok3 = sprintf("  %s", monocharacterString($width, "-"));
+      $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $hmm2exon_map_AR->[$h]+1));
+      $tok5 = sprintf("  %8s", "--------");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      $width = 0; # reset width, this is impt
     }
-    else { 
+    else { # not the final exon, still need start coordinate
       $width += 1;
+      $tok1 = sprintf("    %s", $cds_out_short_AR->[$cds_i]);   # used only for getHeadingsSeqColHelper
+      $tok2 = sprintf("    %s", $cds_out_product_AR->[$cds_i]); # used only for getHeadingsSeqColHelper
+      $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $hmm2exon_map_AR->[$h]+1));
+      $tok5 = sprintf("  %8s", "--------");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
-  }
-#    printf("  %6s  %-*s", "", $width_result, "");
-  printf("  %6s", "");
-  printf("  %5s", "");
-  if(! $do_noexist) { 
-    printf("  %19s", "-------------------");
-  }
-  printf("  %-*s", $width_result, "");
-  printf("\n");
-  
-  # line 4 of column headers
-  printf("%-20s  %6s", "# accession", "totlen");
-  if(defined $origin_seq) {
-    printf(" %2s %5s %5s %5s %2s", " #", "start", "stop", "offst", "PF");
-  }
-  for(my $h = 0; $h < $nhmm; $h++) { 
-    printf("  %8s %8s", 
-           sprintf("%s%s", "start", $hmm2exon_map_AR->[$h]+1), 
-           sprintf("%s%s", "stop",  $hmm2exon_map_AR->[$h]+1));
+
+    # stop, fid, and md rows take place for all exons
+    # only token 4 changes
+    $tok4 = sprintf(" %8s", sprintf("%s%s", "stop", $hmm2exon_map_AR->[$h]+1));
+    $tok5 = sprintf(" %8s", "--------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+    
     if(! $do_nofid) { 
-      printf(" %5s", sprintf("%s%s", "fid", $hmm2exon_map_AR->[$h]+1));
+      $tok4 = sprintf(" %5s", sprintf("%s%s", "fid", $hmm2exon_map_AR->[$h]+1));
+      $tok5 = sprintf(" %5s", "-----");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
+    
     if(! $do_nomdlb) { 
-      printf(" %3s", sprintf("%s%s", "md", $hmm2exon_map_AR->[$h]+1));
+      $tok4 = sprintf(" %3s", sprintf("%s%s", "md", $hmm2exon_map_AR->[$h]+1));
+      $tok5 = sprintf(" %3s", "---");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
+
     if($hmm_is_final_AR->[$h]) { 
-      printf(" %6s", "length");
+      $tok4 = sprintf(" %6s", "length");
+      $tok5 = sprintf(" %6s", "------");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      
       if(! $do_noss3) { 
-        printf(" %3s", "SS3");
+        $tok4 = sprintf(" %3s", "ss3");
+        $tok5 = sprintf(" %3s", "---");
+        if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       }
+      
       if(! $do_nostop) { 
-        printf(" %3s", "stp");
+        $tok4 = sprintf(" %3s", "stp");
+        $tok5 = sprintf(" %3s", "---");
+        if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       }
-      printf(" %2s", "PF");
+      
+      $tok4 = sprintf(" %2s", "PF");
+      $tok5 = sprintf(" %2s", "--");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
   }
-  printf("  %6s", "totlen");
-  printf("  %5s", "avgid");    
-  if(! $do_noexist) { 
-    printf("  %5s  %5s  %5s", "cds", "exons", "match");
+
+  # create columns for 3'UTR, if $do_matpept:
+  if($do_matpept) { 
+    $width = 6 + 1 + 6 + 1 + 6; #20
+    $tok1 = sprintf("  %*s", $width, "");
+    $tok2 = sprintf("         %*s", $width, "3' UTR");
+    $tok3 = sprintf("  %*s", $width, monocharacterString($width, "-"));
+    $tok4 = sprintf("  %6s", "start");
+    $tok5 = sprintf("  ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    $tok4 = sprintf(" %6s", "stop");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+    $tok4 = sprintf(" %6s", "length");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
   }
-  if(! $do_noolap) { 
-    printf("  %20s", " overlaps?");
-  }
-  
-  printf("  %-*s", $width_result, "result");
-  print "\n";
-  
-  # line 5 of column headers
-  printf("%-20s  %6s", "#-------------------", "------");
-  if(defined $origin_seq) {
-    printf(" %2s %5s %5s %5s %2s", "--", "-----", "-----", "-----", "--");
-  }
-  for(my $h = 0; $h < $nhmm; $h++) { 
-    printf("  %8s %8s", "--------", "--------");
-    if(! $do_nofid) { 
-      printf(" %5s", "-----");
-    }
-    if(! $do_nomdlb) { 
-      printf(" %3s", "---");
-    }
-    if($hmm_is_final_AR->[$h]) { 
-      printf(" %6s", "------");
-      if(! $do_noss3) { 
-        printf(" %3s", "---");
-      }
-      if(! $do_nostop) { 
-        printf(" %3s", "---");
-      }
-      printf(" --");
-    }
-  }
-  printf("  %6s", "------");
-  printf("  %5s", "-----");
-  
-  if(! $do_noexist) { 
-    printf("  %5s  %5s  %5s", "-----", "-----", "-----");
-  }
-  if(! $do_noolap) { 
-    printf("  %20s", monocharacterString(20, "-"));
-  }
-  printf("  %-*s", $width_result, monocharacterString($width_result, "-"));
-  
-  print "\n";
+
+  # "totlen"
+  $tok1 = sprintf("  %6s", "");
+  $tok2 = sprintf("  %6s", "");
+  $tok3 = sprintf("  %6s", "");
+  $tok4 = sprintf("  %6s", "totlen");
+  $tok5 = sprintf("  %6s", "------");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  # "avgid"
+  # existing annotation
+  $tok1 = sprintf("  %5s", "");
+  $tok2 = sprintf("  %5s", "");
+  $tok3 = sprintf("  %5s", "");
+  $tok4 = sprintf("  %5s", "avgid");
+  $tok5 = sprintf("  %5s", "-----");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  # existing annotation
+  $tok1 = sprintf("  %19s", "");
+  $tok2 = sprintf("  %19s", "existing annotation");
+  $tok3 = sprintf("  %19s", "-------------------");
+  $tok4 = sprintf("  %5s", "cds");
+  $tok5 = sprintf("  %5s", "-----");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+  $tok4 = sprintf("  %5s", "exons");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+  $tok4 = sprintf("  %5s", "match");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+
+  # overlaps?
+  $tok1 = sprintf("  %20s", "");
+  $tok2 = sprintf("  %20s", "");
+  $tok3 = sprintf("  %20s", "");
+  $tok4 = sprintf("  %20s", " overlaps?");
+  $tok5 = sprintf("  %20s", "--------------------");
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  # result
+  $tok1 = sprintf("  %*s",  $width_result, "");
+  $tok2 = sprintf("  %*s",  $width_result, "");
+  $tok3 = sprintf("  %*s",  $width_result, "");
+  $tok4 = sprintf("  %-*s", $width_result, "result");
+  $tok5 = sprintf("  %-*s", $width_result, monocharacterString($width_result, "-"));
+  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  return;
 }
 
-# Subroutine: printColumnHeaderExplanations()
-# Args:       $do_oseq: '1' if -oseq was enabled
+#
+# Subroutine: getHeadingsSeqRowHelper()
+#
+# Synopsis:   Helper function for getHeadings() when used in sequences-as-rows mode.
+#             Given up to 5 tokens, add them to the appropriate place in @{$out_col_header_AAR}.
+#
+# Args:       $out_col_header_AAR:  ref to output column header 2D array
+#             $tok1:                token 1, can be undef
+#             $tok2:                token 2, can be undef
+#             $tok3:                token 3, can be undef
+#             $tok4:                token 4, can be undef
+#             $tok5:                token 5, can be undef
+#
+sub getHeadingsSeqRowHelper { 
+  my $sub_name = "getHeadingsSeqRowHelper";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_col_header_AAR, $tok1, $tok2, $tok3, $tok4, $tok5) = @_;
+
+  if(defined $tok1) { push(@{$out_col_header_AAR->[0]}, $tok1); }
+  if(defined $tok2) { push(@{$out_col_header_AAR->[1]}, $tok2); }
+  if(defined $tok3) { push(@{$out_col_header_AAR->[2]}, $tok3); }
+  if(defined $tok4) { push(@{$out_col_header_AAR->[3]}, $tok4); }
+  if(defined $tok5) { push(@{$out_col_header_AAR->[4]}, $tok5); }
+  
+  return;
+}
+
+#
+# Subroutine: getHeadingsSeqColHelper()
+#
+# Synopsis:   Helper function for getHeadings() when used in sequences-as-columns mode.
+#             Given up to 5 tokens, add them to the appropriate place in @{$out_row_header_AR}.
+#
+# Args:       $out_row_header_AR:  ref to output column header 2D array
+#             $div_char:           divider character to put between tokens
+#             $tok1:               token 1, can be undef
+#             $tok2:               token 2, can be undef
+#             $tok3:               token 3, can be undef
+#             
+sub getHeadingsSeqColHelper { 
+  my $sub_name = "getHeadingsSeqColHelper";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_row_header_AR, $div_char, $tok1, $tok2, $tok3) = @_;
+
+  # remove whitespace at beginning and end of tokens
+  if(defined $tok1) { $tok1 =~ s/^\s+//; $tok1 =~ s/\s+$//; }
+  if(defined $tok2) { $tok2 =~ s/^\s+//; $tok2 =~ s/\s+$//; }
+  if(defined $tok3) { $tok3 =~ s/^\s+//; $tok3 =~ s/\s+$//; }
+
+  my $toadd = $tok1;
+  if(defined $tok2) { $toadd .= $div_char . $tok2; }
+  if(defined $tok3) { $toadd .= $div_char . $tok3; }
+
+  push(@{$out_row_header_AR}, $toadd); 
+
+  return;
+}
+
+#
+# Subroutine: getActualAnnotations()
+#
+# Synopsis:   Store actual annotations for an accession in preparation for outputting
+#             a summary for this accession.
+#
+# Args:       $accn:                accession
+#             $cds_tbl_HHAR:        ref to cds_tbl_HHA
+#             $act_exon_starts_AAR: FILLED HERE [0..$ncds-1][0..$nexons-1] start positions of actual annotations of exons for this accn, $nexons is CDS specific
+#             $act_exon_stops_AAR:  FILLED HERE [0..$ncds-1][0..$nexons-1] stop  positions of actual annotations of exons for this accn, $nexons is CDS specific
+#             $tot_nexons_R:        FILLED HERE, total number of annotated exons for this accession
+#             $ncds_R:              FILLED HERE, number of CDS for this accession
+#
+sub getActualAnnotations { 
+  my $sub_name = "getActualAnnotations";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($accn, $cds_tbl_HHAR, $act_exon_starts_AAR, $act_exon_stops_AAR, $tot_nexons_R, $ncds_R) = @_;
+
+  my ($ncds, $npos, $nneg, $nunc, $nbth, $strand_str, $tot_nexons); 
+
+  if(exists ($cds_tbl_HHAR->{$accn})) { 
+    ($ncds, $npos, $nneg, $nunc, $nbth, $strand_str) = getStrandStats($cds_tbl_HHAR, $accn);
+    my @cds_len_A = ();
+    my @cds_coords_A = ();
+    my @cds_product_A = ();
+    getLengthStatsAndCoordStrings($cds_tbl_HHAR, $accn, \@cds_len_A, \@cds_coords_A);
+    getQualifierValues($cds_tbl_HHAR, $accn, "product", \@cds_product_A);
+    for(my $i = 0; $i < $ncds; $i++) { 
+      # determine start and stop positions of all exons
+      my @starts_A = ();
+      my @stops_A  = ();
+      my $nexons   = 0;
+      @{$act_exon_starts_AAR->[$i]} = ();
+      @{$act_exon_stops_AAR->[$i]}  = ();
+      startStopsFromCoords($cds_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
+      
+      my $strand = substr($strand_str, $i, 1);
+      if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
+        @starts_A = reverse @starts_A;             # exons will be in reverse order, b/c we're on the negative strand
+        @stops_A  = reverse @stops_A;              # exons will be in reverse order, b/c we're on the negative strand
+        @{$act_exon_starts_AAR->[$i]} = @stops_A;  # save stops  to starts array b/c we're on the negative strand
+        @{$act_exon_stops_AAR->[$i]}  = @starts_A; # save starts to stops  array b/c we're on the negative strand
+      }
+      else { 
+        @{$act_exon_starts_AAR->[$i]} = @starts_A;
+        @{$act_exon_stops_AAR->[$i]}  = @stops_A;
+      }
+      $tot_nexons += $nexons;
+    }
+
+    # printf("\n");
+    # printf("$accn\n");
+    # for(my $zz = 0; $zz < scalar(@act_exon_starts_AA); $zz++) { 
+    #  for(my $zzz = 0; $zzz < scalar(@{$act_exon_starts_AA[$zz]}); $zzz++) { 
+    #    printf("act_exon_AA[$zz][$zzz]: $act_exon_starts_AA[$zz][$zzz]  $act_exon_stops_AA[$zz][$zzz]\n");
+    #  }
+    #  printf("\n");
+    #}
+    #printf("\n");
+  }
+  else { 
+    $ncds       = 0;
+    $tot_nexons = 0;
+  }
+
+  $$ncds_R       = $ncds;
+  $$tot_nexons_R = $tot_nexons;
+
+  return;
+}
+
+#
+# Subroutine: getOseqOutput()
+#
+# Synopsis:   Determine output related to the -oseq option, describing the existence and position
+#             of the origin sequence in the genome.
+#
+# Args:       $accn:                accession we're working on
+#             $origin_seq:          the origin sequence, or undef if -oseq not used
+#             $origin_offset:       offset of origin in reference genome, or undef if -oseq not used
+#             $origin_coords_HAR:   ref to origin_coords_HA hash of arrays
+#
+# Returns: 5 values:
+#          $oseq_ct:       number of occurences of origin sequence found
+#          $oseq_start:    start position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_stop:     stop  position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_offset:   offset position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_passfail: 'P' if $oseq_ct is 1, else 'F'
+# 
+sub getOseqOutput {
+  my $sub_name = "getOseqOutput";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($accn, $origin_seq, $origin_offset, $origin_coords_HAR) = @_;
+
+  if(! defined $origin_seq)    { die "ERROR in $sub_name but origin sequence is undefined" }
+  if(! defined $origin_offset) { die "ERROR in $sub_name but origin offset is undefined" }
+
+  my $oseq_ct = (exists $origin_coords_HAR->{$accn}) ? scalar(@{$origin_coords_HAR->{$accn}}) : 0;;
+  my $oseq_start    = "-"; # changed below if $oseq_ct == 1
+  my $oseq_stop     = "-"; # changed below if $oseq_ct == 1
+  my $oseq_offset   = "-"; # changed below if $oseq_ct == 1
+  my $oseq_passfail = "F"; # changed below if $oseq_ct == 1
+
+  if($oseq_ct == 1) { 
+    ($oseq_start, $oseq_stop) = split(":", $origin_coords_HAR->{$accn}[0]);
+    $oseq_offset = ($oseq_start < 0) ? ($oseq_start + $origin_offset) : ($oseq_start + $origin_offset - 1);
+    # $oseq_offset is now number of nts to shift origin in counterclockwise direction
+    if($oseq_offset > ($totlen_H{$accn} / 2)) { # simpler (shorter distance) to move origin clockwise
+      $oseq_offset = ($totlen_H{$accn} - $oseq_offset + 1);
+    }
+    else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
+      $oseq_offset *= -1;
+    }
+    $oseq_passfail = "P";
+  }
+
+  return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail);
+}
+
+# Subroutine: outputColumnHeaderExplanations()
+# Args:       $do_oseq:    '1' if -oseq was enabled
+#             $do_nomdlb:  '1' if -nomdlb was enabled
+#             $do_noexist: '1' if -noexist was enabled
+#             $do_nobrack: '1' if -nobrack was enabled
+#             $do_nostop:  '1' if -nostop was enabled
+#             $do_nofid:   '1' if -nofid was enabled
+#             $do_noss3:   '1' if -noss3 was enabled
+#             $do_noolap:  '1' if -noolap was enabled
 #
 # Returns:    void
 
-sub printColumnHeaderExplanations {
-  my $sub_name = "printColumnHeaderExplanations";
+sub outputColumnHeaderExplanations {
+  my $sub_name = "outputColumnHeaderExplanations";
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -3534,6 +4451,7 @@ sub printColumnHeaderExplanations {
 
   my $width = 35;
 
+  printf("# %-*s %s\n", $width, "\"idx\":",       "index of genome in list");
   printf("# %-*s %s\n", $width, "\"accession\":", "GenBank accession for genomic sequence");
   printf("# %-*s %s\n", $width, "\"totlen\":",    "total length (nt) for accession");
 
@@ -4012,5 +4930,78 @@ sub outputGapInfo {
 
   return;
 }
+
+# Subroutine: outputSeqAsColumnsPage()
+#
+# Synopsis:   Output a 'page' of annotation information with sequences as columns
+#
+# Args:       $header_AR:     reference to array of row headers
+#             $out_AAR:       reference to the 2D array of output tokens for
+#                             current sequences for the page
+#             $ref_out_AR:    reference to array of output tokens for reference
+#             $page_idx:      page number
+#
+# Returns:    void
+#
+sub outputSeqAsColumnsPage {
+  my $sub_name = "outputSeqAsColumnsPage";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($header_AR, $out_AAR, $ref_out_AR, $page_idx) = @_;
+
+  my $nseq = scalar(@{$out_AAR});
+  my $AR; # reference to current array we are printing
+
+  my @cwidth_A = (); # max width of each column (max width of all tokens for each sequence) 
+  my ($ntok, $el);
+  my $nrow = scalar(@{$header_AR});
+
+  # first, make sure all sequences have same number of output tokens as we have row headers,
+  # and determine maximum width of all tokens for each sequence
+  for(my $i = 0; $i <= $nseq; $i++) { 
+    # first column is reference, then come the other seqs
+    $AR = ($i == 0) ? $ref_out_AR : \@{$out_AAR->[$i-1]}; 
+    $cwidth_A[$i] = 0;
+    $ntok = scalar(@{$AR});
+    if($ntok != $nrow) { die sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok); }
+    foreach $el (@{$AR}) { 
+      $el =~ s/^\s+//; # remove leading whitespace
+      $el =~ s/\s+$//; # remove trailing whitespace
+      if(length($el) > $cwidth_A[$i]) { 
+        $cwidth_A[$i] = length($el);
+      }
+    }
+  }
+  for(my $i = 0; $i <= $nseq; $i++) { 
+    $cwidth_A[$i] += 2; # add 2 spaces for in-between columns
+  }
+
+  # determine max width of all row headers:
+  my $hwidth = 0;
+  for(my $r = 0; $r < $nrow; $r++) { 
+    if(length($header_AR->[$r]) > $hwidth) { 
+      $hwidth = length($header_AR->[$r]);
+    }
+  }
+  $hwidth += 2;
+
+  for(my $r = 0; $r < $nrow; $r++) { 
+    printf("%-*s", $hwidth, $header_AR->[$r]);
+    for(my $i = 0; $i <= $nseq; $i++) { 
+      # first column is reference, then come the other seqs
+      $AR = ($i == 0) ? $ref_out_AR : \@{$out_AAR->[$i-1]}; 
+      $el = $AR->[$r];
+      $el =~ s/\s+//g;
+      printf("%*s", $cwidth_A[$i], $AR->[$r]);
+    }
+    printf("\n");
+  }
+  print "#\n";
+  printf("# end of page %d\n", $page_idx);
+  print "#\n";
+  return;
+}
+
 ###########################################################
 
