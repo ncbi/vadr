@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# EPN, Mon Aug 10 10:39:33 2015
+# EPN, Mon Aug 10 10:39:33 2015 [development began]
 #
 use strict;
 use warnings;
@@ -393,6 +393,7 @@ printf("#\n");
 
 #####################
 # parse the list file
+# NOTE: the table and length files get created external to this program and have prescribed names
 #####################
 my @accn_A = (); # array of accessions
 open(IN, $listfile) || die "ERROR unable to open $listfile for reading"; 
