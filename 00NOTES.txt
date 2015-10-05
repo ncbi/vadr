@@ -109,11 +109,8 @@ source /panfs/pan1/dnaorg/programs/setup-bio-easel.csh.sh
 #  -nocorrect : do not correct annotations based on internal start/stop codons in predicted exons/CDS
 #  -matpept   : use mat_peptide info instead of CDS info
 #  -oseq <s>  : identify origin sequence <s> in genomes, put | at site of origin, e.g. TAATATT|AC
-QUESTION: Is it permitted that the | is that first or last token of the string?
-QUESTION: Are any types of Perl regular expression permitted as values to -oseq or just strings with nucleotides and a single |? 
 #  -strict    : require matching annotations to match CDS/exon index
 #  -nodup     : do not duplicate each genome to allow identification of features that span stop..start
-QUESTION: What does duplication mean in this context?
 #  -notexon   : do not use exon-specific models
 #  -onlybuild : exit after building reference models
 #  -model <s> : use model file <s>, instead of building one
@@ -122,13 +119,11 @@ QUESTION: What does duplication mean in this context?
 #  -c         : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)
 #  -nomdlb    : do not add model boundary annotation to output
 #  -noexist   : do not include information on existing annotation
-SUGGESTION: Replace "existing annotation" with "exisiting Genbank annotation" here and elsewhere. For some genomes, Rodney's group does already have other annotations.
 #  -nobrack   : do not include brackets around predicted annotations that do not match existing
 #  -nostop    : do not output stop codon for each predicted CDS
 #  -nofid     : do not output fractional identity relative to reference for each CDS/exon
 #  -noss3     : do not output results of start codon, stop codon and multiple of 3 tests
 #  -noolap    : do not output overlap information
-QUESTION: What is "overlap information in this context"
 #  -noexp     : do not output explanation of column headings
 #
 # OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:
@@ -141,7 +136,6 @@ QUESTION: What is "overlap information in this context"
 #  -iglocal      : use the -g option with cmsearch for glocal searches
 #  -cslow        : use default cmcalibrate parameters, not parameters optimized for speed
 #  -ccluster     : submit calibration to cluster and exit (requires --onlybuild)
-SUGGESTION: NCBI nomenclature convention is to use "farm" or "compute farm" everywhere you currently have "cluster"
 #  -scluster <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes
 #                  (changeable with -swait) before concatenating all the output files and continuing
 #  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]
@@ -666,29 +660,15 @@ perl dnaorg_annotate_genomes.pl -skipfetch -model NC_001346/NC_001346.ref.cm NC_
 -----------------------------------
 TODOs:
 
-- fetching the genomes is somewhat wasteful given that if we ran
-  dnaorg_virus_wrapper.pl as a pre-step we already have them, albeit
-  split into class specific files. There's definitely an opportunity
-  for optimization here by skipping the idfetch step.
-
-- with -ccluster allow each calibration to occur separately, so they
-  finish faster.
-
 - add version to accessions, and check that they are up-to-date somehow
   at beginning of run
 
-- fix option output as per Alejandro's suggestions, see them above 
-  labelled as SUGGESTION and QUESTION in the options above.
+- consider renaming -onlybuild to -1, -skipbuild to -2, -skipbuild
+  + -skipscan to -3, and -skipbuild and -skipaln to -4, and then require one 
+  of -1, -2, -3 and -4. If you do this, consider making a separate
+  option to refetch genome sequences with -2, -3 and -4... if that
+  makes sense after considering it more carefully than I am right now.
 
-- fix CDS/matpept confusion in variable names
-
-- fix 'hmm' name confusion in variable names
-
-- add check for duplicate accessions, possibly in parseLength()
-
-- tidy up findSeqInFile as per AS' suggestions
-
-- add comments about position of '|' in origin seq
 
 #############################################
 # Last updated: EPN, Fri May 29 14:42:39 2015
