@@ -13,15 +13,18 @@
 # 
 # dnaorg_annotate_genomes.pl does not produce an updated GenBank flat file.
 #
-##
+#
 # Regarding line prefixes in this file:
-# '#':  a comment line (text written just for this file).
-# "##": line output from a command
-# "":   a command to use when learning about this file
+# '#':   a comment line (text written just for this file).
+# "##":  line output from a command
+# "###": line output from a command, with a '#' as the first char of
+#        the output
+# "":    a command to use when learning about this file
 #
 #
-# This is a wrapper Perl script which calls other programs,
-# including those housed/described in the following directories:
+# dnaorg_annotate_genomes.pl is a wrapper Perl script which calls
+# other programs,including those housed/described in the following
+# directories:
 #
 # esl-fetch-cds.pl: /panfs/pan1/dnaorg/programs/15_0324_esl_fetch_cds/
 # 
@@ -42,16 +45,18 @@
 # esl-translate  Easel            GitHub: https://github.com/EddyRivasLab/easel.git
 # esl-ssplit     Bio-Easel        SVN:    https://xfamsvn.ebi.ac.uk/svn/code
 #
-# This is a Perl script that uses the Bio-Easel library which uses
-# Inline C to interact and call functions from the Easel sequence
-# analysis library from Sean Eddy's group.
 #
-# Also, prior to running this script, the dnaorg_virus_wrapper.pl
-# script must first by run to gather the necessary input information
-# for this script. dnaorg_virus_wrapper.pl is documented here:
+# dnaorg_annotate_genomes.pl is a Perl script that uses the Bio-Easel
+# library which uses Inline C to interact and call functions from the
+# Easel sequence analysis library from Sean Eddy's group.
+#
+# Also, prior to running dnaorg_annotate_genomes.pl, the
+# dnaorg_virus_wrapper.pl script must first by run to gather the
+# necessary input information for this script. dnaorg_virus_wrapper.pl
+# is documented here:
 # /panfs/pan1/dnaorg/programs/15_0529_dnaorg_virus_wrapper/00NOTES.txt
 # An example of running that script is included below in the 'Example
-# run' section
+# run' section.
 #
 #######################
 # More information
@@ -66,6 +71,8 @@
 #
 # Also, see arguably voluminous notes on development of this script in
 # /home/nawrocke/notebook/15_0810_dnaorg_virus_annotate/
+# and in 
+# /home/nawrocke/notebook/15_0909_dnaorg_virus_dengue_annotate/
 # for notes on development and testing of this program and several of 
 # the scripts it calls.
 #
@@ -98,52 +105,62 @@ source /panfs/pan1/dnaorg/programs/setup-bio-easel.csh.sh
 #
 # The default output is informative about how to use the script:
 #
-# dnaorg_annotate_genomes.pl
-#	<directory created by dnaorg_virus_wrapper.pl>
-#	<list file with all accessions>
-#
-# This script annotates genomes from the same species based
-# on reference annotation. The 
-#
-# BASIC OPTIONS:
-#  -nocorrect : do not correct annotations based on internal start/stop codons in predicted exons/CDS
-#  -matpept   : use mat_peptide info instead of CDS info
-#  -oseq <s>  : identify origin sequence <s> in genomes, put | at site of origin, e.g. TAATATT|AC
-#  -strict    : require matching annotations to match CDS/exon index
-#  -nodup     : do not duplicate each genome to allow identification of features that span stop..start
-#  -notexon   : do not use exon-specific models
-#  -onlybuild : exit after building reference models
-#  -model <s> : use model file <s>, instead of building one
-#
-# OPTIONS CONTROLLING OUTPUT TABLE:
-#  -c         : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)
-#  -nomdlb    : do not add model boundary annotation to output
-#  -noexist   : do not include information on existing annotation
-#  -nobrack   : do not include brackets around predicted annotations that do not match existing
-#  -nostop    : do not output stop codon for each predicted CDS
-#  -nofid     : do not output fractional identity relative to reference for each CDS/exon
-#  -noss3     : do not output results of start codon, stop codon and multiple of 3 tests
-#  -noolap    : do not output overlap information
-#  -noexp     : do not output explanation of column headings
-#
-# OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:
-#  -hmmer     : use HMMER for predicting annotations, default: use Infernal
-#
-# OPTIONS SPECIFIC TO HMMER3:
-#  -hmmenv  : use HMM envelope boundaries for predicted annotations, default: use window boundaries
-#
-# OPTIONS SPECIFIC TO INFERNAL:
-#  -iglocal      : use the -g option with cmsearch for glocal searches
-#  -cslow        : use default cmcalibrate parameters, not parameters optimized for speed
-#  -ccluster     : submit calibration to cluster and exit (requires --onlybuild)
-#  -scluster <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes
-#                  (changeable with -swait) before concatenating all the output files and continuing
-#  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]
-#
-# OPTIONS USEFUL FOR DEVELOPMENT/DEBUGGING:
-#  -skipfetch : use existing cmscan/hmmscan results, don't actually run it
-#  -skipscan  : use existing cmscan/hmmscan results, don't actually run it
-#  -skipaln   : use existing cmscan/hmmscan and alignment results, don't actually run it
+## dnaorg_annotate_genomes.pl
+##	<directory created by dnaorg_virus_wrapper.pl>
+##	<list file with all accessions>
+##
+## This script annotates genomes from the same species based
+## on reference annotation. The reference accession is the
+## first accession listed in <list file with all accessions>
+##
+## BASIC OPTIONS:
+##  -nocorrect : do not correct annotations based on internal start/stop codons in predicted exons/CDS
+##  -matpept   : use mat_peptide info instead of CDS info
+##  -oseq <s>  : identify origin seq <s> in genomes, put "|" at site of origin, e.g. "TAATATT\|AC"
+##               <s> must be a string consisting of only A,C,G,T and | characters. No regular expressions allowed.
+##               Note that "|" must be escaped, i.e. "\|"; the "|" can be any char, incl. first or last
+##               This option is relevant only for circular genomes, e.g. Maize streak virus
+##  -strict    : require matching annotations to match CDS/exon index
+##  -nodup     : do not duplicate genome seqs to identify features that span stop..start (for circular genomes)
+##  -notexon   : do not use exon-specific models
+##  -onlybuild : exit after building reference models
+##  -skipbuild : skip the build and calibration step because you already did an -onlybuild run
+##  -model <s> : use model file <s>, instead of building one
+##
+## OPTIONS CONTROLLING OUTPUT TABLE:
+##  -c         : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)
+##  -seqrow    : force sequence-as-rows    output mode (default for <= 5 models)
+##  -seqcol    : force sequence-as-columns output mode (default for >  5 models)
+##  -nseqcol   : with -seqcol, number of sequences per page of output (default: 10)
+##  -nomdlb    : do not add model boundary annotation to output
+##  -noexist   : do not include information on existing GenBank annotation
+##  -nobrack   : do not include brackets around predicted annotations that do not match existing
+##  -nostop    : do not output stop codon for each predicted CDS/mat_peptide
+##  -nofid     : do not output fractional identity relative to reference for each CDS/exon
+##  -noss3     : do not output results of start codon, stop codon and multiple of 3 tests
+##  -noolap    : do not output overlap information about which predicted features overlap
+##  -noexp     : do not output explanation of column headings
+##
+## OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:
+##  -hmmer     : use HMMER for predicting annotations, default: use Infernal
+##
+## OPTIONS SPECIFIC TO HMMER3:
+##  -hmmenv  : use HMM envelope boundaries for predicted annotations, default: use window boundaries
+##
+## OPTIONS SPECIFIC TO INFERNAL:
+##  -iglocal   : use the -g option with cmsearch for glocal searches
+##  -cslow     : use default cmcalibrate parameters, not parameters optimized for speed
+##  -cfarm     : submit calibration jobs for each CM to compute farm and exit (requires --onlybuild)
+##  -sfarm <n> : split genome file into <n> pieces, submit <n> cmscan jobs to farm and wait 3 minutes
+##               (changeable with -swait) before concatenating all the output files and continuing
+##  -swait <n>  : with -sfarm, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]
+##
+## OPTIONS USEFUL FOR DEVELOPMENT/DEBUGGING:
+##  -skipfetch : don't fetch whole genome sequences, we already have them from a previous run
+##  -skipscan  : use existing cmscan/hmmscan results, don't actually run it
+##  -skipaln   : use existing cmscan/hmmscan and alignment results, don't actually run it
+##
+##
 #---------------------
 # Extra notes on these options (not part of output from script):
 #
@@ -157,18 +174,31 @@ source /panfs/pan1/dnaorg/programs/setup-bio-easel.csh.sh
 # 'Output files' below.
 # 
 # 
-#################################
-# Example run:
+##############
+# Example runs
+##############
 #
-# This section is divided into 3 steps:
+# This section includes two example runs of the script. The first run
+# is for the Maize streak virus which has a circular ssDNA genome with
+# 4 CDS that code for proteins, one of which has 2 exons. 
+#
+# The second run is for Dengue (type 1) virus, which has a linear ssRNA
+# genome, which has a single polyprotein which is cleaved into 14
+# smaller peptides. 
+#
+# Together, the two runs on the two different species demonstrate most
+# of the features and versatility of the dnaorg_annotate_genomes.pl script
+#
+# For both of the example runs, 'running' the script is actually
+# broken down into 3 steps:
 # 
-# STEP 0. Running dnaorg_virus_wrapper.pl (necessary prior to running 
-#         dnaorg_annotate_genomes.pl).
+# STEP 0. Preliminary step: running dnaorg_virus_wrapper.pl (necessary
+#         prior to running dnaorg_annotate_genomes.pl).
 #
 # STEP 1. Run dnaorg_annotate_genomes.pl with the 
-#         -onlybuild and -ccluster flags to build models
+#         -onlybuild and -cfarm flags to build models
 #         of each reference exon and submit 'calibration'
-#         of those models to the cluster.
+#         of those models to the farm.
 #
 # STEP 2. Run dnaorg_annotate_genomes.pl with the 
 #         -model and -skipfetch options to skip the
@@ -178,10 +208,26 @@ source /panfs/pan1/dnaorg/programs/setup-bio-easel.csh.sh
 # Step 0 is necessary (as the usage above states) because 
 # dnaorg_virus_wrapper.pl must be run prior to running 
 # dnaorg_annotate_genomes.pl. This will create input files
-# required for dnaorg_annotate_genomes.pl
+# required for dnaorg_annotate_genomes.pl.
 # 
+# In these two examples, I run all of the three steps
+# consecutively. It can be useful to do STEP 0 and STEP 1 in one run
+# and come back later to do STEP 2 in a later run. STEP 1 depends only
+# on the reference genome that must be the first entry in the input
+# file. Therefore, not only can one do STEP 2 seperately, but one can
+# also do STEP 2 by itself with multiple different input files that
+# all have the same reference on the first line. Running STEP 2
+# multiple times could be useful for either incremental processing of
+# newly received genomes or parallel processing. A better parallel
+# processing approach is described in the section entitled
+# "Parallelizing the cmscan step with -sfarm."
+#
+####################
+# Example run 1 of 2 
+####################
+#
 # Here's an example of running the dnaorg_virus_wrapper.pl script 
-# for 5 Maize streak virus genomes. 
+# for 5 Maize streak virus genomes:
 #
 # Input file: NC_001346.ntlist
 #
@@ -192,21 +238,8 @@ cat NC_001346.ntlist
 ##HQ693446
 ##HQ693435
 # 
-#
-# In this example, I run all of the three steps consecutively. It can
-# be useful to do STEP 0 and STEP1 in one run and come back later to
-# do STEP2 in a later run. STEP1 depends only on the reference genome
-# that must be the first entry in the input file. Therefore, not only
-# can one do STEP2 seperately, but one can also do STEP2 by itself
-# with multiple different input files that all have the same reference
-# on the first line. Running STEP2 multiple times could be useful for
-# either incremental processing of newly received genomes or parallel
-# processing. A better parallel processing approach is described in
-# the section entitled "Parallelizing the cmscan step with -scluster."
-#
 #---------------------------------------------------
 # STEP 0. Running dnaorg_virus_wrapper.pl: 
-##
 perl /panfs/pan1/dnaorg/programs/dnaorg_virus_wrapper.pl NC_001346.ntlist 
 ##Step 1: creating feature table ... done. [perl /panfs/pan1/dnaorg/programs/dnaorg_fetch_dna_wrapper.pl -f -ntlist -ftable -d NC_001346 NC_001346.ntlist > /dev/null]
 ##Step 2: parsing feature table ... done. [perl /panfs/pan1/dnaorg/programs/dnaorg_parse_ftable.pl  -d NC_001346 NC_001346/NC_001346.ftable NC_001346 > /dev/null]
@@ -263,20 +296,11 @@ ls -ltr NC_001346/NC_001346.CDS.tbl
 # for the reference accession (the first accession listed in the .ntlist
 # file: NC_001346).
 #
-#
-# Until further notice "CDS" is used also for "mature peptides" that
-# are cleaved from larger proteins, although the Genbank convention is
-# to distinguish the two quoted terms. Whether they will be
-# distinguished in later versions of this software or only need to be
-# distinguished in downstream software that actually produces text
-# annotations remains to be determined.
-#
-#
 # --------------------------------------------------
 # STEP 1. Run dnaorg_annotate_genomes.pl with the 
-#         -onlybuild and -ccluster flags to build models
+#         -onlybuild and -cfarm flags to build models
 #         of each reference exon and submit 'calibration'
-#         of those models to the cluster.
+#         of those models to the farm.
 # 
 # Now we are ready to run dnaorg_annotate_genomes.pl. 
 # Actually, in the current implementation we typically 
@@ -295,52 +319,58 @@ ls -ltr NC_001346/NC_001346.CDS.tbl
 # hours), which is why it is typical to split the usage of the script
 # into two runs.
 #
-# The first run can be executed using the -onlybuild and -ccluster
+# The first run can be executed using the -onlybuild and -cfarm
 # command line options. It will actually not perform the calibration
 # (step d) but rather will submit the calibration computation to the
-# cluster and exit. It is up to the user to monitor when that
+# compute farm and exit. It is up to the user to monitor when that
 # calibration is done. Once it is, the second call to
 # dnaorg_annotate_genomes.pl can be executed as detailed below. But
 # first, let's execute the first call:
 #
-perl dnaorg_annotate_genomes.pl -onlybuild -ccluster NC_001346 NC_001346.ntlist
-## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## dnaorg_annotate_genomes.pl: Annotate genomes based on a reference and homology search
-## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## command: dnaorg_annotate_genomes.pl -onlybuild -ccluster  NC_001346 NC_001346.ntlist
-## date:    Thu Sep 24 11:18:51 2015
-## option:  exit after model construction step [-onlybuild]
-## option:  submit calibration job to cluster [-ccluster]
-##
-## Fetching 5 full (duplicated) genome sequences                   ... done. [0.9 seconds]
-## Fetching reference CDS sequences                                ... done. [0.1 seconds]
-## Running cmbuild to build 5 CMs                                  ... done. [30.6 seconds]
-#Your job 6405307 ("cp.NC_001346.ref") has been submitted
-##
-## Model calibration job submitted. Exiting.
+perl dnaorg_annotate_genomes.pl -onlybuild -cfarm NC_001346 NC_001346.ntlist
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### dnaorg_annotate_genomes.pl: Annotate genomes based on a reference and homology search
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### command: dnaorg_annotate_genomes.pl -onlybuild -cfarm  NC_001346 NC_001346.ntlist
+### date:    Mon Oct  5 15:11:51 2015
+### option:  exit after model construction step [-onlybuild]
+### option:  submitting calibration jobs to farm [-cfarm]
+###
+### Fetching 5 full (duplicated) genome sequences                   ... done. [0.9 seconds]
+### Fetching reference CDS sequences                                ... done. [0.1 seconds]
+### Running cmbuild to build 5 CMs                                  ... done. [30.8 seconds]
+##Your job 8424568 ("c.NC_001346.ref0") has been submitted
+##Your job 8424569 ("c.NC_001346.ref1") has been submitted
+##Your job 8424570 ("c.NC_001346.ref2") has been submitted
+##Your job 8424571 ("c.NC_001346.ref3") has been submitted
+##Your job 8424572 ("c.NC_001346.ref4") has been submitted
+###
+### Model calibration job(s) submitted. Exiting.
 #
-# The user can monitor the progress of this job, using qstat and by
+# The script output indicates that 5 farm jobs were submitted, 
+# with id's 8424568-8424572. You can monitor these jobs by 
 # looking at the output of cmcalibrate, which in this case will be
-# a file called NC_001346/NC_001346.ref.cmcalibrate: 
+# files called NC_001346.ref.<n>.cmcalibrate in the NC_001346/
+# directory, where <n> is 0,1,2,3 or 4. Let's look at file 0:
 # 
-> cat NC_001346/NC_001346.ref.cmcalibrate 
-# cmcalibrate :: fit exponential tails for CM E-values
-# INFERNAL 1.1.1 (July 2014)
-# Copyright (C) 2014 Howard Hughes Medical Institute.
-# Freely distributed under the GNU General Public License (GPLv3).
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# CM file:                                     NC_001346/NC_001346.ref.cm
-# total sequence length to search per mode:    0.04 Mb
-# number of worker threads:                    4 [--cpu]
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
-# Calibrating CM(s):
-#
-#                        predicted                                                   actual   
-#                       running time              percent complete                running time
-# model name            (hr:min:sec)  [........25........50........75..........]  (hr:min:sec)
-# --------------------  ------------  ------------------------------------------  ------------
-  NC_001346.ref.cds.1       00:01:40  [====================
+cat NC_001346/NC_001346.ref.0.cmcalibrate 
+### cmcalibrate :: fit exponential tails for CM E-values
+### INFERNAL 1.1.1 (July 2014)
+### Copyright (C) 2014 Howard Hughes Medical Institute.
+### Freely distributed under the GNU General Public License (GPLv3).
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### CM file:                                     NC_001346/NC_001346.ref.0.cm
+### total sequence length to search per mode:    0.04 Mb
+### number of worker threads:                    4 [--cpu]
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+###
+### Calibrating CM(s):
+###
+###                        predicted                                                   actual   
+###                       running time              percent complete                running time
+### model name            (hr:min:sec)  [........25........50........75..........]  (hr:min:sec)
+### --------------------  ------------  ------------------------------------------  ------------
+##  NC_001346.ref.cds.1       00:01:41  [====================
 #
 # From the output of dnaorg_annotate_genomes.pl, the user will know
 # that, in this case, 5 models will be calibrated. In this case the
@@ -350,142 +380,170 @@ perl dnaorg_annotate_genomes.pl -onlybuild -ccluster NC_001346 NC_001346.ntlist
 #
 # qstat is also useful:
 qstat
-#job-ID  prior   name       user         state submit/start at     queue                          jclass                         slots ja-task-ID 
-#------------------------------------------------------------------------------------------------------------------------------------------------
-#6405307 0.71290 cp.NC_0013 nawrocke     r     09/24/2015 11:20:39 unified@sge633.be-md.ncbi.nlm.                                    4        
+##job-ID  prior   name       user         state submit/start at     queue                          jclass                         slots ja-task-ID 
+##------------------------------------------------------------------------------------------------------------------------------------------------
+##8424568 1.52680 c.NC_00134 nawrocke     r     10/05/2015 15:13:47 unified@sge657.be-md.ncbi.nlm.                                    4        
+##8424569 1.51010 c.NC_00134 nawrocke     qw    10/05/2015 15:12:22                                                                   4        
+##8424570 1.50677 c.NC_00134 nawrocke     qw    10/05/2015 15:12:23                                                                   4        
+##8424571 1.50510 c.NC_00134 nawrocke     qw    10/05/2015 15:12:23                                                                   4        
+##8424572 1.50410 c.NC_00134 nawrocke     qw    10/05/2015 15:12:23                                                                   4        
 # 
-# But it only reports if the file is still running or not. When
-# 'qstat' returns nothing it means that the calibration job is finished.
+# But it only reports if the jobs are still running ('r' in column 5),
+# are still waiting to run in the queue ('qw' in column 5) or are
+# finished (not listed at all).
 # 
-# This job takes about 25 minutes to finish.
+# Once all the jobs begin running it should take about 5 minutes
+# for them to finish.
 #
-# The 25 minutes is the sum of times needed for the 5 models, whereas
-# the estimate above for 1:40 is for the first model only. In this
-# usage the different models are calibrated sequentially. 
-# See the section entitled "Parallelizing the cmscan step with
-# -scluster" for information on parallelizing the cmscan step.
-#
-# You can tell if it successfully finished by the final line of the
-# output file:
-tail -n1 NC_001346/NC_001346.ref.cmcalibrate 
-#[ok]
+# You can tell if the jobs successfully finished by the final line of the
+# cmcalibrate output files:
+tail -n1 NC_001346/NC_001346.ref.0.cmcalibrate 
+##[ok]
 # 
 # It should be "[ok]".
 #
-# Once the calibration is finished we can move onto STEP 2.
+# Once all of the calibrations are finished we can move onto STEP 2.
 # 
 # -----------------------------------
 # STEP 2. Run dnaorg_annotate_genomes.pl with the 
-#         -model and -skipfetch options to skip the
+#         -skipbuild and -skipfetch options to skip the
 #         model building and genome fetching steps
 #         and to proceed with annotating the genomes.
+#         We also use the -oseq option to specify an
+#         'origin sequence' that we want the script to identify 
+#         and annotate in each genome. 
 #
-# The -model option specifies that you have previously run
+# The -skipbuild option specifies that you have previously run
 # dnaorg_annotate_genomes.pl for the same dataset (same output
 # directory from dnaorg_virus_wrapper.pl (e.g. NC_001346/) and
 # accession list file (e.g. NC_001346.ntlist)) with the -onlybuild
-# option to build and calibrate the necessary models for annotation.
+# option to build and calibrate the necessary models for annotation,
+# as we did in STEP 1 above.
 #
-# The -skipfetch option specifies the same you've previously run
+# The -skipfetch option specifies the same, that you've previously run
 # dnaorg_annotate_genomes.pl on this dataset, and so the script does
 # not need to refetch the genome sequence files, which can be a slow
 # step if there are many.
 #
-perl dnaorg_annotate_genomes.pl -skipfetch -model NC_001346/NC_001346.ref.cm NC_001346 NC_001346.ntlist
-## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## dnaorg_annotate_genomes.pl: Annotate genomes based on a reference and homology search
-## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## command: dnaorg_annotate_genomes.pl -model NC_001346/NC_001346.ref.cm -skipfetch  NC_001346 NC_001346.ntlist
-## date:    Thu Sep 24 13:51:50 2015
-## option:  use model in NC_001346/NC_001346.ref.cm instead of building one here [-model]
-## option:  use existing fetched genome file, don't create a new one [-skipfetch]
-##
-## Skipping genome fetch step                                      ... done. [-skipfetch]
-## Fetching reference CDS sequences                                ... done. [0.1 seconds]
-## Running cmscan                                                  ... done. [53.6 seconds]
-## Fetching predicted exon sequences                               ... done. [0.0 seconds]
-## Combining multi-exon predicted CDS                              ... done. [0.0 seconds]
-## Translating predicted CDS to identify internal starts/stops     ... done. [0.0 seconds]
-## Fetching corrected exon sequences                               ... done. [0.0 seconds]
-## Combining multi-exon corrected CDS                              ... done. [0.0 seconds]
-## Creating multiple alignments                                    ... done. [1.6 seconds]
-##                                         CDS #1 [single exon; +]                        CDS #2 [single exon; +]                                        CDS #3 [2 exons; -]                                        CDS #4 [single exon; -]                                                              
-##                                            movement protein                                capsid protein                                        replication-associated protein                               replication-associated protein A                      existing annotation              
-##                             ---------------------------------------------  ---------------------------------------------  --------------------------------------------------------------------------  ---------------------------------------------                 -------------------              
-## accession           totlen    start1    stop1  fid1 md1 length SS3 stp PF    start1    stop1  fid1 md1 length SS3 stp PF    start1    stop1  fid1 md1    start2    stop2  fid2 md2 length SS3 stp PF    start1    stop1  fid1 md1 length SS3 stp PF  totlen  avgid    cds  exons  match             overlaps?  result      
-##-------------------  ------  -------- -------- ----- --- ------ --- --- --  -------- -------- ----- --- ------ --- --- --  -------- -------- ----- ---  -------- -------- ----- --- ------ --- --- --  -------- -------- ----- --- ------ --- --- --  ------  -----  -----  -----  -----  --------------------  ------------
-#NC_001346               2689     150      455  1.000  ..    306 ... TAA  P      466     1200  1.000  ..    735 ... TAA  P     2527     1886  1.000  ..     1793     1353  1.000  ..   1083 ... TGA  P     2527     1709  1.000  ..    819 ... TAG  P    2689  1.000      4      5     10   P 2 3.1/4.1 3.2/4.1  PASS PPPPP
-#KJ699341                2689       1      306  1.000  ..    306 ... TAA  P      317     1051  0.992  ..    735 ... TAA  P     2378     1737  0.992  ..     1644     1204  0.991  ..   1083 ... TGA  P     2378     1560  0.993  ..    819 ... TAG  P    2689  0.994      4      5     10   P 2 3.1/4.1 3.2/4.1  PASS PPPPP
-#KJ437659                2689       1      306  0.993  ..    306 ... TAA  P      317     1051  0.993  ..    735 ... TAA  P     2378     1737  0.991  ..     1644     1204  0.973  ..   1083 ... TGA  P     2378     1560  0.980  ..    819 ... TAG  P    2689  0.986      4      5     10   P 2 3.1/4.1 3.2/4.1  PASS PPPPP
-#HQ693446                2690       1      306  0.974  ..    306 ... TAA  P      317     1051  0.971  ..    735 ... TAA  P     2379    [1738] 0.988  ..    [1645]   [1220] 0.974  .c   1068 ... TAA  P     2379     1561  0.987  ..    819 ... TAG  P    2690  0.979      3      3      7   P 2 3.1/4.1 3.2/4.1  PASS PPPPP
-#HQ693435                2690       1      306  0.980  ..    306 ... TAA  P      317     1051  0.971  ..    735 ... TAA  P     2379    [1738] 0.984  ..    [1645]   [1220] 0.974  .c   1068 ... TAA  P     2379     1561  0.984  ..    819 ... TAG  P    2690  0.979      3      3      7   P 2 3.1/4.1 3.2/4.1  PASS PPPPP
-##
-## Explanations of column headings (in left to right order):
-## "accession":                        GenBank accession for genomic sequence
-## "totlen":                           total length (nt) for accession
-##
-## "CDS #<i>: start<j>":               start position of exon #<j> of CDS #<i>enclosed in brackets "[]" if different from all exon starts in existing annotation
-## "CDS #<i>: stop<j>":                stop  position of exon #<j> of CDS #<i>enclosed in brackets "[]" if different from all exon starts in existing annotation
-## "CDS #<i>: fid<j>":                 fractional identity between exon #<j> of CDS #<i> and reference genome
-## "CDS #<i>: md<j>":                  annotation indicating if alignment to reference extends to 5' and 3' end of reference exon.
-##                                     first character pertains to 5' end and second character pertains to 3' end.
-##                                     possible values for each of the two characters:
-##                                       ".":   alignment extends to boundary of reference
-##                                       "<d>": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)
-##                                       "+":   alignment truncates >= 10 nucleotides short of boundary of reference
-## "CDS #<i>: length":                 length of CDS #<i> (all exons summed)
-##
-## "CDS #<i>: SS3":                    annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3
-##                                     first  character: '.' if predicted CDS has a valid start codon, else '!'
-##                                     second character: '.' if predicted CDS has a valid stop  codon, else '!'
-##                                     third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'
-## "CDS #<i>: stp":                    the predicted stop codon for this CDS
-## "CDS #<i>: PF":                     annotation indicating if this exon PASSED ('P') or FAILED ('F')
-##                                       a CDS PASSES ('P') if and only if ALL of its exons have a valid start codon,
-##                                       a valid stop codon, are lengths that are a multiple of 3, and have an
-##                                       alignment to the corresponding reference exon that extends to the 5'
-##                                       and 3' boundary of the reference annotation.
-##                                       If >= 1 of these conditions is not met then the CDS FAILS ('F').
-##
-## "totlen":                           total length (nt) for accession (repeated for convenience)
-##
-## "existing annotation: cds"          number of CDS in the existing NCBI annotation for this accession
-## "existing annotation: exons"        total number of exons in the existing NCBI annotation for this accession
-## "existing annotation: match"        number of exons in existing NCBI annotation for which existing and predicted annotation agree exactly
-##
-## "overlaps?"                         text describing which (if any) of the predicted exons overlap with each other
-##                                     first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference
-##                                                        'F' for FAIL if it does not
-##                                     second character:  number of overlaps between any two exons
-##                                     remainder of line: text explaining which exons overlap
-##                                       e.g.: "3.2/4.1" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand
-##
-## "result":                           "PASS" or "FAIL". "PASS" if and only if all tests for this accession PASSED ('P')
-##                                     as indicated in the "PF" columns. Followed by the individual P/F results in order.
-## 
-
+# The -oseq option tells the script to identify the sequence
+# TAATATT\|AC in each genome. There should be exactly one instance
+# of this sequence in each genome, and it may span the stop..start 
+# boundary because the genome is circular. 
+# 
+perl dnaorg_annotate_genomes.pl -skipfetch -skipbuild -oseq TAATATT\|AC NC_001346 NC_001346.ntlist
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### dnaorg_annotate_genomes.pl: Annotate genomes based on a reference and homology search
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### command: dnaorg_annotate_genomes.pl -skipbuild -skipfetch  NC_001346 NC_001346.ntlist
+### date:    Mon Oct  5 15:37:08 2015
+### option:  searching for origin sequence of TAATATT|AC [-oseq]
+### option:  skipping the build step [-skipbuild]
+### option:  use existing fetched genome file, don't create a new one [-skipfetch]
+###
+### Skipping genome fetch step                                      ... done. [-skipfetch]
+### Fetching reference CDS sequences                                ... done. [0.4 seconds]
+### Running cmpress                                                 ... done. [0.1 seconds]
+### Validating CM file was built from correct alignment files       ... done. [0.0 seconds]
+### Running cmscan                                                  ... done. [54.6 seconds]
+### Fetching predicted exon sequences                               ... done. [0.0 seconds]
+### Combining multi-exon predicted CDS                              ... done. [0.0 seconds]
+### Translating predicted CDS to identify internal starts/stops     ... done. [0.1 seconds]
+### Fetching corrected exon sequences                               ... done. [0.0 seconds]
+### Combining multi-exon corrected CDS                              ... done. [0.0 seconds]
+### Creating multiple alignments                                    ... done. [1.8 seconds]
+###
+###                                                                      CDS #1 [single exon; +]                        CDS #2 [single exon; +]                                        CDS #3 [2 exons; -]                                         CDS #4 [single exon; -]                                                                                   
+###                                          origin sequence                movement protein                                capsid protein                                        replication-associated protein                              replication-associated protein A                         GenBank annotation                                    
+###                                   ----------------------  ---------------------------------------------  ---------------------------------------------  --------------------------------------------------------------------------  ---------------------------------------------                 -------------------                                    
+### idx   accession           totlen  # start  stop offst PF    start1    stop1  fid1 md1 length ss3 stp PF    start1    stop1  fid1 md1 length ss3 stp PF    start1    stop1  fid1 md1    start2    stop2  fid2 md2 length ss3 stp PF    start1    stop1  fid1 md1 length ss3 stp PF  totlen  avgid    cds  exons  match             overlaps?  result      
+###----  -------------------  ------ -- ----- ----- ----- --  -------- -------- ----- --- ------ --- --- --  -------- -------- ----- --- ------ --- --- --  -------- -------- ----- ---  -------- -------- ----- --- ------ --- --- --  -------- -------- ----- --- ------ --- --- --  ------  -----  -----  -----  -----  --------------------  ------------
+##1      NC_001346               2689  1    -7     2     0  P      150      455  1.000  ..    306 ... TAA  P      466     1200  1.000  ..    735 ... TAA  P     2527     1886  1.000  ..     1793     1353  1.000  ..   1083 ... TGA  P     2527     1709  1.000  ..    819 ... TAG  P    2689  1.000      4      5     10   P 2 3.1/4.1,3.2/4.1  PASS PPPPP
+##2      KJ699341                2689  1  2534  2542   149  P        1      306  1.000  ..    306 ... TAA  P      317     1051  0.992  ..    735 ... TAA  P     2378     1737  0.992  ..     1644     1204  0.991  ..   1083 ... TGA  P     2378     1560  0.993  ..    819 ... TAG  P    2689  0.994      4      5     10   P 2 3.1/4.1,3.2/4.1  PASS PPPPP
+##3      KJ437659                2689  1  2534  2542   149  P        1      306  0.993  ..    306 ... TAA  P      317     1051  0.993  ..    735 ... TAA  P     2378     1737  0.991  ..     1644     1204  0.973  ..   1083 ... TGA  P     2378     1560  0.980  ..    819 ... TAG  P    2689  0.986      4      5     10   P 2 3.1/4.1,3.2/4.1  PASS PPPPP
+##4      HQ693446                2690  1  2535  2543   149  P        1      306  0.974  ..    306 ... TAA  P      317     1051  0.971  ..    735 ... TAA  P     2379    [1738] 0.988  ..    [1645]   [1220] 0.974  .c   1068 ... TAA  P     2379     1561  0.987  ..    819 ... TAG  P    2690  0.979      3      3      7   P 2 3.1/4.1,3.2/4.1  PASS PPPPP
+##5      HQ693435                2690  1  2535  2543   149  P        1      306  0.980  ..    306 ... TAA  P      317     1051  0.971  ..    735 ... TAA  P     2379    [1738] 0.984  ..    [1645]   [1220] 0.974  .c   1068 ... TAA  P     2379     1561  0.984  ..    819 ... TAG  P    2690  0.979      3      3      7   P 2 3.1/4.1,3.2/4.1  PASS PPPPP
+###
+### Explanations of column headings (in left to right order):
+### "idx":                              index of genome in list
+### "accession":                        GenBank accession for genomic sequence
+### "totlen":                           total length (nt) for accession
+###
+### "origin sequence: #":               number of occurences of origin sequence (input with -oseq) in genome
+### "origin sequence: start":           start position of lone occurence of origin sequence (if only 1 exists)
+### "origin sequence: stop":            stop  position of lone occurence of origin sequence (if only 1 exists)
+### "origin sequence: offst":           predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)
+### "origin sequence: PF":              'P' (for PASS) if there is exactly 1 occurence of the offset, else 'F' for FAIL
+###
+### "CDS #<i>: start<j>":               start position of exon #<j> of CDS #<i>enclosed in brackets "[]" if different from all exon starts in existing GenBank annotation
+### "CDS #<i>: stop<j>":                stop  position of exon #<j> of CDS #<i>enclosed in brackets "[]" if different from all exon starts in existing GenBank annotation
+### "CDS #<i>: fid<j>":                 fractional identity between exon #<j> of CDS #<i> and reference genome
+### "CDS #<i>: md<j>":                  annotation indicating if alignment to reference extends to 5' and 3' end of reference exon.
+###                                     first character pertains to 5' end and second character pertains to 3' end.
+###                                     possible values for each of the two characters:
+###                                       ".":   alignment extends to boundary of reference
+###                                       "<d>": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)
+###                                       "+":   alignment truncates >= 10 nucleotides short of boundary of reference
+### "CDS #<i>: length":                 length of CDS #<i> (all exons summed)
+###
+### "CDS #<i>: SS3":                    annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3
+###                                     first  character: '.' if predicted CDS has a valid start codon, else '!'
+###                                     second character: '.' if predicted CDS has a valid stop  codon, else '!'
+###                                     third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'
+### "CDS #<i>: stp":                    the predicted stop codon for this CDS
+### "CDS #<i>: PF":                     annotation indicating if this exon PASSED ('P') or FAILED ('F')
+###                                       a CDS PASSES ('P') if and only if ALL of its exons have a valid start codon,
+###                                       a valid stop codon, are lengths that are a multiple of 3, and have an
+###                                       alignment to the corresponding reference exon that extends to the 5'
+###                                       and 3' boundary of the reference annotation.
+###                                       If >= 1 of these conditions is not met then the CDS FAILS ('F').
+###
+### "totlen":                           total length (nt) for accession (repeated for convenience)
+###
+### "GenBank annotation: cds"           number of CDS in the existing GenBank annotation for this accession
+### "GenBank annotation: exons"         total number of exons in the existing GenBank annotation for this accession
+### "GenBank annotation: match"         number of exons in existing GenBank annotation for which existing and predicted annotation agree exactly
+###
+### "overlaps?"                         text describing which (if any) of the predicted exons overlap with each other
+###                                     first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference
+###                                                        'F' for FAIL if it does not
+###                                     second character:  number of overlaps between any two exons
+###                                     remainder of line: text explaining which exons overlap
+###                                       e.g.: "3.2/4.1" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand
+###
+### "result":                           "PASS" or "FAIL". "PASS" if and only if all tests for this accession PASSED ('P')
+###                                     as indicated in the "PF" columns. Followed by the individual P/F results in order.
+#
+#
 # The output of the script gives a brief explanation of the steps being
 # taken.
 # 
 # From above: 
 #
-## Skipping genome fetch step                                      ... done. [-skipfetch]
-## Fetching reference CDS sequences                                ... done. [0.1 seconds]
-## Running cmscan                                                  ... done. [53.6 seconds]
-## Fetching predicted exon sequences                               ... done. [0.0 seconds]
-## Combining multi-exon predicted CDS                              ... done. [0.0 seconds]
-## Translating predicted CDS to identify internal starts/stops     ... done. [0.0 seconds]
-## Fetching corrected exon sequences                               ... done. [0.0 seconds]
-## Combining multi-exon corrected CDS                              ... done. [0.0 seconds]
-## Creating multiple alignments                                    ... done. [1.6 seconds]
+### Skipping genome fetch step                                      ... done. [-skipfetch]
+### Fetching reference CDS sequences                                ... done. [0.4 seconds]
+### Running cmpress                                                 ... done. [0.1 seconds]
+### Validating CM file was built from correct alignment files       ... done. [0.0 seconds]
+### Running cmscan                                                  ... done. [54.6 seconds]
+### Fetching predicted exon sequences                               ... done. [0.0 seconds]
+### Combining multi-exon predicted CDS                              ... done. [0.0 seconds]
+### Translating predicted CDS to identify internal starts/stops     ... done. [0.1 seconds]
+### Fetching corrected exon sequences                               ... done. [0.0 seconds]
+### Combining multi-exon corrected CDS                              ... done. [0.0 seconds]
+### Creating multiple alignments                                    ... done. [1.8 seconds]
 #
-# Briefly, the script fetches all exons from the reference accession
-# and stores information on them internally. It then skips the model 
-# building step because we used the -model option. The next step is to
-# run cmscan using the models built from the reference exons to
-# identify (suspected) homologous exons in all other accessions. This
-# is done with one call to 'cmscan'. In this run it is the rate
-# limiting step.
+# Briefly, the script skips the genome fetch step due to the
+# -skipfetch option as explained above. It then fetches the CDS
+# sequences for the reference accession and stores information on them
+# internally. It then skips the model building step because we used
+# the -skipbuild option, but instead runs 'cmpress' to prepare the 
+# model files we just calibrated for the cmscan step, which is next.
+# (Note, this cmpress step will only take place the first time the
+# script is run after an -only build (STEP 1) run.)
+#
+# The next step is to run cmscan using the models built from the
+# reference exons to identify (suspected) homologous exons in all
+# other accessions. This is done with one call to 'cmscan'. In this
+# run it is the rate limiting step.
 #
 # After that, the cmscan output is parsed and the predicted exon
 # boundaries for each accession are used to fetch out the predicted
@@ -507,6 +565,130 @@ perl dnaorg_annotate_genomes.pl -skipfetch -model NC_001346/NC_001346.ref.cm NC_
 # information. The section titled "Explanations of column headings"
 # above provides more information on the tabular data.
 #
+####################
+# Example run 2 of 2
+####################
+#
+# In this example run of dnaorg_annotate_genomes.pl we will repeat the
+# same steps as in the first step but with the Dengue virus which
+# differs from Maize streak virus in some important ways from the
+# perspective of biology and of the dnaorg_annotate_genomes.pl script.
+# Dengue has a single CDS which encodes a polypeptide which is cleaved
+# into (eventually) 14 distinct peptides. These peptides are annotated
+# as 'mat_peptide' features in GenBank. The dnaorg_annotate_genomes.pl
+# script has a -matpept option that can be used for such species.
+#
+# Another important difference with the first Maize streak virus
+# example is that Dengue is not a circular genome that lacks an origin
+# sequence, so we do not use the -oseq option for Dengue. We do use
+# the -nodup option which tells the script that the genome is not
+# circular so it should not duplicate the genome to allow features
+# that span the stop..start barrier to be identified.
+#
+# The input file for Dengue is NC_001477.ntlist
+cat NC_001477.ntlist
+##NC_001477
+##FJ461323
+##KF973468
+#
+# We will perform the same 3 steps we did in example run #1
+# above. There is significantly less explanatory text here since we've
+# been through these steps once before. See example #1 for some more
+# explanation. 
+# 
+# The main difference compared with example run #1 with STEP 0 is that
+# we add the -matpept option to specify that we want the mat_peptide
+# feature information as opposed to the CDS information.
+#
+# STEP 0. Running dnaorg_virus_wrapper.pl:
+perl /panfs/pan1/dnaorg/programs/dnaorg_virus_wrapper.pl -matpept NC_001477.ntlist 
+
+##Step 1: fetching mat_peptide info ... done. [perl /panfs/pan1/dnaorg/programs/dnaorg_fetch_dna_wrapper.pl -f -ntlist -matpept -d NC_001477 NC_001477.ntlist > /dev/null]
+##Step 2: parsing feature table ... done. [perl /panfs/pan1/dnaorg/programs/dnaorg_parse_ftable.pl -matpept -d NC_001477 NC_001477/NC_001477.mat_peptide NC_001477 > /dev/null]
+##Step 3: comparing genomes ... done. [perl /panfs/pan1/dnaorg/programs/dnaorg_compare_genomes.pl -matpept -s -product NC_001477 NC_001477/NC_001477.ntlist.not_suppressed > NC_001477/NC_001477.compare]
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### dnaorg_compare_genomes.pl: Compare GenBank annotation of genomes
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### command: /panfs/pan1/dnaorg/programs/dnaorg_compare_genomes.pl -s -product -matpept  NC_001477 NC_001477/NC_001477.ntlist.not_suppressed
+### date:    Mon Oct  5 16:05:43 2015
+### option:  outputting CDS names as accessions [-s]
+### option:  adding 'product' qualifier values to output sequence file deflines [-product]
+### option:  using mat_peptide info instead of CDS info [-matpept]
+###
+###accn        #mp   #pos   #neg  #both  #unkn  strand-string     cls  tot-len       g1     g2     g3     g4     g5     g6     g7     g8     g9    g10    g11    g12    g13    g14
+##NC_001477     14     14      0      0      0  ++++++++++++++      1    10735      342    300    498    273    225   1485   1056    654    390   1857    381     69    747   2697
+##
+##FJ461323      13     13      0      0      0  +++++++++++++       2    10676      342    300    492    219   1491   1056    654    390   1857    381     69    747   2697
+##
+##KF973468      11     11      0      0      0  +++++++++++         3    10599      342    498   1485   1056    654    390   1857    381     69    747   2697
+##
+##
+### Number-of-classes: 3
+### class  #accn  #genes  strand-string
+### -----  -----  ------  -------------
+##      1      1      14  ++++++++++++++
+##      2      1      13  +++++++++++++
+##      3      1      11  +++++++++++
+### -----  -----  ------  -------------
+##  total      3      38  N/A
+##    avg    1.0    12.7  N/A
+##
+# OUTPUT TRUNCATED FOR BREVITY
+#
+# Once again, the most important output is a .tbl file, but this time
+# it is called NC_001477/NC_001477.mat_peptide.tbl.
+#
+ls -ltr NC_001477/*tbl
+##-rw-r--r-- 1 nawrocke oblast 2472 Oct  5 16:05 NC_001477/NC_001477.mat_peptide.tbl
+#
+# This file contains the mat_peptide feature information for each
+# accession in NC_001477.ntlist.
+#
+# STEP 1. As in example run #1, run dnaorg_annotate_genomes.pl with the 
+#         -onlybuild and -cfarm flags to build models of each
+#         reference exon and submit 'calibration' of those models to
+#         the farm. However, this time we additionally use the -nodup
+#         option so the script does not duplicate the genome sequences
+#         that it fetches. We also use the -matpept option which tells
+#         the script to look for and use a mat_peptide table file
+#         instead of a CDS table.
+#
+perl dnaorg_annotate_genomes.pl -onlybuild -cfarm -matpept -nodup NC_001477 NC_001477.ntlist
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### dnaorg_annotate_genomes.pl: Annotate genomes based on a reference and homology search
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### command: dnaorg_annotate_genomes.pl -matpept -nodup -onlybuild -cfarm  NC_001477 NC_001477.ntlist
+### date:    Mon Oct  5 16:11:55 2015
+### option:  using mat_peptide info instead of CDS info [-matpept]
+### option:  not duplicating genomes, features that span the end..start will be undetectable [-nodup]
+### option:  exit after model construction step [-onlybuild]
+### option:  submitting calibration jobs to farm [-cfarm]
+###
+### Fetching 3 full genome sequences                                ... done. [2.2 seconds]
+### Fetching reference mat_peptide sequences                        ... done. [0.9 seconds]
+### Running cmbuild to build 14 CMs                                 ... done. [258.9 seconds]
+##Your job 8457160 ("c.NC_001477.ref0") has been submitted
+##Your job 8457165 ("c.NC_001477.ref1") has been submitted
+##Your job 8457171 ("c.NC_001477.ref2") has been submitted
+##Your job 8457175 ("c.NC_001477.ref3") has been submitted
+##Your job 8457180 ("c.NC_001477.ref4") has been submitted
+##Your job 8457184 ("c.NC_001477.ref5") has been submitted
+##Your job 8457190 ("c.NC_001477.ref6") has been submitted
+##Your job 8457199 ("c.NC_001477.ref7") has been submitted
+##Your job 8457207 ("c.NC_001477.ref8") has been submitted
+##Your job 8457213 ("c.NC_001477.ref9") has been submitted
+##Your job 8457222 ("c.NC_001477.ref10") has been submitted
+##Your job 8457231 ("c.NC_001477.ref11") has been submitted
+##Your job 8457242 ("c.NC_001477.ref12") has been submitted
+##Your job 8457256 ("c.NC_001477.ref13") has been submitted
+###
+### Model calibration job(s) submitted. Exiting.
+#
+# We have to wait until all of these jobs are finished before we can
+# proceed to step 2. 
+
+
+# 
 ##############
 # Output files
 ##############
@@ -586,17 +768,17 @@ perl dnaorg_annotate_genomes.pl -skipfetch -model NC_001346/NC_001346.ref.cm NC_
 # TODO: add section explaining gap notation!
 #
 ##############################################
-# Parallelizing the cmscan step with -scluster
+# Parallelizing the cmscan step with -sfarm
 ##############################################
 #
-# The -scluster <n> option allows parallelism of the cmscan step into
-# <n> cluster jobs. From the usage above:
+# The -sfarm <n> option allows parallelism of the cmscan step into
+# <n> farm jobs. From the usage above:
 #
-##  -scluster <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes
+##  -sfarm <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes
 ##                  (changeable with -swait) before concatenating all the output files and continuing
-##  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]
+##  -swait <n>    : with -sfarm, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]
 # 
-# If -scluster is used, the script will submit the <n> jobs and wait 
+# If -sfarm is used, the script will submit the <n> jobs and wait 
 # up to 3 minutes for all jobs to finish (checking if they are
 # finished every 15 seconds). Once they are finished it will
 # concatenate the results and carry on as usual. The -swait <m> option 
