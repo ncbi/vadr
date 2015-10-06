@@ -1159,6 +1159,118 @@ perl dnaorg_annotate_genomes.pl -skipfetch -skipbuild -matpept -nodup NC_001477 
 #   gaps, organized per gap (each line is a different gap).
 #
 #
+##########################
+# Format of gap info files
+##########################
+# 
+# dnaorg_annotate_genomes.pl generates 6 different gap files:
+# 1. NC_001346.gap.perseq-all.txt
+# 2. NC_001346.gap.perseq-not3.txt
+# 3. NC_001346.gap.perseq-special.txt
+# 4. NC_001346.gap.pergap-all.txt
+# 5. NC_001346.gap.pergap-not3.txt
+# 6. NC_001346.gap.pergap-special.txt
+#
+# The first 3 files include 'perseq' in the name. These are organized
+# as tables with each sequence as a row. Take a look at file  1.
+cat NC_001346/NC_001346.gap.perseq-all.txt 
+### List of all gaps in alignment of each sequence:
+###
+###           CDS#1             CDS#2             CDS#3               CDS#4           
+###           ================  ================  ==================  ================
+###accession  tot  net  string  tot  net  string  tot  net  string    tot  net  string
+###---------  ---  ---  ------  ---  ---  ------  ---  ---  --------  ---  ---  ------
+##NC_001346   0    0    -       0    0    -       0    0    -         0    0    -     
+##KJ699341    0    0    -       0    0    -       0    0    -         0    0    -     
+##KJ437659    0    0    -       0    0    -       0    0    -         0    0    -     
+##HQ693446    0    0    -       0    0    -       15   -15  D1069:15  0    0    -     
+##HQ693435    0    0    -       0    0    -       15   -15  D1069:15  0    0    -     
+###
+### Explanation of the above table:
+### The table includes information on all gaps that exist between all pairwise alignments of
+### the reference CDS and the predicted homologous CDS for each sequence.
+###
+### There are 3 columns under each header "CDS#<n> (all gaps)" named "tot", "net",
+### and "string".
+### The "tot" columns list the total number of gap positions in either sequence in the pairwise alignment.
+### The "net" columns list the net number of the listed gaps in the pairwise alignment; this is the number
+###   of gaps in the reference sequence minus the number of gaps in the current sequence (inserts minus deletes)
+### The "string" columns include a list of <n> tokens, each of which describes a gap of length >= 1 nucleotide.
+###
+### Tokens are in the form: <char><position><length>
+###   <char>     is 'I' for an insertion relative to the reference CDS (gap in reference sequence)
+###              or 'D' for a  deletion  relative to the reference CDS (gap in current sequence)
+###   <position> is the nucleotide position of the gap in reference coordinates.
+###              For insertions this is the reference position after which the insertion occurs.
+###              For deletions  this is the first reference position for this deletion.
+###   <length>   length of the gap in nucleotides.
+###              For insertions this is the number of nucleotides inserted relative to the reference
+###              For deletions  this is the number of reference positions deleted.
+#
+# The text starting 'Explanation of above table' explains the meaning
+# and format of the table. 
+#
+# The other two 'perseq' files are:
+# NC_001346.gap.perseq-not3.txt and
+# NC_001346.gap.perseq-special.txt
+# 
+# These contain slightly different information. The 'not3' file 
+# includes the same information as the NC_001346.gap.perseq-all.txt
+# but only contains information on gaps that have lengths which are
+# NOT multiples of 3.
+# 
+# The 'special' file contains counts of an even more restricted set of
+# gaps. The relevant explanatory comments in that file are:
+#
+### Specifically, these are counts of gaps X in a feature Y (CDS or mat_peptide), such that the following criteria are met:
+###   - length of feature Y is not a multiple of 3
+###   - if you remove only X from list of all gaps, total feature length of Y becomes a multiple of 3
+###       with length difference of D with reference feature
+###    - there are no other gaps Z such that if you remove only Z then length of Y becomes a multiple
+###       of 3 with length difference D2 from reference where D2 < D.
+#
+####################
+# 
+# The 'pergap' files (4-6 in list above) are organized
+# differently. Take a look at file #4:
+#
+cat NC_001346/NC_001346.gap.pergap-all.txt 
+### Counts of all gaps:
+###
+##CDS#3 D1069:15 2
+###
+#
+# This lists all different gaps as a line. Each line has 3
+# space-delimited tokens. Token 1 is the feature the gap is in,
+# 'CDS#3' in this case. Token 2 is a description of the gap, in the
+# format described in the end of the
+# 'NC_001346/NC_001346.gap.perseq-all.txt' file above. From that
+# output:
+#
+### Tokens are in the form: <char><position><length>
+###   <char>     is 'I' for an insertion relative to the reference CDS (gap in reference sequence)
+###              or 'D' for a  deletion  relative to the reference CDS (gap in current sequence)
+###   <position> is the nucleotide position of the gap in reference coordinates.
+###              For insertions this is the reference position after which the insertion occurs.
+###              For deletions  this is the first reference position for this deletion.
+###   <length>   length of the gap in nucleotides.
+###              For insertions this is the number of nucleotides inserted relative to the reference
+###              For deletions  this is the number of reference positions deleted.
+#
+# So this gap 'D1069:15' is a deletion relative to the reference CDS
+# at position 1069 of 15 nucleotides.
+#
+# The third token is the count of these gaps. There are exactly 2
+# accessions with this gap.
+#
+# As with the 'perseq' files, there are two other 'pergap' files, with
+# the names:
+# NC_001346.gap.pergap-not3.txt
+# NC_001346.gap.pergap-special.txt
+#
+# These are analogous to the similarly named 'not3' and 'special'
+# perseq gap files.
+#
 #############################################
 # Parallelizing the cmscan step with -sfarm
 #############################################
@@ -1400,35 +1512,6 @@ perl summarize_dnaorg_annotate_genomes.pl -avgfid NC_001346.seqcol.output
 # heading (which is given in the remainder of the line) and the
 # reference feature in a pairwise alignment.
 #
-##################################################
-## Naming convention for sequences in fasta files
-##################################################
-##
-## Single exon nucleotide sequences are named <s>/<d1>-<d2>: 
-## Where <s> is the sequence accession, <d1> is the coordinate of the
-## start, and <d2> is the coordinate of the stop. 
-##
-## For example:
-## NC_001346/150-455
-##
-## Multi-exon nucleotide sequences of <m> exons are similarly named,
-## but contain <m> sets of <d1>-<d2>, one per exon separated by a
-## single ','.
-## 
-## For example:
-## NC_001346/2527-1886,1793-1353
-## 
-##
-## Protein sequences are similarly named with the coordinates
-## pertaining to nucleotide coordinates the protein was translated
-## from. Additionally, the string "-translated" is appended to the
-## name. 
-##
-## For the two examples above:
-## NC_001346/150-455-translated
-## NC_001346/2527-1886,1793-1353-translated
-## 
-## 
 -----------------------------------
 TODOs:
 

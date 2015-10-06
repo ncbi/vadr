@@ -33,7 +33,7 @@ $usage .= "               <s> must be a string consisting of only A,C,G,T and | 
 $usage .= "               Note that \"|\" must be escaped, i.e. \"\\|\"; the \"|\" can be any char, incl. first or last\n";
 $usage .= "               This option is relevant only for circular genomes, e.g. Maize streak virus\n";
 $usage .= "  -strict    : require matching annotations to match CDS/exon index\n";
-$usage .= "  -nodup     : do not duplicate each genome to allow identification of features that span stop..start\n";
+$usage .= "  -nodup     : do not duplicate genome seqs to identify features that span stop..start (for circular genomes)\n";
 $usage .= "  -notexon   : do not use exon-specific models\n";
 $usage .= "  -onlybuild : exit after building reference models\n";
 $usage .= "  -skipbuild : skip the build and calibration step because you already did an -onlybuild run\n";
@@ -44,24 +44,24 @@ $usage .= "  -seqrow    : force sequence-as-rows    output mode (default for <= 
 $usage .= "  -seqcol    : force sequence-as-columns output mode (default for >  5 models)\n";
 $usage .= "  -nseqcol   : with -seqcol, number of sequences per page of output (default: 10)\n";
 $usage .= "  -nomdlb    : do not add model boundary annotation to output\n";
-$usage .= "  -noexist   : do not include information on existing annotation\n";
+$usage .= "  -noexist   : do not include information on existing GenBank annotation\n";
 $usage .= "  -nobrack   : do not include brackets around predicted annotations that do not match existing\n";
 $usage .= "  -nostop    : do not output stop codon for each predicted CDS/mat_peptide\n";
 $usage .= "  -nofid     : do not output fractional identity relative to reference for each CDS/exon\n";
 $usage .= "  -noss3     : do not output results of start codon, stop codon and multiple of 3 tests\n";
-$usage .= "  -noolap    : do not output overlap information\n";
+$usage .= "  -noolap    : do not output overlap information about which predicted features overlap\n";
 $usage .= "  -noexp     : do not output explanation of column headings\n";
 $usage .= "\n OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:\n";
 $usage .= "  -hmmer     : use HMMER for predicting annotations, default: use Infernal\n";
 $usage .= "\n OPTIONS SPECIFIC TO HMMER3:\n";
 $usage .= "  -hmmenv  : use HMM envelope boundaries for predicted annotations, default: use window boundaries\n";
 $usage .= "\n OPTIONS SPECIFIC TO INFERNAL:\n";
-$usage .= "  -iglocal      : use the -g option with cmsearch for glocal searches\n";
-$usage .= "  -cslow        : use default cmcalibrate parameters, not parameters optimized for speed\n";
-$usage .= "  -ccluster     : submit calibration jobs for each CM to cluster and exit (requires --onlybuild)\n";
-$usage .= "  -scluster <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes\n";
-$usage .= "                  (changeable with -swait) before concatenating all the output files and continuing\n";
-$usage .= "  -swait <n>    : with -scluster, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]\n";
+$usage .= "  -iglocal   : use the -g option with cmsearch for glocal searches\n";
+$usage .= "  -cslow     : use default cmcalibrate parameters, not parameters optimized for speed\n";
+$usage .= "  -cfarm     : submit calibration jobs for each CM to compute farm and exit (requires --onlybuild)\n";
+$usage .= "  -sfarm <n> : split genome file into <n> pieces, submit <n> cmscan jobs to farm and wait 3 minutes\n";
+$usage .= "               (changeable with -swait) before concatenating all the output files and continuing\n";
+$usage .= "  -swait <n>  : with -sfarm, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]\n";
 $usage .= "\n OPTIONS USEFUL FOR DEVELOPMENT/DEBUGGING:\n";
 $usage .= "  -skipfetch : don't fetch whole genome sequences, we already have them from a previous run\n";
 $usage .= "  -skipscan  : use existing cmscan/hmmscan results, don't actually run it\n";
@@ -105,8 +105,8 @@ my $do_seqcol    = 0; # set to '1' if -seqcol  enabled, force sequence-as-cols o
 my $df_nseqcol   = 10;          # default number of sequences to a page in sequence-as-cols mode
 my $nseqcol      = $df_nseqcol; # changed to <n> if -nseqcol <n> enabled, set number of sequences per page in sequence-as-cols mode to $nseqcol
 my $do_nomdlb    = 0; # set to '1' if -nomdlb  or -c enabled, do not print model boundary info for annotations, else do
-my $do_noexist   = 0; # set to '1' if -noexist or -c enabled, do not output information on existing annotations
-my $do_nobrack   = 0; # set to '1' if -nobrack or -c enabled, do not output brackets around predicted annotations that do not match any existing annotation
+my $do_noexist   = 0; # set to '1' if -noexist or -c enabled, do not output information on existing GenBank annotations
+my $do_nobrack   = 0; # set to '1' if -nobrack or -c enabled, do not output brackets around predicted annotations that do not match any existing GenBank annotation
 my $do_nostop    = 0; # set to '1' if -nostop  or -c enabled, do not output stop codon for predicted annotations
 my $do_nofid     = 0; # set to '1' if -nofid   or -c enabled, do not output fractional identities relative to the reference
 my $do_noss3     = 0; # set to '1' if -noss3   or -c enabled, do not output SS3 columns: 'S'tart codon check, 'S'top codon check and multiple of '3' check
@@ -117,13 +117,13 @@ my $do_hmmer     = 0; # set to '1' if -hmmer      enabled, use HMMER3's nhmmscan
 # options specific to HMMER3
 my $do_hmmenv    = 0; # set to '1' if -hmmenv     enabled, use HMM envelope boundaries as predicted annotations, else use window boundaries
 # options specific to Infernal
-my $do_iglocal       = 0; # set to '1' if -iglocal    enabled, use -g with cmsearch
-my $do_cslow         = 0; # set to '1' if -cslow      enabled, use default, slow, cmcalibrate parameters instead of speed optimized ones
-my $do_ccluster      = 0; # set to '1' if -ccluster   enabled, submit cmcalibrate job to cluster
-my $do_scluster      = 0; # set to '1' if -scluster   enabled, submit cmscan jobs to cluster
-my $scluster_njobs   = undef; # set to a value if -scluster is used
-my $df_scluster_wait = 3; # default value for number of minutes to wait for cmscan jobs to finish
-my $scluster_wait    = $df_scluster_wait; # changeable to <n> with -swait <n>
+my $do_iglocal    = 0; # set to '1' if -iglocal enabled, use -g with cmsearch
+my $do_cslow      = 0; # set to '1' if -cslow   enabled, use default, slow, cmcalibrate parameters instead of speed optimized ones
+my $do_cfarm      = 0; # set to '1' if -cfarm   enabled, submit cmcalibrate job to farm
+my $do_sfarm      = 0; # set to '1' if -sfarm   enabled, submit cmscan jobs to farm
+my $sfarm_njobs   = undef; # set to a value if -sfarm is used
+my $df_sfarm_wait = 3; # default value for number of minutes to wait for cmscan jobs to finish
+my $sfarm_wait    = $df_sfarm_wait; # changeable to <n> with -swait <n>
 # options for development/debugging
 my $do_skipfetch = 0; # set to '1' if -skipfetch  enabled, skip genome fetch step, use pre-existing output from a previous run
 my $do_skipscan  = 0; # set to '1' if -skipscan   enabled, skip cmscan/hmmscan step, use pre-existing output from a previous run
@@ -154,9 +154,9 @@ my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan a
             "hmmenv"    => \$do_hmmenv,
             "iglocal"   => \$do_iglocal,
             "cslow"     => \$do_cslow, 
-            "ccluster"  => \$do_ccluster,
-            "scluster=s"=> \$scluster_njobs,
-            "swait=s"   => \$scluster_wait,
+            "cfarm"     => \$do_cfarm,
+            "sfarm=s"   => \$sfarm_njobs,
+            "swait=s"   => \$sfarm_wait,
             "skipfetch" => \$do_skipfetch,
             "skipscan"  => \$do_skipscan,
             "skipaln"   => \$do_skipaln) ||
@@ -232,7 +232,7 @@ if($do_nomdlb) {
 }
 if($do_noexist) { 
   $opts_used_short .= "-noexist";
-  $opts_used_long  .= "# option:  not outputting info on existing annotations [-noexist]\n";
+  $opts_used_long  .= "# option:  not outputting info on existing GenBank annotations [-noexist]\n";
 }
 if($do_nobrack) { 
   $opts_used_short .= "-nobrack";
@@ -274,18 +274,18 @@ if($do_cslow) {
   $opts_used_short .= "-cslow ";
   $opts_used_long  .= "# option:  run cmcalibrate in default (slow) mode [-cslow]\n";
 }
-if($do_ccluster) { 
-  $opts_used_short .= "-ccluster ";
-  $opts_used_long  .= "# option:  submitting calibration jobs to cluster [-ccluster]\n";
+if($do_cfarm) { 
+  $opts_used_short .= "-cfarm ";
+  $opts_used_long  .= "# option:  submitting calibration jobs to farm [-cfarm]\n";
 }
-if(defined $scluster_njobs) { 
-  $do_scluster = 1;
-  $opts_used_short .= "-scluster $scluster_njobs ";
-  $opts_used_long  .= "# option:  submit cmscan jobs to cluster and wait for them to finish [-scluster]\n";
+if(defined $sfarm_njobs) { 
+  $do_sfarm = 1;
+  $opts_used_short .= "-sfarm $sfarm_njobs ";
+  $opts_used_long  .= "# option:  submit cmscan jobs to farm and wait for them to finish [-sfarm]\n";
 }
-if($scluster_wait != $df_scluster_wait) { 
-  $opts_used_short .= "-swait $scluster_wait ";
-  $opts_used_long  .= "# option:  submit cmscan jobs to cluster and wait for them to finish [-scluster]\n";
+if($sfarm_wait != $df_sfarm_wait) { 
+  $opts_used_short .= "-swait $sfarm_wait ";
+  $opts_used_long  .= "# option:  submit cmscan jobs to farm and wait for them to finish [-sfarm]\n";
 }
 if($do_skipfetch) { 
   $opts_used_short .= "-skipfetch ";
@@ -304,20 +304,20 @@ if($do_skipaln) {
 if((! $do_hmmer) && $do_hmmenv) { 
   die "ERROR -hmmenv requires -hmmer"; 
 }
-if($do_ccluster && $do_hmmer) { 
-  die "ERROR -ccluster is incompatible with -hmmer"; 
+if($do_cfarm && $do_hmmer) { 
+  die "ERROR -cfarm is incompatible with -hmmer"; 
 }
 if($do_cslow && $do_hmmer) { 
   die "ERROR -cslow is incompatible with -hmmer"; 
 }
-if($do_skipscan && ($do_ccluster || $do_cslow || $do_onlybuild)) { 
-  die "ERROR -skipscan is incompatible with -ccluster, -cslow, and -onlybuild";
+if($do_skipscan && ($do_cfarm || $do_cslow || $do_onlybuild)) { 
+  die "ERROR -skipscan is incompatible with -cfarm, -cslow, and -onlybuild";
 }
-if($do_scluster && ($do_skipaln || $do_skipscan)) { 
-  die "ERROR -skipscan and -skipaln are incompatible with -scluster";
+if($do_sfarm && ($do_skipaln || $do_skipscan)) { 
+  die "ERROR -skipscan and -skipaln are incompatible with -sfarm";
 }
-if($do_scluster && $do_hmmer) { 
-  die "ERROR -scluster and -hmmer are incompatible";
+if($do_sfarm && $do_hmmer) { 
+  die "ERROR -sfarm and -hmmer are incompatible";
 }
 if($do_onlybuild && $do_skipbuild) { 
   die "ERROR -onlybuild and -skipbuild are incompatible";
@@ -330,11 +330,11 @@ if($do_notexon && $do_matpept) {
 }
 
 # check that options that must occur in combination, do
-if($do_ccluster && (! $do_onlybuild)) { 
-  die "ERROR -ccluster must be used in combination with -onlybuild"; 
+if($do_cfarm && (! $do_onlybuild)) { 
+  die "ERROR -cfarm must be used in combination with -onlybuild"; 
 }
-if(($scluster_wait != $df_scluster_wait) && (! $do_scluster)) { 
-  die "ERROR -swait must be used in combination with -scluster"; 
+if(($sfarm_wait != $df_sfarm_wait) && (! $do_sfarm)) { 
+  die "ERROR -swait must be used in combination with -sfarm"; 
 }
 if((defined $in_model_db) && (! $do_skipbuild)) {
   die "ERROR -skipbuild must be used in combination with -model"; 
@@ -468,8 +468,6 @@ my $nbth = 0;              # number of main features on both strands
 my @mft_len_A = ();        # [0..$i..$nmft-1] length of main feature $i
 my @mft_coords_A = ();     # [0..$i..$nmft-1] coords of main feature $i
 my @mft_product_A = ();    # [0..$i..$nmft-1] product annotation for main feature $i
-my @mft_protid_A = ();     # will remain empty unless $do_protid is 1 (-protid enabled at cmdline)
-my @mft_codonstart_A = (); # will remain empty unless $do_codonstart is 1 (-codonstart enabled at cmdline)
 
 #####################################################
 # Fetch all genome sequences, including the reference
@@ -483,8 +481,8 @@ my $fetch_string = undef;
 my $ref_seq_accn; # name of fasta sequence for reference
 
 # another error check
-if($do_scluster && ($scluster_njobs > $naccn)) { 
-  die "ERROR with -scluster <n>, <n> must be <= number of genomes ($naccn), but you used $scluster_njobs"; 
+if($do_sfarm && ($sfarm_njobs > $naccn)) { 
+  die "ERROR with -sfarm <n>, <n> must be <= number of genomes ($naccn), but you used $sfarm_njobs"; 
 }
 
 open(OUT, ">" . $gnm_fetch_file) || die "ERROR unable to open $gnm_fetch_file";
@@ -527,6 +525,19 @@ else {
 
 # and open the sequence file using BioEasel
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $gnm_fasta_file });
+
+# make sure we have our reference accession in the sequence file
+my $test_len = $sqfile->fetch_seq_length_given_name($ref_seq_accn);
+if((! defined $test_len) || ($test_len == -1)) { 
+  my $errmsg;
+  if($do_nodup) { 
+    $errmsg = "ERROR, unable to fetch reference sequence $ref_seq_accn from $gnm_fasta_file.\nDid you use -nodup when you did the first run of the script with -onlybuild?\nIf not, do not use it here. If so, and you want to use it, redo this run without -skipfetch.\n"; 
+  }
+  else { 
+    $errmsg = "ERROR, unable to fetch reference sequence $ref_seq_accn from $gnm_fasta_file.\nDid you use -nodup when you did the first run of the script with -onlybuild?\nIf so, use it here too.\n";
+  }
+  die $errmsg;
+}
 
 ##################################################
 # If we're looking for an origin sequence, do that
@@ -623,6 +634,7 @@ for(my $i = 0; $i < $ref_nmft; $i++) {
       $stop  = $tmp;
     }
     my @fetch_AA = ();
+    
     push(@fetch_AA, [$cur_name_root, $start, $stop, $ref_seq_accn]);
     
     # fetch the sequence
@@ -700,8 +712,8 @@ if($do_skipbuild) {
     # if we've run this script with -skipbuild for this dataset >= 1 times already)
     # or if not (this will likely be true if we've run this script 0 times with 
     # -skipbuild already), then create that file by concatenating the individually
-    # calibrated model files we created on the previous run of this scrip with
-    # -onlybuild -scluster.
+    # calibrated model files we created on the previous run of this script with
+    # -onlybuild -sfarm.
     $model_db = $out_root . ".ref.cm";
     if(! -s $model_db) { 
       # case 2
@@ -709,7 +721,7 @@ if($do_skipbuild) {
       for(my $i = 0; $i < $nmdl; $i++) { 
         my $indi_model = $out_root . ".ref.$i.cm";
         if(! -s ($indi_model)) { 
-          die "ERROR: -skipbuild used but model db file $model_db does not exist, nor does individual model $indi_model;\nMake sure you've already run this script with -onlybuild -ccluster on this dataset -- it doesn't seem like you have.";
+          die "ERROR: -skipbuild used but model db file $model_db does not exist, nor does individual model $indi_model;\nMake sure you've already run this script with -onlybuild -cfarm on this dataset -- it doesn't seem like you have.";
         }
       }
       my $cat_cmd = "cat $out_root.ref.0.cm > $model_db";
@@ -756,9 +768,9 @@ if($do_skipbuild) {
 }
 else { 
   if(! $do_hmmer) { # use Infernal (default)
-    createCmDb($cmbuild, $cmcalibrate, $cmpress, $cmfetch, $nmdl, $do_cslow, $do_ccluster, $all_stk_file, $out_root . ".ref", \@indi_ref_name_A);
+    createCmDb($cmbuild, $cmcalibrate, $cmpress, $cmfetch, $nmdl, $do_cslow, $do_cfarm, $all_stk_file, $out_root . ".ref", \@indi_ref_name_A);
     if($do_onlybuild) { 
-      printf("#\n# Model calibration %s. Exiting.\n", ($do_ccluster) ? "job(s) submitted" : "complete");
+      printf("#\n# Model calibration %s. Exiting.\n", ($do_cfarm) ? "job(s) submitted" : "complete");
       exit 0;
     }
     $model_db = $out_root . ".ref.cm";
@@ -799,33 +811,33 @@ if($do_hmmer) {
   fetchHits($sqfile, $do_skipaln, "predicted", \@mdl_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, $out_root, \%pred_fafile_H);
 }
 else { 
-  if(! $do_scluster) { 
+  if(! $do_sfarm) { 
     # default method, run cmscan on full genome file
     runCmscan($cmscan, $do_iglocal, ($do_skipscan || $do_skipaln), 0, $model_db, $gnm_fasta_file, $tblout, $stdout);
   }
   else { # we need to split up the genome fasta file and submit a different cmscan job for each fasta file
-    # note we may redefined $scluster_njobs here, splitFastaFile will return actual number of fasta files created, 
-    # which can differ from the requested amount (which is $sncluster_njobs) that we pass in
-    my $nfasta_created = splitFastaFile($esl_ssplit, $gnm_fasta_file, $scluster_njobs);
-    $scluster_njobs = $nfasta_created;
+    # note we may redefined $sfarm_njobs here, splitFastaFile will return actual number of fasta files created, 
+    # which can differ from the requested amount (which is $snfarm_njobs) that we pass in
+    my $nfasta_created = splitFastaFile($esl_ssplit, $gnm_fasta_file, $sfarm_njobs);
+    $sfarm_njobs = $nfasta_created;
     # now submit a job for each
-    printf("%-65s ... ", sprintf("# Submitting %d cmscan jobs", $scluster_njobs));
-    for(my $z = 1; $z <= $scluster_njobs; $z++) { 
+    printf("%-65s ... ", sprintf("# Submitting %d cmscan jobs", $sfarm_njobs));
+    for(my $z = 1; $z <= $sfarm_njobs; $z++) { 
       my $cur_gnm_fasta_file = $gnm_fasta_file . "." . $z;
       my $cur_tblout = $tblout . "." . $z;
       my $cur_stdout = $stdout . "." . $z;
       runCmscan($cmscan, $do_iglocal, 0, 1, $model_db, $cur_gnm_fasta_file, $cur_tblout, $cur_stdout);
     }
-    printf("done. [waiting max of $scluster_wait minutes for them to finish]\n");
+    printf("done. [waiting max of $sfarm_wait minutes for them to finish]\n");
 
     # now check that they're all finished every 15 seconds until we hit our max wait time
     my $all_finished = 0;
     my $nfinished = 0;
-    for(my $zz = 0; $zz < ($scluster_wait*4); $zz++) { 
+    for(my $zz = 0; $zz < ($sfarm_wait*4); $zz++) { 
       # check to see if jobs are finished, every 30 seconds
       sleep(15);
       $nfinished = 0;
-      for(my $z = 1; $z <= $scluster_njobs; $z++) { 
+      for(my $z = 1; $z <= $sfarm_njobs; $z++) { 
         my $cur_stdout = $stdout . "." . $z;
         if(-s $cur_stdout) { 
           my $final_line = `tail -n 1 $cur_stdout`;
@@ -835,15 +847,15 @@ else {
           }
         }
       }
-      if($nfinished == $scluster_njobs) { 
+      if($nfinished == $sfarm_njobs) { 
         # we're done break out of it
         $all_finished = 1;
-        $zz = ($scluster_wait * 4);
+        $zz = ($sfarm_wait * 4);
       }
     }
     if($all_finished) { 
       # concatenate all outputs into one main one
-      for(my $z = 1; $z <= $scluster_njobs; $z++) { 
+      for(my $z = 1; $z <= $sfarm_njobs; $z++) { 
         my $cur_gnm_fasta_file = $gnm_fasta_file . "." . $z;
         my $cur_stdout = $stdout . "." . $z;
         my $cur_tblout = $tblout . "." . $z;
@@ -855,9 +867,9 @@ else {
       }
     }
     else { 
-      die "ERROR only $nfinished of the $scluster_njobs are finished after $scluster_wait minutes. Increase limit with -swait";
+      die "ERROR only $nfinished of the $sfarm_njobs are finished after $sfarm_wait minutes. Increase limit with -swait";
     }
-  } # end of 'else' entered if we're submitting jobs to the cluster
+  } # end of 'else' entered if we're submitting jobs to the farm
 
   parseCmscanTblout($tblout, \%totlen_H, \%mdllen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \%p_score_HH, \%p_hangover_HH);
   fetchHits($sqfile, $do_skipaln, "predicted", \@mdl_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, $out_root, \%pred_fafile_H);
@@ -910,7 +922,12 @@ if((! $do_nocorrect) && (! $do_matpept)) {
     my $cur_fafile = $pred_mft_fafile_A[$c];
     # translate into AA sequences
     my $tmp_esl_translate_output = $cur_fafile;
-    $tmp_esl_translate_output    =~ s/\.mft/\.esl-translate/;
+    if($do_matpept) { 
+      $tmp_esl_translate_output    =~ s/\.mp/\.esl-translate/;
+    }
+    else { 
+      $tmp_esl_translate_output    =~ s/\.cds/\.esl-translate/;
+    }
     # --watson specifies only translate top strand (not reverse strand)
     # -m specifies only AUG allowed as start
     $cmd = $esl_translate . " --watson -m $cur_fafile | grep ^\\> | grep \"frame=1\" > $tmp_esl_translate_output";
@@ -1621,9 +1638,9 @@ open($gap_pergap_not3_FH,    ">", $gap_pergap_not3_file)    || die "ERROR unable
 open($gap_pergap_special_FH, ">", $gap_pergap_special_file) || die "ERROR unable to open $gap_pergap_special_file"; 
 
 # 3 calls to outputGapInfo to create all the files we need:
-outputGapInfo($gap_perseq_all_FH,     $gap_pergap_all_FH,     0, 1, 0, 0, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \%p_refdel_HHA, \%p_refins_HHA);
-outputGapInfo($gap_perseq_not3_FH,    $gap_pergap_not3_FH,    0, 0, 1, 0, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \%p_refdel_HHA, \%p_refins_HHA);
-outputGapInfo($gap_perseq_special_FH, $gap_pergap_special_FH, 0, 0, 0, 1, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \%p_refdel_HHA, \%p_refins_HHA);
+outputGapInfo($gap_perseq_all_FH,     $gap_pergap_all_FH,     $do_matpept, 0, 1, 0, 0, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \%p_refdel_HHA, \%p_refins_HHA);
+outputGapInfo($gap_perseq_not3_FH,    $gap_pergap_not3_FH,    $do_matpept, 0, 0, 1, 0, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \%p_refdel_HHA, \%p_refins_HHA);
+outputGapInfo($gap_perseq_special_FH, $gap_pergap_special_FH, $do_matpept, 0, 0, 0, 1, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \%p_refdel_HHA, \%p_refins_HHA);
 
 close($gap_perseq_all_FH);
 close($gap_perseq_not3_FH);
@@ -2122,18 +2139,18 @@ sub createHmmDb {
 #             the $cmbuild executable. If $cmcalibrate is defined
 #             also run cmcalibrate. 
 #
-# Args:       $cmbuild:          path to 'cmbuild' executable
-#             $cmcalibrate:      path to 'cmcalibrate' executable
-#             $cmpress:          path to 'cmpress' executable
-#             $cmfetch:          path to 'cmfetch' executable
-#             $nmodel:           number of models we're creating/calibrating
-#             $do_calib_slow:    '1' to calibrate using default parameters instead of
-#                                options to make it go much faster
-#             $do_calib_cluster: '1' to submit calibration job to cluster, '0' to do it locally
-#             $stk_file:         stockholm DB file
-#             $out_root:         string for naming output files
-#             $indi_name_AR:     ref to array of individual model names, we only use this if 
-#                                $do_calib_cluster is true.
+# Args:       $cmbuild:       path to 'cmbuild' executable
+#             $cmcalibrate:   path to 'cmcalibrate' executable
+#             $cmpress:       path to 'cmpress' executable
+#             $cmfetch:       path to 'cmfetch' executable
+#             $nmodel:        number of models we're creating/calibrating
+#             $do_calib_slow: '1' to calibrate using default parameters instead of
+#                             options to make it go much faster
+#             $do_calib_farm: '1' to submit calibration job to farm, '0' to do it locally
+#             $stk_file:      stockholm DB file
+#             $out_root:      string for naming output files
+#             $indi_name_AR:  ref to array of individual model names, we only use this if 
+#                             $do_calib_farm is true.
 #
 # Returns:    void
 #
@@ -2142,7 +2159,7 @@ sub createCmDb {
   my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($cmbuild, $cmcalibrate, $cmpress, $cmfetch, $nmodel, $do_calib_slow, $do_calib_cluster, $stk_file, $out_root, $indi_name_AR) = @_;
+  my ($cmbuild, $cmcalibrate, $cmpress, $cmfetch, $nmodel, $do_calib_slow, $do_calib_farm, $stk_file, $out_root, $indi_name_AR) = @_;
 
   if(! -s $stk_file)  { die "ERROR in $sub_name, $stk_file file does not exist or is empty"; }
 
@@ -2168,7 +2185,7 @@ sub createCmDb {
   if(! $do_calib_slow) { $cmcalibrate_opts .= " -L 0.04 "; }
   $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
   
-  if($do_calib_cluster) { 
+  if($do_calib_farm) { 
     # split up model file into individual CM files, then submit a job to calibrate each one, and exit. 
     for(my $i = 0; $i < $nmodel; $i++) { 
       my $cmfetch_cmd = "$cmfetch $out_root.cm $indi_name_AR->[$i] > $out_root.$i.cm";
@@ -2178,9 +2195,9 @@ sub createCmDb {
       my $jobname     = "c." . $out_tail . $i;
       my $errfile     = $out_root . "." . $i . ".err";
       $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.$i.cm > $out_root.$i.cmcalibrate";
-      my $cluster_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . "\"\n";
-      # print("$cluster_cmd\n");
-      runCommand($cluster_cmd, 0);
+      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . "\"\n";
+      # print("$farm_cmd\n");
+      runCommand($farm_cmd, 0);
     }
     # final step, remove the master CM file, so we can create a new one
     $cmd = "rm $out_root.cm";
@@ -2199,7 +2216,7 @@ sub createCmDb {
     $secs_elapsed = runCommand($cmpress_cmd, 0);
     #printf("\n$cmpress_cmd\n");
     printf("done [%.1f seconds]\n", $secs_elapsed);
-  } # end of 'else' entered if $do_calib_cluster is false
+  } # end of 'else' entered if $do_calib_farm is false
 
   return;
 }
@@ -2254,7 +2271,7 @@ sub runNhmmscan {
 # Args:       $cmscan:      path to cmscan executable
 #             $do_glocal:   '1' to use the -g option, '0' not to
 #             $do_skip:     '1' to not actually run cmscan, but verify expected output already exists
-#             $do_cluster:  '1' to submit job to cluster, instead of running it locally
+#             $do_farm:     '1' to submit job to farm, instead of running it locally
 #             $model_db:    path to model CM database
 #             $seq_fasta:   path to seq fasta file
 #             $tblout_file: path to --tblout output file to create, undef to not create one
@@ -2268,7 +2285,7 @@ sub runCmscan {
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($cmscan, $do_glocal, $do_skip, $do_cluster, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
+  my ($cmscan, $do_glocal, $do_skip, $do_farm, $model_db, $seq_fasta, $tblout_file, $stdout_file) = @_;
 
   if($do_skip) { 
     printf("%-65s ... ", "# Skipping cmscan step");
@@ -2289,19 +2306,19 @@ sub runCmscan {
   if(! -s $seq_fasta) { die "ERROR in $sub_name, $seq_fasta file does not exist or is empty"; }
 
   my $cmd = "$cmscan $opts $model_db $seq_fasta > $stdout_file";
-  if(! $do_cluster) { 
+  if(! $do_farm) { 
     # default mode, run job locally
     printf("%-65s ... ", "# Running cmscan");
     my $secs_elapsed = runCommand($cmd, 0);
     printf("done. [%.1f seconds]\n", $secs_elapsed);
   }
   else { 
-    # submit job to cluster and return
+    # submit job to farm and return
     my $jobname = $seq_fasta;
     my $errfile = $stdout . ".err";
     $jobname =~ s/^.+\///; # remove everything up until final '/'
-    my $cluster_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G " . "\"" . $cmd . "\" > /dev/null\n";
-    runCommand($cluster_cmd, 0);
+    my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G " . "\"" . $cmd . "\" > /dev/null\n";
+    runCommand($farm_cmd, 0);
   }
   return;
 }
@@ -3976,7 +3993,7 @@ sub getHeadings {
 ##
 ## Example of sequence-per-row output:
 #                                                                      CDS #1 [single exon; +]                          CDS #2 [2 exons; -]                                        
-#                                          origin sequence                 movement protein                        replication-associated protein                                        existing annotation
+#                                          origin sequence                 movement protein                        replication-associated protein                                         GenBank annotation
 #                                   ----------------------  ---------------------------------------------  --------------------------------------------------------------------------    -------------------                   
 # idx accession           totlen  # start  stop offst PF    start1    stop1  fid1 md1 length SS3 stp PF    start1    stop1  fid1 md1   start2    stop2  fid2 md2 length SS3 stp PF     cds   exons  match             overlaps?  result      
 #---- -------------------  ------ -- ----- ----- ----- --  -------- -------- ----- --- ------ --- --- --  -------- -------- ----- ---   ------    ------ ---- --- ------ --- --- --     ----- -----  -----   -------------------  ------------
@@ -4017,9 +4034,9 @@ sub getHeadings {
 #  CDS #2 [2 exons; -]:replication associated protein:SS3
 #  CDS #2 [2 exons; -]:replication associated protein:stp
 #  CDS #2 [2 exons; -]:replication associated protein:PF
-#  existing annotation:cds
-#  existing annotation:exons
-#  existing annotation:match
+#  GenBank annotation:cds
+#  GenBank annotation:exons
+#  GenBank annotation:match
 #  overlaps?
 #  result
 
@@ -4228,7 +4245,6 @@ sub getHeadings {
   elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
 
   # "avgid"
-  # existing annotation
   $tok1 = sprintf("  %5s", "");
   $tok2 = sprintf("  %5s", "");
   $tok3 = sprintf("  %5s", "");
@@ -4237,9 +4253,9 @@ sub getHeadings {
   if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
   elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
 
-  # existing annotation
+  # existing GenBank annotation
   $tok1 = sprintf("  %19s", "");
-  $tok2 = sprintf("  %19s", "existing annotation");
+  $tok2 = sprintf("  %19s", "GenBank annotation");
   $tok3 = sprintf("  %19s", "-------------------");
   $tok4 = sprintf("  %5s", ($do_matpept) ? "mp" : "cds");
   $tok5 = sprintf("  %5s", "-----");
@@ -4499,8 +4515,8 @@ sub outputColumnHeaderExplanations {
   }
 
   printf("#\n");
-  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: start<j>\":", "start position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing annotation");
-  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: stop<j>\":",  "stop  position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing annotation");
+  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: start<j>\":", "start position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing GenBank annotation");
+  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: stop<j>\":",  "stop  position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing GenBank annotation");
 
   if(! $do_nofid) { 
     printf("# %-*s %s\n", $width, "\"CDS #<i>: fid<j>\":",  "fractional identity between exon #<j> of CDS #<i> and reference genome");
@@ -4541,9 +4557,9 @@ sub outputColumnHeaderExplanations {
   
   if(! $do_noexist) { 
     printf("#\n");
-    printf("# %-*s %s\n", $width, "\"existing annotation: cds\"",   "number of CDS in the existing NCBI annotation for this accession");
-    printf("# %-*s %s\n", $width, "\"existing annotation: exons\"", "total number of exons in the existing NCBI annotation for this accession");
-    printf("# %-*s %s\n", $width, "\"existing annotation: match\"", "number of exons in existing NCBI annotation for which existing and predicted annotation agree exactly");
+    printf("# %-*s %s\n", $width, "\"GenBank annotation: cds\"",   "number of CDS in the existing GenBank annotation for this accession");
+    printf("# %-*s %s\n", $width, "\"GenBank annotation: exons\"", "total number of exons in the existing GenBank annotation for this accession");
+    printf("# %-*s %s\n", $width, "\"GenBank annotation: match\"", "number of exons in existing GenBank annotation for which existing and predicted annotation agree exactly");
   }
 
   if(! $do_noolap) { 
@@ -4604,6 +4620,7 @@ sub debugPrintGapArray {
 #
 # Args:       $perseq_FH:          output file handle to print per-sequence gap info to, undef to not print perseq info
 #             $pergap_FH:          output file handle to print per-gap info to
+#             $do_matpept:         '1' if we're in mat_peptide mode, else 0
 #             $do_perseq_tbl:      '1' to output per sequence gaps as a table, '0' to print a list
 #             $do_gap_all:         '1' to output per gap info for all gaps
 #             $do_gap_not3:        '1' to output per gap info for gaps that are not a multiple of 3, not for all gaps
@@ -4625,10 +4642,10 @@ sub debugPrintGapArray {
 #
 sub outputGapInfo {
   my $sub_name = "outputGapInfo";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($perseq_FH, $pergap_FH, $do_perseq_tbl, $do_gap_all, $do_gap_not3, $do_gap_special, $mdl_AR, $seq_AR, $mdllen_HR, $mdl2mft_map_AR, $refdel_HHAR, $refins_HHAR) = @_;
+  my ($perseq_FH, $pergap_FH, $do_matpept, $do_perseq_tbl, $do_gap_all, $do_gap_not3, $do_gap_special, $mdl_AR, $seq_AR, $mdllen_HR, $mdl2mft_map_AR, $refdel_HHAR, $refins_HHAR) = @_;
 
   if($do_gap_all) {
     if($do_gap_not3 || $do_gap_special) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
@@ -4818,7 +4835,7 @@ sub outputGapInfo {
     printf $perseq_FH ("# List of all gaps with length that is not a multiple of 3 in alignment of each sequence:\n#\n");
   }
   else { # $do_gap_special 
-    printf $perseq_FH ("# List of all gaps that may solely explain a feature's length not being a multiple of 3, for each sequence:\n#\n");
+    printf $perseq_FH ("# List of all gaps that may solely explain a %s's length not being a multiple of 3, for each sequence:\n#\n", ($do_matpept) ? "mat_peptide" : "CDS");
   }
 
   if(! $do_gap_special) { 
@@ -4826,7 +4843,7 @@ sub outputGapInfo {
     for(my $c = 0; $c < $nmft; $c++) { 
       my $w_cur = $w_tot_gap_length_A[$c] + 2 + $w_net_gap_length_A[$c] + 2 + $w_gapstr_A[$c];
       if($c > 0) { print $perseq_FH "  "; }
-      printf $perseq_FH ("%-*s", $w_cur, "Feature#" . ($c+1));
+      printf $perseq_FH ("%-*s", $w_cur, ($do_matpept) ? ("mat_peptide#" . ($c+1)) : ("CDS#" . ($c+1)));
     }
     print $perseq_FH "\n";
     
@@ -4850,7 +4867,7 @@ sub outputGapInfo {
       printf $perseq_FH ("%-*s", $w_gapstr_A[$c], $ch_gapstr);
     }
     else { 
-      printf $perseq_FH ("%-*s", $w_gapstr_A[$c], "Feature#" . ($c+1));
+      printf $perseq_FH ("%-*s", $w_gapstr_A[$c], ($do_matpept) ? ("mat_peptide#" . ($c+1)) : ("CDS#" . ($c+1)));
     }
   }
   print $perseq_FH "\n";
@@ -4887,15 +4904,15 @@ sub outputGapInfo {
   print $perseq_FH "#\n";
   print $perseq_FH ("# Explanation of the above table:\n");
   if($do_gap_all) { 
-    print $perseq_FH ("# The table includes information on all gaps that exist between all pairwise alignments of\n");
-    print $perseq_FH ("# the reference feature and the predicted homologous feature for each sequence.\n");
+    print  $perseq_FH ("# The table includes information on all gaps that exist between all pairwise alignments of\n");
+    printf $perseq_FH ("# the reference %s and the predicted homologous %s for each sequence.\n", ($do_matpept) ? "mat_peptide" : "CDS", ($do_matpept) ? "mat_peptide" : "CDS");
   }
   elsif($do_gap_not3) { 
-    print $perseq_FH ("# The table includes information on all gaps of lengths that are not multiples of 3 that exist\n");
-    print $perseq_FH ("# between all pairwise alignments of the reference feature and the predicted homologous feature for each sequence.\n");
+    print  $perseq_FH ("# The table includes information on all gaps of lengths that are not multiples of 3 that exist\n");
+    printf $perseq_FH ("# between all pairwise alignments of the reference %s and the predicted homologous %s for each sequence.\n", ($do_matpept) ? "mat_peptide" : "CDS", ($do_matpept) ? "mat_peptide" : "CDS");
   }
   else { 
-    print $perseq_FH ("# The table includes information on some gaps that can solely explain a feature not being a multiple of length 3.\n");
+    print $perseq_FH ("# The table includes information on some gaps that can solely explain a feature (CDS or mat_peptide) not being a multiple of length 3.\n");
     print $perseq_FH ("# This is (probably) not an exhaustive list of all such gaps.\n");
     print $perseq_FH ("# Specifically it is only gaps X in a feature Y, such that the following criteria are met:\n");
     print $perseq_FH ("#   - length of feature Y is not a multiple of 3\n");
@@ -4906,29 +4923,29 @@ sub outputGapInfo {
   }
   print $perseq_FH ("#\n");
   if($do_gap_all || $do_gap_not3) { 
-    printf $perseq_FH ("# There are 3 columns under each header \"feature#<n> (%s)\" named \"tot\", \"net\",\n", ($do_gap_all) ? "all gaps" : "gaps %3 != 0");
+    printf $perseq_FH ("# There are 3 columns under each header \"%s#<n> (%s)\" named \"tot\", \"net\",\n", ($do_matpept) ? "mat_peptide" : "CDS", ($do_gap_all) ? "all gaps" : "gaps %3 != 0");
     print $perseq_FH ("# and \"string\".\n");
     print $perseq_FH ("# The \"tot\" columns list the total number of gap positions in either sequence in the pairwise alignment.\n");
     print $perseq_FH ("# The \"net\" columns list the net number of the listed gaps in the pairwise alignment; this is the number\n");
     print $perseq_FH ("#   of gaps in the reference sequence minus the number of gaps in the current sequence (inserts minus deletes)\n");
     print $perseq_FH ("# The \"string\" columns include a list of <n> tokens, each of which describes a gap of length >= 1 nucleotide.\n");
   }
-  print $perseq_FH ("#\n");
-  print $perseq_FH ("# Tokens are in the form: <char><position><length>\n");
-  print $perseq_FH ("#   <char>     is 'I' for an insertion relative to the reference feature (gap in reference sequence)\n");
-  print $perseq_FH ("#              or 'D' for a  deletion  relative to the reference feature (gap in current sequence)\n");
-  print $perseq_FH ("#   <position> is the nucleotide position of the gap in reference coordinates.\n");
-  print $perseq_FH ("#              For insertions this is the reference position after which the insertion occurs.\n");
-  print $perseq_FH ("#              For deletions  this is the first reference position for this deletion.\n");
-  print $perseq_FH ("#   <length>   length of the gap in nucleotides.\n");
-  print $perseq_FH ("#              For insertions this is the number of nucleotides inserted relative to the reference\n");
-  print $perseq_FH ("#              For deletions  this is the number of reference positions deleted.\n");
-  print $perseq_FH ("#\n");
+  print  $perseq_FH ("#\n");
+  print  $perseq_FH ("# Tokens are in the form: <char><position><length>\n");
+  printf $perseq_FH ("#   <char>     is 'I' for an insertion relative to the reference %s (gap in reference sequence)\n", $do_matpept ? "mat_peptide" : "CDS");
+  printf $perseq_FH ("#              or 'D' for a  deletion  relative to the reference %s (gap in current sequence)\n", $do_matpept ? "mat_peptide" : "CDS");
+  print  $perseq_FH ("#   <position> is the nucleotide position of the gap in reference coordinates.\n");
+  print  $perseq_FH ("#              For insertions this is the reference position after which the insertion occurs.\n");
+  print  $perseq_FH ("#              For deletions  this is the first reference position for this deletion.\n");
+  print  $perseq_FH ("#   <length>   length of the gap in nucleotides.\n");
+  print  $perseq_FH ("#              For insertions this is the number of nucleotides inserted relative to the reference\n");
+  print  $perseq_FH ("#              For deletions  this is the number of reference positions deleted.\n");
+  print  $perseq_FH ("#\n");
   if($do_gap_special) { 
-    print $perseq_FH ("#\n");
-    print $perseq_FH ("# \"-\" tokens indicate the feature is a multiple of length 3\n");
-    print $perseq_FH ("# \"?\" tokens indicate the feature is not a multiple of length 3, but that no gaps that satisfy our criteria exist.\n");
-    print $perseq_FH ("#\n");
+    print  $perseq_FH ("#\n");
+    printf $perseq_FH ("# \"-\" tokens indicate the %s is a multiple of length 3\n", $do_matpept ? "mat_peptide" : "CDS");
+    printf $perseq_FH ("# \"?\" tokens indicate the %s is not a multiple of length 3, but that no gaps that satisfy our criteria exist.\n", $do_matpept ? "mat_peptide" : "CDS");
+    print  $perseq_FH ("#\n");
   }
 
   # Now the per gap information
@@ -4940,7 +4957,7 @@ sub outputGapInfo {
   }
   else { # $do_gap_special == 1
     printf $pergap_FH ("# Counts of gaps that are special (responsible for net gap length that is not a multiple of 3):\n#\n");
-    print $perseq_FH ("# Specifically, these are counts of gaps X in a feature Y, such that the following criteria are met:\n");
+    print $perseq_FH ("# Specifically, these are counts of gaps X in a feature Y (CDS or mat_peptide), such that the following criteria are met:\n");
     print $perseq_FH ("#   - length of feature Y is not a multiple of 3\n");
     print $perseq_FH ("#   - if you remove only X from list of all gaps, total feature length of Y becomes a multiple of 3\n");
     print $perseq_FH ("#       with length difference of D with reference feature\n");
@@ -4952,7 +4969,7 @@ sub outputGapInfo {
   for(my $c = 0; $c < $nmft; $c++) { 
     if((scalar(keys %{$mft_gapstr_AH[$c]})) > 0) { 
       foreach my $key (sort keys %{$mft_gapstr_AH[$c]}) { 
-        printf $pergap_FH ("feature#" . ($c+1) . " " . $key . " " . $mft_gapstr_AH[$c]{$key} . "\n");
+        printf $pergap_FH ("%s#" . ($c+1) . " " . $key . " " . $mft_gapstr_AH[$c]{$key} . "\n", ($do_matpept) ? "mat_peptide" : "CDS");
         $nprinted++;
       }
       printf $pergap_FH ("#\n");
