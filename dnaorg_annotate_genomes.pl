@@ -640,7 +640,7 @@ for(my $i = 0; $i < $ref_nmft; $i++) {
     # fetch the sequence
     my $cur_fafile = $cur_out_root . ".fa";
     $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
-    
+
     # reformat to stockholm
     my $cur_stkfile = $cur_out_root . ".stk";
     my $cmd = "esl-reformat --informat afa stockholm $cur_fafile > $cur_stkfile";
@@ -708,7 +708,7 @@ if($do_skipbuild) {
   }
   else { 
     # -model not used, but we're trying to skip the build step
-    # make sure we already have the CM DB file already (case 1: this will likely be true
+    # make sure we already have the CM DB file already (this will likely be true
     # if we've run this script with -skipbuild for this dataset >= 1 times already)
     # or if not (this will likely be true if we've run this script 0 times with 
     # -skipbuild already), then create that file by concatenating the individually
@@ -1087,8 +1087,9 @@ my @fullprot_AH   = ();  # [0..$i..nmft-1], each element is a hash with keys $ke
                          # always be '1', more than '1' is an error, and we never create a value of '0'.
 my @ntruncprot_A   = (); # [0..$i..nmft-1], number of accessions we do not have a full protein for, for CDS $i
 my @truncprot_AH   = (); # [0..$i..nmft-1], each element is a hash with keys $key as sequence accessions and values 
-                           # of number of non-full length protein sequences we have for CDS/mat_peptide $i for key $key. Values should
-                           # always be '1', more than '1' is an error, and we never create a value of '0'.
+                          # of number of non-full length protein sequences we have for CDS/mat_peptide $i for key $key. Values should
+                          # always be '1', more than '1' is an error, and we never create a value of '0'.
+my @aa_full_files_A = (); # array of protein sequence files we are about to create
 for(my $c = 0; $c < $ref_nmft; $c++) { 
   my $cur_fafile = ($do_nocorrect || $do_matpept) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
   # translate into AA sequences
@@ -1116,6 +1117,9 @@ for(my $c = 0; $c < $ref_nmft; $c++) {
   my $prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
   my $prot_must_stop_at_posn_L  = 1; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
   parseEslTranslateOutput($tmp_aa_fafile, $aa_full_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$fullprot_AH[$c]}, \$nfullprot_A[$c]);
+
+  push(@aa_full_files_A, $aa_full_fafile);
+
   #printf("CDS: %d nfullprot: %d\n", ($c+1), $nfullprot_A[$c]);
   
   ## now fetch any protein sequences that start at position 1 but do not end at the final predicted position
@@ -1125,9 +1129,9 @@ for(my $c = 0; $c < $ref_nmft; $c++) {
   #printf("CDS: %d ntruncprot: %d\n", ($c+1), $ntruncprot_A[$c]);
 }
 
-#############################
-# CREATE MULTIPLE ALIGNMENTS
-#############################
+#################################
+# CREATE MULTIPLE DNA ALIGNMENTS
+#################################
 if($do_hmmer) { 
   alignHits($hmmalign, $hmmfetch, $model_db, $do_skipaln, \@mdl_A, \@seq_accn_A, 
             (($do_nocorrect || $do_matpept) ? \%pred_fafile_H : \%corr_fafile_H), 
@@ -1138,6 +1142,71 @@ else {
             (($do_nocorrect || $do_matpept) ? \%pred_fafile_H : \%corr_fafile_H), 
             \%p_start_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA);
 }
+
+#####################################
+# CREATE MULTIPLE PROTEIN ALIGNMENTS
+#####################################
+# Make sure that the predictions in the reference of each feature are the same as the GenBank annotation
+# If they're not we can't use the current method which fetches the CDS/mat_peptide sequence based on the
+# predicion
+($seconds, $microseconds) = gettimeofday();
+$start_time = ($seconds + ($microseconds / 1000000.));
+printf("%-65s ... ", sprintf("# Creating multiple alignments of protein sequences"));
+my @tmp_ref_act_exon_starts_AA = (); # [0..$nmft-1][0..$nexons-1] start positions of actual annotations of exons for ref accn, $nexons is main-feature (CDS or mat_peptide) specific
+my @tmp_ref_act_exon_stops_AA  = (); # [0..$nmft-1][0..$nexons-1] stop  positions of actual annotations of exons for ref accn, $nexons is main-feature (CDS or mat_peptide) specific
+my $tmp_ref_tot_nexons = 0;
+my $tmp_ref_nmft       = 0;
+
+getActualAnnotations($accn_A[0], \%mft_tbl_HHA, \@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, \$tmp_ref_tot_nexons, \$tmp_ref_nmft);
+for(my $h = 0; $h < $nmdl; $h++) { 
+  my $model   = $mdl_A[$h];
+  my $mft_i   = $mdl2mft_map_A[$h];
+  my $exon_i  = $mft2exon_map_A[$h];
+  if(! exists $p_start_HH{$model}{$ref_seq_accn}) { die "ERROR no prediction in reference for feature $mft_i exon $exon_i.\n"; }
+  my $start  = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$ref_seq_accn} : $c_start_HH{$model}{$ref_seq_accn};
+  my $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$ref_seq_accn}  : $c_stop_HH{$model}{$ref_seq_accn};
+
+  my ($ref_start_match, $ref_stop_match) = checkStrictBoundaryMatch(\@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, $mft_i, $exon_i, $start, $stop);
+  if(! $ref_start_match) { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation (start position mismatch)."; }
+  if(! $ref_stop_match)  { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation (stop position mismatch)."; }
+
+  if($mdl_is_final_A[$h]) { 
+    # fetch the protein sequence
+    my $prot_fafile       = $aa_full_files_A[$mft_i];
+    my $prot_stkfile      = $prot_fafile; 
+    my $prot_hmmfile      = $prot_fafile; 
+    my $prot_hmmbuildfile = $prot_fafile; 
+    my $prot_alnfile      = $prot_fafile; 
+
+    $prot_stkfile         =~ s/\.fa$/\.ref.stk/;
+    $prot_hmmfile         =~ s/\.fa$/\.hmm/;
+    $prot_hmmbuildfile    =~ s/\.fa$/\.hmmbuild/;
+    $prot_alnfile         =~  s/\.fa$/\.stk/;
+
+    my $prot_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $aa_full_files_A[$mft_i] });
+    my $ref_prot_str = $prot_sqfile->fetch_consecutive_seqs(1, "", -1, undef);
+    my ($ref_prot_name, $ref_prot_seq) = split(/\n/, $ref_prot_str);
+    $ref_prot_name =~ s/^\>//; # remove fasta header line '>'
+
+    # write it out to a new stockholm alignment file
+    open(OUT, ">", $prot_stkfile) || die "ERROR, unable to open $prot_stkfile for writing.";
+    print OUT ("# STOCKHOLM 1.0\n");
+    print OUT ("$ref_prot_name $ref_prot_seq\n");
+    print OUT ("//\n");
+    close OUT;
+
+    # build an HMM from this single sequence alignment:
+    my $cmd = "$hmmbuild $prot_hmmfile $prot_stkfile > $prot_hmmbuildfile";
+    runCommand($cmd, 0);
+
+    # align all sequences to this HMM
+    $cmd = "$hmmalign $prot_hmmfile $prot_fafile > $prot_alnfile";
+    runCommand($cmd, 0);
+  }
+}
+($seconds, $microseconds) = gettimeofday();
+$stop_time = ($seconds + ($microseconds / 1000000.));
+printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
 #########################
 # OUTPUT ANNOTATION TABLE
@@ -1304,8 +1373,6 @@ for(my $a = 0; $a < $naccn; $a++) {
       matpeptFindPrimaryAdjacencies(\@ref_adj_AA, \@mdl_is_primary_A, \@ref_prv_adj_A, \@ref_nxt_adj_A);
     }
   }
-
-
 
   # handle 5' UTR, if $do_matpept
   if($do_matpept) { 
@@ -2939,7 +3006,7 @@ sub alignHits {
   my ($seconds, $microseconds) = gettimeofday();
   my $start_time = ($seconds + ($microseconds / 1000000.));
 
-  printf("%-65s ... ", ($do_skip) ? "# Skipping multiple alignment creation" : "# Creating multiple alignments");
+  printf("%-65s ... ", ($do_skip) ? "# Skipping multiple alignment creation" : "# Creating multiple alignments of DNA sequences");
     
   foreach my $mdl (@{$mdl_order_AR}) { 
     if(exists($fafile_HR->{$mdl})) { 
