@@ -13,14 +13,23 @@
 # 
 # dnaorg_annotate_genomes.pl does not produce an updated GenBank flat file.
 #
+# This 00NOTES.txt file also includes an example of running the 
+# summarize_dnaorg_annotate_genomes.pl to summarize output from
+# dnaorg_annotate_genomes.pl. See the 'Ancillary script:
+# summarize_dnaorg_annotate_genomes.pl' section.
+#
+###########
 #
 # Regarding line prefixes in this file:
-# '#':   a comment line (text written just for this file).
-# "##":  line output from a command
-# "###": line output from a command, with a '#' as the first char of
-#        the output
-# "":    a command to use when learning about this file
+# '#':    a comment line (text written just for this file).
+# "##":   line output from a command
+# "###":  line output from a command, with a '#' as the first char of
+#         the output
+# "####": 4 or more '#' are dividing lines used to help organize the
+#         file
+# "":     a command to use when learning about this file
 #
+###########
 #
 # dnaorg_annotate_genomes.pl is a wrapper Perl script which calls
 # other programs,including those housed/described in the following
@@ -205,7 +214,13 @@ source /panfs/pan1/dnaorg/programs/setup-bio-easel.csh.sh
 #         model building and genome fetching steps
 #         and to proceed with annotating the genomes.
 #
-# Step 0 is necessary (as the usage above states) because 
+# STEP 3. OPTIONAL: rerun dnaorg_annotate_genomes.pl
+#         to regenerate the output table, without
+#         doing any of the expensive computations, but
+#         instead by using files created in previous
+#         runs (STEP 2s) of the script.
+#
+# STEP 0 is necessary (as the usage above states) because 
 # dnaorg_virus_wrapper.pl must be run prior to running 
 # dnaorg_annotate_genomes.pl. This will create input files
 # required for dnaorg_annotate_genomes.pl.
@@ -565,6 +580,132 @@ perl dnaorg_annotate_genomes.pl -skipfetch -skipbuild -oseq TAATATT\|AC NC_00134
 # information. The section titled "Explanations of column headings"
 # above provides more information on the tabular data.
 #
+#
+# -----------------------------------
+# STEP 3. OPTIONAL. You can rerun dnaorg_annotate_genomes.pl
+#         to reproduce the output table WITHOUT doing any of the
+#         expensive calculations (i.e. skipping the cmscan and
+#         alignment steps from STEP 2.). This may be useful
+#         if you didn't save the output from the script or if you'd
+#         like to get the output in a different format.
+#
+#         To do this, you want to use the same options as in STEP 2,
+#         which in this case are -skipfetch -skipbuild and -oseq,
+#         PLUS the -skipaln option, which tells the script to 
+#         skip the cmscan and multiple alignment steps.
+#
+#         You may also want to speficy an output format when you 
+#         do STEP 3. The relevant output options are -seqrow and
+#         -seqcol which specify the output table be in 
+#         'sequences as rows' and 'sequences as columns' format,
+#         respectively. The default output format is decided by
+#         the number of features (in this case, exons, but possibly
+#         number of mature peptides as in example #2 below). If the
+#         number of features is <= 5, then 'sequence-as-rows' format
+#         is selected, else 'sequences-as-columns' format is selected.
+#         For this example there are 5 exons so 'sequences-as-rows' 
+#         format is used, but here let's specify
+#         'sequences-as-columns' format with the -seqcol option:
+perl dnaorg_annotate_genomes.pl -skipfetch -skipbuild -oseq TAATATT\|AC -skipaln -seqcol NC_001346 NC_001346.ntlist
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### dnaorg_annotate_genomes.pl: Annotate genomes based on a reference and homology search
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### command: dnaorg_annotate_genomes.pl -oseq TAATATT|AC -skipbuild -seqcol -skipfetch -skipaln  NC_001346 NC_001346.ntlist
+### date:    Tue Oct  6 09:43:19 2015
+### option:  searching for origin sequence of TAATATT|AC [-oseq]
+### option:  skipping the build step [-skipbuild]
+### option:  forcing seqs-as-columns output mode [-seqcol]
+### option:  use existing fetched genome file, don't create a new one [-skipfetch]
+### option:  use existing cmscan/hmmscan and alignment results, don't actually run either [-skipaln]
+###
+### Skipping genome fetch step                                      ... done. [-skipfetch]
+### Fetching reference CDS sequences                                ... done. [0.3 seconds]
+### Validating CM file was built from correct alignment files       ... done. [0.0 seconds]
+### Skipping cmscan step                                            ... done. [-skipscan or -skipaln]
+### Skipping fetch of predicted exons                               ... done. [-skipaln]
+### Combining multi-exon predicted CDS                              ... done. [0.0 seconds]
+### Translating predicted CDS to identify internal starts/stops     ... done. [0.0 seconds]
+### Skipping fetch of corrected exons                               ... done. [-skipaln]
+### Combining multi-exon corrected CDS                              ... done. [0.0 seconds]
+### Skipping multiple alignment creation                            ... done. [-skipaln]
+###
+##idx                                                                                  1                    2                    3                    4                    5
+##accession                                                                    NC_001346             KJ699341             KJ437659             HQ693446             HQ693435
+##totlen                                                                            2689                 2689                 2689                 2690                 2690
+##origin sequence:#                                                                    1                    1                    1                    1                    1
+##origin sequence:start                                                               -7                 2534                 2534                 2535                 2535
+##origin sequence:stop                                                                 2                 2542                 2542                 2543                 2543
+##origin sequence:offst                                                                0                  149                  149                  149                  149
+##origin sequence:PF                                                                   P                    P                    P                    P                    P
+##CDS #1 [single exon; +]:movement protein:start1                                    150                    1                    1                    1                    1
+##CDS #1 [single exon; +]:movement protein:stop1                                     455                  306                  306                  306                  306
+##CDS #1 [single exon; +]:movement protein:fid1                                    1.000                1.000                0.993                0.974                0.980
+##CDS #1 [single exon; +]:movement protein:md1                                        ..                   ..                   ..                   ..                   ..
+##CDS #1 [single exon; +]:movement protein:length                                    306                  306                  306                  306                  306
+##CDS #1 [single exon; +]:movement protein:ss3                                       ...                  ...                  ...                  ...                  ...
+##CDS #1 [single exon; +]:movement protein:stp                                       TAA                  TAA                  TAA                  TAA                  TAA
+##CDS #1 [single exon; +]:movement protein:PF                                          P                    P                    P                    P                    P
+##CDS #2 [single exon; +]:capsid protein:start1                                      466                  317                  317                  317                  317
+##CDS #2 [single exon; +]:capsid protein:stop1                                      1200                 1051                 1051                 1051                 1051
+##CDS #2 [single exon; +]:capsid protein:fid1                                      1.000                0.992                0.993                0.971                0.971
+##CDS #2 [single exon; +]:capsid protein:md1                                          ..                   ..                   ..                   ..                   ..
+##CDS #2 [single exon; +]:capsid protein:length                                      735                  735                  735                  735                  735
+##CDS #2 [single exon; +]:capsid protein:ss3                                         ...                  ...                  ...                  ...                  ...
+##CDS #2 [single exon; +]:capsid protein:stp                                         TAA                  TAA                  TAA                  TAA                  TAA
+##CDS #2 [single exon; +]:capsid protein:PF                                            P                    P                    P                    P                    P
+##CDS #3 [2 exons; -]:replication-associated protein:start1                         2527                 2378                 2378                 2379                 2379
+##CDS #3 [2 exons; -]:replication-associated protein:stop1                          1886                 1737                 1737               [1738]               [1738]
+##CDS #3 [2 exons; -]:replication-associated protein:fid1                          1.000                0.992                0.991                0.988                0.984
+##CDS #3 [2 exons; -]:replication-associated protein:md1                              ..                   ..                   ..                   ..                   ..
+##CDS #3 [2 exons; -]:replication-associated protein:start2                         1793                 1644                 1644               [1645]               [1645]
+##CDS #3 [2 exons; -]:replication-associated protein:stop2                          1353                 1204                 1204               [1220]               [1220]
+##CDS #3 [2 exons; -]:replication-associated protein:fid2                          1.000                0.991                0.973                0.974                0.974
+##CDS #3 [2 exons; -]:replication-associated protein:md2                              ..                   ..                   ..                   .c                   .c
+##CDS #3 [2 exons; -]:replication-associated protein:length                         1083                 1083                 1083                 1068                 1068
+##CDS #3 [2 exons; -]:replication-associated protein:ss3                             ...                  ...                  ...                  ...                  ...
+##CDS #3 [2 exons; -]:replication-associated protein:stp                             TGA                  TGA                  TGA                  TAA                  TAA
+##CDS #3 [2 exons; -]:replication-associated protein:PF                                P                    P                    P                    P                    P
+##CDS #4 [single exon; -]:replication-associated protein A:start1                   2527                 2378                 2378                 2379                 2379
+##CDS #4 [single exon; -]:replication-associated protein A:stop1                    1709                 1560                 1560                 1561                 1561
+##CDS #4 [single exon; -]:replication-associated protein A:fid1                    1.000                0.993                0.980                0.987                0.984
+##CDS #4 [single exon; -]:replication-associated protein A:md1                        ..                   ..                   ..                   ..                   ..
+##CDS #4 [single exon; -]:replication-associated protein A:length                    819                  819                  819                  819                  819
+##CDS #4 [single exon; -]:replication-associated protein A:ss3                       ...                  ...                  ...                  ...                  ...
+##CDS #4 [single exon; -]:replication-associated protein A:stp                       TAG                  TAG                  TAG                  TAG                  TAG
+##CDS #4 [single exon; -]:replication-associated protein A:PF                          P                    P                    P                    P                    P
+##totlen                                                                            2689                 2689                 2689                 2690                 2690
+##avgid                                                                            1.000                0.994                0.986                0.979                0.979
+##GenBank annotation:cds                                                               4                    4                    4                    3                    3
+##GenBank annotation:exons                                                             5                    5                    5                    3                    3
+##GenBank annotation:match                                                            10                   10                   10                    7                    7
+##overlaps?                                                          P 2 3.1/4.1,3.2/4.1  P 2 3.1/4.1,3.2/4.1  P 2 3.1/4.1,3.2/4.1  P 2 3.1/4.1,3.2/4.1  P 2 3.1/4.1,3.2/4.1
+##result                                                                      PASS PPPPP           PASS PPPPP           PASS PPPPP           PASS PPPPP           PASS PPPPP
+###
+### end of page 1
+###
+###
+#
+# EXPLANATORY TEXT CONCERNING MEANINGS OF HEADINGS TRUNCATED FOR
+# BREVITY (THIS IS THE SAME OUTPUT AS IN THE STEP 2 OUTPUT ABOVE).
+#
+# Note two important differences with STEP 2:
+# 
+# 1. The output table is organized with the rows and columns switched
+#    because we used the -seqcol option.
+#
+# 2. The script finished much quicker because the -skipaln flag was
+#    used.
+#
+# This output format can be summarized using the ancillary script
+# summarize_dnaorg_annotate_genomes.pl. An example of this can be
+# found in the section 'Ancillary script:
+# summarize_dnaorg_annotate_genomes.pl' towards the end of this file.
+# 
+# Sequences-as-columns output format is used again in example run 2
+# below, where it is discussed in more detail.
+#
+#
 ####################
 # Example run 2 of 2
 ####################
@@ -686,15 +827,268 @@ perl dnaorg_annotate_genomes.pl -onlybuild -cfarm -matpept -nodup NC_001477 NC_0
 #
 # We have to wait until all of these jobs are finished before we can
 # proceed to step 2. 
-
-
+#
+# STEP 2. As in example run #1, run dnaorg_annotate_genomes.pl with
+#         the -skipbuild and -skipfetch options to skip the model
+#         build and genome fetching steps and to proceed with
+#         annotating the genomes. Importantly, we need to additionally
+#         specify the -nodup and -matpept options as we did in STEP 1.
+#         (Omitting either of these 2 options will result in a failure
+#         of the script, with an informative message.)
+#
+perl dnaorg_annotate_genomes.pl -skipfetch -skipbuild -matpept -nodup NC_001477 NC_001477.ntlist 
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### dnaorg_annotate_genomes.pl: Annotate genomes based on a reference and homology search
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### command: dnaorg_annotate_genomes.pl -matpept -nodup -skipbuild -skipfetch  NC_001477 NC_001477.ntlist
+### date:    Tue Oct  6 08:56:17 2015
+### option:  using mat_peptide info instead of CDS info [-matpept]
+### option:  not duplicating genomes, features that span the end..start will be undetectable [-nodup]
+### option:  skipping the build step [-skipbuild]
+### option:  use existing fetched genome file, don't create a new one [-skipfetch]
+###
+### Skipping genome fetch step                                      ... done. [-skipfetch]
+### Fetching reference mat_peptide sequences                        ... done. [0.4 seconds]
+### Running cmpress                                                 ... done. [0.2 seconds]
+### Validating CM file was built from correct alignment files       ... done. [0.0 seconds]
+### Running cmscan                                                  ... done. [111.5 seconds]
+### Fetching predicted exon sequences                               ... done. [0.0 seconds]
+### Combining multi-exon predicted CDS                              ... done. [0.0 seconds]
+### Creating multiple alignments                                    ... done. [7.3 seconds]
+###
+##idx                                                                                          1                            2                            3
+##accession                                                                            NC_001477                     FJ461323                     KF973468
+##totlen                                                                                   10735                        10676                        10599
+##5' UTR:start                                                                                 1                            1                            1
+##5' UTR:stop                                                                                 94                           58                           94
+##5' UTR:length                                                                               94                           58                           94
+##MP #1 [single exon; +]:anchored capsid protein C:start1                                     95                           59                           95
+##MP #1 [single exon; +]:anchored capsid protein C:stop1                                     436                          400                          436
+##MP #1 [single exon; +]:anchored capsid protein C:fid1                                    1.000                        0.965                        0.968
+##MP #1 [single exon; +]:anchored capsid protein C:md1                                        ..                           ..                           ..
+##MP #1 [single exon; +]:anchored capsid protein C:length                                    342                          342                          342
+##MP #1 [single exon; +]:anchored capsid protein C:ss3                                       ...                          ...                          ...
+##MP #1 [single exon; +]:anchored capsid protein C:stp                                       GCG                          GCG                          GCG
+##MP #1 [single exon; +]:anchored capsid protein C:PF                                          P                            P                            P
+##MP #2 [single exon; +]:capsid protein C:start1                                              95                           59                           95
+##MP #2 [single exon; +]:capsid protein C:stop1                                              394                          358                        [394]
+##MP #2 [single exon; +]:capsid protein C:fid1                                             1.000                        0.973                        0.970
+##MP #2 [single exon; +]:capsid protein C:md1                                                 ..                           ..                           ..
+##MP #2 [single exon; +]:capsid protein C:length                                             300                          300                          300
+##MP #2 [single exon; +]:capsid protein C:ss3                                                ??.                          ??.                          ??.
+##MP #2 [single exon; +]:capsid protein C:stp                                                AGA                          AGA                          AGA
+##MP #2 [single exon; +]:capsid protein C:PF                                                   P                            P                            P
+##MP #3 [single exon; +]:membrane glycoprotein precursor M:start1                            437                          401                          437
+##MP #3 [single exon; +]:membrane glycoprotein precursor M:stop1                             934                        [898]                          934
+##MP #3 [single exon; +]:membrane glycoprotein precursor M:fid1                            1.000                        0.928                        0.928
+##MP #3 [single exon; +]:membrane glycoprotein precursor M:md1                                ..                           ..                           ..
+##MP #3 [single exon; +]:membrane glycoprotein precursor M:length                            498                          498                          498
+##MP #3 [single exon; +]:membrane glycoprotein precursor M:ss3                               ...                          ...                          ...
+##MP #3 [single exon; +]:membrane glycoprotein precursor M:stp                               GCC                          GCC                          GCC
+##MP #3 [single exon; +]:membrane glycoprotein precursor M:PF                                  P                            P                            P
+##MP #4 [single exon; +]:protein pr:start1                                                   437                          401                          437
+##MP #4 [single exon; +]:protein pr:stop1                                                    709                        [673]                        [709]
+##MP #4 [single exon; +]:protein pr:fid1                                                   1.000                        0.934                        0.923
+##MP #4 [single exon; +]:protein pr:md1                                                       ..                           ..                           ..
+##MP #4 [single exon; +]:protein pr:length                                                   273                          273                          273
+##MP #4 [single exon; +]:protein pr:ss3                                                      ??.                          ??.                          ??.
+##MP #4 [single exon; +]:protein pr:stp                                                      CGT                          CGT                          CGC
+##MP #4 [single exon; +]:protein pr:PF                                                         P                            P                            P
+##MP #5 [single exon; +]:membrane glycoprotein M:start1                                      710                          674                        [710]
+##MP #5 [single exon; +]:membrane glycoprotein M:stop1                                       934                        [898]                          934
+##MP #5 [single exon; +]:membrane glycoprotein M:fid1                                      1.000                        0.920                        0.933
+##MP #5 [single exon; +]:membrane glycoprotein M:md1                                          ..                           ..                           ..
+##MP #5 [single exon; +]:membrane glycoprotein M:length                                      225                          225                          225
+##MP #5 [single exon; +]:membrane glycoprotein M:ss3                                         ??.                          ??.                          ??.
+##MP #5 [single exon; +]:membrane glycoprotein M:stp                                         GCC                          GCC                          GCC
+##MP #5 [single exon; +]:membrane glycoprotein M:PF                                            P                            P                            P
+##MP #6 [single exon; +]:envelope protein E:start1                                           935                        [899]                          935
+##MP #6 [single exon; +]:envelope protein E:stop1                                           2419                         2383                         2419
+##MP #6 [single exon; +]:envelope protein E:fid1                                           1.000                        0.929                        0.913
+##MP #6 [single exon; +]:envelope protein E:md1                                               ..                           ..                           ..
+##MP #6 [single exon; +]:envelope protein E:length                                          1485                         1485                         1485
+##MP #6 [single exon; +]:envelope protein E:ss3                                              ...                          ...                          ...
+##MP #6 [single exon; +]:envelope protein E:stp                                              GCG                          GCA                          GCG
+##MP #6 [single exon; +]:envelope protein E:PF                                                 P                            P                            P
+##MP #7 [single exon; +]:nonstructural protein NS1:start1                                   2420                         2384                         2420
+##MP #7 [single exon; +]:nonstructural protein NS1:stop1                                    3475                         3439                         3475
+##MP #7 [single exon; +]:nonstructural protein NS1:fid1                                    1.000                        0.924                        0.922
+##MP #7 [single exon; +]:nonstructural protein NS1:md1                                        ..                           ..                           ..
+##MP #7 [single exon; +]:nonstructural protein NS1:length                                   1056                         1056                         1056
+##MP #7 [single exon; +]:nonstructural protein NS1:ss3                                       ...                          ...                          ...
+##MP #7 [single exon; +]:nonstructural protein NS1:stp                                       GCA                          GCA                          GCA
+##MP #7 [single exon; +]:nonstructural protein NS1:PF                                          P                            P                            P
+##MP #8 [single exon; +]:nonstructural protein NS2A:start1                                  3476                         3440                         3476
+##MP #8 [single exon; +]:nonstructural protein NS2A:stop1                                   4129                         4093                         4129
+##MP #8 [single exon; +]:nonstructural protein NS2A:fid1                                   1.000                        0.913                        0.888
+##MP #8 [single exon; +]:nonstructural protein NS2A:md1                                       ..                           ..                           ..
+##MP #8 [single exon; +]:nonstructural protein NS2A:length                                   654                          654                          654
+##MP #8 [single exon; +]:nonstructural protein NS2A:ss3                                      ...                          ...                          ...
+##MP #8 [single exon; +]:nonstructural protein NS2A:stp                                      AAA                          AAA                          AAA
+##MP #8 [single exon; +]:nonstructural protein NS2A:PF                                         P                            P                            P
+##MP #9 [single exon; +]:nonstructural protein NS2B:start1                                  4130                         4094                         4130
+##MP #9 [single exon; +]:nonstructural protein NS2B:stop1                                   4519                         4483                         4519
+##MP #9 [single exon; +]:nonstructural protein NS2B:fid1                                   1.000                        0.936                        0.905
+##MP #9 [single exon; +]:nonstructural protein NS2B:md1                                       ..                           ..                           ..
+##MP #9 [single exon; +]:nonstructural protein NS2B:length                                   390                          390                          390
+##MP #9 [single exon; +]:nonstructural protein NS2B:ss3                                      ...                          ...                          ...
+##MP #9 [single exon; +]:nonstructural protein NS2B:stp                                      AGA                          AGA                          AGA
+##MP #9 [single exon; +]:nonstructural protein NS2B:PF                                         P                            P                            P
+##MP #10 [single exon; +]:nonstructural protein NS3:start1                                  4520                         4484                         4520
+##MP #10 [single exon; +]:nonstructural protein NS3:stop1                                   6376                         6340                         6376
+##MP #10 [single exon; +]:nonstructural protein NS3:fid1                                   1.000                        0.932                        0.933
+##MP #10 [single exon; +]:nonstructural protein NS3:md1                                       ..                           ..                           ..
+##MP #10 [single exon; +]:nonstructural protein NS3:length                                  1857                         1857                         1857
+##MP #10 [single exon; +]:nonstructural protein NS3:ss3                                      ...                          ...                          ...
+##MP #10 [single exon; +]:nonstructural protein NS3:stp                                      AGA                          AGA                          AGA
+##MP #10 [single exon; +]:nonstructural protein NS3:PF                                         P                            P                            P
+##MP #11 [single exon; +]:nonstructural protein NS4A:start1                                 6377                         6341                         6377
+##MP #11 [single exon; +]:nonstructural protein NS4A:stop1                                  6757                         6721                         6757
+##MP #11 [single exon; +]:nonstructural protein NS4A:fid1                                  1.000                        0.919                        0.903
+##MP #11 [single exon; +]:nonstructural protein NS4A:md1                                      ..                           ..                           ..
+##MP #11 [single exon; +]:nonstructural protein NS4A:length                                  381                          381                          381
+##MP #11 [single exon; +]:nonstructural protein NS4A:ss3                                     ...                          ...                          ...
+##MP #11 [single exon; +]:nonstructural protein NS4A:stp                                     CGC                          CGC                          CGC
+##MP #11 [single exon; +]:nonstructural protein NS4A:PF                                        P                            P                            P
+##MP #12 [single exon; +]:protein 2K:start1                                                 6758                         6722                         6758
+##MP #12 [single exon; +]:protein 2K:stop1                                                  6826                         6790                         6826
+##MP #12 [single exon; +]:protein 2K:fid1                                                  1.000                        0.899                        0.942
+##MP #12 [single exon; +]:protein 2K:md1                                                      ..                           ..                           ..
+##MP #12 [single exon; +]:protein 2K:length                                                   69                           69                           69
+##MP #12 [single exon; +]:protein 2K:ss3                                                     ...                          ...                          ...
+##MP #12 [single exon; +]:protein 2K:stp                                                     GCC                          GCC                          GCC
+##MP #12 [single exon; +]:protein 2K:PF                                                        P                            P                            P
+##MP #13 [single exon; +]:nonstructural protein NS4B:start1                                 6827                         6791                         6827
+##MP #13 [single exon; +]:nonstructural protein NS4B:stop1                                  7573                         7537                         7573
+##MP #13 [single exon; +]:nonstructural protein NS4B:fid1                                  1.000                        0.932                        0.928
+##MP #13 [single exon; +]:nonstructural protein NS4B:md1                                      ..                           ..                           ..
+##MP #13 [single exon; +]:nonstructural protein NS4B:length                                  747                          747                          747
+##MP #13 [single exon; +]:nonstructural protein NS4B:ss3                                     ...                          ...                          ...
+##MP #13 [single exon; +]:nonstructural protein NS4B:stp                                     AGA                          AGA                          AGA
+##MP #13 [single exon; +]:nonstructural protein NS4B:PF                                        P                            P                            P
+##MP #14 [single exon; +]:RNA-dependent RNA polymerase NS5:start1                           7574                         7538                         7574
+##MP #14 [single exon; +]:RNA-dependent RNA polymerase NS5:stop1                           10270                        10234                        10270
+##MP #14 [single exon; +]:RNA-dependent RNA polymerase NS5:fid1                            1.000                        0.932                        0.929
+##MP #14 [single exon; +]:RNA-dependent RNA polymerase NS5:md1                                ..                           ..                           ..
+##MP #14 [single exon; +]:RNA-dependent RNA polymerase NS5:length                           2697                         2697                         2697
+##MP #14 [single exon; +]:RNA-dependent RNA polymerase NS5:ss3                               .?.                          .?.                          .?.
+##MP #14 [single exon; +]:RNA-dependent RNA polymerase NS5:stp                               TGG                          TGG                          TGG
+##MP #14 [single exon; +]:RNA-dependent RNA polymerase NS5:PF                                  P                            P                            P
+##3' UTR:start                                                                             10271                        10235                        10271
+##3' UTR:stop                                                                              10735                        10676                        10599
+##3' UTR:length                                                                              465                          442                          329
+##totlen                                                                                   10735                        10676                        10599
+##avgid                                                                                    1.000                        0.931                        0.928
+##GenBank annotation:mp                                                                       14                           13                           11
+##GenBank annotation:exons                                                                    14                           13                           11
+##GenBank annotation:match                                                                    28                           24                           25
+##overlaps?                                                          P 3 1.1/2.1,3.1/4.1,3.1/5.1  P 3 1.1/2.1,3.1/4.1,3.1/5.1  P 3 1.1/2.1,3.1/4.1,3.1/5.1
+##result                                                                    PASS PPPPPPPPPPPPPPP         PASS PPPPPPPPPPPPPPP         PASS PPPPPPPPPPPPPPP
+###
+### end of page 1
+###
+###
+### Explanations of column headings (in left to right order):
+### "idx":                              index of genome in list
+### "accession":                        GenBank accession for genomic sequence
+### "totlen":                           total length (nt) for accession
+###
+### "CDS #<i>: start<j>":               start position of exon #<j> of CDS #<i>enclosed in brackets "[]" if different from all exon starts in existing GenBank annotation
+### "CDS #<i>: stop<j>":                stop  position of exon #<j> of CDS #<i>enclosed in brackets "[]" if different from all exon starts in existing GenBank annotation
+### "CDS #<i>: fid<j>":                 fractional identity between exon #<j> of CDS #<i> and reference genome
+### "CDS #<i>: md<j>":                  annotation indicating if alignment to reference extends to 5' and 3' end of reference exon.
+###                                     first character pertains to 5' end and second character pertains to 3' end.
+###                                     possible values for each of the two characters:
+###                                       ".":   alignment extends to boundary of reference
+###                                       "<d>": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)
+###                                       "+":   alignment truncates >= 10 nucleotides short of boundary of reference
+### "CDS #<i>: length":                 length of CDS #<i> (all exons summed)
+###
+### "CDS #<i>: SS3":                    annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3
+###                                     first  character: '.' if predicted CDS has a valid start codon, else '!'
+###                                     second character: '.' if predicted CDS has a valid stop  codon, else '!'
+###                                     third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'
+### "CDS #<i>: stp":                    the predicted stop codon for this CDS
+### "CDS #<i>: PF":                     annotation indicating if this exon PASSED ('P') or FAILED ('F')
+###                                       a CDS PASSES ('P') if and only if ALL of its exons have a valid start codon,
+###                                       a valid stop codon, are lengths that are a multiple of 3, and have an
+###                                       alignment to the corresponding reference exon that extends to the 5'
+###                                       and 3' boundary of the reference annotation.
+###                                       If >= 1 of these conditions is not met then the CDS FAILS ('F').
+###
+### "totlen":                           total length (nt) for accession (repeated for convenience)
+###
+### "GenBank annotation: cds"           number of CDS in the existing GenBank annotation for this accession
+### "GenBank annotation: exons"         total number of exons in the existing GenBank annotation for this accession
+### "GenBank annotation: match"         number of exons in existing GenBank annotation for which existing and predicted annotation agree exactly
+###
+### "overlaps?"                         text describing which (if any) of the predicted exons overlap with each other
+###                                     first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference
+###                                                        'F' for FAIL if it does not
+###                                     second character:  number of overlaps between any two exons
+###                                     remainder of line: text explaining which exons overlap
+###                                       e.g.: "3.2/4.1" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand
+###
+### "result":                           "PASS" or "FAIL". "PASS" if and only if all tests for this accession PASSED ('P')
+###                                     as indicated in the "PF" columns. Followed by the individual P/F results in order.
+#
+#
+# A few points about the output:
+# 
+# 1. The output table is formatted differently.
+#
+# Note that the output table is organized differently than it was in
+# example run #1. In this case, each sequence is a column of the
+# table, whereas each sequence was a row in example run #1. This is
+# because there are more than 5 features (mat_peptides in this case,
+# or exons if -matpept were not used) exist in the reference genome,
+# and it would be difficult to view the sequence-as-rows format table
+# due to the higher number of features. You can specify which format
+# you'd like with the -seqcol (sequences as columns) and -seqrow 
+# (sequences as rows) options, which overrides the default behavior
+# of deciding the format based on the number of features. 
+# With -seqcol, you can additionally use -nseqcol <n> to specify
+# that <n> sequences are printed per 'page' of the output table.
+# On each 'page', the reference sequence will be listed in the
+# first column, for easy comparison with the other sequences 
+# on that page.
+#
+# 2. STEP 2 takes longer than in example run #1.
+# 
+# It took about twice as long as in example run #1 even
+# though there were fewer sequence accessions in the .ntlist 
+# file (3 compared with 5). The slowest step is the cmscan step
+# which scales with the length of the genomes as well as with the
+# number and length of the features being annotated (14 mature
+# peptides in this case versus 5 exons in 4 CDS in example run #1).
+# The cmscan step for example run #2 took about two minutes while
+# it took about 1 minute for example run #1. One thing that makes
+# example run #2 faster is the use of the -nodup option. When -nodup
+# is not used, each genome sequence is duplicated before it is
+# searched, which essentially doubles the running time of the cmscan
+# step versus an identical run where the -nodup option is not used.
+#
+# 3. The -matpept option affects what gets predicted and tested.
+#
+# TODO: ADD MORE HERE ONCE THE EXPLANATIONS ARE UPDATED IN THE SCRIPT
+#
+# STEP 3. As in example run #1, we could add the -skipaln flag to 
+#         those used in STEP 2 to regenerate the output table.
+#         We may want to do this to change the format (with -seqrow
+#         to output sequences-as-rows format), or change the number of
+#         sequences per page (using -nseqcol) if there were more than
+#         just 3 sequences. We don't include an example of STEP 3 for
+#         example run #2 here because it does not exemplify any new
+#         features covered by example run #1 STEP 3.
 # 
 ##############
 # Output files
 ##############
 #
 # The script creates a number of output files in the directory
-# specified on the command line (NC_001346/ in this case).
+# specified on the command line. Here I list the output file
+# created by example run #1 above, which are put in the 
+# NC_001346/ directory.
 #
 # These output files include (I'll use the specific name of the files
 # here, but they will vary if the name of directory specific on the
@@ -765,11 +1159,9 @@ perl dnaorg_annotate_genomes.pl -onlybuild -cfarm -matpept -nodup NC_001477 NC_0
 #   gaps, organized per gap (each line is a different gap).
 #
 #
-# TODO: add section explaining gap notation!
-#
-##############################################
+#############################################
 # Parallelizing the cmscan step with -sfarm
-##############################################
+#############################################
 #
 # The -sfarm <n> option allows parallelism of the cmscan step into
 # <n> farm jobs. From the usage above:
@@ -810,6 +1202,204 @@ perl dnaorg_annotate_genomes.pl -onlybuild -cfarm -matpept -nodup NC_001477 NC_0
 # present usage, there is a single seed to the randome number
 # generator and the seed is assigned deterministically.
 # 
+#################################################
+# Naming convention for sequences in fasta files
+#################################################
+#
+# Single exon nucleotide sequences are named <s>/<d1>-<d2>: 
+# Where <s> is the sequence accession, <d1> is the coordinate of the
+# start, and <d2> is the coordinate of the stop. 
+#
+# For example:
+# NC_001346/150-455
+#
+# Multi-exon nucleotide sequences of <m> exons are similarly named,
+# but contain <m> sets of <d1>-<d2>, one per exon separated by a
+# single ','.
+# 
+# For example:
+# NC_001346/2527-1886,1793-1353
+# 
+#
+# Protein sequences are similarly named with the coordinates
+# pertaining to nucleotide coordinates the protein was translated
+# from. Additionally, the string "-translated" is appended to the
+# name. 
+#
+# For the two examples above:
+# NC_001346/150-455-translated
+# NC_001346/2527-1886,1793-1353-translated
+# 
+########################################################
+# Ancillary script: summarize_dnaorg_annotate_genomes.pl
+########################################################
+#
+# The summarize_dnaorg_annotate_genomes.pl can help summarize
+# information output from dnaorg_annotate_genomes.pl. 
+#
+# The script will print the available options if you 
+# run it without any command line arguments:
+#
+perl summarize_dnaorg_annotate_genomes.pl
+##
+##summarize_dnaorg_annotate_genomes.pl
+##	<output file created by dnaorg_annotate_genomes.pl>
+##
+## This script summarizes an output file created by dnaorg_annotate_genomes.pl
+## by listing counts of each value observed for each category.
+## BASIC OPTIONS:
+##  -passfail    : only print counts of PF and result values
+##  -outkey <s>  : save file with values for each accession for keys matching <s>
+##  -outname <s> : name output file <s>
+##  -avgfid      : only print average fractional identities
+##
+#
+# Currently it will only work on sequences-as-columns output.
+# Let's try it on the output from example 1, using no command line options.
+# The file NC_001346.seqcol.output file contains the output from 
+# example run #1 STEP 3.
+#
+# By default, the script will generate output that displays counts of
+# each value observed in each row. 
+# Here I'll print only the beginning and end of the output because 
+# the output is long, and then I'll briefly describe it below:
+#
+perl summarize_dnaorg_annotate_genomes.pl NC_001346.seqcol.output 
+##
+##accession
+##NC_001346 1
+##KJ699341  1
+##KJ437659  1
+##HQ693446  1
+##HQ693435  1
+##
+##totlen
+##2689 6
+##2690 4
+##
+##origin sequence:#
+##1 5
+##
+##origin sequence:start
+##-7   1
+##2534 2
+##2535 2
+##
+##origin sequence:stop
+##2    1
+##2542 2
+##2543 2
+##
+##origin sequence:offst
+##0   1
+##149 4
+##
+##origin sequence:PF
+##P 5
+##
+##CDS #1 [single exon; +]:movement protein:start1
+##150 1
+##1   4
+##
+##CDS #1 [single exon; +]:movement protein:stop1
+##455 1
+##306 4
+##################################################
+# MIDDLE OF OUTPUT REMOVED FOR BREVITY!
+##################################################
+##result
+##PASS PPPPP 5
+##
+#
+#
+# So, each unique row heading (e.g. accession, or 'origin
+# sequence:start') is listed, followed by <n> lines where <n> is the
+# number of unique values observed in the input table (the table
+# output from dnaorg_annotate_genomes.pl). Each of these <n> lines
+# has two space-delimited tokens. The first token is the value
+# observed, and the second token is the number of times this value
+# was observed. The order of the lines will be the order that the
+# first tokens were observed in the input file. For example:
+##
+##origin sequence:stop
+##2    1
+##2542 2
+##2543 2
+# 
+# The sequence row heading 'origin sequence:stop' occurs 5 times in
+# the input file. The first accession has the value '2' for this
+# heading. Then 2 other accessions have the value '2542' and 2 other
+# (we also know that the second accession has this value because it
+# occurs as the second line), and 2 other accessions have the value
+# '2543'.
+#
+##########
+# There are some useful options to the script:
+# 
+# You can only print the pass/fail and result values with -passfail,
+# for example:
+perl summarize_dnaorg_annotate_genomes.pl -passfail NC_001346.seqcol.output 
+##origin sequence:PF
+##P 5
+##
+##CDS #1 [single exon; +]:movement protein:PF
+##P 5
+##
+##CDS #2 [single exon; +]:capsid protein:PF
+##P 5
+##
+##CDS #3 [2 exons; -]:replication-associated protein:PF
+##P 5
+##
+##CDS #4 [single exon; -]:replication-associated protein A:PF
+##P 5
+##
+##overlaps?
+##P 2 3.1/4.1,3.2/4.1 5
+##
+##result
+##PASS PPPPP 5
+#
+#
+# Also the -outkey <s> and -outname <f> options can be used to save
+# per-accession for row headings matching <s> to a file <f>.
+#
+# For example:
+perl summarize_dnaorg_annotate_genomes.pl -outkey result -outname tmp.result.summary NC_001346.seqcol.output 
+########
+# The final output line will be:
+########
+### Saved accessions and values for headings matching result to file tmp.result.summary.
+#
+# Here's what the tmp.result.summary file looks like:
+cat tmp.result.summary 
+##NC_001346 PASS PPPPP
+##KJ699341 PASS PPPPP
+##KJ437659 PASS PPPPP
+##HQ693446 PASS PPPPP
+##HQ693435 PASS PPPPP
+#
+# This file lists the value of the 'result' row heading for each
+# accession.
+#
+#
+# Finally, the -avgfid option will print average fractional identities
+# for all row headings that are fractional identities. The averages
+# are across all sequences in the output table.
+# For example:
+perl summarize_dnaorg_annotate_genomes.pl -avgfid NC_001346.seqcol.output 
+##0.989 CDS #1 [single exon; +]:movement protein:fid1
+##0.985 CDS #2 [single exon; +]:capsid protein:fid1
+##0.991 CDS #3 [2 exons; -]:replication-associated protein:fid1
+##0.982 CDS #3 [2 exons; -]:replication-associated protein:fid2
+##0.989 CDS #4 [single exon; -]:replication-associated protein A:fid1
+##0.988 avgid
+#
+# The first space-delimited token in each line is the average
+# fractional identity between the predicted feature listed in the row
+# heading (which is given in the remainder of the line) and the
+# reference feature in a pairwise alignment.
+#
 ##################################################
 ## Naming convention for sequences in fasta files
 ##################################################
@@ -851,6 +1441,7 @@ TODOs:
   option to refetch genome sequences with -2, -3 and -4... if that
   makes sense after considering it more carefully than I am right now.
 
+- add section to this file explaining gap notation!
 
 #############################################
 # Last updated: EPN, Fri May 29 14:42:39 2015
