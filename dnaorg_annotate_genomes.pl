@@ -39,18 +39,20 @@ $usage .= "  -onlybuild : exit after building reference models\n";
 $usage .= "  -skipbuild : skip the build and calibration step because you already did an -onlybuild run\n";
 $usage .= "  -model <s> : use model file <s>, instead of building one\n";
 $usage .= "\n OPTIONS CONTROLLING OUTPUT TABLE:\n";
-$usage .= "  -c         : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)\n";
-$usage .= "  -seqrow    : force sequence-as-rows    output mode (default for <= 5 models)\n";
-$usage .= "  -seqcol    : force sequence-as-columns output mode (default for >  5 models)\n";
-$usage .= "  -nseqcol   : with -seqcol, number of sequences per page of output (default: 10)\n";
-$usage .= "  -nomdlb    : do not add model boundary annotation to output\n";
-$usage .= "  -noexist   : do not include information on existing GenBank annotation\n";
-$usage .= "  -nobrack   : do not include brackets around predicted annotations that do not match existing\n";
-$usage .= "  -nostop    : do not output stop codon for each predicted CDS/mat_peptide\n";
-$usage .= "  -nofid     : do not output fractional identity relative to reference for each CDS/exon\n";
-$usage .= "  -noss3     : do not output results of start codon, stop codon and multiple of 3 tests\n";
-$usage .= "  -noolap    : do not output overlap information about which predicted features overlap\n";
-$usage .= "  -noexp     : do not output explanation of column headings\n";
+$usage .= "  -c        : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)\n";
+$usage .= "  -seqrow   : force sequence-as-rows    output mode (default for <= 5 models)\n";
+$usage .= "  -seqcol   : force sequence-as-columns output mode (default for >  5 models)\n";
+$usage .= "  -nseqcol  : with -seqcol, number of sequences per page of output (default: 10)\n";
+$usage .= "  -nomdlb   : do not add model boundary annotation to output\n";
+$usage .= "  -noexist  : do not include information on existing GenBank annotation\n";
+$usage .= "  -nobrack  : do not include brackets around predicted annotations that do not match existing\n";
+$usage .= "  -nostop   : do not output stop codon for each predicted CDS/mat_peptide\n";
+$usage .= "  -nofid    : do not output fractional identity relative to reference for each CDS/exon\n";
+$usage .= "  -noss3    : do not output results of start codon, stop codon and multiple of 3 tests\n";
+$usage .= "  -noolap   : do not output overlap information about which predicted features overlap\n";
+$usage .= "  -noexp    : do not output explanation of column headings\n";
+$usage .= "  -fullolap : do output full overlap   string (default: do not)\n";
+$usage .= "  -fulladj  : do output full adjacency string (default: do not)\n";
 $usage .= "\n OPTIONS FOR SELECTING HOMOLOGY SEARCH ALGORITHM:\n";
 $usage .= "  -hmmer     : use HMMER for predicting annotations, default: use Infernal\n";
 $usage .= "\n OPTIONS SPECIFIC TO HMMER3:\n";
@@ -112,6 +114,8 @@ my $do_nofid     = 0; # set to '1' if -nofid   or -c enabled, do not output frac
 my $do_noss3     = 0; # set to '1' if -noss3   or -c enabled, do not output SS3 columns: 'S'tart codon check, 'S'top codon check and multiple of '3' check
 my $do_noolap    = 0; # set to '1' if -noolap  or -c enabled, do not output information on overlapping features
 my $do_noexp     = 0; # set to '1' if -noexp   or -c enabled, do not output explanatory information about column headings
+my $do_fullolap  = 0; # set to '1' if -fullolap enabled, do output full overlap   string for all features (default: do not)
+my $do_fulladj   = 0; # set to '1' if -fullolap enabled, do output full adjacency string for all features (default: do not)
 # options for controlling homology search method
 my $do_hmmer     = 0; # set to '1' if -hmmer      enabled, use HMMER3's nhmmscan, not Infernal 1.1
 # options specific to HMMER3
@@ -257,6 +261,14 @@ if($do_noolap) {
 if($do_noexp) { 
   $opts_used_short .= "-noexp";
   $opts_used_long  .= "# option:  do not output information on column headings [-noexp]\n";
+}
+if($do_fullolap) { 
+  $opts_used_short .= "-fullolap";
+  $opts_used_long  .= "# option:  do output full overlap string for all genes [-fullolap]\n";
+}
+if($do_fulladj) { 
+  $opts_used_short .= "-fulladj";
+  $opts_used_long  .= "# option:  do output full adjacency string for all genes [-fulladj]\n";
 }
 if($do_hmmer) { 
   $opts_used_short .= "-hmmer";
@@ -1149,64 +1161,66 @@ else {
 # Make sure that the predictions in the reference of each feature are the same as the GenBank annotation
 # If they're not we can't use the current method which fetches the CDS/mat_peptide sequence based on the
 # predicion
-($seconds, $microseconds) = gettimeofday();
-$start_time = ($seconds + ($microseconds / 1000000.));
-printf("%-65s ... ", sprintf("# Creating multiple alignments of protein sequences"));
-my @tmp_ref_act_exon_starts_AA = (); # [0..$nmft-1][0..$nexons-1] start positions of actual annotations of exons for ref accn, $nexons is main-feature (CDS or mat_peptide) specific
-my @tmp_ref_act_exon_stops_AA  = (); # [0..$nmft-1][0..$nexons-1] stop  positions of actual annotations of exons for ref accn, $nexons is main-feature (CDS or mat_peptide) specific
-my $tmp_ref_tot_nexons = 0;
-my $tmp_ref_nmft       = 0;
-
-getActualAnnotations($accn_A[0], \%mft_tbl_HHA, \@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, \$tmp_ref_tot_nexons, \$tmp_ref_nmft);
-for(my $h = 0; $h < $nmdl; $h++) { 
-  my $model   = $mdl_A[$h];
-  my $mft_i   = $mdl2mft_map_A[$h];
-  my $exon_i  = $mft2exon_map_A[$h];
-  if(! exists $p_start_HH{$model}{$ref_seq_accn}) { die "ERROR no prediction in reference for feature $mft_i exon $exon_i.\n"; }
-  my $start  = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$ref_seq_accn} : $c_start_HH{$model}{$ref_seq_accn};
-  my $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$ref_seq_accn}  : $c_stop_HH{$model}{$ref_seq_accn};
-
-  my ($ref_start_match, $ref_stop_match) = checkStrictBoundaryMatch(\@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, $mft_i, $exon_i, $start, $stop);
-  if(! $ref_start_match) { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation (start position mismatch)."; }
-  if(! $ref_stop_match)  { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation (stop position mismatch)."; }
-
-  if($mdl_is_final_A[$h]) { 
-    # fetch the protein sequence
-    my $prot_fafile       = $aa_full_files_A[$mft_i];
-    my $prot_stkfile      = $prot_fafile; 
-    my $prot_hmmfile      = $prot_fafile; 
-    my $prot_hmmbuildfile = $prot_fafile; 
-    my $prot_alnfile      = $prot_fafile; 
-
-    $prot_stkfile         =~ s/\.fa$/\.ref.stk/;
-    $prot_hmmfile         =~ s/\.fa$/\.hmm/;
-    $prot_hmmbuildfile    =~ s/\.fa$/\.hmmbuild/;
-    $prot_alnfile         =~  s/\.fa$/\.stk/;
-
-    my $prot_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $aa_full_files_A[$mft_i] });
-    my $ref_prot_str = $prot_sqfile->fetch_consecutive_seqs(1, "", -1, undef);
-    my ($ref_prot_name, $ref_prot_seq) = split(/\n/, $ref_prot_str);
-    $ref_prot_name =~ s/^\>//; # remove fasta header line '>'
-
-    # write it out to a new stockholm alignment file
-    open(OUT, ">", $prot_stkfile) || die "ERROR, unable to open $prot_stkfile for writing.";
-    print OUT ("# STOCKHOLM 1.0\n");
-    print OUT ("$ref_prot_name $ref_prot_seq\n");
-    print OUT ("//\n");
-    close OUT;
-
-    # build an HMM from this single sequence alignment:
-    my $cmd = "$hmmbuild $prot_hmmfile $prot_stkfile > $prot_hmmbuildfile";
-    runCommand($cmd, 0);
-
-    # align all sequences to this HMM
-    $cmd = "$hmmalign $prot_hmmfile $prot_fafile > $prot_alnfile";
-    runCommand($cmd, 0);
+if(! $do_skipaln) {
+  ($seconds, $microseconds) = gettimeofday();
+  $start_time = ($seconds + ($microseconds / 1000000.));
+  printf("%-65s ... ", sprintf("# Creating multiple alignments of protein sequences"));
+  my @tmp_ref_act_exon_starts_AA = (); # [0..$nmft-1][0..$nexons-1] start positions of actual annotations of exons for ref accn, $nexons is main-feature (CDS or mat_peptide) specific
+  my @tmp_ref_act_exon_stops_AA  = (); # [0..$nmft-1][0..$nexons-1] stop  positions of actual annotations of exons for ref accn, $nexons is main-feature (CDS or mat_peptide) specific
+  my $tmp_ref_tot_nexons = 0;
+  my $tmp_ref_nmft       = 0;
+  
+  getActualAnnotations($accn_A[0], \%mft_tbl_HHA, \@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, \$tmp_ref_tot_nexons, \$tmp_ref_nmft);
+  for(my $h = 0; $h < $nmdl; $h++) { 
+    my $model   = $mdl_A[$h];
+    my $mft_i   = $mdl2mft_map_A[$h];
+    my $exon_i  = $mft2exon_map_A[$h];
+    if(! exists $p_start_HH{$model}{$ref_seq_accn}) { die "ERROR no prediction in reference for feature $mft_i exon $exon_i.\n"; }
+    my $start  = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$ref_seq_accn} : $c_start_HH{$model}{$ref_seq_accn};
+    my $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$ref_seq_accn}  : $c_stop_HH{$model}{$ref_seq_accn};
+    
+    my ($ref_start_match, $ref_stop_match) = checkStrictBoundaryMatch(\@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, $mft_i, $exon_i, $start, $stop);
+    if(! $ref_start_match) { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation (start position mismatch)."; }
+    if(! $ref_stop_match)  { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation (stop position mismatch)."; }
+    
+    if($mdl_is_final_A[$h]) { 
+      # fetch the protein sequence
+      my $prot_fafile       = $aa_full_files_A[$mft_i];
+      my $prot_stkfile      = $prot_fafile; 
+      my $prot_hmmfile      = $prot_fafile; 
+      my $prot_hmmbuildfile = $prot_fafile; 
+      my $prot_alnfile      = $prot_fafile; 
+      
+      $prot_stkfile         =~ s/\.fa$/\.ref.stk/;
+      $prot_hmmfile         =~ s/\.fa$/\.hmm/;
+      $prot_hmmbuildfile    =~ s/\.fa$/\.hmmbuild/;
+      $prot_alnfile         =~  s/\.fa$/\.stk/;
+      
+      my $prot_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $aa_full_files_A[$mft_i] });
+      my $ref_prot_str = $prot_sqfile->fetch_consecutive_seqs(1, "", -1, undef);
+      my ($ref_prot_name, $ref_prot_seq) = split(/\n/, $ref_prot_str);
+      $ref_prot_name =~ s/^\>//; # remove fasta header line '>'
+      
+      # write it out to a new stockholm alignment file
+      open(OUT, ">", $prot_stkfile) || die "ERROR, unable to open $prot_stkfile for writing.";
+      print OUT ("# STOCKHOLM 1.0\n");
+      print OUT ("$ref_prot_name $ref_prot_seq\n");
+      print OUT ("//\n");
+      close OUT;
+      
+      # build an HMM from this single sequence alignment:
+      my $cmd = "$hmmbuild $prot_hmmfile $prot_stkfile > $prot_hmmbuildfile";
+      runCommand($cmd, 0);
+      
+      # align all sequences to this HMM
+      $cmd = "$hmmalign $prot_hmmfile $prot_fafile > $prot_alnfile";
+      runCommand($cmd, 0);
+    }
   }
+  ($seconds, $microseconds) = gettimeofday();
+  $stop_time = ($seconds + ($microseconds / 1000000.));
+  printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 }
-($seconds, $microseconds) = gettimeofday();
-$stop_time = ($seconds + ($microseconds / 1000000.));
-printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
 #########################
 # OUTPUT ANNOTATION TABLE
@@ -1218,10 +1232,14 @@ my @out_col_header_AA = (); # used only if $do_seqrow
                             # first dim: [0..4], 0, 1, and 3 are arrays of header tokens, 2 and 4 are dashed lines that are
 my @out_row_header_A  = (); # used only if $do_seqcol
                             # ref to array of output tokens for column or row headers
-getHeadings($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nmdl, 
-            \@mdl2mft_map_A, \@mft2exon_map_A, \@mdl_is_first_A, \@mdl_is_final_A, \@mft_out_short_A, \@mft_out_product_A,
-            ($do_seqrow) ? (\@out_col_header_AA) : undef,
-            ($do_seqcol) ? (\@out_row_header_A)  : undef);
+my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
+                            # explanations of each header
+getHeadings($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, 
+            $origin_seq, $ref_tot_nexons, $nmdl, \@mdl2mft_map_A, \@mft2exon_map_A, \@mdl_is_first_A, \@mdl_is_final_A, 
+            \@mft_out_short_A, \@mft_out_product_A, ($do_seqrow) ? (\@out_col_header_AA) : undef,
+            ($do_seqcol) ? (\@out_row_header_A)  : undef,
+            (\@out_header_exp_A));
+
 
 if($do_seqrow) { # output sequences as rows 
   for(my $i = 0; $i < 5; $i++) { 
@@ -1296,12 +1314,14 @@ for(my $a = 0; $a < $naccn; $a++) {
   my $hit_length;
   my $at_least_one_fail; # set to '1' for each main feature (CDS or mat_pept) if any of the 'tests' for that feature fail
   my $pass_fail_char; # "P" or "F"
-  my $pass_fail_str;  # string of pass_fail_chars
+  my $pass_fail_str = "";  # string of pass_fail_chars
   my @cur_name_A   = (); # [0..$h..$nmdl-1]: short name model $h
   my @cur_start_A  = (); # [0..$h..$nmdl-1]: predicted start  for model $h
   my @cur_stop_A   = (); # [0..$h..$nmdl-1]: predicted stop   for model $h
   my @cur_strand_A = (); # [0..$h..$nmdl-1]: predicted strand for model $h
   my @cur_len_A    = (); # [0..$h..$nmdl-1]: predicted length for model $h
+  my @cur_ol_AA    = (); # [0..$h..$nmdl-1][0..$hp..$nmdl-1]: '1' if $h and $hp predictions overlap
+                         # overlap means that the two predictions are on the same strand and overlap by at least 1 nt
   my @cur_adj_AA   = (); # [0..$h..$nmdl-1][0..$hp..$nmdl-1]: '1' if $h and $hp predictions are 'adjacent' 
                          # adjacent means that min distance between any two nt in each prediction is 1
 
@@ -1313,6 +1333,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     push(@cur_out_A, sprintf("%5s ", $oseq_stop));
     push(@cur_out_A, sprintf("%5s ", $oseq_offset));
     push(@cur_out_A, sprintf(" %s", $oseq_passfail));
+    $pass_fail_str .= $oseq_passfail;
   }
   ###############################################################
 
@@ -1353,10 +1374,9 @@ for(my $a = 0; $a < $naccn; $a++) {
   }
 
   # check for overlaps
-  my @ol_AA = ();
-  checkForOverlapsOrAdjacencies(0, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@ol_AA); # '0': do overlap not adjacency
+  checkForOverlapsOrAdjacencies(0, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_ol_AA); # '0': do overlap, not adjacency
   if($a == 0) { 
-    @ref_ol_AA = @ol_AA; 
+    @ref_ol_AA = @cur_ol_AA; 
     if($do_matpept) { # determine which models are for primary mature peptides 
       matpeptFindPrimaryPeptides(\@ref_ol_AA, \@ref_len_A, \@mdl_is_primary_A);
     }      
@@ -1464,6 +1484,28 @@ for(my $a = 0; $a < $naccn; $a++) {
       if(! $do_nomdlb) { 
         push(@cur_out_A, "  " . $hang5 . $hang3);
       }        
+
+      # overlap string for this feature
+      if(! $do_noolap) { 
+        my $ol_pf_char = undef;
+        my $ol_str     = undef;
+        ($ol_pf_char, $ol_str) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", $h, \@ref_ol_AA, \@cur_ol_AA);
+        push(@cur_out_A, $ol_str);
+        if($ol_pf_char eq "F") { 
+          $at_least_one_fail = 1;
+        }
+      }
+
+      # adjacency string for this feature
+      if($do_matpept) { 
+        my $adj_pf_char = undef;
+        my $adj_str     = undef;
+        ($adj_pf_char, $adj_str) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, \@ref_adj_AA, \@cur_adj_AA);
+        push(@cur_out_A, $adj_str);
+        if($adj_pf_char eq "F") { 
+          $at_least_one_fail = 1;
+        }
+      }
 
       if($mdl_is_first_A[$h]) { # determine $start_codon_char
         if($p_strand_HH{$model}{$seq_accn} eq "-") { 
@@ -1606,6 +1648,8 @@ for(my $a = 0; $a < $naccn; $a++) {
 
   # total length
   push(@cur_out_A, sprintf("  %6d", $totlen_H{$accn}));
+
+  # average fid
   push(@cur_out_A, sprintf("  %5.3f", $tot_fid / $n_fid));
 
   # output number of actually annotated features and summed total of exons in those features, if nec
@@ -1616,26 +1660,22 @@ for(my $a = 0; $a < $naccn; $a++) {
   }
 
   # output overlap info, if nec
-  my $ol_pass_fail_char;
-  my $overlap_notes = undef;
-  ($ol_pass_fail_char, $overlap_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, \@ref_ol_AA, \@ol_AA);
-  $pass_fail_str .= $ol_pass_fail_char;
-  if((! $do_noolap) && ($overlap_notes ne "")) { 
+  if($do_fullolap) { 
+    my $ol_pass_fail_char = undef;
+    my $overlap_notes = undef;
+    ($ol_pass_fail_char, $overlap_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", undef, \@ref_ol_AA, \@cur_ol_AA);
     push(@cur_out_A, sprintf("  %20s", $overlap_notes));
+    $pass_fail_str .= $ol_pass_fail_char;
   }
-
-  #### check for adjacencies
-  ###my $adjacency_notes; 
-  ###my @adj_AA = (); # 2D array that describes adjacencies in current accession
-  ###if($do_matpept) { # determine adjacencies
-  ###checkForOverlapsOrAdjacencies(1, \@ol_start_A, \@ol_stop_A, \@ol_strand_A, \@adj_AA);
-  ###if($a == 0) { 
-  ###@ref_adj_AA = @ol_AA;
-  ###}
-  ###exit 0;
-  ###($pass_fail_char, $adjacency_notes) = compareOverlapsOrAdjacencies(\@ol_name_A, \@ref_adj_AA, \@adj_AA);
-  ###$pass_fail_str .= $pass_fail_char;
-  ###}
+  
+  # output adjacency info, if nec
+  if($do_fulladj) { 
+    my $adj_pass_fail_char;
+    my $adjacency_notes = undef;
+    ($adj_pass_fail_char, $adjacency_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", undef, \@ref_adj_AA, \@cur_adj_AA);
+    $pass_fail_str .= $adj_pass_fail_char;
+    push(@cur_out_A, sprintf("  %20s", $adjacency_notes));
+  }
 
   my $result_str = ($pass_fail_str =~ m/F/) ? "FAIL" : "PASS";
   $result_str .= " " . $pass_fail_str;
@@ -1674,7 +1714,7 @@ if(($do_seqcol) && ($cur_pagesize > 0)) {
 # OUTPUT EXPLANATORY TEXT 
 ##########################
 if(! $do_noexp) { 
-  outputColumnHeaderExplanations((defined $origin_seq), $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap);
+  outputColumnHeaderExplanations(\@out_header_exp_A);
 }
 
 ###########################
@@ -3176,6 +3216,9 @@ sub checkForOverlapsOrAdjacencies {
 #             to another.
 #
 # Args:       $name_AR:      ref to array of short names for each annotation
+#             $div_char:     divider character
+#             $index:        if   defined, the only feature $index we check overlaps/adjacencies for
+#                            if ! defined, check overlaps/adjacencies for all features
 #             $expected_AAR: ref to 2D array of expected overlaps $expected_ol_AAR->[$i][$j] is '1' if 
 #                            those two exons are expected to overlap or be adjacent, PRE-FILLED
 #             $observed_AAR: ref to 2D array of test overlaps $observed_ol_AAR->[$i][$j] is '1' if 
@@ -3187,10 +3230,10 @@ sub checkForOverlapsOrAdjacencies {
 #
 sub compareOverlapsOrAdjacencies {
   my $sub_name = "compareOverlapsOrAdjacencies";
-  my $nargs_exp = 3;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($name_AR, $expected_AAR, $observed_AAR) = @_;
+  my ($name_AR, $div_char, $index, $expected_AAR, $observed_AAR) = @_;
 
   my $size = scalar(@{$name_AR});
   my $ret_str = "";
@@ -3199,22 +3242,33 @@ sub compareOverlapsOrAdjacencies {
   # check @observed_AA against @{$expected_AAR}
   my $pass_fail_char = "P";
   for(my $i = 0; $i < $size; $i++) { 
-    for(my $j = 0; $j < $size; $j++) { 
-      if($observed_AAR->[$i][$j] ne $expected_AAR->[$i][$j]) { 
-        $pass_fail_char = "F";
-      }
-      if($observed_AAR->[$i][$j] && ($i < $j)) { 
-        if($ret_str ne "") { 
-          $ret_str .= ",";
+    if((! defined $index) || ($index == $i)) { 
+      for(my $j = 0; $j < $size; $j++) { 
+        if($observed_AAR->[$i][$j] ne $expected_AAR->[$i][$j]) { 
+          $pass_fail_char = "F";
         }
-        $ret_str .= sprintf("%s/%s", $name_AR->[$i], $name_AR->[$j]); 
-        $nfound++;
+        if($observed_AAR->[$i][$j] && ($i < $j)) { 
+          if($ret_str ne "") { 
+            $ret_str .= ",";
+          }
+          if(defined $index) { 
+            $ret_str .= sprintf("%s", $name_AR->[$j]); 
+          }
+          else { 
+            $ret_str .= sprintf("%s%s%s", $name_AR->[$i], $div_char, $name_AR->[$j]); 
+          }
+          $nfound++;
+        }
       }
     }
   }
+  if($ret_str eq "") { $ret_str = "NONE"; }
 
-  if($ret_str ne "") { 
-    $ret_str = $pass_fail_char . " " . $nfound . " " . $ret_str;
+  if(defined $index) { 
+    $ret_str = $pass_fail_char . ":" . $ret_str;
+  }
+  else { 
+    $ret_str = $pass_fail_char . ":" . $nfound . ":" . $ret_str;
   }
 
   return ($pass_fail_char, $ret_str);
@@ -4006,6 +4060,12 @@ sub matpeptFindPrimaryAdjacencies {
 #
 # Synopsis:   For 'sequences are rows' tabular output, output the headings.
 #
+# IMPORTANT:  This function must stay in sync with the long block of code
+#             in the main script entitled 'Pass through all accessions, and 
+#             gather and output annotation for each'. Here we define the
+#             headers of the output, in the main script we add output for
+#             each of those headers, so they must stay in sync.
+# 
 # Args:       $do_seqrow:          '1' if we're outputting in sequence-as-rows mode
 #             $do_seqcol:          '1' if we're outputting in sequence-as-columns mode
 #             $do_matpept:         '1' if we're in matpept mode
@@ -4013,6 +4073,8 @@ sub matpeptFindPrimaryAdjacencies {
 #             $do_mdlb:            '1' if we're not printing model boundaries, else '0'
 #             $do_noss3:           '1' if we're not printing SS3 columns, else '0'
 #             $do_nostop:          '1' if we're not printing Stop codons, else '0'
+#             $do_fullolap         '1' if we're printing full overlap string
+#             $do_fulladj          '1' if we're printing full adjacency string
 #             $origin_seq:         origin sequence, or undef if ! defined
 #             $ref_tot_nexons:     number of total exons in reference
 #             $nmdl:               number of total models
@@ -4026,12 +4088,15 @@ sub matpeptFindPrimaryAdjacencies {
 #                                  undef unless $do_seqrow is '1'
 #             $out_row_header_AR:  ref to 1D array of row headers, filled here
 #                                  undef unless $do_seqcol is '1'
+#             $out_header_exp_AR:  ref to 1D array of header explanations, each
+#                                  element is a line to be printed in explanatory
+#                                  section of the output; filled here
 sub getHeadings {
   my $sub_name = "getHeadings";
-  my $nargs_exp = 18;
+  my $nargs_exp = 21;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $origin_seq, $ref_tot_nexons, $nmdl, $mdl2mft_map_AR, $mft2exon_map_AR, $mdl_is_first_AR, $mdl_is_final_AR, $mft_out_short_AR, $mft_out_product_AR, $out_col_header_AAR, $out_row_header_AR) = @_;
+  my ($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, $origin_seq, $ref_tot_nexons, $nmdl, $mdl2mft_map_AR, $mft2exon_map_AR, $mdl_is_first_AR, $mdl_is_final_AR, $mft_out_short_AR, $mft_out_product_AR, $out_col_header_AAR, $out_row_header_AR, $out_header_exp_AR) = @_;
 
   # contract checks
   if($do_seqrow     &&    $do_seqcol)  { die "ERROR in $sub_name, both $do_seqrow and $do_seqcol are '1'"; }
@@ -4113,6 +4178,19 @@ sub getHeadings {
   my $tok4; # fourth level token (line 4 of column headers) 
   my $tok5; # fifth  level token (line 5 of column headers) 
 
+  my $exp_tok1; # first  level explanation token, only used if we want this to be different from $tok1
+  my $exp_tok4; # fourth level explanation token, only used if we want this to be different from $tok4
+
+  # first, initialize the @{$out_header_exp_AR} with the first two lines:
+  push(@{$out_header_exp_AR}, "#\n");
+  if($do_seqrow) { 
+    push(@{$out_header_exp_AR}, "# Explanations of column headings (in left to right order):\n");
+  }
+  elsif($do_seqcol) { 
+    push(@{$out_header_exp_AR}, "# Explanations of row headings on each page:\n");
+  }
+  push(@{$out_header_exp_AR}, "#\n");
+
   # column/row #2: 'idx'
   $tok1 = sprintf("%-4s  ", "");
   $tok2 = $tok1;
@@ -4121,6 +4199,7 @@ sub getHeadings {
   $tok5 = sprintf("%-4s  ", "----");
   if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
   elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "index of genome in list");
 
   # column/row #2: 'accession'
   $tok1 = sprintf("%-19s  ", "");
@@ -4130,6 +4209,7 @@ sub getHeadings {
   $tok5 = sprintf("%-19s  ", "-------------------");
   if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
   elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "GenBank accession for genomic sequence");
 
   # column/row #3: 'totlen'
   $tok1 = sprintf("%-6s", "");
@@ -4139,6 +4219,8 @@ sub getHeadings {
   $tok5 = sprintf("%-6s", "------");
   if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
   elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "total length (nt) for accession");
+  getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef); # adds a blank line
 
   if(defined $origin_seq) { 
     # column/row #4: 'origin sequence:#'
@@ -4149,6 +4231,7 @@ sub getHeadings {
     $tok5 = sprintf(" %2s", "--");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "number of occurences of origin sequence (input with -oseq) in genome");
 
     # column/row #5: 'origin sequence:start'
     # tok1, tok2, tok3 do not change
@@ -4156,7 +4239,7 @@ sub getHeadings {
     $tok5 = sprintf(" %5s", "-----");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "start position of lone occurence of origin sequence (if only 1 exists)");
 
     # column/row #6: 'origin sequence:stop'
     # tok1, tok2, tok3 do not change
@@ -4164,6 +4247,7 @@ sub getHeadings {
     $tok5 = sprintf(" %5s", "-----");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of lone occurence of origin sequence (if only 1 exists)");
 
     # column/row #7: 'origin sequence:offst'
     # tok1, tok2, tok3 do not change
@@ -4171,6 +4255,7 @@ sub getHeadings {
     $tok5 = sprintf(" %5s", "-----");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)");
 
     # column/row #7: 'origin sequence:PF'
     # tok1, tok2, tok3 do not change
@@ -4178,6 +4263,8 @@ sub getHeadings {
     $tok5 = sprintf(" %2s", "--");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "'P' (for PASS) if there is exactly 1 occurence of the offset, else 'F' for FAIL");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef); # adds a blank line
   } # end of 'if(defined $orig_seq)'
 
   # create columns for 5'UTR, if $do_matpept:
@@ -4190,33 +4277,42 @@ sub getHeadings {
     $tok5 = sprintf("  ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "start position of 5' UTR (inferred from other predictions)");
 
     $tok4 = sprintf(" %6s", "stop");
     $tok5 = sprintf(" ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of 5' UTR (inferred from other predictions)");
 
     $tok4 = sprintf(" %6s", "length");
     $tok5 = sprintf(" ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "length of 5' UTR (inferred from other predictions)");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef); # adds a blank line
   }
 
-  # create columns for CDS
+  # create columns for main features (CDS/mat_peptide)
   $width = 0;
+  my $do_explanation = 1;
   for(my $h = 0; $h < $nmdl; $h++) { 
     $width += 18;
     my $mft_i = $mdl2mft_map_AR->[$h];
-    if(! $do_nofid)  { $width += 6; }
-    if(! $do_nomdlb) { $width += 4; }
+    if(! $do_nofid)  { $width += 6;  }
+    if(! $do_nomdlb) { $width += 4;  }
+    if(! $do_noolap) { $width += 11; }
+    if($do_matpept)  { $width += 11; }
     if($mdl_is_final_AR->[$h]) { 
       $width += 9;
       if(! $do_noss3)  { $width += 4; }
       if(! $do_nostop) { $width += 4; }
-      $tok1 = sprintf("  %*s", $width, $mft_out_short_AR->[$mft_i] . monocharacterString(($width-length($mft_out_short_AR->[$mft_i]))/2, " "));
+      $tok1     = sprintf("  %*s", $width, $mft_out_short_AR->[$mft_i] . monocharacterString(($width-length($mft_out_short_AR->[$mft_i]))/2, " "));
+      $exp_tok1 = ($do_matpept) ? "MP #<i>" : "CDS #<i>";
       $tok2 = sprintf("  %*s", $width, substr($mft_out_product_AR->[$mft_i], 0, $width) . monocharacterString(($width-length($mft_out_product_AR->[$mft_i]))/2, " "));
       $tok3 = sprintf("  %s", monocharacterString($width, "-"));
       $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mft2exon_map_AR->[$h]+1));
+      $exp_tok4 = "start<j>";
       $tok5 = sprintf("  %8s", "--------");
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
@@ -4227,58 +4323,157 @@ sub getHeadings {
       $tok1 = sprintf("    %s", $mft_out_short_AR->[$mft_i]);   # used only for getHeadingsSeqColHelper
       $tok2 = sprintf("    %s", $mft_out_product_AR->[$mft_i]); # used only for getHeadingsSeqColHelper
       $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mft2exon_map_AR->[$h]+1));
+      $exp_tok4 = "start<j>";
       $tok5 = sprintf("  %8s", "--------");
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
-
+    my $exp_substr = ($do_matpept) ? "coding sequence part <j> of mat_peptide" : "exon #<j> of CDS #<i>";
+    if($do_explanation) { 
+      getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "start position of $exp_substr");
+      getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if different from all exon starts in existing GenBank annotation");
+    }
+    
     # stop, fid, and md rows take place for all exons
     # only token 4 changes
     $tok4 = sprintf(" %8s", sprintf("%s%s", "stop", $mft2exon_map_AR->[$h]+1));
+    $exp_tok4 = "stop<j>";
     $tok5 = sprintf(" %8s", "--------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+    if($do_explanation) { 
+      getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "stop  position of $exp_substr");
+      getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if different from all exon stops in existing GenBank annotation");
+    }
     
     if(! $do_nofid) { 
       $tok4 = sprintf(" %5s", sprintf("%s%s", "fid", $mft2exon_map_AR->[$h]+1));
+      $exp_tok4 = "fid<j>";
       $tok5 = sprintf(" %5s", "-----");
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "fractional identity between $exp_substr and reference genome");
+      }
     }
-    
+
+    $exp_substr = $do_matpept ? "mat_peptide coding sequence" : "exon coding sequence";
     if(! $do_nomdlb) { 
       $tok4 = sprintf(" %3s", sprintf("%s%s", "md", $mft2exon_map_AR->[$h]+1));
+      $exp_tok4 = "md<j>";
       $tok5 = sprintf(" %3s", "---");
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("annotation indicating if alignment to reference extends to 5' and 3' end of reference $exp_substr."));
+      }
+    }
+    
+    if(! $do_noolap) { 
+      $tok4 = sprintf(" %10s", sprintf("%s%s", "overlaps", $mft2exon_map_AR->[$h]+1));
+      $exp_tok4 = "overlaps<j>";
+      $tok5 = sprintf(" %10s", "----------");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s overlaps with", ($do_matpept) ? "mat_peptide" : "exon", ($do_matpept) ? "mat_peptide" : "exon"));
+        getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'"); # adds a second line to explanation
+      }
+}
+
+    if($do_matpept) { 
+      $tok4 = sprintf(" %10s", sprintf("%s%s", "adjcnces", $mft2exon_map_AR->[$h]+1));
+      $exp_tok4 = "adjcnces<j>";
+      $tok5 = sprintf(" %10s", "----------");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s is adjacent with", ($do_matpept) ? "mat_peptide" : "exon", ($do_matpept) ? "mat_peptide" : "exon"));
+        getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'"); # adds a second line to explanation
+      }
     }
 
+    $exp_substr = $do_matpept ? "mat_peptide coding sequence" : "CDS";
     if($mdl_is_final_AR->[$h]) { 
       $tok4 = sprintf(" %6s", "length");
       $tok5 = sprintf(" %6s", "------");
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
-      
+      if($do_explanation) { 
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, "length of $exp_substr #<i> (all exons summed)");
+      }      
+
       if(! $do_noss3) { 
         $tok4 = sprintf(" %3s", "ss3");
         $tok5 = sprintf(" %3s", "---");
         if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
         elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       }
-      
+      if($do_explanation) { 
+        if($do_matpept) { 
+          #TODO FIX ME! This is inaccurate for mat_peptides
+          getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted mat_peptide has a valid start codon, stop codon and is a multiple of 3");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted mat_peptide has a valid start codon, else '!'");          
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted mat_peptide has a valid stop  codon, else '!'");      
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted mat_peptide has a length which is a multiple of three, else '!'");
+        }      
+        else {
+          getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, else '!'");          
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, else '!'");      
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'");
+        }
+      }
       if(! $do_nostop) { 
         $tok4 = sprintf(" %3s", "stp");
         $tok5 = sprintf(" %3s", "---");
         if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
         elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+        if($do_explanation) { 
+          getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, ($do_matpept) ? "the final codon for this mat_peptide sequence" : "the predicted stop codon for this CDS");
+        }
       }
       
       $tok4 = sprintf(" %2s", "PF");
       $tok5 = sprintf(" %2s", "--");
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        if($do_matpept) { 
+          getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this mat_peptide PASSED ('P') or FAILED ('F')");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  a mat_peptide coding sequence PASSES ('P') if and only if");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon or homologous reference mat_peptide");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "      does not");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after its predicted");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "      end or reference mat_peptide does not");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (4) has a pairwise alignment to the homologous reference met_peptide that");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "      extends to the 5' and 3' boundary of the reference annotation");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (5) overlaps with exact same set of other mat_peptides as the homologous");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "      reference mat_peptide");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (6) is adjacent to the exact same set of other mat_peptides as the");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "      homologous reference mat_peptide");
+
+        }
+        else { 
+          getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first exon");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon at end of its final exon");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (4) all of its exons have a pairwise alignment to the homologous");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "      reference exon that extends to the 5' and 3' boundary of the");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "      reference annotation.");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  (5) all of its exons overlap with exact same set of other exons as the");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "      homologous reference CDS");
+        }
+        getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
+      }
     }
-  }
+    $do_explanation = 0; # once we see the final exon of the first CDS, we don't need to print CDS explanations anymore
+  } # end of 'if($mdl_is_final_AR->[$h])'
 
   # create columns for 3'UTR, if $do_matpept:
   if($do_matpept) { 
@@ -4290,16 +4485,21 @@ sub getHeadings {
     $tok5 = sprintf("  ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "start position of 3' UTR (inferred from other predictions)");
 
     $tok4 = sprintf(" %6s", "stop");
     $tok5 = sprintf(" ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of 3' UTR (inferred from other predictions)");
 
     $tok4 = sprintf(" %6s", "length");
     $tok5 = sprintf(" ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "length of 3' UTR (inferred from other predictions)");
+
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
   }
 
   # "totlen"
@@ -4310,6 +4510,7 @@ sub getHeadings {
   $tok5 = sprintf("  %6s", "------");
   if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
   elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "total length (nt) for accession (repeated for convenience)");
 
   # "avgid"
   $tok1 = sprintf("  %5s", "");
@@ -4319,32 +4520,78 @@ sub getHeadings {
   $tok5 = sprintf("  %5s", "-----");
   if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
   elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "average fractional identity of all pairwise alignments for this accession");
+  getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
 
   # existing GenBank annotation
-  $tok1 = sprintf("  %19s", "");
-  $tok2 = sprintf("  %19s", "GenBank annotation");
-  $tok3 = sprintf("  %19s", "-------------------");
-  $tok4 = sprintf("  %5s", ($do_matpept) ? "mp" : "cds");
-  $tok5 = sprintf("  %5s", "-----");
-  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
-  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-
-  $tok4 = sprintf("  %5s", "exons");
-  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
-  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-
-  $tok4 = sprintf("  %5s", "match");
-  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
-  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+  if(! $do_noexist) { 
+    $tok1 = sprintf("  %19s", "");
+    $tok2 = sprintf("  %19s", "GenBank annotation");
+    $tok3 = sprintf("  %19s", "-------------------");
+    $tok4 = sprintf("  %5s", ($do_matpept) ? "mp" : "cds");
+    $tok5 = sprintf("  %5s", "-----");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, sprintf("number of %s in the existing GenBank annotation for this accession", ($do_matpept) ? "mat_peptides" : "CDS"));
+    
+    $tok4 = sprintf("  %5s", "exons");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "total number of exons in the existing GenBank annotation for this accession");
+    
+    $tok4 = sprintf("  %5s", "match");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "number of exons in the existing GenBank annotation for which existing and predicted annotation agree exactly");
+  }
+  getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
 
   # overlaps?
-  $tok1 = sprintf("  %20s", "");
-  $tok2 = sprintf("  %20s", "");
-  $tok3 = sprintf("  %20s", "");
-  $tok4 = sprintf("  %20s", " overlaps?");
-  $tok5 = sprintf("  %20s", "--------------------");
-  if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
-  elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  if($do_fullolap) { 
+    $tok1 = sprintf("  %20s", "");
+    $tok2 = sprintf("  %20s", "");
+    $tok3 = sprintf("  %20s", "");
+    $tok4 = sprintf("  %20s", " overlaps?");
+    $tok5 = sprintf("  %20s", "--------------------");
+    if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("text describing which (if any) of the predicted %s overlap with each other", $do_matpept ? "mat_peptides" : "exons"));
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "                   'F' for FAIL if it does not");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("second character:  number of overlaps between any two %s", $do_matpept ? "mat_peptides" : "exons"));
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("remainder of line: text explaining which exons overlap", $do_matpept ? "mat_peptides" : "exons"));
+    if($do_matpept) { 
+      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("  e.g.: \"3.1|4.1\" indicates exon #1 of mat_peptide #3 overlaps with exon #1 of mat_peptide #4 on either strand"));
+    }
+    else { 
+      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand"));
+    }
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
+  }
+
+  # adjacencies?
+  if($do_fulladj) { 
+      $tok1 = sprintf("  %122s", "");
+      $tok2 = sprintf("  %122s", "");
+      $tok3 = sprintf("  %122s", "");
+      $tok4 = sprintf("  %122s", " adjacencies?");
+      $tok5 = sprintf("  %122s", "--------------------");
+      if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+      elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("text describing which (if any) of the predicted %s are adjacent to each other", $do_matpept ? "mat_peptides" : "exons"));
+      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("two %s i and j are adjacent if i < j and final nt of i is 1 less than first nt of j", $do_matpept ? "mat_peptides" : "exons"));
+      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "first character:   'P' for PASS if predicted annotation for this accession has same adjacencies as the reference");
+      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "                   'F' for FAIL if it does not");
+      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("second character:  number of overlaps between any two %s", $do_matpept ? "mat_peptides" : "exons"));
+      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("remainder of line: text explaining which exons overlap", $do_matpept ? "mat_peptides" : "exons"));
+      if($do_matpept) { 
+      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("  e.g.: \"3.1|4.1\" indicates exon #1 of mat_peptide #3 overlaps with exon #1 of mat_peptide #4 on either strand"));
+    }
+    else { 
+      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand"));
+    }
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
+  }
 
   # result
   $tok1 = sprintf("  %*s",  $width_result, "");
@@ -4355,6 +4602,9 @@ sub getHeadings {
   if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
   elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
 
+  getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "\"PASS\" or \"FAIL\". \"PASS\" if and only if all tests for this accession PASSED ('P')");
+  getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "as indicated in the \"PF\" columns. Followed by the individual P/F results in order.");
+  getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "ADD TEXT ABOUT OVERLAP?");
   return;
 }
 
@@ -4416,6 +4666,76 @@ sub getHeadingsSeqColHelper {
   if(defined $tok3) { $toadd .= $div_char . $tok3; }
 
   push(@{$out_row_header_AR}, $toadd); 
+
+  return;
+}
+
+#
+# Subroutine: getHeadingsExplanationHelper()
+#
+# Synopsis:   Helper function for getHeadings() for adding explanatory text to the 
+#             @{$out_header_exp_AR} array.
+#             Given up to 3 tokens that define the header, and one that is the 
+#             explanatory text. Can be used in 3 modes:
+#
+#             Mode 1: at least one of $tok1, $tok2, $tok3 is defined
+#                     and $desc is defined 
+#                     In this mode, determine header by concatenating all of
+#                     $tok1, $tok2, and $tok3 that are defined and use
+#                     $desc as the description.
+#
+#             Mode 2: none of $tok1, $tok2, $tok3 is defined and $desc is
+#                     defined.
+#                     In this mode, header is blank, and use $desc as 
+#                     the description.
+#
+#             Mode 3: none of $tok1, $tok2, $tok3 is defined and $desc is
+#                     not defined either
+#                     In this mode, add a blank line to @{$out_row_header_AR}.
+#
+# Args:       $out_header_exp_AR:  ref to output column header 2D array
+#             $tok1:               token 1, can be undef
+#             $tok2:               token 2, can be undef
+#             $tok3:               token 3, can be undef
+#             $desc:               description text, can be undef
+#             
+sub getHeadingsExplanationHelper { 
+  my $sub_name = "getHeadingsExplanationHelper";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_header_exp_AR, $tok1, $tok2, $tok3, $desc) = @_;
+
+  my $width = 35;
+  if(defined $tok1) { $tok1 =~ s/^\s+//; $tok1 =~ s/\s+$//; }
+  if(defined $tok2) { $tok2 =~ s/^\s+//; $tok2 =~ s/\s+$//; }
+  if(defined $tok3) { $tok3 =~ s/^\s+//; $tok3 =~ s/\s+$//; }
+
+  my $header = "";
+  if(defined $tok1) { 
+    $header .= $tok1;
+  }
+  if(defined $tok2) { 
+    if($header ne "") { $header .= ":"; }
+    $header .= $tok2;
+  }
+  if(defined $tok3) { 
+    if($header ne "") { $header .= ":"; }
+    $header .= $tok3;
+  }
+  if($header ne "") { 
+    $header = "\"" . $header . "\":";
+  }
+
+  if(defined $desc) { 
+    push(@{$out_header_exp_AR}, sprintf("# %-*s %s\n", $width, $header, $desc)); 
+  }
+  else { 
+    if($header ne "") { 
+      die "ERROR in $sub_name, desc is not defined but one of the header tokens is"; 
+    }
+    push(@{$out_header_exp_AR}, "#\n");
+  }
 
   return;
 }
@@ -4543,111 +4863,25 @@ sub getOseqOutput {
 
   return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail);
 }
-
 # Subroutine: outputColumnHeaderExplanations()
-# Args:       $do_oseq:    '1' if -oseq was enabled
-#             $do_nomdlb:  '1' if -nomdlb was enabled
-#             $do_noexist: '1' if -noexist was enabled
-#             $do_nobrack: '1' if -nobrack was enabled
-#             $do_nostop:  '1' if -nostop was enabled
-#             $do_nofid:   '1' if -nofid was enabled
-#             $do_noss3:   '1' if -noss3 was enabled
-#             $do_noolap:  '1' if -noolap was enabled
+# Args:       $out_header_exp_AR: ref to array of output explanation lines
+#
+# Synopsis:   Prints out output lines in @{$out_header_exp_AR} and exits.
 #
 # Returns:    void
 
 sub outputColumnHeaderExplanations {
   my $sub_name = "outputColumnHeaderExplanations";
-  my $nargs_exp = 8;
+  my $nargs_exp = 1;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($do_oseq, $do_nomdlb, $do_noexist, $do_nobrack, $do_nostop, $do_nofid, $do_noss3, $do_noolap) = @_; 
-  
-  print("#\n");
-  print("# Explanations of column headings (in left to right order):\n");
+  my ($out_header_exp_AR) = @_;
 
-  my $width = 35;
-
-  printf("# %-*s %s\n", $width, "\"idx\":",       "index of genome in list");
-  printf("# %-*s %s\n", $width, "\"accession\":", "GenBank accession for genomic sequence");
-  printf("# %-*s %s\n", $width, "\"totlen\":",    "total length (nt) for accession");
-
-  if($do_oseq) {
-    printf("#\n");
-    printf("# %-*s %s\n", $width, "\"origin sequence: #\":",      "number of occurences of origin sequence (input with -oseq) in genome");
-    printf("# %-*s %s\n", $width, "\"origin sequence: start\":",  "start position of lone occurence of origin sequence (if only 1 exists)");
-    printf("# %-*s %s\n", $width, "\"origin sequence: stop\":",   "stop  position of lone occurence of origin sequence (if only 1 exists)");
-    printf("# %-*s %s\n", $width, "\"origin sequence: offst\":",  "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)");
-    printf("# %-*s %s\n", $width, "\"origin sequence: PF\":",     "'P' (for PASS) if there is exactly 1 occurence of the offset, else 'F' for FAIL");
+  foreach my $line (@{$out_header_exp_AR}) { 
+    print $line;
   }
 
-  printf("#\n");
-  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: start<j>\":", "start position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing GenBank annotation");
-  printf("# %-*s %s%s\n", $width, "\"CDS #<i>: stop<j>\":",  "stop  position of exon #<j> of CDS #<i>", ($do_nobrack) ? "" : "enclosed in brackets \"\[\]\" if different from all exon starts in existing GenBank annotation");
-
-  if(! $do_nofid) { 
-    printf("# %-*s %s\n", $width, "\"CDS #<i>: fid<j>\":",  "fractional identity between exon #<j> of CDS #<i> and reference genome");
-  }
-
-  if(! $do_nomdlb) { 
-    printf("# %-*s %s\n", $width, "\"CDS #<i>: md<j>\":",  "annotation indicating if alignment to reference extends to 5' and 3' end of reference exon.");
-    printf("# %-*s %s\n", $width, "",                      "first character pertains to 5' end and second character pertains to 3' end.");
-    printf("# %-*s %s\n", $width, "",                      "possible values for each of the two characters:");
-    printf("# %-*s %s\n", $width, "",                      "  \".\":   alignment extends to boundary of reference");
-    printf("# %-*s %s\n", $width, "",                      "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)");
-    printf("# %-*s %s\n", $width, "",                      "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference");
-  }
-
-  printf("# %-*s %s\n", $width, "\"CDS #<i>: length\":",   "length of CDS #<i> (all exons summed)");
-
-  if(! $do_noss3) { 
-    print("#\n");
-    printf("# %-*s %s\n", $width, "\"CDS #<i>: SS3\":",   "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3");
-    printf("# %-*s %s\n", $width, "",                      "first  character: '.' if predicted CDS has a valid start codon, else '!'");
-    printf("# %-*s %s\n", $width, "",                      "second character: '.' if predicted CDS has a valid stop  codon, else '!'");
-    printf("# %-*s %s\n", $width, "",                      "third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'");
-  }
-
-  if(! $do_nostop) { 
-    printf("# %-*s %s\n", $width, "\"CDS #<i>: stp\":",   "the predicted stop codon for this CDS");
-  }
-
-  printf("# %-*s %s\n", $width, "\"CDS #<i>: PF\":",      "annotation indicating if this exon PASSED ('P') or FAILED ('F')");
-  printf("# %-*s %s\n", $width, "",                       "  a CDS PASSES ('P') if and only if ALL of its exons have a valid start codon,");
-  printf("# %-*s %s\n", $width, "",                       "  a valid stop codon, are lengths that are a multiple of 3, and have an");
-  printf("# %-*s %s\n", $width, "",                       "  alignment to the corresponding reference exon that extends to the 5'");
-  printf("# %-*s %s\n", $width, "",                       "  and 3' boundary of the reference annotation.");
-  printf("# %-*s %s\n", $width, "",                       "  If >= 1 of these conditions is not met then the CDS FAILS ('F').");
-
-  print("#\n");
-  printf("# %-*s %s\n", $width, "\"totlen\":",            "total length (nt) for accession (repeated for convenience)"); 
-  
-  if(! $do_noexist) { 
-    printf("#\n");
-    printf("# %-*s %s\n", $width, "\"GenBank annotation: cds\"",   "number of CDS in the existing GenBank annotation for this accession");
-    printf("# %-*s %s\n", $width, "\"GenBank annotation: exons\"", "total number of exons in the existing GenBank annotation for this accession");
-    printf("# %-*s %s\n", $width, "\"GenBank annotation: match\"", "number of exons in existing GenBank annotation for which existing and predicted annotation agree exactly");
-  }
-
-  if(! $do_noolap) { 
-    printf("#\n");
-    printf("# %-*s %s\n", $width, "\"overlaps\?\"",   "text describing which (if any) of the predicted exons overlap with each other");
-    printf("# %-*s %s\n", $width, "",                 "first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference");
-    printf("# %-*s %s\n", $width, "",                 "                   'F' for FAIL if it does not");
-    printf("# %-*s %s\n", $width, "",                 "second character:  number of overlaps between any two exons");
-    printf("# %-*s %s\n", $width, "",                 "remainder of line: text explaining which exons overlap");
-    printf("# %-*s %s\n", $width, "",                 "  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand");
-  }  
-
-  print("#\n");
-  printf("# %-*s %s\n", $width, "\"result\":",            "\"PASS\" or \"FAIL\". \"PASS\" if and only if all tests for this accession PASSED ('P')");
-  printf("# %-*s %s\n", $width, "",                       "as indicated in the \"PF\" columns. Followed by the individual P/F results in order.");
-  if($do_noolap) { 
-    printf("# %-*s %s\n", $width, "",                       "Final P/F in the results pertains to the overlap check: 'P' if this accession has the same");
-    printf("# %-*s %s\n", $width, "",                       "set of overlaps as the reference accession, and 'F' if not.");
-  }    
-
-  return; 
+  return;
 }
 
 # Subroutine: debugPrintGapArray()
