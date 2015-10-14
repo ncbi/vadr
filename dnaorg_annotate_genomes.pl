@@ -154,6 +154,8 @@ my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan a
             "noss3"     => \$do_noss3,
             "noolap"    => \$do_noolap,
             "noexp"     => \$do_noexp,
+            "fullolap"  => \$do_fullolap,
+            "fulladj"   => \$do_fulladj,
             "hmmer"     => \$do_hmmer,
             "hmmenv"    => \$do_hmmenv,
             "iglocal"   => \$do_iglocal,
@@ -1093,52 +1095,56 @@ if((! $do_nocorrect) && (! $do_matpept)) {
 #########################################
 # TRANSLATE PREDICTIONS INTO PROTEIN SEQS
 #########################################
+# TEMPORARILY SKIP THIS STEP IF WE'RE IN MATPEPT MODE
 my @nfullprot_A   = ();  # [0..$i..nmft-1], number of accessions we have a full protein for, for CDS $i
 my @fullprot_AH   = ();  # [0..$i..nmft-1], each element is a hash with keys $key as sequence accessions and values 
                          # of number of full length protein sequences we have for CDS/mat_peptide $i for key $key. Values should
                          # always be '1', more than '1' is an error, and we never create a value of '0'.
 my @ntruncprot_A   = (); # [0..$i..nmft-1], number of accessions we do not have a full protein for, for CDS $i
 my @truncprot_AH   = (); # [0..$i..nmft-1], each element is a hash with keys $key as sequence accessions and values 
-                          # of number of non-full length protein sequences we have for CDS/mat_peptide $i for key $key. Values should
-                          # always be '1', more than '1' is an error, and we never create a value of '0'.
+                         # of number of non-full length protein sequences we have for CDS/mat_peptide $i for key $key. Values should
+                         # always be '1', more than '1' is an error, and we never create a value of '0'.
 my @aa_full_files_A = (); # array of protein sequence files we are about to create
-for(my $c = 0; $c < $ref_nmft; $c++) { 
-  my $cur_fafile = ($do_nocorrect || $do_matpept) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
-  # translate into AA sequences
-  my $tmp_aa_fafile   = $cur_fafile;
-  my $aa_full_fafile  = $cur_fafile;
-  my $aa_trunc_fafile = $cur_fafile;
-  if($do_matpept) { 
-    $tmp_aa_fafile   =~ s/\.mp/\.aa.tmp/;
-    $aa_full_fafile  =~ s/\.mp/\.aa.full/;
+if(! $do_matpept) { 
+  for(my $c = 0; $c < $ref_nmft; $c++) { 
+    my $cur_fafile = ($do_nocorrect || $do_matpept) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
+    # translate into AA sequences
+    my $tmp_aa_fafile   = $cur_fafile;
+    my $aa_full_fafile  = $cur_fafile;
+    my $aa_trunc_fafile = $cur_fafile;
+    if($do_matpept) { 
+      $tmp_aa_fafile   =~ s/\.mp/\.aa.tmp/;
+      $aa_full_fafile  =~ s/\.mp/\.aa.full/;
+    }
+    else { 
+      $tmp_aa_fafile   =~ s/\.cds/\.aa.tmp/;
+      $aa_full_fafile  =~ s/\.cds/\.aa.full/;
+    }
+    # $aa_trunc_fafile    =~ s/\.mft/\.aa.trunc/;
+    
+    # --watson specifies only translate top strand (not reverse strand)
+    # -m specifies only AUG allowed as start
+    $cmd = $esl_translate . " --watson -m $cur_fafile > $tmp_aa_fafile";
+#    print $cmd . "\n";
+    
+    runCommand($cmd, 0);
+    
+    # now we have to parse that file to only keep the full length protein seqs
+    # we also keep track of which sequence accessions we have full length proteins for
+    my $prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
+    my $prot_must_stop_at_posn_L  = 1; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
+    parseEslTranslateOutput($tmp_aa_fafile, $aa_full_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$fullprot_AH[$c]}, \$nfullprot_A[$c]);
+    
+    push(@aa_full_files_A, $aa_full_fafile);
+    
+    #printf("CDS: %d nfullprot: %d\n", ($c+1), $nfullprot_A[$c]);
+    
+    ## now fetch any protein sequences that start at position 1 but do not end at the final predicted position
+    #$prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
+    #$prot_must_stop_at_posn_L  = 0; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
+    #parseEslTranslateOutput($tmp_aa_fafile, $aa_trunc_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$truncprot_AH[$c]}, \$ntruncprot_A[$c]);
+    #printf("CDS: %d ntruncprot: %d\n", ($c+1), $ntruncprot_A[$c]);
   }
-  else { 
-    $tmp_aa_fafile   =~ s/\.cds/\.aa.tmp/;
-    $aa_full_fafile  =~ s/\.cds/\.aa.full/;
-  }
-  # $aa_trunc_fafile    =~ s/\.mft/\.aa.trunc/;
-  
-  # --watson specifies only translate top strand (not reverse strand)
-  # -m specifies only AUG allowed as start
-  $cmd = $esl_translate . " --watson -m $cur_fafile > $tmp_aa_fafile";
-
-  runCommand($cmd, 0);
-
-  # now we have to parse that file to only keep the full length protein seqs
-  # we also keep track of which sequence accessions we have full length proteins for
-  my $prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
-  my $prot_must_stop_at_posn_L  = 1; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
-  parseEslTranslateOutput($tmp_aa_fafile, $aa_full_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$fullprot_AH[$c]}, \$nfullprot_A[$c]);
-
-  push(@aa_full_files_A, $aa_full_fafile);
-
-  #printf("CDS: %d nfullprot: %d\n", ($c+1), $nfullprot_A[$c]);
-  
-  ## now fetch any protein sequences that start at position 1 but do not end at the final predicted position
-  #$prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
-  #$prot_must_stop_at_posn_L  = 0; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
-  #parseEslTranslateOutput($tmp_aa_fafile, $aa_trunc_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$truncprot_AH[$c]}, \$ntruncprot_A[$c]);
-  #printf("CDS: %d ntruncprot: %d\n", ($c+1), $ntruncprot_A[$c]);
 }
 
 #################################
@@ -1161,7 +1167,9 @@ else {
 # Make sure that the predictions in the reference of each feature are the same as the GenBank annotation
 # If they're not we can't use the current method which fetches the CDS/mat_peptide sequence based on the
 # predicion
-if(! $do_skipaln) {
+# TEMPORARILIY SKIP THIS STEP IN MATPEPT MODE
+#if(! $do_skipaln) {
+if((! $do_skipaln) && (! $do_matpept)) { 
   ($seconds, $microseconds) = gettimeofday();
   $start_time = ($seconds + ($microseconds / 1000000.));
   printf("%-65s ... ", sprintf("# Creating multiple alignments of protein sequences"));
@@ -1285,7 +1293,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   
   # Create the initial portion of the output line, the accession and length
   push(@cur_out_A, sprintf("%-5d  ", ($a+1)));
-  push(@cur_out_A, sprintf("%-20s  ", $accn)); 
+  push(@cur_out_A, sprintf("%-19s  ", $accn)); 
   push(@cur_out_A, sprintf("%6d ", $totlen_H{$accn}));
 
   #########################################################
@@ -1490,7 +1498,7 @@ for(my $a = 0; $a < $naccn; $a++) {
         my $ol_pf_char = undef;
         my $ol_str     = undef;
         ($ol_pf_char, $ol_str) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", $h, \@ref_ol_AA, \@cur_ol_AA);
-        push(@cur_out_A, $ol_str);
+        push(@cur_out_A, sprintf(" %10s", $ol_str));
         if($ol_pf_char eq "F") { 
           $at_least_one_fail = 1;
         }
@@ -1611,6 +1619,12 @@ for(my $a = 0; $a < $naccn; $a++) {
       }        
       if(! $do_nomdlb) { 
         push(@cur_out_A, "  NP"); # model boundaries
+      }
+      if(! $do_noolap) { 
+        push(@cur_out_A, "  NP"); # overlaps
+      }
+      if($do_matpept) { 
+        push(@cur_out_A, "  NP"); # adjacencies
       }
       if($mdl_is_final_A[$h]) { 
         push(@cur_out_A, sprintf(" %6s", "NP")); # length
@@ -3783,12 +3797,15 @@ sub parseEslTranslateOutput {
 
   if(! $prot_must_start_at_1) { die "ERROR in $sub_name, prot_must_start_at_1 is FALSE, you haven't implemented this case yet..."; }
 
+#  print("HEYA in $sub_name $esl_translate_output to $new_output\n");
+
   open(IN,  "<", $esl_translate_output) || die "ERROR unable to open $esl_translate_output for reading";
   open(OUT, ">", $new_output)           || die "ERROR unable to open $new_output for writing";
 
   my ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame);
   my $source_length = 0; # length of original feature sequence, including stop
   my $coords_length = 0; # length of original feature sequence that was translated, not included stop codon
+  my $stop_correction = 3; # we expect a stop 3 that isn't translation 3nt after the final aa
   my $print_flag = 0;
   my $line = <IN>;
   while(defined $line) { 
@@ -3798,13 +3815,18 @@ sub parseEslTranslateOutput {
       $coords_length = ($coords_to - $coords_from) + 1;
       # now determine if this protein passes or not
       $print_flag = 0; # by default it fails, but we redefine this below if it passes
+#      printf("prot_must_start_at_1: $prot_must_start_at_1\n");
+#      printf("prot_must_stop_at_L:  $prot_must_stop_at_L\n");
+#      printf("coords_from:          $coords_from\n");
+#      printf("coords_to:            $coords_to\n");
+#      printf("source_length:        $source_length\n");
       if($prot_must_start_at_1 && $prot_must_stop_at_L && 
-         ($coords_from == 1) && ($coords_to == ($source_length - 3))) { 
+         ($coords_from == 1) && ($coords_to == ($source_length - $stop_correction))) { 
         # we're looking only for full length proteins, and this is one
         $print_flag = 1;
       }
       if($prot_must_start_at_1 && (! $prot_must_stop_at_L) && 
-         ($coords_from == 1) && $coords_to != ($source_length - 3)) { 
+         ($coords_from == 1) && $coords_to != ($source_length - $stop_correction)) { 
         # we're NOT looking for full length proteins, but rather for proteins
         # that start at the beginning of the feature but do NOT end at the end of the 
         # feature, they may be shorter or longer
@@ -3814,6 +3836,7 @@ sub parseEslTranslateOutput {
       if($print_flag) { # print out new sequence name
         # print OUT $line; 
         printf OUT (">%s/%s-translated\n", $source_name, $source_coords);
+#        printf (">%s/%s-translated\n", $source_name, $source_coords);
         $nprot++;
         $prot_HR->{$source_name}++;
         if($prot_HR->{$source_name} > 1) { 
@@ -3823,6 +3846,7 @@ sub parseEslTranslateOutput {
       $line = <IN>;
       while(defined $line && $line !~ m/^\>/) { 
         if($print_flag) { print OUT $line; }
+#        if($print_flag) { print OUT $line; print $line; }
         $line = <IN>;
       }
     }
@@ -3833,6 +3857,8 @@ sub parseEslTranslateOutput {
   close(OUT);
 
   $$nprot_R = $nprot;
+
+#  print("HEYA leaving $sub_name $esl_translate_output to $new_output\n");
   return;
 }
 
@@ -4365,7 +4391,18 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("annotation indicating if alignment to reference extends to 5' and 3' end of reference $exp_substr."));
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "annotation indicating if alignment to reference extends to 5' and 3' end of reference $exp_substr.");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "first character pertains to 5' end and second character pertains to 3' end.");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "possible values for each of the two characters:");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \".\":   alignment extends to boundary of reference");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"c\":   position has been corrected based on predicted protein sequence");
+        if(! $do_matpept) { 
+          getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"-\":   exon is not predicted due to stop codon in earlier exon");
+        }
       }
     }
     
@@ -5316,7 +5353,9 @@ sub outputSeqAsColumnsPage {
     $AR = ($i == 0) ? $ref_out_AR : \@{$out_AAR->[$i-1]}; 
     $cwidth_A[$i] = 0;
     $ntok = scalar(@{$AR});
-    if($ntok != $nrow) { die sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok); }
+    if($ntok != $nrow) { 
+      die sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok); 
+    }
     foreach $el (@{$AR}) { 
       $el =~ s/^\s+//; # remove leading whitespace
       $el =~ s/\s+$//; # remove trailing whitespace
