@@ -96,7 +96,6 @@ if($do_seqcol) {
         # determine key, this is the value in the first column, "MP #14 [single exon; +]:RNA-dependent RNA polymerase NS5:start1" in the example above
         my $key = $line;
         my $ntok_per_accn = 1; # number of tokens we expect per accession, usually 1
-        if($line =~ m/^overlaps/) { $ntok_per_accn = 3; } # 3 tokens per accession for overlaps columns
         if($line =~ m/^result/)   { $ntok_per_accn = 2; } # 2 tokens per accession for result columns
         for(my $i = 0; $i < ($naccn * $ntok_per_accn); $i++) { 
           $key =~ s/\S+\s*$//; # remove final token, ($naccn * $ntok_per_accn) times to get key
