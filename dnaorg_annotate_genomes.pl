@@ -1698,6 +1698,7 @@ for(my $a = 0; $a < $naccn; $a++) {
         push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
       }
       push(@cur_out_A, sprintf("  %3s", $cds_pass_fail)); 
+      $pass_fail_str .= $cds_pass_fail;
     }
   }
 
@@ -5062,17 +5063,17 @@ sub getHeadings {
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
     getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("text describing which (if any) of the predicted %s overlap with each other", $do_matpept ? "mat_peptides" : "exons"));
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference");
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "                   'F' for FAIL if it does not");
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("second character:  total number of overlaps between any two %s", $do_matpept ? "mat_peptides" : "exons"));
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("remainder of line: text explaining which exons overlap", $do_matpept ? "mat_peptides" : "exons"));
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "                   'F' for FAIL if it does not");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("second character:  total number of overlaps between any two %s", $do_matpept ? "mat_peptides" : "exons"));
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("remainder of line: text explaining which exons overlap", $do_matpept ? "mat_peptides" : "exons"));
     if($do_matpept) { 
-      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("  e.g.: \"3.1|4.1\" indicates segment #1 of mat_peptide #3 overlaps with exon #1 of mat_peptide #4 on either strand"));
+      getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("  e.g.: \"3.1|4.1\" indicates segment #1 of mat_peptide #3 overlaps with exon #1 of mat_peptide #4 on either strand"));
     }
     else { 
-      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand"));
+      getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand"));
     }
-    push(@pf_text_A, sprintf("P/F character %d pertains to the overlap test of all %s", $do_matpept ? "mat_peptides" : "exons"));
+    push(@pf_text_A, sprintf("P/F character $pf_idx pertains to the overlap test of all %s",  $do_matpept ? "mat_peptides" : "exons"));
     $pf_idx++;
     getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
     $need_to_define_H{"overlap"} = 1;
@@ -5088,18 +5089,18 @@ sub getHeadings {
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
     getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("text describing which (if any) of the predicted %s are adjacent to each other", $do_matpept ? "mat_peptides" : "exons"));
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("two %s i and j are adjacent if i < j and final nt of i is 1 less than first nt of j", $do_matpept ? "mat_peptides" : "exons"));
-      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "first character:   'P' for PASS if predicted annotation for this accession has same adjacencies as the reference");
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "                   'F' for FAIL if it does not");
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("second character:  total number of adjacencies between any two %s", $do_matpept ? "mat_peptides" : "exons"));
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("remainder of line: text explaining which %s are adjacent", $do_matpept ? "mat_peptides" : "exons"));
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("two %s i and j are adjacent if i < j and final nt of i is 1 less than first nt of j", $do_matpept ? "mat_peptides" : "exons"));
+      getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first character:   'P' for PASS if predicted annotation for this accession has same adjacencies as the reference");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "                   'F' for FAIL if it does not");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("second character:  total number of adjacencies between any two %s", $do_matpept ? "mat_peptides" : "exons"));
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("remainder of line: text explaining which %s are adjacent", $do_matpept ? "mat_peptides" : "exons"));
     if($do_matpept) { 
-      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("  e.g.: \"3.1|4.1\" indicates segment #1 of mat_peptide #3 is adjacent to segment #1 of mat_peptide #4 on either strand"));
+      getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("  e.g.: \"3.1|4.1\" indicates segment #1 of mat_peptide #3 is adjacent to segment #1 of mat_peptide #4 on either strand"));
     }
     else { 
-      getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 is adjacent with exon #1 of CDS #4 on either strand"));
+      getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 is adjacent with exon #1 of CDS #4 on either strand"));
     }
-    push(@pf_text_A, sprintf("P/F character %d pertains to the full adjacency test of all %s", $do_matpept ? "mat_peptides" : "exons"));
+    push(@pf_text_A, sprintf("P/F character $pf_idx pertains to the full adjacency test of all %s", $do_matpept ? "mat_peptides" : "exons"));
     $pf_idx++;
     getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
     $need_to_define_H{"adjacent"} = 1;
