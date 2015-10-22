@@ -316,6 +316,11 @@ if($do_skipaln) {
   $opts_used_long  .= "# option:  use existing cmscan/hmmscan and alignment results, don't actually run either [-skipaln]\n";
 }
 # 
+# check for UNEXPECTED option value/combinations, we haven't coded for these yet, but we may be able to
+if($do_matpept && (! $do_nodup)) { 
+  die "ERROR -matpept requires -nodup (currently, this can be relaxed but you may want to look in code for 'matpept/nodup combo' comments)"
+}
+
 # check for incompatible option values/combinations:
 if((! $do_hmmer) && $do_hmmenv) { 
   die "ERROR -hmmenv requires -hmmer"; 
@@ -4375,8 +4380,8 @@ sub matpeptCheckCdsRelationships {
 
   # for each mat_peptide that comprises the cds, make sure it's start and stops are contiguous
   # with adjacent mat_peptide. If any mat_peptides are not predicted, we fail
-  my @fail_A = ();   # we will populate this with the mat_peptide index of all failures
-  my @nopred_A = (); # we will populate this with the mat_peptide index of any not predicted mat_peptides
+  my %fail_H   = (); # we will populate this with the mat_peptide index of all failures
+  my %nopred_H = (); # we will populate this with the mat_peptide index of any not predicted mat_peptides
 
   my $start       = undef; # start position of first mat_peptide, remains undef if no prediction for first mat_peptide
   my $stop        = undef; # stop  position of final mat_peptide, remains undef if no prediction for final mat_peptide
@@ -4390,7 +4395,7 @@ sub matpeptCheckCdsRelationships {
     my $mdl1     = $mdl_AR->[$mft2first_mdl_AR->[$mp_idx]];
     my $mdl2     = $mdl_AR->[$mft2final_mdl_AR->[$mp_idx]];
     if((! exists $start_HHR->{$mdl1}{$seq_accn}) || (! exists $start_HHR->{$mdl2}{$seq_accn})) {
-      push(@nopred_A, $mp_idx);
+      $nopred_H{$mp_idx} = 1;
     }
     else { 
       my $cur_start  = $start_HHR->{$mdl1}{$seq_accn};
@@ -4402,7 +4407,7 @@ sub matpeptCheckCdsRelationships {
 
       if(defined $prv_stop) { 
         if($cur_start != ($prv_stop + 1)) { 
-          push(@fail_A, $mp_idx);
+          $fail_H{$mp_idx} = 1;
         }
       }
       if($x == 0) { # get start codon
@@ -4411,7 +4416,18 @@ sub matpeptCheckCdsRelationships {
       }
       if($x == $nmp2check-1) { # get stop codon
         $stop = ($strand_HHR->{$mdl2}{$seq_accn} eq "+") ? $cur_stop + 3 : $cur_stop - 3;
-        $stop_codon = fetchStopCodon($sqfile, $seq_accn, $stop, $totlen, $strand_HHR->{$mdl2}{$seq_accn});
+        # since stop codon occurs 3 nt 3' of final peptide's stop, we have to make sure it's actually in the sequence first
+        # (matpept/nodup option combo is currently required (that is -nodup is req'd with -matpept), but if its ever relaxed, 
+        #  we may want to rethink this, do we want to allow the stop to wrap the stop/start boundary if -nodup is not used?)
+        if(($strand_HHR->{$mdl2}{$seq_accn} eq "+" && ($stop > ($totlen - 3 + 1))) || # stop is off the end of the sequence on + strand
+           ($strand_HHR->{$mdl2}{$seq_accn} eq "-" && ($stop < 2))) {                 # stop is off the end of the sequence on - strand
+          $stop       = undef;
+          $stop_codon = undef;
+          $fail_H{$mp_idx} = 1;
+        }
+        else { 
+          $stop_codon = fetchStopCodon($sqfile, $seq_accn, $stop, $totlen, $strand_HHR->{$mdl2}{$seq_accn});
+        }
       }
       $prv_stop = $cur_stop;
     }
@@ -4419,7 +4435,7 @@ sub matpeptCheckCdsRelationships {
   # printf("FULL $start..$stop\n");
   my $pass_fail = "F";
 
-  if((scalar(@fail_A) == 0) && (scalar(@nopred_A) == 0)) { 
+  if((scalar(keys %fail_H) == 0) && (scalar(keys %nopred_H) == 0)) { 
     $length = ($stop > $start) ? ($stop-$start+1) : ($start-$stop+1);
     $pass_fail = "P";
   }
