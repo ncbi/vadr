@@ -1211,9 +1211,8 @@ if((! $do_skipaln) && (! $do_matpept)) {
     my $start  = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$ref_seq_accn} : $c_start_HH{$model}{$ref_seq_accn};
     my $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$ref_seq_accn}  : $c_stop_HH{$model}{$ref_seq_accn};
     
-    my ($ref_start_match, $ref_stop_match) = checkStrictBoundaryMatch(\@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, $mft_i, $exon_i, $start, $stop);
-    if(! $ref_start_match) { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation (start position mismatch)."; }
-    if(! $ref_stop_match)  { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation (stop position mismatch)."; }
+    my $ref_match = checkStrictBoundaryMatch(\@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, $mft_i, $exon_i, $start, $stop);
+    if(! $ref_match) { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation."; }
     
     if($mdl_is_final_A[$h]) { 
       # fetch the protein sequence
@@ -1438,7 +1437,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       push(@cur_out_A, sprintf("  %6d", 0)); # stop 
       push(@cur_out_A, sprintf("  %6d", 0)); # length
     }
-    else { # 1st matpept does not start at nt 1!
+    else { # 1st matpept does not start at nt 1 (normal case)
       push(@cur_out_A, sprintf("  %6d", 1)); # start 
       push(@cur_out_A, sprintf("  %6d", $cur_start_A[0]-1)); # stop 
       push(@cur_out_A, sprintf("  %6d", $cur_start_A[0]-1)); # length
@@ -1484,16 +1483,14 @@ for(my $a = 0; $a < $naccn; $a++) {
       elsif($hang3    == 0) { $hang3 = "."; }
       if($stop_corrected_exon) { $hang3 = "c"; }
 
-      my ($start_match, $stop_match);
-      ($start_match, $stop_match) = ($do_strict) ? 
+      my $boundary_match;
+      $boundary_match = ($do_strict) ? 
           checkStrictBoundaryMatch   (\@act_exon_starts_AA, \@act_exon_stops_AA, $mft_i, $exon_i, $start, $stop) :
           checkNonStrictBoundaryMatch(\@act_exon_starts_AA, \@act_exon_stops_AA, $start, $stop);
-      if($start_match) { $nmatch_boundaries++; }
-      if($stop_match)  { $nmatch_boundaries++; }
+      if($boundary_match) { $nmatch_boundaries++; }
  
       if($do_nobrack) { # set to '1' so brackets are never printed
-        $start_match = 1;
-        $stop_match  = 1; 
+        $boundary_match = 1;
       }
 
       $hit_length += abs($stop-$start) + 1;
@@ -1505,8 +1502,8 @@ for(my $a = 0; $a < $naccn; $a++) {
 
       # TODO: MODIFY ANNOTATION FOR EXONS WITHOUT CORRECTED STARTS OR STOPS IN FEATURES WITH
       #       OTHER EXONS THAT HAVE CORRECTED STARTS OR STOPS
-      push(@cur_out_A, sprintf("  %8s ", ($start_match ? " " . $start . " " : "[" . $start . "]")));
-      push(@cur_out_A, sprintf("%8s",  ($stop_match  ? " " . $stop .  " " : "[" . $stop . "]")));
+      push(@cur_out_A, sprintf("  %8s ", ($boundary_match ? " " . $start . " " : "[" . $start . "]")));
+      push(@cur_out_A, sprintf("%8s",    ($boundary_match ? " " . $stop .  " " : "[" . $stop . "]")));
       if(! $do_nofid) { 
         push(@cur_out_A, sprintf(" %5.3f", $p_fid2ref_HH{$model}{$seq_accn}));
       }
@@ -1614,10 +1611,10 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
       if($mdl_is_final_A[$h]) { 
         push(@cur_out_A, sprintf(" %6s", "NP")); # length
-        if(! $do_noss3) { 
+        if((! $do_matpept) && (! $do_noss3)) { 
           push(@cur_out_A, "  NP"); # ss3
         }
-        if(! $do_nostop) { 
+        if((! $do_matpept) && (! $do_nostop)) { 
           push(@cur_out_A, sprintf(" %3s", "NP")); # stop
         }
         $pass_fail_char = "F";
@@ -2831,9 +2828,8 @@ sub findSeqInFile {
 #             $exon_i:        exon index we want to check against
 #             $pstart:        predicted start boundary
 #             $pstop:         predicted stop boundary
-# Returns:    Two values:
-#             '1' if $pstart == $act_start_AAR->[$mft_i][$exon_i], else '0'
-#             '1' if $pstop  == $act_stop_AAR->[$mft_i][$exon_i], else '0'
+# Returns:    '1' if $pstart == $act_start_AAR->[$mft_i][$exon_i] and 
+#                    $pstop  == $act_stop_AAR->[$mft_i][$exon_i], else '0'
 #
 sub checkStrictBoundaryMatch {
   my $sub_name = "checkStrictBoundaryMatch";
@@ -2842,37 +2838,30 @@ sub checkStrictBoundaryMatch {
 
   my ($act_start_AAR, $act_stop_AAR, $mft_i, $exon_i, $pstart, $pstop) = @_;
 
-  my $retval1 = 
+  my $retval = 
       ((exists ($act_start_AAR->[$mft_i])) && 
        (exists ($act_start_AAR->[$mft_i][$exon_i])) && 
-       ($pstart == $act_start_AAR->[$mft_i][$exon_i])) ? 
-       1 : 0;
-
-  my $retval2 = 
-      ((exists ($act_stop_AAR->[$mft_i])) && 
-       (exists ($act_stop_AAR->[$mft_i][$exon_i])) && 
+       ($pstart == $act_start_AAR->[$mft_i][$exon_i]) && 
        ($pstop == $act_stop_AAR->[$mft_i][$exon_i])) ? 
        1 : 0;
 
-  return ($retval1, $retval2);
+  return $retval;
 }
 
 # Subroutine: checkNonStrictBoundaryMatch
 #
-# Synopsis:   Check if a given boundary matches any
-#             annotation in the 2D array referred to
-#             by $act_AAR.
+# Synopsis:   Check if a given start..stop boundary pair matches any
+#             annotation in the 2D array referred to by $act_AAR.
 #
 # Args:       $act_start_AAR: ref to 2D array [0..i..$nmft-1][0..e..$nexon-1], start for feature $i+1 exon $e+1
 #     :       $act_stop_AAR:  ref to 2D array [0..i..$nmft-1][0..e..$nexon-1], stop for feature $i+1 exon $e+1
 #             $pstart:        predicted start position
 #             $pstop:         predicted stop position
 # Returns:    Two values:
-#             '1' if $pstart == $act_start_AAR->[$i][$e], else '0'
-#             '1' if $pstop  == $act_stop_AAR->[$i][$e], else '0'
-#             For any possible $i and $e values, as long as they are the same for start and stop
-#             If both ('1', '0') and ('0', '1') are possible sets of return values, 
-#             ('1', '0') is returned.
+#             '1' if $pstart == $act_start_AAR->[$i][$e] and 
+#                    $pstop  == $act_stop_AAR->[$i][$e] for any pair $i and $e
+#             else '0'
+#             That is both start and stop boundaries have to match the same start and stop.
 #
 sub checkNonStrictBoundaryMatch {
   my $sub_name = "checkNonStrictBoundaryMatch";
@@ -2881,29 +2870,21 @@ sub checkNonStrictBoundaryMatch {
 
   my ($act_start_AAR, $act_stop_AAR, $pstart, $pstop) = @_;
 
-  my $found_start_match = 0;
-  my $found_stop_match = 0;
-  my $found_both_match = 0;
-  my $start_match = 0;
-  my $stop_match = 0;
   my $nmft = scalar(@{$act_start_AAR});
   for(my $i = 0; $i < $nmft; $i++) { 
     my $nexons = scalar(@{$act_start_AAR->[$i]});
     if(! exists $act_stop_AAR->[$i]) { die "ERROR in checkNonStrictBoundaryMatch() $i exists in first dimension of start coords, but not stop coords"; }
     for(my $e = 0; $e < $nexons; $e++) { 
       if(! exists $act_stop_AAR->[$i][$e]) { die "ERROR in checkNonStrictBoundaryMatch() $i $e exists in start coords, but not stop coords"; }
-      $start_match = ($pstart == $act_start_AAR->[$i][$e]) ? 1 : 0;
-      $stop_match  = ($pstop  == $act_stop_AAR->[$i][$e])  ? 1 : 0;
-      if($start_match && $stop_match) { $found_both_match  = 1; }
-      elsif($start_match)             { $found_start_match = 1; }
-      elsif($stop_match)              { $found_stop_match = 1; }
+      if($pstart == $act_start_AAR->[$i][$e] && 
+         $pstop  == $act_stop_AAR->[$i][$e]) { 
+        return 1;
+      }
     }
   }
 
-  if   ($found_both_match)  { return (1, 1); }
-  elsif($found_start_match) { return (1, 0); }
-  elsif($found_stop_match)  { return (0, 1); }
-  else                      { return (0, 0); }
+  # if we get here, we didn't find a match
+  return 0;
 }
 
 # Subroutine: validateOriginSeq
@@ -3396,11 +3377,11 @@ sub compareOverlapsOrAdjacencies {
   my $pass_fail_char = "P";
   for(my $i = 0; $i < $size; $i++) { 
     if((! defined $index) || ($index == $i)) { 
-      for(my $j = 0; $j < $size; $j++) { 
+      for(my $j = $i+1; $j < $size; $j++) { 
         if($observed_AAR->[$i][$j] ne $expected_AAR->[$i][$j]) { 
           $pass_fail_char = "F";
         }
-        if($observed_AAR->[$i][$j] && ($i < $j)) { 
+        if($observed_AAR->[$i][$j]) { 
           if($ret_str ne "") { 
             $ret_str .= ",";
           }
@@ -4683,19 +4664,19 @@ sub getHeadings {
     $tok5 = sprintf("  ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "start position of 5' UTR (inferred from other predictions)");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "start position of 5' UTR (inferred from other predictions, \"?\" if first mat_peptide is not predicted)");
 
     $tok4 = sprintf(" %6s", "stop");
     $tok5 = sprintf(" ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of 5' UTR (inferred from other predictions)");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of 5' UTR (inferred from other predictions, \"?\" if first mat_peptide is not predicted)");
 
     $tok4 = sprintf(" %6s", "length");
     $tok5 = sprintf(" ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "length of 5' UTR (inferred from other predictions)");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "length of 5' UTR (inferred from other predictions, \"?\" if first mat_peptide is not predicted)");
     getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef); # adds a blank line
   }
 
@@ -4736,8 +4717,8 @@ sub getHeadings {
     }
     my $exp_substr = ($do_matpept) ? "coding sequence part <j> of mat_peptide" : "exon #<j> of CDS #<i>";
     if($do_explanation) { 
-      getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "start position of $exp_substr");
-      getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if different from all exon starts in existing GenBank annotation");
+      getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "start position of $exp_substr (\"NP\" if no prediction)");
+      getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation");
     }
     
     # stop, fid, and md rows take place for all exons
@@ -4748,8 +4729,8 @@ sub getHeadings {
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     if($do_explanation) { 
-      getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "stop  position of $exp_substr");
-      getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if different from all exon stops in existing GenBank annotation");
+      getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "stop  position of $exp_substr (\"NP\" if no prediction)");
+      getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation");
     }
     
     if(! $do_nofid) { 
@@ -4759,7 +4740,7 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "fractional identity between $exp_substr and reference genome");
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "fractional identity between $exp_substr and reference genome (\"NP\" if no prediction)");
       }
     }
 
@@ -4778,11 +4759,12 @@ sub getHeadings {
         getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)");
         getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)");
         getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference");
-        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"c\":   position has been corrected based on predicted protein sequence");
         if(! $do_matpept) { 
+          getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"c\":   position has been corrected based on predicted protein sequence");
           getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop");
           getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"-\":   exon is not predicted due to stop codon in earlier exon");
         }
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"NP\":  (spanning both characters) no prediction");
       }
     }
     
@@ -4795,6 +4777,7 @@ sub getHeadings {
       if($do_explanation) { 
         getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s overlaps with", ($do_matpept) ? "mat_peptide" : "exon", ($do_matpept) ? "mat_peptide" : "exon"));
         getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'"); # adds a second line to explanation
+        getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction");
         $need_to_define_H{"overlap"} = 1;
       }
 }
@@ -4808,6 +4791,7 @@ sub getHeadings {
       if($do_explanation) { 
         getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s is adjacent with", ($do_matpept) ? "mat_peptide" : "exon", ($do_matpept) ? "mat_peptide" : "exon"));
         getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'"); # adds a second line to explanation
+        getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction");      
       }
       $need_to_define_H{"adjacent"} = 1;
     }
@@ -4819,7 +4803,7 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, "length of $exp_substr #<i> (all exons summed)");
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, sprintf("length of $exp_substr #<i> (all %s summed)", $do_matpept ? "segments" : "exons"));
       }      
 
       if((! $do_matpept) && (! $do_noss3)) { # skip this in matpept mode, we don't check start/stop of mat_peptides, only CDS, later
@@ -4827,20 +4811,12 @@ sub getHeadings {
         $tok5 = sprintf(" %3s", "---");
         if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
         elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
-      }
-      if($do_explanation) { 
-        if($do_matpept) { 
-          #TODO FIX ME! This is inaccurate for mat_peptides
-          getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted mat_peptide has a valid start codon, stop codon and is a multiple of 3");
-          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted mat_peptide has a valid start codon, else '!'");          
-          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted mat_peptide has a valid stop  codon, else '!'");      
-          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted mat_peptide has a length which is a multiple of three, else '!'");
-        }      
-        else {
+        if($do_explanation) { 
           getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3");
           getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, else '!'");          
           getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, else '!'");      
           getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction");
         }
       }
       if((! $do_matpept) && (! $do_nostop)) { # skip this in matpept mode, we only check stop of final mat_peptide, later
@@ -4849,7 +4825,7 @@ sub getHeadings {
         if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
         elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
         if($do_explanation) { 
-          getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, ($do_matpept) ? "the final codon for this mat_peptide sequence" : "the predicted stop codon for this CDS");
+          getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "the predicted stop codon for this CDS (\"NP\" if no prediction)");
         }
       }
       
@@ -4909,19 +4885,19 @@ sub getHeadings {
     $tok5 = sprintf("  ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "start position of 3' UTR (inferred from other predictions)");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "start position of 3' UTR (inferred from other predictions, \"?\" if final mat_peptide is not predicted)");
 
     $tok4 = sprintf(" %6s", "stop");
     $tok5 = sprintf(" ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of 3' UTR (inferred from other predictions)");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of 3' UTR (inferred from other predictions, \"?\" if final mat_peptide is not predicted)");
 
     $tok4 = sprintf(" %6s", "length");
     $tok5 = sprintf(" ------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "length of 3' UTR (inferred from other predictions)");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "length of 3' UTR (inferred from other predictions, \"?\" if final mat_peptide is not predicted)");
 
     getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
   }
@@ -4942,7 +4918,8 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "start position of CDS #<i> (inferred from mat_peptides that comprise it)");
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "start position of CDS #<i> (inferred from mat_peptides that comprise it,");
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "\"?\" if first mat_peptide for this CDS is not predicted)");
       }
 
       $tok4 = sprintf(" %6s", "stop");
@@ -4950,7 +4927,8 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "stop  position of CDS #<i> (inferred from mat_peptides that comprise it)");
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "stop  position of CDS #<i> (inferred from mat_peptides that comprise it,");
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "\"?\" if final mat_peptide for this CDS is not predicted)");
       }
 
       $tok4 = sprintf(" %6s", "length");
@@ -4958,7 +4936,7 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "length of CDS #<i>");
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "length of CDS #<i> (\"?\" if any of the mat_peptides that comprise this CDS are not predicted)");
       }
 
       $tok4 = sprintf(" %6s", "startc");
@@ -4966,7 +4944,7 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "start codon of CDS #<i>");
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "start codon of CDS #<i> (\"?\" if first mat_peptide for this CDS is not predicted)");
       }
 
       $tok4 = sprintf(" %6s", "stopc");
@@ -4974,7 +4952,7 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "stop codon of CDS #<i>");
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok2, $tok4, undef, "stop codon of CDS #<i> (\"?\" if final mat_peptide for this CDS is not predicted)");
       }
 
       if(! $do_noss3) { 
@@ -4982,6 +4960,15 @@ sub getHeadings {
         $tok5 = sprintf(" %3s", "---");
         if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
         elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+        if($do_explanation) { 
+          getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, '!' if not,");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "                  and '?' if first mat_peptide for this CDS is not predicted");          
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, '!' if not,");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "                      and '?' if final mat_peptide for this CDS is not predicted");      
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, '!' if it is not a");
+          getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "                  multiple of 3, and '?' if any of the mat_peptides that comprise it are not predicted.");
+        }
       }
 
       $tok4 = sprintf(" %6s", "PF");
