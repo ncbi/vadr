@@ -524,7 +524,7 @@ my @seq_accn_A = (); # [0..$naccn-1] name of genome fasta sequence for each accn
 my $seq_accn;     # temp fasta sequence name
 my $fetch_string = undef;
 my $ref_seq_accn; # name of fasta sequence for reference
-
+my $ref_totlen;   # total length of reference
 # another error check
 if($do_sfarm && ($sfarm_njobs > $naccn)) { 
   die "ERROR with -sfarm <n>, <n> must be <= number of genomes ($naccn), but you used $sfarm_njobs"; 
@@ -546,7 +546,10 @@ for(my $a = 0; $a < $naccn; $a++) {
     $seq_accn = $accn . ":genome-duplicated:" . $accn . ":1:" . $totlen_H{$accn} . ":+:" . $accn . ":1:" . $totlen_H{$accn} . ":+:";
   }
   push(@seq_accn_A, $seq_accn);
-  if($a == 0) { $ref_seq_accn = $seq_accn; }
+  if($a == 0) { 
+    $ref_seq_accn = $seq_accn; 
+    $ref_totlen   = $totlen_H{$accn};
+  }
 }
 close(OUT);
 
@@ -642,12 +645,67 @@ for(my $i = 0; $i < $ref_nmft; $i++) {
   my @stops_A  = ();
   my $nexons   = 0;
   startStopsFromCoords($ref_mft_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
+  my $strand = substr($ref_strand_str, $i, 1);
+
+  # if we're in a circular genome, we need to check for a special case, where 
+  # what looks like a 2-exon CDS is really a single exon that spans the stop..start boundary.
+  # [Note that if the stop..start boundary is spanned by an intron (i.e. exon i is before stop,
+  # and i+1 is after start) then we don't need to modify anything, we'll still fetch the proper
+  # sequence even in a duplicated genome].
+  #
+  # Example 1: single exon that spans stop..start boundary on positive strand
+  # join(2309..3182,1..1625) in a seq of length 3182, this should really be a single exon
+  # $starts_A[0] = 2309
+  # $stops_A[0]  = 3182
+  # $starts_A[1] = 1
+  # $stops_A[1]  = 1625
+  # $nexons = 2;
+  # 
+  # should become:
+  # $starts_A[0] = 2309
+  # $stops_A[0]  = 4807
+  # $nexons = 1;
+  # 
+  # Example 2: single exon that spans stop..start boundary on negative strand
+  # complement(join(2309..3182,1..1625))   in a seq of length 3182, this should really be a single exon
+  # $starts_A[0] = 3182
+  # $stops_A[0]  = 2309
+  # $starts_A[1] = 1625
+  # $stops_A[1]  = 1
+  # $nexons = 2;
+  # 
+  # should become:
+  # $starts_A[0] = 4807
+  # $stops_A[0]  = 2309
+  # $nexons = 1;
+  #
+  # we can easily check and fix these cases:
+  if(! $do_nodup) { 
+    if($strand eq "+" && $nexons == 2 && $stops_A[0] == $ref_totlen && $starts_A[1] == 1) { 
+      my $tmp_start = $starts_A[0];
+      my $tmp_stop  = $stops_A[1] + $ref_totlen;
+      @starts_A = ();
+      @stops_A = ();
+      $starts_A[0] = $tmp_start;
+      $stops_A[0]  = $tmp_stop;
+      $nexons = 1;
+    }    
+    if($strand eq "-" && $nexons == 2 && $starts_A[0] == $ref_totlen && $stops_A[1] == 1) { 
+      my $tmp_start = $starts_A[1] + $ref_totlen;
+      my $tmp_stop  = $stops_A[0];
+      @starts_A = ();
+      @stops_A = ();
+      $starts_A[0] = $tmp_start;
+      $stops_A[0]  = $tmp_stop;
+      $nexons = 1;
+    }
+  }
+
 #  if($do_matpept && $nexons > 1) { die "ERROR multi-exon CDS in matpept mode"; }
   push(@ref_nexons_A, $nexons);
   $ref_tot_nexons += $nexons;
 
   # if we're on the negative strand, reverse the arrays, they'll be in the incorrect order
-  my $strand = substr($ref_strand_str, $i, 1);
   if($strand eq "-") { 
     @starts_A = reverse @starts_A;
     @stops_A  = reverse @stops_A;
