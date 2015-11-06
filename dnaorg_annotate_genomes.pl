@@ -501,7 +501,7 @@ my $ref_label_str     = undef; # label string for reference accn
 my $ref_nmft          = 0;     # number of main features (mft) (CDS or mat_peptide) in reference
 my $ref_strand_str    = "";    # strand string for reference 
 my @ref_mft_len_A     = ();    # [0..$i..$ref_nmft-1]: length of each reference main feature (CDS or mat_peptide)
-#my @ref_mft_len_tol_A = ();   # [0..$i..$ref_nmft-1]: length tolerance, any gene that is within this fraction of the lenght of the ref gene is a match
+#my @ref_mft_len_tol_A = ();   # [0..$i..$ref_nmft-1]: length tolerance, any gene that is within this fraction of the length of the ref gene is a match
 my @ref_mft_coords_A  = ();    # [0..$i..$ref_nmft-1]: main feature coords (CDS or mat_peptide) for reference
 my @ref_mft_product_A = ();    # product qualifier data for reference CDS or mat_peptide
 
@@ -644,62 +644,8 @@ for(my $i = 0; $i < $ref_nmft; $i++) {
   my @starts_A = ();
   my @stops_A  = ();
   my $nexons   = 0;
-  startStopsFromCoords($ref_mft_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
+  startStopsFromCoords($ref_mft_coords_A[$i], $ref_totlen, $do_nodup, \@starts_A, \@stops_A, undef, \$nexons);
   my $strand = substr($ref_strand_str, $i, 1);
-
-  # if we're in a circular genome, we need to check for a special case, where 
-  # what looks like a 2-exon CDS is really a single exon that spans the stop..start boundary.
-  # [Note that if the stop..start boundary is spanned by an intron (i.e. exon i is before stop,
-  # and i+1 is after start) then we don't need to modify anything, we'll still fetch the proper
-  # sequence even in a duplicated genome].
-  #
-  # Example 1: single exon that spans stop..start boundary on positive strand
-  # join(2309..3182,1..1625) in a seq of length 3182, this should really be a single exon
-  # $starts_A[0] = 2309
-  # $stops_A[0]  = 3182
-  # $starts_A[1] = 1
-  # $stops_A[1]  = 1625
-  # $nexons = 2;
-  # 
-  # should become:
-  # $starts_A[0] = 2309
-  # $stops_A[0]  = 4807
-  # $nexons = 1;
-  # 
-  # Example 2: single exon that spans stop..start boundary on negative strand
-  # complement(join(2309..3182,1..1625))   in a seq of length 3182, this should really be a single exon
-  # $starts_A[0] = 3182
-  # $stops_A[0]  = 2309
-  # $starts_A[1] = 1625
-  # $stops_A[1]  = 1
-  # $nexons = 2;
-  # 
-  # should become:
-  # $starts_A[0] = 4807
-  # $stops_A[0]  = 2309
-  # $nexons = 1;
-  #
-  # we can easily check and fix these cases:
-  if(! $do_nodup) { 
-    if($strand eq "+" && $nexons == 2 && $stops_A[0] == $ref_totlen && $starts_A[1] == 1) { 
-      my $tmp_start = $starts_A[0];
-      my $tmp_stop  = $stops_A[1] + $ref_totlen;
-      @starts_A = ();
-      @stops_A = ();
-      $starts_A[0] = $tmp_start;
-      $stops_A[0]  = $tmp_stop;
-      $nexons = 1;
-    }    
-    if($strand eq "-" && $nexons == 2 && $starts_A[0] == $ref_totlen && $stops_A[1] == 1) { 
-      my $tmp_start = $starts_A[1] + $ref_totlen;
-      my $tmp_stop  = $stops_A[0];
-      @starts_A = ();
-      @stops_A = ();
-      $starts_A[0] = $tmp_start;
-      $stops_A[0]  = $tmp_stop;
-      $nexons = 1;
-    }
-  }
 
 #  if($do_matpept && $nexons > 1) { die "ERROR multi-exon CDS in matpept mode"; }
   push(@ref_nexons_A, $nexons);
@@ -1265,7 +1211,7 @@ if((! $do_skipaln) && (! $do_matpept)) {
   my $tmp_ref_tot_nexons = 0;
   my $tmp_ref_nmft       = 0;
   
-  getActualAnnotations($accn_A[0], $mft_tbl_HHAR, \@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, \$tmp_ref_tot_nexons, \$tmp_ref_nmft);
+  getActualAnnotations($accn_A[0], $ref_totlen, $do_nodup, $mft_tbl_HHAR, \@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, \$tmp_ref_tot_nexons, \$tmp_ref_nmft);
   for(my $h = 0; $h < $nmdl; $h++) { 
     my $model   = $mdl_A[$h];
     my $mft_i   = $mdl2mft_map_A[$h];
@@ -1274,7 +1220,7 @@ if((! $do_skipaln) && (! $do_matpept)) {
     my $start  = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$ref_seq_accn} : $c_start_HH{$model}{$ref_seq_accn};
     my $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$ref_seq_accn}  : $c_stop_HH{$model}{$ref_seq_accn};
     
-    my $ref_match = checkStrictBoundaryMatch(\@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, $mft_i, $exon_i, $start, $stop);
+    my $ref_match = checkStrictBoundaryMatch(\@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, $mft_i, $exon_i, $start, $stop, ($do_nodup ? undef : $ref_totlen));
     if(! $ref_match) { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation."; }
     
     if($mdl_is_final_A[$h]) { 
@@ -1389,7 +1335,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   my @act_exon_stops_AA  = (); # [0..$nmft-1][0..$nexons-1] stop  positions of actual annotations of exons for this accn, $nexons is main-feature (CDS or mat_peptide) specific
   my $tot_nexons = 0;
 
-  getActualAnnotations($accn, $mft_tbl_HHAR, \@act_exon_starts_AA, \@act_exon_stops_AA, \$tot_nexons, \$nmft);
+  getActualAnnotations($accn, $totlen_H{$accn}, $do_nodup, $mft_tbl_HHAR, \@act_exon_starts_AA, \@act_exon_stops_AA, \$tot_nexons, \$nmft);
 
   ############################################################
   # Create the predicted annotation portion of the output line
@@ -1548,8 +1494,8 @@ for(my $a = 0; $a < $naccn; $a++) {
 
       my $boundary_match;
       $boundary_match = ($do_strict) ? 
-          checkStrictBoundaryMatch   (\@act_exon_starts_AA, \@act_exon_stops_AA, $mft_i, $exon_i, $start, $stop) :
-          checkNonStrictBoundaryMatch(\@act_exon_starts_AA, \@act_exon_stops_AA, $start, $stop);
+          checkStrictBoundaryMatch   (\@act_exon_starts_AA, \@act_exon_stops_AA, $mft_i, $exon_i, $start, $stop, ($do_nodup ? undef : $totlen_H{$accn})) :
+          checkNonStrictBoundaryMatch(\@act_exon_starts_AA, \@act_exon_stops_AA,                  $start, $stop, ($do_nodup ? undef : $totlen_H{$accn}));
       if($boundary_match) { $nmatch_boundaries++; }
  
       if($do_nobrack) { # set to '1' so brackets are never printed
@@ -2259,19 +2205,22 @@ sub validateRefFeaturesAreUnique {
 # Subroutine: startStopsFromCoords()
 # Synopsis:   Extract the starts and stops from a coords string.
 #
-# Args:       $coords:  the coords string
-#             $starts_AR: ref to array to fill with start positions
-#             $stops_AR:  ref to array to fill with stop positions
-#             $nexons_R:  ref to scalar that fill with the number of exons
+# Args:       $coords:     the coords string
+#             $totlen:     total length of sequence, can be undef if we don't want to call checkForSpanningExon()
+#             $do_nodup:   '1' if -nodup option enabled, can be undef if we don't want to call checkForSpanningExon()
+#             $starts_AR:  ref to array to fill with start positions
+#             $stops_AR:   ref to array to fill with stop positions
+#             $strands_AR: ref to array to fill with strands of each exon, can be undef
+#             $nexons_R:   ref to scalar that fill with the number of exons
 #
 # Returns:    void; but fills @{$starts_AR}, @{$stops_AR}, and $$nexons_R.
 #
 sub startStopsFromCoords { 
   my $sub_name = "startStopsFromCoords()";
-  my $nargs_exp = 4;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($coords, $starts_AR, $stops_AR, $nexons_R) = @_;
+  my ($coords, $totlen, $do_nodup, $starts_AR, $stops_AR, $strands_AR, $nexons_R) = @_;
 
   @{$starts_AR} = ();
   @{$stops_AR}  = ();
@@ -2283,7 +2232,11 @@ sub startStopsFromCoords {
   # complement(join(226623..226774, 226854..229725))
 
   # remove 'complement('  ')'
-  $coords =~ s/^complement\(//;
+  my $strand = "+";
+  if($coords =~ m/^complement\(/) { 
+    $coords =~ s/^complement\(//;
+    $strand = "-";
+  }
   $coords =~ s/\)$//;
 
   # remove 'join('  ')'
@@ -2293,19 +2246,36 @@ sub startStopsFromCoords {
   my @el_A = split(/\s*\,\s*/, $coords);
 
   my $length = 0;
+  my $cur_strand = $strand;
   foreach my $el (@el_A) { 
     # rare case: remove 'complement(' ')' that still exists:
-    $el =~ s/^complement\(//;
+    $cur_strand = $strand;
+    if($el =~ m/^complement\(/) { 
+      die "ERROR in $sub_name: found internal complement in coords string $coords, we assume all exons are on same strand..."; 
+      $el =~ s/^complement\(//;
+      if($cur_strand eq "-") { die "ERROR in $sub_name, found nested 'complement' annotations in coord string: $coords"; }
+      $cur_strand = "-";
+    }
     $el =~ s/\)$//;
     $el =~ s/\<//; # remove '<'
     $el =~ s/\>//; # remove '>'
     if($el =~ m/^(\d+)\.\.(\d+)$/) { 
       push(@{$starts_AR}, $1);
       push(@{$stops_AR},  $2);
+      if(defined $strands_AR) { push(@{$strands_AR}, $cur_strand); }
       $$nexons_R++;
     }
     else { 
       die "ERROR unable to parse $orig_coords in $sub_name"; 
+    }
+  }
+
+  # if we're in a circular genome, and we've been passed in values for $do_nodup
+  # and $totlen, then we want to check for a special case, where 
+  # what looks like a 2-exon CDS is really a single exon that spans the stop..start boundary.
+  if(defined $do_nodup && defined $totlen) { 
+    if((! $do_nodup) && ($$nexons_R == 2)) { 
+      checkForSpanningExon($starts_AR, $stops_AR, $nexons_R, $strand, $totlen);
     }
   }
 
@@ -2331,7 +2301,9 @@ sub lengthFromCoords {
   my @stops_A  = ();
   my $nexons   = 0;
 
-  startStopsFromCoords($coords, \@starts_A, \@stops_A, \$nexons);
+  # note we pass in undef for $do_nodup and for $totlen because we don't need to check for 
+  # exons that span stop..start in this case
+  startStopsFromCoords($coords, undef, undef, \@starts_A, \@stops_A, undef, \$nexons);
 
   my $length = 0;
   for(my $i = 0; $i < $nexons; $i++) { 
@@ -2891,24 +2863,54 @@ sub findSeqInFile {
 #             $exon_i:        exon index we want to check against
 #             $pstart:        predicted start boundary
 #             $pstop:         predicted stop boundary
+#             $totlen:        total length of (non-duplicated) sequence, undef if we don't want to 
+#                             check if spanning match exists. (Spanning match is one predicted coords
+#                             are -x..y, and actual coords are -x+L+1,y+L where l is total length
+#                             of the sequence. This is the same coordinates but one is offset by L,
+#                             which can occur in duplicated genomes.)
+# 
 # Returns:    '1' if $pstart == $act_start_AAR->[$mft_i][$exon_i] and 
 #                    $pstop  == $act_stop_AAR->[$mft_i][$exon_i], else '0'
 #
+# 
 sub checkStrictBoundaryMatch {
   my $sub_name = "checkStrictBoundaryMatch";
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($act_start_AAR, $act_stop_AAR, $mft_i, $exon_i, $pstart, $pstop) = @_;
+  my ($act_start_AAR, $act_stop_AAR, $mft_i, $exon_i, $pstart, $pstop, $totlen) = @_;
 
-  my $retval = 
-      ((exists ($act_start_AAR->[$mft_i])) && 
-       (exists ($act_start_AAR->[$mft_i][$exon_i])) && 
-       ($pstart == $act_start_AAR->[$mft_i][$exon_i]) && 
-       ($pstop == $act_stop_AAR->[$mft_i][$exon_i])) ? 
-       1 : 0;
+  my $start1 = ((exists $act_start_AAR->[$mft_i]) && 
+                (exists $act_start_AAR->[$mft_i][$exon_i])) ? 
+                $act_start_AAR->[$mft_i][$exon_i] : undef;
+  my $stop1  = ((exists $act_stop_AAR->[$mft_i]) && 
+                (exists $act_stop_AAR->[$mft_i][$exon_i])) ? 
+                $act_stop_AAR->[$mft_i][$exon_i] : undef;
+  if(defined $start1 && (! defined $stop1)) { die "ERROR in $sub_name, start1 is defined but stop1 is not."; }
+  my $start2 = undef;
+  my $stop2  = undef;
+  if(defined $totlen && defined $start1 && defined $stop1) { 
+    $start2 = $start1 - $totlen;
+    $stop2  = $stop1  - $totlen;
+    if($start2 < 0) { $start2--; } # correct for off-by-one with negative coords (b/c '0' is not a valid posn)
+    if($stop2  < 0) { $stop2--;  } # correct for off-by-one with negative coords (b/c '0' is not a valid posn)
+  }
 
-  return $retval;
+  #printf("in $sub_name\n");
+  #printf("predicted start:   $pstart\n");
+  #printf("predicted stop:    $pstop\n");
+  #if(defined $start1) { printf("actual    start1:  $start1\n"); }
+  #if(defined $stop1)  { printf("actual    stop1:   $stop1\n"); }
+  #if(defined $start2) { printf("actual    start2:  $start2\n"); }
+  #if(defined $stop2)  { printf("actual    stop2:   $stop2\n"); }
+
+  if(defined $start1 && $start1 == $pstart && defined $stop1 && $stop1 == $pstop) { 
+    return 1;
+  }
+  if(defined $start2 && $start2 == $pstart && defined $stop2 && $stop2 == $pstop) { 
+    return 1;
+  }
+  return 0;
 }
 
 # Subroutine: checkNonStrictBoundaryMatch
@@ -2920,6 +2922,12 @@ sub checkStrictBoundaryMatch {
 #     :       $act_stop_AAR:  ref to 2D array [0..i..$nmft-1][0..e..$nexon-1], stop for feature $i+1 exon $e+1
 #             $pstart:        predicted start position
 #             $pstop:         predicted stop position
+#             $totlen:        total length of (non-duplicated) sequence, undef if we don't want to 
+#                             check if spanning match exists. (Spanning match is one predicted coords
+#                             are -x..y, and actual coords are -x+L+1,y+L where l is total length
+#                             of the sequence. This is the same coordinates but one is offset by L,
+#                             which can occur in duplicated genomes.)
+#
 # Returns:    Two values:
 #             '1' if $pstart == $act_start_AAR->[$i][$e] and 
 #                    $pstop  == $act_stop_AAR->[$i][$e] for any pair $i and $e
@@ -2928,10 +2936,10 @@ sub checkStrictBoundaryMatch {
 #
 sub checkNonStrictBoundaryMatch {
   my $sub_name = "checkNonStrictBoundaryMatch";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($act_start_AAR, $act_stop_AAR, $pstart, $pstop) = @_;
+  my ($act_start_AAR, $act_stop_AAR, $pstart, $pstop, $totlen) = @_;
 
   my $nmft = scalar(@{$act_start_AAR});
   for(my $i = 0; $i < $nmft; $i++) { 
@@ -2939,8 +2947,7 @@ sub checkNonStrictBoundaryMatch {
     if(! exists $act_stop_AAR->[$i]) { die "ERROR in checkNonStrictBoundaryMatch() $i exists in first dimension of start coords, but not stop coords"; }
     for(my $e = 0; $e < $nexons; $e++) { 
       if(! exists $act_stop_AAR->[$i][$e]) { die "ERROR in checkNonStrictBoundaryMatch() $i $e exists in start coords, but not stop coords"; }
-      if($pstart == $act_start_AAR->[$i][$e] && 
-         $pstop  == $act_stop_AAR->[$i][$e]) { 
+      if(checkStrictBoundaryMatch($act_start_AAR, $act_stop_AAR, $i, $e, $pstart, $pstop, $totlen)) {
         return 1;
       }
     }
@@ -4355,7 +4362,7 @@ sub matpeptValidateCdsRelationships {
     my @cds_starts_A = ();
     my @cds_stops_A  = ();
     my $cds_nexons   = 0;
-    startStopsFromCoords($ref_cds_coords_A[$cds_idx], \@cds_starts_A, \@cds_stops_A, \$cds_nexons);
+    startStopsFromCoords($ref_cds_coords_A[$cds_idx], undef, undef, \@cds_starts_A, \@cds_stops_A, undef, \$cds_nexons);
     if($cds_nexons != 1) { 
       die "ERROR in $sub_name, multiple exon CDS broken up to make mat_peptides, code for this does not yet exist.";
     }
@@ -4371,7 +4378,7 @@ sub matpeptValidateCdsRelationships {
       my @mp_starts_A = ();
       my @mp_stops_A  = ();
       my $mp_nexons   = 0;
-      startStopsFromCoords($ref_mp_coords_A[$mp_idx], \@mp_starts_A, \@mp_stops_A, \$mp_nexons);
+      startStopsFromCoords($ref_mp_coords_A[$mp_idx], undef, undef, \@mp_starts_A, \@mp_stops_A, undef, \$mp_nexons);
       if($x == 0) { # verify start matches with CDS start
         if($mp_starts_A[0] != $cds_starts_A[0]) { 
           die "ERROR in $sub_name, for cds_idx $cds_idx start of first mat_peptide doesn't match CDS start ($mp_starts_A[0] != $cds_starts_A[0])"; 
@@ -4499,6 +4506,81 @@ sub matpeptCheckCdsRelationships {
   }
   
   return($start, $stop, $length, $start_codon, $stop_codon, $pass_fail);
+}
+
+# Subroutine: checkForSpanningExon()
+#
+# Synopsis:   Check that two exons are really not just one that spans the stop/start boundary
+#             in a circular genome.
+#
+# Args:       $starts_AR: ref of array of start positions to potentially overwrite (if we find this is really only one exon)
+# Args:       $stops_AR:  ref of array of stop positions to potentially overwrite (if we find this is really only one exon)
+#             $nexons_R:  ref to scalar of number of exons to overwrite (if we find this is really only one exon)
+#             $strand:    strand the exons are on
+#             $totlen:    total length of the sequence
+#
+# Returns:    Nothing, but potentially updates @{$starts_AR}, @{$stops_AR} and $$nexons_R.
+#
+sub checkForSpanningExon {
+  my $sub_name = "checkForSpanningExon()";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($starts_AR, $stops_AR, $nexons_R, $strand, $totlen) = @_;
+
+  if($$nexons_R == 2) { 
+    # if we're in a circular genome, we need to check for a special case, where 
+    # what looks like a 2-exon CDS is really a single exon that spans the stop..start boundary.
+    # [Note that if the stop..start boundary is spanned by an intron (i.e. exon i is before stop,
+    # and i+1 is after start) then we don't need to modify anything, we'll still fetch the proper
+    # sequence even in a duplicated genome].
+    #
+    # Example 1: single exon that spans stop..start boundary on positive strand
+    # join(2309..3182,1..1625) in a seq of length 3182, this should really be a single exon
+    # $starts_A[0] = 2309
+    # $stops_A[0]  = 3182
+    # $starts_A[1] = 1
+    # $stops_A[1]  = 1625
+    # $nexons = 2;
+    # 
+    # should become:
+    # $starts_A[0] = 2309
+    # $stops_A[0]  = 4807
+    # $nexons = 1;
+    # 
+    # Example 2: single exon that spans stop..start boundary on negative strand
+    # complement(join(2309..3182,1..1625))   in a seq of length 3182, this should really be a single exon
+    # $starts_A[0] = 3182
+    # $stops_A[0]  = 2309
+    # $starts_A[1] = 1625
+    # $stops_A[1]  = 1
+    # $nexons = 2;
+    # 
+    # should become:
+    # $starts_A[0] = 4807
+    # $stops_A[0]  = 2309
+    # $nexons = 1;
+    #
+    # we can easily check and fix these cases:
+    my $tmp_start = undef;
+    my $tmp_stop  = undef;
+    if($strand eq "+" && $stops_AR->[0] == $totlen && $starts_AR->[1] == 1) { 
+      $tmp_start = $starts_AR->[0];
+      $tmp_stop  = $stops_AR->[1] + $ref_totlen;
+    }
+    elsif($strand eq "-" && $starts_AR->[0] == $totlen && $stops_AR->[1] == 1) { 
+      my $tmp_start = $starts_AR->[1] + $totlen;
+      my $tmp_stop  = $stops_AR->[0];
+    }
+    if(defined $tmp_start && defined $tmp_stop) { 
+      @{$starts_AR} = ();
+      @{$stops_AR} = ();
+      $starts_AR->[0] = $tmp_start;
+      $stops_AR->[0]  = $tmp_stop;
+      $$nexons_R = 1;
+    }    
+  }
+  return;
 }
 
 
@@ -5340,6 +5422,8 @@ sub getHeadingsExplanationHelper {
 #             a summary for this accession.
 #
 # Args:       $accn:                accession
+#             $totlen:              total length of accession
+#             $do_nodup:            '1' if we're not duplicating this accession
 #             $mft_tbl_HHAR:        ref to mft_tbl_HHA
 #             $act_exon_starts_AAR: FILLED HERE [0..$nmft-1][0..$nexons-1] start positions of actual annotations of exons for this accn, $nexons is CDS specific
 #             $act_exon_stops_AAR:  FILLED HERE [0..$nmft-1][0..$nexons-1] stop  positions of actual annotations of exons for this accn, $nexons is CDS specific
@@ -5348,10 +5432,10 @@ sub getHeadingsExplanationHelper {
 #
 sub getActualAnnotations { 
   my $sub_name = "getActualAnnotations";
-  my $nargs_exp = 6;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($accn, $mft_tbl_HHAR, $act_exon_starts_AAR, $act_exon_stops_AAR, $tot_nexons_R, $nmft_R) = @_;
+  my ($accn, $totlen, $do_nodup, $mft_tbl_HHAR, $act_exon_starts_AAR, $act_exon_stops_AAR, $tot_nexons_R, $nmft_R) = @_;
 
   my ($nmft, $npos, $nneg, $nunc, $nbth, $strand_str, $tot_nexons); 
 
@@ -5369,7 +5453,7 @@ sub getActualAnnotations {
       my $nexons   = 0;
       @{$act_exon_starts_AAR->[$i]} = ();
       @{$act_exon_stops_AAR->[$i]}  = ();
-      startStopsFromCoords($mft_coords_A[$i], \@starts_A, \@stops_A, \$nexons);
+      startStopsFromCoords($mft_coords_A[$i], $totlen, $do_nodup, \@starts_A, \@stops_A, undef, \$nexons);
       
       my $strand = substr($strand_str, $i, 1);
       if($strand eq "-") { # switch order of starts and stops, because 1st exon is really last and vice versa
