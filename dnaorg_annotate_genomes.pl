@@ -301,7 +301,7 @@ if(defined $sfarm_njobs) {
 }
 if($sfarm_wait != $df_sfarm_wait) { 
   $opts_used_short .= "-swait $sfarm_wait ";
-  $opts_used_long  .= "# option:  submit cmscan jobs to farm and wait for them to finish [-sfarm]\n";
+  $opts_used_long  .= "# option:  waiting $sfarm_wait minutes for farm cmscan jobs to finish [-swait]\n";
 }
 if($do_skipfetch) { 
   $opts_used_short .= "-skipfetch ";
