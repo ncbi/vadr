@@ -2532,7 +2532,7 @@ sub runCmscan {
   if($do_iglocal) { $opts .= "-g "; }
   #$opts .= " --cpu 0 --rfam --tblout $tblout_file --verbose --nohmmonly ";
   # opts: nmdler F1, F2, F2b, F3 and F3b; Infernal --rfam F4, F4b, F5, and F6
-  $opts .= " --cpu 0 --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 --tblout $tblout_file --verbose --nohmmonly ";
+  $opts .= " --noali --cpu 0 --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 --tblout $tblout_file --verbose --nohmmonly ";
   if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
 
   if(! -s $model_db)   { die "ERROR in $sub_name, $model_db file does not exist or is empty"; }
