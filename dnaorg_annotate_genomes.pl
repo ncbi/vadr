@@ -3111,7 +3111,7 @@ sub fetchStopCodon {
     $stop_codon_posn    = ($stop < 0) ? ($stop + $L) + 1 + 2 : $stop + 2;
   }
   else { 
-    $stop_codon_posn = (($stop-2) < 0) ? ($stop + $L) + 1 - 2 : $stop - 2;
+    $stop_codon_posn = (($stop-2) <= 0) ? ($stop + $L) + 1 - 2 : $stop - 2;
   }
   # printf("in $sub_name, seqname $seqname, stop $stop\n");
 
