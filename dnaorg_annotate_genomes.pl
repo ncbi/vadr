@@ -860,7 +860,8 @@ if($do_hmmer) {
 else { 
   if(! $do_sfarm) { 
     # default method, run cmscan on full genome file
-    runCmscan($cmscan, $do_iglocal, ($do_skipscan || $do_skipaln), 0, $model_db, $gnm_fasta_file, $tblout, $stdout);
+    #runCmscan($cmscan, $do_iglocal, ($do_skipscan || $do_skipaln), 0, $model_db, $gnm_fasta_file, $tblout, $stdout);
+    runCmscan($cmscan, $do_iglocal, ($do_skipscan || $do_skipaln), 0, $model_db, $gnm_fasta_file, $tblout, undef); #undef stdout --> don't save stdout to save space
   }
   else { # we need to split up the genome fasta file and submit a different cmscan job for each fasta file
     # note we may redefined $sfarm_njobs here, splitFastaFile will return actual number of fasta files created, 
@@ -2478,7 +2479,7 @@ sub runNhmmscan {
   if($do_skip) { 
     printf("%-65s ... ", "# Skipping nhmmscan step");
     if(! -s $tblout_file) { die "ERROR, with -skipscan or -skipaln nhmmscan output is expected to already exist, but $tblout_file does not or is empty"; }
-    if(! -s $stdout_file) { die "ERROR, with -skipscan or -skipaln nhmmscan output is expected to already exist, but $stdout_file does not or is empty"; }
+#    if(! -s $stdout_file) { die "ERROR, with -skipscan or -skipaln nhmmscan output is expected to already exist, but $stdout_file does not or is empty"; }
     printf("done. [-skipscan or -skipaln]\n");
     return;
   }
@@ -2523,7 +2524,7 @@ sub runCmscan {
   if($do_skip) { 
     printf("%-65s ... ", "# Skipping cmscan step");
     if(! -s $tblout_file) { die "ERROR, with -skipscan or -skipaln cmscan output is expected to already exist, but $tblout_file does not or is empty"; }
-    if(! -s $stdout_file) { die "ERROR, with -skipscan or -skipaln cmscan output is expected to already exist, but $stdout_file does not or is empty"; }
+#    if(! -s $stdout_file) { die "ERROR, with -skipscan or -skipaln cmscan output is expected to already exist, but $stdout_file does not or is empty"; }
     printf("done. [-skipscan or -skipaln]\n");
     return;
   }
