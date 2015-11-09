@@ -2483,8 +2483,7 @@ sub runNhmmscan {
     return;
   }
 
-  # my $opts = " --noali --tblout $tblout_file ";
-  my $opts = " --tblout $tblout_file ";
+  my $opts = " --noali --tblout $tblout_file ";
 
   if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
 
