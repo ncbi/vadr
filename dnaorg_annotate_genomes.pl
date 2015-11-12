@@ -983,14 +983,20 @@ if((! $do_nocorrect) && (! $do_matpept)) {
 
     # now based on the esl-translate deflines, determine if there are any internal starts or stops
     # note that we've grep'ed for only frame=1 translations, and we've specified only top strand with
-    # --watson, so we should only see at most 1 translation of each sequence
+    # --watson, so we should only in-frame start and stops (with frame equal to the first position of the 
+    # prediction)
     open(IN, $tmp_esl_translate_output) || die "ERROR unable to open $tmp_esl_translate_output for reading";
     while(my $line = <IN>) { 
       parseEslTranslateDefline($line, \$coords_from, \$coords_to, \$source_accn, undef, \$source_length);
       # printf("parseEslTranslateDefline returned coords_from: $coords_from coords_to: $coords_to source_accn: $source_accn source_len: $source_length\n");
-      # keep longest translated stretch
+
+      # keep the first translated stretch, even if it's not the longest
       my $coords_len = ($coords_to - $coords_from + 1);
-      if((! exists $corr_mft_start_AH[$c]{$source_accn}) || ($coords_len > $coords_len_AH[$c]{$source_accn})) { 
+
+      # EPN, Tue Nov 10 16:09:28 2015, old behavior was to keep the longest translated stretch
+      #                                uncomment next line to reinstate that behavior
+      #if((! exists $corr_mft_start_AH[$c]{$source_accn}) || ($coords_len > $coords_len_AH[$c]{$source_accn})) { 
+      if(! exists $corr_mft_start_AH[$c]{$source_accn}) { 
         $corr_mft_start_AH[$c]{$source_accn} = $coords_from - 1;
         $corr_mft_stop_AH[$c]{$source_accn}  = -1 * (($source_length - 3) - $coords_to); # source length includes stop codon
         if($corr_mft_stop_AH[$c]{$source_accn} > 0) { 
