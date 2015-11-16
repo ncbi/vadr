@@ -514,6 +514,53 @@ my @mft_len_A = ();        # [0..$i..$nmft-1] length of main feature $i
 my @mft_coords_A = ();     # [0..$i..$nmft-1] coords of main feature $i
 my @mft_product_A = ();    # [0..$i..$nmft-1] product annotation for main feature $i
 
+# error codes variable declarations
+my $nerrcodes_pf = 12;
+my $nerrcodes_ps =  1;
+my @err_pf_idx2code_A = (); # per-feature  map of error code array idx to code
+my %err_pf_idx2msg_H  = (); # per-feature  map of error code array idx to error message
+my %err_pf_code2idx_H = (); # per-feature  map of error code code to array idx
+my @err_ps_idx2code_A = (); # per-sequence map of error code array idx to code
+my %err_ps_idx2msg_H  = (); # per-sequence map of error code array idx to error message
+my %err_ps_code2idx_H = (); # per-sequence map of error code code to array idx
+
+$err_pf_idx2code_A[0]  = "nop";
+$err_pf_idx2code_A[1]  = "nm3";
+$err_pf_idx2code_A[2]  = "bd5";
+$err_pf_idx2code_A[3]  = "bd3";
+$err_pf_idx2code_A[4]  = "olp";
+$err_pf_idx2code_A[5]  = "str";
+$err_pf_idx2code_A[6]  = "stp";
+$err_pf_idx2code_A[7]  = "adj";
+$err_pf_idx2code_A[8]  = "fid";
+$err_pf_idx2code_A[9]  = "srt";
+$err_pf_idx2code_A[10] = "lng";
+$err_pf_idx2code_A[11] = "trc";
+
+$err_pf_idx2msg_H{"nop"} = "unable to identify homologous feature";
+$err_pf_idx2msg_H{"nm3"} = "length of nucleotide feature is not a multiple of 3";
+$err_pf_idx2msg_H{"bd5"} = "alignment to reference does not extend to 5' boundary of reference";
+$err_pf_idx2msg_H{"bd3"} = "alignment to reference does not extend to 5' boundary of reference";
+$err_pf_idx2msg_H{"olp"} = "feature does not overlap with same set of features as in reference";
+$err_pf_idx2msg_H{"str"} = "predicted CDS start position is not beginning of ATG start codon";
+$err_pf_idx2msg_H{"stp"} = "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)";
+$err_pf_idx2msg_H{"adj"} = "mature peptide is not adjacent to same set of mature peptides as in reference";
+$err_pf_idx2msg_H{"fid"} = "fractional identity to reference feature is less than allowed threshold";
+$err_pf_idx2msg_H{"srt"} = "feature length (in nt) is less than allowed threshold";
+$err_pf_idx2msg_H{"lng"} = "feature length (in nt) is more than allowed threshold";
+$err_pf_idx2msg_H{"trc"} = "in-frame stop codon exists 5' of stop position predicted by homology to reference";
+
+my $e;
+for($e = 0; $e < $nerrcodes_pf; $e++) { 
+  $err_pf_code2idx_H{$err_pf_idx2code_A[$e]} = $e;
+}
+
+$err_ps_idx2code_A[0]    = "ori";
+$err_ps_idx2msg_H{"ori"} = "there is not exactly 1 occurence of origin sequence";
+for($e = 0; $e < $nerrcodes_ps; $e++) { 
+  $err_ps_code2idx_H{$err_ps_idx2code_A[$e]} = $e;
+}
+
 #####################################################
 # Fetch all genome sequences, including the reference
 #####################################################
@@ -998,6 +1045,7 @@ if((! $do_nocorrect) && (! $do_matpept)) {
       #if((! exists $corr_mft_start_AH[$c]{$source_accn}) || ($coords_len > $coords_len_AH[$c]{$source_accn})) { 
       if(! exists $corr_mft_start_AH[$c]{$source_accn}) { 
         $corr_mft_start_AH[$c]{$source_accn} = $coords_from - 1;
+        if($coords_from != 1) { die "ERROR correcting start from esl-translate defline, you thought this was impossible"; }
         $corr_mft_stop_AH[$c]{$source_accn}  = -1 * (($source_length - 3) - $coords_to); # source length includes stop codon
         if($corr_mft_stop_AH[$c]{$source_accn} > 0) { 
           $corr_mft_stop_AH[$c]{$source_accn} = 0; # we don't allow moving the stop codon past prediction, yet
@@ -1074,6 +1122,8 @@ if((! $do_nocorrect) && (! $do_matpept)) {
         my $len_so_far; # total length of all exons so far
         my $found_exon; # set to '1' when we find the correct exon to put the corrected start in
         if($corr_start > 0) { # determine which exon the corrected start is in, and correct it:
+          # corrected a start position
+          die "ERROR, start position corrected (1), you thought this was impossible!";
           $len_so_far = 0; 
           $found_exon = 0; 
           for(my $h = $first_mdl; $h <= $final_mdl; $h++) {
@@ -1279,9 +1329,53 @@ if((! $do_skipaln) && (! $do_matpept)) {
   printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 }
 
-#########################
-# OUTPUT ANNOTATION TABLE
-#########################
+#########################################
+# OUTPUT ANNOTATION TABLE AND ERROR CODES
+#########################################
+my $errors1_file = $out_root . ".errors1";
+open(ERROUT1, ">", $errors1_file) || die "ERROR, unable to open $errors1_file for writing";
+
+my $errors2_file = $out_root . ".errors2";
+open(ERROUT2, ">", $errors2_file) || die "ERROR, unable to open $errors2_file for writing";
+
+# output headers to ERROUT1 file
+printf ERROUT1 ("# Each accession for which at least one error was found is printed below.\n");
+printf ERROUT1 ("# One line per accession. Each line is formatted as follows:\n");
+printf ERROUT1 ("#   <accession> <idxA>:<errorcodeA1>(,<errorcodeAM>) <idxN>:<errorcodeN1>(,<errorcodeNM>)\n");
+printf ERROUT1 ("# For indices (<idx>) A to N, each with M error codes.\n");
+printf ERROUT1 ("# Each index refers to a 'feature' in the reference accession as defined below.\n");
+
+# output header to ERROUT2 file
+printf ERROUT2 ("# Each error encountered is printed below, one error per line.\n");
+printf ERROUT2 ("# Each line has four columns with the following labels:\n");
+printf ERROUT2 ("#   \"accn\"         : sequence accession\n");
+printf ERROUT2 ("#   \"idx\"          : feature index, full feature names are listed below for each index\n");
+printf ERROUT2 ("#   \"code\"         : 3 digit error code\n");
+printf ERROUT2 ("#   \"error-message\": error message, possibly with additional information at end enclosed in \"[]\"\n");
+printf ERROUT2 ("#\n");
+printf ERROUT2 ("# List of features:\n");
+
+# list feature names to both ERROUT1 and ERROUT2
+my $mft_i = 0;
+for($mft_i = 0; $mft_i < $ref_nmft; $mft_i++) { 
+  printf ERROUT1 ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
+  printf ERROUT2 ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
+}
+if($do_matpept) { 
+  foreach my $cds_idx (sort keys %cds2matpept_HA) { 
+    printf ERROUT1 ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
+    printf ERROUT2 ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
+    $mft_i++;
+  }
+}
+printf ERROUT2 ("# \"N/A\" in feature index column (fidx) indicates error pertains to the entire sequence\n");
+printf ERROUT2 ("#       as opposed to a specific feature.\n");
+printf ERROUT2 ("#\n");
+printf ERROUT2 ("%-10s  %3s  %4s  error-message\n", "#accn", "idx", "code");
+printf ERROUT1 ("#\n");
+
+#######################
+
 print "#\n";
 
 my @out_col_header_AA = (); # used only if $do_seqrow
@@ -1314,7 +1408,9 @@ if($do_seqrow) { # output sequences as rows
 ########################################################################
 my @ref_ol_AA     = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
 my @ref_adj_AA    = (); # 2D array that describes the adjacencies in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j are adjacent,
-                        # only used if $do_matpept
+my @ref_ol_str_A  = (); # array of strings that describes the overlaps in the reference, per feature
+my @ref_adj_str_A = (); # array of strings that describes the overlaps in the reference, per feature
+
 my @ref_prv_adj_A = (); # [0..$h..$nmdl-1]: $i, mdl $i is previous and adjacent to $h, $i and $h are both primary peptides
 my @ref_nxt_adj_A = (); # [0..$h..$nmdl-1]: $i, mdl $i is after    and adjacent to $h, $i and $h are both primary peptides
 my @ref_start_A   = (); # [0..$h..$nmdl-1]: predicted start  for reference for model $h
@@ -1332,10 +1428,16 @@ my $cur_pagesize = 0; # current number of accessions we have info for in page_ou
                       # when this hits $nseqcol, we dump the output
 my $npages = 0;       # number of pages output, only used if $do_seqcol
 
+# data structures for reporting error codes
+my @cur_err_ps_A        = (); # per-sequence errors [0..$nerrcodes_pf-1]
+my @cur_err_pf_AA       = (); # per-feature  errors [0..$nerrcodes_pf-1][0..$nmft-1]
+my @cur_err_extra_ps_A  = (); # per-sequence error extra information to print [0..$nerrcodes_pf-1]
+my @cur_err_extra_pf_AA = (); # per-feature  error extra information to print [0..$nerrcodes_pf-1][0..$nmft-1]
 for(my $a = 0; $a < $naccn; $a++) { 
   my $accn      = $accn_A[$a];
   my $seq_accn  = $seq_accn_A[$a];
   my @cur_out_A = (); # array of current tokens to print
+  my $cur_nerr = 0;
 
   # sanity checks
   if(! exists $totlen_H{$accn}) { die "ERROR accession $accn does not exist in the length file $length_file"; }
@@ -1391,6 +1493,8 @@ for(my $a = 0; $a < $naccn; $a++) {
     push(@cur_out_A, sprintf("%5s ", $oseq_offset));
     push(@cur_out_A, sprintf(" %s", $oseq_passfail));
     $pass_fail_str .= $oseq_passfail;
+
+    setErrorCode(\@cur_err_ps_A, \@cur_err_extra_ps_A, "ori", "[" . $oseq_ct . "]", \%err_ps_code2idx_H, ($oseq_passfail), \$cur_nerr);
   }
   ###############################################################
 
@@ -1488,6 +1592,8 @@ for(my $a = 0; $a < $naccn; $a++) {
 
     if($predicted_string ne "") { $predicted_string .= "  "; }
     if(exists $p_start_HH{$model}{$seq_accn}) { 
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nop", undef, \%err_pf_code2idx_H, 0, \$cur_nerr);
+
       my $start_corrected_exon = (exists $did_corr_exon_start_AH[$h]{$accn}) ? 1 : 0;
       my $stop_corrected_exon  = (exists $did_corr_exon_stop_AH[$h]{$accn})  ? 1 : 0;
       my $start_corrected_mft = 0; # possibly redefined below
@@ -1501,13 +1607,32 @@ for(my $a = 0; $a < $naccn; $a++) {
       my $hangover = $p_hangover_HH{$model}{$seq_accn};
 
       my ($hang5, $hang3) = split(":", $hangover);
-      if($hang5    >  9) { $hang5 = "+"; $at_least_one_fail = 1; }
-      elsif($hang5 == 0) { $hang5 = "."; }
-      if($start_corrected_exon) { $hang5 = "c"; }
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd5", $hang5, \%err_pf_code2idx_H, ($hang5 != 0), \$cur_nerr);
+      if($hang5 == 0) { 
+        $hang5 = "."; 
+      }
+      else { 
+        $at_least_one_fail = 1;
+        if($hang5 >  9) { $hang5 = "+"; } 
+      }
+      if($start_corrected_exon) { 
+        die "ERROR, start position corrected (2), you thought this was impossible!";
+        $hang5 = "c"; 
+      }
 
-      if($hang3       >  9) { $hang3 = "+"; $at_least_one_fail = 1; }
-      elsif($hang3    == 0) { $hang3 = "."; }
-      if($stop_corrected_exon) { $hang3 = "c"; }
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd3", $hang3, \%err_pf_code2idx_H, ($hang3 != 0), \$cur_nerr);
+      if($hang3 == 0) { 
+        $hang3 = "."; 
+      }
+      else { 
+        $at_least_one_fail = 1;
+        if($hang3 >  9) { $hang3 = "+"; } 
+      }
+
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $stop, \%err_pf_code2idx_H, ($stop_corrected_exon), \$cur_nerr);
+      if($stop_corrected_exon) { 
+        $hang3 = "c"; 
+      }
 
       my $boundary_match;
       $boundary_match = ($do_strict) ? 
@@ -1546,6 +1671,15 @@ for(my $a = 0; $a < $naccn; $a++) {
         my $ol_str     = undef;
         ($ol_pf_char, $ol_str) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", $h, \@ref_ol_AA, \@cur_ol_AA);
         push(@cur_out_A, sprintf(" %10s", $ol_str));
+        my $ol_str_errmsg = $ol_str;
+        if($ol_pf_char eq "F") { 
+          $ol_str_errmsg =~ s/^F://;
+          if(! defined $ref_ol_str_A[$mft_i]) { # determine it
+            $ref_ol_str_A[$mft_i] = getOverlapsOrAdjacenciesString(\@cur_name_A, $h, \@ref_ol_AA);
+          }
+          $ol_str_errmsg .= " != " . $ref_ol_str_A[$mft_i] . " (ref)";
+        }
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "olp", $ol_str_errmsg, \%err_pf_code2idx_H, ($ol_pf_char eq "F"), \$cur_nerr);
         if($ol_pf_char eq "F") { 
           $at_least_one_fail = 1;
         }
@@ -1557,6 +1691,15 @@ for(my $a = 0; $a < $naccn; $a++) {
         my $adj_str     = undef;
         ($adj_pf_char, $adj_str) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, \@ref_adj_AA, \@cur_adj_AA);
         push(@cur_out_A, $adj_str);
+        my $adj_str_errmsg = $adj_str;
+        if($adj_pf_char eq "F") { 
+          $adj_str_errmsg =~ s/^F://;
+          if(! defined $ref_adj_str_A[$mft_i]) { # determine it
+            $ref_adj_str_A[$mft_i] = getOverlapsOrAdjacenciesString(\@cur_name_A, $h, \@ref_adj_AA);
+          }
+          $adj_str_errmsg .= " != " . $ref_adj_str_A[$mft_i] . " (ref)";
+        }
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "adj", $adj_str_errmsg, \%err_pf_code2idx_H, ($adj_pf_char eq "F"), \$cur_nerr);
         if($adj_pf_char eq "F") { 
           $at_least_one_fail = 1;
         }
@@ -1565,24 +1708,29 @@ for(my $a = 0; $a < $naccn; $a++) {
       if($mdl_is_first_A[$h] && (! $do_matpept)) { # determine $start_codon_char
         $start_codon = fetchStartCodon($sqfile, $seq_accn, $start, $totlen_H{$accn}, $p_strand_HH{$model}{$seq_accn});
         $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "str", $start_codon, \%err_pf_code2idx_H, ($start_codon_char eq $ss3_no_char), \$cur_nerr);
         if($start_codon_char eq $ss3_no_char) { 
           $at_least_one_fail = 1;
         }
       }
+
       if($mdl_is_final_A[$h]) { 
         if(! $do_matpept) { 
           $stop_codon = fetchStopCodon($sqfile, $seq_accn, $stop, $totlen_H{$accn}, $p_strand_HH{$model}{$seq_accn});
           $stop_codon_char = ($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", $stop_codon, \%err_pf_code2idx_H, ($stop_codon_char eq $ss3_no_char), \$cur_nerr);
           if($stop_codon_char eq $ss3_no_char) { 
             $at_least_one_fail = 1;
           }
         }
+
         $multiple_of_3_char = (($hit_length % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nm3", $hit_length, \%err_pf_code2idx_H, ($multiple_of_3_char eq $ss3_no_char), \$cur_nerr);
         if($multiple_of_3_char eq $ss3_no_char) { 
           $at_least_one_fail = 1;
         }
-
         push(@cur_out_A, sprintf(" %6d", $hit_length));
+        # TODO: put in length error check here!
 
         # add the ss3 (start/stop/multiple of 3 info) if we're not in mat_pept mode
         if((! $do_matpept) && (! $do_noss3)) { 
@@ -1621,6 +1769,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     else { 
       # printf("no hits for $model $seq_accn\n");
       $at_least_one_fail = 1;
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nop", undef, \%err_pf_code2idx_H, 1, \$cur_nerr);
       push(@cur_out_A, sprintf("  %8s ", "NP")); # start position
       push(@cur_out_A, sprintf("%8s",  "NP"));   # stop position
       if(! $do_nofid) { 
@@ -1674,7 +1823,9 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $start_codon_char;   # one of the 3 characters in the ss3 field, indicating if the start codon is valid or not
     my $stop_codon_char;    # one of the 3 characters in the ss3 field, indicating if the stop  codon is valid or not
     my $multiple_of_3_char; # one of the 3 characters in the ss3 field, indicating if the length is a multiple of 3 or not
-    foreach my $cds_idx (keys %cds2matpept_HA) { 
+    my $mft_i = $ref_nmft-1;
+    foreach my $cds_idx (sort keys %cds2matpept_HA) { 
+      $mft_i++;
       my ($cds_start, $cds_stop, $cds_len, $cds_start_codon, $cds_stop_codon, $cds_pass_fail) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2matpept_HA{$cds_idx}}, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A);
 
       if(defined $cds_start) { 
@@ -1689,6 +1840,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       else { 
         push(@cur_out_A, sprintf("  %6s", "?")); 
       }
+
       if(defined $cds_len)   { 
         push(@cur_out_A, sprintf("  %6d", $cds_len)); 
         $multiple_of_3_char = (($cds_len % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
@@ -1697,6 +1849,8 @@ for(my $a = 0; $a < $naccn; $a++) {
         push(@cur_out_A, sprintf("  %6s", "?"));
         $multiple_of_3_char = $ss3_no_char;
       }
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nm3", (defined $cds_len) ? $cds_len : "?", \%err_pf_code2idx_H, ($multiple_of_3_char ne $ss3_yes_char), \$cur_nerr);
+
       if(defined $cds_start_codon) { 
         push(@cur_out_A, sprintf("  %6s", $cds_start_codon)); 
         $start_codon_char = ($cds_start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
@@ -1705,6 +1859,8 @@ for(my $a = 0; $a < $naccn; $a++) {
         push(@cur_out_A, sprintf("  %6s", "?"));
         $start_codon_char = $ss3_unsure_char;
       }
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "str", ((defined $cds_start_codon) ? $cds_start_codon : "?"), \%err_pf_code2idx_H, ($start_codon_char ne $ss3_yes_char), \$cur_nerr);
+
       if(defined $cds_stop_codon) { 
         if(! $do_nostop) { 
           push(@cur_out_A, sprintf("  %6s", $cds_stop_codon)); 
@@ -1717,6 +1873,8 @@ for(my $a = 0; $a < $naccn; $a++) {
         }
         $stop_codon_char = $ss3_unsure_char;
       }
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", ((defined $cds_stop_codon) ? $cds_stop_codon : "?"), \%err_pf_code2idx_H, ($stop_codon_char ne $ss3_yes_char), \$cur_nerr);
+
       if(! $do_noss3) { 
         push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
       }
@@ -1782,12 +1940,50 @@ for(my $a = 0; $a < $naccn; $a++) {
       $cur_pagesize = 0;
     }
   }
+
+  # OUTPUT to error file
+  my $mft_i;
+  my $nmft_for_errors = $ref_nmft;
+  if($do_matpept) { 
+    $nmft_for_errors += scalar(keys %cds2matpept_HA);
+  }
+  if($cur_nerr > 0) { 
+    print ERROUT1 $accn;
+    # first print per-sequence errors, if any
+    for($e = 0; $e < $nerrcodes_ps; $e++) { 
+      if((defined $cur_err_ps_A[$e]) && ($cur_err_ps_A[$e])) { 
+        print ERROUT1 " " . $err_ps_idx2code_A[$e];
+        printf ERROUT2 ("%-10s  %3s  %4s  %s%s\n", $accn, "N/A", $err_ps_idx2code_A[$e], $err_ps_idx2msg_H{$err_ps_idx2code_A[$e]}, 
+                        (defined $cur_err_extra_ps_A[$e]) ? " [" . $cur_err_extra_ps_A[$e]. "]" : "");
+      }
+    }        
+    for($mft_i = 0; $mft_i < $nmft_for_errors; $mft_i++) { 
+      my $nerr_printed = 0;
+      for($e = 0; $e < $nerrcodes_pf; $e++) { 
+        if((defined $cur_err_pf_AA[$mft_i][$e]) && ($cur_err_pf_AA[$mft_i][$e])) { 
+          if($nerr_printed == 0) { 
+            print ERROUT1 (" feature\#" . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
+          }
+          else { 
+            print ERROUT1 "," . $err_pf_idx2code_A[$e];
+          }
+          $nerr_printed++;
+          printf ERROUT2 ("%-10s  %3s  %4s  %s%s\n", $accn, ($mft_i+1), $err_pf_idx2code_A[$e], $err_pf_idx2msg_H{$err_pf_idx2code_A[$e]}, 
+                          (defined $cur_err_extra_pf_AA[$mft_i][$e]) ? " [" . $cur_err_extra_pf_AA[$mft_i][$e]. "]" : "");
+        }
+      }
+    }
+    print ERROUT1 "\n";
+    print ERROUT1 "\n";
+  }
 }
 # print final page (if non-empty)
 if(($do_seqcol) && ($cur_pagesize > 0)) { 
   $npages++;
   outputSeqAsColumnsPage(\@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages);
 }
+close(ERROUT1);
+close(ERROUT2);
 
 my $div_line = "# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n";
 print $div_line;
@@ -3494,6 +3690,48 @@ sub compareOverlapsOrAdjacencies {
   return ($pass_fail_char, $ret_str);
 }
 
+# Subroutine: getOverlapsOrAdjacenciesString()
+#
+# Synopsis:   Determine an overlap or adjacency string given 
+#             a 2D array that describes it.
+#
+# Args:       $name_AR:      ref to array of short names for each annotation
+#             $index:        the feature $index we check overlaps/adjacencies for
+#             $ol_AAR:       ref to 2D array of overlaps $ol_AAR->[$i][$j] is '1' if 
+#                            those two exons are expected to overlap or be adjacent, PRE-FILLED
+#             
+# Returns:    $ol_str:       string of overlap features, separated by commas
+#
+sub getOverlapsOrAdjacenciesString{
+  my $sub_name = "getOverlapsOrAdjacencyString";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($name_AR, $index, $ol_AAR) = @_;
+
+  my $size = scalar(@{$name_AR});
+  my $ret_str = "";
+  my $nfound = 0;
+
+  # check @observed_AA against @{$expected_AAR}
+  my $pass_fail_char = "P";
+  for(my $i = 0; $i < $size; $i++) { 
+    if($index == $i) { 
+      for(my $j = $i+1; $j < $size; $j++) { 
+        if($ol_AAR->[$i][$j]) { 
+          if($ret_str ne "") { 
+            $ret_str .= ",";
+          }
+          $ret_str .= sprintf("%s", $name_AR->[$j]); 
+        }
+      }
+    }
+  }
+  if($ret_str eq "") { $ret_str = "NONE"; }
+
+  return $ret_str;
+}
+
 # Subroutine: get_nres_overlap()
 # Args:       $start1: start position of hit 1 (must be <= $end1)
 #             $end1:   end   position of hit 1 (must be >= $end1)
@@ -4599,6 +4837,49 @@ sub checkForSpanningExon {
   return;
 }
 
+# Subroutine: setErrorCode()
+#
+# Synopsis:   Set an error code value to either '1' (has the error) or '0' (does not have the error)
+#             given references to the relevant data structures.
+#
+# Args:       $err_AR:       ref to array to update one element of
+#             $err_extra_AR: ref to array to add 'extra' information to if $errval is 1
+#             $errcode:      error code of string we want to update error info for
+#             $errextra:     if defined, extra information to add to $err_extra_AR if $errval is 1
+#             $code2idx_HR:  ref to hash that maps $errcode to array index in @{$err_AR}
+#             $errval:       value to set element of error array to 
+#             $errctr_R:     if defined, reference to error counter, increment if ($errval)
+#
+# Returns:    void
+# Dies:       if $code2idx_HR->{$errcode} is not defined
+
+sub setErrorCode {
+  my $sub_name = "setErrorCode()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($err_AR, $err_extra_AR, $errcode, $errextra, $code2idx_HR, $errval, $errctr_R) = @_;
+
+#  if($errval) { 
+#    printf("HEYA in $sub_name\n");
+#    printf("HEYA \terrcode: $errcode\n");
+#    printf("HEYA \terrval:  $errval\n");
+#    printf("HEYA \terrctr:  $$errctr_R\n");
+#  }
+
+  if(! defined $code2idx_HR->{$errcode}) { die "ERROR in $sub_name, unrecognized error code $errcode"; }
+  $err_AR->[$code2idx_HR->{$errcode}] = $errval;
+  if($errval) { 
+    if(defined $err_extra_AR && defined $errextra) { 
+      $err_extra_AR->[$code2idx_HR->{$errcode}] = $errextra;
+    }
+    if(defined $errctr_R) { 
+      $$errctr_R++; 
+    }
+  }
+
+  return;
+}
 
 ######################
 # OUTPUT subroutines #
