@@ -1370,7 +1370,6 @@ my $errpeout_FH = undef;
 open($errpeout_FH, ">", $errors_per_err_file) || die "ERROR, unable to open $errors_per_err_file for writing";
 my $nlines_per_err_file = 0;
 
-
 # output headers to $errpaout_FH file
 printf $errpaout_FH ("# Each accession for which at least one error was found is printed below.\n");
 printf $errpaout_FH ("# One line per accession. Each line is formatted as follows:\n");
@@ -1928,6 +1927,9 @@ for(my $a = 0; $a < $naccn; $a++) {
 
       if(! $do_noss3) { 
         push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
+      }
+      if($start_codon_char ne $ss3_yes_char || $stop_codon_char ne $ss3_yes_char || $multiple_of_3_char ne $ss3_yes_char) { 
+        $cds_pass_fail = "F";
       }
       push(@cur_out_A, sprintf("  %3s", $cds_pass_fail)); 
       $pass_fail_str .= $cds_pass_fail;
@@ -3362,7 +3364,7 @@ sub fetchStartCodon {
 
 # Subroutine: fetchStopCodon()
 #
-# Synopsis:   Fetch a stop codon given it's first position,
+# Synopsis:   Fetch a stop codon given it's final position,
 #             the strand and the total length of the sequence.
 #             We need the total length if it's on the reverse 
 #             strand.
@@ -3370,7 +3372,7 @@ sub fetchStartCodon {
 # Args:       $sqfile:  Bio::Easel::SqFile object, open sequence
 #                       file containing $seqname;
 #             $seqname: name of sequence to fetch part of
-#             $stop:    start position of the stop codon
+#             $stop:    final position of the stop codon
 #             $L:       total length of sequence
 #             $strand:  strand we want ("+" or "-")
 #
@@ -4813,8 +4815,8 @@ sub matpeptCheckCdsRelationships {
         # since stop codon occurs 3 nt 3' of final peptide's stop, we have to make sure it's actually in the sequence first
         # (matpept/nodup option combo is currently required (that is -nodup is req'd with -matpept), but if its ever relaxed, 
         #  we may want to rethink this, do we want to allow the stop to wrap the stop/start boundary if -nodup is not used?)
-        if(($strand_HHR->{$mdl2}{$seq_accn} eq "+" && ($stop > ($totlen - 3 + 1))) || # stop is off the end of the sequence on + strand
-           ($strand_HHR->{$mdl2}{$seq_accn} eq "-" && ($stop < 2))) {                 # stop is off the end of the sequence on - strand
+        if(($strand_HHR->{$mdl2}{$seq_accn} eq "+" && ($stop > $totlen)) || # stop is off the end of the sequence on + strand
+           ($strand_HHR->{$mdl2}{$seq_accn} eq "-" && ($stop < 1))) {       # stop is off the end of the sequence on - strand
           $stop       = undef;
           $stop_codon = undef;
           $fail_H{$mp_idx} = 1;
