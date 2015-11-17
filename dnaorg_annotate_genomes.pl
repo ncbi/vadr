@@ -1361,49 +1361,57 @@ open($fail_tblout_FH, ">", $fail_tblout_file) || die "ERROR, unable to open $fai
 my $nfail_accn = 0;
 
 my $errors_per_accn_file = $out_root . ".peraccn.errors";
-open(ERRPAOUT, ">", $errors_per_accn_file) || die "ERROR, unable to open $errors_per_accn_file for writing";
+my $errpaout_FH = undef;
+open($errpaout_FH, ">", $errors_per_accn_file) || die "ERROR, unable to open $errors_per_accn_file for writing";
 my $nlines_per_accn_file = 0;
 
 my $errors_per_err_file = $out_root . ".all.errors";
-open(ERRPEOUT, ">", $errors_per_err_file) || die "ERROR, unable to open $errors_per_err_file for writing";
+my $errpeout_FH = undef;
+open($errpeout_FH, ">", $errors_per_err_file) || die "ERROR, unable to open $errors_per_err_file for writing";
 my $nlines_per_err_file = 0;
 
-# output headers to ERRPAOUT file
-printf ERRPAOUT ("# Each accession for which at least one error was found is printed below.\n");
-printf ERRPAOUT ("# One line per accession. Each line is formatted as follows:\n");
-printf ERRPAOUT ("#   <accession> <idxA>:<errorcodeA1>(,<errorcodeAM>) <idxN>:<errorcodeN1>(,<errorcodeNM>)\n");
-printf ERRPAOUT ("# For indices (<idx>) A to N, each with M error codes.\n");
-printf ERRPAOUT ("# Each index refers to a 'feature' in the reference accession as defined below.\n");
-printf ERRPAOUT ("# If no index exists, then the error pertains to the entire sequence.\n");
 
-# output header to ERRPEOUT file
-printf ERRPEOUT ("# Each error encountered is printed below, one error per line.\n");
-printf ERRPEOUT ("# Each line has four columns with the following labels:\n");
-printf ERRPEOUT ("#   \"accn\"         : sequence accession\n");
-printf ERRPEOUT ("#   \"idx\"          : feature index, full feature names are listed below for each index\n");
-printf ERRPEOUT ("#   \"code\"         : 3 digit error code\n");
-printf ERRPEOUT ("#   \"error-message\": error message, possibly with additional information at end enclosed in \"[]\"\n");
-printf ERRPEOUT ("#\n");
-printf ERRPEOUT ("# List of features:\n");
+# output headers to $errpaout_FH file
+printf $errpaout_FH ("# Each accession for which at least one error was found is printed below.\n");
+printf $errpaout_FH ("# One line per accession. Each line is formatted as follows:\n");
+printf $errpaout_FH ("#   <accession> <idxA>:<errorcodeA1>(,<errorcodeAM>) <idxN>:<errorcodeN1>(,<errorcodeNM>)\n");
+printf $errpaout_FH ("# For indices (<idx>) A to N, each with M error codes.\n");
+printf $errpaout_FH ("# Each index refers to a 'feature' in the reference accession as defined below.\n");
+printf $errpaout_FH ("# If no index exists, then the error pertains to the entire sequence.\n");
 
-# list feature names to both ERRPAOUT and ERRPEOUT
+# output header to $errpeout_FH file
+printf $errpeout_FH ("# Each error encountered is printed below, one error per line.\n");
+printf $errpeout_FH ("# Each line has four columns with the following labels:\n");
+printf $errpeout_FH ("#   \"accn\"         : sequence accession\n");
+printf $errpeout_FH ("#   \"idx\"          : feature index, full feature names are listed below for each index\n");
+printf $errpeout_FH ("#   \"code\"         : 3 digit error code\n");
+printf $errpeout_FH ("#   \"error-message\": error message, possibly with additional information at end enclosed in \"[]\"\n");
+printf $errpeout_FH ("#\n");
+printf $errpeout_FH ("# List of features:\n");
+
+# list feature names to both $errpaout_FH and $errpeout_FH
 my $mft_i = 0;
 for($mft_i = 0; $mft_i < $ref_nmft; $mft_i++) { 
-  printf ERRPAOUT ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
-  printf ERRPEOUT ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
+  printf $errpaout_FH ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
+  printf $errpeout_FH ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
 }
 if($do_matpept) { 
   foreach my $cds_idx (sort keys %cds2matpept_HA) { 
-    printf ERRPAOUT ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
-    printf ERRPEOUT ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
+    printf $errpaout_FH ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
+    printf $errpeout_FH ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
     $mft_i++;
   }
 }
-printf ERRPEOUT ("# \"N/A\" in feature index column (fidx) indicates error pertains to the entire sequence\n");
-printf ERRPEOUT ("#       as opposed to a specific feature.\n");
-printf ERRPEOUT ("#\n");
-printf ERRPEOUT ("%-10s  %3s  %4s  error-message\n", "#accn", "idx", "code");
-printf ERRPAOUT ("#\n");
+printf $errpeout_FH ("# \"N/A\" in feature index column (fidx) indicates error pertains to the entire sequence\n");
+printf $errpeout_FH ("#       as opposed to a specific feature.\n");
+printf $errpeout_FH ("#\n");
+printf $errpeout_FH ("%-10s  %3s  %4s  error-message\n", "#accn", "idx", "code");
+printf $errpaout_FH ("#\n");
+my $div_line = "# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n";
+if($do_matpept) { 
+  outputCDSMaturePeptideRelationships($errpaout_FH,    \%cds2matpept_HA, $div_line);
+  outputCDSMaturePeptideRelationships($errpeout_FH,    \%cds2matpept_HA, $div_line);
+}
 
 #######################
 
@@ -2011,12 +2019,12 @@ for(my $a = 0; $a < $naccn; $a++) {
     $nmft_for_errors += scalar(keys %cds2matpept_HA);
   }
   if($cur_nerr > 0) { 
-    print ERRPAOUT $accn;
+    print $errpaout_FH $accn;
     # first print per-sequence errors, if any
     for($e = 0; $e < $nerrcodes_ps; $e++) { 
       if((defined $cur_err_ps_A[$e]) && ($cur_err_ps_A[$e])) { 
-        print ERRPAOUT " " . $err_ps_idx2code_A[$e];
-        printf ERRPEOUT ("%-10s  %3s  %4s  %s%s\n", $accn, "N/A", $err_ps_idx2code_A[$e], $err_ps_idx2msg_H{$err_ps_idx2code_A[$e]}, 
+        print $errpaout_FH " " . $err_ps_idx2code_A[$e];
+        printf $errpeout_FH ("%-10s  %3s  %4s  %s%s\n", $accn, "N/A", $err_ps_idx2code_A[$e], $err_ps_idx2msg_H{$err_ps_idx2code_A[$e]}, 
                         (defined $cur_err_extra_ps_A[$e]) ? " [" . $cur_err_extra_ps_A[$e]. "]" : "");
         $nlines_per_err_file++;
       }
@@ -2026,20 +2034,20 @@ for(my $a = 0; $a < $naccn; $a++) {
       for($e = 0; $e < $nerrcodes_pf; $e++) { 
         if((defined $cur_err_pf_AA[$mft_i][$e]) && ($cur_err_pf_AA[$mft_i][$e])) { 
           if($nerr_printed == 0) { 
-            #print ERRPAOUT (" feature\#" . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
-            print ERRPAOUT (" " . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
+            #print $errpaout_FH (" feature\#" . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
+            print $errpaout_FH (" " . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
           }
           else { 
-            print ERRPAOUT "," . $err_pf_idx2code_A[$e];
+            print $errpaout_FH "," . $err_pf_idx2code_A[$e];
           }
           $nerr_printed++;
-          printf ERRPEOUT ("%-10s  %3s  %4s  %s%s\n", $accn, ($mft_i+1), $err_pf_idx2code_A[$e], $err_pf_idx2msg_H{$err_pf_idx2code_A[$e]}, 
+          printf $errpeout_FH ("%-10s  %3s  %4s  %s%s\n", $accn, ($mft_i+1), $err_pf_idx2code_A[$e], $err_pf_idx2msg_H{$err_pf_idx2code_A[$e]}, 
                           (defined $cur_err_extra_pf_AA[$mft_i][$e]) ? " [" . $cur_err_extra_pf_AA[$mft_i][$e]. "]" : "");
           $nlines_per_err_file++;
         }
       }
     }
-    print ERRPAOUT "\n";
+    print $errpaout_FH "\n";
     $nlines_per_accn_file++;
   }
 }
@@ -2052,13 +2060,7 @@ if(($do_seqcol) && ($cur_fail_pagesize > 0)) {
   $nfail_pages++;
   outputSeqAsColumnsPage($fail_tblout_FH, \@out_row_header_A, \@fail_page_out_AA, \@ref_out_A, $nfail_pages);
 }
-close(ERRPAOUT);
-close(ERRPEOUT);
-my $outfile_w = 80;
-printf ("%-*s %s\n", $outfile_w, "# Saved information on $nlines_per_accn_file accessions with at least one error to file.", "[$errors_per_accn_file]");
-printf ("%-*s %s\n", $outfile_w, "# Saved information on $nlines_per_err_file errors to file.", "[$errors_per_err_file]");
 
-my $div_line = "# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n";
 print $tblout_FH $div_line;
 print $fail_tblout_FH $div_line;
 
@@ -2066,30 +2068,10 @@ print $fail_tblout_FH $div_line;
 # OUTPUT CDS:MAT_PEPTIDE RELATIONSHIPS, IF NEC 
 ##############################################
 if($do_matpept) { 
-  printf("#\n");
-  printf("# CDS:MAT_PEPTIDE relationships:\n");
-  printf("#\n");
-  my $max_cds_idx = 0;
-  my $cds_idx = 0;
-  # first determine maximum cds idx in hash
-  foreach $cds_idx (keys %cds2matpept_HA) { 
-    if($cds_idx > $max_cds_idx) { 
-      $max_cds_idx = $cds_idx; 
-    }
-  }
-  for($cds_idx = 0; $cds_idx <= $max_cds_idx; $cds_idx++) { 
-    if(exists $cds2matpept_HA{$cds_idx}) { 
-      printf("# CDS #%d is comprised of the following mat_peptides in order: ", ($cds_idx+1));
-      for(my $i = 0; $i < scalar(@{$cds2matpept_HA{$cds_idx}}); $i++) { 
-        if($i > 0) { print(", "); }
-        print ($cds2matpept_HA{$cds_idx}[$i] + 1);
-      }
-      print "\n";
-    }
-  }
-  print "#\n";
-  print $div_line;
+  outputCDSMaturePeptideRelationships($tblout_FH,      \%cds2matpept_HA, $div_line);
+  outputCDSMaturePeptideRelationships($fail_tblout_FH, \%cds2matpept_HA, $div_line);
 }
+
 ##########################
 # OUTPUT EXPLANATORY TEXT 
 ##########################
@@ -2103,10 +2085,19 @@ if(! $do_noexp) {
     print $fail_tblout_FH $div_line;
     print $fail_tblout_FH "#\n";
 }
+
+# CLOSE TABULAR OUTPUT FILES
+my $outfile_w = 80;
 close($tblout_FH);
 close($fail_tblout_FH);
 printf ("%-*s %s\n", $outfile_w, "# Saved tabular annotation information on all $naccn accessions to file.", "[$tblout_file]");
 printf ("%-*s %s\n", $outfile_w, "# Saved tabular annotation information on $nfail_accn accessions that FAILed to file.", "[$fail_tblout_file]");
+
+# CLOSE ERROR FILES
+close($errpaout_FH);
+close($errpeout_FH);
+printf ("%-*s %s\n", $outfile_w, "# Saved information on $nlines_per_accn_file accessions with at least one error to file.", "[$errors_per_accn_file]");
+printf ("%-*s %s\n", $outfile_w, "# Saved information on $nlines_per_err_file errors to file.", "[$errors_per_err_file]");
 
 ###########################
 # OUTPUT THE GAP INFO FILES
@@ -5939,6 +5930,48 @@ sub outputColumnHeaderExplanations {
   foreach my $line (@{$out_header_exp_AR}) { 
     print $FH $line;
   }
+
+  return;
+}
+
+# Subroutine: outputCDSMaturePeptideRelationships()
+# Args:       $FH:                file handle to print to
+#             $cds2matpept_HAR:   ref to hash of arrays describing relatinoships
+#             $div_line:          divider line
+# Synopsis:   Prints out explanation of CDS:mature peptides relationships.
+#
+# Returns:    void
+
+sub outputCDSMaturePeptideRelationships { 
+  my $sub_name = "outputCDSMaturePeptideRelationships";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($FH, $cds2matpept_HAR, $div_line) = @_;
+
+  printf $FH ("#\n");
+  printf $FH ("# CDS:MAT_PEPTIDE relationships:\n");
+  printf $FH ("#\n");
+  my $max_cds_idx = 0;
+  my $cds_idx = 0;
+  # first determine maximum cds idx in hash
+  foreach $cds_idx (keys %{$cds2matpept_HAR}) { 
+    if($cds_idx > $max_cds_idx) { 
+      $max_cds_idx = $cds_idx; 
+    }
+  }
+  for($cds_idx = 0; $cds_idx <= $max_cds_idx; $cds_idx++) { 
+    if(exists $cds2matpept_HAR->{$cds_idx}) { 
+      printf $FH ("# CDS #%d is comprised of the following mat_peptides in order: ", ($cds_idx+1));
+      for(my $i = 0; $i < scalar(@{$cds2matpept_HAR->{$cds_idx}}); $i++) { 
+        if($i > 0) { print $FH (", "); }
+        print $FH ($cds2matpept_HAR->{$cds_idx}[$i] + 1);
+      }
+      print $FH "\n";
+    }
+  }
+  print $FH "#\n";
+  print $FH $div_line;
 
   return;
 }
