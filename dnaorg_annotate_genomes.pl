@@ -28,16 +28,21 @@ $usage .= "\n";
 $usage .= " BASIC OPTIONS:\n";
 $usage .= "  -nocorrect   : do not correct annotations based on internal start/stop codons in predicted exons/CDS\n";
 $usage .= "  -matpept <f> : read mat_peptide info in addition to CDS info, file <f> explains CDS:mat_peptide relationships\n";
-$usage .= "  -oseq <s>    : identify origin seq <s> in genomes, put \"|\" at site of origin, e.g. \"TAATATT\\|AC\"\n";
-$usage .= "                 <s> must be a string consisting of only A,C,G,T and | characters. No regular expressions allowed.\n"; 
-$usage .= "                 Note that \"|\" must be escaped, i.e. \"\\|\"; the \"|\" can be any char, incl. first or last\n";
-$usage .= "                 This option is relevant only for circular genomes, e.g. Maize streak virus\n";
 $usage .= "  -strict      : require matching annotations to match CDS/exon index\n";
 $usage .= "  -nodup       : do not duplicate genome seqs to identify features that span stop..start (for circular genomes)\n";
 $usage .= "  -notexon     : do not use exon-specific models\n";
 $usage .= "  -onlybuild   : exit after building reference models\n";
 $usage .= "  -skipbuild   : skip the build and calibration step because you already did an -onlybuild run\n";
 $usage .= "  -model <s>   : use model file <s>, instead of building one\n";
+$usage .= "\n OPTIONS THAT ADD EXTRA ERROR TESTS:\n";
+$usage .= "  -oseq <s>     : identify origin seq <s> in genomes, put \"|\" at site of origin, e.g. \"TAATATT\\|AC\"\n";
+$usage .= "                  <s> must be a string consisting of only A,C,G,T and | characters. No regular expressions allowed.\n"; 
+$usage .= "                  Note that \"|\" must be escaped, i.e. \"\\|\"; the \"|\" can be any char, incl. first or last\n";
+$usage .= "                  This option is relevant only for circular genomes, e.g. Maize streak virus\n";
+$usage .= "  -lfile <f>    : TO BE IMPLEMENTED\n";
+$usage .= "  -idthresh <x> : TO BE IMPLEMENTED\n";
+#$usage .= "  -lfile <f>    : read minimum and maximum length allowed per feature from file <f>\n";
+#$usage .= "  -idthresh <x> : minimum allowed fractional identity per feature is <x>\n";
 $usage .= "\n OPTIONS CONTROLLING OUTPUT TABLE:\n";
 $usage .= "  -c        : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)\n";
 $usage .= "  -seqrow   : force sequence-as-rows    output mode (default for <= 5 models)\n";
@@ -94,13 +99,16 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmfetch
 my $do_nocorrect   = 0; # set to '1' if -nocorrect  enabled, do not look for internal start/stop codons and update annotation if found
 my $do_matpept     = 0; # set to '1' if -matpept    enabled, genome has a single polyprotein, use mat_peptide info, not CDS
 my $matpept_infile = undef; # defined if -matpept   enabled, the input file that describes relationship between CDS and mat_peptides
-my $origin_seq     = undef; # defined if -oseq      enabled, the origin sequence string
 my $do_strict      = 0; # set to '1' if -strict     enabled, matching annotations must be same index CDS+exon, else any will do
 my $do_nodup       = 0; # set to '1' if -nodup      enabled, do not duplicate each genome, else do 
 my $do_notexon     = 0; # set to '1' if -noexon     enabled, do not use exon-specific models, else do
 my $do_onlybuild   = 0; # set to '1' if -onlybuild  enabled, exit after building the model
 my $do_skipbuild   = 0; # set to '1' if -skipbuild  enabled, skip the build step
 my $in_model_db    = undef; # defined if -model <s> enabled, use <s> as the model file instead of building one
+# options for adding additional errors/tests
+my $origin_seq     = undef; # defined if -oseq         enabled, the origin sequence string
+my $length_infile  = undef; # defined if -lfile <s>    enabled, the input file defining allowed lengths
+my $idthresh       = undef; # defined if -idthresh <x> enabled, the minimum allowed fractional identity
 # options for controlling output table
 my $do_concise   = 0; # set to '1' if -c       enabled, invoke concise output mode, set's all $do_no* variables below to '1'
 my $do_seqrow    = 0; # set to '1' if -seqrow  enabled, force sequence-as-rows output model
@@ -134,39 +142,41 @@ my $do_skipfetch = 0; # set to '1' if -skipfetch  enabled, skip genome fetch ste
 my $do_skipscan  = 0; # set to '1' if -skipscan   enabled, skip cmscan/hmmscan step, use pre-existing output from a previous run
 my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan and alignment step, use pre-existing output from a previous run
 
-&GetOptions("nocorrect" => \$do_nocorrect,
-            "matpept=s" => \$matpept_infile,
-            "oseq=s"    => \$origin_seq,
-            "strict"    => \$do_strict,
-            "nodup"     => \$do_nodup,
-            "notexon"   => \$do_notexon,
-            "onlybuild" => \$do_onlybuild,
-            "skipbuild" => \$do_skipbuild,
-            "model=s"   => \$in_model_db,
-            "c"         => \$do_concise,
-            "seqrow"    => \$do_seqrow,
-            "seqcol"    => \$do_seqcol,
-            "nseqcol=s" => \$nseqcol,
-            "nomdlb"    => \$do_nomdlb,
-            "noexist"   => \$do_noexist,
-            "nobrack"   => \$do_nobrack,
-            "nostop"    => \$do_nostop,
-            "nofid"     => \$do_nofid,
-            "noss3"     => \$do_noss3,
-            "noolap"    => \$do_noolap,
-            "noexp"     => \$do_noexp,
-            "fullolap"  => \$do_fullolap,
-            "fulladj"   => \$do_fulladj,
-            "hmmer"     => \$do_hmmer,
-            "hmmenv"    => \$do_hmmenv,
-            "iglocal"   => \$do_iglocal,
-            "cslow"     => \$do_cslow, 
-            "cfarm"     => \$do_cfarm,
-            "sfarm=s"   => \$sfarm_njobs,
-            "swait=s"   => \$sfarm_wait,
-            "skipfetch" => \$do_skipfetch,
-            "skipscan"  => \$do_skipscan,
-            "skipaln"   => \$do_skipaln) ||
+&GetOptions("nocorrect"  => \$do_nocorrect,
+            "matpept=s"  => \$matpept_infile,
+            "strict"     => \$do_strict,
+            "nodup"      => \$do_nodup,
+            "notexon"    => \$do_notexon,
+            "onlybuild"  => \$do_onlybuild,
+            "skipbuild"  => \$do_skipbuild,
+            "model=s"    => \$in_model_db,
+            "oseq=s"     => \$origin_seq,
+            "lfile=s"    => \$length_infile,
+            "idthresh=s" => \$idthresh,
+            "c"          => \$do_concise,
+            "seqrow"     => \$do_seqrow,
+            "seqcol"     => \$do_seqcol,
+            "nseqcol=s"  => \$nseqcol,
+            "nomdlb"     => \$do_nomdlb,
+            "noexist"    => \$do_noexist,
+            "nobrack"    => \$do_nobrack,
+            "nostop"     => \$do_nostop,
+            "nofid"      => \$do_nofid,
+            "noss3"      => \$do_noss3,
+            "noolap"     => \$do_noolap,
+            "noexp"      => \$do_noexp,
+            "fullolap"   => \$do_fullolap,
+            "fulladj"    => \$do_fulladj,
+            "hmmer"      => \$do_hmmer,
+            "hmmenv"     => \$do_hmmenv,
+            "iglocal"    => \$do_iglocal,
+            "cslow"      => \$do_cslow, 
+            "cfarm"      => \$do_cfarm,
+            "sfarm=s"    => \$sfarm_njobs,
+            "swait=s"    => \$sfarm_wait,
+            "skipfetch"  => \$do_skipfetch,
+            "skipscan"   => \$do_skipscan,
+            "skipaln"    => \$do_skipaln) ||
     die "Unknown option";
 
 if(scalar(@ARGV) != 2) { die $usage; }
@@ -189,10 +199,6 @@ if(defined $matpept_infile) {
   $do_matpept = 1;
   $opts_used_short .= "-matpept $matpept_infile";
   $opts_used_long  .= "# option:  using mat_peptide info, CDS:mat_peptide relationships explained in $matpept_infile [-matpept]\n";
-}
-if(defined $origin_seq) { 
-  $opts_used_short .= "-oseq $origin_seq ";
-  $opts_used_long  .= "# option:  searching for origin sequence of $origin_seq [-oseq]\n";
 }
 if($do_strict) { 
   $opts_used_short .= "-strict ";
@@ -217,6 +223,18 @@ if($do_skipbuild) {
 if(defined $in_model_db) { 
   $opts_used_short .= "-model $in_model_db ";
   $opts_used_long  .= "# option:  use model in $in_model_db instead of building one here [-model]\n";
+}
+if(defined $origin_seq) { 
+  $opts_used_short .= "-oseq $origin_seq ";
+  $opts_used_long  .= "# option:  searching for origin sequence of $origin_seq [-oseq]\n";
+}
+if(defined $length_infile) { 
+  $opts_used_short .= "-lfile $length_infile ";
+  $opts_used_long  .= "# option:  enforcing length minimums and maximums read from file [-lfile]\n";
+}
+if(defined $idthresh) { 
+  $opts_used_short .= "-idthresh $idthresh ";
+  $opts_used_long  .= "# option:  enforcing minimum fractional identity of $idthresh [-idthresh]\n";
 }
 if($do_concise) { 
   $opts_used_short .= "-c ";
@@ -556,7 +574,7 @@ for($e = 0; $e < $nerrcodes_pf; $e++) {
 }
 
 $err_ps_idx2code_A[0]    = "ori";
-$err_ps_idx2msg_H{"ori"} = "there is not exactly 1 occurence of origin sequence";
+$err_ps_idx2msg_H{"ori"} = "there is not exactly 1 occurrence of origin sequence";
 for($e = 0; $e < $nerrcodes_ps; $e++) { 
   $err_ps_code2idx_H{$err_ps_idx2code_A[$e]} = $e;
 }
@@ -1332,47 +1350,60 @@ if((! $do_skipaln) && (! $do_matpept)) {
 #########################################
 # OUTPUT ANNOTATION TABLE AND ERROR CODES
 #########################################
-my $errors1_file = $out_root . ".errors1";
-open(ERROUT1, ">", $errors1_file) || die "ERROR, unable to open $errors1_file for writing";
+# open files for writing
+my $tblout_file = $out_root . ".tbl";
+my $tblout_FH = undef;
+open($tblout_FH, ">", $tblout_file) || die "ERROR, unable to open $tblout_file for writing";
 
-my $errors2_file = $out_root . ".errors2";
-open(ERROUT2, ">", $errors2_file) || die "ERROR, unable to open $errors2_file for writing";
+my $fail_tblout_file = $out_root . ".fail.tbl";
+my $fail_tblout_FH = undef;
+open($fail_tblout_FH, ">", $fail_tblout_file) || die "ERROR, unable to open $fail_tblout_file for writing";
+my $nfail_accn = 0;
 
-# output headers to ERROUT1 file
-printf ERROUT1 ("# Each accession for which at least one error was found is printed below.\n");
-printf ERROUT1 ("# One line per accession. Each line is formatted as follows:\n");
-printf ERROUT1 ("#   <accession> <idxA>:<errorcodeA1>(,<errorcodeAM>) <idxN>:<errorcodeN1>(,<errorcodeNM>)\n");
-printf ERROUT1 ("# For indices (<idx>) A to N, each with M error codes.\n");
-printf ERROUT1 ("# Each index refers to a 'feature' in the reference accession as defined below.\n");
+my $errors_per_accn_file = $out_root . ".peraccn.errors";
+open(ERRPAOUT, ">", $errors_per_accn_file) || die "ERROR, unable to open $errors_per_accn_file for writing";
+my $nlines_per_accn_file = 0;
 
-# output header to ERROUT2 file
-printf ERROUT2 ("# Each error encountered is printed below, one error per line.\n");
-printf ERROUT2 ("# Each line has four columns with the following labels:\n");
-printf ERROUT2 ("#   \"accn\"         : sequence accession\n");
-printf ERROUT2 ("#   \"idx\"          : feature index, full feature names are listed below for each index\n");
-printf ERROUT2 ("#   \"code\"         : 3 digit error code\n");
-printf ERROUT2 ("#   \"error-message\": error message, possibly with additional information at end enclosed in \"[]\"\n");
-printf ERROUT2 ("#\n");
-printf ERROUT2 ("# List of features:\n");
+my $errors_per_err_file = $out_root . ".all.errors";
+open(ERRPEOUT, ">", $errors_per_err_file) || die "ERROR, unable to open $errors_per_err_file for writing";
+my $nlines_per_err_file = 0;
 
-# list feature names to both ERROUT1 and ERROUT2
+# output headers to ERRPAOUT file
+printf ERRPAOUT ("# Each accession for which at least one error was found is printed below.\n");
+printf ERRPAOUT ("# One line per accession. Each line is formatted as follows:\n");
+printf ERRPAOUT ("#   <accession> <idxA>:<errorcodeA1>(,<errorcodeAM>) <idxN>:<errorcodeN1>(,<errorcodeNM>)\n");
+printf ERRPAOUT ("# For indices (<idx>) A to N, each with M error codes.\n");
+printf ERRPAOUT ("# Each index refers to a 'feature' in the reference accession as defined below.\n");
+printf ERRPAOUT ("# If no index exists, then the error pertains to the entire sequence.\n");
+
+# output header to ERRPEOUT file
+printf ERRPEOUT ("# Each error encountered is printed below, one error per line.\n");
+printf ERRPEOUT ("# Each line has four columns with the following labels:\n");
+printf ERRPEOUT ("#   \"accn\"         : sequence accession\n");
+printf ERRPEOUT ("#   \"idx\"          : feature index, full feature names are listed below for each index\n");
+printf ERRPEOUT ("#   \"code\"         : 3 digit error code\n");
+printf ERRPEOUT ("#   \"error-message\": error message, possibly with additional information at end enclosed in \"[]\"\n");
+printf ERRPEOUT ("#\n");
+printf ERRPEOUT ("# List of features:\n");
+
+# list feature names to both ERRPAOUT and ERRPEOUT
 my $mft_i = 0;
 for($mft_i = 0; $mft_i < $ref_nmft; $mft_i++) { 
-  printf ERROUT1 ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
-  printf ERROUT2 ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
+  printf ERRPAOUT ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
+  printf ERRPEOUT ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
 }
 if($do_matpept) { 
   foreach my $cds_idx (sort keys %cds2matpept_HA) { 
-    printf ERROUT1 ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
-    printf ERROUT2 ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
+    printf ERRPAOUT ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
+    printf ERRPEOUT ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
     $mft_i++;
   }
 }
-printf ERROUT2 ("# \"N/A\" in feature index column (fidx) indicates error pertains to the entire sequence\n");
-printf ERROUT2 ("#       as opposed to a specific feature.\n");
-printf ERROUT2 ("#\n");
-printf ERROUT2 ("%-10s  %3s  %4s  error-message\n", "#accn", "idx", "code");
-printf ERROUT1 ("#\n");
+printf ERRPEOUT ("# \"N/A\" in feature index column (fidx) indicates error pertains to the entire sequence\n");
+printf ERRPEOUT ("#       as opposed to a specific feature.\n");
+printf ERRPEOUT ("#\n");
+printf ERRPEOUT ("%-10s  %3s  %4s  error-message\n", "#accn", "idx", "code");
+printf ERRPAOUT ("#\n");
 
 #######################
 
@@ -1394,12 +1425,15 @@ getHeadings($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_nomdlb, $do_noss
 
 if($do_seqrow) { # output sequences as rows 
   for(my $i = 0; $i < 5; $i++) { 
-    print "#";
+    print $tblout_FH "#";
+    print $fail_tblout_FH "#";
     my $ncols = scalar(@{$out_col_header_AA[$i]});
     for(my $j = 0; $j < $ncols; $j++) { 
-      print $out_col_header_AA[$i][$j];
+      print $tblout_FH $out_col_header_AA[$i][$j];
+      print $fail_tblout_FH $out_col_header_AA[$i][$j];
     }
-    print "\n";
+    print $tblout_FH "\n";
+    print $fail_tblout_FH "\n";
   }
 }
 
@@ -1427,6 +1461,14 @@ my @page_out_AA = (); # 2D array, [0..$a..$cur_pagesize-1][0..(ntoks-1)] first d
 my $cur_pagesize = 0; # current number of accessions we have info for in page_out_AA (size of first dimension in page_out_AA)
                       # when this hits $nseqcol, we dump the output
 my $npages = 0;       # number of pages output, only used if $do_seqcol
+# analagous data structures for 'failure-only' version of the file
+my @fail_page_accn_A = (); # [0..$cur_fail_pagesize]2D array, each element is an array of output tokens for one accession
+my @fail_page_out_AA = (); # 2D array, [0..$a..$cur_fail_pagesize-1][0..(ntoks-1)] first dimension is of size $cur_pagesize, 
+                           # each element is an array of output tokens for accession $fail_page_accn_A[$a]
+my $cur_fail_pagesize = 0; # current number of accessions we have info for in fail_page_out_AA (size of first dimension in fail-page_out_AA)
+                           # when this hits $nseqcol, we dump the output
+my $nfail_pages = 0;       # number of fail pages output, only used if $do_seqcol
+
 
 # data structures for reporting error codes
 my @cur_err_ps_A        = (); # per-sequence errors [0..$nerrcodes_pf-1]
@@ -1494,7 +1536,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     push(@cur_out_A, sprintf(" %s", $oseq_passfail));
     $pass_fail_str .= $oseq_passfail;
 
-    setErrorCode(\@cur_err_ps_A, \@cur_err_extra_ps_A, "ori", "[" . $oseq_ct . "]", \%err_ps_code2idx_H, ($oseq_passfail), \$cur_nerr);
+    setErrorCode(\@cur_err_ps_A, \@cur_err_extra_ps_A, "ori", $oseq_ct . " occurrences", \%err_ps_code2idx_H, ($oseq_passfail eq "F"), \$cur_nerr);
   }
   ###############################################################
 
@@ -1607,7 +1649,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       my $hangover = $p_hangover_HH{$model}{$seq_accn};
 
       my ($hang5, $hang3) = split(":", $hangover);
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd5", $hang5, \%err_pf_code2idx_H, ($hang5 != 0), \$cur_nerr);
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd5", $hang5 . " nt from 5' end", \%err_pf_code2idx_H, ($hang5 != 0), \$cur_nerr);
       if($hang5 == 0) { 
         $hang5 = "."; 
       }
@@ -1620,7 +1662,7 @@ for(my $a = 0; $a < $naccn; $a++) {
         $hang5 = "c"; 
       }
 
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd3", $hang3, \%err_pf_code2idx_H, ($hang3 != 0), \$cur_nerr);
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd3", $hang3 . "nt from 3' end", \%err_pf_code2idx_H, ($hang3 != 0), \$cur_nerr);
       if($hang3 == 0) { 
         $hang3 = "."; 
       }
@@ -1629,7 +1671,8 @@ for(my $a = 0; $a < $naccn; $a++) {
         if($hang3 >  9) { $hang3 = "+"; } 
       }
 
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $stop, \%err_pf_code2idx_H, ($stop_corrected_exon), \$cur_nerr);
+      my $trc_errmsg = sprintf("homology search predicted $p_start_HH{$model}{$seq_accn}..$p_stop_HH{$model}{$seq_accn} revised to $start..$stop (stop shifted %d nt)", abs($stop-$p_stop_HH{$model}{$seq_accn}));
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $trc_errmsg, \%err_pf_code2idx_H, ($stop_corrected_exon), \$cur_nerr);
       if($stop_corrected_exon) { 
         $hang3 = "c"; 
       }
@@ -1914,15 +1957,24 @@ for(my $a = 0; $a < $naccn; $a++) {
     push(@cur_out_A, sprintf("  %20s", $adjacency_notes));
   }
 
-  my $result_str = ($pass_fail_str =~ m/F/) ? "FAIL" : "PASS";
+  my $accn_failed = ($pass_fail_str =~ m/F/) ? 1 : 0;
+  if($accn_failed) { $nfail_accn++; }
+  my $result_str = ($accn_failed) ? "FAIL" : "PASS";
   $result_str .= " " . $pass_fail_str;
   push(@cur_out_A, sprintf("  %s", $result_str));
 
+  # ACTUALLY OUTPUT THE INFORMATION TO RELEVANT FILE HANDLES
   if($do_seqrow) { 
     foreach my $el (@cur_out_A) { 
-      print $el;
+      print $tblout_FH $el;
     }
-    print "\n";
+    print $tblout_FH "\n";
+    if($accn_failed || $a == 0) { 
+      foreach my $el (@cur_out_A) { 
+        print $fail_tblout_FH $el;
+      }
+      print $fail_tblout_FH "\n";
+    }
   }
   elsif($do_seqcol) { 
     if($a == 0) { 
@@ -1932,12 +1984,23 @@ for(my $a = 0; $a < $naccn; $a++) {
     else { 
       push(@page_out_AA, [@cur_out_A]);
       $cur_pagesize++;
+      if($accn_failed) { 
+        push(@fail_page_out_AA, [@cur_out_A]);
+        $cur_fail_pagesize++;
+      }        
     }
     if(($cur_pagesize+1) == $nseqcol) { 
       $npages++;
-      outputSeqAsColumnsPage(\@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages);
+      outputSeqAsColumnsPage($tblout_FH, \@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages);
       @page_out_AA = ();
       $cur_pagesize = 0;
+    }
+    if($accn_failed && 
+       (($cur_fail_pagesize+1) == $nseqcol)) { 
+      $nfail_pages++;
+      outputSeqAsColumnsPage($fail_tblout_FH, \@out_row_header_A, \@fail_page_out_AA, \@ref_out_A, $nfail_pages);
+      @fail_page_out_AA = ();
+      $cur_fail_pagesize = 0;
     }
   }
 
@@ -1948,13 +2011,14 @@ for(my $a = 0; $a < $naccn; $a++) {
     $nmft_for_errors += scalar(keys %cds2matpept_HA);
   }
   if($cur_nerr > 0) { 
-    print ERROUT1 $accn;
+    print ERRPAOUT $accn;
     # first print per-sequence errors, if any
     for($e = 0; $e < $nerrcodes_ps; $e++) { 
       if((defined $cur_err_ps_A[$e]) && ($cur_err_ps_A[$e])) { 
-        print ERROUT1 " " . $err_ps_idx2code_A[$e];
-        printf ERROUT2 ("%-10s  %3s  %4s  %s%s\n", $accn, "N/A", $err_ps_idx2code_A[$e], $err_ps_idx2msg_H{$err_ps_idx2code_A[$e]}, 
+        print ERRPAOUT " " . $err_ps_idx2code_A[$e];
+        printf ERRPEOUT ("%-10s  %3s  %4s  %s%s\n", $accn, "N/A", $err_ps_idx2code_A[$e], $err_ps_idx2msg_H{$err_ps_idx2code_A[$e]}, 
                         (defined $cur_err_extra_ps_A[$e]) ? " [" . $cur_err_extra_ps_A[$e]. "]" : "");
+        $nlines_per_err_file++;
       }
     }        
     for($mft_i = 0; $mft_i < $nmft_for_errors; $mft_i++) { 
@@ -1962,31 +2026,41 @@ for(my $a = 0; $a < $naccn; $a++) {
       for($e = 0; $e < $nerrcodes_pf; $e++) { 
         if((defined $cur_err_pf_AA[$mft_i][$e]) && ($cur_err_pf_AA[$mft_i][$e])) { 
           if($nerr_printed == 0) { 
-            print ERROUT1 (" feature\#" . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
+            #print ERRPAOUT (" feature\#" . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
+            print ERRPAOUT (" " . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
           }
           else { 
-            print ERROUT1 "," . $err_pf_idx2code_A[$e];
+            print ERRPAOUT "," . $err_pf_idx2code_A[$e];
           }
           $nerr_printed++;
-          printf ERROUT2 ("%-10s  %3s  %4s  %s%s\n", $accn, ($mft_i+1), $err_pf_idx2code_A[$e], $err_pf_idx2msg_H{$err_pf_idx2code_A[$e]}, 
+          printf ERRPEOUT ("%-10s  %3s  %4s  %s%s\n", $accn, ($mft_i+1), $err_pf_idx2code_A[$e], $err_pf_idx2msg_H{$err_pf_idx2code_A[$e]}, 
                           (defined $cur_err_extra_pf_AA[$mft_i][$e]) ? " [" . $cur_err_extra_pf_AA[$mft_i][$e]. "]" : "");
+          $nlines_per_err_file++;
         }
       }
     }
-    print ERROUT1 "\n";
-    print ERROUT1 "\n";
+    print ERRPAOUT "\n";
+    $nlines_per_accn_file++;
   }
 }
 # print final page (if non-empty)
 if(($do_seqcol) && ($cur_pagesize > 0)) { 
   $npages++;
-  outputSeqAsColumnsPage(\@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages);
+  outputSeqAsColumnsPage($tblout_FH, \@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages);
 }
-close(ERROUT1);
-close(ERROUT2);
+if(($do_seqcol) && ($cur_fail_pagesize > 0)) { 
+  $nfail_pages++;
+  outputSeqAsColumnsPage($fail_tblout_FH, \@out_row_header_A, \@fail_page_out_AA, \@ref_out_A, $nfail_pages);
+}
+close(ERRPAOUT);
+close(ERRPEOUT);
+my $outfile_w = 80;
+printf ("%-*s %s\n", $outfile_w, "# Saved information on $nlines_per_accn_file accessions with at least one error to file.", "[$errors_per_accn_file]");
+printf ("%-*s %s\n", $outfile_w, "# Saved information on $nlines_per_err_file errors to file.", "[$errors_per_err_file]");
 
 my $div_line = "# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n";
-print $div_line;
+print $tblout_FH $div_line;
+print $fail_tblout_FH $div_line;
 
 ##############################################
 # OUTPUT CDS:MAT_PEPTIDE RELATIONSHIPS, IF NEC 
@@ -2020,11 +2094,19 @@ if($do_matpept) {
 # OUTPUT EXPLANATORY TEXT 
 ##########################
 if(! $do_noexp) { 
-    outputColumnHeaderExplanations(\@out_header_exp_A);
-    print "#\n";
-    print $div_line;
-    print "#\n";
+    outputColumnHeaderExplanations($tblout_FH, \@out_header_exp_A);
+    outputColumnHeaderExplanations($fail_tblout_FH, \@out_header_exp_A);
+    print $tblout_FH "#\n";
+    print $tblout_FH $div_line;
+    print $tblout_FH "#\n";
+    print $fail_tblout_FH "#\n";
+    print $fail_tblout_FH $div_line;
+    print $fail_tblout_FH "#\n";
 }
+close($tblout_FH);
+close($fail_tblout_FH);
+printf ("%-*s %s\n", $outfile_w, "# Saved tabular annotation information on all $naccn accessions to file.", "[$tblout_file]");
+printf ("%-*s %s\n", $outfile_w, "# Saved tabular annotation information on $nfail_accn accessions that FAILed to file.", "[$fail_tblout_file]");
 
 ###########################
 # OUTPUT THE GAP INFO FILES
@@ -2064,6 +2146,8 @@ close($gap_perseq_special_FH);
 close($gap_pergap_all_FH);
 close($gap_pergap_not3_FH);
 close($gap_pergap_special_FH);
+
+print ("#[ok]\n");
 
 #############
 # SUBROUTINES
@@ -2992,7 +3076,7 @@ sub storeHit {
 
 # Subroutine: findSeqInFile
 #
-# Synopsis:   Identify all exact occurences of a sequence in a file
+# Synopsis:   Identify all exact occurrences of a sequence in a file
 #             of sequences, and store the coordinates of the
 #             matches in %{$coords_HAR}.
 #
@@ -3028,7 +3112,7 @@ sub findSeqInFile {
 
     # now use Perl's index() function to find all occurrences of $qseq
     my $qseq_posn = index($seq, $qseq);
-    # if $qseq_posn == -1, then no occurences were found. In this case we don't store 
+    # if $qseq_posn == -1, then no occurrences were found. In this case we don't store 
     # any entry in coords_HAR for this $accn. The caller needs to know what to do
     # if it sees no entry for an $accn
 
@@ -5069,7 +5153,7 @@ sub getHeadings {
     $tok5 = sprintf(" %2s", "--");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "number of occurences of origin sequence (input with -oseq) in genome");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "number of occurrences of origin sequence (input with -oseq) in genome");
 
     # column/row #5: 'origin sequence:start'
     # tok1, tok2, tok3 do not change
@@ -5077,7 +5161,7 @@ sub getHeadings {
     $tok5 = sprintf(" %5s", "-----");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "start position of lone occurence of origin sequence (if only 1 exists)");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "start position of lone occurrence of origin sequence (if only 1 exists)");
 
     # column/row #6: 'origin sequence:stop'
     # tok1, tok2, tok3 do not change
@@ -5085,7 +5169,7 @@ sub getHeadings {
     $tok5 = sprintf(" %5s", "-----");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of lone occurence of origin sequence (if only 1 exists)");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of lone occurrence of origin sequence (if only 1 exists)");
 
     # column/row #7: 'origin sequence:offst'
     # tok1, tok2, tok3 do not change
@@ -5101,7 +5185,7 @@ sub getHeadings {
     $tok5 = sprintf(" %2s", "--");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "'P' (for PASS) if there is exactly 1 occurence of the offset, else 'F' for FAIL");
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok2, $tok4, undef, "'P' (for PASS) if there is exactly 1 occurrence of the offset, else 'F' for FAIL");
     getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef); # adds a blank line
     push(@pf_text_A, "P/F character $pf_idx pertains to the origin sequence test");
     $pf_idx++;
@@ -5799,7 +5883,7 @@ sub getActualAnnotations {
 #             $origin_coords_HAR:   ref to origin_coords_HA hash of arrays
 #
 # Returns: 5 values:
-#          $oseq_ct:       number of occurences of origin sequence found
+#          $oseq_ct:       number of occurrences of origin sequence found
 #          $oseq_start:    start position of origin seq if $oseq_ct == 1, else '-'
 #          $oseq_stop:     stop  position of origin seq if $oseq_ct == 1, else '-'
 #          $oseq_offset:   offset position of origin seq if $oseq_ct == 1, else '-'
@@ -5838,7 +5922,8 @@ sub getOseqOutput {
   return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail);
 }
 # Subroutine: outputColumnHeaderExplanations()
-# Args:       $out_header_exp_AR: ref to array of output explanation lines
+# Args:       $FH:                file handle to print to
+#             $out_header_exp_AR: ref to array of output explanation lines
 #
 # Synopsis:   Prints out output lines in @{$out_header_exp_AR} and exits.
 #
@@ -5846,13 +5931,13 @@ sub getOseqOutput {
 
 sub outputColumnHeaderExplanations {
   my $sub_name = "outputColumnHeaderExplanations";
-  my $nargs_exp = 1;
+  my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_header_exp_AR) = @_;
+  my ($FH, $out_header_exp_AR) = @_;
 
   foreach my $line (@{$out_header_exp_AR}) { 
-    print $line;
+    print $FH $line;
   }
 
   return;
@@ -6261,7 +6346,8 @@ sub outputGapInfo {
 #
 # Synopsis:   Output a 'page' of annotation information with sequences as columns
 #
-# Args:       $header_AR:     reference to array of row headers
+# Args:       $FH:            file handle to print to
+#             $header_AR:     reference to array of row headers
 #             $out_AAR:       reference to the 2D array of output tokens for
 #                             current sequences for the page
 #             $ref_out_AR:    reference to array of output tokens for reference
@@ -6271,10 +6357,10 @@ sub outputGapInfo {
 #
 sub outputSeqAsColumnsPage {
   my $sub_name = "outputSeqAsColumnsPage";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($header_AR, $out_AAR, $ref_out_AR, $page_idx) = @_;
+  my ($FH, $header_AR, $out_AAR, $ref_out_AR, $page_idx) = @_;
 
   my $nseq = scalar(@{$out_AAR});
   my $AR; # reference to current array we are printing
@@ -6315,19 +6401,19 @@ sub outputSeqAsColumnsPage {
   $hwidth += 2;
 
   for(my $r = 0; $r < $nrow; $r++) { 
-    printf("%-*s", $hwidth, $header_AR->[$r]);
+    printf $FH ("%-*s", $hwidth, $header_AR->[$r]);
     for(my $i = 0; $i <= $nseq; $i++) { 
       # first column is reference, then come the other seqs
       $AR = ($i == 0) ? $ref_out_AR : \@{$out_AAR->[$i-1]}; 
       $el = $AR->[$r];
       $el =~ s/\s+//g;
-      printf("%*s", $cwidth_A[$i], $AR->[$r]);
+      printf $FH ("%*s", $cwidth_A[$i], $AR->[$r]);
     }
-    printf("\n");
+    printf $FH ("\n");
   }
-  print "#\n";
-  printf("# end of page %d\n", $page_idx);
-  print "#\n";
+  print $FH "#\n";
+  printf $FH ("# end of page %d\n", $page_idx);
+  print $FH "#\n";
   return;
 }
 
