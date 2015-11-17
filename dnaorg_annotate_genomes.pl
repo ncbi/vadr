@@ -1062,13 +1062,21 @@ if((! $do_nocorrect) && (! $do_matpept)) {
       #                                uncomment next line to reinstate that behavior
       #if((! exists $corr_mft_start_AH[$c]{$source_accn}) || ($coords_len > $coords_len_AH[$c]{$source_accn})) { 
       if(! exists $corr_mft_start_AH[$c]{$source_accn}) { 
-        $corr_mft_start_AH[$c]{$source_accn} = $coords_from - 1;
-        if($coords_from != 1) { die "ERROR correcting start from esl-translate defline, you thought this was impossible"; }
-        $corr_mft_stop_AH[$c]{$source_accn}  = -1 * (($source_length - 3) - $coords_to); # source length includes stop codon
+        # CURRENTLY WE NEVER TRY TO CORRECT START POSITIONS! IF WE DID, WE'D USE THE FOLLOWING LINE:
+        #$corr_mft_start_AH[$c]{$source_accn} = $coords_from - 1;
+        # instead we set this value to 0, to enforce that we never correct a start
+        $corr_mft_start_AH[$c]{$source_accn} = 0;
+        $corr_mft_stop_AH[$c]{$source_accn}  = -1 * (($source_length - 3) - $coords_to); # source length includes stop codon IFF final 3 nt are a stop codon
+        #printf("HEYA set stop[$c][$source_accn] to -1 * (%d) - $coords_to = %d\n", ($source_length-3), $corr_mft_stop_AH[$c]{$source_accn});
         if($corr_mft_stop_AH[$c]{$source_accn} > 0) { 
-          $corr_mft_stop_AH[$c]{$source_accn} = 0; # we don't allow moving the stop codon past prediction, yet
+          # a rare case where source length is not a multiple of 3, and esl-translate has translated up to final codon but ignored final non-full codon
+          # if the correction is more than 2, then the previous sentence does NOT describe correctly what has happened, and its
+          # a case I haven't seen/foreseen -- need to investigate, so we die.
+          if($corr_mft_stop_AH[$c]{$source_accn} > 3) { 
+            die sprintf("ERROR corrected stop (%d) greater than 3, you thought this was impossible... %s feature #%d", $corr_mft_stop_AH[$c]{$source_accn}, $source_accn,  $c+1);  
+          }
+          $corr_mft_stop_AH[$c]{$source_accn} = 0;
         }
-        # printf("set stop[$c][$source_accn] to -1 * (%d) - $coords_to = %d\n", ($source_length-3), $corr_mft_stop_AH[$c]{$source_accn});
         $coords_len_AH[$c]{$source_accn} = $coords_len;
       }
     }
@@ -1404,13 +1412,13 @@ if($do_matpept) {
 printf $errpeout_FH ("# \"N/A\" in feature index column (fidx) indicates error pertains to the entire sequence\n");
 printf $errpeout_FH ("#       as opposed to a specific feature.\n");
 printf $errpeout_FH ("#\n");
-printf $errpeout_FH ("%-10s  %3s  %4s  error-message\n", "#accn", "idx", "code");
-printf $errpaout_FH ("#\n");
 my $div_line = "# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n";
 if($do_matpept) { 
   outputCDSMaturePeptideRelationships($errpaout_FH,    \%cds2matpept_HA, $div_line);
   outputCDSMaturePeptideRelationships($errpeout_FH,    \%cds2matpept_HA, $div_line);
 }
+printf $errpeout_FH ("%-10s  %3s  %4s  error-message\n", "#accn", "idx", "code");
+printf $errpaout_FH ("#\n");
 
 #######################
 
