@@ -2862,8 +2862,8 @@ sub runCmscan {
 
   my $opts = "";
   if($do_iglocal) { $opts .= "-g "; }
-  #$opts .= " --cpu 0 --rfam --tblout $tblout_file --verbose --nohmmonly ";
-  # opts: nmdler F1, F2, F2b, F3 and F3b; Infernal --rfam F4, F4b, F5, and F6
+  # $opts .= " --cpu 0 --rfam --tblout $tblout_file --verbose --nohmmonly ";
+  # opts: nhmmer F1, F2, F2b, F3 and F3b; Infernal --rfam F4, F4b, F5, and F6
   $opts .= " --noali --cpu 0 --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 --tblout $tblout_file --verbose --nohmmonly ";
   if(! defined $stdout_file) { $stdout_file = "/dev/null"; }
 
@@ -4738,7 +4738,7 @@ sub matpeptValidateCdsRelationships {
   my $ref_nmp  = scalar(@ref_mp_len_A);
   my $ncds2check = scalar(keys %{$cds2matpept_HAR});
   my $prv_stop = undef; # previous mat_peptide's stop position, 
-  foreach my $cds_idx (keys %{$cds2matpept_HAR}) { 
+  foreach my $cds_idx (sort keys %{$cds2matpept_HAR}) { 
     if(($cds_idx < 0) || ($cds_idx >= $ref_ncds)) { 
       die "ERROR in $sub_name, cds_idx $cds_idx is out of range"; 
     }
@@ -4854,6 +4854,7 @@ sub matpeptCheckCdsRelationships {
   my $start       = undef; # start position of first mat_peptide, remains undef if no prediction for first mat_peptide
   my $stop        = undef; # stop  position of final mat_peptide, remains undef if no prediction for final mat_peptide
   my $length      = undef; # length of full CDS, only defined if we have adjacent predictions for all mat_peptides
+  my $cur_length  = 0;     # current length of all mat_peptides seen thus far, $length is set to this all mat_peptides are adjacent
   my $start_codon = undef; # we'll fetch this when we get to it
   my $stop_codon  = undef; # we'll fetch this when we get to it
   my $nmp2check   = scalar(@{$cds2matpept_AR});
@@ -4868,6 +4869,7 @@ sub matpeptCheckCdsRelationships {
     else { 
       my $cur_start  = $start_HHR->{$mdl1}{$seq_accn};
       my $cur_stop   = $stop_HHR->{$mdl2}{$seq_accn};
+      my $cur_length += abs($cur_stop - $cur_start) + 1;
       if(($strand_HHR->{$mdl1}{$seq_accn} ne "+") || ($strand_HHR->{$mdl2}{$seq_accn} ne "+")) { 
         die "ERROR in $sub_name, strand for mat_peptide $mp_idx is not positive!"; 
       }
@@ -4904,7 +4906,7 @@ sub matpeptCheckCdsRelationships {
   my $pass_fail = "F";
 
   if((scalar(keys %fail_H) == 0) && (scalar(keys %nopred_H) == 0)) { 
-    $length = ($stop > $start) ? ($stop-$start+1) : ($start-$stop+1);
+    $length = $cur_length;
     $pass_fail = "P";
   }
   
@@ -5506,13 +5508,12 @@ sub getHeadings {
 
   # create columns for CDS annotation in mat_peptide mode, if nec
   if($do_matpept) { 
-    my $x = 1;
     $do_explanation = 1;
     my $ncds_for_matpept = scalar(keys %{$cds2matpept_HAR});
-    foreach my $cds_idx (keys %{$cds2matpept_HAR}) { 
+    foreach my $cds_idx (sort keys %{$cds2matpept_HAR}) { 
       $width = 6 + 1 + 6 + 1 + 6; #20
       $tok1     = sprintf("  %*s", $width, "");
-      $tok2     = sprintf("  %*s", $width, "CDS #$x" . monocharacterString(($width-length("CDS #$x")), " "));
+      $tok2     = sprintf("  %*s", $width, "CDS #$cds_idx" . monocharacterString(($width-length("CDS #$cds_idx")), " "));
       my $exp_tok2 = "CDS #<i>";
       $tok3 = sprintf("  %s", monocharacterString($width, "-"));
       $tok4 = sprintf("  %6s", "start");
@@ -6029,7 +6030,7 @@ sub outputCDSMaturePeptideRelationships {
   my $max_cds_idx = 0;
   my $cds_idx = 0;
   # first determine maximum cds idx in hash
-  foreach $cds_idx (keys %{$cds2matpept_HAR}) { 
+  foreach $cds_idx (sort keys %{$cds2matpept_HAR}) { 
     if($cds_idx > $max_cds_idx) { 
       $max_cds_idx = $cds_idx; 
     }
