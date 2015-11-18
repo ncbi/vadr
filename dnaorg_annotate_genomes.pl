@@ -1368,6 +1368,11 @@ my $fail_tblout_FH = undef;
 open($fail_tblout_FH, ">", $fail_tblout_file) || die "ERROR, unable to open $fail_tblout_file for writing";
 my $nfail_accn = 0;
 
+my $err_tblout_file = $out_root . ".error.tbl";
+my $err_tblout_FH = undef;
+open($err_tblout_FH, ">", $err_tblout_file) || die "ERROR, unable to open $err_tblout_file for writing";
+my $nerr_accn = 0;
+
 my $errors_per_accn_file = $out_root . ".peraccn.errors";
 my $errpaout_FH = undef;
 open($errpaout_FH, ">", $errors_per_accn_file) || die "ERROR, unable to open $errors_per_accn_file for writing";
@@ -1442,13 +1447,16 @@ if($do_seqrow) { # output sequences as rows
   for(my $i = 0; $i < 5; $i++) { 
     print $tblout_FH "#";
     print $fail_tblout_FH "#";
+    print $err_tblout_FH "#";
     my $ncols = scalar(@{$out_col_header_AA[$i]});
     for(my $j = 0; $j < $ncols; $j++) { 
       print $tblout_FH $out_col_header_AA[$i][$j];
       print $fail_tblout_FH $out_col_header_AA[$i][$j];
+      print $err_tblout_FH $out_col_header_AA[$i][$j];
     }
     print $tblout_FH "\n";
     print $fail_tblout_FH "\n";
+    print $err_tblout_FH "\n";
   }
 }
 
@@ -1480,9 +1488,16 @@ my $npages = 0;       # number of pages output, only used if $do_seqcol
 my @fail_page_accn_A = (); # [0..$cur_fail_pagesize]2D array, each element is an array of output tokens for one accession
 my @fail_page_out_AA = (); # 2D array, [0..$a..$cur_fail_pagesize-1][0..(ntoks-1)] first dimension is of size $cur_pagesize, 
                            # each element is an array of output tokens for accession $fail_page_accn_A[$a]
-my $cur_fail_pagesize = 0; # current number of accessions we have info for in fail_page_out_AA (size of first dimension in fail-page_out_AA)
+my $cur_fail_pagesize = 0; # current number of accessions we have info for in fail_page_out_AA (size of first dimension in fail_page_out_AA)
                            # when this hits $nseqcol, we dump the output
 my $nfail_pages = 0;       # number of fail pages output, only used if $do_seqcol
+# analagous data structures for 'error-only' version of the file
+my @err_page_accn_A = (); # [0..$cur_err_pagesize]2D array, each element is an array of output tokens for one accession
+my @err_page_out_AA = (); # 2D array, [0..$a..$cur_err_pagesize-1][0..(ntoks-1)] first dimension is of size $cur_pagesize, 
+                          # each element is an array of output tokens for accession $err_page_accn_A[$a]
+my $cur_err_pagesize = 0; # current number of accessions we have info for in err_page_out_AA (size of first dimension in err_page_out_AA)
+                          # when this hits $nseqcol, we dump the output
+my $nerr_pages = 0;       # number of error pages output, only used if $do_seqcol
 
 
 # data structures for reporting error codes
@@ -1993,6 +2008,12 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
       print $fail_tblout_FH "\n";
     }
+    if($cur_nerr > 0) { 
+      foreach my $el (@cur_out_A) { 
+        print $err_tblout_FH $el;
+      }
+      print $err_tblout_FH "\n";
+    } 
   }
   elsif($do_seqcol) { 
     if($a == 0) { 
@@ -2005,6 +2026,10 @@ for(my $a = 0; $a < $naccn; $a++) {
       if($accn_failed) { 
         push(@fail_page_out_AA, [@cur_out_A]);
         $cur_fail_pagesize++;
+      }        
+      if($cur_nerr > 0) { 
+        push(@err_page_out_AA, [@cur_out_A]);
+        $cur_err_pagesize++;
       }        
     }
     if(($cur_pagesize+1) == $nseqcol) { 
@@ -2019,6 +2044,13 @@ for(my $a = 0; $a < $naccn; $a++) {
       outputSeqAsColumnsPage($fail_tblout_FH, \@out_row_header_A, \@fail_page_out_AA, \@ref_out_A, $nfail_pages);
       @fail_page_out_AA = ();
       $cur_fail_pagesize = 0;
+    }
+    if(($cur_nerr > 0) && 
+       (($cur_err_pagesize+1) == $nseqcol)) { 
+      $nerr_pages++;
+      outputSeqAsColumnsPage($err_tblout_FH, \@out_row_header_A, \@err_page_out_AA, \@ref_out_A, $nerr_pages);
+      @err_page_out_AA = ();
+      $cur_err_pagesize = 0;
     }
   }
 
@@ -2070,9 +2102,14 @@ if(($do_seqcol) && ($cur_fail_pagesize > 0)) {
   $nfail_pages++;
   outputSeqAsColumnsPage($fail_tblout_FH, \@out_row_header_A, \@fail_page_out_AA, \@ref_out_A, $nfail_pages);
 }
+if(($do_seqcol) && ($cur_err_pagesize > 0)) { 
+  $nerr_pages++;
+  outputSeqAsColumnsPage($err_tblout_FH, \@out_row_header_A, \@err_page_out_AA, \@ref_out_A, $nerr_pages);
+}
 
 print $tblout_FH $div_line;
 print $fail_tblout_FH $div_line;
+print $err_tblout_FH $div_line;
 
 ##############################################
 # OUTPUT CDS:MAT_PEPTIDE RELATIONSHIPS, IF NEC 
@@ -2080,6 +2117,7 @@ print $fail_tblout_FH $div_line;
 if($do_matpept) { 
   outputCDSMaturePeptideRelationships($tblout_FH,      \%cds2matpept_HA, $div_line);
   outputCDSMaturePeptideRelationships($fail_tblout_FH, \%cds2matpept_HA, $div_line);
+  outputCDSMaturePeptideRelationships($err_tblout_FH,  \%cds2matpept_HA, $div_line);
 }
 
 ##########################
@@ -2088,19 +2126,25 @@ if($do_matpept) {
 if(! $do_noexp) { 
     outputColumnHeaderExplanations($tblout_FH, \@out_header_exp_A);
     outputColumnHeaderExplanations($fail_tblout_FH, \@out_header_exp_A);
+    outputColumnHeaderExplanations($err_tblout_FH, \@out_header_exp_A);
     print $tblout_FH "#\n";
     print $tblout_FH $div_line;
     print $tblout_FH "#\n";
     print $fail_tblout_FH "#\n";
     print $fail_tblout_FH $div_line;
     print $fail_tblout_FH "#\n";
+    print $err_tblout_FH "#\n";
+    print $err_tblout_FH $div_line;
+    print $err_tblout_FH "#\n";
 }
 
 # CLOSE TABULAR OUTPUT FILES
-my $outfile_w = 80;
+my $outfile_w = 85;
 close($tblout_FH);
 close($fail_tblout_FH);
+close($err_tblout_FH);
 printf ("%-*s %s\n", $outfile_w, "# Saved tabular annotation information on all $naccn accessions to file.", "[$tblout_file]");
+printf ("%-*s %s\n", $outfile_w, "# Saved tabular annotation information on $nlines_per_accn_file accessions with >= 1 error to file.", "[$err_tblout_file]");
 printf ("%-*s %s\n", $outfile_w, "# Saved tabular annotation information on $nfail_accn accessions that FAILed to file.", "[$fail_tblout_file]");
 
 # CLOSE ERROR FILES
