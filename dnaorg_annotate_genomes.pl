@@ -2192,6 +2192,11 @@ close($gap_pergap_all_FH);
 close($gap_pergap_not3_FH);
 close($gap_pergap_special_FH);
 
+($seconds, $microseconds) = gettimeofday();
+my $end_secs = ($seconds + ($microseconds / 1000000.));
+printf("#\n");
+printf("# Total time: %.1f seconds\n", ($end_secs - $start_secs));
+
 print ("#[ok]\n");
 
 #############
