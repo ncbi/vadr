@@ -4374,7 +4374,7 @@ sub parseEslTranslateOutput {
 
   open(IN,  "<", $esl_translate_output) || die "ERROR unable to open $esl_translate_output for reading";
   open(OUT, ">", $new_output)           || die "ERROR unable to open $new_output for writing";
-
+  
   my ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame);
   my $source_length = 0; # length of original feature sequence, including stop
   my $coords_length = 0; # length of original feature sequence that was translated, not included stop codon
@@ -4742,14 +4742,34 @@ sub matpeptValidateCdsRelationships {
     if(($cds_idx < 0) || ($cds_idx >= $ref_ncds)) { 
       die "ERROR in $sub_name, cds_idx $cds_idx is out of range"; 
     }
-    my @cds_starts_A = ();
-    my @cds_stops_A  = ();
-    my $cds_nexons   = 0;
-    startStopsFromCoords($ref_cds_coords_A[$cds_idx], undef, undef, \@cds_starts_A, \@cds_stops_A, undef, \$cds_nexons);
+    my @cds_starts_A  = ();
+    my @cds_stops_A   = ();
+    my @cds_strands_A = ();
+    my $cds_nexons    = 0;
+    startStopsFromCoords($ref_cds_coords_A[$cds_idx], undef, undef, \@cds_starts_A, \@cds_stops_A, \@cds_strands_A, \$cds_nexons);
+    my $cds_start = $cds_starts_A[0];
+    my $cds_stop  = $cds_stops_A[$cds_nexons-1];
     if($cds_nexons != 1) { 
-      die "ERROR in $sub_name, multiple exon CDS broken up to make mat_peptides, code for this does not yet exist.";
+      if($cds_nexons != 2) { 
+        die "ERROR in $sub_name, triple or more exon CDS broken up to make mat_peptides, code for this does not yet exist.";
+      }
+      if($cds_strands_A[0] ne $cds_strands_A[1]) { 
+        die "ERROR in $sub_name, double exon CDS with each exon on different strands to make mat_peptides, code for this does not yet exist.";
+      }
+      # two exon CDS, if any introns exist (any nt is not included between $cds_start..$cds_stop) then we can't handle it
+      # example of a multi-'exon' CDS that we CAN handle is West Nile Virus CDS #2: NC_001563.2 join(97..3540,3540..3671)
+      if($cds_strands_A[0] eq "+") { 
+        if(($cds_starts_A[1] - $cds_stops_A[0] - 1) > 0) { 
+          die "ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.";
+        }
+      }
+      else { 
+        if(($cds_stops_A[0] - $cds_starts_A[1] - 1) > 0) { 
+          die "ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.";
+        }
+      }
     }
-    
+
     # look at all mat_peptides that are supposed to comprise this CDS
     # and make sure that they do
     my $nmp2check = scalar(@{$cds2matpept_HAR->{$cds_idx}});
@@ -4763,8 +4783,8 @@ sub matpeptValidateCdsRelationships {
       my $mp_nexons   = 0;
       startStopsFromCoords($ref_mp_coords_A[$mp_idx], undef, undef, \@mp_starts_A, \@mp_stops_A, undef, \$mp_nexons);
       if($x == 0) { # verify start matches with CDS start
-        if($mp_starts_A[0] != $cds_starts_A[0]) { 
-          die "ERROR in $sub_name, for cds_idx $cds_idx start of first mat_peptide doesn't match CDS start ($mp_starts_A[0] != $cds_starts_A[0])"; 
+        if($mp_starts_A[0] != $cds_start) { 
+          die "ERROR in $sub_name, for cds_idx $cds_idx start of first mat_peptide doesn't match CDS start ($mp_starts_A[0] != $cds_start)"; 
         }
       }
       if($x > 0) { # check that this mat_peptide is adjacent to previous one
@@ -4773,8 +4793,8 @@ sub matpeptValidateCdsRelationships {
         }
       }
       if($x == ($nmp2check-1)) { # verify stop matches with CDS stop-3
-        if(($mp_stops_A[($mp_nexons-1)]+3) != $cds_stops_A[($cds_nexons-1)]) { 
-          die sprintf("ERROR in $sub_name, for cds_idx $cds_idx stop of final mat_peptide doesn't match CDS stop (%d != %d)", $mp_stops_A[($mp_nexons-1)], $cds_stops_A[($cds_nexons-1)]);
+        if(($mp_stops_A[($mp_nexons-1)]+3) != $cds_stop) { 
+          die sprintf("ERROR in $sub_name, for cds_idx $cds_idx stop of final mat_peptide doesn't match CDS stop (%d != %d)", $mp_stops_A[($mp_nexons-1)], $cds_stop);
         }
       }
       $prv_stop = $mp_stops_A[($mp_nexons-1)];
