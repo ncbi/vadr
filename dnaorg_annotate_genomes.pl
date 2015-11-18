@@ -1653,8 +1653,8 @@ for(my $a = 0; $a < $naccn; $a++) {
 
       my $start_corrected_exon = (exists $did_corr_exon_start_AH[$h]{$accn}) ? 1 : 0;
       my $stop_corrected_exon  = (exists $did_corr_exon_stop_AH[$h]{$accn})  ? 1 : 0;
-      my $start_corrected_mft = 0; # possibly redefined below
-      my $stop_corrected_mft  = 0; # possibly redefined below
+      my $start_corrected_mft  = 0; # possibly redefined below
+      my $stop_corrected_mft   = 0; # possibly redefined below
       if((! $do_nocorrect) && (! $do_matpept)) { 
         $start_corrected_mft  = ($corr_mft_start_AH[$mdl2mft_map_A[$h]]{$accn} != 0) ? 1 : 0;
         $stop_corrected_mft   = ($corr_mft_stop_AH[$mdl2mft_map_A[$h]]{$accn}  != 0) ? 1 : 0;
@@ -1687,8 +1687,8 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
 
       my $trc_errmsg = sprintf("homology search predicted $p_start_HH{$model}{$seq_accn}..$p_stop_HH{$model}{$seq_accn} revised to $start..$stop (stop shifted %d nt)", abs($stop-$p_stop_HH{$model}{$seq_accn}));
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $trc_errmsg, \%err_pf_code2idx_H, ($stop_corrected_exon), \$cur_nerr);
-      if($stop_corrected_exon) { 
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $trc_errmsg, \%err_pf_code2idx_H, ($stop_corrected_exon || $stop_corrected_mft), \$cur_nerr);
+      if($stop_corrected_exon || $stop_corrected_mft) { 
         $hang3 = "c"; 
       }
 
