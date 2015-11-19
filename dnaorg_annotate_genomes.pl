@@ -1005,22 +1005,14 @@ my $source_accn;   # name of CDS/mat_peptide sequence that was translated
 my $source_length; # length of CDS/mat_peptide sequence that was translated
 my $coords_from;   # start nt coordinate of current translation
 my $coords_to;     # stop nt coordinate of current translation
-my @corr_mft_start_AH = ();  # [0..$i..nmft-1], each element is a hash with keys $key as sequence accessions and values 
-                             # are number of nucleotides that the prediction of the start coordinate should be corrected
-                             # based on an esl-translate translation of the predicted CDS/mat_peptide sequence, values can be negative
-                             # or positive
 my @corr_mft_stop_AH = ();   # [0..$i..nmft-1], each element is a hash with keys $key as sequence accessions and values 
                              # are number of nucleotides that the prediction of the stop coordinate should be corrected
                              # based on an esl-translate translation of the predicted CDS/mat_peptide sequence, values can be negative
                              # or positive
-my @coords_len_AH = ();  # [0..$i..nmft-1], each element is a hash with keys $key as sequence accessions and values 
-                         # are lengths of translated protein sequences (in nucleotides corresponding to values in $corr_mft_start_AH
-                         # and $corr_mft_stop_AH
 my @did_corr_exon_start_AH = ();  # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
                                   # are '1' if this exon's start position was corrected
 my @did_corr_exon_stop_AH = ();   # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
                                   # are '1' if this exon's stop position was corrected
-my %c_start_HH = ();        # corrected start positions of hits, start with a copy of p_start_HH
 my %c_stop_HH  = ();        # corrected stop positions of hits,  start with a copy of p_stop_HH
 my %corr_fafile_H = ();     # hash of names of fasta files for corrected exon sequences, keys: model name from @mdl_A, value: name of file
 my @corr_mft_fafile_A = (); # array of corrected CDS/mat_peptide sequence files, filled below
@@ -1035,76 +1027,72 @@ if((! $do_nocorrect) && (! $do_matpept)) {
     # determine first and final model for this feature
 
     my $cur_fafile = $pred_mft_fafile_A[$c];
+
     # translate into AA sequences
-    my $tmp_esl_translate_output = $cur_fafile;
+    my $tmp_esl_epn_translate_output = $cur_fafile;
     if($do_matpept) { 
-      $tmp_esl_translate_output    =~ s/\.mp/\.esl-translate/;
+      $tmp_esl_epn_translate_output    =~ s/\.mp/\.esl-epn-translate/;
     }
     else { 
-      $tmp_esl_translate_output    =~ s/\.cds/\.esl-translate/;
+      $tmp_esl_epn_translate_output    =~ s/\.cds/\.esl-epn-translate/;
     }
-    # --watson specifies only translate top strand (not reverse strand)
-    # -m specifies only AUG allowed as start
-    $cmd = $esl_translate . " --watson -m $cur_fafile | grep ^\\> | grep \"frame=1\" > $tmp_esl_translate_output";
+    $tmp_esl_epn_translate_output    =~ s/\.fa$//;
+
+    $cmd = $esl_epn_translate . " -firststop $cur_fafile > $tmp_esl_epn_translate_output";
     runCommand($cmd, 0);
 
-    # now based on the esl-translate deflines, determine if there are any internal starts or stops
-    # note that we've grep'ed for only frame=1 translations, and we've specified only top strand with
-    # --watson, so we should only in-frame start and stops (with frame equal to the first position of the 
-    # prediction)
-    open(IN, $tmp_esl_translate_output) || die "ERROR unable to open $tmp_esl_translate_output for reading";
+    # parse esl-epn-translate output
+    open(IN, $tmp_esl_epn_translate_output) || die "ERROR unable to open $tmp_esl_epn_translate_output for reading";
     while(my $line = <IN>) { 
-      parseEslTranslateDefline($line, \$coords_from, \$coords_to, \$source_accn, undef, \$source_length);
-      # printf("parseEslTranslateDefline returned coords_from: $coords_from coords_to: $coords_to source_accn: $source_accn source_len: $source_length\n");
-
-      # keep the first translated stretch, even if it's not the longest
-      my $coords_len = ($coords_to - $coords_from + 1);
-
-      # EPN, Tue Nov 10 16:09:28 2015, old behavior was to keep the longest translated stretch
-      #                                uncomment next line to reinstate that behavior
-      #if((! exists $corr_mft_start_AH[$c]{$source_accn}) || ($coords_len > $coords_len_AH[$c]{$source_accn})) { 
-      if(! exists $corr_mft_start_AH[$c]{$source_accn}) { 
-        # CURRENTLY WE NEVER TRY TO CORRECT START POSITIONS! IF WE DID, WE'D USE THE FOLLOWING LINE:
-        #$corr_mft_start_AH[$c]{$source_accn} = $coords_from - 1;
-        # instead we set this value to 0, to enforce that we never correct a start
-        $corr_mft_start_AH[$c]{$source_accn} = 0;
-        $corr_mft_stop_AH[$c]{$source_accn}  = -1 * (($source_length - 3) - $coords_to); # source length includes stop codon IFF final 3 nt are a stop codon
-        #printf("HEYA set stop[$c][$source_accn] to -1 * (%d) - $coords_to = %d\n", ($source_length-3), $corr_mft_stop_AH[$c]{$source_accn});
-        if($corr_mft_stop_AH[$c]{$source_accn} > 0) { 
-          # a rare case where source length is not a multiple of 3, and esl-translate has translated up to final codon but ignored final non-full codon
-          # if the correction is more than 2, then the previous sentence does NOT describe correctly what has happened, and its
-          # a case I haven't seen/foreseen -- need to investigate, so we die.
-          if($corr_mft_stop_AH[$c]{$source_accn} > 3) { 
-            die sprintf("ERROR corrected stop (%d) greater than 3, you thought this was impossible... %s feature #%d", $corr_mft_stop_AH[$c]{$source_accn}, $source_accn,  $c+1);  
+      # example line
+      # HQ693418/1-306 304
+      if($line =~ /^(\S+)\/(\S+)\s+(\d+)/) { 
+        my ($source_accn, $coords, $first_stop_first_posn) = ($1, $2, $3, $4);
+        # determine what first_stop_first_posn would be if the final codon is the first in-frame stop
+        my @start_stop_A = split(",", $coords);
+        my $cds_len = 0;
+        foreach my $start_stop (@start_stop_A) { 
+          if($start_stop =~ /(\-?\d+)\-(\-?\d+)/) { 
+            $cds_len += abs($1 - $2) + 1;
+            my ($tmp_start, $tmp_stop) = ($1, $2);
+            if(($tmp_start < 0 && $tmp_stop > 0) || ($tmp_start > 0 && $tmp_stop < 0)) { $cds_len--; } # correct for off-by-one error due to fact that posn 0 is not a nt
           }
+          else { 
+            die "ERROR unable to parse coordinates ($coords) read from esl-epn-translate.pl output";
+          }
+        }
+        my $final_codon_first_posn = $cds_len - 2;
+        if(($first_stop_first_posn == -1) || ($first_stop_first_posn == $final_codon_first_posn)) { 
           $corr_mft_stop_AH[$c]{$source_accn} = 0;
         }
-        $coords_len_AH[$c]{$source_accn} = $coords_len;
+        else { 
+          $corr_mft_stop_AH[$c]{$source_accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
+          if($corr_mft_stop_AH[$c]{$source_accn} > 0) { 
+            die sprintf("ERROR corrected stop greater than 0, you thought this was impossible... %s feature #%d", $corr_mft_stop_AH[$c]{$source_accn}, $source_accn,  $c+1);  
+          }
+        }
+      }
+      else { 
+        die "ERROR, unable to parse esl-epn-translate.pl output line: $line\n";
       }
     }
     close(IN);
   }
 
-  # now we have all corrections, go back and create c_start, c_stop data structures based 
-  # on p_start, p_stop data structures and these corrections, this is tricky for multi-exon
+  # now we have all stop corrections, go back and create c_stop data structures based 
+  # on p_stop data structures and these corrections, this is tricky for multi-exon
   # CDS because we have to make sure we correct the proper exon
   for(my $a = 0; $a < $naccn; $a++) { 
     my $accn     = $accn_A[$a];
     my $seq_accn = $seq_accn_A[$a];
     my $mdl; # name of a model
     for(my $c = 0; $c < $ref_nmft; $c++) { 
-      if(! exists $corr_mft_start_AH[$c]{$accn}) { 
-        #die sprintf("ERROR no corrected start position value for main feature %d sequence $accn", $c+1); 
-        $corr_mft_start_AH[$c]{$accn} = 0;
-      }
       if(! exists $corr_mft_stop_AH[$c]{$accn}) { 
         #die sprintf("ERROR no corrected stop position value for main feature %d sequence $accn", $c+1); 
         $corr_mft_stop_AH[$c]{$accn} = 0;
       }
-      my $corr_start = $corr_mft_start_AH[$c]{$accn};
       my $corr_stop  = $corr_mft_stop_AH[$c]{$accn};
       # sanity check
-      if($corr_start < 0) { die sprintf("ERROR corrected start ($corr_start) less than 0, can't deal with that yet %s feature #%d", $accn,  $c+1);  }
       if($corr_stop  > 0) { die sprintf("ERROR corrected stop ($corr_stop) greater than 0, can't deal with that yet %s feature #%d", $accn,  $c+1);  }
 
       my $first_mdl = $mft2first_mdl_A[$c];
@@ -1116,11 +1104,9 @@ if((! $do_nocorrect) && (! $do_matpept)) {
         my $mdl = $mdl_A[$first_mdl];
         if(exists $p_strand_HH{$mdl}{$seq_accn}) { 
           if($p_strand_HH{$mdl}{$seq_accn} eq "+") { 
-            $c_start_HH{$mdl}{$seq_accn} = $p_start_HH{$mdl}{$seq_accn} + $corr_start; # note that $corr_start may be 0
             $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  + $corr_stop;  # note that $corr_stop  may be 0
           }
           else { 
-            $c_start_HH{$mdl}{$seq_accn} = $p_start_HH{$mdl}{$seq_accn} - $corr_start; # note that $corr_start may be 0
             $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  - $corr_stop;  # note that $corr_stop  may be 0
           }
         }
@@ -1143,41 +1129,11 @@ if((! $do_nocorrect) && (! $do_matpept)) {
           #            or start, and NOT any others. For example if we have a 2-exon CDS and our correction puts the stop
           #            in the first exon, we will not change the annotation of the second exon.
           $mdl = $mdl_A[$h];
-          $c_start_HH{$mdl}{$seq_accn} = $p_start_HH{$mdl}{$seq_accn};
           $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn};
         }        
         
         my $len_so_far; # total length of all exons so far
         my $found_exon; # set to '1' when we find the correct exon to put the corrected start in
-        if($corr_start > 0) { # determine which exon the corrected start is in, and correct it:
-          # corrected a start position
-          die "ERROR, start position corrected (1), you thought this was impossible!";
-          $len_so_far = 0; 
-          $found_exon = 0; 
-          for(my $h = $first_mdl; $h <= $final_mdl; $h++) {
-            if(! $found_exon) { 
-              my $hp = $h - $first_mdl;
-              $mdl = $mdl_A[$h];
-              $len_so_far += $exon_len_A[$hp];
-              if($corr_start <= $len_so_far) { 
-                if($p_strand_HH{$mdl}{$seq_accn} eq "+") { 
-                  $c_start_HH{$mdl}{$seq_accn} += ($corr_start - ($len_so_far - $exon_len_A[$hp]));
-                }
-                else { 
-                  $c_start_HH{$mdl}{$seq_accn} -= ($corr_start - ($len_so_far - $exon_len_A[$hp]));
-                }
-                $found_exon = 1;
-                $did_corr_exon_start_AH[$h]{$accn} = 1;
-                #printf("corr_start: $corr_start\n");
-                #printf("len_so_far: $len_so_far\n");
-                #printf("exon_len_A[$hp]: $exon_len_A[$hp]\n");
-                #printf("p_start_HH{$mdl}{$seq_accn} exon %d: $p_start_HH{$mdl}{$seq_accn}\n", ($h-$first_mdl+1));
-                #printf("c_start_HH{$mdl}{$seq_accn} exon %d: $c_start_HH{$mdl}{$seq_accn}\n", ($h-$first_mdl+1));
-              }
-            }
-          }
-          if(! $found_exon) { die sprintf("ERROR unable to find proper exon for corrected start for %s: %d, accn: $accn\n", ($do_matpept) ? "mat_peptide" : "CDS", $c+1); }
-        } # end of 'if($corr_start > 0)'
         
         if($corr_stop < 0) { # determine which exon the corrected stop is in, and correct it:
           $len_so_far = 0; 
@@ -1214,7 +1170,7 @@ if((! $do_nocorrect) && (! $do_matpept)) {
   printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
   # fetch corrected hits into new files
-  fetchHits($sqfile, $do_skipaln, "corrected", \@mdl_A, \@seq_accn_A, \%totlen_H, \%c_start_HH, \%c_stop_HH, \%p_strand_HH, $out_root, \%corr_fafile_H);
+  fetchHits($sqfile, $do_skipaln, "corrected", \@mdl_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%c_stop_HH, \%p_strand_HH, $out_root, \%corr_fafile_H);
 
   # combine multi-exon sequences into CDS:
   wrapperCombineExonsIntoCDS($nmdl, $dir, "corrected", \@mdl_A, \@mdl2mft_map_A, \@mdl_is_first_A, \@mdl_is_final_A, \@corr_mft_fafile_A);
@@ -1297,7 +1253,7 @@ if((! $do_skipaln) && (! $do_matpept)) {
     my $mft_i   = $mdl2mft_map_A[$h];
     my $exon_i  = $mft2exon_map_A[$h];
     if(! exists $p_start_HH{$model}{$ref_seq_accn}) { die "ERROR no prediction in reference for feature $mft_i exon $exon_i.\n"; }
-    my $start  = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$ref_seq_accn} : $c_start_HH{$model}{$ref_seq_accn};
+    my $start  = $p_start_HH{$model}{$ref_seq_accn};
     my $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$ref_seq_accn}  : $c_stop_HH{$model}{$ref_seq_accn};
     
     my $ref_match = checkStrictBoundaryMatch(\@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, $mft_i, $exon_i, $start, $stop, ($do_nodup ? undef : $ref_totlen));
@@ -1571,7 +1527,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $model  = $mdl_A[$h];
     my ($start, $stop, $strand);
     if(exists $p_start_HH{$model}{$seq_accn}) { 
-      $start  = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$seq_accn} : $c_start_HH{$model}{$seq_accn};
+      $start  = $p_start_HH{$model}{$seq_accn};
       $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
       $strand = $p_strand_HH{$model}{$seq_accn};
     }
@@ -1653,15 +1609,12 @@ for(my $a = 0; $a < $naccn; $a++) {
     if(exists $p_start_HH{$model}{$seq_accn}) { 
       setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nop", undef, \%err_pf_code2idx_H, 0, \$cur_nerr);
 
-      my $start_corrected_exon = (exists $did_corr_exon_start_AH[$h]{$accn}) ? 1 : 0;
       my $stop_corrected_exon  = (exists $did_corr_exon_stop_AH[$h]{$accn})  ? 1 : 0;
-      my $start_corrected_mft  = 0; # possibly redefined below
       my $stop_corrected_mft   = 0; # possibly redefined below
       if((! $do_nocorrect) && (! $do_matpept)) { 
-        $start_corrected_mft  = ($corr_mft_start_AH[$mdl2mft_map_A[$h]]{$accn} != 0) ? 1 : 0;
         $stop_corrected_mft   = ($corr_mft_stop_AH[$mdl2mft_map_A[$h]]{$accn}  != 0) ? 1 : 0;
       }
-      my $start    = ($do_nocorrect || $do_matpept) ? $p_start_HH{$model}{$seq_accn} : $c_start_HH{$model}{$seq_accn};
+      my $start    = $p_start_HH{$model}{$seq_accn}; # we never correct a start
       my $stop     = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
       my $hangover = $p_hangover_HH{$model}{$seq_accn};
 
@@ -1673,10 +1626,6 @@ for(my $a = 0; $a < $naccn; $a++) {
       else { 
         $at_least_one_fail = 1;
         if($hang5 >  9) { $hang5 = "+"; } 
-      }
-      if($start_corrected_exon) { 
-        die "ERROR, start position corrected (2), you thought this was impossible!";
-        $hang5 = "c"; 
       }
 
       setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd3", $hang3 . "nt from 3' end", \%err_pf_code2idx_H, ($hang3 != 0), \$cur_nerr);
