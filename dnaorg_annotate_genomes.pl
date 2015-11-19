@@ -5452,9 +5452,10 @@ sub getHeadings {
     $do_explanation = 1;
     my $ncds_for_matpept = scalar(keys %{$cds2matpept_HAR});
     foreach my $cds_idx (sort keys %{$cds2matpept_HAR}) { 
+      my $cds_idx2print = $cds_idx+1;
       $width = 6 + 1 + 6 + 1 + 6; #20
       $tok1     = sprintf("  %*s", $width, "");
-      $tok2     = sprintf("  %*s", $width, "CDS #$cds_idx" . monocharacterString(($width-length("CDS #$cds_idx")), " "));
+      $tok2     = sprintf("  %*s", $width, "CDS #$cds_idx2print" . monocharacterString(($width-length("CDS #$cds_idx2print")), " "));
       my $exp_tok2 = "CDS #<i>";
       $tok3 = sprintf("  %s", monocharacterString($width, "-"));
       $tok4 = sprintf("  %6s", "start");
