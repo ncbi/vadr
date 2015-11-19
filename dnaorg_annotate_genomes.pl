@@ -13,6 +13,8 @@ my $idfetch        = "/netopt/ncbi_tools64/bin/idfetch";
 my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 my $esl_ssplit     = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
 my $esl_translate  = "/home/nawrocke/src/wd-easel/miniapps/esl-translate";
+my $esl_reformat   = "esl-reformat";
+my $esl_epn_translate  = "/home/nawrocke/notebook/15_1118_dnaorg_annotate_genomes_translation/git-esl-epn-translate/esl-epn-translate.pl";
 my $hmmer_exec_dir = "/home/nawrocke/bin/";
 my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 
@@ -1232,45 +1234,30 @@ my @truncprot_AH   = (); # [0..$i..nmft-1], each element is a hash with keys $ke
                          # always be '1', more than '1' is an error, and we never create a value of '0'.
 my @aa_full_files_A = (); # array of protein sequence files we are about to create
 if(! $do_matpept) { 
+  ($seconds, $microseconds) = gettimeofday();
+  $start_time = ($seconds + ($microseconds / 1000000.));
+  printf("%-65s ... ", "# Translating coding sequences into proteins/peptides ");
   for(my $c = 0; $c < $ref_nmft; $c++) { 
     my $cur_fafile = ($do_nocorrect || $do_matpept) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
-    # translate into AA sequences
-    my $tmp_aa_fafile   = $cur_fafile;
     my $aa_full_fafile  = $cur_fafile;
-    my $aa_trunc_fafile = $cur_fafile;
     if($do_matpept) { 
-      $tmp_aa_fafile   =~ s/\.mp/\.aa.tmp/;
       $aa_full_fafile  =~ s/\.mp/\.aa.full/;
     }
     else { 
-      $tmp_aa_fafile   =~ s/\.cds/\.aa.tmp/;
       $aa_full_fafile  =~ s/\.cds/\.aa.full/;
     }
-    # $aa_trunc_fafile    =~ s/\.mft/\.aa.trunc/;
-    
-    # --watson specifies only translate top strand (not reverse strand)
-    # -m specifies only AUG allowed as start
-    $cmd = $esl_translate . " --watson -m $cur_fafile > $tmp_aa_fafile";
-#    print $cmd . "\n";
-    
+    # translate into AA sequences
+    $cmd = $esl_epn_translate . " -endatstop -nostop -onlyfull $cur_fafile | $esl_reformat fasta - > $aa_full_fafile";
+
     runCommand($cmd, 0);
-    
-    # now we have to parse that file to only keep the full length protein seqs
-    # we also keep track of which sequence accessions we have full length proteins for
-    my $prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
-    my $prot_must_stop_at_posn_L  = 1; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
-    parseEslTranslateOutput($tmp_aa_fafile, $aa_full_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$fullprot_AH[$c]}, \$nfullprot_A[$c]);
-    
+
+#    printf("cmd: $cmd\n");
+
     push(@aa_full_files_A, $aa_full_fafile);
-    
-    #printf("CDS: %d nfullprot: %d\n", ($c+1), $nfullprot_A[$c]);
-    
-    ## now fetch any protein sequences that start at position 1 but do not end at the final predicted position
-    #$prot_must_start_at_posn_1 = 1; # we only want to fetch sequences that start at position 1
-    #$prot_must_stop_at_posn_L  = 0; # we only want to fetch sequences that stop  at position L (final position, that is a valid stop exists there)
-    #parseEslTranslateOutput($tmp_aa_fafile, $aa_trunc_fafile, $prot_must_start_at_posn_1, $prot_must_stop_at_posn_L, \%{$truncprot_AH[$c]}, \$ntruncprot_A[$c]);
-    #printf("CDS: %d ntruncprot: %d\n", ($c+1), $ntruncprot_A[$c]);
   }
+  ($seconds, $microseconds) = gettimeofday();
+  $stop_time = ($seconds + ($microseconds / 1000000.));
+  printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 }
 
 #################################
