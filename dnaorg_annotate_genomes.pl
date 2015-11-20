@@ -12,7 +12,6 @@ use Bio::Easel::SqFile;
 my $idfetch        = "/netopt/ncbi_tools64/bin/idfetch";
 my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 my $esl_ssplit     = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
-my $esl_translate  = "/home/nawrocke/src/wd-easel/miniapps/esl-translate";
 my $esl_reformat   = "esl-reformat";
 my $esl_epn_translate  = "/home/nawrocke/notebook/15_1118_dnaorg_annotate_genomes_translation/git-esl-epn-translate/esl-epn-translate.pl";
 my $hmmer_exec_dir = "/home/nawrocke/bin/";
@@ -93,7 +92,7 @@ my $cmpress         = $inf_exec_dir . "cmpress";
 my $cmscan          = $inf_exec_dir . "cmscan";
 my $cmalign         = $inf_exec_dir . "cmalign";
 
-foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmfetch, $cmpress, $cmscan, $esl_translate, $esl_ssplit) { 
+foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmfetch, $cmpress, $cmscan, $esl_epn_translate, $esl_ssplit) { 
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
@@ -4276,162 +4275,6 @@ sub combineExonsIntoCDS {
 
   close(OUT);
 
-  return;
-}
-
-# Subroutine: parseEslTranslateOutput()
-#
-# Synopsis:   Given an output file from EslTranslateOutput(), keep only
-#             full length translations. 
-#
-# Args:       $esl_translate_output: output fasta file from esl-translate
-#             $new_output:           new output file to create with subset
-#                                    of sequences from $esl_translate_output
-#             $prot_must_start_at_1: '1' if translated protein sequence must start 
-#                                    at position 1 of the feature sequence
-#             $prot_must_stop_at_L:  'L' if translated protein sequence must stop
-#                                    at final position of the feature sequence
-#             $prot_HR:              ref to hash to fill here, keys are seq accessions
-#                                    values are number of protein sequences fetch for that
-#                                    accession, any value >1 is an error, and we'll die
-#             $nprot_R:              ref to scalar to fill with number of accessions
-#                                    for which we fetched a full length protein
-#
-# Returns:    void
-# Dies:       if something unexpected happens when reading the exon fasta files
-#
-sub parseEslTranslateOutput {
-  my $sub_name = "parseEslTranslateOutput";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my $nprot = 0; # number of full length proteins kept
-
-  my ($esl_translate_output, $new_output, $prot_must_start_at_1, $prot_must_stop_at_L, $prot_HR, $nprot_R) = @_;
-
-  if(! $prot_must_start_at_1) { die "ERROR in $sub_name, prot_must_start_at_1 is FALSE, you haven't implemented this case yet..."; }
-
-#  print("HEYA in $sub_name $esl_translate_output to $new_output\n");
-
-  open(IN,  "<", $esl_translate_output) || die "ERROR unable to open $esl_translate_output for reading";
-  open(OUT, ">", $new_output)           || die "ERROR unable to open $new_output for writing";
-  
-  my ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame);
-  my $source_length = 0; # length of original feature sequence, including stop
-  my $coords_length = 0; # length of original feature sequence that was translated, not included stop codon
-  my $stop_correction = 3; # we expect a stop 3 that isn't translation 3nt after the final aa
-  my $print_flag = 0;
-  my $line = <IN>;
-  while(defined $line) { 
-    if($line =~ m/^\>/) { 
-      parseEslTranslateDefline($line, \$coords_from, \$coords_to, \$source_name, \$source_coords, \$source_length);
-
-      $coords_length = ($coords_to - $coords_from) + 1;
-      # now determine if this protein passes or not
-      $print_flag = 0; # by default it fails, but we redefine this below if it passes
-#      printf("prot_must_start_at_1: $prot_must_start_at_1\n");
-#      printf("prot_must_stop_at_L:  $prot_must_stop_at_L\n");
-#      printf("coords_from:          $coords_from\n");
-#      printf("coords_to:            $coords_to\n");
-#      printf("source_length:        $source_length\n");
-      if($prot_must_start_at_1 && $prot_must_stop_at_L && 
-         ($coords_from == 1) && ($coords_to == ($source_length - $stop_correction))) { 
-        # we're looking only for full length proteins, and this is one
-        $print_flag = 1;
-      }
-      if($prot_must_start_at_1 && (! $prot_must_stop_at_L) && 
-         ($coords_from == 1) && $coords_to != ($source_length - $stop_correction)) { 
-        # we're NOT looking for full length proteins, but rather for proteins
-        # that start at the beginning of the feature but do NOT end at the end of the 
-        # feature, they may be shorter or longer
-        $print_flag = 1;
-      }
-      
-      if($print_flag) { # print out new sequence name
-        # print OUT $line; 
-        printf OUT (">%s/%s-translated\n", $source_name, $source_coords);
-#        printf (">%s/%s-translated\n", $source_name, $source_coords);
-        $nprot++;
-        $prot_HR->{$source_name}++;
-        if($prot_HR->{$source_name} > 1) { 
-          die "ERROR in $sub_name, found more than 1 full length protein translation for $source_name"; 
-        }
-      }
-      $line = <IN>;
-      while(defined $line && $line !~ m/^\>/) { 
-        if($print_flag) { print OUT $line; }
-#        if($print_flag) { print OUT $line; print $line; }
-        $line = <IN>;
-      }
-    }
-    else { 
-      die "ERROR in $sub_name, expected header line but read line: $line";
-    }
-  }
-  close(OUT);
-
-  $$nprot_R = $nprot;
-
-#  print("HEYA leaving $sub_name $esl_translate_output to $new_output\n");
-  return;
-}
-
-
-# Subroutine: parseEslTranslateDefline()
-#
-# Synopsis:   Given a defline output from esl-translate, parse it and
-#             return some relevant info.
-#
-# Args:       $line:                 the line to parse
-#             $coords_from_R:        ref to coordinate of start nt of translation, filled here, can be undef
-#             $coords_to_R:          ref to coordinate of stop  nt of translation, filled here, can be undef
-#             $source_name_R:        ref to name of source feature, filled here, can be undef
-#             $source_coords_R:      ref to coordinates part of name of source feature, filled here, can be undef
-#             $source_len_R:         ref to coordinate of length of source feature, filled here, can be undef
-#
-# Returns:    void
-# Dies:       if format of defline is unexpected
-#
-sub parseEslTranslateDefline {
-  my $sub_name = "parseEslTranslateDefline";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($line, $coords_from_R, $coords_to_R, $source_name_R, $source_coords_R, $source_len_R) = @_;
-
-  my ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame, $source_len);
-
-  # example $line's:
-  #>orf1 source=NC_001346/150-455 coords=1..303 length=101 frame=1  
-  # OR
-  #>orf1 source=NC_001346/2527-1886,1793-1353 coords=87..161 length=25 frame=3  
-  if($line =~ /^\>orf\d+\s+source\=(\S+)\/(\S+)\s+coords\=(\d+)\.\.(\d+)\s+length\=(\d+)\s+frame=(\d+)/) { 
-    ($source_name, $source_coords, $coords_from, $coords_to, $length, $frame) = ($1, $2, $3, $4, $5, $6);
-    # $source_coords = '150-455' or
-    # $source_coords = '2527-1886,1793-1353'
-    my @source_coords_A = split(",", $source_coords);
-    $source_len = 0;
-    foreach my $cur_coords (@source_coords_A) { 
-      if($cur_coords =~ m/^(\-?\d+)\-(\-?\d+)$/) { 
-        my($cur_from, $cur_to) = ($1, $2);
-        $source_len += ($cur_from < $cur_to) ? ($cur_to - $cur_from + 1) : ($cur_from - $cur_to + 1);
-        if(($cur_from < 0) && ($cur_to > 0)) { $source_len--; } # fix off-by-one introduced by negative indexing in sequence position
-        if(($cur_from > 0) && ($cur_to < 0)) { $source_len--; } # fix off-by-one introduced by negative indexing in sequence position
-      }
-      else { 
-        die "ERROR in $sub_name, unable to parse source coordinates in header line: $line";
-      }
-    }
-  }
-  else { 
-    die "ERROR in $sub_name, unable to parse header line: $line";
-  }
-
-  if(defined $coords_from_R)   { $$coords_from_R   = $coords_from; }
-  if(defined $coords_to_R)     { $$coords_to_R     = $coords_to;   }
-  if(defined $source_name_R)   { $$source_name_R   = $source_name; }
-  if(defined $source_coords_R) { $$source_coords_R = $source_coords; }
-  if(defined $source_len_R)    { $$source_len_R    = $source_len;  }
   return;
 }
 
