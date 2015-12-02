@@ -442,9 +442,9 @@ printf("#\n");
 ############################################
 # parse the -matpept input file if necessary
 ###########################################
-my %cds2matpept_HA = (); # 1st key: cds index, value array of matpept indices that comprise this CDS
+my @cds2matpept_AA = (); # 1st dim: cds index, 2nd dim: value array of matpept indices that comprise this CDS
 if(defined $matpept_infile) { 
-  matpeptParseInfile($matpept_infile, \%cds2matpept_HA);
+  matpeptParseInfile($matpept_infile, \@cds2matpept_AA);
 }
 
 #####################
@@ -497,7 +497,9 @@ parseTable($cds_tbl_file, \%cds_tbl_HHA);
 
 if($do_matpept) { 
   # validate the CDS:mat_peptide relationships that we read from $matpept_infile
-  matpeptValidateCdsRelationships(\%cds2matpept_HA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}});
+  printf("validating matpept CDS relationships\n");
+  matpeptValidateCdsRelationships(\@cds2matpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}});
+  printf("done validating matpept CDS relationships\n");
 }
 
 if($do_matpept) { 
@@ -689,6 +691,7 @@ my $fetch_output;
 my $nmdl = 0;               # number of HMMs (and alignments used to build those HMMs)
 my @mdl2mft_map_A = ();     # [0..h..$nmdl-1]: $i: model ($m+1) maps to reference feature ($i+1)
 my @mft2exon_map_A = ();    # [0..h..$nmdl-1]: $e: model ($m+1) maps to exon ($e+1) of reference cds $mdl2mft_map_A[$h]+1
+my @mft2nexon_map_A = ();   # [0..h..$nmdl-1]: $nexons: model ($m+1) models an exon/mat_peptide that is one of $nexons exons/mat_peptides for this CDS
 my @mdl_is_first_A = ();    # [0..h..$nmdl-1]: '1' if model ($m+1) is the first one for cds $mdl2mft_map_A[$h], else 0
 my @mdl_is_final_A = ();    # [0..h..$nmdl-1]: '1' if model ($m+1) is the final one for cds $mdl2mft_map_A[$h], else 0
 my @mdl_is_primary_A = ();  # [0..h..$nmdl-1]: '1' if model ($m+1) is for a primary matpept, else 0, only created/used if $do_matpept
@@ -786,6 +789,7 @@ for(my $i = 0; $i < $ref_nmft; $i++) {
     runCommand($cmd, 0);
     push(@mdl2mft_map_A,  $i);
     push(@mft2exon_map_A, $e);
+    push(@mft2nexon_map_A, $nexons);
     push(@mdl_is_first_A, ($e == 0)           ? 1 : 0);
     push(@mdl_is_final_A, ($e == ($nexons-1)) ? 1 : 0);
     if($e == 0)           { $mft2first_mdl_A[$i] = $nmdl; }
@@ -808,6 +812,28 @@ if((! $do_seqrow) && (! $do_seqcol)) {
     $do_seqcol = 1;
   }
 }
+
+# fill @mft2mdl_map_AA
+my @mft2mdl_map_AA = ();  # [0..$c..$ref_nmft-1][0..$e..$nexons_for_this_feature-1]: value is index of mdl that encodes exon $e for feature $c
+my $mft_idx = -1;
+my $mdl_idx = 0;
+for(my $h = 0; $h < $nmdl; $h++) { 
+  if($mdl_is_first_A[$h]) {
+    $mft_idx++;
+    $mdl_idx = 0;
+  }
+  $mft2mdl_map_AA[$mft_idx][$mdl_idx] = $h;
+  $mdl_idx++;
+}
+
+### TEMP
+##for (my $z = 0; $z < $ref_nmft; $z++) { 
+##  for (my $zz = 0; $zz < scalar(@{$mft2mdl_map_AA[$z]}); $zz++) { 
+##    printf("mft2mdl_map_AA[$z][$zz] = $mft2mdl_map_AA[$z][$zz]\n");
+##  }
+##  printf("\n");
+##}
+##exit 0;
 
 ######################
 # HOMOLOGY SEARCH STEP
@@ -993,187 +1019,350 @@ else {
 # COMBINE MULTI-EXON SEQUENCES INTO SINGLE CDS/MAT_PEPTIDE SEQUENCES
 ####################################################################
 my @pred_mft_fafile_A = (); # array of predicted CDS sequence files, filled below
-wrapperCombineExonsIntoCDS($nmdl, $dir, "predicted", \@mdl_A, \@mdl2mft_map_A, \@mdl_is_first_A, \@mdl_is_final_A, \@pred_mft_fafile_A);
+wrapperCombineExonsIntoCDS($dir, "predicted", \@mdl_A, \@mdl2mft_map_A, \@mft2mdl_map_AA, \@pred_mft_fafile_A);
+
+#####################################################
+# COMBINE MULTI-MAT_PEPTIDE SEQUENCES INTO SINGLE CDS
+#####################################################
+my @matpept_cds_pass_fail_AH = ();
+my @pred_cds_mft_fafile_A = (); # array of predicted CDS sequence files, filled below
+if($do_matpept) { 
+  wrapperCombineExonsIntoCDS($dir, "predicted", \@mdl_A, \@mdl2mft_map_A, \@cds2matpept_AA, \@pred_cds_mft_fafile_A);
+  push(@pred_mft_fafile_A, @pred_cds_mft_fafile_A);
+
+  # keep track of which CDS sequences are valid (pass all adjacency tests), we will only do the translation tests
+  # (i.e. look for in-frame stops) for valid CDS
+  my $ncds = scalar(@cds2matpept_AA);
+  for(my $c = 0; $c < $ncds; $c++) { 
+    %{$matpept_cds_pass_fail_AH[$c]} = ();
+    for(my $a = 0; $a < $naccn; $a++) { 
+      my $accn     = $accn_A[$a];
+      my $seq_accn = $seq_accn_A[$a];
+      my ($cds_start, $cds_stop, $cds_len, $cds_start_codon, $cds_stop_codon, $cds_pass_fail) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2matpept_AA[$c]}, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A);
+      $matpept_cds_pass_fail_AH[$c]{$seq_accn} = $cds_pass_fail;
+    }
+  }
+}
 
 ###########################################################################
+# Before we translate the sequences, we take some extra steps to correct
+# stop predictions:
+# - for all features with a valid start codon: look for in-frame stops
+# - for all features with a valid start codon but no in-frame stops up
+#   until predicted stop position (thus, stop is an invalid stop) look
+#   downstream for first in-frame stop after predicted stop position
+#
+
 # CORRECT PREDICTIONS 
-# - look for internal starts and stops and make corrections based on those
+# - for all features: look for in-frame stops
+# - for CDS/mature_peptides with 
 # - combine new exons into new CDS
 ###########################################################################
+
+($seconds, $microseconds) = gettimeofday();
+$start_time = ($seconds + ($microseconds / 1000000.));
+printf("%-65s ... ", sprintf("# Translating predicted %s to identify internal starts/stops", ($do_matpept) ? "mat_peptides" : "CDS"));
+
 my $source_accn;   # name of CDS/mat_peptide sequence that was translated
-my $source_length; # length of CDS/mat_peptide sequence that was translated
-my $coords_from;   # start nt coordinate of current translation
-my $coords_to;     # stop nt coordinate of current translation
 my @corr_mft_stop_AH = ();   # [0..$i..nmft-1], each element is a hash with keys $key as sequence accessions and values 
                              # are number of nucleotides that the prediction of the stop coordinate should be corrected
                              # based on an esl-translate translation of the predicted CDS/mat_peptide sequence, values can be negative
                              # or positive
-my @did_corr_exon_start_AH = ();  # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
-                                  # are '1' if this exon's start position was corrected
+my %c_stop_HH  = ();        # corrected stop positions of hits,  start with a copy of p_stop_HH
 my @did_corr_exon_stop_AH = ();   # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
                                   # are '1' if this exon's stop position was corrected
-my %c_stop_HH  = ();        # corrected stop positions of hits,  start with a copy of p_stop_HH
 my %corr_fafile_H = ();     # hash of names of fasta files for corrected exon sequences, keys: model name from @mdl_A, value: name of file
 my @corr_mft_fafile_A = (); # array of corrected CDS/mat_peptide sequence files, filled below
 
-if((! $do_nocorrect) && (! $do_matpept)) { 
-  ($seconds, $microseconds) = gettimeofday();
-  $start_time = ($seconds + ($microseconds / 1000000.));
-  printf("%-65s ... ", sprintf("# Translating predicted %s to identify internal starts/stops", ($do_matpept) ? "mat_peptides" : "CDS"));
+my $ref_nmp_and_cds = $ref_nmft;
+if($do_matpept) { 
+  # add in CDS in matpept mode
+  $ref_nmp_and_cds += scalar(@cds2matpept_AA); 
+}
+my @source_accn_ext_check_AA     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
+                                       # accessions to check for 'ext' error, b/c no in-frame stop within 
+                                       # predicted start..stop
+my @source_accn_trc_error_AH     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
+                                       # accessions that have 'trc' error, b/c in-frame stop exists between predicted start..stop
+my @source_accn_ext_error_AH     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
+                                       # accessions that have 'ext' error, b/c no in-frame stop exists between predicted start..stop
+my @source_accn_nst_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
+                                       # feature has no in-frame stop
+                                       # 2nd of 2 reasons we shouldn't translate it
+                                       # these should be rare, these are a subset of the accessions in
+                                       # @source_accn_ext_check_AA, the ones that had no valid stop in-frame
+                                       # for the rest of the sequence (possibly duplicated)
+my @source_accn_str_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
+                                       # feature has an invalid start 
+                                       # 1st of 2 reasons we shouldn't translate it
+my @source_accn_stp_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
+                                       # feature's predicted stop is not a valid stop codon
+                                       # 1st of 2 reasons we shouldn't translate it
 
-  # translate predicted CDS/mat_peptide sequences using esl-translate to see if any corrections to predictions are necessary
-  for(my $c = 0; $c < $ref_nmft; $c++) { 
-    # determine first and final model for this feature
+# Translate predicted CDS/mat_peptide sequences using esl-translate to identify 
+# in-frame stop codons.
+#
 
-    my $cur_fafile = $pred_mft_fafile_A[$c];
+for(my $c = 0; $c < $ref_nmp_and_cds; $c++) { 
+  my $is_matpept = ($do_matpept && ($c < $ref_nmft)) ? 1 : 0; # if $is_matpept is 0, then we are a CDS
 
-    # translate into AA sequences
-    my $tmp_esl_epn_translate_output = $cur_fafile;
-    if($do_matpept) { 
-      $tmp_esl_epn_translate_output    =~ s/\.mp/\.esl-epn-translate/;
-    }
-    else { 
-      $tmp_esl_epn_translate_output    =~ s/\.cds/\.esl-epn-translate/;
-    }
-    $tmp_esl_epn_translate_output    =~ s/\.fa$//;
+  # initialize data structures
+  @{$source_accn_ext_check_AA[$c]} = ();
+  %{$source_accn_trc_error_AH[$c]} = ();
+  %{$source_accn_ext_error_AH[$c]} = ();
+  %{$source_accn_nst_error_AH[$c]} = ();
+  %{$source_accn_str_error_AH[$c]} = ();
+  %{$source_accn_stp_error_AH[$c]} = ();
+  %{$corr_mft_stop_AH[$c]}         = ();
+  
+  my $cur_fafile = $pred_mft_fafile_A[$c];
+  
+  # translate into AA sequences
+  my $tmp_esl_epn_translate_output = $cur_fafile;
+  $tmp_esl_epn_translate_output =~ s/\.mp/\.esl-epn-translate/; 
+  $tmp_esl_epn_translate_output =~ s/\.cds/\.esl-epn-translate/;
+  $tmp_esl_epn_translate_output =~ s/\.fa$//;
+  
+  my $other_options = "";
+  $cmd = $esl_epn_translate . " $other_options -firststop $cur_fafile > $tmp_esl_epn_translate_output";
+  runCommand($cmd, 0);
+  
+  # parse esl-epn-translate output
+  open(IN, $tmp_esl_epn_translate_output) || die "ERROR unable to open $tmp_esl_epn_translate_output for reading";
 
-    $cmd = $esl_epn_translate . " -firststop $cur_fafile > $tmp_esl_epn_translate_output";
-    runCommand($cmd, 0);
-
-    # parse esl-epn-translate output
-    open(IN, $tmp_esl_epn_translate_output) || die "ERROR unable to open $tmp_esl_epn_translate_output for reading";
-    while(my $line = <IN>) { 
-      # example line
-      # HQ693418/1-306 304
-      if($line =~ /^(\S+)\/(\S+)\s+(\d+)/) { 
-        my ($source_accn, $coords, $first_stop_first_posn) = ($1, $2, $3, $4);
-        # determine what first_stop_first_posn would be if the final codon is the first in-frame stop
-        my @start_stop_A = split(",", $coords);
-        my $cds_len = 0;
-        foreach my $start_stop (@start_stop_A) { 
-          if($start_stop =~ /(\-?\d+)\-(\-?\d+)/) { 
-            $cds_len += abs($1 - $2) + 1;
-            my ($tmp_start, $tmp_stop) = ($1, $2);
-            if(($tmp_start < 0 && $tmp_stop > 0) || ($tmp_start > 0 && $tmp_stop < 0)) { $cds_len--; } # correct for off-by-one error due to fact that posn 0 is not a nt
-          }
-          else { 
-            die "ERROR unable to parse coordinates ($coords) read from esl-epn-translate.pl output";
-          }
-        }
-        my $final_codon_first_posn = $cds_len - 2;
-        if(($first_stop_first_posn == -1) || ($first_stop_first_posn == $final_codon_first_posn)) { 
-          $corr_mft_stop_AH[$c]{$source_accn} = 0;
+  while(my $line = <IN>) { 
+    # example line
+    #HQ693465/1-306 1 1 304
+    if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
+      my ($source_accn, $coords, $start_is_valid, $stop_is_valid, $first_stop_first_posn) = ($1, $2, $3, $4, $5);
+      # determine what first_stop_first_posn would be if the final codon is the first in-frame stop
+      my @start_stop_A = split(",", $coords);
+      my $cds_len = 0;
+      foreach my $start_stop (@start_stop_A) { 
+        if($start_stop =~ /(\-?\d+)\-(\-?\d+)/) { 
+          $cds_len += abs($1 - $2) + 1;
+          my ($tmp_start, $tmp_stop) = ($1, $2);
+          if(($tmp_start < 0 && $tmp_stop > 0) || ($tmp_start > 0 && $tmp_stop < 0)) { $cds_len--; } # correct for off-by-one error due to fact that posn 0 is not a nt
         }
         else { 
-          $corr_mft_stop_AH[$c]{$source_accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
-          if($corr_mft_stop_AH[$c]{$source_accn} > 0) { 
-            die sprintf("ERROR corrected stop greater than 0, you thought this was impossible... %s feature #%d", $corr_mft_stop_AH[$c]{$source_accn}, $source_accn,  $c+1);  
-          }
+          die "ERROR unable to parse coordinates ($coords) read from esl-epn-translate.pl output";
         }
       }
-      else { 
-        die "ERROR, unable to parse esl-epn-translate.pl output line: $line\n";
+      my $final_codon_first_posn = $cds_len - 2;
+      my $early_inframe_stop     = (($first_stop_first_posn != 0) && ($first_stop_first_posn != $final_codon_first_posn)) ? 1 : 0;
+
+      # We now have all of the relevant data on the current
+      # CDS/mat_peptide sequence and we need to use that to determine
+      # what errors each sequence should throw (at least for those
+      # that can tell should be thrown at this point in the
+      # processing) as well as any corrections to stop predictions
+      # that we should make prior to translation (trc errors are
+      # thrown when this happens).
+      # 
+      # There are 4 relevant variables that dictate which errors
+      # should be thrown/checked for later and whether a stop
+      # correction should be made. The table gives all possible
+      # combinations of values of those variables and lists the
+      # outcome of each possibility.
+      #
+      # Variables we know from earlier processing:
+      # $is_matpept:     '1' if current feature is a mature peptide, '0' if it is a CDS
+      #
+      # Variables derived from esl-epn-translate output we're currently parsing
+      # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
+      # $stop_is_valid:      '1' if current feature's final 3 nt encode a valid stop codon and total feature length is multiple of 3
+      # $early_inframe_stop: '1' if an inframe stop exists prior to predicted stop
+      #
+      # 7 possibilities, each with different outcome (P1-P7):
+      #                                                                                       | make correction to |
+      # idx | is_matpept | start_is_valid | stop_is_valid | early_inframe_stop ||   errors    | stop coordinate?   |
+      # ----|------------|----------------|---------------|--------------------||-------------|--------------------|
+      #  P1 |      false |          false |          any  |                any ||         str |                 no |
+      #  P2 |      false |           true |        false  |              false ||     stp ext?|     maybe (if ext) |
+      #  P3 |      false |           true |        false  |               true ||     stp trc |                yes |
+      #  P4 |      false |           true |         true  |              false ||        none |                 no |
+      #  P5 |      false |           true |         true  |               true ||         trc |                yes |
+      # -----------------------------------------------------------------------||-----------------------------------
+      #  P6 |       true |            any |          any  |              false ||        ntr? |                 no |
+      #  P7 |       true |            any |          any  |               true ||    trc ntr? |                yes |
+      # ------------------------------------------------------------------------------------------------------------
+      # 
+      # in table above:
+      # '*' around value means that it is guaranteed to be that value (e.g. *true* means 'false' is impossible)
+      # '?' after error code means that error is possible, we have to check for it later           
+      # 'any' means that any value is possible, outcome is unaffected by value
+      #
+      if(! $is_matpept) { 
+        if(! $start_is_valid) { # possibility 1 (P1)
+          # printf("HEYA $source_accn $c possibility 1 (str)\n");
+          $source_accn_str_error_AH[$c]{$source_accn} = 1;
+        }
+        else { 
+          # $start_is_valid is 1
+          if(! $stop_is_valid) { 
+            if(! $early_inframe_stop) { 
+              # possibility 2 (P2): stp error, need to check for ext error later
+              # printf("HEYA $source_accn $c possibility 2 (stp, maybe ext)\n");
+              $source_accn_stp_error_AH[$c]{$source_accn} = 1;
+              push(@{$source_accn_ext_check_AA[$c]}, $source_accn);
+            }
+            else { # $early_inframe_stop is 1
+              # possibility 3 (P3): stp and trc error
+              #printf("HEYA $source_accn $c possibility 3 (trc and stp)\n");
+              $source_accn_stp_error_AH[$c]{$source_accn} = 1;
+              $source_accn_trc_error_AH[$c]{$source_accn} = 1;
+              $corr_mft_stop_AH[$c]{$source_accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
+              if($final_codon_first_posn == $first_stop_first_posn) { die "ERROR trying to correct a stop by 0 nt"; }
+              #printf("HEYAA set corr_mft_stop_AH[$c]{$source_accn} to $corr_mft_stop_AH[$c]{$source_accn}\n");
+            }
+          } # end of 'if(! $stop_is_valid)'
+          else { # $stop_is_valid is 1
+            if(! $early_inframe_stop) { 
+              # printf("HEYA $source_accn $c possibility 4 (no errors)\n");
+              ;# possibility 4 (P4): no errors, do nothing
+            }
+            else { 
+              # possibility 5 (P5): trc error
+              # printf("HEYA $source_accn $c possibility 5 (trc)\n");
+              $source_accn_trc_error_AH[$c]{$source_accn} = 1;
+              $corr_mft_stop_AH[$c]{$source_accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
+              if($final_codon_first_posn == $first_stop_first_posn) { die "ERROR trying to correct a stop by 0 nt"; }
+            }
+          }              
+        }
+      } # end of 'if(! $is_matpept)'
+      else { # $is_matpept is 1 
+        if(! $early_inframe_stop) { 
+          # possibility 6 (P6): maybe ntr error later, but can't check for it now, do nothing;
+          # printf("HEYA $source_accn $c possibility 6 (no error)\n");
+        }
+        else { # $early_inframe_stop is '1'
+          # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
+          # printf("HEYA $source_accn $c possibility 7 (trc)\n");
+          $source_accn_trc_error_AH[$c]{$source_accn} = 1;
+          $corr_mft_stop_AH[$c]{$source_accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
+          if($final_codon_first_posn == $first_stop_first_posn) { die "ERROR trying to correct a stop by 0 nt"; }
+        }
       }
     }
-    close(IN);
+    else { 
+      die "ERROR, unable to parse esl-epn-translate.pl output line: $line\n";
+    }
   }
+  close(IN);
+}
 
-  # now we have all stop corrections, go back and create c_stop data structures based 
-  # on p_stop data structures and these corrections, this is tricky for multi-exon
-  # CDS because we have to make sure we correct the proper exon
-  for(my $a = 0; $a < $naccn; $a++) { 
-    my $accn     = $accn_A[$a];
-    my $seq_accn = $seq_accn_A[$a];
-    my $mdl; # name of a model
-    for(my $c = 0; $c < $ref_nmft; $c++) { 
-      if(! exists $corr_mft_stop_AH[$c]{$accn}) { 
-        #die sprintf("ERROR no corrected stop position value for main feature %d sequence $accn", $c+1); 
-        $corr_mft_stop_AH[$c]{$accn} = 0;
-      }
-      my $corr_stop  = $corr_mft_stop_AH[$c]{$accn};
+# next step is to look at all accessions we just stored in
+# @source_accn_ext_check_A, these are sequences that start with a valid start,
+# but have no in-frame stop in them, look for an inframe stop codon past the 
+# predicted stop. Two possibilities:
+# (A) we find one
+# (B) we do not find one
+#
+for(my $c = 0; $c < $ref_nmft; $c++) { 
+  foreach $source_accn (@{$source_accn_ext_check_AA[$c]}) { 
+    printf("HEYA NEED TO check $source_accn for extension...\n");
+  }
+}
+
+# now we have all stop corrections, go back and create c_stop data structures based 
+# on p_stop data structures and these corrections, this is tricky for multi-exon
+# CDS because we have to make sure we correct the proper exon
+# first copy p_stop_HH into c_stop_HH, any models which we *DO NOT* do corrections for
+# will have c_stop_HH remain equal to p_stop_HH. 
+for(my $a = 0; $a < $naccn; $a++) { 
+  my $accn     = $accn_A[$a];
+  my $seq_accn = $seq_accn_A[$a];
+  my $mdl; # name of a model
+  for(my $c = 0; $c < $ref_nmp_and_cds; $c++) { 
+    my $is_matpept = ($do_matpept && ($c < $ref_nmft)) ? 1 : 0; # if $is_matpept is 0, then we are a CDS
+    my $mp_cds_idx = ($c > $ref_nmft) ? $c-$ref_nmft : undef;
+    # TEMPORARY if
+    if(! $is_matpept) { 
+      my $corr_stop  = (exists $corr_mft_stop_AH[$c]{$accn}) ? $corr_mft_stop_AH[$c]{$accn} : 0;
       # sanity check
       if($corr_stop  > 0) { die sprintf("ERROR corrected stop ($corr_stop) greater than 0, can't deal with that yet %s feature #%d", $accn,  $c+1);  }
+    
+      my @cur_mdl_A = ();
+      if($do_matpept && (! $is_matpept)) { # CDS in matpept mode
+        @cur_mdl_A = @{$cds2matpept_AA[$mp_cds_idx]};
+      }
+      else { 
+        @cur_mdl_A = @{$mft2mdl_map_AA[$c]}
+      }
+      my $cur_nmdl = scalar(@cur_mdl_A);
+    
+      # first copy p_stop_HH values to c_stop_HH, if no correction is made c_stop_HH value will remain as p_stop_HH
+      for(my $h = 0; $h < $cur_nmdl; $h++) { 
+        if(exists $p_stop_HH{$mdl_A[$cur_mdl_A[$h]]}{$seq_accn}) { 
+          $c_stop_HH{$mdl_A[$cur_mdl_A[$h]]}{$seq_accn} = $p_stop_HH{$mdl_A[$cur_mdl_A[$h]]}{$seq_accn};
+        }
+      }
 
-      my $first_mdl = $mft2first_mdl_A[$c];
-      my $final_mdl = $mft2final_mdl_A[$c];
-      my $cur_nmdl = $final_mdl - $first_mdl + 1;
-
-      if($first_mdl == $final_mdl) {
+      if($cur_nmdl == 1) { 
         # easy case: single exon CDS/mat_peptide:
-        my $mdl = $mdl_A[$first_mdl];
+        my $mdl_idx = $cur_mdl_A[0];
+        my $mdl     = $mdl_A[$cur_mdl_A[0]];
         if(exists $p_strand_HH{$mdl}{$seq_accn}) { 
-          if($p_strand_HH{$mdl}{$seq_accn} eq "+") { 
-            $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  + $corr_stop;  # note that $corr_stop  may be 0
-          }
-          else { 
-            $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  - $corr_stop;  # note that $corr_stop  may be 0
+          if($corr_stop != 0) { 
+            $did_corr_exon_stop_AH[$mdl_idx]{$accn} = 1;
+            if($p_strand_HH{$mdl}{$seq_accn} eq "+") { 
+              $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  + $corr_stop;  # note that $corr_stop  may be 0
+            }
+            else { 
+              $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  - $corr_stop;  # note that $corr_stop  may be 0
+            }
           }
         }
       }
-      else { # multi exon CDS
+      else { # multi exon/mat_peptide CDS
         # TODO: skip this if any of the exons are not predicted
         # get temporary array of exon lengths and determine full CDS length
-        my $cds_len    = 0;
-        my @exon_len_A = ();
-        for(my $h = $first_mdl; $h <= $final_mdl; $h++) { 
-          my $hp = $h - $first_mdl;
-          $exon_len_A[$hp] = ($p_strand_HH{$mdl_A[$h]}{$seq_accn} eq "+") ? 
-              ($p_stop_HH{$mdl_A[$h]}{$seq_accn}  - $p_start_HH{$mdl_A[$h]}{$seq_accn} + 1) : 
-              ($p_start_HH{$mdl_A[$h]}{$seq_accn} - $p_stop_HH{$mdl_A[$h]}{$seq_accn}  + 1);
-          $cds_len += $exon_len_A[$hp];
-          
-          # IMPORTANT: copy predicted to corrected, we may 'correct' this below, but if we don't the prediction stays the same.
-          #            In case when we correct a multi-exon gene by putting the stop in the non-final exon or the start in
-          #            non-first exon, note that this means we will only 'correct' the exons that have the modified stop
-          #            or start, and NOT any others. For example if we have a 2-exon CDS and our correction puts the stop
-          #            in the first exon, we will not change the annotation of the second exon.
-          $mdl = $mdl_A[$h];
-          $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn};
-        }        
-        
-        my $len_so_far; # total length of all exons so far
-        my $found_exon; # set to '1' when we find the correct exon to put the corrected start in
-        
-        if($corr_stop < 0) { # determine which exon the corrected stop is in, and correct it:
-          $len_so_far = 0; 
-          $found_exon = 0; 
-          for(my $h = $final_mdl; $h >= $first_mdl; $h--) { 
-            if(! $found_exon) {
-              my $hp = $h - $first_mdl;
-              $mdl = $mdl_A[$h];
-              $len_so_far += $exon_len_A[$hp];
-              if((-1 * $corr_stop) <= $len_so_far) { 
-                if($p_strand_HH{$mdl}{$seq_accn} eq "+") { 
-                  $c_stop_HH{$mdl}{$seq_accn}  -= ((-1 * $corr_stop) - ($len_so_far - $exon_len_A[$hp]));
-                }
-                else { 
-                  $c_stop_HH{$mdl}{$seq_accn}  += ((-1 * $corr_stop) - ($len_so_far - $exon_len_A[$hp]));
-                }
-                $found_exon = 1;
-                $did_corr_exon_stop_AH[$h]{$accn} = 1;
-                #printf("corr_stop: $corr_stop\n");
-                #printf("len_so_far: $len_so_far\n");
-                #printf("exon_len_A[$hp]: $exon_len_A[$hp]\n");
-                #printf("p_stop_HH{$mdl}{$seq_accn} exon %d: $p_stop_HH{$mdl}{$seq_accn}\n", ($h-$first_mdl+1));
-                #printf("c_stop_HH{$mdl}{$seq_accn} exon %d: $c_stop_HH{$mdl}{$seq_accn}\n", ($h-$first_mdl+1));
+
+        if($corr_stop < 0) { # determine which exon we need to correct the stop for, and correct it:
+          my $found_exon = 0;
+          my $len_so_far = 0;
+          for(my $h = ($cur_nmdl-1); $h >= 0; $h--) { # we go backwards through all models
+            my $mdl_idx = $cur_mdl_A[$h];
+            my $mdl     = $mdl_A[$mdl_idx];
+            my $strand  = $p_strand_HH{$mdl_A[$mdl_idx]}{$seq_accn};
+            my $exon_len = ($strand eq "+") ? 
+                ($p_stop_HH{$mdl_A[$mdl_idx]}{$seq_accn}  - $p_start_HH{$mdl_A[$mdl_idx]}{$seq_accn} + 1) : 
+                ($p_start_HH{$mdl_A[$mdl_idx]}{$seq_accn} - $p_stop_HH{$mdl_A[$mdl_idx]}{$seq_accn}  + 1);
+            if((-1 * $corr_stop) < ($len_so_far + $exon_len)) { # correction is in this exon
+              if($strand eq "+") { 
+                $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn} - (-1 * $corr_stop) - $len_so_far;
+                printf("set positive strand c_stop_HH{$mdl}{$seq_accn} to $c_stop_HH{$mdl}{$seq_accn}\n");
               }
+              else { 
+                printf("INITIALLY: p_stop_HH{$mdl}{$seq_accn} is $p_stop_HH{$mdl}{$seq_accn}\n");
+                $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn} + (-1 * $corr_stop) - $len_so_far;
+                printf("set negative strand c_stop_HH{$mdl}{$seq_accn} to $c_stop_HH{$mdl}{$seq_accn} (p_stop_HH{$mdl}{$seq_accn} is $p_stop_HH{$mdl}{$seq_accn}\n");
+              }
+              $h = -1; # breaks loop
+              $did_corr_exon_stop_AH[$mdl_idx]{$accn} = 1;
+              printf("set did_corr_exon_stop_AH[$mdl_idx]{$accn} to $did_corr_exon_stop_AH[$mdl_idx]{$accn}\n");
+              $found_exon = 1;
             }
+            $len_so_far += $exon_len;
           }
-          if(! $found_exon) { die sprintf("ERROR unable to find proper exon for corrected stop for %s: %d, accn: $accn\n", ($do_matpept) ? "mat_peptide" : "CDS", $c+1); }
+          if(! $found_exon) { 
+            die "ERROR unable to find exon for corrected stop in multi-exon CDS/mature_peptide"; 
+          }
         } # end of 'if($corr_stop < 0)'
       } # end of 'else' entered if we're a multi-exon CDS
-    } # end of loop over CDS
-  } # end of loop over sequences
-  ($seconds, $microseconds) = gettimeofday();
-  $stop_time = ($seconds + ($microseconds / 1000000.));
-  printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
+    } # end of TEMPORARY if(! $is_matpept)
+  } # end of loop over CDS
+} # end of loop over sequences
+($seconds, $microseconds) = gettimeofday();
+$stop_time = ($seconds + ($microseconds / 1000000.));
+printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 
-  # fetch corrected hits into new files
-  fetchHits($sqfile, $do_skipaln, "corrected", \@mdl_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%c_stop_HH, \%p_strand_HH, $out_root, \%corr_fafile_H);
+# fetch corrected hits into new files
+fetchHits($sqfile, $do_skipaln, "corrected", \@mdl_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%c_stop_HH, \%p_strand_HH, $out_root, \%corr_fafile_H);
 
-  # combine multi-exon sequences into CDS:
-  wrapperCombineExonsIntoCDS($nmdl, $dir, "corrected", \@mdl_A, \@mdl2mft_map_A, \@mdl_is_first_A, \@mdl_is_final_A, \@corr_mft_fafile_A);
-} # end of if(! $do_nocorrect)
+# combine multi-exon sequences into CDS:
+wrapperCombineExonsIntoCDS($dir, "corrected", \@mdl_A, \@mdl2mft_map_A, \@mft2mdl_map_AA, \@corr_mft_fafile_A);
 
 #########################################
 # TRANSLATE PREDICTIONS INTO PROTEIN SEQS
@@ -1193,7 +1382,7 @@ if(! $do_matpept) {
   $start_time = ($seconds + ($microseconds / 1000000.));
   printf("%-65s ... ", "# Translating coding sequences into proteins/peptides ");
   for(my $c = 0; $c < $ref_nmft; $c++) { 
-    my $cur_fafile = ($do_nocorrect || $do_matpept) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
+    my $cur_fafile = ($do_nocorrect) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
     my $aa_full_fafile  = $cur_fafile;
     if($do_matpept) { 
       $aa_full_fafile  =~ s/\.mp/\.aa.full/;
@@ -1220,12 +1409,12 @@ if(! $do_matpept) {
 #################################
 if($do_hmmer) { 
   alignHits($hmmalign, $hmmfetch, $model_db, $do_skipaln, \@mdl_A, \@seq_accn_A, 
-            (($do_nocorrect || $do_matpept) ? \%pred_fafile_H : \%corr_fafile_H), 
+            (($do_nocorrect) ? \%pred_fafile_H : \%corr_fafile_H), 
             \%p_start_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA);
 }
 else { 
   alignHits($cmalign, $cmfetch, $model_db, $do_skipaln, \@mdl_A, \@seq_accn_A, 
-            (($do_nocorrect || $do_matpept) ? \%pred_fafile_H : \%corr_fafile_H), 
+            (($do_nocorrect) ? \%pred_fafile_H : \%corr_fafile_H), 
             \%p_start_HH, \%p_fid2ref_HH, \%p_refdel_HHA, \%p_refins_HHA);
 }
 
@@ -1251,9 +1440,10 @@ if((! $do_skipaln) && (! $do_matpept)) {
     my $model   = $mdl_A[$h];
     my $mft_i   = $mdl2mft_map_A[$h];
     my $exon_i  = $mft2exon_map_A[$h];
+    my $nexons  = $mft2nexon_map_A[$h];
     if(! exists $p_start_HH{$model}{$ref_seq_accn}) { die "ERROR no prediction in reference for feature $mft_i exon $exon_i.\n"; }
     my $start  = $p_start_HH{$model}{$ref_seq_accn};
-    my $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$ref_seq_accn}  : $c_stop_HH{$model}{$ref_seq_accn};
+    my $stop   = ($do_nocorrect) ? $p_stop_HH{$model}{$ref_seq_accn} : $c_stop_HH{$model}{$ref_seq_accn};
     
     my $ref_match = checkStrictBoundaryMatch(\@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, $mft_i, $exon_i, $start, $stop, ($do_nodup ? undef : $ref_totlen));
     if(! $ref_match) { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation."; }
@@ -1350,7 +1540,7 @@ for($mft_i = 0; $mft_i < $ref_nmft; $mft_i++) {
   printf $errpeout_FH ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
 }
 if($do_matpept) { 
-  foreach my $cds_idx (sort keys %cds2matpept_HA) { 
+  foreach (my $cds_idx = 0; $cds_idx < scalar(@cds2matpept_AA); $cds_idx++) { 
     printf $errpaout_FH ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
     printf $errpeout_FH ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
     $mft_i++;
@@ -1361,8 +1551,8 @@ printf $errpeout_FH ("#       as opposed to a specific feature.\n");
 printf $errpeout_FH ("#\n");
 my $div_line = "# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n";
 if($do_matpept) { 
-  outputCDSMaturePeptideRelationships($errpaout_FH,    \%cds2matpept_HA, $div_line);
-  outputCDSMaturePeptideRelationships($errpeout_FH,    \%cds2matpept_HA, $div_line);
+  outputCDSMaturePeptideRelationships($errpaout_FH, \@cds2matpept_AA, $div_line);
+  outputCDSMaturePeptideRelationships($errpeout_FH, \@cds2matpept_AA, $div_line);
 }
 printf $errpeout_FH ("%-10s  %3s  %4s  error-message\n", "#accn", "idx", "code");
 printf $errpaout_FH ("#\n");
@@ -1380,7 +1570,7 @@ my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and onl
                             # explanations of each header
 getHeadings($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, 
             $origin_seq, $ref_tot_nexons, $nmdl, \@mdl2mft_map_A, \@mft2exon_map_A, \@mdl_is_first_A, \@mdl_is_final_A, 
-            \@mft_out_short_A, \@mft_out_product_A, \%cds2matpept_HA, ($do_seqrow) ? (\@out_col_header_AA) : undef,
+            \@mft_out_short_A, \@mft_out_product_A, \@cds2matpept_AA, ($do_seqrow) ? (\@out_col_header_AA) : undef,
             ($do_seqcol) ? (\@out_row_header_A)  : undef,
             (\@out_header_exp_A));
 
@@ -1443,15 +1633,32 @@ my $nerr_pages = 0;       # number of error pages output, only used if $do_seqco
 
 
 # data structures for reporting error codes
-my @cur_err_ps_A        = (); # per-sequence errors [0..$nerrcodes_pf-1]
-my @cur_err_pf_AA       = (); # per-feature  errors [0..$nerrcodes_pf-1][0..$nmft-1]
-my @cur_err_extra_ps_A  = (); # per-sequence error extra information to print [0..$nerrcodes_pf-1]
-my @cur_err_extra_pf_AA = (); # per-feature  error extra information to print [0..$nerrcodes_pf-1][0..$nmft-1]
+my @cur_err_ps_A        = (); # per-sequence errors [0..$nerrcodes_ps-1], reset for each accession
+my @cur_err_pf_AA       = (); # per-feature  errors [0..$nerrcodes_pf-1][0..$nmft-1], reset for each accession
+my @cur_err_extra_ps_A  = (); # per-sequence error extra information to print [0..$nerrcodes_pf-1], reset for each accession
+my @cur_err_extra_pf_AA = (); # per-feature  error extra information to print [0..$nerrcodes_pf-1][0..$nmft-1], reset for each accession
 for(my $a = 0; $a < $naccn; $a++) { 
   my $accn      = $accn_A[$a];
   my $seq_accn  = $seq_accn_A[$a];
   my @cur_out_A = (); # array of current tokens to print
   my $cur_nerr = 0;
+
+  # reset error information to empty for this accession
+  for(my $e = 0; $e < $nerrcodes_ps; $e++) { 
+    $cur_err_ps_A[$e]       = 0;
+    $cur_err_extra_ps_A[$e] = "";
+  }
+  my $nmft_for_errors = $ref_nmft;
+  if($do_matpept) { 
+    $nmft_for_errors += scalar(@cds2matpept_AA);
+  }
+  my $mft_i;
+  for($mft_i = 0; $mft_i < $nmft_for_errors; $mft_i++) { 
+    for(my $e = 0; $e < $nerrcodes_pf; $e++) { 
+      $cur_err_pf_AA[$mft_i][$e]       = 0;
+      $cur_err_extra_pf_AA[$mft_i][$e] = "";
+    }
+  }
 
   # sanity checks
   if(! exists $totlen_H{$accn}) { die "ERROR accession $accn does not exist in the length file $length_file"; }
@@ -1508,7 +1715,9 @@ for(my $a = 0; $a < $naccn; $a++) {
     push(@cur_out_A, sprintf(" %s", $oseq_passfail));
     $pass_fail_str .= $oseq_passfail;
 
-    setErrorCode(\@cur_err_ps_A, \@cur_err_extra_ps_A, "ori", $oseq_ct . " occurrences", \%err_ps_code2idx_H, ($oseq_passfail eq "F"), \$cur_nerr);
+    if($oseq_passfail eq "F") { 
+      setErrorCode(\@cur_err_ps_A, \@cur_err_extra_ps_A, "ori", $oseq_ct . " occurrences", \%err_ps_code2idx_H, \$cur_nerr);
+    }
   }
   ###############################################################
 
@@ -1527,7 +1736,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     my ($start, $stop, $strand);
     if(exists $p_start_HH{$model}{$seq_accn}) { 
       $start  = $p_start_HH{$model}{$seq_accn};
-      $stop   = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
+      $stop   = ($do_nocorrect) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
       $strand = $p_strand_HH{$model}{$seq_accn};
     }
     else { 
@@ -1593,6 +1802,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $model   = $mdl_A[$h];
     my $mft_i   = $mdl2mft_map_A[$h];
     my $exon_i  = $mft2exon_map_A[$h];
+    my $nexons  = $mft2nexon_map_A[$h];
 
     if($mdl_is_first_A[$h]) {
       # reset these
@@ -1606,41 +1816,41 @@ for(my $a = 0; $a < $naccn; $a++) {
 
     if($predicted_string ne "") { $predicted_string .= "  "; }
     if(exists $p_start_HH{$model}{$seq_accn}) { 
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nop", undef, \%err_pf_code2idx_H, 0, \$cur_nerr);
-
       my $stop_corrected_exon  = (exists $did_corr_exon_stop_AH[$h]{$accn})  ? 1 : 0;
-      my $stop_corrected_mft   = 0; # possibly redefined below
-      if((! $do_nocorrect) && (! $do_matpept)) { 
-        $stop_corrected_mft   = ($corr_mft_stop_AH[$mdl2mft_map_A[$h]]{$accn}  != 0) ? 1 : 0;
-      }
+      printf("h: $h accn: $accn stop_corrected_exon: $stop_corrected_exon\n");
       my $start    = $p_start_HH{$model}{$seq_accn}; # we never correct a start
-      my $stop     = ($do_nocorrect || $do_matpept) ? $p_stop_HH{$model}{$seq_accn}  : $c_stop_HH{$model}{$seq_accn};
+      my $stop     = ($do_nocorrect) ? $p_stop_HH{$model}{$seq_accn} : $c_stop_HH{$model}{$seq_accn};
       my $hangover = $p_hangover_HH{$model}{$seq_accn};
 
       my ($hang5, $hang3) = split(":", $hangover);
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd5", $hang5 . " nt from 5' end", \%err_pf_code2idx_H, ($hang5 != 0), \$cur_nerr);
       if($hang5 == 0) { 
         $hang5 = "."; 
       }
       else { 
         $at_least_one_fail = 1;
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd5", $hang5 . " nt from 5' end", \%err_pf_code2idx_H, ($hang5 != 0), \$cur_nerr);
         if($hang5 >  9) { $hang5 = "+"; } 
       }
 
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd3", $hang3 . "nt from 3' end", \%err_pf_code2idx_H, ($hang3 != 0), \$cur_nerr);
       if($hang3 == 0) { 
         $hang3 = "."; 
       }
       else { 
         $at_least_one_fail = 1;
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd3", $hang3 . "nt from 3' end", \%err_pf_code2idx_H, \$cur_nerr);
         if($hang3 >  9) { $hang3 = "+"; } 
       }
 
-      my $trc_errmsg = sprintf("homology search predicted $p_start_HH{$model}{$seq_accn}..$p_stop_HH{$model}{$seq_accn} revised to $start..$stop (stop shifted %d nt)", abs($stop-$p_stop_HH{$model}{$seq_accn}));
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $trc_errmsg, \%err_pf_code2idx_H, ($stop_corrected_exon || $stop_corrected_mft), \$cur_nerr);
-      if($stop_corrected_exon || $stop_corrected_mft) { 
+      my $trc_extra_errmsg = ($nexons == 1) ? "" : sprintf("exon %d of %d ", $cur_nexons, $nexons);
+      my $trc_errmsg = sprintf("homology search predicted $p_start_HH{$model}{$seq_accn}..$p_stop_HH{$model}{$seq_accn} %srevised to $start..$stop (stop shifted %d nt)", $trc_extra_errmsg, abs($stop-$p_stop_HH{$model}{$seq_accn}));
+      if($stop_corrected_exon) { 
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $trc_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+      }
+      if($stop_corrected_exon) { 
         $hang3 = "c"; 
       }
+      printf("HEYAAA earlier mft_i: $mft_i e: %d ", $err_pf_code2idx_H{"trc"});
+      printf("%d\n", ((defined $cur_err_pf_AA[$mft_i][$err_pf_code2idx_H{"trc"}]) && ($cur_err_pf_AA[$mft_i][$err_pf_code2idx_H{"trc"}])) ? 1 : 0);
 
       my $boundary_match;
       $boundary_match = ($do_strict) ? 
@@ -1687,9 +1897,10 @@ for(my $a = 0; $a < $naccn; $a++) {
           }
           $ol_str_errmsg .= " != " . $ref_ol_str_A[$mft_i] . " (ref)";
         }
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "olp", $ol_str_errmsg, \%err_pf_code2idx_H, ($ol_pf_char eq "F"), \$cur_nerr);
+
         if($ol_pf_char eq "F") { 
           $at_least_one_fail = 1;
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "olp", $ol_str_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
         }
       }
 
@@ -1707,8 +1918,8 @@ for(my $a = 0; $a < $naccn; $a++) {
           }
           $adj_str_errmsg .= " != " . $ref_adj_str_A[$mft_i] . " (ref)";
         }
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "adj", $adj_str_errmsg, \%err_pf_code2idx_H, ($adj_pf_char eq "F"), \$cur_nerr);
         if($adj_pf_char eq "F") { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "adj", $adj_str_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
           $at_least_one_fail = 1;
         }
       }
@@ -1716,8 +1927,8 @@ for(my $a = 0; $a < $naccn; $a++) {
       if($mdl_is_first_A[$h] && (! $do_matpept)) { # determine $start_codon_char
         $start_codon = fetchStartCodon($sqfile, $seq_accn, $start, $totlen_H{$accn}, $p_strand_HH{$model}{$seq_accn});
         $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "str", $start_codon, \%err_pf_code2idx_H, ($start_codon_char eq $ss3_no_char), \$cur_nerr);
         if($start_codon_char eq $ss3_no_char) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "str", $start_codon, \%err_pf_code2idx_H, \$cur_nerr);
           $at_least_one_fail = 1;
         }
       }
@@ -1726,15 +1937,15 @@ for(my $a = 0; $a < $naccn; $a++) {
         if(! $do_matpept) { 
           $stop_codon = fetchStopCodon($sqfile, $seq_accn, $stop, $totlen_H{$accn}, $p_strand_HH{$model}{$seq_accn});
           $stop_codon_char = ($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
-          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", $stop_codon, \%err_pf_code2idx_H, ($stop_codon_char eq $ss3_no_char), \$cur_nerr);
           if($stop_codon_char eq $ss3_no_char) { 
             $at_least_one_fail = 1;
+            setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", $stop_codon, \%err_pf_code2idx_H, \$cur_nerr);
           }
         }
 
         $multiple_of_3_char = (($hit_length % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nm3", $hit_length, \%err_pf_code2idx_H, ($multiple_of_3_char eq $ss3_no_char), \$cur_nerr);
         if($multiple_of_3_char eq $ss3_no_char) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nm3", $hit_length, \%err_pf_code2idx_H, \$cur_nerr);
           $at_least_one_fail = 1;
         }
         push(@cur_out_A, sprintf(" %6d", $hit_length));
@@ -1777,7 +1988,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     else { 
       # printf("no hits for $model $seq_accn\n");
       $at_least_one_fail = 1;
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nop", undef, \%err_pf_code2idx_H, 1, \$cur_nerr);
+      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nop", undef, \%err_pf_code2idx_H, \$cur_nerr);
       push(@cur_out_A, sprintf("  %8s ", "NP")); # start position
       push(@cur_out_A, sprintf("%8s",  "NP"));   # stop position
       if(! $do_nofid) { 
@@ -1832,9 +2043,9 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $stop_codon_char;    # one of the 3 characters in the ss3 field, indicating if the stop  codon is valid or not
     my $multiple_of_3_char; # one of the 3 characters in the ss3 field, indicating if the length is a multiple of 3 or not
     my $mft_i = $ref_nmft-1;
-    foreach my $cds_idx (sort keys %cds2matpept_HA) { 
+    foreach (my $cds_idx = 0; $cds_idx < scalar(@cds2matpept_AA); $cds_idx++) { 
       $mft_i++;
-      my ($cds_start, $cds_stop, $cds_len, $cds_start_codon, $cds_stop_codon, $cds_pass_fail) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2matpept_HA{$cds_idx}}, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A);
+      my ($cds_start, $cds_stop, $cds_len, $cds_start_codon, $cds_stop_codon, $cds_pass_fail) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2matpept_AA[$cds_idx]}, \%p_start_HH, \%p_stop_HH, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A);
 
       if(defined $cds_start) { 
         push(@cur_out_A, sprintf("  %6d", $cds_start)); 
@@ -1857,7 +2068,9 @@ for(my $a = 0; $a < $naccn; $a++) {
         push(@cur_out_A, sprintf("  %6s", "?"));
         $multiple_of_3_char = $ss3_no_char;
       }
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nm3", (defined $cds_len) ? $cds_len : "?", \%err_pf_code2idx_H, ($multiple_of_3_char ne $ss3_yes_char), \$cur_nerr);
+      if($multiple_of_3_char ne $ss3_yes_char) { 
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nm3", (defined $cds_len) ? $cds_len : "?", \%err_pf_code2idx_H, \$cur_nerr);
+      }
 
       if(defined $cds_start_codon) { 
         push(@cur_out_A, sprintf("  %6s", $cds_start_codon)); 
@@ -1867,7 +2080,9 @@ for(my $a = 0; $a < $naccn; $a++) {
         push(@cur_out_A, sprintf("  %6s", "?"));
         $start_codon_char = $ss3_unsure_char;
       }
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "str", ((defined $cds_start_codon) ? $cds_start_codon : "?"), \%err_pf_code2idx_H, ($start_codon_char ne $ss3_yes_char), \$cur_nerr);
+      if($start_codon_char ne $ss3_yes_char) { 
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "str", ((defined $cds_start_codon) ? $cds_start_codon : "?"), \%err_pf_code2idx_H, \$cur_nerr);
+      }
 
       if(defined $cds_stop_codon) { 
         if(! $do_nostop) { 
@@ -1881,7 +2096,9 @@ for(my $a = 0; $a < $naccn; $a++) {
         }
         $stop_codon_char = $ss3_unsure_char;
       }
-      setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", ((defined $cds_stop_codon) ? $cds_stop_codon : "?"), \%err_pf_code2idx_H, ($stop_codon_char ne $ss3_yes_char), \$cur_nerr);
+      if($stop_codon_char ne $ss3_yes_char) { 
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", ((defined $cds_stop_codon) ? $cds_stop_codon : "?"), \%err_pf_code2idx_H, \$cur_nerr);
+      }
 
       if(! $do_noss3) { 
         push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
@@ -1990,11 +2207,6 @@ for(my $a = 0; $a < $naccn; $a++) {
   }
 
   # OUTPUT to error file
-  my $mft_i;
-  my $nmft_for_errors = $ref_nmft;
-  if($do_matpept) { 
-    $nmft_for_errors += scalar(keys %cds2matpept_HA);
-  }
   if($cur_nerr > 0) { 
     print $errpaout_FH $accn;
     # first print per-sequence errors, if any
@@ -2009,6 +2221,8 @@ for(my $a = 0; $a < $naccn; $a++) {
     for($mft_i = 0; $mft_i < $nmft_for_errors; $mft_i++) { 
       my $nerr_printed = 0;
       for($e = 0; $e < $nerrcodes_pf; $e++) { 
+        printf("HEYAAA mft_i: $mft_i e: $e ");
+        printf("%d\n", ((defined $cur_err_pf_AA[$mft_i][$e]) && ($cur_err_pf_AA[$mft_i][$e])) ? 1 : 0);
         if((defined $cur_err_pf_AA[$mft_i][$e]) && ($cur_err_pf_AA[$mft_i][$e])) { 
           if($nerr_printed == 0) { 
             #print $errpaout_FH (" feature\#" . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
@@ -2050,9 +2264,9 @@ print $err_tblout_FH $div_line;
 # OUTPUT CDS:MAT_PEPTIDE RELATIONSHIPS, IF NEC 
 ##############################################
 if($do_matpept) { 
-  outputCDSMaturePeptideRelationships($tblout_FH,      \%cds2matpept_HA, $div_line);
-  outputCDSMaturePeptideRelationships($fail_tblout_FH, \%cds2matpept_HA, $div_line);
-  outputCDSMaturePeptideRelationships($err_tblout_FH,  \%cds2matpept_HA, $div_line);
+  outputCDSMaturePeptideRelationships($tblout_FH,      \@cds2matpept_AA, $div_line);
+  outputCDSMaturePeptideRelationships($fail_tblout_FH, \@cds2matpept_AA, $div_line);
+  outputCDSMaturePeptideRelationships($err_tblout_FH,  \@cds2matpept_AA, $div_line);
 }
 
 ##########################
@@ -3462,6 +3676,7 @@ sub fetchHits {
       if(exists $start_HHR->{$mdl}{$seq}) { 
         my $accn = $seq;
         $accn =~ s/\:.+$//;
+
         my $newname .= $accn . "/" . $start_HHR->{$mdl}{$seq} . "-" . $stop_HHR->{$mdl}{$seq};
         my $start = $start_HHR->{$mdl}{$seq};
         my $stop  = $stop_HHR->{$mdl}{$seq};
@@ -4140,13 +4355,12 @@ sub splitFastaFile {
 # Synopsis:   For all CDS, combine all exons into CDS. A wrapper function
 #             for combineExonsIntoCDS().
 #
-# Args:       $nmdl:            total number of exons/models
-#             $dir:             directory for output files
+# Args:       $dir:             directory for output files
 #             $key:             string for naming output files (e.g.: "predicted" or "corrected")
 #             $mdl_AR:        ref to array of model names 
 #             $mdl2mft_map_AR:  ref to array mapping models to CDS
-#             $mdl_is_first_AR: ref to array signifying if a model is first in a CDS or not
-#             $mdl_is_final_AR: ref to array signifying if a model is final in a CDS or not
+#             $mft2mdl_map_AAR: ref to array mapping features to models 
+#                               [0..$c..$ref_nmft-1][0..$e..$nexons_for_this_feature-1]: value is index of mdl that encodes exon $e for feature $c
 #             $outfile_AR:      ref to array of output files, filled here
 #
 # Returns:    void
@@ -4154,33 +4368,43 @@ sub splitFastaFile {
 #
 sub wrapperCombineExonsIntoCDS {
   my $sub_name = "combineExonsIntoCDS";
-  my $nargs_exp = 8;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($nmdl, $dir, $key, $mdl_AR, $mdl2mft_map_AR, $mdl_is_first_AR, $mdl_is_final_AR, $outfile_AR) = @_;
+  my ($dir, $key, $mdl_AR, $mdl2mft_map_AR, $mft2mdl_map_AAR, $outfile_AR) = @_;
 
   my ($seconds, $microseconds) = gettimeofday();
   my $start_time = ($seconds + ($microseconds / 1000000.));
   printf("%-65s ... ", "# Combining multi-exon $key CDS ");
 
   my @tmp_exon_fafile_A = (); # temporary array of exon fafiles for all exons in current CDS
-  
-  for(my $h = 0; $h < $nmdl; $h++) { 
-    my $mft_i      = $mdl2mft_map_AR->[$h];
-    my $cur_fafile = $dir . "/" . $mdl_AR->[$h] . ".fa";
-    $cur_fafile    =~ s/ref/$key/;
-    push(@tmp_exon_fafile_A, $cur_fafile);
-    if($mdl_is_final_A[$h]) { 
-      if(! $mdl_is_first_A[$h]) { 
-        $cur_fafile =~ s/\.exon\.\d+//; # remove exon.<d> part of file name
-        combineExonsIntoCDS(\@tmp_exon_fafile_A, $cur_fafile);
-      }
-      else { # a single exon gene, we should already have the sequence from alignHits
-        if(! -s $cur_fafile) { die sprintf("ERROR, expected output fasta file for CDS %s does not exist: $cur_fafile", $mft_i+1); }
-      }
-      push(@{$outfile_AR}, $cur_fafile);
-      @tmp_exon_fafile_A = (); # reset to empty, for next CDS
+  my $nmft = scalar(@{$mft2mdl_map_AAR}); 
+
+  for(my $f = 0; $f < $nmft; $f++) { 
+    my $nmdl = scalar(@{$mft2mdl_map_AAR->[$f]});
+    my $out_fafile = $dir . "/" . $mdl_AR->[$mft2mdl_map_AAR->[$f][0]] . ".fa";
+    $out_fafile  =~ s/ref/$key/;
+    if($nmdl == 1) { 
+      # a single exon gene, we should already have the sequence from alignHits
+      if(! -s $out_fafile) { die sprintf("ERROR, expected output fasta file for CDS %s does not exist: $out_fafile", $mft_i+1); }
     }
+    else { 
+      # more than one exon/mat_peptide need to be combined to make this CDS/mat_peptide
+      # if we're combining exons to make a CDS next line will remove exon substr
+      $out_fafile =~ s/\.exon\.\d+//; 
+      # if we're combining mature peptides to make a CDS next line will remove mp substr and replace with cds substr
+      my $f2print = $f+1;
+      $out_fafile =~ s/\.mp\.\d+/\.cds$f2print/; 
+      my @tmp_exon_fafile_A = ();
+      for(my $h = 0; $h < $nmdl; $h++) { 
+        my $mdl_idx = $mft2mdl_map_AAR->[$f][$h];
+        my $cur_fafile = $dir . "/" . $mdl_AR->[$mdl_idx] . ".fa";
+        $cur_fafile =~ s/ref/$key/;
+        push(@tmp_exon_fafile_A, $cur_fafile);
+      }
+      combineExonsIntoCDS(\@tmp_exon_fafile_A, $out_fafile);
+    }
+    push(@{$outfile_AR}, $out_fafile);
   }
 
   ($seconds, $microseconds) = gettimeofday();
@@ -4189,6 +4413,7 @@ sub wrapperCombineExonsIntoCDS {
 
   return;
 }
+
 # Subroutine: combineExonsIntoCDS()
 #
 # Synopsis:   Given an array of fasta files each with a different exon 
@@ -4207,6 +4432,10 @@ sub combineExonsIntoCDS {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($exon_fafile_AR, $cds_fafile) = @_;
+
+  #printf("HEYA in $sub_name\n");
+  #foreach my $z (@{$exon_fafile_AR}) { printf("adding $z\n"); }
+  #printf("to make file $cds_fafile\n\n");
 
   # we do this manually, by opening each exon file into a separate file handle and then 
   # outputting each exon as we read it
@@ -4439,21 +4668,20 @@ sub matpeptFindPrimaryAdjacencies {
 # Synopsis:   Parse the input file that defines the relationship between each CDS and the mature peptides.
 #
 # Args:       $infile:          file to parse
-#             $cds2matpept_HAR: ref to hash of arrays to fill here
-
+#             $cds2matpept_AAR: ref to array of arrays to fill here
 #
-# Returns:    void, fills @{$prv_adj_AR} and @{$nxt_adj_AR}
-# Dies:       if a primary peptide $i has more than 1 other primary adjacent peptides $j1 and $j2 such that $j1 < $i and $j2 < $i
-#             if a primary peptide $i has more than 1 other primary adjacent peptides $j1 and $j2 such that $j1 > $i and $j2 > $i
-#             both of these cases are expected to not happen
+# Returns:    void
+# Dies:       if problem reading $infile (in unexpected format)
 #
 sub matpeptParseInfile {
   my $sub_name = "matpeptParseInfile";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($infile, $cds2matpept_HAR) = @_;
+  my ($infile, $cds2matpept_AAR) = @_;
   my $ncds_read = 0;
+  my $cds_idx2store = 0;
+  my $max_cds_idx2store = 0;
 
   open(IN, $infile) || die "ERROR unable to open $infile for reading in $sub_name";
 
@@ -4469,19 +4697,31 @@ sub matpeptParseInfile {
       }
       my ($cds_idx, $matpept_str) = ($el_A[0], $el_A[1]);
       my $cds_idx2store = $cds_idx - 1;
-      if(exists $cds2matpept_HAR->{$cds_idx2store}) { 
+      if($cds_idx2store < 0) { 
+        die "ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file"; 
+      }
+      if($cds_idx2store > $max_cds_idx2store) { 
+        $max_cds_idx2store = $cds_idx2store; 
+      }
+      if(defined $cds2matpept_AAR->[$cds_idx2store] || exists $cds2matpept_AAR->[$cds_idx2store]) {
         die "ERROR in $sub_name, two lines for same CDS idx ($cds_idx) in matpept input file";
       }
       my @matpept_A = split(":", $matpept_str);
-      @{$cds2matpept_HAR->{$cds_idx2store}} = ();
+      @{$cds2matpept_AAR->[$cds_idx2store]} = ();
       foreach my $mp (@matpept_A) { 
-        push(@{$cds2matpept_HAR->{$cds_idx2store}}, ($mp-1));
+        push(@{$cds2matpept_AAR->[$cds_idx2store]}, ($mp-1));
       }
       $ncds_read++;
     }
   }
   close(IN);
 
+  # two sanity checks:
+  for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
+    if((! defined $cds2matpept_AAR->[$cds_idx2store]) && (! exists $cds2matpept_AAR->[$cds_idx2store])) { 
+      die sprintf("ERROR in $sub_name, did not read contiguous number of CDS numbers in $infile, missing %d\n", $cds_idx2store+1); 
+    }
+  }
   if($ncds_read == 0) { 
     die "ERROR in $sub_name, no CDS:mat_peptide relationships read in matpept input file $infile"; 
   }
@@ -4493,7 +4733,7 @@ sub matpeptParseInfile {
 #
 # Synopsis:   Validate that the CDS:mat_peptide relationships read from input matpept file.
 #
-# Args:       $cds2matpept_HAR: ref to hash of arrays, key is cds_idx, value is array
+# Args:       $cds2matpept_AAR: ref to array of arrays, 1st dim value is cds_idx, value is array
 #                               of mat_peptide indices that comprise that CDS, PRE-FILLED
 #             $ref_cds_tbl_HAR: ref to CDS table for reference
 #             $ref_mp_tbl_HAR:  ref to mat_peptide table for reference
@@ -4506,7 +4746,7 @@ sub matpeptValidateCdsRelationships {
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($cds2matpept_HAR, $ref_cds_tbl_HAR, $ref_mp_tbl_HAR) = @_;
+  my ($cds2matpept_AAR, $ref_cds_tbl_HAR, $ref_mp_tbl_HAR) = @_;
 
   # get CDS and mat_peptide length and coordinate strings
   my @ref_cds_len_A    = ();
@@ -4520,9 +4760,9 @@ sub matpeptValidateCdsRelationships {
   # validate
   my $ref_ncds = scalar(@ref_cds_len_A);
   my $ref_nmp  = scalar(@ref_mp_len_A);
-  my $ncds2check = scalar(keys %{$cds2matpept_HAR});
+  my $ncds2check = scalar(@{$cds2matpept_AAR});
   my $prv_stop = undef; # previous mat_peptide's stop position, 
-  foreach my $cds_idx (sort keys %{$cds2matpept_HAR}) { 
+  for(my $cds_idx = 0; $cds_idx < scalar(@{$cds2matpept_AAR}); $cds_idx++) { 
     if(($cds_idx < 0) || ($cds_idx >= $ref_ncds)) { 
       die "ERROR in $sub_name, cds_idx $cds_idx is out of range"; 
     }
@@ -4556,9 +4796,9 @@ sub matpeptValidateCdsRelationships {
 
     # look at all mat_peptides that are supposed to comprise this CDS
     # and make sure that they do
-    my $nmp2check = scalar(@{$cds2matpept_HAR->{$cds_idx}});
+    my $nmp2check = scalar(@{$cds2matpept_AAR->[$cds_idx]});
     for(my $x = 0; $x < $nmp2check; $x++) { 
-      my $mp_idx = $cds2matpept_HAR->{$cds_idx}[$x];
+      my $mp_idx = $cds2matpept_AAR->[$cds_idx][$x];
       if($mp_idx < 0 || $mp_idx >= $ref_nmp) { 
         die "ERROR in $sub_name, mp_idx $mp_idx for cds_idx $cds_idx is out of range"; 
       }
@@ -4778,39 +5018,34 @@ sub checkForSpanningExon {
 #             given references to the relevant data structures.
 #
 # Args:       $err_AR:       ref to array to update one element of
-#             $err_extra_AR: ref to array to add 'extra' information to if $errval is 1
+#             $err_extra_AR: ref to array to add 'extra' information to
 #             $errcode:      error code of string we want to update error info for
-#             $errextra:     if defined, extra information to add to $err_extra_AR if $errval is 1
+#             $errextra:     if defined, extra information to add to $err_extra_AR
 #             $code2idx_HR:  ref to hash that maps $errcode to array index in @{$err_AR}
-#             $errval:       value to set element of error array to 
-#             $errctr_R:     if defined, reference to error counter, increment if ($errval)
+#             $errctr_R:     if defined, reference to error counter, to increment by 1
 #
 # Returns:    void
 # Dies:       if $code2idx_HR->{$errcode} is not defined
 
 sub setErrorCode {
   my $sub_name = "setErrorCode()";
-  my $nargs_exp = 7;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($err_AR, $err_extra_AR, $errcode, $errextra, $code2idx_HR, $errval, $errctr_R) = @_;
+  my ($err_AR, $err_extra_AR, $errcode, $errextra, $code2idx_HR, $errctr_R) = @_;
 
-#  if($errval) { 
-#    printf("HEYA in $sub_name\n");
-#    printf("HEYA \terrcode: $errcode\n");
-#    printf("HEYA \terrval:  $errval\n");
-#    printf("HEYA \terrctr:  $$errctr_R\n");
-#  }
+  printf("HEYA in $sub_name\n");
+  printf("HEYA \terrcode:  $errcode\n");
+  printf("HEYA \terrctr:   $$errctr_R\n");
+  printf("HEYA \terrextra: $errextra\n");
 
   if(! defined $code2idx_HR->{$errcode}) { die "ERROR in $sub_name, unrecognized error code $errcode"; }
-  $err_AR->[$code2idx_HR->{$errcode}] = $errval;
-  if($errval) { 
-    if(defined $err_extra_AR && defined $errextra) { 
-      $err_extra_AR->[$code2idx_HR->{$errcode}] = $errextra;
-    }
-    if(defined $errctr_R) { 
-      $$errctr_R++; 
-    }
+  $err_AR->[$code2idx_HR->{$errcode}] = 1;
+  if(defined $err_extra_AR && defined $errextra) { 
+    $err_extra_AR->[$code2idx_HR->{$errcode}] = $errextra;
+  }
+  if(defined $errctr_R) { 
+    $$errctr_R++; 
   }
 
   return;
@@ -4848,7 +5083,7 @@ sub setErrorCode {
 #             $mdl_is_first_AR:    ref to @mdl_is_first_A, already filled
 #             $mft_out_short_AR:   ref to @mft_out_short_A, already filled
 #             $mft_out_product_AR: ref to @mft_out_product_A, already filled
-#             $cds2matpept_HAR:    ref to %cds2matpept_HA, already filled
+#             $cds2matpept_AAR:    ref to @cds2matpept_AA, already filled
 #             $out_col_header_AAR: ref to 2D array of column headers, filled here
 #                                  undef unless $do_seqrow is '1'
 #             $out_row_header_AR:  ref to 1D array of row headers, filled here
@@ -4861,7 +5096,7 @@ sub getHeadings {
   my $nargs_exp = 22;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, $origin_seq, $ref_tot_nexons, $nmdl, $mdl2mft_map_AR, $mft2exon_map_AR, $mdl_is_first_AR, $mdl_is_final_AR, $mft_out_short_AR, $mft_out_product_AR, $cds2matpept_HAR, $out_col_header_AAR, $out_row_header_AR, $out_header_exp_AR) = @_;
+  my ($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, $origin_seq, $ref_tot_nexons, $nmdl, $mdl2mft_map_AR, $mft2exon_map_AR, $mdl_is_first_AR, $mdl_is_final_AR, $mft_out_short_AR, $mft_out_product_AR, $cds2matpept_AAR, $out_col_header_AAR, $out_row_header_AR, $out_header_exp_AR) = @_;
 
   # contract checks
   if($do_seqrow     &&    $do_seqcol)  { die "ERROR in $sub_name, both $do_seqrow and $do_seqcol are '1'"; }
@@ -5293,8 +5528,8 @@ sub getHeadings {
   # create columns for CDS annotation in mat_peptide mode, if nec
   if($do_matpept) { 
     $do_explanation = 1;
-    my $ncds_for_matpept = scalar(keys %{$cds2matpept_HAR});
-    foreach my $cds_idx (sort keys %{$cds2matpept_HAR}) { 
+    my $ncds_for_matpept = scalar(@{$cds2matpept_AAR});
+    foreach (my $cds_idx = 0; $cds_idx < scalar(@{$cds2matpept_AAR}); $cds_idx++) { 
       my $cds_idx2print = $cds_idx+1;
       $width = 6 + 1 + 6 + 1 + 6; #20
       $tok1     = sprintf("  %*s", $width, "");
@@ -5796,7 +6031,7 @@ sub outputColumnHeaderExplanations {
 
 # Subroutine: outputCDSMaturePeptideRelationships()
 # Args:       $FH:                file handle to print to
-#             $cds2matpept_HAR:   ref to hash of arrays describing relatinoships
+#             $cds2matpept_AAR:   ref to array of arrays describing relatinoships
 #             $div_line:          divider line
 # Synopsis:   Prints out explanation of CDS:mature peptides relationships.
 #
@@ -5807,28 +6042,18 @@ sub outputCDSMaturePeptideRelationships {
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($FH, $cds2matpept_HAR, $div_line) = @_;
+  my ($FH, $cds2matpept_AAR, $div_line) = @_;
 
   printf $FH ("#\n");
   printf $FH ("# CDS:MAT_PEPTIDE relationships:\n");
   printf $FH ("#\n");
-  my $max_cds_idx = 0;
-  my $cds_idx = 0;
-  # first determine maximum cds idx in hash
-  foreach $cds_idx (sort keys %{$cds2matpept_HAR}) { 
-    if($cds_idx > $max_cds_idx) { 
-      $max_cds_idx = $cds_idx; 
+  for(my $cds_idx = 0; $cds_idx < scalar(@{$cds2matpept_AAR}); $cds_idx++) { 
+    printf $FH ("# CDS #%d is comprised of the following mat_peptides in order: ", ($cds_idx+1));
+    for(my $i = 0; $i < scalar(@{$cds2matpept_AAR->{$cds_idx}}); $i++) { 
+      if($i > 0) { print $FH (", "); }
+      print $FH ($cds2matpept_AAR->{$cds_idx}[$i] + 1);
     }
-  }
-  for($cds_idx = 0; $cds_idx <= $max_cds_idx; $cds_idx++) { 
-    if(exists $cds2matpept_HAR->{$cds_idx}) { 
-      printf $FH ("# CDS #%d is comprised of the following mat_peptides in order: ", ($cds_idx+1));
-      for(my $i = 0; $i < scalar(@{$cds2matpept_HAR->{$cds_idx}}); $i++) { 
-        if($i > 0) { print $FH (", "); }
-        print $FH ($cds2matpept_HAR->{$cds_idx}[$i] + 1);
-      }
-      print $FH "\n";
-    }
+    print $FH "\n";
   }
   print $FH "#\n";
   print $FH $div_line;
