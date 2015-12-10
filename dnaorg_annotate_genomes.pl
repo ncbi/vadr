@@ -442,9 +442,10 @@ printf("#\n");
 ############################################
 # parse the -matpept input file if necessary
 ###########################################
-my @cds2matpept_AA = (); # 1st dim: cds index, 2nd dim: value array of matpept indices that comprise this CDS
+my @cds2pmatpept_AA = (); # 1st dim: cds index, 2nd dim: value array of primary matpept indices that comprise this CDS
+my @cds2amatpept_AA = (); # 1st dim: cds index, 2nd dim: value array of all     matpept indices that comprise this CDS
 if(defined $matpept_infile) { 
-  matpeptParseInfile($matpept_infile, \@cds2matpept_AA);
+  matpeptParseInfile($matpept_infile, \@cds2pmatpept_AA, \@cds2amatpept_AA);
 }
 
 #####################
@@ -497,7 +498,7 @@ parseTable($cds_tbl_file, \%cds_tbl_HHA);
 
 if($do_matpept) { 
   # validate the CDS:mat_peptide relationships that we read from $matpept_infile
-  matpeptValidateCdsRelationships(\@cds2matpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}});
+  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}});
 }
 
 if($do_matpept) { 
@@ -698,6 +699,7 @@ my @mdl_is_primary_A = ();  # [0..h..$nmdl-1]: '1' if model ($m+1) is for a prim
 my @mft2first_mdl_A = ();   # [0..$c..ncds-1]: $h, first exon of feature $f+1 is modeled by model $m+1
 my @mft2final_mdl_A = ();   # [0..$c..ncds-1]: $h, final exon of feature $f+1 is modeled by model $m+1
 my @mdl_A = ();             # [0..$nmdl-1]: array of model names, also name of stockholm alignments used to build those models
+my @mft_out_tiny_A    = (); # [0..$ref_nmft-1]: array of very abbreviated model main feature names to print
 my @mft_out_short_A   = (); # [0..$ref_nmft-1]: array of abbreviated model main feature names to print
 my @mft_out_product_A = (); # [0..$ref_nmft-1]: array of 'product' qualifiers for a main feature (protein names)
 my %mdllen_H          = (); # key: model name from @mdl_A, value is model length
@@ -772,8 +774,11 @@ for(my $i = 0; $i < $ref_nmft; $i++) {
     # store information on this model's name for output purposes
     if($e == ($nexons-1)) { 
       my $short = ($do_matpept) ? sprintf("MP #%d", ($i+1)) : sprintf("CDS #%d", ($i+1));
+      my $tiny  = $short;
+      $tiny =~ s/\s+//g; # remove whitespace
       if($act_nexons > 1) { $short .= sprintf(" [$act_nexons %s; $strand]", ($do_matpept) ? "segments" : "exons"); }
       else                { $short .= sprintf(" [single %s; $strand]",      ($do_matpept) ? "segment"  : "exon"); }
+      push(@mft_out_tiny_A,    $tiny);
       push(@mft_out_short_A,   $short);
       push(@mft_out_product_A, $ref_mft_product_A[$i]);
     }
@@ -1027,18 +1032,18 @@ my @matpept_cds_pass_fail_AH = ();
 my @matpept_cds_stop_codon_AH = ();
 my @pred_cds_mft_fafile_A = (); # array of predicted CDS sequence files, filled below
 if($do_matpept) { 
-  wrapperCombineExonsIntoCDS($dir, "predicted", \@mdl_A, \@accn_A, \@mdl2mft_map_A, \@cds2matpept_AA, \@pred_cds_mft_fafile_A);
+  wrapperCombineExonsIntoCDS($dir, "predicted", \@mdl_A, \@accn_A, \@mdl2mft_map_A, \@cds2pmatpept_AA, \@pred_cds_mft_fafile_A);
   push(@pred_mft_fafile_A, @pred_cds_mft_fafile_A);
 
   # keep track of which CDS sequences are valid (pass all adjacency tests), we will only do the translation tests
   # (i.e. look for in-frame stops) for valid CDS
-  my $ncds = scalar(@cds2matpept_AA);
+  my $ncds = scalar(@cds2pmatpept_AA);
   for(my $c = 0; $c < $ncds; $c++) { 
     %{$matpept_cds_pass_fail_AH[$c]} = ();
     for(my $a = 0; $a < $naccn; $a++) { 
       my $accn     = $accn_A[$a];
       my $seq_accn = $seq_accn_A[$a];
-      my ($cds_start, $cds_stop, $cds_len, $cds_start_codon, $cds_stop_codon, $cds_pass_fail) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2matpept_AA[$c]}, \%p_start_HH, \%p_stop_HH, undef, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A);
+      my ($cds_start, $cds_stop, undef, undef, $cds_len, $cds_start_codon, $cds_stop_codon, $cds_pass_fail) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2pmatpept_AA[$c]}, \%p_start_HH, \%p_stop_HH, undef, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A);
       $matpept_cds_pass_fail_AH[$c]{$seq_accn}  = $cds_pass_fail;
       $matpept_cds_stop_codon_AH[$c]{$seq_accn} = $cds_stop_codon;
       # printf("0 matpept_cds_stop_codon_AH[$c]{$seq_accn}: $matpept_cds_stop_codon_AH[$c]{$seq_accn}\n");
@@ -1078,7 +1083,7 @@ my @corr_mft_fafile_A = (); # array of corrected CDS/mat_peptide sequence files,
 my $ref_nmp_and_cds = $ref_nmft;
 if($do_matpept) { 
   # add in CDS in matpept mode
-  $ref_nmp_and_cds += scalar(@cds2matpept_AA); 
+  $ref_nmp_and_cds += scalar(@cds2pmatpept_AA); 
 }
 my @source_accn_ext_check_AA     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
                                        # accessions to check for 'ext' error, b/c no in-frame stop within 
@@ -1583,7 +1588,7 @@ for($mft_i = 0; $mft_i < $ref_nmft; $mft_i++) {
   printf $errpeout_FH ("# Feature \#%d: $mft_out_short_A[$mft_i] $mft_out_product_A[$mft_i]\n", ($mft_i+1));
 }
 if($do_matpept) { 
-  foreach (my $cds_idx = 0; $cds_idx < scalar(@cds2matpept_AA); $cds_idx++) { 
+  foreach (my $cds_idx = 0; $cds_idx < scalar(@cds2pmatpept_AA); $cds_idx++) { 
     printf $errpaout_FH ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
     printf $errpeout_FH ("# Feature \#%d: CDS \#%d\n", ($mft_i+1), $cds_idx+1);
     $mft_i++;
@@ -1594,10 +1599,10 @@ printf $errpeout_FH ("#       as opposed to a specific feature.\n");
 printf $errpeout_FH ("#\n");
 my $div_line = "# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n";
 if($do_matpept) { 
-  outputCDSMaturePeptideRelationships($errpaout_FH, \@cds2matpept_AA, $div_line);
-  outputCDSMaturePeptideRelationships($errpeout_FH, \@cds2matpept_AA, $div_line);
+  outputCDSMaturePeptideRelationships($errpaout_FH, \@cds2pmatpept_AA, \@cds2amatpept_AA, $div_line);
+  outputCDSMaturePeptideRelationships($errpeout_FH, \@cds2pmatpept_AA, \@cds2amatpept_AA, $div_line);
 }
-printf $errpeout_FH ("%-10s  %3s  %4s  error-message\n", "#accn", "idx", "code");
+printf $errpeout_FH ("%-10s  %3s  %-5s  %4s  error-message\n", "#accn", "idx", "desc", "code");
 printf $errpaout_FH ("#\n");
 
 #######################
@@ -1613,7 +1618,7 @@ my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and onl
                             # explanations of each header
 getHeadings($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, 
             $origin_seq, $ref_tot_nexons, $nmdl, \@mdl2mft_map_A, \@mft2exon_map_A, \@mdl_is_first_A, \@mdl_is_final_A, 
-            \@mft_out_short_A, \@mft_out_product_A, \@cds2matpept_AA, ($do_seqrow) ? (\@out_col_header_AA) : undef,
+            \@mft_out_short_A, \@mft_out_product_A, \@cds2pmatpept_AA, ($do_seqrow) ? (\@out_col_header_AA) : undef,
             ($do_seqcol) ? (\@out_row_header_A)  : undef,
             (\@out_header_exp_A));
 
@@ -1692,7 +1697,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   }
   my $nmft_for_errors = $ref_nmft;
   if($do_matpept) { 
-    $nmft_for_errors += scalar(@cds2matpept_AA);
+    $nmft_for_errors += scalar(@cds2pmatpept_AA);
   }
   my $mft_i;
   for($mft_i = 0; $mft_i < $nmft_for_errors; $mft_i++) { 
@@ -2094,9 +2099,9 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $stop_codon_char;    # one of the 3 characters in the ss3 field, indicating if the stop  codon is valid or not
     my $multiple_of_3_char; # one of the 3 characters in the ss3 field, indicating if the length is a multiple of 3 or not
     my $mft_i = $ref_nmft-1;
-    foreach (my $cds_idx = 0; $cds_idx < scalar(@cds2matpept_AA); $cds_idx++) { 
+    foreach (my $cds_idx = 0; $cds_idx < scalar(@cds2pmatpept_AA); $cds_idx++) { 
       $mft_i++;
-      my ($cds_start, $cds_stop, $cds_corr_stop, $cds_len, $cds_start_codon, $cds_stop_codon, $cds_pass_fail) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2matpept_AA[$cds_idx]}, \%p_start_HH, \%p_stop_HH, \%c_stop_HH, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A);
+      my ($cds_start, $cds_stop, $cds_corr_stop, $cds_corr_stop_mdl_idx, $cds_len, $cds_start_codon, $cds_stop_codon, $cds_pass_fail) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2pmatpept_AA[$cds_idx]}, \%p_start_HH, \%p_stop_HH, \%c_stop_HH, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A);
       my $orig_cds_stop = $cds_stop;
 
       # check if we have a truncated stop
@@ -2106,7 +2111,19 @@ for(my $a = 0; $a < $naccn; $a++) {
         # set 'trc' error
         my $trc_errmsg = sprintf("homology search predicted $cds_start..$orig_cds_stop revised to $cds_start..$cds_stop (stop shifted %d nt)", abs($cds_stop-$orig_cds_stop));
         setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $trc_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+
+        # and set 'ntr' (not translated) errors for all mat peptides that are not translated due to this truncation:
+        # first determine mft index (mat_peptide index) that $cds_corr_stop_mdl_idx corresponds to:
+        my $cds_corr_stop_mft_idx = $mdl2mft_map_A[$cds_corr_stop_mdl_idx];
+        my $ntr_errmsg = sprintf("early stop in mature peptide %d ending at position $cds_stop", $cds_corr_stop_mft_idx+1);
+        for(my $i = 0; $i < scalar(@{$cds2amatpept_AA[$cds_idx]}); $i++) { # step through ALL peptides encoded by this CDS, not just primary ones
+          my $mft_j = $cds2amatpept_AA[$cds_idx][$i];
+          if($mft_j > $cds_corr_stop_mft_idx) { 
+            setErrorCode(\@{$cur_err_pf_AA[$mft_j]}, \@{$cur_err_extra_pf_AA[$mft_j]}, "ntr", $ntr_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+          }
+        }
       }
+
       if(defined $cds_start) { 
         push(@cur_out_A, sprintf("  %6d", $cds_start)); 
       } 
@@ -2292,7 +2309,8 @@ for(my $a = 0; $a < $naccn; $a++) {
             print $errpaout_FH "," . $err_pf_idx2code_A[$e];
           }
           $nerr_printed++;
-          printf $errpeout_FH ("%-10s  %3s  %4s  %s%s\n", $accn, ($mft_i+1), $err_pf_idx2code_A[$e], $err_pf_idx2msg_H{$err_pf_idx2code_A[$e]}, 
+          my $desc = ($mft_i < $ref_nmft) ? $mft_out_tiny_A[$mft_i] : sprintf("CDS#%d", ($mft_i - $ref_nmft + 1));
+          printf $errpeout_FH ("%-10s  %3s  %-5s  %4s  %s%s\n", $accn, ($mft_i+1), $desc, $err_pf_idx2code_A[$e], $err_pf_idx2msg_H{$err_pf_idx2code_A[$e]}, 
                                (defined $cur_err_extra_pf_AA[$mft_i][$e]) ? " [" . $cur_err_extra_pf_AA[$mft_i][$e]. "]" : "");
           $nlines_per_err_file++;
         }
@@ -2324,9 +2342,9 @@ print $err_tblout_FH $div_line;
 # OUTPUT CDS:MAT_PEPTIDE RELATIONSHIPS, IF NEC 
 ##############################################
 if($do_matpept) { 
-  outputCDSMaturePeptideRelationships($tblout_FH,      \@cds2matpept_AA, $div_line);
-  outputCDSMaturePeptideRelationships($fail_tblout_FH, \@cds2matpept_AA, $div_line);
-  outputCDSMaturePeptideRelationships($err_tblout_FH,  \@cds2matpept_AA, $div_line);
+  outputCDSMaturePeptideRelationships($tblout_FH,      \@cds2pmatpept_AA, \@cds2amatpept_AA, $div_line);
+  outputCDSMaturePeptideRelationships($fail_tblout_FH, \@cds2pmatpept_AA, \@cds2amatpept_AA, $div_line);
+  outputCDSMaturePeptideRelationships($err_tblout_FH,  \@cds2pmatpept_AA, \@cds2amatpept_AA, $div_line);
 }
 
 ##########################
@@ -4702,6 +4720,7 @@ sub matpeptFindPrimaryPeptides {
   return;
 }
 
+
 # Subroutine: matpeptFindPrimaryAdjacencies()
 #
 # Synopsis:   For each 'primary' peptide $i, find the other primary peptide that is adjacent before it
@@ -4764,35 +4783,64 @@ sub matpeptFindPrimaryAdjacencies {
 #
 # Synopsis:   Parse the input file that defines the relationship between each CDS and the mature peptides.
 #
-# Args:       $infile:          file to parse
-#             $cds2matpept_AAR: ref to array of arrays to fill here
+# Args:       $infile:           file to parse
+#             $cds2pmatpept_AAR: ref to array of arrays to fill here, CDS: 'primary' mat_peptide relationships
+#             $cds2amatpept_AAR: ref to array of arrays to fill here, CDS: 'all'     mat_peptide relationships
 #
 # Returns:    void
 # Dies:       if problem reading $infile (in unexpected format)
 #
 sub matpeptParseInfile {
   my $sub_name = "matpeptParseInfile";
-  my $nargs_exp = 2;
+  my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($infile, $cds2matpept_AAR) = @_;
-  my $ncds_read = 0;
-  my $cds_idx2store = 0;
+  my ($infile, $cds2pmatpept_AAR, $cds2amatpept_AAR) = @_;
+  my $ncds_read_primary = 0;
+  my $ncds_read_all     = 0;
+  my $cds_idx2store     = 0;
   my $max_cds_idx2store = 0;
 
   open(IN, $infile) || die "ERROR unable to open $infile for reading in $sub_name";
 
   while(my $line = <IN>) { 
     if($line !~ m/^\#/) { 
-      # example input line
-      # 1 1:3:6:7:8:9:10:11:12:13:14
+      # example input file:
+      ## This file explains how CDS and mat_peptide annotation for NC_001477
+      ## are related.
+      ##
+      ############beg of file
+      ## Format of lines in this file:
+      ## <CDS-idx> <'primary' OR 'all'> <mat_peptide-1-idx>:<mat_peptide-2-idx>:<mat_peptide-n-idx>
+      ## 'primary' lines: these define the 'primary' peptides in order, the
+      ##                  CDS <CDS-idx> is comprised of the peptides listed
+      ##                  in final token, which are contiguous, start of 
+      ##                  first mat_peptide to stop of final mat_peptide is
+      ##                  one contiguous subsequence.
+      ##
+      ## 'all' lines:     these define all the peptides that are ultimately
+      ##                  derived from CDS <CDS-idx>. It will be a superset
+      ##                  of the primary line for this index but will
+      ##                  additionally include mat_peptides that are
+      ##                  secondarily cleaved from the primary mat_peptides.
+      ##
+      #1 primary 1:3:6:7:8:9:10:11:12:13:14
+      #1 all     1:2:3:4:5:6:7:8:9:10:11:12:13:14
+      ## 
+      ############end of file
       # NOTE: in the input file CDS and matpept indices are in coordinate space 1..N, but we store them in 0..N-1
+      # 
+      # we need to have one 'primary' and one 'all' line for each  
       chomp $line;
       my @el_A = split(/\s+/, $line);
-      if(scalar(@el_A) != 2) { 
+      if(scalar(@el_A) != 3) { 
         die "ERROR in $sub_name, unable to parse matpept input file line: $line"; 
       }
-      my ($cds_idx, $matpept_str) = ($el_A[0], $el_A[1]);
+      my ($cds_idx, $primary_or_all, $matpept_str) = ($el_A[0], $el_A[1], $el_A[2]);
+      $primary_or_all =~ tr/A-Z/a-z/;
+      if($primary_or_all ne "all" && $primary_or_all ne "primary") { 
+        die "ERROR parsing $infile, second token of each non-comment line should be 'all' or 'primary'";
+      }
       my $cds_idx2store = $cds_idx - 1;
       if($cds_idx2store < 0) { 
         die "ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file"; 
@@ -4800,27 +4848,61 @@ sub matpeptParseInfile {
       if($cds_idx2store > $max_cds_idx2store) { 
         $max_cds_idx2store = $cds_idx2store; 
       }
-      if(defined $cds2matpept_AAR->[$cds_idx2store] || exists $cds2matpept_AAR->[$cds_idx2store]) {
-        die "ERROR in $sub_name, two lines for same CDS idx ($cds_idx) in matpept input file";
+      if($primary_or_all eq "primary") { 
+        if(defined $cds2pmatpept_AAR->[$cds_idx2store] || exists $cds2pmatpept_AAR->[$cds_idx2store]) {
+          die "ERROR in $sub_name, two primary lines for same CDS idx ($cds_idx) in matpept input file";
+        }
+        my @matpept_A = split(":", $matpept_str);
+        @{$cds2pmatpept_AAR->[$cds_idx2store]} = ();
+        foreach my $mp (@matpept_A) { 
+          push(@{$cds2pmatpept_AAR->[$cds_idx2store]}, ($mp-1));
+        }
+        $ncds_read_primary++;
       }
-      my @matpept_A = split(":", $matpept_str);
-      @{$cds2matpept_AAR->[$cds_idx2store]} = ();
-      foreach my $mp (@matpept_A) { 
-        push(@{$cds2matpept_AAR->[$cds_idx2store]}, ($mp-1));
+      elsif($primary_or_all eq "all") { 
+        if(defined $cds2amatpept_AAR->[$cds_idx2store] || exists $cds2amatpept_AAR->[$cds_idx2store]) {
+          die "ERROR in $sub_name, two all lines for same CDS idx ($cds_idx) in matpept input file";
+        }
+        my @matpept_A = split(":", $matpept_str);
+        @{$cds2amatpept_AAR->[$cds_idx2store]} = ();
+        foreach my $mp (@matpept_A) { 
+          push(@{$cds2amatpept_AAR->[$cds_idx2store]}, ($mp-1));
+        }
+        $ncds_read_all++;
       }
-      $ncds_read++;
     }
   }
   close(IN);
 
-  # two sanity checks:
+  # three sanity checks:
+  # 1: we should have stored all and primary info for CDS numbers 1..$max_cds_idx2stroe
   for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
-    if((! defined $cds2matpept_AAR->[$cds_idx2store]) && (! exists $cds2matpept_AAR->[$cds_idx2store])) { 
-      die sprintf("ERROR in $sub_name, did not read contiguous number of CDS numbers in $infile, missing %d\n", $cds_idx2store+1); 
+    if((! defined $cds2pmatpept_AAR->[$cds_idx2store]) && (! exists $cds2pmatpept_AAR->[$cds_idx2store])) { 
+      die "ERROR in $sub_name, did not read exactly $max_cds_idx2store primary and all lines in $infile\n";
+    }
+    if((! defined $cds2amatpept_AAR->[$cds_idx2store]) && (! exists $cds2amatpept_AAR->[$cds_idx2store])) { 
+      die "ERROR in $sub_name, did not read exactly $max_cds_idx2store primary and all lines in $infile\n";
     }
   }
-  if($ncds_read == 0) { 
-    die "ERROR in $sub_name, no CDS:mat_peptide relationships read in matpept input file $infile"; 
+  # 2: we should have at least read at least one of each primary and all
+  if($ncds_read_primary == 0) { 
+    die "ERROR in $sub_name, no primary CDS:mat_peptide relationships read in matpept input file $infile"; 
+  }
+  if($ncds_read_all == 0) { 
+    die "ERROR in $sub_name, no all CDS:mat_peptide relationships read in matpept input file $infile"; 
+  }
+  # 3: all info should be a superset of primary info
+  for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
+    foreach $mp (@{$cds2amatpept_AAR->[$i]}) { 
+      # make sure it exists
+      my $found_it = 0;
+      foreach $mp2 (@{$cds2pmatpept_AAR->[$i]}) { 
+        if($mp == $mp2) { $found_it = 1; }
+      }
+      if(! $found_it) { 
+        die sprintf("ERROR in $sub_name, all information is not a superset of primary information: %d is in primary but not all", $mp2+1);
+      }
+    }
   }
 
   return;
@@ -4830,7 +4912,7 @@ sub matpeptParseInfile {
 #
 # Synopsis:   Validate that the CDS:mat_peptide relationships read from input matpept file.
 #
-# Args:       $cds2matpept_AAR: ref to array of arrays, 1st dim value is cds_idx, value is array
+# Args:       $cds2pmatpept_AAR: ref to array of arrays, 1st dim value is cds_idx, value is array
 #                               of mat_peptide indices that comprise that CDS, PRE-FILLED
 #             $ref_cds_tbl_HAR: ref to CDS table for reference
 #             $ref_mp_tbl_HAR:  ref to mat_peptide table for reference
@@ -4843,7 +4925,7 @@ sub matpeptValidateCdsRelationships {
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($cds2matpept_AAR, $ref_cds_tbl_HAR, $ref_mp_tbl_HAR) = @_;
+  my ($cds2pmatpept_AAR, $ref_cds_tbl_HAR, $ref_mp_tbl_HAR) = @_;
 
   # get CDS and mat_peptide length and coordinate strings
   my @ref_cds_len_A    = ();
@@ -4857,9 +4939,9 @@ sub matpeptValidateCdsRelationships {
   # validate
   my $ref_ncds = scalar(@ref_cds_len_A);
   my $ref_nmp  = scalar(@ref_mp_len_A);
-  my $ncds2check = scalar(@{$cds2matpept_AAR});
+  my $ncds2check = scalar(@{$cds2pmatpept_AAR});
   my $prv_stop = undef; # previous mat_peptide's stop position, 
-  for(my $cds_idx = 0; $cds_idx < scalar(@{$cds2matpept_AAR}); $cds_idx++) { 
+  for(my $cds_idx = 0; $cds_idx < scalar(@{$cds2pmatpept_AAR}); $cds_idx++) { 
     if(($cds_idx < 0) || ($cds_idx >= $ref_ncds)) { 
       die "ERROR in $sub_name, cds_idx $cds_idx is out of range"; 
     }
@@ -4893,9 +4975,9 @@ sub matpeptValidateCdsRelationships {
 
     # look at all mat_peptides that are supposed to comprise this CDS
     # and make sure that they do
-    my $nmp2check = scalar(@{$cds2matpept_AAR->[$cds_idx]});
+    my $nmp2check = scalar(@{$cds2pmatpept_AAR->[$cds_idx]});
     for(my $x = 0; $x < $nmp2check; $x++) { 
-      my $mp_idx = $cds2matpept_AAR->[$cds_idx][$x];
+      my $mp_idx = $cds2pmatpept_AAR->[$cds_idx][$x];
       if($mp_idx < 0 || $mp_idx >= $ref_nmp) { 
         die "ERROR in $sub_name, mp_idx $mp_idx for cds_idx $cds_idx is out of range"; 
       }
@@ -4942,27 +5024,28 @@ sub matpeptValidateCdsRelationships {
 #             $mp2first_mdl_AR: ref to array, [0..$i..$nmp-1] = $m, $m is first model for mat_peptide $i
 #             $mp2final_mdl_AR: ref to array, [0..$i..$nmp-1] = $m, $m is final model for mat_peptide $i
 #
-# Returns:    Five values:
-#             $start:       1st position of CDS, inferred from mat_peptide predictions, 
-#                           undef if no first mat_peptide prediction
-#             $stop:        final position of CDS, inferred from mat_peptide predictions
-#                           this is 3 nt past stop position of final mat_peptide,
-#                           undef if no final mat_peptide prediction
-#             $corr_stop:   corrected stop, final position of CDS, earliest (5'-most) stop of
-#                           any mat_peptide that comprises the CDS for which the stop was
-#                           corrected, undef if no mat_peptide stop was corrected OR if
-#                           input $cstop_HHR variable is undef
-#             $len:         length of predicted CDS, inferred from mat_peptide predictions, 
-#                           undef if any mat_peptide predictions are missing
-#                           or any are non-adjacent
-#             $start_codon: 1st codon of CDS, inferred from mat_peptide predictions, 
-#                           undef if no first mat_peptide prediction
-#             $stop_codon:  final codon of CDS, inferred from mat_peptide predictions, 
-#                           undef if no final mat_peptide prediction, if $corr_stop is
-#                           defined, this will be the early stop codon.
-#             $pass_fail:   'P' if CDS passes (all mat_peptides exist and are contiguous)
-#                           'F' if CDS fails (not all mat_peptides exist, and/or they are not
-#                           contiguous
+# Returns:    7 values:
+#             $start:         1st position of CDS, inferred from mat_peptide predictions, 
+#                             undef if no first mat_peptide prediction
+#             $stop:          final position of CDS, inferred from mat_peptide predictions
+#                             this is 3 nt past stop position of final mat_peptide,
+#                             undef if no final mat_peptide prediction
+#             $corr_stop:     corrected stop, final position of CDS, earliest (5'-most) stop of
+#                             any mat_peptide that comprises the CDS for which the stop was
+#                             corrected, undef if no mat_peptide stop was corrected OR if
+#                             input $cstop_HHR variable is undef
+#             $corr_stop_idx: model index the corrected stop exists in, undef if $corr_stop is undef
+#             $len:           length of predicted CDS, inferred from mat_peptide predictions, 
+#                             undef if any mat_peptide predictions are missing
+#                             or any are non-adjacent
+#             $start_codon:   1st codon of CDS, inferred from mat_peptide predictions, 
+#                             undef if no first mat_peptide prediction
+#             $stop_codon:    final codon of CDS, inferred from mat_peptide predictions, 
+#                             undef if no final mat_peptide prediction, if $corr_stop is
+#                             defined, this will be the early stop codon.
+#             $pass_fail:     'P' if CDS passes (all mat_peptides exist and are contiguous)
+#                             'F' if CDS fails (not all mat_peptides exist, and/or they are not
+#                             contiguous
 #
 # Dies:       If not all predicted mat_peptides are on the positive strand.
 #
@@ -4987,10 +5070,12 @@ sub matpeptCheckCdsRelationships {
   my $nmp2check   = scalar(@{$cds2matpept_AR});
   my $prv_stop    = undef; # stop position of previous mat_peptide
   my $corrected_stop = undef; # earliest (5'-most) corrected stop of all mat_peptides that comprise this CDS, or undef if none are corrected
+  my $corrected_stop_mdl_idx = undef; # model index that corrected_stop occurs in
+
   for(my $x = 0; $x < $nmp2check; $x++) { 
-    my $mp_idx   = $cds2matpept_AR->[$x];
-    my $mdl1     = $mdl_AR->[$mft2first_mdl_AR->[$mp_idx]];
-    my $mdl2     = $mdl_AR->[$mft2final_mdl_AR->[$mp_idx]];
+    my $mp_idx = $cds2matpept_AR->[$x];
+    my $mdl1   = $mdl_AR->[$mft2first_mdl_AR->[$mp_idx]];
+    my $mdl2   = $mdl_AR->[$mft2final_mdl_AR->[$mp_idx]];
 
     # check to see if the stop position for this mat_peptide was corrected due to an early stop
     for(my $tmp_mdl_idx = $mft2first_mdl_AR->[$mp_idx]; $tmp_mdl_idx <= $mft2final_mdl_AR->[$mp_idx]; $tmp_mdl_idx++) { 
@@ -5004,6 +5089,7 @@ sub matpeptCheckCdsRelationships {
         if((! defined $corrected_stop) || 
            ($cstop_HHR->{$tmp_mdl}{$seq_accn} < $corrected_stop)) { 
           $corrected_stop = $cstop_HHR->{$tmp_mdl}{$seq_accn};
+          $corrected_stop_mdl_idx = $tmp_mdl_idx;
         }
       }
     }     
@@ -5066,7 +5152,7 @@ sub matpeptCheckCdsRelationships {
     $stop_codon = fetchStopCodon($sqfile, $seq_accn, $corrected_stop, $totlen, "+");
   }
 
-  return($start, $stop, $corrected_stop, $length, $start_codon, $stop_codon, $pass_fail);
+  return($start, $stop, $corrected_stop, $corrected_stop_mdl_idx, $length, $start_codon, $stop_codon, $pass_fail);
 }
 
 # Subroutine: checkForSpanningExon()
@@ -5215,7 +5301,7 @@ sub setErrorCode {
 #             $mdl_is_first_AR:    ref to @mdl_is_first_A, already filled
 #             $mft_out_short_AR:   ref to @mft_out_short_A, already filled
 #             $mft_out_product_AR: ref to @mft_out_product_A, already filled
-#             $cds2matpept_AAR:    ref to @cds2matpept_AA, already filled
+#             $cds2pmatpept_AAR:    ref to @cds2pmatpept_AA, already filled
 #             $out_col_header_AAR: ref to 2D array of column headers, filled here
 #                                  undef unless $do_seqrow is '1'
 #             $out_row_header_AR:  ref to 1D array of row headers, filled here
@@ -5228,7 +5314,7 @@ sub getHeadings {
   my $nargs_exp = 22;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, $origin_seq, $ref_tot_nexons, $nmdl, $mdl2mft_map_AR, $mft2exon_map_AR, $mdl_is_first_AR, $mdl_is_final_AR, $mft_out_short_AR, $mft_out_product_AR, $cds2matpept_AAR, $out_col_header_AAR, $out_row_header_AR, $out_header_exp_AR) = @_;
+  my ($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, $origin_seq, $ref_tot_nexons, $nmdl, $mdl2mft_map_AR, $mft2exon_map_AR, $mdl_is_first_AR, $mdl_is_final_AR, $mft_out_short_AR, $mft_out_product_AR, $cds2pmatpept_AAR, $out_col_header_AAR, $out_row_header_AR, $out_header_exp_AR) = @_;
 
   # contract checks
   if($do_seqrow     &&    $do_seqcol)  { die "ERROR in $sub_name, both $do_seqrow and $do_seqcol are '1'"; }
@@ -5660,8 +5746,8 @@ sub getHeadings {
   # create columns for CDS annotation in mat_peptide mode, if nec
   if($do_matpept) { 
     $do_explanation = 1;
-    my $ncds_for_matpept = scalar(@{$cds2matpept_AAR});
-    foreach (my $cds_idx = 0; $cds_idx < scalar(@{$cds2matpept_AAR}); $cds_idx++) { 
+    my $ncds_for_matpept = scalar(@{$cds2pmatpept_AAR});
+    foreach (my $cds_idx = 0; $cds_idx < scalar(@{$cds2pmatpept_AAR}); $cds_idx++) { 
       my $cds_idx2print = $cds_idx+1;
       $width = 6 + 1 + 6 + 1 + 6; #20
       $tok1     = sprintf("  %*s", $width, "");
@@ -6163,7 +6249,7 @@ sub outputColumnHeaderExplanations {
 
 # Subroutine: outputCDSMaturePeptideRelationships()
 # Args:       $FH:                file handle to print to
-#             $cds2matpept_AAR:   ref to array of arrays describing relatinoships
+#             $cds2pmatpept_AAR:   ref to array of arrays describing relatinoships
 #             $div_line:          divider line
 # Synopsis:   Prints out explanation of CDS:mature peptides relationships.
 #
@@ -6171,19 +6257,27 @@ sub outputColumnHeaderExplanations {
 
 sub outputCDSMaturePeptideRelationships { 
   my $sub_name = "outputCDSMaturePeptideRelationships";
-  my $nargs_exp = 3;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($FH, $cds2matpept_AAR, $div_line) = @_;
+  my ($FH, $cds2pmatpept_AAR, $cds2amatpept_AAR, $div_line) = @_;
 
   printf $FH ("#\n");
   printf $FH ("# CDS:MAT_PEPTIDE relationships:\n");
   printf $FH ("#\n");
-  for(my $cds_idx = 0; $cds_idx < scalar(@{$cds2matpept_AAR}); $cds_idx++) { 
-    printf $FH ("# CDS #%d is comprised of the following mat_peptides in order: ", ($cds_idx+1));
-    for(my $i = 0; $i < scalar(@{$cds2matpept_AAR->[$cds_idx]}); $i++) { 
+  for(my $cds_idx = 0; $cds_idx < scalar(@{$cds2pmatpept_AAR}); $cds_idx++) { 
+    printf $FH ("# CDS #%d is comprised of the following primary mat_peptides in order: ", ($cds_idx+1));
+    for(my $i = 0; $i < scalar(@{$cds2pmatpept_AAR->[$cds_idx]}); $i++) { 
       if($i > 0) { print $FH (", "); }
-      print $FH ($cds2matpept_AAR->[$cds_idx][$i] + 1);
+      print $FH ($cds2pmatpept_AAR->[$cds_idx][$i] + 1);
+    }
+    print $FH "\n";
+  }
+  for(my $cds_idx = 0; $cds_idx < scalar(@{$cds2pmatpept_AAR}); $cds_idx++) { 
+    printf $FH ("# CDS #%d encodes all of the following mat_peptides in order: ", ($cds_idx+1));
+    for(my $i = 0; $i < scalar(@{$cds2amatpept_AAR->[$cds_idx]}); $i++) { 
+      if($i > 0) { print $FH (", "); }
+      print $FH ($cds2amatpept_AAR->[$cds_idx][$i] + 1);
     }
     print $FH "\n";
   }
