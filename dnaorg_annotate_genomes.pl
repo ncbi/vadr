@@ -1420,12 +1420,16 @@ printf("%-65s ... ", "# Translating coding sequences into proteins/peptides ");
 for(my $c = 0; $c < $ref_nmft; $c++) { 
   my $cur_fafile = ($do_nocorrect) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
   my $aa_full_fafile  = $cur_fafile;
-  if($do_matpept) { 
+  if($aa_full_fafile =~ m/\.mp/) { 
     $aa_full_fafile  =~ s/\.mp/\.aa.full/;
   }
-  else { 
+  elsif($aa_full_fafile =~ m/\.cds/) { 
     $aa_full_fafile  =~ s/\.cds/\.aa.full/;
   }
+  else { 
+    die "ERROR, did not find \.mp or \.cds in fasta file name $aa_full_fafile when trying to translate coding sequences into proteins/peptides";
+  }
+
   # translate into AA sequences
   my $opts = "";
   if(! $do_matpept) { 
@@ -4453,7 +4457,6 @@ sub wrapperCombineExonsIntoCDS {
         $cur_fafile =~ s/ref/$key/;
         push(@tmp_exon_fafile_A, $cur_fafile);
       }
-      #old_combineExonsIntoCDS(\@tmp_exon_fafile_A, $out_fafile);
       combineExonsIntoCDS(\@tmp_exon_fafile_A, $acc_order_AR, $out_fafile);
     }
     push(@{$outfile_AR}, $out_fafile);
@@ -4486,7 +4489,12 @@ sub combineExonsIntoCDS {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($exon_fafile_AR, $acc_order_AR, $cds_fafile) = @_;
-
+  
+  #printf("HEYA in combineExonsIntoCDS(), combining files to create $cds_fafile\n");
+  #for(my $f = 0; $f < scalar(@{$exon_fafile_AR}); $f++) { 
+  #  printf("adding $exon_fafile_AR->[$f]\n");
+  #}
+  
   my @sqfile_A  = ();
   my @sqname_AA = ();
   my $nfiles = scalar(@{$exon_fafile_AR});
@@ -4494,6 +4502,9 @@ sub combineExonsIntoCDS {
   my %acc_ct_H     = (); # key: accession, value: number of files accession exists in
   my %acc_coords_H = (); # key: accession, value: concatenated set of coordinates for this accession
   for(my $f = 0; $f < $nfiles; $f++) { 
+    if(! -s $exon_fafile_AR->[$f]) { 
+      die "ERROR file $exon_fafile_AR->[$f] does not exist, we need to use it to combine exons into a CDS file.";
+    }
     $sqfile_A[$f] = Bio::Easel::SqFile->new({ fileLocation => $exon_fafile_AR->[$f] });
     # get names all of sequences in each file
     for(my $i = 0; $i < $sqfile_A[$f]->nseq_ssi; $i++) { 
@@ -4529,9 +4540,7 @@ sub combineExonsIntoCDS {
     }
   }
   close(OUT);
-
   
-
   return;
 }
 
