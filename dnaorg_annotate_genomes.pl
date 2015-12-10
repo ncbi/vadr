@@ -550,11 +550,11 @@ $err_pf_idx2code_A[3]  = "bd3";
 $err_pf_idx2code_A[4]  = "olp";
 $err_pf_idx2code_A[5]  = "str";
 $err_pf_idx2code_A[6]  = "stp";
-$err_pf_idx2code_A[7]  = "adj";
-$err_pf_idx2code_A[8]  = "fid";
-$err_pf_idx2code_A[9]  = "srt";
-$err_pf_idx2code_A[10] = "lng";
-$err_pf_idx2code_A[11] = "trc";
+$err_pf_idx2code_A[7]  = "ajb";
+$err_pf_idx2code_A[8]  = "aja";
+$err_pf_idx2code_A[9] = "trc";
+$err_pf_idx2code_A[10] = "ext";
+$err_pf_idx2code_A[11] = "ntr";
 
 $err_pf_idx2msg_H{"nop"} = "unable to identify homologous feature";
 $err_pf_idx2msg_H{"nm3"} = "length of nucleotide feature is not a multiple of 3";
@@ -563,11 +563,11 @@ $err_pf_idx2msg_H{"bd3"} = "alignment to reference does not extend to 5' boundar
 $err_pf_idx2msg_H{"olp"} = "feature does not overlap with same set of features as in reference";
 $err_pf_idx2msg_H{"str"} = "predicted CDS start position is not beginning of ATG start codon";
 $err_pf_idx2msg_H{"stp"} = "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)";
-$err_pf_idx2msg_H{"adj"} = "mature peptide is not adjacent to same set of mature peptides as in reference";
-$err_pf_idx2msg_H{"fid"} = "fractional identity to reference feature is less than allowed threshold";
-$err_pf_idx2msg_H{"srt"} = "feature length (in nt) is less than allowed threshold";
-$err_pf_idx2msg_H{"lng"} = "feature length (in nt) is more than allowed threshold";
+$err_pf_idx2msg_H{"ajb"} = "mature peptide is not adjacent to same set of mature peptides before it as in reference";
+$err_pf_idx2msg_H{"aja"} = "mature peptide is not adjacent to same set of mature peptides after it as in reference";
 $err_pf_idx2msg_H{"trc"} = "in-frame stop codon exists 5' of stop position predicted by homology to reference";
+$err_pf_idx2msg_H{"ext"} = "first in-frame stop codon exists 3' of stop position predicted by homology to reference";
+$err_pf_idx2msg_H{"ntr"} = "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start";
 
 my $e;
 for($e = 0; $e < $nerrcodes_pf; $e++) { 
@@ -1136,7 +1136,7 @@ for(my $c = 0; $c < $ref_nmp_and_cds; $c++) {
     #HQ693465/1-306 1 1 304
     if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
       my ($source_accn, $coords, $start_is_valid, $stop_is_valid, $first_stop_first_posn) = ($1, $2, $3, $4, $5);
-
+      
       # A wrinkle here related to CDS comprised of mat_peptide
       # sequences, the final codon of the final mat_peptide sequence
       # for the CDS *SHOULD NOT* encode a stop codon. This is NCBI
@@ -1641,10 +1641,9 @@ if($do_seqrow) { # output sequences as rows
 my @ref_ol_AA     = (); # 2D array that describes the overlaps in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j overlap
 my @ref_adj_AA    = (); # 2D array that describes the adjacencies in the reference, $ref_ol_AA[$i][$j] is '1' if the exons modeled by model $i and $j are adjacent,
 my @ref_ol_str_A  = (); # array of strings that describes the overlaps in the reference, per feature
-my @ref_adj_str_A = (); # array of strings that describes the overlaps in the reference, per feature
+my @ref_ajb_str_A = (); # array of strings that describes the 'before' adjacencies in the reference, per feature
+my @ref_aja_str_A = (); # array of strings that describes the 'after'  adjacencies in the reference, per feature
 
-my @ref_prv_adj_A = (); # [0..$h..$nmdl-1]: $i, mdl $i is previous and adjacent to $h, $i and $h are both primary peptides
-my @ref_nxt_adj_A = (); # [0..$h..$nmdl-1]: $i, mdl $i is after    and adjacent to $h, $i and $h are both primary peptides
 my @ref_start_A   = (); # [0..$h..$nmdl-1]: predicted start  for reference for model $h
 my @ref_stop_A    = (); # [0..$h..$nmdl-1]: predicted stop   for reference for model $h
 my @ref_strand_A  = (); # [0..$h..$nmdl-1]: predicted strand for reference for model $h
@@ -1814,10 +1813,6 @@ for(my $a = 0; $a < $naccn; $a++) {
     checkForOverlapsOrAdjacencies(1, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_adj_AA);
     if($a == 0) { 
       @ref_adj_AA = @cur_adj_AA;
-      # for all primary peptides: we assume there is at most 1 peptide before it that is adjacent 
-      # and at most 1 other peptide after it that is adjacent, determine what those are and 
-      # store them
-      matpeptFindPrimaryAdjacencies(\@ref_adj_AA, \@mdl_is_primary_A, \@ref_prv_adj_A, \@ref_nxt_adj_A);
     }
   }
 
@@ -1846,7 +1841,7 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $mft_i   = $mdl2mft_map_A[$h];
     my $exon_i  = $mft2exon_map_A[$h];
     my $nexons  = $mft2nexon_map_A[$h];
-
+    
     if($mdl_is_first_A[$h]) {
       # reset these
       $hit_length = 0; 
@@ -1904,7 +1899,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       if($do_nobrack) { # set to '1' so brackets are never printed
         $boundary_match = 1;
       }
-
+      
       $hit_length += abs($stop-$start) + 1;
       if(($stop < 0 && $start > 0) || 
          ($stop > 0 && $start < 0)) { 
@@ -1930,17 +1925,17 @@ for(my $a = 0; $a < $naccn; $a++) {
       if(! $do_noolap) { 
         my $ol_pf_char = undef;
         my $ol_str     = undef;
-        ($ol_pf_char, $ol_str) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", $h, \@ref_ol_AA, \@cur_ol_AA);
+        ($ol_pf_char, $ol_str, undef) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", $h, 1, 1, \@ref_ol_AA, \@cur_ol_AA); # 1, 1 says check features before and after $h
         push(@cur_out_A, sprintf(" %10s", $ol_str));
         my $ol_str_errmsg = $ol_str;
         if($ol_pf_char eq "F") { 
           $ol_str_errmsg =~ s/^F://;
           if(! defined $ref_ol_str_A[$mft_i]) { # determine it
-            $ref_ol_str_A[$mft_i] = getOverlapsOrAdjacenciesString(\@cur_name_A, $h, \@ref_ol_AA);
+            $ref_ol_str_A[$mft_i] = getOverlapsOrAdjacenciesString(\@cur_name_A, $h, 1, 1, \@ref_ol_AA);
           }
           $ol_str_errmsg .= " != " . $ref_ol_str_A[$mft_i] . " (ref)";
         }
-
+        
         if($ol_pf_char eq "F") { 
           $at_least_one_fail = 1;
           setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "olp", $ol_str_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
@@ -1949,20 +1944,33 @@ for(my $a = 0; $a < $naccn; $a++) {
 
       # adjacency string for this feature
       if($do_matpept) { 
-        my $adj_pf_char = undef;
-        my $adj_str     = undef;
-        ($adj_pf_char, $adj_str) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, \@ref_adj_AA, \@cur_adj_AA);
+        my $adj_pf_char  = undef;
+        my $adj_str      = undef;
+        my $fail_indices = undef;
+        ($adj_pf_char, $adj_str) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, 1, 1, \@ref_adj_AA, \@cur_adj_AA);
         push(@cur_out_A, $adj_str);
-        my $adj_str_errmsg = $adj_str;
         if($adj_pf_char eq "F") { 
-          $adj_str_errmsg =~ s/^F://;
-          if(! defined $ref_adj_str_A[$mft_i]) { # determine it
-            $ref_adj_str_A[$mft_i] = getOverlapsOrAdjacenciesString(\@cur_name_A, $h, \@ref_adj_AA);
+          # determine whether we have a ajb or aja (adjacent before or adjacent after) error or both
+          # first check for ajb error
+          my ($ajb_pf_char, $ajb_str_errmsg) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, 1, 0, \@ref_adj_AA, \@cur_adj_AA); #1, 0: only consider features before $h
+          if($ajb_pf_char eq 'F') { 
+            $ajb_str_errmsg =~ s/^F://;
+            if(! defined $ref_ajb_str_A[$mft_i]) { # determine it
+              $ref_ajb_str_A[$mft_i] = getOverlapsOrAdjacenciesString(\@cur_name_A, $h, 1, 0, \@ref_adj_AA); # 1, 0: only consider features before $h (< $h)
+            }
+            $ajb_str_errmsg .= " != " . $ref_ajb_str_A[$mft_i] . " (ref)";
+            setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "ajb", $ajb_str_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
           }
-          $adj_str_errmsg .= " != " . $ref_adj_str_A[$mft_i] . " (ref)";
-        }
-        if($adj_pf_char eq "F") { 
-          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "adj", $adj_str_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+          # now check for aja error
+          my ($aja_pf_char, $aja_str_errmsg) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, 0, 1, \@ref_adj_AA, \@cur_adj_AA); #0, 1: only consider features after $h
+          if($aja_pf_char eq 'F') { 
+            $aja_str_errmsg =~ s/^F://;
+            if(! defined $ref_aja_str_A[$mft_i]) { # determine it
+              $ref_aja_str_A[$mft_i] = getOverlapsOrAdjacenciesString(\@cur_name_A, $h, 0, 1, \@ref_adj_AA); # 0, 1: only consider features after $h (< $h)
+            }
+            $aja_str_errmsg .= " != " . $ref_aja_str_A[$mft_i] . " (ref)";
+            setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "aja", $aja_str_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+          }
           $at_least_one_fail = 1;
         }
       }
@@ -2285,7 +2293,7 @@ for(my $a = 0; $a < $naccn; $a++) {
           }
           $nerr_printed++;
           printf $errpeout_FH ("%-10s  %3s  %4s  %s%s\n", $accn, ($mft_i+1), $err_pf_idx2code_A[$e], $err_pf_idx2msg_H{$err_pf_idx2code_A[$e]}, 
-                          (defined $cur_err_extra_pf_AA[$mft_i][$e]) ? " [" . $cur_err_extra_pf_AA[$mft_i][$e]. "]" : "");
+                               (defined $cur_err_extra_pf_AA[$mft_i][$e]) ? " [" . $cur_err_extra_pf_AA[$mft_i][$e]. "]" : "");
           $nlines_per_err_file++;
         }
       }
@@ -3897,7 +3905,7 @@ sub alignHits {
 #             $strand_AR:      ref to array of strands
 #             $observed_AAR:   ref to 2D array of observed overlaps or adjacencies
 #                              $observed_AAR->[$i][$j] is '1' if 
-#                              those two exons are observed to overlap or be adjacecent
+#                              those two features are observed to overlap or be adjacecent
 #                              FILLED HERE
 # 
 # Returns:    void, fills $observed_AAR;
@@ -3965,12 +3973,16 @@ sub checkForOverlapsOrAdjacencies {
 # Subroutine: compareOverlapsOrAdjacencies()
 #
 # Synopsis:   Compare one 2D array describing overlaps or adjacencies
-#             to another.
+#             to another. 
 #
 # Args:       $name_AR:      ref to array of short names for each annotation
 #             $div_char:     divider character
 #             $index:        if   defined, the only feature $index we check overlaps/adjacencies for
 #                            if ! defined, check overlaps/adjacencies for all features
+#             $do_before:    only relevant if $index is defined, if '1' check features that
+#                            come before $index (< $index), if '0' do not check features < $index
+#             $do_after:     only relevant if $index is defined, if '1' check features that
+#                            come after $index (> $index), if '0' do not check features > $index
 #             $expected_AAR: ref to 2D array of expected overlaps $expected_ol_AAR->[$i][$j] is '1' if 
 #                            those two exons are expected to overlap or be adjacent, PRE-FILLED
 #             $observed_AAR: ref to 2D array of test overlaps $observed_ol_AAR->[$i][$j] is '1' if 
@@ -3982,20 +3994,46 @@ sub checkForOverlapsOrAdjacencies {
 #
 sub compareOverlapsOrAdjacencies {
   my $sub_name = "compareOverlapsOrAdjacencies";
-  my $nargs_exp = 5;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($name_AR, $div_char, $index, $expected_AAR, $observed_AAR) = @_;
+  my ($name_AR, $div_char, $index, $do_before, $do_after, $expected_AAR, $observed_AAR) = @_;
+
+  if(defined $index && (! defined $do_before)) { die "ERROR in $sub_name() index is defined but do_before is not"; }
+  if(defined $index && (! defined $do_after))  { die "ERROR in $sub_name() index is defined but do_before is not"; }
+  if(defined $index && (! $do_before) && (! $do_after)) { die "ERROR in $sub_name, index is defined and both do_before and do_after are 0"; }
 
   my $size = scalar(@{$name_AR});
   my $ret_str = "";
   my $nfound = 0;
-
+  my $first_j = undef; # first j index to check for an i, differs depending on values of $index, $do_before and $do_after
+  my $final_j = undef; # final j index to check for an i, differs depending on values of $index, $do_before and $do_after
   # check @observed_AA against @{$expected_AAR}
+
   my $pass_fail_char = "P";
   for(my $i = 0; $i < $size; $i++) { 
     if((! defined $index) || ($index == $i)) { 
-      for(my $j = $i+1; $j < $size; $j++) { 
+      if(! defined $index) { 
+        $first_j = $i+1;
+        $final_j = $size-1;
+      }
+      elsif($do_before && $do_after) { 
+        $first_j = 0;
+        $final_j = $size-1;
+      }
+      elsif($do_before) { 
+        $first_j = 0;
+        $final_j = $i-1;
+      }
+      elsif($do_after) { 
+        $first_j = $i+1;
+        $final_j = $size-1;
+      }        
+      else { 
+        # checked above that at least one of $do_before or $do_after is true
+        die "ERROR in $sub_name() unforeseen case of index, do_before and do_after";
+      }
+      for(my $j = $first_j; $j <= $final_j; $j++) { 
         if($observed_AAR->[$i][$j] ne $expected_AAR->[$i][$j]) { 
           $pass_fail_char = "F";
         }
@@ -4033,6 +4071,10 @@ sub compareOverlapsOrAdjacencies {
 #
 # Args:       $name_AR:      ref to array of short names for each annotation
 #             $index:        the feature $index we check overlaps/adjacencies for
+#             $do_before:    '1' to include feature indices in return string that are < $index
+#                            '0' to not
+#             $do_after:     '1' to include feature indices in return string that are > $index
+#                            '0' to not
 #             $ol_AAR:       ref to 2D array of overlaps $ol_AAR->[$i][$j] is '1' if 
 #                            those two exons are expected to overlap or be adjacent, PRE-FILLED
 #             
@@ -4040,20 +4082,38 @@ sub compareOverlapsOrAdjacencies {
 #
 sub getOverlapsOrAdjacenciesString{
   my $sub_name = "getOverlapsOrAdjacencyString";
-  my $nargs_exp = 3;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($name_AR, $index, $ol_AAR) = @_;
+  my ($name_AR, $index, $do_before, $do_after, $ol_AAR) = @_;
+
+  if((! $do_before) && (! $do_after)) { die "ERROR in $sub_name, both do_before and do_after are 0"; }
 
   my $size = scalar(@{$name_AR});
   my $ret_str = "";
   my $nfound = 0;
+  my $first_j = undef; # first j index to check for an i, differs depending on values of $index, $do_before and $do_after
+  my $final_j = undef; # final j index to check for an i, differs depending on values of $index, $do_before and $do_after
 
   # check @observed_AA against @{$expected_AAR}
   my $pass_fail_char = "P";
   for(my $i = 0; $i < $size; $i++) { 
     if($index == $i) { 
-      for(my $j = $i+1; $j < $size; $j++) { 
+      if($do_before && $do_after) { 
+        $first_j = 0;
+        $final_j = $size-1;
+      }
+      elsif($do_before) { 
+        $first_j = 0;
+        $final_j = $i-1;
+      }
+      elsif($do_after) { 
+        $first_j = $i+1;
+        $final_j = $size-1;
+      }        
+      # checked above that at least one of $do_before or $do_after is true
+
+      for(my $j = $first_j; $j <= $final_j; $j++) { 
         if($ol_AAR->[$i][$j]) { 
           if($ret_str ne "") { 
             $ret_str .= ",";
