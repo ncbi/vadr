@@ -1056,7 +1056,7 @@ if($do_matpept) {
     for(my $a = 0; $a < $naccn; $a++) { 
       my $accn     = $accn_A[$a];
       my $seq_accn = $seq_accn_A[$a];
-      my ($cds_start, $cds_stop, $cds_stop_codon, $aji_errmsg, undef, $inp_errmsg, undef, undef) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2pmatpept_AA[$c]}, \%p_start_HH, \%p_stop_HH, undef, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A, \@mdl_out_tiny_A);
+      my ($cds_start, $cds_stop, undef, $cds_stop_codon, $aji_errmsg, undef, $inp_errmsg, undef, undef, undef, undef, undef) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2pmatpept_AA[$c]}, \%p_start_HH, \%p_stop_HH, undef, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A, \@mdl_out_tiny_A);
       $matpept_cds_pass_fail_AH[$c]{$seq_accn}  = (defined $aji_errmsg || defined $inp_errmsg) ? "F" : "P";
       $matpept_cds_stop_codon_AH[$c]{$seq_accn} = $cds_stop_codon;
       #if(defined $matpept_cds_stop_codon_AH[$c]{$seq_accn}) { 
@@ -1912,7 +1912,9 @@ for(my $a = 0; $a < $naccn; $a++) {
         die "ERROR, both a trc and ext error for model: $h accn: $accn\n";
       }
       my $start    = $p_start_HH{$model}{$seq_accn}; # we never correct a start
-      my $stop     = ($do_nocorrect) ? $p_stop_HH{$model}{$seq_accn} : $c_stop_HH{$model}{$seq_accn};
+      my $pstop    = $p_stop_HH{$model}{$seq_accn};
+      my $cstop    = $c_stop_HH{$model}{$seq_accn};
+      my $stop     = ($do_nocorrect) ? $pstop : $cstop;
       my $hangover = $p_hangover_HH{$model}{$seq_accn};
       #printf("HEYAC h: $h accn: $accn trc_error_exon: $trc_error_exon $start..$stop do_nocorrect: $do_nocorrect\n");
 
@@ -2087,7 +2089,13 @@ for(my $a = 0; $a < $naccn; $a++) {
             if(! exists $accn_stp_error_AH[$mft_i]{$accn}) { 
               die "ERROR did not detect invalid stop (stp) twice for $accn feature $mft_i\n";
             }
-            setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", $stop_codon, \%err_pf_code2idx_H, \$cur_nerr);
+          }
+          # now determine if we throw a 'stp' error, this is not the same as a fail above,
+          # because it pertains specifically to the *predicted* (that is, not corrected) stop
+          # which may be different from $stop
+          my $pstop_codon = fetchStopCodon($sqfile, $seq_accn, $pstop, $totlen_H{$accn}, $p_strand_HH{$model}{$seq_accn});
+          if($pstop_codon ne "TAG" && $pstop_codon ne "TAA" && $pstop_codon ne "TGA") { 
+            setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", "$pstop_codon ending at position $pstop on $p_strand_HH{$model}{$seq_accn} strand", \%err_pf_code2idx_H, \$cur_nerr);
           }
         }
 
@@ -2193,7 +2201,10 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $mft_i = $ref_nmft-1;
     foreach (my $cds_idx = 0; $cds_idx < scalar(@cds2pmatpept_AA); $cds_idx++) { 
       $mft_i++;
-      my ($cds_start, $cds_stop, $cds_stop_codon, $aji_errmsg, $int_errmsg, $inp_errmsg, $trc_errmsg, $trc_mdl_idx) = matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2pmatpept_AA[$cds_idx]}, \%p_start_HH, \%p_stop_HH, \%c_stop_HH, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A, \@mdl_out_tiny_A);
+      my ($cds_start, $cds_stop, $cds_len, $cds_stop_codon, 
+          $aji_errmsg, $int_errmsg, $inp_errmsg, $ext_errmsg, 
+          $stp_errmsg, $nst_errmsg, $trc_errmsg, $trc_mdl_idx) = 
+              matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2pmatpept_AA[$cds_idx]}, \%p_start_HH, \%p_stop_HH, \%c_stop_HH, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A, \@mdl_out_tiny_A);
 
       # throw all necessary errors
       if(defined $aji_errmsg) { 
@@ -2204,6 +2215,15 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
       if(defined $inp_errmsg) { 
         setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "inp", $inp_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+      }
+      if(defined $ext_errmsg) { 
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "ext", $ext_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+      }
+      if(defined $stp_errmsg) { 
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", $stp_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+      }
+      if(defined $nst_errmsg) { 
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nst", $nst_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
       }
       if(defined $trc_errmsg) { 
         setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $trc_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
@@ -2221,7 +2241,6 @@ for(my $a = 0; $a < $naccn; $a++) {
         }
       }
 
-
       if(defined $cds_start) { 
         push(@cur_out_A, sprintf("  %6d", $cds_start)); 
       } 
@@ -2235,9 +2254,7 @@ for(my $a = 0; $a < $naccn; $a++) {
         push(@cur_out_A, sprintf("  %6s", "?")); 
       }
 
-      my $cds_len = undef;
       if(defined $cds_start && defined $cds_stop && (! defined $aji_errmsg))   { 
-        $cds_len = abs($cds_stop - $cds_start) + 1;
         push(@cur_out_A, sprintf("  %6d", $cds_len)); 
         $multiple_of_3_char = (($cds_len % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
       }
@@ -2265,9 +2282,6 @@ for(my $a = 0; $a < $naccn; $a++) {
 
       if(defined $cds_stop_codon) { 
         $stop_codon_char = ($cds_stop_codon eq "TAG" || $cds_stop_codon eq "TAA" || $cds_stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
-        if($stop_codon_char ne $ss3_yes_char) { 
-          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", ((defined $cds_stop_codon) ? $cds_stop_codon : "?"), \%err_pf_code2idx_H, \$cur_nerr);
-        }
       }    
       if(! $do_nostop) { 
         if(defined $cds_stop_codon) { 
@@ -2278,6 +2292,10 @@ for(my $a = 0; $a < $naccn; $a++) {
           $stop_codon_char = $ss3_unsure_char;
         }
       }
+      # determine if we should thrown a 'stp' error, 
+        if($stop_codon_char ne $ss3_yes_char) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", ((defined $cds_stop_codon) ? $cds_stop_codon : "?"), \%err_pf_code2idx_H, \$cur_nerr);
+        }
 
       if(! $do_noss3) { 
         push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
@@ -2397,7 +2415,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       if((defined $cur_err_ps_A[$e]) && ($cur_err_ps_A[$e])) { 
         print $errpaout_FH " " . $err_ps_idx2code_A[$e];
         printf $errpeout_FH ("%-10s  %3s  %-5s  %4s  %s%s\n", $accn, "N/A", "N/A", $err_ps_idx2code_A[$e], $err_ps_idx2msg_H{$err_ps_idx2code_A[$e]}, 
-                        (defined $cur_err_extra_ps_A[$e]) ? " [" . $cur_err_extra_ps_A[$e]. "]" : "");
+                        (defined $cur_err_extra_ps_A[$e] && $cur_err_extra_ps_A[$e] =~ m/\S/) ? " [" . $cur_err_extra_ps_A[$e]. "]" : "");
         $nlines_per_err_file++;
       }
     }        
@@ -5130,7 +5148,7 @@ sub matpeptValidateCdsRelationships {
 #             $mp2final_mdl_AR: ref to array, [0..$i..$nmp-1] = $m, $m is final model for mat_peptide $i
 #             $mdl_out_tiny_AR: ref to array of tiny output string describing each model
 #
-# Returns:    7 values:
+# Returns:    11 values:
 #             $start:         1st position of CDS, inferred from mat_peptide predictions, 
 #                             undef if no first mat_peptide prediction
 #             $stop:          final position of CDS, inferred from mat_peptide predictions
@@ -5138,12 +5156,19 @@ sub matpeptValidateCdsRelationships {
 #                             final mat_peptide may be an internal mat_peptide if $trc_errmsg
 #                             is defined, indicating that a 'trc' occurred, 
 #                             undef if final peptide is not predicted
+#             $len:           length of CDS
 #             $stop_codon:    the stop codon
 #             $aji_errmsg:    if defined, a 'aji' error exists for this CDS, this error message can
 #                             be used when reporting that error.
 #             $int_errmsg:    if defined, a 'int' error exists for this CDS, this error message can
 #                             be used when reporting that error.
 #             $inp_errmsg:    if defined, a 'inp' error exists for this CDS, this error message can
+#                             be used when reporting that error.
+#             $ext_errmsg:    if defined, a 'ext' error exists for this CDS, this error message can
+#                             be used when reporting that error.
+#             $stp_errmsg:    if defined, a 'stp' error exists for this CDS, this error message can
+#                             be used when reporting that error.
+#             $nst_errmsg:    if defined, a 'nst' error exists for this CDS, this error message can
 #                             be used when reporting that error.
 #             $trc_errmsg:    if defined, a 'trc' error exists for this CDS, this error message can
 #                             be used when reporting that error.
@@ -5163,6 +5188,9 @@ sub matpeptCheckCdsRelationships {
   my $aji_errmsg = undef;
   my $int_errmsg = undef;
   my $inp_errmsg = undef;
+  my $ext_errmsg = undef;
+  my $stp_errmsg = undef;
+  my $nst_errmsg = undef;
   my $trc_errmsg = undef;
 
   # for each mat_peptide that comprises the cds, make sure it's start and stops are contiguous
@@ -5181,6 +5209,7 @@ sub matpeptCheckCdsRelationships {
   my $orig_start    = undef; # predicted start position
   my $orig_stop     = undef; # predicted (non-corrected) stop position
   my $corr_stop     = undef; # corrected stop position (may remain undef)
+  my $cds_len       = 0;     # the actual length of the CDS, not necessarily determined by stop - start (WNV)
 
   # determine original predicted start and stop positions, without any corrections
   my $mp_idx = $cds2matpept_AR->[0];
@@ -5189,7 +5218,7 @@ sub matpeptCheckCdsRelationships {
     $orig_start = $p_start_HH{$mdl}{$seq_accn};
   }
   $mp_idx = $cds2matpept_AR->[$nmp2check-1];
-  $mdl    = $mdl_AR->[$mft2first_mdl_AR->[$mp_idx]];
+  $mdl    = $mdl_AR->[$mft2final_mdl_AR->[$mp_idx]];
   if(exists $p_stop_HH{$mdl}{$seq_accn}) { 
     $orig_stop = $p_stop_HH{$mdl}{$seq_accn};
   }
@@ -5207,8 +5236,8 @@ sub matpeptCheckCdsRelationships {
 
       # check to see if a prediction for this model exists
       if(! exists $start_HHR->{$cur_mdl}{$seq_accn}) { 
-        if(! defined $inp_errmsg) { $inp_errmsg = "following model(s) had no prediction (nop error): $cur_mdl_tiny"; }
-        else                       { $inp_errmsg .= ", $cur_mdl_tiny"; }
+        if(! defined $inp_errmsg) { $inp_errmsg = "$cur_mdl_tiny"; }
+        else                      { $inp_errmsg .= ", $cur_mdl_tiny"; }
         $prv_start    = undef;
         $prv_stop     = undef;
         $prv_mdl      = $cur_mdl;
@@ -5232,11 +5261,12 @@ sub matpeptCheckCdsRelationships {
         # check if we've already seen an early stop previous to this
         if(defined $trc_errmsg) { 
           #  we have already seen a corrected stop
-          if(! defined $int_errmsg) { $int_errmsg = "following model(s) are not translated (ntr err) due to truncation: $cur_mdl_tiny"; }
-          else                       { $int_errmsg .= ", $cur_mdl_tiny"; }
+          if(! defined $int_errmsg) { $int_errmsg = "$cur_mdl_tiny"; }
+          else                      { $int_errmsg .= ", $cur_mdl_tiny"; }
         }
         else { 
-          #  we have NOT already seen a corrected stop
+          # we have NOT already seen a corrected stop
+          $cds_len += abs($cur_stop - $cur_start) + 1;
           # if this is the first model for this mat_peptide, check if we are adjacent to previous mat_peptide
           if($cur_mdl_idx == $first_mdl_idx) { 
             if($x > 0) { 
@@ -5262,8 +5292,8 @@ sub matpeptCheckCdsRelationships {
               die "ERROR in $sub_name, found later corrected stop that comes before (in sequence space) earlier one...";
             }
             if(! defined $corr_stop) { 
-              $corr_stop = $cstop_HHR->{$cur_mdl}{$seq_accn};
-              $trc_mdl_idx    = $cur_mdl_idx;
+              $corr_stop   = $cstop_HHR->{$cur_mdl}{$seq_accn};
+              $trc_mdl_idx = $cur_mdl_idx;
               if(defined $orig_start && defined $orig_stop) { 
                 $trc_errmsg = sprintf("homology search predicted $orig_start..$orig_stop revised to $orig_start..$corr_stop (stop shifted %d nt)", abs($corr_stop - $orig_stop));
               }
@@ -5277,7 +5307,7 @@ sub matpeptCheckCdsRelationships {
                 $trc_errmsg = sprintf("homology search predicted unknown..unknown revised to unknown..$corr_stop");
               } 
             } # end of 'if ! defined $corr_stop'
-          } # end of check for corrected stop
+          } # end of 'if($cur_corr_stop)'
         } # end of 'else' entered if ! defined $trc_errmsg
         # set prv_ values
         $prv_start    = $cur_start;
@@ -5288,28 +5318,77 @@ sub matpeptCheckCdsRelationships {
     }
   }
 
-  # one final step: get the stop codon
-  my $stop_codon;
-  my $stop;
-  if(! defined $corr_stop) { 
-    $stop = $orig_stop + 3;
-    # since stop codon occurs 3 nt 3' of final peptide's stop, we have to make sure it's actually in the sequence first
-    # (matpept/nodup option combo is currently required (that is -nodup is req'd with -matpept), but if its ever relaxed, 
-    #  we may want to rethink this, do we want to allow the stop to wrap the stop/start boundary if -nodup is not used?)
-    my $strand = "+"; # leaving code block below in case we ever switch to allowing negative strand mat_peptides
-    if(($strand eq "+" && ($stop > $totlen)) || # stop is off the end of the sequence on + strand
-       ($strand eq "-" && ($stop < 1))) {       # stop is off the end of the sequence on - strand
-      $stop       = undef;
-      $stop_codon = undef;
+  # get the predicted stop codon
+  my $pstop_codon;
+  my $strand = "+"; # leaving code block below in case we ever switch to allowing negative strand mat_peptides
+  my $pstop = undef;
+  if(defined $orig_stop) { 
+    $pstop = ($strand eq "+") ? $orig_stop + 3 : $orig_stop - 3;
+    if(($strand eq "+" && ($pstop > $totlen)) || # stop is off the end of the sequence on + strand
+       ($strand eq "-" && ($pstop < 1))) {       # stop is off the end of the sequence on - strand
+      $pstop       = undef;
+      $pstop_codon = undef;
     }
     else { 
-      # corrected stop, we already know it must be in the sequence
-      $stop_codon = fetchStopCodon($sqfile, $seq_accn, $stop, $totlen, "+");
+      $pstop_codon = fetchStopCodon($sqfile, $seq_accn, $pstop, $totlen, "+");
+      if(! defined $corr_stop) { 
+        # if $corr_stop is defined we already have included the stop 
+        $cds_len += 3; # add in length of stop codon that comes after the predicted stop
+      }
+    }
+    # if the predicted stop is undefined or not a valid stop, throw the 'stp' error
+    if(! defined $pstop_codon) { 
+      # note, a special case that causes us to throw 'nst' error
+      $nst_errmsg = "inferred stop codon position (3 nt 3' of $pstop on $strand strand) is off the end of the sequence";
+    }
+    elsif($pstop_codon ne "TAA" && $pstop_codon ne "TGA" && $pstop_codon ne "TAG") { 
+      $stp_errmsg = "$pstop_codon ending at $pstop";
     }
   }
+ 
+  # check if we should look for a downstream stop, we do this if:
+  # - no trc error (no early in-frame stop)
+  # - no aji error (no adjacency inconsistencies)
+  # - stp error    (predicted stop is invalid)
+  # - no nst error (we may have already thrown it in block above
+  if((! defined $trc_errmsg) && (! defined $aji_errmsg) && (defined $stp_errmsg) && (! defined $nst_errmsg)) { 
+    my $posn_to_start = $pstop;
+    my $plen          = (abs($pstop - $orig_start)) + 1;
+    my $offset        = ($plen % 3); 
+    $posn_to_start -= $offset; # only want to look for downstream stops in-frame with respect to the START codon, not the predicted STOP
+    my $strand = $strand_HHR->{$mdl_A[$cds2matpept_AR->[($nmp2check-1)]]}{$seq_accn};
+    if($strand eq "+") { $posn_to_start++; }
+    else               { $posn_to_start--; }
+    my ($ext_corr_stop, $ext_stop_codon) = checkForDownstreamStop($sqfile, $seq_accn, $posn_to_start, $strand);
+    if($ext_corr_stop == 0) { 
+      $nst_errmsg = ""; # leave it blank, just defining it will trigger the nst error code being reported
+    }
+    else { 
+      $ext_corr_stop -= $offset; # account for offset
+      $ext_corr_stop++; # ext_corr_stop is w.r.t to the next posn after the predicted stop (either +1 or -1 depending on strand), we want 
+                        # it to be w.r.t the actual predicted stop, so we have to add one.
+      if($strand eq "+") { 
+        $corr_stop = $orig_stop + 3 + $ext_corr_stop;
+      }
+      else { 
+        die "ERROR strand is negative in $sub_name";
+      }
+    }
+  }    
+
+  # get corrected stop codon if it exists, just to verify it is a valid stop
+  my $cstop_codon;
+  if(defined $corr_stop) { 
+    $cstop_codon = fetchStopCodon($sqfile, $seq_accn, $corr_stop, $totlen, "+");
+    # if this isn't valid we messed up somewhere
+    if($cstop_codon ne "TAA" && $cstop_codon ne "TGA" && $cstop_codon ne "TAG") { 
+      die "ERROR in $sub_name, second check of corrected stop failed, not a valid stop: $cstop_codon";
+    }
+  }
+
   return ($orig_start, 
-          (defined $corr_stop) ? $corr_stop : $stop, 
-          $stop_codon, $aji_errmsg, $int_errmsg, $inp_errmsg, $trc_errmsg, $trc_mdl_idx);
+          (defined $corr_stop) ? $corr_stop : $pstop, 
+          $cds_len, $pstop_codon, $aji_errmsg, $int_errmsg, $inp_errmsg, $ext_errmsg, $stp_errmsg, $nst_errmsg, $trc_errmsg, $trc_mdl_idx);
 }
 
 # Subroutine: checkForSpanningExon()
