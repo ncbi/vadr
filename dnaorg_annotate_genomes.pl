@@ -843,15 +843,6 @@ for(my $h = 0; $h < $nmdl; $h++) {
   $mdl_idx++;
 }
 
-### TEMP
-##for (my $z = 0; $z < $ref_nmft; $z++) { 
-##  for (my $zz = 0; $zz < scalar(@{$mft2mdl_map_AA[$z]}); $zz++) { 
-##    printf("mft2mdl_map_AA[$z][$zz] = $mft2mdl_map_AA[$z][$zz]\n");
-##  }
-##  printf("\n");
-##}
-##exit 0;
-
 ######################
 # HOMOLOGY SEARCH STEP
 ######################
@@ -1186,7 +1177,7 @@ for(my $c = 0; $c < $ref_nmp_and_cds; $c++) {
         my $cur_stop_codon = $matpept_cds_stop_codon_AH[($c - $ref_nmft)]{$seq_accn};
         #printf("REEXAMINING stop_is_valid, was: $stop_is_valid, now: ");
         $stop_is_valid = ((defined $cur_stop_codon) && 
-                          ($cur_stop_codon eq "TAG" || $cur_stop_codon eq "TAA" || $cur_stop_codon eq "TGA"))
+                          ($cur_stop_codon eq "TAG" || $cur_stop_codon eq "TAA" || $cur_stop_codon eq "TGA" || $cur_stop_codon eq "TAR"))
             ? 1 : 0;
         #printf("$stop_is_valid\n");
       }
@@ -1244,7 +1235,6 @@ for(my $c = 0; $c < $ref_nmp_and_cds; $c++) {
       # ------------------------------------------------------------------------------------------------------------
       # 
       # in table above:
-      # '*' around value means that it is guaranteed to be that value (e.g. *true* means 'false' is impossible)
       # '?' after error code means that error is possible, we have to check for it later           
       # 'any' means that any value is possible, outcome is unaffected by value
       #
@@ -1320,16 +1310,18 @@ for(my $c = 0; $c < $ref_nmp_and_cds; $c++) {
 for(my $c = 0; $c < $ref_nmft; $c++) { 
   my $final_mdl = $mdl_A[$mft2final_mdl_A[$c]];
   foreach $accn (@{$accn_ext_check_AA[$c]}) { 
-    my $posn_to_start = $p_stop_HH{$final_mdl}{$seq_accn};
     my $seq_accn      = $accn2seq_accn_H{$accn};
+    my $posn_to_start = $p_stop_HH{$final_mdl}{$seq_accn};
+    #printf("HEYAV $accn posn_to_start 0: $posn_to_start c: $c final_mdl $final_mdl\n");
     my $plen          = (abs($p_stop_HH{$final_mdl}{$seq_accn} - $p_start_HH{$final_mdl}{$seq_accn})) + 1;
     my $offset        = ($plen % 3); 
     # printf("plen: $plen, offset: $offset changing posn_to_start: $posn_to_start to %d\n", $posn_to_start-$offset);
     $posn_to_start -= $offset; # only want to look for downstream stops in-frame with respect to the START codon, not the predicted STOP
     if($p_strand_HH{$final_mdl}{$seq_accn} eq "+") { $posn_to_start++; }
     else                                           { $posn_to_start--; }
+    #printf("HEYAV $accn posn_to_start 1: $posn_to_start\n");
 
-    my ($ext_corr_stop, $ext_stop_codon) = checkForDownstreamStop($sqfile, $seq_accn, $posn_to_start, $p_strand_HH{$final_mdl}{$seq_accn});
+    my ($ext_corr_stop, $ext_stop_codon) = checkForDownstreamStop($sqfile, $seq_accn, $posn_to_start, $totlen_H{$accn}, $p_strand_HH{$final_mdl}{$seq_accn});
     if($ext_corr_stop == 0) { 
       $accn_nst_error_AH[$c]{$accn} = 1;
     }
@@ -1390,6 +1382,7 @@ for(my $a = 0; $a < $naccn; $a++) {
           else { 
             $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  - $corr_stop;
           }
+          # printf("HEYAZZ set c_stop_HH{$mdl}{$seq_accn} to $c_stop_HH{$mdl}{$seq_accn} from $p_stop_HH{$mdl}{$seq_accn}\n");
         }
       }
     }
@@ -1574,6 +1567,10 @@ if(! $do_skipaln) {
       # align all sequences to this HMM
       $cmd = "$hmmalign $prot_hmmfile $prot_fafile > $prot_alnfile";
       runCommand($cmd, 0);
+
+      if(-e $aa_full_files_A[$mft_i] . ".ssi") { 
+        unlink $aa_full_files_A[$mft_i] . ".ssi";
+      }
     }
   }
   ($seconds, $microseconds) = gettimeofday();
@@ -2083,19 +2080,22 @@ for(my $a = 0; $a < $naccn; $a++) {
       if($mdl_is_final_A[$h]) { 
         if(! $do_matpept) { 
           $stop_codon = fetchStopCodon($sqfile, $seq_accn, $stop, $totlen_H{$accn}, $p_strand_HH{$model}{$seq_accn});
-          $stop_codon_char = ($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
+          $stop_codon_char = ($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA" || $stop_codon eq "TAR") ? $ss3_yes_char : $ss3_no_char;
           if($stop_codon_char eq $ss3_no_char) { 
             $at_least_one_fail = 1;
-            if(! exists $accn_stp_error_AH[$mft_i]{$accn}) { 
-              die "ERROR did not detect invalid stop (stp) twice for $accn feature $mft_i\n";
-            }
           }
           # now determine if we throw a 'stp' error, this is not the same as a fail above,
           # because it pertains specifically to the *predicted* (that is, not corrected) stop
           # which may be different from $stop
           my $pstop_codon = fetchStopCodon($sqfile, $seq_accn, $pstop, $totlen_H{$accn}, $p_strand_HH{$model}{$seq_accn});
-          if($pstop_codon ne "TAG" && $pstop_codon ne "TAA" && $pstop_codon ne "TGA") { 
-            setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", "$pstop_codon ending at position $pstop on $p_strand_HH{$model}{$seq_accn} strand", \%err_pf_code2idx_H, \$cur_nerr);
+          if($pstop_codon ne "TAG" && $pstop_codon ne "TAA" && $pstop_codon ne "TGA" && $pstop_codon ne "TAR") { 
+            # should we throw a 'stp' error? Only if 'str' wasn't already thrown
+            if(! exists $accn_str_error_AH[$mft_i]{$accn}) { 
+              if(! exists $accn_stp_error_AH[$mft_i]{$accn}) { 
+                die "ERROR did not detect invalid stop (stp) posn $pstop $pstop_codon twice for $accn $seq_accn feature $mft_i\n";
+              }
+              setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", "$pstop_codon ending at position $pstop on $p_strand_HH{$model}{$seq_accn} strand", \%err_pf_code2idx_H, \$cur_nerr);
+            }
           }
         }
 
@@ -2281,7 +2281,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
 
       if(defined $cds_stop_codon) { 
-        $stop_codon_char = ($cds_stop_codon eq "TAG" || $cds_stop_codon eq "TAA" || $cds_stop_codon eq "TGA") ? $ss3_yes_char : $ss3_no_char;
+        $stop_codon_char = ($cds_stop_codon eq "TAG" || $cds_stop_codon eq "TAA" || $cds_stop_codon eq "TGA" || $cds_stop_codon eq "TAR") ? $ss3_yes_char : $ss3_no_char;
       }    
       if(! $do_nostop) { 
         if(defined $cds_stop_codon) { 
@@ -2542,6 +2542,11 @@ close($gap_perseq_special_FH);
 close($gap_pergap_all_FH);
 close($gap_pergap_not3_FH);
 close($gap_pergap_special_FH);
+
+# remove .ssi file we created
+if(-e $gnm_fasta_file . ".ssi") { 
+  unlink $gnm_fasta_file . ".ssi";
+}
 
 ($seconds, $microseconds) = gettimeofday();
 my $end_secs = ($seconds + ($microseconds / 1000000.));
@@ -3890,6 +3895,7 @@ sub fetchHits {
           $start += $seqlen_HR->{$accn};
           $stop  += $seqlen_HR->{$accn};
         }
+        #printf("adding $newname $start $stop $seq to fetch_AA\n");
         push(@fetch_AA, [$newname, $start, $stop, $seq]);
         $nseq++;
       }
@@ -3955,7 +3961,7 @@ sub alignHits {
       my $cur_fafile  = $fafile_HR->{$mdl};
       my $cur_stkfile = $cur_fafile;
       $cur_stkfile =~ s/\.fa/\.stk/;
-      my $cmd = "$fetch $model_db $mdl | $align - $cur_fafile > $cur_stkfile";
+      my $cmd = "$fetch $model_db $mdl | $align --mxsize 2048.0 - $cur_fafile > $cur_stkfile";
       #print $cmd . "\n";
       if($do_skip) { 
         if(! -s $cur_stkfile) { die "ERROR, with -skipaln, alignments are expected to already exist, but $cur_stkfile does not or is empty"; }
@@ -4742,7 +4748,14 @@ sub combineExonsIntoCDS {
     }
   }
   close(OUT);
-  
+
+  # clean up: remove all 'ssi' files we just created
+  for(my $f = 0; $f < $nfiles; $f++) { 
+    if(-e $exon_fafile_AR->[$f] . ".ssi") { 
+      unlink $exon_fafile_AR->[$f] . ".ssi";
+    }
+  }
+
   return;
 }
 
@@ -5341,7 +5354,7 @@ sub matpeptCheckCdsRelationships {
       # note, a special case that causes us to throw 'nst' error
       $nst_errmsg = "inferred stop codon position (3 nt 3' of $pstop on $strand strand) is off the end of the sequence";
     }
-    elsif($pstop_codon ne "TAA" && $pstop_codon ne "TGA" && $pstop_codon ne "TAG") { 
+    elsif($pstop_codon ne "TAA" && $pstop_codon ne "TGA" && $pstop_codon ne "TAG" && $pstop_codon ne "TAR") { 
       $stp_errmsg = "$pstop_codon ending at $pstop";
     }
   }
@@ -5359,7 +5372,7 @@ sub matpeptCheckCdsRelationships {
     my $strand = $strand_HHR->{$mdl_A[$cds2matpept_AR->[($nmp2check-1)]]}{$seq_accn};
     if($strand eq "+") { $posn_to_start++; }
     else               { $posn_to_start--; }
-    my ($ext_corr_stop, $ext_stop_codon) = checkForDownstreamStop($sqfile, $seq_accn, $posn_to_start, $strand);
+    my ($ext_corr_stop, $ext_stop_codon) = checkForDownstreamStop($sqfile, $seq_accn, $posn_to_start, $totlen_H{$seq_accn2accn_H{$seq_accn}}, $strand);
     if($ext_corr_stop == 0) { 
       $nst_errmsg = ""; # leave it blank, just defining it will trigger the nst error code being reported
     }
@@ -5381,7 +5394,7 @@ sub matpeptCheckCdsRelationships {
   if(defined $corr_stop) { 
     $cstop_codon = fetchStopCodon($sqfile, $seq_accn, $corr_stop, $totlen, "+");
     # if this isn't valid we messed up somewhere
-    if($cstop_codon ne "TAA" && $cstop_codon ne "TGA" && $cstop_codon ne "TAG") { 
+    if($cstop_codon ne "TAA" && $cstop_codon ne "TGA" && $cstop_codon ne "TAG" && $cstop_codon ne "TAR") { 
       die "ERROR in $sub_name, second check of corrected stop failed, not a valid stop: $cstop_codon";
     }
   }
@@ -5514,29 +5527,39 @@ sub setErrorCode {
 # Args:       $sqfile:       open Bio::Easel::SqFile object to fetch sequences from
 #             $accn:         sequence name to look for stop in
 #             $posn:         position to start looking for stop in
+#             $seqlen:       total length of the sequence non-duplicated this will
+#                            differ from length in $sqfile if the genome is duplicated
+#                            in $sqfile.
 #             $strand:       strand on which to look for stop codon
 #
 # Returns:    Two values:
 #             $ret_posn:   final (3rd) position of first in-frame stop in $sequence
 #                          *RELATIVE TO $posn*, e.g. if this value is '3' then the first
 #                          3 nt of the sequence starting at $posn is a stop codon.
-#             $stop_codon: in-frame stop codon found, either "TAA", "TAG", or "TGA" or undef if
+#             $stop_codon: in-frame stop codon found, either "TAA", "TAG", "TGA" or "TAR" or undef if
 #                          none found
 #
 # Dies:       if unable to fetch sequence from $sqfile
 
 sub checkForDownstreamStop {
   my $sub_name = "checkForDownstreamStop()";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $accn, $posn, $strand) = @_;
+  my ($sqfile, $accn, $posn, $seqlen, $strand) = @_;
 
-  my $seqlen = $sqfile->fetch_seq_length_given_name($accn);
+  # printf("in $sub_name, $accn $posn $strand\n");
+
+  my $file_seqlen = $sqfile->fetch_seq_length_given_name($accn);
+  # we only want to allow a downstream stop to be the length of the full sequence
+  # away from $posn_to_start. If the genome is duplicated this may mean we don't 
+  # want to search until the end of the sequence in $sqfile.
+  my $final_posn = ($file_seqlen > $seqlen) ? ($posn + $seqlen - 1) : $file_seqlen; 
+  if($final_posn > $file_seqlen) { $final_posn = $file_seqlen; }
   my $begin_posn = $posn;
-  my $target_subseq_len = 300;
+  my $target_subseq_len = 600;
   my $inframe_stop_posn = 0;
-  my $stop_codon = undef; # type of stop codon found, e.g. "TAA", "TAG", or "TGA"
+  my $stop_codon = undef; # type of stop codon found, e.g. "TAA", "TAG", "TGA", or "TAR"
   my $keep_going = 1;
   while($keep_going) { 
     my @fetch_AA = ();
@@ -5544,8 +5567,8 @@ sub checkForDownstreamStop {
     my $end_posn;
     if($strand eq "+") { 
       $end_posn = $begin_posn + ($target_subseq_len - 1);
-      if($end_posn > $seqlen) { 
-        $end_posn = $seqlen; 
+      if($end_posn > $final_posn) { 
+        $end_posn = $final_posn; 
         $keep_going = 0; # breaks loop
       }
     }
@@ -5560,7 +5583,7 @@ sub checkForDownstreamStop {
     $fetch_AA[0][1] = $begin_posn;
     $fetch_AA[0][2] = $end_posn;
     $fetch_AA[0][3] = $accn;
-    # printf("fetching $fetch_AA[0][0]\n");
+    #printf("fetching $fetch_AA[0][0]\n");
     my ($cur_subseq_name, $cur_subseq) = split(/\n/, $sqfile->fetch_subseqs(\@fetch_AA, -1, undef)); 
     # look for in-frame stop in cur_subseq
     ($inframe_stop_posn, $stop_codon) = findInFrameStop($cur_subseq);
@@ -5603,7 +5626,7 @@ sub checkForDownstreamStop {
 # Returns:    Two values:
 #             $ret_posn:   final (3rd) position of first in-frame stop in $sequence.
 #                          0 if no in-frame stop exists
-#             $stop_codon: in-frame stop codon found, either "TAA", "TAG", or "TGA" or undef if
+#             $stop_codon: in-frame stop codon found, either "TAA", "TAG", "TGA", or "TAR" or undef if
 #                          none found
 sub findInFrameStop {
   my $sub_name = "findInFrameStop()";
@@ -5633,6 +5656,10 @@ sub findInFrameStop {
     }
     elsif($codon eq "TGA") { 
       $stop_codon = "TGA";
+      $ret_posn   = $posn+3; # add 3 to get coords into 1..L, (adding 2 would keep us in 0..L-1 coord space)
+    }
+    elsif($codon eq "TAR") { 
+      $stop_codon = "TAR";
       $ret_posn   = $posn+3; # add 3 to get coords into 1..L, (adding 2 would keep us in 0..L-1 coord space)
     }
     $posn += 3;
@@ -5975,11 +6002,11 @@ sub getHeadings {
         getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)");
         getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)");
         getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference");
-        if(! $do_matpept) { 
-          getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"c\":   position has been corrected based on predicted protein sequence");
-          getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop");
-          getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"-\":   exon is not predicted due to stop codon in earlier exon");
-        }
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"t\":   position has been corrected based on predicted, truncated protein sequence");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop (5' of predicted stop)");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"e\":   position has been corrected based on predicted, extended protein sequence");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop (3' of predicted stop)");
+        getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"-\":   exon/segment is not predicted due to stop codon in earlier exon/segment");
         getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "  \"NP\":  (spanning both characters) no prediction");
       }
     }
