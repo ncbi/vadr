@@ -2438,12 +2438,12 @@ for(my $a = 0; $a < $naccn; $a++) {
           if($nerr_printed == 0) { 
             #print $errpaout_FH (" feature\#" . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
             print $errpaout_FH (" " . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
-            if($err_pf_idx2code_A[$e] eq "olp") { # special case, add the extra string
-              print $errpaout_FH ":" . $cur_err_extra_pf_AA[$mft_i][$e];
-            }
           }
           else { 
             print $errpaout_FH "," . $err_pf_idx2code_A[$e];
+          }
+          if($err_pf_idx2code_A[$e] eq "olp") { # special case, add the extra string
+            print $errpaout_FH ":" . $cur_err_extra_pf_AA[$mft_i][$e];
           }
           $nerr_printed++;
           my $desc = ($mft_i < $ref_nmft) ? $mft_out_tiny_A[$mft_i] : sprintf("CDS#%d", ($mft_i - $ref_nmft + 1));
