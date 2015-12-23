@@ -1848,7 +1848,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   }
 
   # check for overlaps
-  checkForOverlapsOrAdjacencies(0, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_ol_AA); # '0': do overlap, not adjacency
+  checkForOverlapsOrAdjacencies(0, $do_nodup, $totlen_H{$accn}, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_ol_AA); # '0': do overlap, not adjacency
   if($a == 0) { 
     @ref_ol_AA = @cur_ol_AA; 
     if($do_matpept) { # determine which models are for primary mature peptides 
@@ -1858,7 +1858,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   # check for adjacencies if necessary
   if($do_matpept) {
     # get adjacency information
-    checkForOverlapsOrAdjacencies(1, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_adj_AA);
+    checkForOverlapsOrAdjacencies(1, $do_nodup, $totlen_H{$accn}, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_adj_AA);
     if($a == 0) { 
       @ref_adj_AA = @cur_adj_AA;
     }
@@ -2329,7 +2329,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   if($do_fullolap) { 
     my $ol_pass_fail_char = undef;
     my $overlap_notes = undef;
-    ($ol_pass_fail_char, $overlap_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", undef, \@ref_ol_AA, \@cur_ol_AA);
+    ($ol_pass_fail_char, $overlap_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", undef, 0, 0, \@ref_ol_AA, \@cur_ol_AA);
     push(@cur_out_A, sprintf("  %20s", $overlap_notes));
     $pass_fail_str .= $ol_pass_fail_char;
   }
@@ -2338,7 +2338,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   if($do_fulladj) { 
     my $adj_pass_fail_char;
     my $adjacency_notes = undef;
-    ($adj_pass_fail_char, $adjacency_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", undef, \@ref_adj_AA, \@cur_adj_AA);
+    ($adj_pass_fail_char, $adjacency_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", undef, 0, 0, \@ref_adj_AA, \@cur_adj_AA);
     $pass_fail_str .= $adj_pass_fail_char;
     push(@cur_out_A, sprintf("  %20s", $adjacency_notes));
   }
@@ -4047,7 +4047,8 @@ sub alignHits {
 # Args:       $do_adj:         '1' to not check for overlaps but rather check for adjacency
 #                              $j is adjacent to $i if the minimum distance between any nt
 #                              in $i and any nt in $j is exactly 1 nt.
-#             $enforce_strand: '1' to enforce that overlaps or adjacencies are only valid if on same strand
+#             $do_nodup:       '1' if we did not duplicate the genome
+#             $totlen:         total length of the genome (not duplicated)
 #             $start_AR:       ref to array of start positions
 #             $stop_AR:        ref to array of stop positions
 #             $strand_AR:      ref to array of strands
@@ -4060,10 +4061,10 @@ sub alignHits {
 #
 sub checkForOverlapsOrAdjacencies {
   my $sub_name = "checkForOverlapsOrAdjacencies";
-  my $nargs_exp = 5;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($do_adj, $start_AR, $stop_AR, $strand_AR, $observed_AAR) = @_;
+  my ($do_adj, $do_nodup, $totlen, $start_AR, $stop_AR, $strand_AR, $observed_AAR) = @_;
 
   my $nhits = scalar(@{$start_AR});
 
@@ -4074,48 +4075,198 @@ sub checkForOverlapsOrAdjacencies {
     }
   }
 
-  my $nres_overlap;  # number of nucleotides two exons overlap by
-  my $nres_distance; # distance between two closest nucleotides in two exons
   for(my $i = 0; $i < $nhits; $i++) { 
-    my $start_i  = $start_AR->[$i];
-    my $stop_i   = $stop_AR->[$i];
-    my $strand_i = "+";
-    if($start_i > $stop_i) { # swap them
-      my $tmp   = $start_i;
-      $start_i  = $stop_i;
-      $stop_i   = $tmp;
-      $strand_i = "-";
+    # we need this helper splitSpanning... function to deal with possibility that
+    # our hit spans the stop..start boundary (which is only possible if (! $do_nodup)
+    # because we duplicated our genome because it's circular. In that case,
+    # we'll have up to four segments that we'll need to check for overlap/adjacency,
+    # up to two each for $i and $j. If we do span stop..start, then we'll have one
+    # segment that starts at position 1, and the other that ends at position $totlen.
+    my ($start_i1, $stop_i1, $start_i2, $stop_i2, $strand_i) = splitSpanningExonForOverlapOrAdjacencyCheck($start_AR->[$i], $stop_AR->[$i], $totlen);
+    if($do_nodup && (defined $start_i2 || defined $stop_i2)) { 
+      die "ERROR in $sub_name() genomes not duplicated but we found a prediction that spans stop..start boundary..."; 
     }
+    #printf("returned from splitSpanning... $start_AR->[$i]..$stop_AR->[$i] $totlen passed in; start_i1: $start_i1 stop_i1: $stop_i1 strand_i: $strand_i");
+    #if(defined $start_i2) { print "start_i2: $start_i2 stop_i2: $stop_i2"; }
+    #printf("\n");
+
     for(my $j = $i+1; $j < $nhits; $j++) { 
-      my $start_j  = $start_AR->[$j];
-      my $stop_j   = $stop_AR->[$j];
-      my $strand_j = "+";
-      if($start_j > $stop_j) { # swap them
-        my $tmp   = $start_j;
-        $start_j  = $stop_j;
-        $stop_j   = $tmp;
-        $strand_j = "-";
+      my ($start_j1, $stop_j1, $start_j2, $stop_j2, $strand_j) = splitSpanningExonForOverlapOrAdjacencyCheck($start_AR->[$j], $stop_AR->[$j], $totlen);
+      if($do_nodup && (defined $start_j2 || defined $stop_j2)) { 
+        die "ERROR in $sub_name() genomes not duplicated but we found a prediction that spans stop..start boundary..."; 
       }
-      my $found_ol_or_adj = 0;
+      #printf("\treturned from splitSpanning... $start_AR->[$j]..$stop_AR->[$j] $totlen passed in; start_j1: $start_j1 stop_j1: $stop_j1 strand_j: $strand_j");
+      #if(defined $start_j2) { print "start_j2: $start_j2 stop_j2: $stop_j2"; }
+      #printf("\n");
+
+      #my $found_ol_or_adj = 0;
+      #printf("possibly checking overlap between $start_i..$stop_i $strand_i and $start_j..$stop_j $stop_j\n");
       if($strand_i eq $strand_j) { 
-        $nres_overlap  = getOverlap ($start_i, $stop_i, $start_j, $stop_j);
-        $nres_distance = getDistance($start_i, $stop_i, $start_j, $stop_j);
-        if(((! $do_adj) && ($nres_overlap > 0)) ||
-           ((  $do_adj) && ($nres_distance == 1))) { 
-          $observed_AAR->[$i][$j] = 1;
-          $observed_AAR->[$j][$i] = 1;
-          # printf("found %s between $i  and $j ($start_i..$stop_i and $start_j..$stop_j)\n", ($do_adj) ? "adjacency" : "overlap");
-          $found_ol_or_adj = 1;
+        if($do_adj) { 
+          # determine the 2 relevant start and 2 relevant stop positions for determining if there is
+          # an adjacency, we know (based on how splitSpanningExonForOverlapOrAdjacencyCheck works) that
+          # if $start_i2 is defined, then $start_i1 is 1, and stop_i2 is $L and similarly
+          # if $start_j2 is defined, then $start_j1 is 1, and stop_j2 is $L and similarly
+          # but we check to make absolutely sure and die if that assumption is violated
+          # 
+          my $adj_istart = $start_i1; # may change below if $start_i2 is defined
+          my $adj_istop  = $stop_i1;
+          my $adj_jstart = $start_j1; #may change below if $start_j2 is defined
+          my $adj_jstop  = $stop_j1;
+          if(defined $start_i2) { 
+            if($start_i1 != 1)       { die "ERROR in adjacency check, first segment of spanning exon does not start with 1!"; }
+            if($stop_i2  != $totlen) { die "ERROR in adjacency check, second segment of spanning exon does not end with L!"; }
+            $adj_istart = $start_i2;
+          }
+          if(defined $start_j2) { 
+            if($start_j1 != 1)       { die "ERROR in adjacency check, first segment of spanning exon does not start with 1!"; }
+            if($stop_j2  != $totlen) { die "ERROR in adjacency check, second segment of spanning exon does not end with L!"; }
+            $adj_jstart = $start_j2;
+          }
+          # now we can check if we have an adjacency
+          my $found_adj = 0;
+          if((($adj_istop+1) == $adj_jstart) || 
+             (($adj_jstop+1) == $adj_istart)) { 
+            $found_adj = 1;
+          }
+          # if we've duplicated the genome, check the boundary case that one feature 
+          # ends at final position of sequence, and the next starts at the first position
+          if((! $do_nodup) && 
+             (($adj_istop == $totlen && $adj_jstart == 1) ||
+              ($adj_jstop == $totlen && $adj_istart == 1))) { 
+            $found_adj = 1;
+          }
+          if($found_adj) { 
+            $observed_AAR->[$i][$j] = 1;
+            $observed_AAR->[$j][$i] = 1;
+            #printf("found adjacency between $i and $j\n");
+          }
         }
-      }
-      if(! $found_ol_or_adj) { # no overlap or adjacency
-        $observed_AAR->[$i][$j] = 0;
-        $observed_AAR->[$j][$i] = 0;
+        else { # checking for overlaps, not adjacencies
+          # we can have an overlap in 1 of up to 4 ways,
+          # depending on if $starti2 and $startj2 are defined
+          # or not.
+          my $nres_overlap_11 = undef;
+          my $nres_overlap_12 = undef;
+          my $nres_overlap_21 = undef;
+          my $nres_overlap_22 = undef;
+          $nres_overlap_11 = getOverlap ($start_i1, $stop_i1, $start_j1, $stop_j1);
+          #printf("\tnres_overlap_11 between $start_i1..$stop_i1 and $start_j1..$stop_j1 is $nres_overlap_11\n");
+          if(defined $start_j2) { 
+            $nres_overlap_12 = getOverlap ($start_i1, $stop_i1, $start_j2, $stop_j2);
+            #printf("\tnres_overlap_12 between $start_i1..$stop_i1 and $start_j2..$stop_j2 is $nres_overlap_12\n");
+            if(defined $start_i2) { 
+              $nres_overlap_22 = getOverlap ($start_i2, $stop_i2, $start_j2, $stop_j2);
+              #printf("\tnres_overlap_22 between $start_i2..$stop_i2 and $start_j2..$stop_j2 is $nres_overlap_22\n");
+            }
+          }
+          elsif(defined $start_i2) { 
+            $nres_overlap_21 = getOverlap ($start_i2, $stop_i2, $start_j1, $stop_j1);
+            #printf("\tnres_overlap_21 between $start_i2..$stop_i2 and $start_j1..$stop_j1 is $nres_overlap_21\n");
+          }
+          
+          my $have_overlap = 0;
+          if($nres_overlap_11 > 0 || 
+             (defined $nres_overlap_12 && $nres_overlap_12 > 0) ||
+             (defined $nres_overlap_21 && $nres_overlap_21 > 0) ||
+             (defined $nres_overlap_22 && $nres_overlap_22 > 0)) { 
+            # we have an overlap
+            $observed_AAR->[$i][$j] = 1;
+            $observed_AAR->[$j][$i] = 1;
+            #printf("found overlap between $i and $j\n");
+          }
+        }          
       }
     }
   }
 
   return;
+}
+
+# Subroutine: splitSpanningExonForOverlapOrAdjacencyCheck()
+#
+# Synopsis:   Determine if segment spans the stop..start boundary
+#             and if so, break it down into 2 segments: one before the
+#             boundary and one after. This is important to do when 
+#             checking for overlaps or adjacencies.
+#
+# Args:       $start:          start position, can be negative
+#             $stop:           stop  position, can be negative
+#             $len:            total length of sequence, required for determining if stop..start is spanned or not
+# 
+# Returns:    5 values:
+#             $start1:         start position of first (of possibly two) segments, always <= $stop1
+#             $stop1:          stop  position of first (of possibly two) segments, always >= $start1
+#             $start2:         start position of second of two segments, always <= $stop2, or undef if only stop..start not spanned
+#             $stop2:          stop  position of second of two segments, always >= $start2, or undef if only stop..start not spanned
+#             $strand:         strand of segments
+#
+sub splitSpanningExonForOverlapOrAdjacencyCheck {
+  my $sub_name = "splitSpanningExonForOverlapsOrAdjacencyCheck";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($start, $stop, $len) = @_;
+
+  my $start1 = $start;
+  my $stop1  = $stop;
+  my $start2 = undef;
+  my $stop2  = undef;
+  my $strand = ($start1 <= $stop1) ? "+" : "-";
+
+  #printf("in $sub_name() passed in: $start $stop $len\n");
+  
+  # determine if $start1..$stop1 spans the stop..start boundary (in a duplicated genome)
+  # if so, we really have two segments, broken by the stop..start boundary
+  # we need to be careful about comparing both segments when looking for
+  # an overlap, and we need to be careful in how we look for adjacencies too
+  my $start_is_neg = 0;
+  my $stop_is_neg  = 0;
+  if($start1 < 0) { 
+    $start_is_neg = 1;
+    $start1 += $len + 1; # +1 is because 0 is not a valid posn
+  }
+  if($stop1 < 0) { 
+    $stop_is_neg = 1;
+    $stop1 += $len + 1; # +1 is because 0 is not a valid posn
+  }
+  if(((  $start_is_neg) && (! $stop_is_neg)) ||
+     ((! $start_is_neg) && (  $stop_is_neg))) { 
+    # only one of start or stop is negative, we span stop..start boundary
+    # we want start1..stop1 to be earlier (lower position coordinates) piece and start2..stop2 to be 
+    # later (higher position coordinates) regardless of strand, so:
+    # if positive strand: start1 == 1, stop2  == $len
+    # if negative strand: stop1 == 1,  start2 == $len
+    #
+    if($strand eq "+") { 
+      #printf("positive strand, spans stop..start boundary\n");
+      $start2 = $start1;
+      # stop1 is unchanged
+      $stop2  = $len;
+      $start1 = 1;
+      #print("start1..stop1 $start1..$stop1 start2..stop2 $start2..$stop2\n");
+    }
+    else { # strand is negative
+      # printf("negative strand, spans stop..start boundary\n");
+      $stop2  = $stop1;
+      # start1 remains the same
+      $stop1  = 1;
+      $start2 = $len;
+      #print("start1..stop1 $start1..$stop1 start2..stop2 $start2..$stop2\n");
+    }
+    # now swap start..stop, if nec
+    if($strand eq "-") { 
+      my $tmp  = $start1;
+      $start1 = $stop1;
+      $stop1  = $tmp;
+      if(defined $start2) { 
+        $tmp    = $start2;
+        $start2 = $stop2;
+        $stop2  = $tmp;
+      }
+    }
+  }
+  return ($start1, $stop1, $start2, $stop2, $strand);
 }
 
 # Subroutine: compareOverlapsOrAdjacencies()
@@ -5352,7 +5503,7 @@ sub matpeptCheckCdsRelationships {
     # if the predicted stop is undefined or not a valid stop, throw the 'stp' error
     if(! defined $pstop_codon) { 
       # note, a special case that causes us to throw 'nst' error
-      $nst_errmsg = "inferred stop codon position (3 nt 3' of $pstop on $strand strand) is off the end of the sequence";
+      $nst_errmsg = "inferred stop codon position (3 nt 3' of $orig_stop on $strand strand) is off the end of the sequence";
     }
     elsif($pstop_codon ne "TAA" && $pstop_codon ne "TGA" && $pstop_codon ne "TAG" && $pstop_codon ne "TAR") { 
       $stp_errmsg = "$pstop_codon ending at $pstop";
