@@ -1848,6 +1848,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   }
 
   # check for overlaps
+  # printf("calling checkForOverlapsOrAdjacencies, accn: $accn\n");
   checkForOverlapsOrAdjacencies(0, $do_nodup, $totlen_H{$accn}, \@cur_start_A, \@cur_stop_A, \@cur_strand_A, \@cur_ol_AA); # '0': do overlap, not adjacency
   if($a == 0) { 
     @ref_ol_AA = @cur_ol_AA; 
@@ -2014,7 +2015,8 @@ for(my $a = 0; $a < $naccn; $a++) {
       if(! $do_noolap) { 
         my $ol_pf_char = undef;
         my $ol_str     = undef;
-        ($ol_pf_char, $ol_str, undef) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", $h, 1, 1, \@ref_ol_AA, \@cur_ol_AA); # 1, 1 says check features before and after $h
+        my @cur_ol_diff_AA = undef;
+        ($ol_pf_char, $ol_str, undef) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", $h, 1, 1, \@ref_ol_AA, \@cur_ol_AA, \@cur_ol_diff_AA); # 1, 1 says check features before and after $h
         push(@cur_out_A, sprintf(" %10s", $ol_str));
         my $ol_str_errmsg = $ol_str;
         if($ol_pf_char eq "F") { 
@@ -2027,7 +2029,15 @@ for(my $a = 0; $a < $naccn; $a++) {
         
         if($ol_pf_char eq "F") { 
           $at_least_one_fail = 1;
-          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "olp", $ol_str_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+        }
+        # set error codes:
+        for(my $j = $h+1; $j < scalar(@cur_name_A); $j++) { 
+          if($cur_ol_diff_AA[$h][$j] == -1) { 
+            setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "olp", "-(" . $cur_name_A[$h] . "," . $cur_name_A[$j] . ")", \%err_pf_code2idx_H, \$cur_nerr);
+          }
+          if($cur_ol_diff_AA[$h][$j] == 1) { 
+            setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "olp", "+(" . $cur_name_A[$h] . "," . $cur_name_A[$j] . ")", \%err_pf_code2idx_H, \$cur_nerr);
+          }
         }
       }
 
@@ -2036,12 +2046,12 @@ for(my $a = 0; $a < $naccn; $a++) {
         my $adj_pf_char  = undef;
         my $adj_str      = undef;
         my $fail_indices = undef;
-        ($adj_pf_char, $adj_str) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, 1, 1, \@ref_adj_AA, \@cur_adj_AA);
+        ($adj_pf_char, $adj_str) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, 1, 1, \@ref_adj_AA, \@cur_adj_AA, undef);
         push(@cur_out_A, $adj_str);
         if($adj_pf_char eq "F") { 
           # determine whether we have a ajb or aja (adjacent before or adjacent after) error or both
           # first check for ajb error
-          my ($ajb_pf_char, $ajb_str_errmsg) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, 1, 0, \@ref_adj_AA, \@cur_adj_AA); #1, 0: only consider features before $h
+          my ($ajb_pf_char, $ajb_str_errmsg) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, 1, 0, \@ref_adj_AA, \@cur_adj_AA, undef); #1, 0: only consider features before $h
           if($ajb_pf_char eq 'F') { 
             $ajb_str_errmsg =~ s/^F://;
             if(! defined $ref_ajb_str_A[$mft_i]) { # determine it
@@ -2051,7 +2061,7 @@ for(my $a = 0; $a < $naccn; $a++) {
             setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "ajb", $ajb_str_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
           }
           # now check for aja error
-          my ($aja_pf_char, $aja_str_errmsg) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, 0, 1, \@ref_adj_AA, \@cur_adj_AA); #0, 1: only consider features after $h
+          my ($aja_pf_char, $aja_str_errmsg) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", $h, 0, 1, \@ref_adj_AA, \@cur_adj_AA, undef); #0, 1: only consider features after $h
           if($aja_pf_char eq 'F') { 
             $aja_str_errmsg =~ s/^F://;
             if(! defined $ref_aja_str_A[$mft_i]) { # determine it
@@ -2329,7 +2339,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   if($do_fullolap) { 
     my $ol_pass_fail_char = undef;
     my $overlap_notes = undef;
-    ($ol_pass_fail_char, $overlap_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", undef, 0, 0, \@ref_ol_AA, \@cur_ol_AA);
+    ($ol_pass_fail_char, $overlap_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, "/", undef, 0, 0, \@ref_ol_AA, \@cur_ol_AA, undef);
     push(@cur_out_A, sprintf("  %20s", $overlap_notes));
     $pass_fail_str .= $ol_pass_fail_char;
   }
@@ -2338,7 +2348,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   if($do_fulladj) { 
     my $adj_pass_fail_char;
     my $adjacency_notes = undef;
-    ($adj_pass_fail_char, $adjacency_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", undef, 0, 0, \@ref_adj_AA, \@cur_adj_AA);
+    ($adj_pass_fail_char, $adjacency_notes) = compareOverlapsOrAdjacencies(\@cur_name_A, "|", undef, 0, 0, \@ref_adj_AA, \@cur_adj_AA, undef);
     $pass_fail_str .= $adj_pass_fail_char;
     push(@cur_out_A, sprintf("  %20s", $adjacency_notes));
   }
@@ -2428,6 +2438,9 @@ for(my $a = 0; $a < $naccn; $a++) {
           if($nerr_printed == 0) { 
             #print $errpaout_FH (" feature\#" . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
             print $errpaout_FH (" " . ($mft_i+1) . ":" . $err_pf_idx2code_A[$e]); 
+            if($err_pf_idx2code_A[$e] eq "olp") { # special case, add the extra string
+              print $errpaout_FH ":" . $cur_err_extra_pf_AA[$mft_i][$e];
+            }
           }
           else { 
             print $errpaout_FH "," . $err_pf_idx2code_A[$e];
@@ -2435,7 +2448,7 @@ for(my $a = 0; $a < $naccn; $a++) {
           $nerr_printed++;
           my $desc = ($mft_i < $ref_nmft) ? $mft_out_tiny_A[$mft_i] : sprintf("CDS#%d", ($mft_i - $ref_nmft + 1));
           printf $errpeout_FH ("%-10s  %3s  %-5s  %4s  %s%s\n", $accn, ($mft_i+1), $desc, $err_pf_idx2code_A[$e], $err_pf_idx2msg_H{$err_pf_idx2code_A[$e]}, 
-                               (defined $cur_err_extra_pf_AA[$mft_i][$e]) ? " [" . $cur_err_extra_pf_AA[$mft_i][$e]. "]" : "");
+                               (defined $cur_err_extra_pf_AA[$mft_i][$e] && $cur_err_extra_pf_AA[$mft_i][$e] =~ m/\S/) ? " [" . $cur_err_extra_pf_AA[$mft_i][$e]. "]" : "");
           $nlines_per_err_file++;
         }
       }
@@ -4150,6 +4163,9 @@ sub checkForOverlapsOrAdjacencies {
           my $nres_overlap_12 = undef;
           my $nres_overlap_21 = undef;
           my $nres_overlap_22 = undef;
+          if($start_i1 > $stop_i1) { 
+            die "ERROR start_i1 > stop_i1 in $sub_name()";
+          }
           $nres_overlap_11 = getOverlap ($start_i1, $stop_i1, $start_j1, $stop_j1);
           #printf("\tnres_overlap_11 between $start_i1..$stop_i1 and $start_j1..$stop_j1 is $nres_overlap_11\n");
           if(defined $start_j2) { 
@@ -4188,7 +4204,11 @@ sub checkForOverlapsOrAdjacencies {
 # Synopsis:   Determine if segment spans the stop..start boundary
 #             and if so, break it down into 2 segments: one before the
 #             boundary and one after. This is important to do when 
-#             checking for overlaps or adjacencies.
+#             checking for overlaps or adjacencies. If the segment
+#             does not span stop..start, $start2 and $stop2 return
+#             values will be undefined.
+#             This function also determines strand and swaps start
+#             and stop if strand is negative.     
 #
 # Args:       $start:          start position, can be negative
 #             $stop:           stop  position, can be negative
@@ -4254,16 +4274,17 @@ sub splitSpanningExonForOverlapOrAdjacencyCheck {
       $start2 = $len;
       #print("start1..stop1 $start1..$stop1 start2..stop2 $start2..$stop2\n");
     }
-    # now swap start..stop, if nec
-    if($strand eq "-") { 
-      my $tmp  = $start1;
-      $start1 = $stop1;
-      $stop1  = $tmp;
-      if(defined $start2) { 
-        $tmp    = $start2;
-        $start2 = $stop2;
-        $stop2  = $tmp;
-      }
+  }
+  # now swap start..stop, if nec. It's important to do this for all sequences not just
+  # those that span the stop..start boundary
+  if($strand eq "-") { 
+    my $tmp  = $start1;
+    $start1 = $stop1;
+    $stop1  = $tmp;
+    if(defined $start2) { 
+      $tmp    = $start2;
+      $start2 = $stop2;
+      $stop2  = $tmp;
     }
   }
   return ($start1, $stop1, $start2, $stop2, $strand);
@@ -4286,6 +4307,13 @@ sub splitSpanningExonForOverlapOrAdjacencyCheck {
 #                            those two exons are expected to overlap or be adjacent, PRE-FILLED
 #             $observed_AAR: ref to 2D array of test overlaps $observed_ol_AAR->[$i][$j] is '1' if 
 #                            those two exons are observed to overlap or be adjacent, PRE-FILLED
+#             $diff_AAR:     ref to 2D array that includes results of comparison between expected
+#                            and observed, $diff_AAR->[$i][$j] will be:
+#                              - '-1' if $expected_AAR->[$i][$j] is 1 and $observed_AAR->[$i][$j] is 0
+#                              - '1'  if $expected_AAR->[$i][$j] is 0 and $observed_AAR->[$i][$j] is 1
+#                              - '0'  if $expected_AAR->[$i][$j] is 0 and $observed_AAR->[$i][$j] is 0
+#                              - '0'  if $expected_AAR->[$i][$j] is 1 and $observed_AAR->[$i][$j] is 1
+#                            This 2D array is filled here.
 #             
 # Returns:    Two values:
 #             $pass_fail_char: "P" if overlaps/adjacencies match b/t observed and expected, else "F"
@@ -4293,6 +4321,118 @@ sub splitSpanningExonForOverlapOrAdjacencyCheck {
 #
 sub compareOverlapsOrAdjacencies {
   my $sub_name = "compareOverlapsOrAdjacencies";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($name_AR, $div_char, $index, $do_before, $do_after, $expected_AAR, $observed_AAR, $diff_AAR) = @_;
+
+  if(defined $index && (! defined $do_before)) { die "ERROR in $sub_name() index is defined but do_before is not"; }
+  if(defined $index && (! defined $do_after))  { die "ERROR in $sub_name() index is defined but do_before is not"; }
+  if(defined $index && (! $do_before) && (! $do_after)) { die "ERROR in $sub_name, index is defined and both do_before and do_after are 0"; }
+
+  my $size = scalar(@{$name_AR});
+  my $ret_str = "";
+  my $nfound = 0;
+  my $first_j = undef; # first j index to check for an i, differs depending on values of $index, $do_before and $do_after
+  my $final_j = undef; # final j index to check for an i, differs depending on values of $index, $do_before and $do_after
+  # check @observed_AA against @{$expected_AAR}
+  
+  # initialize diff_AAR if it was passed in
+  if(defined $diff_AAR) { 
+    @{$diff_AAR} = ();
+    for(my $i = 0; $i < $size; $i++) { 
+      @{$diff_AAR->[$i]} = ();
+      for(my $j = 0; $j < $size; $j++) { 
+        $diff_AAR->[$i][$j] = 0; 
+        # this will only change if we:
+        # - LOOK FOR AND SEE a difference in observed_AAR->[$i][$j] and expected_AAR->[$i][$j]
+      }
+    }
+  }
+
+  my $pass_fail_char = "P";
+  for(my $i = 0; $i < $size; $i++) { 
+    if((! defined $index) || ($index == $i)) { 
+      if(! defined $index) { 
+        $first_j = $i+1;
+        $final_j = $size-1;
+      }
+      elsif($do_before && $do_after) { 
+        $first_j = 0;
+        $final_j = $size-1;
+      }
+      elsif($do_before) { 
+        $first_j = 0;
+        $final_j = $i-1;
+      }
+      elsif($do_after) { 
+        $first_j = $i+1;
+        $final_j = $size-1;
+      }        
+      else { 
+        # checked above that at least one of $do_before or $do_after is true
+        die "ERROR in $sub_name() unforeseen case of index, do_before and do_after";
+      }
+      for(my $j = $first_j; $j <= $final_j; $j++) { 
+        if(($expected_AAR->[$i][$j] == 1) && ($observed_AAR->[$i][$j] == 0)) { 
+          $pass_fail_char = "F";
+          if(defined $diff_AAR) { $diff_AAR->[$i][$j] = -1; }
+        }
+        elsif(($expected_AAR->[$i][$j] == 0) && ($observed_AAR->[$i][$j] == 1)) { 
+          $pass_fail_char = "F";
+          if(defined $diff_AAR) { $diff_AAR->[$i][$j] = 1; }
+        }
+        if($observed_AAR->[$i][$j]) { 
+          if($ret_str ne "") { 
+            $ret_str .= ",";
+          }
+          if(defined $index) { 
+            $ret_str .= sprintf("%s", $name_AR->[$j]); 
+          }
+          else { 
+            $ret_str .= sprintf("%s%s%s", $name_AR->[$i], $div_char, $name_AR->[$j]); 
+          }
+          $nfound++;
+        }
+      }
+    }
+  }
+  if($ret_str eq "") { $ret_str = "NONE"; }
+
+  if(defined $index) { 
+    $ret_str = $pass_fail_char . ":" . $ret_str;
+  }
+  else { 
+    $ret_str = $pass_fail_char . ":" . $nfound . ":" . $ret_str;
+  }
+
+  return ($pass_fail_char, $ret_str);
+}
+
+# Subroutine: old_compareOverlapsOrAdjacencies()
+#
+# Synopsis:   Compare one 2D array describing overlaps or adjacencies
+#             to another. 
+#
+# Args:       $name_AR:      ref to array of short names for each annotation
+#             $div_char:     divider character
+#             $index:        if   defined, the only feature $index we check overlaps/adjacencies for
+#                            if ! defined, check overlaps/adjacencies for all features
+#             $do_before:    only relevant if $index is defined, if '1' check features that
+#                            come before $index (< $index), if '0' do not check features < $index
+#             $do_after:     only relevant if $index is defined, if '1' check features that
+#                            come after $index (> $index), if '0' do not check features > $index
+#             $expected_AAR: ref to 2D array of expected overlaps $expected_ol_AAR->[$i][$j] is '1' if 
+#                            those two exons are expected to overlap or be adjacent, PRE-FILLED
+#             $observed_AAR: ref to 2D array of test overlaps $observed_ol_AAR->[$i][$j] is '1' if 
+#                            those two exons are observed to overlap or be adjacent, PRE-FILLED
+#             
+# Returns:    Two values:
+#             $pass_fail_char: "P" if overlaps/adjacencies match b/t observed and expected, else "F"
+#             $notes:          string describing the overlaps/adjacencies, empty string ("") if no overlaps.
+#
+sub old_compareOverlapsOrAdjacencies {
+  my $sub_name = "old_compareOverlapsOrAdjacencies";
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
