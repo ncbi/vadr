@@ -1311,9 +1311,19 @@ for(my $c = 0; $c < $ref_nmft; $c++) {
   my $final_mdl = $mdl_A[$mft2final_mdl_A[$c]];
   foreach $accn (@{$accn_ext_check_AA[$c]}) { 
     my $seq_accn      = $accn2seq_accn_H{$accn};
-    my $posn_to_start = $p_stop_HH{$final_mdl}{$seq_accn};
+    my $cur_start     = $p_start_HH{$final_mdl}{$seq_accn};
+    my $cur_stop      = $p_stop_HH{$final_mdl}{$seq_accn};
+    my $posn_to_start = $cur_stop;
     #printf("HEYAV $accn posn_to_start 0: $posn_to_start c: $c final_mdl $final_mdl\n");
-    my $plen          = (abs($p_stop_HH{$final_mdl}{$seq_accn} - $p_start_HH{$final_mdl}{$seq_accn})) + 1;
+    my $plen          = (abs($cur_stop - $cur_start)) + 1;
+    # careful if cur_stop..cur_start crosses the stop..start boundary we need to correct for the off-by-one introduced because 
+    # posn 0 is not a sequence position
+    if($cur_stop  == 0) { die "ERROR predicted stop  position is 0, this shouldn't happen."; }
+    if($cur_start == 0) { die "ERROR predicted start position is 0, this shouldn't happen."; }
+    if(($cur_start < 0 && $cur_stop > 0) ||
+       ($cur_start > 0 && $cur_stop < 0)) { 
+      $plen--; # correct off-by-one length due to sequence position 0 not existing, length was 1 nt too many
+    }
     my $offset        = ($plen % 3); 
     # printf("plen: $plen, offset: $offset changing posn_to_start: $posn_to_start to %d\n", $posn_to_start-$offset);
     $posn_to_start -= $offset; # only want to look for downstream stops in-frame with respect to the START codon, not the predicted STOP
@@ -1348,7 +1358,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   for(my $c = 0; $c < $ref_nmft; $c++) { # we don't do CDS in mat_peptide mode, since they will necessarily
                                          # be composed of mat_peptides that we'll correct individually
     my $corr_stop = (exists $corr_mft_stop_trc_or_ext_AH[$c]{$accn}) ? $corr_mft_stop_trc_or_ext_AH[$c]{$accn} : 0;
-    #printf("HEYAAA $accn mdl: $c, corr_stop: $corr_stop\n");
+    # printf("HEYAAA $accn mdl: $c, corr_stop: $corr_stop\n");
 
     my @cur_mdl_A = ();
     @cur_mdl_A = @{$mft2mdl_map_AA[$c]};
@@ -1382,14 +1392,22 @@ for(my $a = 0; $a < $naccn; $a++) {
           else { 
             $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  - $corr_stop;
           }
-          #printf("HEYAZZ set c_stop_HH{$mdl}{$seq_accn} to $c_stop_HH{$mdl}{$seq_accn} from $p_stop_HH{$mdl}{$seq_accn}\n");
+          # careful, if we span stop..start boundary then we need to correct for off-by-one (b/c posn 0 doesn't exist)
+          if($p_stop_HH{$mdl}{$seq_accn} < 0 && $c_stop_HH{$mdl}{$seq_accn} >= 0) { 
+            if($do_nodup) { die "ERROR, corrected negative stop to make a positive one when -nodup enabled....shouldn't happen."; }
+            $c_stop_HH{$mdl}{$seq_accn}++; # posn 0 does not exist
+          }
+          if($p_stop_HH{$mdl}{$seq_accn} > 0 && $c_stop_HH{$mdl}{$seq_accn} <= 0) { 
+            if($do_nodup) { die "ERROR, corrected positive stop to make a negative one when -nodup enabled....shouldn't happen."; }
+            $c_stop_HH{$mdl}{$seq_accn}--; # posn 0 does not exist
+          }
         }
       }
     }
     else { # multi exon CDS
       # TODO: skip this if any of the exons are not predicted
+
       # get temporary array of exon lengths and determine full CDS length
-      
       if($corr_stop < 0) { # determine which exon we need to correct the stop for, and correct it:
         my $found_exon = 0;
         my $len_so_far = 0;
@@ -1403,12 +1421,22 @@ for(my $a = 0; $a < $naccn; $a++) {
           if((-1 * $corr_stop) < ($len_so_far + $exon_len)) { # correction is in this exon
             if($strand eq "+") { 
               $c_stop_HH{$mdl}{$seq_accn} = $p_stop_HH{$mdl}{$seq_accn} - ((-1 * $corr_stop) - $len_so_far);
+              # careful, if we span stop..start boundary then we need to correct for off-by-one (b/c posn 0 doesn't exist)
+              if($p_stop_HH{$mdl}{$seq_accn} > 0 && $c_stop_HH{$mdl}{$seq_accn} <= 0) { 
+                if($do_nodup) { die "ERROR, corrected positive stop to make a negative one when -nodup enabled....shouldn't happen."; }
+                $c_stop_HH{$mdl}{$seq_accn}--; # posn 0 does not exist
+              }
               #printf("set positive strand c_stop_HH{$mdl}{$seq_accn} to $c_stop_HH{$mdl}{$seq_accn} (p_stop_HH: %d - (-1 * $corr_stop) - len_so_far:$len_so_far h: $h, mdl_idx: $mdl_idx, mdl: $mdl)\n", $p_stop_HH{$mdl}{$seq_accn});
             }
             else { 
               #printf("INITIALLY: p_stop_HH{$mdl}{$seq_accn} is $p_stop_HH{$mdl}{$seq_accn}\n");
-              $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn} + ((-1 * $corr_stop) - $len_so_far);
+              $c_stop_HH{$mdl}{$seq_accn} = $p_stop_HH{$mdl}{$seq_accn} + ((-1 * $corr_stop) - $len_so_far);
               #printf("set negative strand c_stop_HH{$mdl}{$seq_accn} to $c_stop_HH{$mdl}{$seq_accn} (p_stop_HH{$mdl}{$seq_accn} is $p_stop_HH{$mdl}{$seq_accn}\n");
+              # careful, if we span stop..start boundary then we need to correct for off-by-one (b/c posn 0 doesn't exist)
+              if($p_stop_HH{$mdl}{$seq_accn} < 0 && $c_stop_HH{$mdl}{$seq_accn} >= 0) { 
+                if($do_nodup) { die "ERROR, corrected negative stop to make a positive one when -nodup enabled....shouldn't happen."; }
+                $c_stop_HH{$mdl}{$seq_accn}++; # posn 0 does not exist
+              }
             }
             $h = -1; # breaks loop
             $did_corr_exon_stop_trc_AH[$mdl_idx]{$accn} = 1;
@@ -1425,10 +1453,20 @@ for(my $a = 0; $a < $naccn; $a++) {
         my $mdl = $mdl_A[$mft2final_mdl_A[$c]];
         $did_corr_exon_stop_ext_AH[$mdl_idx]{$accn} = 1;
         if($p_strand_HH{$mdl}{$seq_accn} eq "+") { 
-          $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn} + $corr_stop;
+          $c_stop_HH{$mdl}{$seq_accn} = $p_stop_HH{$mdl}{$seq_accn} + $corr_stop;
+          # careful, if we span stop..start boundary then we need to correct for off-by-one (b/c posn 0 doesn't exist)
+          if($p_stop_HH{$mdl}{$seq_accn} < 0 && $c_stop_HH{$mdl}{$seq_accn} >= 0) { 
+            if($do_nodup) { die "ERROR, corrected negative stop to make a positive one when -nodup enabled....shouldn't happen."; }
+            $c_stop_HH{$mdl}{$seq_accn}++; # posn 0 does not exist
+          }
         }
         else { 
           $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn} - $corr_stop;
+          # careful, if we span stop..start boundary then we need to correct for off-by-one (b/c posn 0 doesn't exist)
+          if($p_stop_HH{$mdl}{$seq_accn} > 0 && $c_stop_HH{$mdl}{$seq_accn} <= 0) { 
+            if($do_nodup) { die "ERROR, corrected positive stop to make a negative one when -nodup enabled....shouldn't happen."; }
+            $c_stop_HH{$mdl}{$seq_accn}--; # posn 0 does not exist
+          }
         }
       }
     } # end of 'else' entered if we're a multi-exon CDS
@@ -5658,7 +5696,16 @@ sub matpeptCheckCdsRelationships {
   if((! defined $trc_errmsg) && (! defined $aji_errmsg) && (defined $stp_errmsg) && (! defined $nst_errmsg)) { 
     my $posn_to_start = $pstop;
     my $plen          = (abs($pstop - $orig_start)) + 1;
-    my $offset        = ($plen % 3); 
+    # printf("pstop: $pstop orig_start: $orig_start\n");
+    # careful if pstop..orig_start crosses the stop..start boundary we need to correct for the off-by-one introduced because 
+    # posn 0 is not a sequence position
+    if($pstop      == 0) { die "ERROR predicted stop  position is 0, this shouldn't happen."; }
+    if($orig_start == 0) { die "ERROR predicted start position is 0, this shouldn't happen."; }
+    if(($orig_start < 0 && $pstop > 0) ||
+       ($orig_start > 0 && $pstop < 0)) { 
+      $plen--; # correct off-by-one length due to sequence position 0 not existing, length was 1 nt too many
+    }
+    my $offset      = ($plen % 3); 
     $posn_to_start -= $offset; # only want to look for downstream stops in-frame with respect to the START codon, not the predicted STOP
     my $strand = $strand_HHR->{$mdl_A[$cds2matpept_AR->[($nmp2check-1)]]}{$seq_accn};
     if($strand eq "+") { $posn_to_start++; }
@@ -5844,7 +5891,7 @@ sub checkForDownstreamStop {
 
   my ($sqfile, $accn, $posn, $seqlen, $strand) = @_;
 
-  # printf("in $sub_name, $accn $posn $strand\n");
+  # printf("in $sub_name, $accn $posn $strand $seqlen $strand\n");
 
   my $file_seqlen = $sqfile->fetch_seq_length_given_name($accn);
   # we only want to allow a downstream stop to be the length of the full sequence
