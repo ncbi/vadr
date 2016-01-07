@@ -1382,7 +1382,7 @@ for(my $a = 0; $a < $naccn; $a++) {
           else { 
             $c_stop_HH{$mdl}{$seq_accn}  = $p_stop_HH{$mdl}{$seq_accn}  - $corr_stop;
           }
-          # printf("HEYAZZ set c_stop_HH{$mdl}{$seq_accn} to $c_stop_HH{$mdl}{$seq_accn} from $p_stop_HH{$mdl}{$seq_accn}\n");
+          #printf("HEYAZZ set c_stop_HH{$mdl}{$seq_accn} to $c_stop_HH{$mdl}{$seq_accn} from $p_stop_HH{$mdl}{$seq_accn}\n");
         }
       }
     }
@@ -1562,7 +1562,7 @@ if(! $do_skipaln) {
       
       # build an HMM from this single sequence alignment:
       my $cmd = "$hmmbuild $prot_hmmfile $prot_stkfile > $prot_hmmbuildfile";
-      runCommand($cmd, 0);
+      runCommand($cmd, 0); 
       
       # align all sequences to this HMM
       $cmd = "$hmmalign $prot_hmmfile $prot_fafile > $prot_alnfile";
@@ -2031,7 +2031,7 @@ for(my $a = 0; $a < $naccn; $a++) {
           $at_least_one_fail = 1;
         }
         # set error codes:
-        for(my $j = $h+1; $j < scalar(@cur_name_A); $j++) { 
+        for(my $j = 0; $j < scalar(@cur_name_A); $j++) { 
           if($cur_ol_diff_AA[$h][$j] == -1) { 
             setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "olp", "-(" . $cur_name_A[$h] . "," . $cur_name_A[$j] . ")", \%err_pf_code2idx_H, \$cur_nerr);
           }
@@ -5800,7 +5800,12 @@ sub setErrorCode {
   if(! defined $code2idx_HR->{$errcode}) { die "ERROR in $sub_name, unrecognized error code $errcode"; }
   $err_AR->[$code2idx_HR->{$errcode}] = 1;
   if(defined $err_extra_AR && defined $errextra) { 
-    $err_extra_AR->[$code2idx_HR->{$errcode}] = $errextra;
+    if(defined $err_extra_AR->[$code2idx_HR->{$errcode}] && $err_extra_AR->[$code2idx_HR->{$errcode}] ne "") { 
+      $err_extra_AR->[$code2idx_HR->{$errcode}] .= "," . $errextra;
+    }
+    else { 
+      $err_extra_AR->[$code2idx_HR->{$errcode}] = $errextra;
+    }
   }
   if(defined $errctr_R) { 
     $$errctr_R++; 

@@ -14,6 +14,7 @@ $usage .= " BASIC OPTIONS:\n";
 $usage .= "  -n <n>    : in normal output mode, also report fraction of sequences with each error setting total as <n>\n";
 $usage .= "  -pairwise : output pairwise co-occurence matrix, not standard output\n";
 $usage .= "  -pwlist   : with -pairwise, list pairwise counts instead of printing a table\n";
+$usage .= "  -jira     : output table in JIRA table format\n";
 $usage .= "\n";
 
 # general options:
@@ -21,9 +22,11 @@ my $do_fract = 0;     # set to '1' if -n enabled
 my $n        = undef; # defined if -n used.
 my $do_pairwise = 0;  # set to '1' if -pw enabled
 my $do_pwlist   = 0;  # set to '1' if -pwlist enabled
+my $do_jira     = 0;  # set to '1' if -jira   enabled
 &GetOptions("n=s"      => \$n, 
             "pairwise" => \$do_pairwise,
-            "pwlist"   => \$do_pwlist) || 
+            "pwlist"   => \$do_pwlist,
+            "jira"     => \$do_jira) || 
     die "Unknown option";
 
 if(defined $n) { 
@@ -36,6 +39,10 @@ if(($do_pwlist) && (! $do_pairwise)) { die "ERROR -pwlist requires -pairwise als
 # check for incompatible option combinations
 if($do_pairwise && $do_fract) { 
   die "ERROR -pairwise and -n cannot be used in combination";
+}
+# check for incompatible option combinations
+if($do_pairwise && $do_jira) { 
+  die "ERROR -pairwise and -jira cannot be used in combination";
 }
 
 my %tot_code_ct_H    = (); # key: error code, e.g. trc, value total number of times code occurs
@@ -104,50 +111,94 @@ if(! $do_pairwise) {
 
   print("#\n");
 
-  printf("#code  \#tot  \#accn");
+  if($do_jira) { 
+    printf("|| code || \#tot || \#accn ||");
+  }
+  else { 
+    printf("#code  \#tot  \#accn");
+  }
   if($do_fract) { 
-    printf("  fraction-of-all-$n-accn");
+    if($do_jira) { 
+      printf("  fraction-of-all-$n-accn ||");
+    }
+    else {
+      printf("  fraction-of-all-$n-accn");
+    }
   }
   print("\n");
 
   # print divider row
-  printf("#---- -----  -----");
-  if($do_fract) { 
-    printf("  ------");
+  if(! $do_jira) { 
+    printf("#---- -----  -----");
+    if($do_fract) { 
+      printf("  ------");
+    }
+    print("\n");
   }
-  print("\n");
 
   my $sum_tot_code = 0;
   my $sum_has_code = 0;
   my $sum_fract    = 0;
   foreach my $code (@code_A) { 
-    printf("$code   %5d  %5d", $tot_code_ct_H{$code}, $has_code_ct_H{$code});
+    if($do_jira) { 
+      printf("$code |  %5d | %5d |", $tot_code_ct_H{$code}, $has_code_ct_H{$code});
+    }
+    else { 
+      printf("$code   %5d  %5d", $tot_code_ct_H{$code}, $has_code_ct_H{$code});
+    }
     $sum_tot_code += $tot_code_ct_H{$code};
     $sum_has_code += $has_code_ct_H{$code};
     if($do_fract) { 
-      printf("  %6.4f", $has_code_ct_H{$code} / $n); 
+      if($do_jira) { 
+        printf("  %6.4f |", $has_code_ct_H{$code} / $n); 
+      }
+      else { 
+        printf("  %6.4f", $has_code_ct_H{$code} / $n); 
+      }
       $sum_fract += $has_code_ct_H{$code} / $n; 
     }
     print("\n");
   }
 
   # print divider row
-  printf("#---- -----  -----");
-  if($do_fract) { 
-    printf("  ------");
+  if(! $do_jira) { 
+    printf("#---- -----  -----");
+    if($do_fract) { 
+      printf("  ------");
+    }
+    print("\n");
   }
-  print("\n");
 
   # print any row
-  printf("total %5d  %5s", $sum_tot_code, "-");
+  if($do_jira) { 
+    printf("| total | %5d | %5s |", $sum_tot_code, "-");
+  }
+  else { 
+    printf("total %5d  %5s", $sum_tot_code, "-");
+  }
   if($do_fract) { 
-    printf("  %6s", "-");
+    if($do_jira) { 
+      printf("  %6s |", "-");
+    }
+    else { 
+      printf("  %6s", "-");
+    }
   }
   print("\n");
 
-  printf("any   %5d  %5s", $any_code_ct, "-");
+  if($do_jira) { 
+    printf("| any |  %5d | %5s |", $any_code_ct, "-");
+  }
+  else { 
+    printf("any   %5d  %5s", $any_code_ct, "-");
+  }
   if($do_fract) { 
-    printf("  %6.4f", $any_code_ct / $n); 
+    if($do_jira) { 
+      printf("  %6.4f |", $any_code_ct / $n); 
+    }
+    else { 
+      printf("  %6.4f", $any_code_ct / $n); 
+    }
   }
   print("\n");
 }
