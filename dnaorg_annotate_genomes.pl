@@ -26,24 +26,17 @@ $usage .= " This script annotates genomes from the same species based\n";
 $usage .= " on reference annotation. The reference accession is the\n";
 $usage .= " first accession listed in <list file with all accessions>\n";
 $usage .= "\n";
-$usage .= " BASIC OPTIONS:\n";
-$usage .= "  -nocorrect   : do not correct annotations based on internal start/stop codons in predicted exons/CDS\n";
+$usage .= " BASIC/COMMON OPTIONS:\n";
 $usage .= "  -matpept <f> : read mat_peptide info in addition to CDS info, file <f> explains CDS:mat_peptide relationships\n";
-$usage .= "  -strict      : require matching annotations to match CDS/exon index\n";
 $usage .= "  -nodup       : do not duplicate genome seqs to identify features that span stop..start (for circular genomes)\n";
-$usage .= "  -notexon     : do not use exon-specific models\n";
 $usage .= "  -onlybuild   : exit after building reference models\n";
-$usage .= "  -skipbuild   : skip the build and calibration step because you already did an -onlybuild run\n";
-$usage .= "  -model <s>   : use model file <s>, instead of building one\n";
+$usage .= " OPTIONS FOR SPECIFYING UNUSUAL ASPECTS OF SEQUENCE FEATURES:\n";
+$usage .= "  -specstart <f> : read specified alternate start codons per CDS in file <f>\n";
 $usage .= "\n OPTIONS THAT ADD EXTRA ERROR TESTS:\n";
 $usage .= "  -oseq <s>     : identify origin seq <s> in genomes, put \"|\" at site of origin, e.g. \"TAATATT\\|AC\"\n";
 $usage .= "                  <s> must be a string consisting of only A,C,G,T and | characters. No regular expressions allowed.\n"; 
 $usage .= "                  Note that \"|\" must be escaped, i.e. \"\\|\"; the \"|\" can be any char, incl. first or last\n";
 $usage .= "                  This option is relevant only for circular genomes, e.g. Maize streak virus\n";
-$usage .= "  -lfile <f>    : TO BE IMPLEMENTED\n";
-$usage .= "  -idthresh <x> : TO BE IMPLEMENTED\n";
-#$usage .= "  -lfile <f>    : read minimum and maximum length allowed per feature from file <f>\n";
-#$usage .= "  -idthresh <x> : minimum allowed fractional identity per feature is <x>\n";
 $usage .= "\n OPTIONS CONTROLLING OUTPUT TABLE:\n";
 $usage .= "  -c        : concise output mode (enables -nomdlb -noexist -nobrack and -nostop)\n";
 $usage .= "  -seqrow   : force sequence-as-rows    output mode (default for <= 5 models)\n";
@@ -70,11 +63,16 @@ $usage .= "  -cfarm     : submit calibration jobs for each CM to compute farm an
 $usage .= "  -sfarm <n> : split genome file into <n> pieces, submit <n> cmscan jobs to farm and wait 3 minutes\n";
 $usage .= "               (changeable with -swait) before concatenating all the output files and continuing\n";
 $usage .= "  -swait <n>  : with -sfarm, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]\n";
-$usage .= "\n OPTIONS USEFUL FOR DEVELOPMENT/DEBUGGING:\n";
+$usage .= "\n OPTIONS FOR SKIPPING STEPS (BY USING EXISTING RESULTS FROM PREVIOUS RUNS):\n";
+$usage .= "  -skipbuild : skip the build and calibration step because you already did an -onlybuild run\n";
 $usage .= "  -skipfetch : don't fetch whole genome sequences, we already have them from a previous run\n";
 $usage .= "  -skipscan  : use existing cmscan/hmmscan results, don't actually run it\n";
 $usage .= "  -skipaln   : use existing cmscan/hmmscan and alignment results, don't actually run it\n";
-
+$usage .= " OTHER, RARELY USED, OPTIONS:\n";
+$usage .= "  -nocorrect   : do not correct annotations based on internal start/stop codons in predicted exons/CDS\n";
+$usage .= "  -strict      : require matching annotations to match CDS/exon index\n";
+$usage .= "  -notexon     : do not use exon-specific models\n";
+$usage .= "  -model <s>   : use model file <s>, instead of building one\n";
 $usage .= "\n";
 
 my ($seconds, $microseconds) = gettimeofday();
@@ -96,20 +94,15 @@ foreach my $x ($hmmbuild, $hmmpress, $nhmmscan, $cmbuild, $cmcalibrate, $cmfetch
   if(! -x $x) { die "ERROR executable file $x does not exist (or is not executable)"; }
 }
 
-# general options:
-my $do_nocorrect   = 0; # set to '1' if -nocorrect  enabled, do not look for internal start/stop codons and update annotation if found
-my $do_matpept     = 0; # set to '1' if -matpept    enabled, genome has a single polyprotein, use mat_peptide info, not CDS
-my $matpept_infile = undef; # defined if -matpept   enabled, the input file that describes relationship between CDS and mat_peptides
-my $do_strict      = 0; # set to '1' if -strict     enabled, matching annotations must be same index CDS+exon, else any will do
-my $do_nodup       = 0; # set to '1' if -nodup      enabled, do not duplicate each genome, else do 
-my $do_notexon     = 0; # set to '1' if -noexon     enabled, do not use exon-specific models, else do
-my $do_onlybuild   = 0; # set to '1' if -onlybuild  enabled, exit after building the model
-my $do_skipbuild   = 0; # set to '1' if -skipbuild  enabled, skip the build step
-my $in_model_db    = undef; # defined if -model <s> enabled, use <s> as the model file instead of building one
+# basic/common options:
+my $do_matpept       = 0;     # set to '1' if -matpept    enabled, genome has a single polyprotein, use mat_peptide info, not CDS
+my $matpept_infile   = undef; # defined if -matpept   enabled, the input file that describes relationship between CDS and mat_peptides
+my $do_nodup         = 0;     # set to '1' if -nodup      enabled, do not duplicate each genome, else do 
+my $do_onlybuild     = 0;     # set to '1' if -onlybuild  enabled, exit after building the model
+my $do_specstart     = 0;     # set to '1' if -specstart  enabled, read alternate starts per feature in input fie $specstart_infile
+my $specstart_infile = undef; # defined if -specstart enabled, the input file with per-feature alternate start information
 # options for adding additional errors/tests
 my $origin_seq     = undef; # defined if -oseq         enabled, the origin sequence string
-my $length_infile  = undef; # defined if -lfile <s>    enabled, the input file defining allowed lengths
-my $idthresh       = undef; # defined if -idthresh <x> enabled, the minimum allowed fractional identity
 # options for controlling output table
 my $do_concise   = 0; # set to '1' if -c       enabled, invoke concise output mode, set's all $do_no* variables below to '1'
 my $do_seqrow    = 0; # set to '1' if -seqrow  enabled, force sequence-as-rows output model
@@ -138,46 +131,51 @@ my $do_sfarm      = 0; # set to '1' if -sfarm   enabled, submit cmscan jobs to f
 my $sfarm_njobs   = undef; # set to a value if -sfarm is used
 my $df_sfarm_wait = 3; # default value for number of minutes to wait for cmscan jobs to finish
 my $sfarm_wait    = $df_sfarm_wait; # changeable to <n> with -swait <n>
-# options for development/debugging
+# options for skipping steps by using existing results from previous runs
+my $do_skipbuild   = 0; # set to '1' if -skipbuild  enabled, skip the build step
 my $do_skipfetch = 0; # set to '1' if -skipfetch  enabled, skip genome fetch step, use pre-existing output from a previous run
 my $do_skipscan  = 0; # set to '1' if -skipscan   enabled, skip cmscan/hmmscan step, use pre-existing output from a previous run
 my $do_skipaln   = 0; # set to '1' if -skipaln    enabled, skip cmscan/hmmscan and alignment step, use pre-existing output from a previous run
+# other rarely used options
+my $do_nocorrect   = 0; # set to '1' if -nocorrect  enabled, do not look for internal start/stop codons and update annotation if found
+my $do_strict      = 0; # set to '1' if -strict     enabled, matching annotations must be same index CDS+exon, else any will do
+my $do_notexon     = 0; # set to '1' if -noexon     enabled, do not use exon-specific models, else do
+my $in_model_db    = undef; # defined if -model <s> enabled, use <s> as the model file instead of building one
 
-&GetOptions("nocorrect"  => \$do_nocorrect,
-            "matpept=s"  => \$matpept_infile,
-            "strict"     => \$do_strict,
-            "nodup"      => \$do_nodup,
-            "notexon"    => \$do_notexon,
-            "onlybuild"  => \$do_onlybuild,
-            "skipbuild"  => \$do_skipbuild,
-            "model=s"    => \$in_model_db,
-            "oseq=s"     => \$origin_seq,
-            "lfile=s"    => \$length_infile,
-            "idthresh=s" => \$idthresh,
-            "c"          => \$do_concise,
-            "seqrow"     => \$do_seqrow,
-            "seqcol"     => \$do_seqcol,
-            "nseqcol=s"  => \$nseqcol,
-            "nomdlb"     => \$do_nomdlb,
-            "noexist"    => \$do_noexist,
-            "nobrack"    => \$do_nobrack,
-            "nostop"     => \$do_nostop,
-            "nofid"      => \$do_nofid,
-            "noss3"      => \$do_noss3,
-            "noolap"     => \$do_noolap,
-            "noexp"      => \$do_noexp,
-            "fullolap"   => \$do_fullolap,
-            "fulladj"    => \$do_fulladj,
-            "hmmer"      => \$do_hmmer,
-            "hmmenv"     => \$do_hmmenv,
-            "iglocal"    => \$do_iglocal,
-            "cslow"      => \$do_cslow, 
-            "cfarm"      => \$do_cfarm,
-            "sfarm=s"    => \$sfarm_njobs,
-            "swait=s"    => \$sfarm_wait,
-            "skipfetch"  => \$do_skipfetch,
-            "skipscan"   => \$do_skipscan,
-            "skipaln"    => \$do_skipaln) ||
+&GetOptions("matpept=s"   => \$matpept_infile,
+            "nodup"       => \$do_nodup,
+            "onlybuild"   => \$do_onlybuild,
+            "specstart=s" => \$specstart_infile,
+            "oseq=s"      => \$origin_seq,
+            "c"           => \$do_concise,
+            "seqrow"      => \$do_seqrow,
+            "seqcol"      => \$do_seqcol,
+            "nseqcol=s"   => \$nseqcol,
+            "nomdlb"      => \$do_nomdlb,
+            "noexist"     => \$do_noexist,
+            "nobrack"     => \$do_nobrack,
+            "nostop"      => \$do_nostop,
+            "nofid"       => \$do_nofid,
+            "noss3"       => \$do_noss3,
+            "noolap"      => \$do_noolap,
+            "noexp"       => \$do_noexp,
+            "fullolap"    => \$do_fullolap,
+            "fulladj"     => \$do_fulladj,
+            "hmmer"       => \$do_hmmer,
+            "hmmenv"      => \$do_hmmenv,
+            "iglocal"     => \$do_iglocal,
+            "cslow"       => \$do_cslow, 
+            "cfarm"       => \$do_cfarm,
+            "sfarm=s"     => \$sfarm_njobs,
+            "swait=s"     => \$sfarm_wait,
+            "skipbuild"   => \$do_skipbuild,
+            "skipfetch"   => \$do_skipfetch,
+            "skipscan"    => \$do_skipscan,
+            "skipaln"     => \$do_skipaln,
+            "nocorrect"   => \$do_nocorrect,
+            "strict"      => \$do_strict,
+            "notexon"     => \$do_notexon,
+            "model=s"     => \$in_model_db) ||
     die "Unknown option";
 
 if(scalar(@ARGV) != 2) { die $usage; }
@@ -192,50 +190,27 @@ my $cmd; # a command to run with runCommand()
 # store options used, so we can output them 
 my $opts_used_short = "";
 my $opts_used_long  = "";
-if($do_nocorrect) { 
-  $opts_used_short .= "-nocorrect ";
-  $opts_used_long  .= "# option:  do not correct after identifying internal start/stops in predicted features [-nocorrect]\n";
-}
 if(defined $matpept_infile) { 
   $do_matpept = 1;
   $opts_used_short .= "-matpept $matpept_infile";
   $opts_used_long  .= "# option:  using mat_peptide info, CDS:mat_peptide relationships explained in $matpept_infile [-matpept]\n";
 }
-if($do_strict) { 
-  $opts_used_short .= "-strict ";
-  $opts_used_long  .= "# option:  demand matching annotations are same indexed CDS/exon or mat_peptide [-strict]\n";
-}
 if($do_nodup) { 
   $opts_used_short .= "-nodup ";
   $opts_used_long  .= "# option:  not duplicating genomes, features that span the end..start will be undetectable [-nodup]\n";
-}
-if($do_notexon) { 
-  $opts_used_short .= "-notexon ";
-  $opts_used_long  .= "# option:  using full CDS, and not exon-specific models, for CDS with multiple exons [-noexon]\n";
 }
 if($do_onlybuild) { 
   $opts_used_short .= "-onlybuild ";
   $opts_used_long  .= "# option:  exit after model construction step [-onlybuild]\n";
 }
-if($do_skipbuild) { 
-  $opts_used_short .= "-skipbuild ";
-  $opts_used_long  .= "# option:  skipping the build step [-skipbuild]\n";
-}
-if(defined $in_model_db) { 
-  $opts_used_short .= "-model $in_model_db ";
-  $opts_used_long  .= "# option:  use model in $in_model_db instead of building one here [-model]\n";
+if(defined $specstart_infile) { 
+  $do_specstart = 1;
+  $opts_used_short .= "-specstart $specstart_infile";
+  $opts_used_long  .= "# option:  expecting alternative start codons for some/all CDS, read from $specstart_infile [-specstart]\n";
 }
 if(defined $origin_seq) { 
   $opts_used_short .= "-oseq $origin_seq ";
   $opts_used_long  .= "# option:  searching for origin sequence of $origin_seq [-oseq]\n";
-}
-if(defined $length_infile) { 
-  $opts_used_short .= "-lfile $length_infile ";
-  $opts_used_long  .= "# option:  enforcing length minimums and maximums read from file [-lfile]\n";
-}
-if(defined $idthresh) { 
-  $opts_used_short .= "-idthresh $idthresh ";
-  $opts_used_long  .= "# option:  enforcing minimum fractional identity of $idthresh [-idthresh]\n";
 }
 if($do_concise) { 
   $opts_used_short .= "-c ";
@@ -322,6 +297,10 @@ if($sfarm_wait != $df_sfarm_wait) {
   $opts_used_short .= "-swait $sfarm_wait ";
   $opts_used_long  .= "# option:  waiting $sfarm_wait minutes for farm cmscan jobs to finish [-swait]\n";
 }
+if($do_skipbuild) { 
+  $opts_used_short .= "-skipbuild ";
+  $opts_used_long  .= "# option:  skipping the build step [-skipbuild]\n";
+}
 if($do_skipfetch) { 
   $opts_used_short .= "-skipfetch ";
   $opts_used_long  .= "# option:  use existing fetched genome file, don't create a new one [-skipfetch]\n";
@@ -333,6 +312,22 @@ if($do_skipscan) {
 if($do_skipaln) { 
   $opts_used_short .= "-skipaln ";
   $opts_used_long  .= "# option:  use existing cmscan/hmmscan and alignment results, don't actually run either [-skipaln]\n";
+}
+if($do_strict) { 
+  $opts_used_short .= "-strict ";
+  $opts_used_long  .= "# option:  demand matching annotations are same indexed CDS/exon or mat_peptide [-strict]\n";
+}
+if($do_notexon) { 
+  $opts_used_short .= "-notexon ";
+  $opts_used_long  .= "# option:  using full CDS, and not exon-specific models, for CDS with multiple exons [-noexon]\n";
+}
+if(defined $in_model_db) { 
+  $opts_used_short .= "-model $in_model_db ";
+  $opts_used_long  .= "# option:  use model in $in_model_db instead of building one here [-model]\n";
+}
+if($do_nocorrect) { 
+  $opts_used_short .= "-nocorrect ";
+  $opts_used_long  .= "# option:  do not correct after identifying internal start/stops in predicted features [-nocorrect]\n";
 }
 # 
 # check for UNEXPECTED option value/combinations, we haven't coded for these yet, but we may be able to
@@ -422,9 +417,9 @@ my $matpept_tbl_file = $dir . "/" . $dir_tail . ".mat_peptide.tbl";
 my $length_file      = $dir . "/" . $dir_tail . ".length";
 my $out_root = $dir . "/" . $dir_tail;
 #if(! -s $gene_tbl_file) { die "ERROR $gene_tbl_file does not exist."; }
-if($do_matpept) { if(! -s $matpept_tbl_file)  { die "ERROR $matpept_tbl_file does not exist."; } }
-else            { if(! -s $cds_tbl_file)      { die "ERROR $cds_tbl_file does not exist."; } }
+if(! -s $cds_tbl_file)  { die "ERROR $cds_tbl_file does not exist."; } 
 if(! -s $length_file)   { die "ERROR $length_file does not exist."; }
+if($do_matpept) { if(! -s $matpept_tbl_file)  { die "ERROR $matpept_tbl_file does not exist."; } }
 
 # output banner
 my $script_name = "dnaorg_annotate_genomes.pl";
@@ -440,12 +435,18 @@ if($opts_used_long ne "") {
 printf("#\n");
 
 ############################################
-# parse the -matpept input file if necessary
+# parse the optional input files, if nec
 ###########################################
-my @cds2pmatpept_AA = (); # 1st dim: cds index, 2nd dim: value array of primary matpept indices that comprise this CDS
-my @cds2amatpept_AA = (); # 1st dim: cds index, 2nd dim: value array of all     matpept indices that comprise this CDS
+# -matpept <f>
+my @cds2pmatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of primary matpept indices that comprise this CDS
+my @cds2amatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of all     matpept indices that comprise this CDS
 if(defined $matpept_infile) { 
   matpeptParseInfile($matpept_infile, \@cds2pmatpept_AA, \@cds2amatpept_AA);
+}
+# -specstart <f>
+my @specstart_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of allowed start codons for this CDS
+if(defined $specstart_infile) { 
+  specstartParseInfile($specstart_infile, \@specstart_AA);
 }
 
 #####################
@@ -496,20 +497,53 @@ if($do_matpept) {
 }
 parseTable($cds_tbl_file, \%cds_tbl_HHA);
 
+my $ref_ncds_nomatpept = 0;
+my $ref_ncds_matpept   = 0;
+my $ref_ncds_total     = 0;
 if($do_matpept) { 
   # validate the CDS:mat_peptide relationships that we read from $matpept_infile
   matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}});
+  # any CDS that are not comprised of mat_peptides, need to be modelled as vanilla CDS
+  $ref_ncds_matpept   = scalar(@cds2pmatpept_AA);
+  $ref_ncds_nomatpept = scalar(@{$cds_tbl_HHA{$ref_accn}{"coords"}}) - $ref_ncds_matpept;
+  $ref_ncds_total     = $ref_ncds_matpept + $ref_ncds_nomatpept;
 }
 
+my $ref_nmp = 0;
 if($do_matpept) { 
   $mft_tbl_HHAR = \%mp_tbl_HHA;
+  $ref_nmp = scalar(@{$mp_tbl_HHA{$ref_accn}{"coords"}});
+  if($ref_ncds_nomatpept > 0) { 
+    # we need to add the information for the CDS that are not comprised of mat_peptides to mft_tbl_HHAR
+    # so we have to append the relevant data from cds_tbl_HHA to end of mft_tbl_HHAR
+    # we do this ONLY for the reference accession (for now)
+    for(my $i = $ref_ncds_matpept; $i < $ref_ncds_total; $i++) { 
+      foreach my $value (keys %{$cds_tbl_HHA{$ref_accn}}) { 
+        if(! exists $mft_tbl_HHAR->{$ref_accn}{$value}) { 
+          if($i == $ref_ncds_matpept) { 
+            # value doesn't exist, we need to add it for all existing features with a 'blank' value of '-'
+            @{$mft_tbl_HHAR->{$ref_accn}{$value}} = ();
+            for(my $j = 0; $j < $ref_nmp; $j++) { 
+              push(@{$mft_tbl_HHAR->{$ref_accn}{$value}}, "-");
+            }
+          }
+          else { 
+            die "ERROR adding non-matpept CDS to matpept feature table, value: $value does not exist even though this isn't the first CDS we're adding...";
+          }
+        }
+        if(scalar(@{$mft_tbl_HHAR->{$ref_accn}{$value}}) != ($ref_nmp+($i-$ref_ncds_matpept))) { 
+          die "ERROR adding non-matpept CDS to matpept feature table, value: $value does not have $ref_nmp values but value coords does..."; 
+        }
+        # printf("pushing cds_tbl_HHA{$ref_accn}{$value}[$i] $cds_tbl_HHA{$ref_accn}{$value}[$i] to mft_tbl_HHAR->{$ref_accn}{$value}\n");
+        push(@{$mft_tbl_HHAR->{$ref_accn}{$value}}, $cds_tbl_HHA{$ref_accn}{$value}[$i]);
+      }
+    }
+  }
 }
 else { 
   $mft_tbl_HHAR = \%cds_tbl_HHA;
 }
 
-# if we're in matpept mode, determine which peptides should be adjacent to each other at 
-# the nucleotide level
 
 #######################
 # variable declarations
@@ -521,6 +555,7 @@ my $ref_label_str     = undef; # label string for reference accn
 my $ref_nmft          = 0;     # number of main features (mft) (CDS or mat_peptide) in reference
 my $ref_strand_str    = "";    # strand string for reference 
 my @ref_mft_len_A     = ();    # [0..$i..$ref_nmft-1]: length of each reference main feature (CDS or mat_peptide)
+my @ref_mft_type_A    = ();    # [0..$i..$ref_nmft-1]: length of each reference main feature (CDS or mat_peptide)
 #my @ref_mft_len_tol_A = ();   # [0..$i..$ref_nmft-1]: length tolerance, any gene that is within this fraction of the length of the ref gene is a match
 my @ref_mft_coords_A  = ();    # [0..$i..$ref_nmft-1]: main feature coords (CDS or mat_peptide) for reference
 my @ref_mft_product_A = ();    # product qualifier data for reference CDS or mat_peptide
@@ -685,6 +720,98 @@ getLengthStatsAndCoordStrings(\%{$mft_tbl_HHAR->{$ref_accn}}, \@ref_mft_len_A, \
 getQualifierValues($mft_tbl_HHAR, $ref_accn, "product", \@ref_mft_product_A);
 $ref_nmft = scalar(@ref_mft_len_A);
 
+# Define 'type's of each feature:
+# There are 3 possible types:
+# 1) cds-notmp: normal CDS (not comprised of mat_peptides)
+# 2) cds-mp:    CDS comprised of mat_peptides 
+# 3) mp:        mature peptide (mat_peptide)
+# 
+# We do an independent homology search-based prediction 
+# for each exon or segment of types 1 and 3. Type 2 prediction
+# (cds-mp) is inferred from the type 3 elements (mp) that comprise
+# it.
+# 
+my $ref_nmp_and_cds;      # number of total features (not just main features (which 'mft' data structures pertain to)) CDS and mature peptides
+my @ref_type_A     = ();  # [0..$c..$ref_nmp_and_cds-1] 'cds-notmp', 'cds-mp', or 'mp', type of each feature
+my @ref_type_idx_A = ();  # [0..$c..$ref_nmp_and_cds-1] index of each feature, based on type, first of each type will be '1', second will be '2' etc.
+
+$ref_nmp_and_cds = $ref_nmft;  # we may add to this if $do_matpept below
+my %tmp_type_ct_H = (); # temporary hash used to simplify filling of ref_type_idx_A array
+if($do_matpept) { 
+  # first comes the $ref_nmp mature peptides
+  my $c;
+  for($c = 0; $c < $ref_nmp; $c++) { 
+    $ref_type_A[$c]     = "mp";
+    $ref_type_idx_A[$c] = $c+1;
+  }
+  # next comes non-mature-peptide derived CDS, if any
+  my $nnotmp_idxed = 0; # we increment this as we index cds-notmp 
+  my $nnotmp_extra = 0; # # of cds-notmp that occur after final cds-mp (idx >= scalar(@cds2pmatpept_AA))
+  for($c = $ref_nmp; $c < $ref_nmft; $c++) { 
+    $ref_type_A[$c] = "cds-notmp";
+    # indexing these guys is tricky, it depends on which CDS (if any)
+    # are comprised of mature peptides, which we can derive by the
+    # @cds2pmatpept_AA and @cds2amatpept_AA arrays, and any subset
+    # of those CDS can be mat_peptide derived. Here's one illustrative
+    # example:
+    #
+    # CDS 1: comprised of mature peptides     (cds-mp)
+    # CDS 2: not comprised of mature peptides (cds-notmp)
+    # CDS 3: not comprised of mature peptides (cds-notmp)
+    # CDS 4: comprised of mature peptides     (cds-mp)
+    # CDS 5: comprised of mature peptides     (cds-mp)
+    #
+    # $ref_nmft will be 2 more than $ref_nmp
+    # $ref_type_idx_A[$ref_nmft-2] = "2";
+    # $ref_type_idx_A[$ref_nmft-1] = "3";
+    #
+    # And the other 3 CDS will be modelled as $ref_nmft+1, 
+    # $ref_nmft+2, and $ref_nmft+3, because those 3 are NOT
+    # modelled by independent models for the homology search
+    # instead their coordinates are determined from the predictions
+    # for the mature peptides that comprise them:
+    #
+    # $ref_type_idx_A[$ref_nmft]   = "1";
+    # $ref_type_idx_A[$ref_nmft+1] = "4";
+    # $ref_type_idx_A[$ref_nmft+2] = "5";
+    #
+    my $nnotmp = 0;
+    $ref_type_idx_A[$c] = 0;
+    for(my $d = 0; $d < scalar(@cds2pmatpept_AA); $d++) { 
+      if(! defined $cds2pmatpept_AA[$d]) { 
+        $nnotmp++;
+        if(($nnotmp_idxed+1) == $nnotmp) { 
+          $ref_type_idx_A[$c] = $d+1;
+          $nnotmp_idxed++;
+        }
+      }
+    }
+    if($ref_type_idx_A[$c] == 0) { # we didn't index it in above loop
+      $ref_type_idx_A[$c] = scalar(@cds2pmatpept_AA) + $nnotmp_extra + 1;
+      $nnotmp_extra++;
+    }
+  }
+  # finally the matpept CDS 
+  my $nmp_idxed = 0;
+  for($c = 0; $c < scalar(@cds2pmatpept_AA); $c++) { 
+    if((defined $cds2pmatpept_AA[$c]) && (exists $cds2pmatpept_AA[$c])) { 
+      $ref_type_A[($ref_nmft + $nmp_idxed)]     = "cds-mp";
+      $ref_type_idx_A[($ref_nmft + $nmp_idxed)] = $c+1;
+      $nmp_idxed++;
+      $ref_nmp_and_cds++;
+    }
+  }
+} # end of if($do_matpept) block for defining type and type_idx for all features
+else { # $do_matpept is FALSE, easy case  
+  for(my $c = 0; $c < $ref_nmft; $c++) { 
+    $ref_type_A[$c]     = "cds-notmp";
+    $ref_type_idx_A[$c] = $c+1;
+  }
+}
+#for(my $c = 0; $c < $ref_nmp_and_cds; $c++) { 
+#  printf("c: $c type: $ref_type_A[$c] idx: $ref_type_idx_A[$c]\n");
+#}
+
 ## if we're in matpept mode, determine which peptides should be adjacent to each other
 ##my %adj2mft_5p_H = (); # key is CDS/peptide index in ref_mft* data structures, value is index of CDS/peptide that is immediately adjacent 5', if any
 ##my %adj2mft_3p_H = (); # key is CDS/peptide index in ref_mft* data structures, value is index of CDS/peptide that is immediately adjacent 3', if any
@@ -694,7 +821,7 @@ my $all_stk_file = $out_root . ".ref.all.stk";
 
 ($seconds, $microseconds) = gettimeofday();
 my $start_time = ($seconds + ($microseconds / 1000000.));
-printf("%-71s ... ", sprintf("# Fetching reference %s sequences", ($do_matpept) ? "mat_peptide" : "CDS"));
+printf("%-71s ... ", sprintf("# Fetching reference coding sequences"));
 my $cur_out_root;
 my $cur_name_root;
 my $fetch_input;
@@ -719,9 +846,11 @@ my $ref_tot_nexons    = 0;  # total number of exons in all CDS or mat_peptides
 my @indi_ref_name_A   = (); # [0..$nmdl-1]: name of individual stockholm alignments and models
 my @indi_cksum_stk_A  = (); # [0..$nmdl-1]: checksum's of each named individual stockholm alignment
 
-my $cds_or_mp = ($do_matpept) ? "mp" : "cds";
 # for each reference main feature (CDS or mat_peptides), fetch each exon (or the full CDS if -notexon enabled)
 for(my $i = 0; $i < $ref_nmft; $i++) { 
+  my $cds_or_mp = ($ref_type_A[$i] eq "mp") ? "mp" : "cds";
+  my $i2print   = $ref_type_idx_A[$i];
+
   # determine start and stop positions of all exons
   my @starts_A = ();
   my @stops_A  = ();
@@ -746,12 +875,12 @@ for(my $i = 0; $i < $ref_nmft; $i++) {
   # for each exon, note that if $do_notexon is true, $nexons was redefined as 1 above
   for(my $e = 0; $e < $nexons; $e++) { 
     if($cur_multi_exon) { 
-      $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . ($i+1) . ".exon." . ($e+1);
-      $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . ($i+1) . ".exon." . ($e+1);
+      $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . $i2print . ".exon." . ($e+1);
+      $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . $i2print . ".exon." . ($e+1);
     }
     else { 
-      $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . ($i+1);
-      $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . ($i+1);
+      $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . $i2print;
+      $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . $i2print;
     }
     
     # determine start and stop of the region we are going to fetch
@@ -783,14 +912,14 @@ for(my $i = 0; $i < $ref_nmft; $i++) {
     push(@indi_cksum_stk_A, $cksum);
 
     # store information on this model's name for output purposes
-    my $mdl_tiny = sprintf("MP#%s", ($nexons == 1) ? sprintf("%d", ($i+1)) : sprintf("%d.%d", ($i+1), ($e+1)));
+    my $mdl_tiny = sprintf("MP#%s", ($nexons == 1) ? sprintf("%d", $i2print) : sprintf("%d.%d", $i2print, ($e+1)));
     push(@mdl_out_tiny_A, $mdl_tiny);
     if($e == ($nexons-1)) { 
-      my $short = ($do_matpept) ? sprintf("MP #%d", ($i+1)) : sprintf("CDS #%d", ($i+1));
+      my $short = ($cds_or_mp eq "mp") ? sprintf("MP #%d", $i2print) : sprintf("CDS #%d", $i2print);
       my $tiny  = $short;
       $tiny =~ s/\s+//g; # remove whitespace
-      if($act_nexons > 1) { $short .= sprintf(" [$act_nexons %s; $strand]", ($do_matpept) ? "segments" : "exons"); }
-      else                { $short .= sprintf(" [single %s; $strand]",      ($do_matpept) ? "segment"  : "exon"); }
+      if($act_nexons > 1) { $short .= sprintf(" [$act_nexons %s; $strand]", ($cds_or_mp eq "mp") ? "segments" : "exons"); }
+      else                { $short .= sprintf(" [single %s; $strand]",      ($cds_or_mp eq "mp") ? "segment"  : "exon"); }
       push(@mft_out_tiny_A,    $tiny);
       push(@mft_out_short_A,   $short);
       push(@mft_out_product_A, $ref_mft_product_A[$i]);
@@ -1041,8 +1170,7 @@ if($do_matpept) {
 
   # keep track of which CDS sequences are valid (pass all adjacency tests), we will only do the translation tests
   # (i.e. look for in-frame stops) for valid CDS
-  my $ncds = scalar(@cds2pmatpept_AA);
-  for(my $c = 0; $c < $ncds; $c++) { 
+  for(my $c = 0; $c < $ref_ncds_matpept; $c++) { 
     %{$matpept_cds_pass_fail_AH[$c]} = ();
     for(my $a = 0; $a < $naccn; $a++) { 
       my $accn     = $accn_A[$a];
@@ -1088,11 +1216,6 @@ my @did_corr_exon_stop_ext_AH = ();   # [0..$i..ref_nexons-1], each element is a
 my %corr_fafile_H = ();     # hash of names of fasta files for corrected exon sequences, keys: model name from @mdl_A, value: name of file
 my @corr_mft_fafile_A = (); # array of corrected CDS/mat_peptide sequence files, filled below
 
-my $ref_nmp_and_cds = $ref_nmft;
-if($do_matpept) { 
-  # add in CDS in matpept mode
-  $ref_nmp_and_cds += scalar(@cds2pmatpept_AA); 
-}
 my @accn_ext_check_AA     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
                                 # accessions to check for 'ext' error, b/c no in-frame stop within 
                                 # predicted start..stop
@@ -1115,10 +1238,10 @@ my @accn_stp_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: sour
 
 # Translate predicted CDS/mat_peptide sequences using esl-epn-translate to identify 
 # in-frame stop codons.
-
 for(my $c = 0; $c < $ref_nmp_and_cds; $c++) { 
-  my $is_matpept = ($do_matpept && ($c < $ref_nmft)) ? 1 : 0; # if $is_matpept is 0, then we are a CDS
-  #printf("HEYAD do_matpept: $do_matpept is_matpept: $is_matpept\n");
+  my $type = $ref_type_A[$c];
+  my $is_matpept = ($type eq "mp")     ? 1 : 0;
+  my $is_cds_mp  = ($type eq "cds-mp") ? 1 : 0; 
 
   # initialize data structures
   @{$accn_ext_check_AA[$c]} = ();
@@ -1172,7 +1295,7 @@ for(my $c = 0; $c < $ref_nmp_and_cds; $c++) {
       # to matpeptCheckCdsRelationships() which manually checks the
       # next 3 nucleotides 5' of the stop position. So we use that
       # value to override $stop_is_valid here.
-      if($do_matpept && (! $is_matpept)) { # a mat_peptide comprised CDS
+      if($is_cds_mp) { # a mat_peptide comprised CDS
         my $seq_accn = $accn2seq_accn_H{$accn};
         my $cur_stop_codon = $matpept_cds_stop_codon_AH[($c - $ref_nmft)]{$seq_accn};
         #printf("REEXAMINING stop_is_valid, was: $stop_is_valid, now: ");
@@ -1514,6 +1637,7 @@ for(my $c = 0; $c < $ref_nmft; $c++) {
 
   # translate into AA sequences
   my $opts = "";
+  # TODO: this means that CDS in matpept mode do NOT use -reqstart and -reqstop
   if(! $do_matpept) { 
     $opts = " -reqstart -reqstop ";
   }
@@ -1571,7 +1695,7 @@ if(! $do_skipaln) {
     my $stop   = ($do_nocorrect) ? $p_stop_HH{$model}{$ref_seq_accn} : $c_stop_HH{$model}{$ref_seq_accn};
     
     my $ref_match = checkStrictBoundaryMatch(\@tmp_ref_act_exon_starts_AA, \@tmp_ref_act_exon_stops_AA, $mft_i, $exon_i, $start, $stop, ($do_nodup ? undef : $ref_totlen));
-    if(! $ref_match) { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation."; }
+    if(! $ref_match) { die "ERROR, predicted reference feature $mft_i exon $exon_i does not match GenBank annotation (start..stop $start..$stop)."; }
     
     if($mdl_is_final_A[$h]) { 
       # fetch the protein sequence
@@ -1699,7 +1823,7 @@ my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and onl
                             # explanations of each header
 getHeadings($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_nomdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, 
             $origin_seq, $ref_tot_nexons, $nmdl, \@mdl2mft_map_A, \@mft2exon_map_A, \@mdl_is_first_A, \@mdl_is_final_A, 
-            \@mft_out_short_A, \@mft_out_product_A, \@cds2pmatpept_AA, ($do_seqrow) ? (\@out_col_header_AA) : undef,
+            \@mft_out_short_A, \@mft_out_product_A, \@cds2pmatpept_AA, \@ref_type_A, ($do_seqrow) ? (\@out_col_header_AA) : undef,
             ($do_seqcol) ? (\@out_row_header_A)  : undef,
             (\@out_header_exp_A));
 
@@ -1922,13 +2046,16 @@ for(my $a = 0; $a < $naccn; $a++) {
     }
   }    
 
-  # now go through each model and collect output tokens
+  # now go through each feature (which is modelled by >= 1 models) and collect output tokens
   for(my $h = 0; $h < $nmdl; $h++) { 
-    my $model   = $mdl_A[$h];
-    my $mft_i   = $mdl2mft_map_A[$h];
-    my $exon_i  = $mft2exon_map_A[$h];
-    my $nexons  = $mft2nexon_map_A[$h];
-    
+    my $model       = $mdl_A[$h];
+    my $mft_i       = $mdl2mft_map_A[$h];
+    my $exon_i      = $mft2exon_map_A[$h];
+    my $nexons      = $mft2nexon_map_A[$h];
+    my $is_matpept  = ($ref_type_A[$mft_i] eq "mp") ? 1 : 0;
+    my $cds_idx     = (($ref_type_A[$mft_i] eq "cds-mp") || ($ref_type_A[$mft_i] eq "cds-notmp")) ? $ref_type_idx_A[$mft_i]-1 : -1; # subtract 1 from ref_type_idx_A[$mft_i] because operable cds_idx is off-by-one (starts at 0) w.r.t CDS index we would print (starts at 1)
+
+
     if($mdl_is_first_A[$h]) {
       # reset these
       $hit_length = 0; 
@@ -1972,7 +2099,7 @@ for(my $a = 0; $a < $naccn; $a++) {
         setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd3", $hang3 . "nt from 3' end", \%err_pf_code2idx_H, \$cur_nerr);
         if($hang3 >  9) { $hang3 = "+"; } 
       }
-
+    
       my $trc_or_ext_extra_errmsg = ($nexons == 1) ? "" : sprintf("exon %d of %d ", $cur_nexons, $nexons);
       my $trc_or_ext_errmsg = sprintf("homology search predicted $p_start_HH{$model}{$seq_accn}..$p_stop_HH{$model}{$seq_accn} %srevised to $start..$stop (stop shifted %d nt)", $trc_or_ext_extra_errmsg, abs($stop-$p_stop_HH{$model}{$seq_accn}));
       if($trc_error_exon) { 
@@ -2080,7 +2207,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
 
       # adjacency string for this feature
-      if($do_matpept) { 
+      if($is_matpept) { 
         my $adj_pf_char  = undef;
         my $adj_str      = undef;
         my $fail_indices = undef;
@@ -2112,9 +2239,10 @@ for(my $a = 0; $a < $naccn; $a++) {
         }
       }
 
-      if($mdl_is_first_A[$h] && (! $do_matpept)) { # determine $start_codon_char
-        $start_codon = fetchStartCodon($sqfile, $seq_accn, $start, $totlen_H{$accn}, $p_strand_HH{$model}{$seq_accn});
-        $start_codon_char = ($start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
+      if($mdl_is_first_A[$h] && (! $is_matpept)) { # determine $start_codon_char
+        $start_codon       = fetchStartCodon($sqfile, $seq_accn, $start, $totlen_H{$accn}, $p_strand_HH{$model}{$seq_accn});
+        my $have_specstart = ((defined $specstart_AA[$cds_idx]) && (exists $specstart_AA[$cds_idx])) ? 1 : 0;
+        $start_codon_char  = checkStartCodon($start_codon, ($have_specstart ? \@{$specstart_AA[$cds_idx]} : undef)) ? $ss3_yes_char : $ss3_no_char;
         if($start_codon_char eq $ss3_no_char) { 
           # sanity check, we should have already detected this as accn_str_error_AH[$mft_i]{$accn}
           if(! exists $accn_str_error_AH[$mft_i]{$accn}) { 
@@ -2126,7 +2254,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
 
       if($mdl_is_final_A[$h]) { 
-        if(! $do_matpept) { 
+        if(! $is_matpept) { 
           $stop_codon = fetchStopCodon($sqfile, $seq_accn, $stop, $totlen_H{$accn}, $p_strand_HH{$model}{$seq_accn});
           $stop_codon_char = ($stop_codon eq "TAG" || $stop_codon eq "TAA" || $stop_codon eq "TGA" || $stop_codon eq "TAR") ? $ss3_yes_char : $ss3_no_char;
           if($stop_codon_char eq $ss3_no_char) { 
@@ -2156,11 +2284,11 @@ for(my $a = 0; $a < $naccn; $a++) {
         # TODO: put in length error check here!
 
         # add the ss3 (start/stop/multiple of 3 info) if we're not in mat_pept mode
-        if((! $do_matpept) && (! $do_noss3)) { 
+        if((! $is_matpept) && (! $do_noss3)) { 
           push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
         }
         # add the stop codon if we're not in mat_pept mode
-        if((! $do_matpept) && (! $do_nostop)) { 
+        if((! $is_matpept) && (! $do_nostop)) { 
           push(@cur_out_A, sprintf(" %3s", $stop_codon));
         }
 
@@ -2204,15 +2332,15 @@ for(my $a = 0; $a < $naccn; $a++) {
       if(! $do_noolap) { 
         push(@cur_out_A, "  NP"); # overlaps
       }
-      if($do_matpept) { 
+      if($is_matpept) { 
         push(@cur_out_A, "  NP"); # adjacencies
       }
       if($mdl_is_final_A[$h]) { 
         push(@cur_out_A, sprintf(" %6s", "NP")); # length
-        if((! $do_matpept) && (! $do_noss3)) { 
+        if((! $is_matpept) && (! $do_noss3)) { 
           push(@cur_out_A, "  NP"); # ss3
         }
-        if((! $do_matpept) && (! $do_nostop)) { 
+        if((! $is_matpept) && (! $do_nostop)) { 
           push(@cur_out_A, sprintf(" %3s", "NP")); # stop
         }
         $pass_fail_char = "F";
@@ -2239,8 +2367,8 @@ for(my $a = 0; $a < $naccn; $a++) {
       push(@cur_out_A, sprintf("  %6d", $totlen_H{$accn})); # stop 
       push(@cur_out_A, sprintf("  %6d", ($totlen_H{$accn} - ($cur_stop_A[($nmdl-1)]+1) + 1))); # length
     }
-  }    
-
+  }
+      
   # do CDS for matpept mode
   if($do_matpept) { 
     my $start_codon_char;   # one of the 3 characters in the ss3 field, indicating if the start codon is valid or not
@@ -2249,117 +2377,119 @@ for(my $a = 0; $a < $naccn; $a++) {
     my $mft_i = $ref_nmft-1;
     foreach (my $cds_idx = 0; $cds_idx < scalar(@cds2pmatpept_AA); $cds_idx++) { 
       $mft_i++;
-      my ($cds_start, $cds_stop, $cds_len, $cds_stop_codon, 
-          $aji_errmsg, $int_errmsg, $inp_errmsg, $ext_errmsg, 
-          $stp_errmsg, $nst_errmsg, $trc_errmsg, $trc_mdl_idx) = 
-              matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2pmatpept_AA[$cds_idx]}, \%p_start_HH, \%p_stop_HH, \%c_stop_HH, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A, \@mdl_out_tiny_A);
-
-      # throw all necessary errors
-      if(defined $aji_errmsg) { 
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "aji", $aji_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
-      }
-      if(defined $int_errmsg) { 
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "int", $int_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
-      }
-      if(defined $inp_errmsg) { 
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "inp", $inp_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
-      }
-      if(defined $ext_errmsg) { 
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "ext", $ext_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
-      }
-      if(defined $stp_errmsg) { 
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", $stp_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
-      }
-      if(defined $nst_errmsg) { 
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nst", $nst_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
-      }
-      if(defined $trc_errmsg) { 
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $trc_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
-
-        # trc is special, it also triggers throwing ntr errors for the individual mat_peptides
-        # set 'ntr' (not translated) errors for all mat peptides that are not translated due to this truncation:
-        # first determine mft index (mat_peptide index) that $cds_corr_stop_mdl_idx corresponds to:
-        my $trc_mft_idx = $mdl2mft_map_A[$trc_mdl_idx];
-        my $ntr_errmsg = sprintf("early stop in mature peptide %d ending at position $cds_stop", $trc_mft_idx+1);
-        for(my $i = 0; $i < scalar(@{$cds2amatpept_AA[$cds_idx]}); $i++) { # step through ALL peptides encoded by this CDS, not just primary ones
-          my $mft_j = $cds2amatpept_AA[$cds_idx][$i];
-          if($mft_j > $trc_mft_idx) { 
-            setErrorCode(\@{$cur_err_pf_AA[$mft_j]}, \@{$cur_err_extra_pf_AA[$mft_j]}, "ntr", $ntr_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+      if(exists $cds2pmatpept_AA[$cds_idx] && defined $cds2pmatpept_AA[$cds_idx]) { 
+        my ($cds_start, $cds_stop, $cds_len, $cds_stop_codon, 
+            $aji_errmsg, $int_errmsg, $inp_errmsg, $ext_errmsg, 
+            $stp_errmsg, $nst_errmsg, $trc_errmsg, $trc_mdl_idx) = 
+                matpeptCheckCdsRelationships($sqfile, $seq_accn, $totlen_H{$accn}, \@mdl_A, \@{$cds2pmatpept_AA[$cds_idx]}, \%p_start_HH, \%p_stop_HH, \%c_stop_HH, \%p_strand_HH, \@mft2first_mdl_A, \@mft2final_mdl_A, \@mdl_out_tiny_A);
+        
+        # throw all necessary errors
+        if(defined $aji_errmsg) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "aji", $aji_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+        }
+        if(defined $int_errmsg) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "int", $int_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+        }
+        if(defined $inp_errmsg) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "inp", $inp_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+        }
+        if(defined $ext_errmsg) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "ext", $ext_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+        }
+        if(defined $stp_errmsg) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", $stp_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+        }
+        if(defined $nst_errmsg) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nst", $nst_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+        }
+        if(defined $trc_errmsg) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "trc", $trc_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+          
+          # trc is special, it also triggers throwing ntr errors for the individual mat_peptides
+          # set 'ntr' (not translated) errors for all mat peptides that are not translated due to this truncation:
+          # first determine mft index (mat_peptide index) that $cds_corr_stop_mdl_idx corresponds to:
+          my $trc_mft_idx = $mdl2mft_map_A[$trc_mdl_idx];
+          my $ntr_errmsg = sprintf("early stop in mature peptide %d ending at position $cds_stop", $trc_mft_idx+1);
+          for(my $i = 0; $i < scalar(@{$cds2amatpept_AA[$cds_idx]}); $i++) { # step through ALL peptides encoded by this CDS, not just primary ones
+            my $mft_j = $cds2amatpept_AA[$cds_idx][$i];
+            if($mft_j > $trc_mft_idx) { 
+              setErrorCode(\@{$cur_err_pf_AA[$mft_j]}, \@{$cur_err_extra_pf_AA[$mft_j]}, "ntr", $ntr_errmsg, \%err_pf_code2idx_H, \$cur_nerr);
+            }
           }
         }
-      }
-
-      if(defined $cds_start) { 
-        push(@cur_out_A, sprintf("  %6d", $cds_start)); 
-      } 
-      else { 
-        push(@cur_out_A, sprintf("  %6s", "?")); 
-      }
-      if(defined $cds_stop) {
-        push(@cur_out_A, sprintf("  %6d", $cds_stop)); 
-      } 
-      else { 
-        push(@cur_out_A, sprintf("  %6s", "?")); 
-      }
-
-      if(defined $cds_start && defined $cds_stop && (! defined $aji_errmsg))   { 
-        push(@cur_out_A, sprintf("  %6d", $cds_len)); 
-        $multiple_of_3_char = (($cds_len % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
-      }
-      else {
-        push(@cur_out_A, sprintf("  %6s", "?"));
-        $multiple_of_3_char = $ss3_no_char;
-      }
-      if($multiple_of_3_char ne $ss3_yes_char) { 
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nm3", (defined $cds_len) ? $cds_len : "?", \%err_pf_code2idx_H, \$cur_nerr);
-      }
-
-      my $cds_start_codon = undef;
-      if(defined $cds_start) { 
-        $cds_start_codon = fetchStartCodon($sqfile, $seq_accn, $cds_start, $totlen_H{$seq_accn}, "+"); # assumes MPs are encoded on plus strand
-        push(@cur_out_A, sprintf("  %6s", $cds_start_codon)); 
-        $start_codon_char = ($cds_start_codon eq "ATG") ? $ss3_yes_char : $ss3_no_char;
-      } 
-      else { 
-        push(@cur_out_A, sprintf("  %6s", "?"));
-        $start_codon_char = $ss3_unsure_char;
-      }
-      if($start_codon_char ne $ss3_yes_char) { 
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "str", ((defined $cds_start_codon) ? $cds_start_codon : "?"), \%err_pf_code2idx_H, \$cur_nerr);
-      }
-
-      if(defined $cds_stop_codon) { 
-        $stop_codon_char = ($cds_stop_codon eq "TAG" || $cds_stop_codon eq "TAA" || $cds_stop_codon eq "TGA" || $cds_stop_codon eq "TAR") ? $ss3_yes_char : $ss3_no_char;
-      }    
-      if(! $do_nostop) { 
-        if(defined $cds_stop_codon) { 
-          push(@cur_out_A, sprintf("  %6s", $cds_stop_codon)); 
+        
+        if(defined $cds_start) { 
+          push(@cur_out_A, sprintf("  %6d", $cds_start)); 
+        } 
+        else { 
+          push(@cur_out_A, sprintf("  %6s", "?")); 
         }
+        if(defined $cds_stop) {
+          push(@cur_out_A, sprintf("  %6d", $cds_stop)); 
+        } 
+        else { 
+          push(@cur_out_A, sprintf("  %6s", "?")); 
+        }
+        
+        if(defined $cds_start && defined $cds_stop && (! defined $aji_errmsg))   { 
+          push(@cur_out_A, sprintf("  %6d", $cds_len)); 
+          $multiple_of_3_char = (($cds_len % 3) == 0) ? $ss3_yes_char : $ss3_no_char;
+        }
+        else {
+          push(@cur_out_A, sprintf("  %6s", "?"));
+          $multiple_of_3_char = $ss3_no_char;
+        }
+        if($multiple_of_3_char ne $ss3_yes_char) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nm3", (defined $cds_len) ? $cds_len : "?", \%err_pf_code2idx_H, \$cur_nerr);
+        }
+        
+        my $cds_start_codon = undef;
+        if(defined $cds_start) { 
+          $cds_start_codon = fetchStartCodon($sqfile, $seq_accn, $cds_start, $totlen_H{$seq_accn}, "+"); # assumes MPs are encoded on plus strand
+          push(@cur_out_A, sprintf("  %6s", $cds_start_codon)); 
+          my $have_specstart = ((defined $specstart_AA[$cds_idx]) && (exists $specstart_AA[$cds_idx])) ? 1 : 0;
+          $start_codon_char  = checkStartCodon($cds_start_codon, ($have_specstart ? \@{$specstart_AA[$cds_idx]} : undef)) ? $ss3_yes_char : $ss3_no_char;
+        } 
         else { 
           push(@cur_out_A, sprintf("  %6s", "?"));
-          $stop_codon_char = $ss3_unsure_char;
+          $start_codon_char = $ss3_unsure_char;
         }
-      }
-      # determine if we should thrown a 'stp' error, 
+        if($start_codon_char ne $ss3_yes_char) { 
+          setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "str", ((defined $cds_start_codon) ? $cds_start_codon : "?"), \%err_pf_code2idx_H, \$cur_nerr);
+        }
+        
+        if(defined $cds_stop_codon) { 
+          $stop_codon_char = ($cds_stop_codon eq "TAG" || $cds_stop_codon eq "TAA" || $cds_stop_codon eq "TGA" || $cds_stop_codon eq "TAR") ? $ss3_yes_char : $ss3_no_char;
+        }    
+        if(! $do_nostop) { 
+          if(defined $cds_stop_codon) { 
+            push(@cur_out_A, sprintf("  %6s", $cds_stop_codon)); 
+          }
+          else { 
+            push(@cur_out_A, sprintf("  %6s", "?"));
+            $stop_codon_char = $ss3_unsure_char;
+          }
+        }
+        # determine if we should thrown a 'stp' error, 
         if($stop_codon_char ne $ss3_yes_char) { 
           setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "stp", ((defined $cds_stop_codon) ? $cds_stop_codon : "?"), \%err_pf_code2idx_H, \$cur_nerr);
         }
-
-      if(! $do_noss3) { 
-        push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
+        
+        if(! $do_noss3) { 
+          push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
+        }
+        
+        # determine if this CDS passed or failed
+        my $cds_pass_fail = "P";
+        if(($start_codon_char ne $ss3_yes_char || $stop_codon_char ne $ss3_yes_char || $multiple_of_3_char ne $ss3_yes_char) ||
+           ((defined $aji_errmsg) || (defined $int_errmsg) || (defined $inp_errmsg))) { 
+          $cds_pass_fail = "F";
+        }
+        push(@cur_out_A, sprintf("  %3s", $cds_pass_fail)); 
+        $pass_fail_str .= $cds_pass_fail;
       }
-
-      # determine if this CDS passed or failed
-      my $cds_pass_fail = "P";
-      if(($start_codon_char ne $ss3_yes_char || $stop_codon_char ne $ss3_yes_char || $multiple_of_3_char ne $ss3_yes_char) ||
-         ((defined $aji_errmsg) || (defined $int_errmsg) || (defined $inp_errmsg))) { 
-        $cds_pass_fail = "F";
-      }
-      push(@cur_out_A, sprintf("  %3s", $cds_pass_fail)); 
-      $pass_fail_str .= $cds_pass_fail;
     }
   }
-
   # total length
   push(@cur_out_A, sprintf("  %6d", $totlen_H{$accn}));
 
@@ -2583,9 +2713,9 @@ open($gap_pergap_not3_FH,    ">", $gap_pergap_not3_file)    || die "ERROR unable
 open($gap_pergap_special_FH, ">", $gap_pergap_special_file) || die "ERROR unable to open $gap_pergap_special_file"; 
 
 # 3 calls to outputGapInfo to create all the files we need:
-outputGapInfo($gap_perseq_all_FH,     $gap_pergap_all_FH,     $do_matpept, 0, 1, 0, 0, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \%p_refdel_HHA, \%p_refins_HHA);
-outputGapInfo($gap_perseq_not3_FH,    $gap_pergap_not3_FH,    $do_matpept, 0, 0, 1, 0, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \%p_refdel_HHA, \%p_refins_HHA);
-outputGapInfo($gap_perseq_special_FH, $gap_pergap_special_FH, $do_matpept, 0, 0, 0, 1, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \%p_refdel_HHA, \%p_refins_HHA);
+outputGapInfo($gap_perseq_all_FH,     $gap_pergap_all_FH,     $do_matpept, 0, 1, 0, 0, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \@ref_type_A, \@ref_type_idx_A, \%p_refdel_HHA, \%p_refins_HHA);
+outputGapInfo($gap_perseq_not3_FH,    $gap_pergap_not3_FH,    $do_matpept, 0, 0, 1, 0, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \@ref_type_A, \@ref_type_idx_A, \%p_refdel_HHA, \%p_refins_HHA);
+outputGapInfo($gap_perseq_special_FH, $gap_pergap_special_FH, $do_matpept, 0, 0, 0, 1, \@mdl_A, \@seq_accn_A, \%mdllen_H, \@mdl2mft_map_A, \@ref_type_A, \@ref_type_idx_A, \%p_refdel_HHA, \%p_refins_HHA);
 
 close($gap_perseq_all_FH);
 close($gap_perseq_not3_FH);
@@ -2673,7 +2803,7 @@ sub parseLength {
 
 # Subroutine: parseTable()
 # Synopsis:   Parses a table file and stores the relevant info in it 
-#             into $values_HAR.
+#             into $values_HHAR.
 # Args:       $tblfile:      full path to a table file
 #             $values_HHAR:  ref to hash of hash of arrays
 #
@@ -5265,6 +5395,7 @@ sub matpeptParseInfile {
   my $ncds_read_primary = 0;
   my $ncds_read_all     = 0;
   my $cds_idx2store     = 0;
+  my @cds_idx_read_A    = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
   my $max_cds_idx2store = 0;
 
   open(IN, $infile) || die "ERROR unable to open $infile for reading in $sub_name";
@@ -5311,6 +5442,7 @@ sub matpeptParseInfile {
       if($cds_idx2store < 0) { 
         die "ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file"; 
       }
+      $cds_idx_read_A[$cds_idx2store] = 1;
       if($cds_idx2store > $max_cds_idx2store) { 
         $max_cds_idx2store = $cds_idx2store; 
       }
@@ -5341,16 +5473,26 @@ sub matpeptParseInfile {
   close(IN);
 
   # three sanity checks:
-  # 1: we should have stored all and primary info for CDS numbers 1..$max_cds_idx2stroe
+  # 1: we should have stored all and primary info for any CDS $i for which $cds_idx_read_A[$i-1] is 1, and nothing else
   for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
-    if((! defined $cds2pmatpept_AAR->[$cds_idx2store]) && (! exists $cds2pmatpept_AAR->[$cds_idx2store])) { 
-      die "ERROR in $sub_name, did not read exactly $max_cds_idx2store primary and all lines in $infile\n";
+    if($cds_idx_read_A[$i]) { 
+     if((! defined $cds2pmatpept_AAR->[$i]) && (! exists $cds2pmatpept_AAR->[$i])) { 
+       die sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1);
+     }
+     if((! defined $cds2amatpept_AAR->[$i]) && (! exists $cds2amatpept_AAR->[$i])) { 
+       die sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1);
+     }
     }
-    if((! defined $cds2amatpept_AAR->[$cds_idx2store]) && (! exists $cds2amatpept_AAR->[$cds_idx2store])) { 
-      die "ERROR in $sub_name, did not read exactly $max_cds_idx2store primary and all lines in $infile\n";
+    else { # we didn't read this one
+      if(defined $cds2pmatpept_AAR->[$i] || exists $cds2pmatpept_AAR->[$i]) { 
+        die sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1);
+      }
+      if(defined $cds2amatpept_AAR->[$i] || exists $cds2amatpept_AAR->[$i]) { 
+        die sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1);
+      }
     }
   }
-  # 2: we should have at least read at least one of each primary and all
+  # 2: we should have at least read at least one of each 'primary' and 'all'
   if($ncds_read_primary == 0) { 
     die "ERROR in $sub_name, no primary CDS:mat_peptide relationships read in matpept input file $infile"; 
   }
@@ -5359,16 +5501,102 @@ sub matpeptParseInfile {
   }
   # 3: all info should be a superset of primary info
   for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
-    foreach my $mp (@{$cds2pmatpept_AAR->[$i]}) { 
-      # make sure this primary peptide exists in all
-      my $found_it = 0;
-      foreach my $mp2 (@{$cds2amatpept_AAR->[$i]}) { 
-        if($mp == $mp2) { $found_it = 1; }
-      }
-      if(! $found_it) { 
-        die sprintf("ERROR in $sub_name, all information is not a superset of primary information: %d is in primary but not all", $mp+1);
+    if($cds_idx_read_A[$i]) { 
+      foreach my $mp (@{$cds2pmatpept_AAR->[$i]}) { 
+        # make sure this primary peptide exists in all
+        my $found_it = 0;
+        foreach my $mp2 (@{$cds2amatpept_AAR->[$i]}) { 
+          if($mp == $mp2) { $found_it = 1; }
+        }
+        if(! $found_it) { 
+          die sprintf("ERROR in $sub_name, all information is not a superset of primary information: %d is in primary but not all", $mp+1);
+        }
       }
     }
+  }
+
+  return;
+}
+
+# Subroutine: specstartParseInfile()
+#
+# Synopsis:   Parse the input file that defines non-standard start codons for >= 1 CDS.
+#
+# Args:       $infile:           file to parse
+#             $specstart_AAR:    ref to array of arrays to fill here, allowed start codons for each CDS
+#                                if array doesn't exist for a CDS, ATG is only allowed start
+#
+# Returns:    void
+# Dies:       if problem reading $infile (in unexpected format)
+#
+sub specstartParseInfile {
+  my $sub_name = "specstartParseInfile";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($infile, $specstart_AAR) = @_;
+
+  my $ncds_read      = 0;
+  my $cds_idx2store  = 0;
+  my @cds_idx_read_A = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
+  my $max_cds_idx2store = 0;
+
+  open(IN, $infile) || die "ERROR unable to open $infile for reading in $sub_name";
+
+  while(my $line = <IN>) { 
+    if($line !~ m/^\#/) { 
+      ## example input file:
+      ## This file explains alternative start codons that are expected 
+      ## West Nile lineage 1 CDS #3 (WARF4)
+      ##
+      ## Format of lines in this file:
+      ## <CDS-idx> <alternate start codon 1>:<alternate start codon 2>:<alternate start codon n>
+      #3 GGC
+      #####################
+      # NOTE: in the input file CDS and matpept indices are in coordinate space 1..N, but we store them in 0..N-1
+      chomp $line;
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) != 2) { 
+        die "ERROR in $sub_name, unable to parse specstart input file line: $line"; 
+      }
+      my ($cds_idx, $codon_str) = ($el_A[0], $el_A[1]);
+      my $cds_idx2store = $cds_idx - 1;
+      if($cds_idx2store < 0) { 
+        die "ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file"; 
+      }
+      $cds_idx_read_A[$cds_idx2store] = 1;
+      if($cds_idx2store > $max_cds_idx2store) { 
+        $max_cds_idx2store = $cds_idx2store; 
+      }
+      my @codon_A = split(":", $codon_str);
+      @{$specstart_AAR->[$cds_idx2store]} = ();
+      foreach my $codon (@codon_A) { 
+        $codon =~ tr/a-z/A-Z/;
+        $codon =~ tr/U/T/;
+        push(@{$specstart_AAR->[$cds_idx2store]}, $codon);
+      }
+      $ncds_read++;
+    }
+  }
+  close(IN);
+
+  # Two sanity checks:
+  # 1: we should have stored all and primary info for any CDS $i for which $cds_idx_read_A[$i-1] is 1, and nothing else
+  for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
+    if($cds_idx_read_A[$i]) { 
+     if((! defined $specstart_AAR->[$i]) && (! exists $specstart_AAR->[$i])) { 
+       die sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1);
+     }
+    }
+    else { # we didn't read this one
+      if(defined $specstart_AAR->[$i] || exists $specstart_AAR->[$i]) { 
+        die sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1);
+      }
+    }
+  }
+  # 2: we should have at least read at least one CDS info
+  if($ncds_read == 0) { 
+    die "ERROR in $sub_name, no CDS start codon specifications read in matpept input file $infile"; 
   }
 
   return;
@@ -6014,6 +6242,41 @@ sub findInFrameStop {
   
   return ($ret_posn, $stop_codon);
 }
+
+# Subroutine: checkStartCodon()
+#
+# Synopsis:   Check if a given start codon is acceptable or not.
+#             Return 1 if it is, or 0 if it is not.
+#             If $specstart_AR is defined and exists, then it is the 
+#             list of acceptable start codons. If it is not defined and
+#             does not exist then "ATG" is the only acceptable start.
+#
+# Args:       $start_codon:  the start codon to check
+#             $specstart_AR: if defined, a ref to an array of acceptable start codons
+# 
+# Returns:    '1' if $start_codon is acceptable, 0 if not.
+
+sub checkStartCodon { 
+  my $sub_name = "checkStartCodon()";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($start_codon, $specstart_AR) = @_;
+
+  my $ret_val = 0;
+  if(! defined $specstart_AR) { 
+    $ret_val = ($start_codon eq "ATG") ? 1 : 0;
+  }
+  else { 
+    foreach my $acceptable_start_codon (@{$specstart_AR}) { 
+      if($start_codon eq $acceptable_start_codon) { 
+        $ret_val = 1;
+      }
+    }
+  }
+  return $ret_val;
+}
+
 ######################
 # OUTPUT subroutines #
 ######################
@@ -6046,7 +6309,8 @@ sub findInFrameStop {
 #             $mdl_is_first_AR:    ref to @mdl_is_first_A, already filled
 #             $mft_out_short_AR:   ref to @mft_out_short_A, already filled
 #             $mft_out_product_AR: ref to @mft_out_product_A, already filled
-#             $cds2pmatpept_AAR:    ref to @cds2pmatpept_AA, already filled
+#             $cds2pmatpept_AAR:   ref to @cds2pmatpept_AA, already filled
+#             $ref_type_AR:        reference to @ref_type_A, already filled
 #             $out_col_header_AAR: ref to 2D array of column headers, filled here
 #                                  undef unless $do_seqrow is '1'
 #             $out_row_header_AR:  ref to 1D array of row headers, filled here
@@ -6056,10 +6320,10 @@ sub findInFrameStop {
 #                                  section of the output; filled here
 sub getHeadings {
   my $sub_name = "getHeadings";
-  my $nargs_exp = 22;
+  my $nargs_exp = 23;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, $origin_seq, $ref_tot_nexons, $nmdl, $mdl2mft_map_AR, $mft2exon_map_AR, $mdl_is_first_AR, $mdl_is_final_AR, $mft_out_short_AR, $mft_out_product_AR, $cds2pmatpept_AAR, $out_col_header_AAR, $out_row_header_AR, $out_header_exp_AR) = @_;
+  my ($do_seqrow, $do_seqcol, $do_matpept, $do_nofid, $do_mdlb, $do_noss3, $do_nostop, $do_fullolap, $do_fulladj, $origin_seq, $ref_tot_nexons, $nmdl, $mdl2mft_map_AR, $mft2exon_map_AR, $mdl_is_first_AR, $mdl_is_final_AR, $mft_out_short_AR, $mft_out_product_AR, $cds2pmatpept_AAR, $ref_type_AR, $out_col_header_AAR, $out_row_header_AR, $out_header_exp_AR) = @_;
 
   # contract checks
   if($do_seqrow     &&    $do_seqcol)  { die "ERROR in $sub_name, both $do_seqrow and $do_seqcol are '1'"; }
@@ -6272,16 +6536,17 @@ sub getHeadings {
   for(my $h = 0; $h < $nmdl; $h++) { 
     $width += 18;
     my $mft_i = $mdl2mft_map_AR->[$h];
+    my $is_matpept = ($ref_type_AR->[$mft_i] eq "mp") ? 1 : 0;
     if(! $do_nofid)  { $width += 6;  }
     if(! $do_nomdlb) { $width += 4;  }
     if(! $do_noolap) { $width += 11; }
-    if($do_matpept)  { $width += 11; }
+    if($is_matpept)  { $width += 11; }
     if($mdl_is_final_AR->[$h]) { 
       $width += 9;
       if(! $do_noss3)  { $width += 4; }
       if(! $do_nostop) { $width += 4; }
       $tok1     = sprintf("  %*s", $width, $mft_out_short_AR->[$mft_i] . monocharacterString(($width-length($mft_out_short_AR->[$mft_i]))/2, " "));
-      $exp_tok1 = ($do_matpept) ? "MP #<i>" : "CDS #<i>";
+      $exp_tok1 = ($is_matpept) ? "MP #<i>" : "CDS #<i>";
       $tok2 = sprintf("  %*s", $width, substr($mft_out_product_AR->[$mft_i], 0, $width) . monocharacterString(($width-length($mft_out_product_AR->[$mft_i]))/2, " "));
       $tok3 = sprintf("  %s", monocharacterString($width, "-"));
       $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mft2exon_map_AR->[$h]+1));
@@ -6301,7 +6566,7 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
     }
-    my $exp_substr = ($do_matpept) ? "coding sequence part <j> of mat_peptide" : "exon #<j> of CDS #<i>";
+    my $exp_substr = ($is_matpept) ? "coding sequence part <j> of mat_peptide" : "exon #<j> of CDS #<i>";
     if($do_explanation) { 
       getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "start position of $exp_substr (\"NP\" if no prediction)");
       getHeadingsExplanationHelper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation");
@@ -6330,7 +6595,7 @@ sub getHeadings {
       }
     }
 
-    $exp_substr = $do_matpept ? "mat_peptide coding sequence" : "exon coding sequence";
+    $exp_substr = $is_matpept ? "mat_peptide coding sequence" : "exon coding sequence";
     if(! $do_nomdlb) { 
       $tok4 = sprintf(" %3s", sprintf("%s%s", "md", $mft2exon_map_AR->[$h]+1));
       $exp_tok4 = "md<j>";
@@ -6361,38 +6626,38 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s overlaps with", ($do_matpept) ? "mat_peptide" : "exon", ($do_matpept) ? "mat_peptide" : "exon"));
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s overlaps with", ($is_matpept) ? "mat_peptide" : "exon", ($is_matpept) ? "mat_peptide" : "exon"));
         getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'"); # adds a second line to explanation
         getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction");
         $need_to_define_H{"overlap"} = 1;
       }
 }
 
-    if($do_matpept) { 
+    if($is_matpept) { 
       $tok4 = sprintf(" %10s", sprintf("%s%s", "adjcnces", $mft2exon_map_AR->[$h]+1));
       $exp_tok4 = "adjcnces<j>";
       $tok5 = sprintf(" %10s", "----------");
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s is adjacent with", ($do_matpept) ? "mat_peptide" : "exon", ($do_matpept) ? "mat_peptide" : "exon"));
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s is adjacent with", ($is_matpept) ? "mat_peptide" : "exon", ($is_matpept) ? "mat_peptide" : "exon"));
         getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'"); # adds a second line to explanation
         getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction");      
       }
       $need_to_define_H{"adjacent"} = 1;
     }
 
-    $exp_substr = $do_matpept ? "mat_peptide coding sequence" : "CDS";
+    $exp_substr = $is_matpept ? "mat_peptide coding sequence" : "CDS";
     if($mdl_is_final_AR->[$h]) { 
       $tok4 = sprintf(" %6s", "length");
       $tok5 = sprintf(" %6s", "------");
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       if($do_explanation) { 
-        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, sprintf("length of $exp_substr #<i> (all %s summed)", $do_matpept ? "segments" : "exons"));
+        getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, sprintf("length of $exp_substr #<i> (all %s summed)", $is_matpept ? "segments" : "exons"));
       }      
 
-      if((! $do_matpept) && (! $do_noss3)) { # skip this in matpept mode, we don't check start/stop of mat_peptides, only CDS, later
+      if((! $is_matpept) && (! $do_noss3)) { # skip this in matpept mode, we don't check start/stop of mat_peptides, only CDS, later
         $tok4 = sprintf(" %3s", "ss3");
         $tok5 = sprintf(" %3s", "---");
         if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
@@ -6405,7 +6670,7 @@ sub getHeadings {
           getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction");
         }
       }
-      if((! $do_matpept) && (! $do_nostop)) { # skip this in matpept mode, we only check stop of final mat_peptide, later
+      if((! $is_matpept) && (! $do_nostop)) { # skip this in matpept mode, we only check stop of final mat_peptide, later
         $tok4 = sprintf(" %3s", "stp");
         $tok5 = sprintf(" %3s", "---");
         if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
@@ -6420,7 +6685,7 @@ sub getHeadings {
       if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
       elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
       if($do_explanation) { 
-        if($do_matpept) { 
+        if($is_matpept) { 
           getHeadingsExplanationHelper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this mat_peptide PASSED ('P') or FAILED ('F')");
           getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  a mat_peptide coding sequence PASSES ('P') if and only if");
           getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):");
@@ -6635,18 +6900,13 @@ sub getHeadings {
     $tok5 = sprintf("  %20s", "--------------------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("text describing which (if any) of the predicted %s overlap with each other", $do_matpept ? "mat_peptides" : "exons"));
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "text describing which (if any) of the predicted features overlap with each other");
     getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference");
     getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "                   'F' for FAIL if it does not");
-    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("second character:  total number of overlaps between any two %s", $do_matpept ? "mat_peptides" : "exons"));
-    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("remainder of line: text explaining which exons overlap", $do_matpept ? "mat_peptides" : "exons"));
-    if($do_matpept) { 
-      getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("  e.g.: \"3.1|4.1\" indicates segment #1 of mat_peptide #3 overlaps with exon #1 of mat_peptide #4 on either strand"));
-    }
-    else { 
-      getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 overlaps with exon #1 of CDS #4 on either strand"));
-    }
-    push(@pf_text_A, sprintf("P/F character $pf_idx pertains to the overlap test of all %s",  $do_matpept ? "mat_peptides" : "exons"));
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "second character:  total number of overlaps between any two features");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "remainder of line: text explaining which features overlap");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  e.g.: \"3.2/4.1\" indicates exon/segment #2 of feature #3 overlaps with exon/segment #1 of feature #4 on either strand");
+    push(@pf_text_A, "P/F character $pf_idx pertains to the overlap test of all features");
     $pf_idx++;
     getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
     $need_to_define_H{"overlap"} = 1;
@@ -6661,19 +6921,14 @@ sub getHeadings {
     $tok5 = sprintf("  %122s", "--------------------");
     if   ($do_seqrow) { getHeadingsSeqRowHelper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
     elsif($do_seqcol) { getHeadingsSeqColHelper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
-    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, sprintf("text describing which (if any) of the predicted %s are adjacent to each other", $do_matpept ? "mat_peptides" : "exons"));
-    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("two %s i and j are adjacent if i < j and final nt of i is 1 less than first nt of j", $do_matpept ? "mat_peptides" : "exons"));
+    getHeadingsExplanationHelper($out_header_exp_AR, $tok4, undef, undef, "text describing which (if any) of the predicted features are adjacent to each other");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "two features i and j are adjacent if i < j and final nt of i is 1 less than first nt of j");
       getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "first character:   'P' for PASS if predicted annotation for this accession has same adjacencies as the reference");
     getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "                   'F' for FAIL if it does not");
-    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("second character:  total number of adjacencies between any two %s", $do_matpept ? "mat_peptides" : "exons"));
-    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("remainder of line: text explaining which %s are adjacent", $do_matpept ? "mat_peptides" : "exons"));
-    if($do_matpept) { 
-      getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("  e.g.: \"3.1|4.1\" indicates segment #1 of mat_peptide #3 is adjacent to segment #1 of mat_peptide #4 on either strand"));
-    }
-    else { 
-      getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, sprintf("  e.g.: \"3.2/4.1\" indicates exon #2 of CDS #3 is adjacent with exon #1 of CDS #4 on either strand"));
-    }
-    push(@pf_text_A, sprintf("P/F character $pf_idx pertains to the full adjacency test of all %s", $do_matpept ? "mat_peptides" : "exons"));
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "second character:  total number of adjacencies between any two features");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "remainder of line: text explaining which features are adjacent");
+    getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, "  e.g.: \"3.2|4.1\" indicates exon/segment #2 of feature #3 is adjacent to exon/segment #1 of feature #4 on either strand");
+    push(@pf_text_A, "P/F character $pf_idx pertains to the full adjacency test of all features");
     $pf_idx++;
     getHeadingsExplanationHelper($out_header_exp_AR, undef, undef, undef, undef);
     $need_to_define_H{"adjacent"} = 1;
@@ -7079,6 +7334,8 @@ sub debugPrintGapArray {
 #             $seq_AR:             reference to array of all sequence names
 #             $mdllen_HR:          ref to hash of model lengths
 #             $mdl2mft_map_AR:     ref to array that maps each model to a feature
+#             $ref_type_AR:        ref to array that lists type of each feature 
+#             $ref_type_idx_AR:    ref to array that lists index of each feature 
 #             $refdel_HHAR:        ref to 2D hash where value is an array, each element is
 #                                  an rf position that is deleted in the alignment of the $seq_accn
 #                                  pre-filled
@@ -7091,10 +7348,10 @@ sub debugPrintGapArray {
 #
 sub outputGapInfo {
   my $sub_name = "outputGapInfo";
-  my $nargs_exp = 13;
+  my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($perseq_FH, $pergap_FH, $do_matpept, $do_perseq_tbl, $do_gap_all, $do_gap_not3, $do_gap_special, $mdl_AR, $seq_AR, $mdllen_HR, $mdl2mft_map_AR, $refdel_HHAR, $refins_HHAR) = @_;
+  my ($perseq_FH, $pergap_FH, $do_matpept, $do_perseq_tbl, $do_gap_all, $do_gap_not3, $do_gap_special, $mdl_AR, $seq_AR, $mdllen_HR, $mdl2mft_map_AR, $ref_type_AR, $ref_type_idx_AR, $refdel_HHAR, $refins_HHAR) = @_;
 
   if($do_gap_all) {
     if($do_gap_not3 || $do_gap_special) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
@@ -7287,15 +7544,17 @@ sub outputGapInfo {
     printf $perseq_FH ("# List of all gaps with length that is not a multiple of 3 in alignment of each sequence:\n#\n");
   }
   else { # $do_gap_special 
-    printf $perseq_FH ("# List of all gaps that may solely explain a %s's length not being a multiple of 3, for each sequence:\n#\n", ($do_matpept) ? "mat_peptide" : "CDS");
+    printf $perseq_FH ("# List of all gaps that may solely explain a feature's (CDS or mat_peptide) length not being a multiple of 3, for each sequence:\n#\n");
   }
 
   if(! $do_gap_special) { 
     printf $perseq_FH  ("%-*s  ", $width_seq, "#");
     for(my $c = 0; $c < $nmft; $c++) { 
+      my $is_matpept = ($ref_type_AR->[$c] eq "mp") ? 1 : 0;
+      my $type_idx   = $ref_type_idx_AR->[$c];
       my $w_cur = $w_tot_gap_length_A[$c] + 2 + $w_net_gap_length_A[$c] + 2 + $w_gapstr_A[$c];
       if($c > 0) { print $perseq_FH "  "; }
-      printf $perseq_FH ("%-*s", $w_cur, ($do_matpept) ? ("mat_peptide#" . ($c+1)) : ("CDS#" . ($c+1)));
+      printf $perseq_FH ("%-*s", $w_cur, ($is_matpept) ? ("mat_peptide#" . $type_idx) : ("CDS#" . $type_idx));
     }
     print $perseq_FH "\n";
     
@@ -7312,6 +7571,7 @@ sub outputGapInfo {
   # output line 3 of the column headers:
   printf $perseq_FH ("%-*s  ", $width_seq, "#accession");
   for(my $c = 0; $c < $nmft; $c++) { 
+    my $is_matpept = ($ref_type_AR->[$c] eq "mp") ? 1 : 0;
     if($c > 0) { print $perseq_FH "  "; }
     if(! $do_gap_special) { 
       printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$c], $ch_tot_gap_length);
@@ -7319,7 +7579,7 @@ sub outputGapInfo {
       printf $perseq_FH ("%-*s", $w_gapstr_A[$c], $ch_gapstr);
     }
     else { 
-      printf $perseq_FH ("%-*s", $w_gapstr_A[$c], ($do_matpept) ? ("mat_peptide#" . ($c+1)) : ("CDS#" . ($c+1)));
+      printf $perseq_FH ("%-*s", $w_gapstr_A[$c], ($is_matpept) ? ("mat_peptide#" . ($ref_type_idx_AR->[$c])) : ("CDS#" . ($ref_type_idx_AR->[$c])));
     }
   }
   print $perseq_FH "\n";
@@ -7357,11 +7617,11 @@ sub outputGapInfo {
   print $perseq_FH ("# Explanation of the above table:\n");
   if($do_gap_all) { 
     print  $perseq_FH ("# The table includes information on all gaps that exist between all pairwise alignments of\n");
-    printf $perseq_FH ("# the reference %s and the predicted homologous %s for each sequence.\n", ($do_matpept) ? "mat_peptide" : "CDS", ($do_matpept) ? "mat_peptide" : "CDS");
+    printf $perseq_FH ("# the reference feature (mature peptide or CDS) and the predicted homologous feature for each sequence.\n");
   }
   elsif($do_gap_not3) { 
     print  $perseq_FH ("# The table includes information on all gaps of lengths that are not multiples of 3 that exist\n");
-    printf $perseq_FH ("# between all pairwise alignments of the reference %s and the predicted homologous %s for each sequence.\n", ($do_matpept) ? "mat_peptide" : "CDS", ($do_matpept) ? "mat_peptide" : "CDS");
+    printf $perseq_FH ("# between all pairwise alignments of the reference feature (mature peptide or CDS) and the predicted homologous feature for each sequence.\n");
   }
   else { 
     print $perseq_FH ("# The table includes information on some gaps that can solely explain a feature (CDS or mat_peptide) not being a multiple of length 3.\n");
@@ -7375,7 +7635,7 @@ sub outputGapInfo {
   }
   print $perseq_FH ("#\n");
   if($do_gap_all || $do_gap_not3) { 
-    printf $perseq_FH ("# There are 3 columns under each header \"%s#<n> (%s)\" named \"tot\", \"net\",\n", ($do_matpept) ? "mat_peptide" : "CDS", ($do_gap_all) ? "all gaps" : "gaps %3 != 0");
+    printf $perseq_FH ("# There are 3 columns under each header \"<%s>#<n> (%s)\" named \"tot\", \"net\",\n", ($do_matpept) ? "mat_peptide" : "CDS", ($do_gap_all) ? "all gaps" : "gaps %3 != 0");
     print $perseq_FH ("# and \"string\".\n");
     print $perseq_FH ("# The \"tot\" columns list the total number of gap positions in either sequence in the pairwise alignment.\n");
     print $perseq_FH ("# The \"net\" columns list the net number of the listed gaps in the pairwise alignment; this is the number\n");
@@ -7384,8 +7644,8 @@ sub outputGapInfo {
   }
   print  $perseq_FH ("#\n");
   print  $perseq_FH ("# Tokens are in the form: <char><position><length>\n");
-  printf $perseq_FH ("#   <char>     is 'I' for an insertion relative to the reference %s (gap in reference sequence)\n", $do_matpept ? "mat_peptide" : "CDS");
-  printf $perseq_FH ("#              or 'D' for a  deletion  relative to the reference %s (gap in current sequence)\n", $do_matpept ? "mat_peptide" : "CDS");
+  printf $perseq_FH ("#   <char>     is 'I' for an insertion relative to the reference feature (gap in reference sequence)\n");
+  printf $perseq_FH ("#              or 'D' for a  deletion  relative to the reference feature (gap in current sequence)\n");
   print  $perseq_FH ("#   <position> is the nucleotide position of the gap in reference coordinates.\n");
   print  $perseq_FH ("#              For insertions this is the reference position after which the insertion occurs.\n");
   print  $perseq_FH ("#              For deletions  this is the first reference position for this deletion.\n");
@@ -7395,8 +7655,8 @@ sub outputGapInfo {
   print  $perseq_FH ("#\n");
   if($do_gap_special) { 
     print  $perseq_FH ("#\n");
-    printf $perseq_FH ("# \"-\" tokens indicate the %s is a multiple of length 3\n", $do_matpept ? "mat_peptide" : "CDS");
-    printf $perseq_FH ("# \"?\" tokens indicate the %s is not a multiple of length 3, but that no gaps that satisfy our criteria exist.\n", $do_matpept ? "mat_peptide" : "CDS");
+    printf $perseq_FH ("# \"-\" tokens indicate the feature is a multiple of length 3\n");
+    printf $perseq_FH ("# \"?\" tokens indicate the feature is not a multiple of length 3, but that no gaps that satisfy our criteria exist.\n");
     print  $perseq_FH ("#\n");
   }
 
@@ -7419,9 +7679,10 @@ sub outputGapInfo {
   }
   my $nprinted = 0;
   for(my $c = 0; $c < $nmft; $c++) { 
+    my $is_matpept = ($ref_type_A[$c] eq "mp") ? 1 : 0;
     if((scalar(keys %{$mft_gapstr_AH[$c]})) > 0) { 
       foreach my $key (sort keys %{$mft_gapstr_AH[$c]}) { 
-        printf $pergap_FH ("%s#" . ($c+1) . " " . $key . " " . $mft_gapstr_AH[$c]{$key} . "\n", ($do_matpept) ? "mat_peptide" : "CDS");
+        printf $pergap_FH ("%s#" . ($c+1) . " " . $key . " " . $mft_gapstr_AH[$c]{$key} . "\n", ($is_matpept) ? "mat_peptide" : "CDS");
         $nprinted++;
       }
       printf $pergap_FH ("#\n");
@@ -7469,7 +7730,7 @@ sub outputSeqAsColumnsPage {
     $cwidth_A[$i] = 0;
     $ntok = scalar(@{$AR});
     if($ntok != $nrow) { 
-      die sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok); 
+      #die sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok); 
     }
     foreach $el (@{$AR}) { 
       $el =~ s/^\s+//; # remove leading whitespace
