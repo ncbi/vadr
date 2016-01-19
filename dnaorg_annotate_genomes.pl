@@ -1626,10 +1626,10 @@ for(my $c = 0; $c < $ref_nmft; $c++) {
   my $cur_fafile = ($do_nocorrect) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
   my $aa_full_fafile  = $cur_fafile;
   if($aa_full_fafile =~ m/\.mp/) { 
-    $aa_full_fafile  =~ s/\.mp/\.aa.full/;
+    $aa_full_fafile  =~ s/\.mp/\.mp.aa.full/;
   }
   elsif($aa_full_fafile =~ m/\.cds/) { 
-    $aa_full_fafile  =~ s/\.cds/\.aa.full/;
+    $aa_full_fafile  =~ s/\.cds/\.cds.aa.full/;
   }
   else { 
     die "ERROR, did not find \.mp or \.cds in fasta file name $aa_full_fafile when trying to translate coding sequences into proteins/peptides";
@@ -2494,7 +2494,7 @@ for(my $a = 0; $a < $naccn; $a++) {
   push(@cur_out_A, sprintf("  %6d", $totlen_H{$accn}));
 
   # average fid
-  push(@cur_out_A, sprintf("  %5.3f", $tot_fid / $n_fid));
+  push(@cur_out_A, sprintf("  %5.3f", ($n_fid > 0) ? ($tot_fid / $n_fid) : 0.));
 
   # output number of actually annotated features and summed total of exons in those features, if nec
   if(! $do_noexist) { 
@@ -5113,7 +5113,7 @@ sub wrapperCombineExonsIntoCDS {
     else { 
       # more than one exon/mat_peptide need to be combined to make this CDS/mat_peptide
       # if we're combining exons to make a CDS next line will remove exon substr
-      $out_fafile =~ s/\.exon\.\d+//; 
+      $out_fafile =~ s/\.exon\.\d+/\./; 
       # if we're combining mature peptides to make a CDS next line will remove mp substr and replace with cds substr
       my $f2print = $f+1;
       $out_fafile =~ s/\.mp\.\d+/\.cds$f2print/; 
