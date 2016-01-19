@@ -6075,7 +6075,9 @@ sub setErrorCode {
   if(! defined $code2idx_HR->{$errcode}) { die "ERROR in $sub_name, unrecognized error code $errcode"; }
   $err_AR->[$code2idx_HR->{$errcode}] = 1;
   if(defined $err_extra_AR && defined $errextra) { 
-    if(defined $err_extra_AR->[$code2idx_HR->{$errcode}] && $err_extra_AR->[$code2idx_HR->{$errcode}] ne "") { 
+    if(defined $err_extra_AR->[$code2idx_HR->{$errcode}] && 
+       $err_extra_AR->[$code2idx_HR->{$errcode}] ne "" &&
+       $err_extra_AR->[$code2idx_HR->{$errcode}] !~ m/$errextra/) { # don't append an identical error message
       $err_extra_AR->[$code2idx_HR->{$errcode}] .= "," . $errextra;
     }
     else { 
