@@ -1156,7 +1156,7 @@ else {
 # COMBINE MULTI-EXON SEQUENCES INTO SINGLE CDS/MAT_PEPTIDE SEQUENCES
 ####################################################################
 my @pred_mft_fafile_A = (); # array of predicted CDS sequence files, filled below
-wrapperCombineExonsIntoCDS($dir, "predicted", \@mdl_A, \@accn_A, \@mdl2mft_map_A, \@mft2mdl_map_AA, \@pred_mft_fafile_A);
+wrapperCombineSequences($dir, "predicted", 0, \@mdl_A, \@accn_A, \@mdl2mft_map_A, \@mft2mdl_map_AA, \@pred_mft_fafile_A); # 0 (3rd arg) means we are not combining mat_peptides into a CDS
 
 #####################################################
 # COMBINE MULTI-MAT_PEPTIDE SEQUENCES INTO SINGLE CDS
@@ -1165,7 +1165,7 @@ my @matpept_cds_pass_fail_AH = ();
 my @matpept_cds_stop_codon_AH = ();
 my @pred_cds_mft_fafile_A = (); # array of predicted CDS sequence files, filled below
 if($do_matpept) { 
-  wrapperCombineExonsIntoCDS($dir, "predicted", \@mdl_A, \@accn_A, \@mdl2mft_map_A, \@cds2pmatpept_AA, \@pred_cds_mft_fafile_A);
+  wrapperCombineSequences($dir, "predicted", 1, \@mdl_A, \@accn_A, \@mdl2mft_map_A, \@cds2pmatpept_AA, \@pred_cds_mft_fafile_A); # 1 (3rd arg) means we are combining mat_peptides into a CDS
   push(@pred_mft_fafile_A, @pred_cds_mft_fafile_A);
 
   # keep track of which CDS sequences are valid (pass all adjacency tests), we will only do the translation tests
@@ -1257,11 +1257,10 @@ for(my $c = 0; $c < $ref_nmp_and_cds; $c++) {
   
   # translate into AA sequences
   my $tmp_esl_epn_translate_output = $cur_fafile;
-  $tmp_esl_epn_translate_output =~ s/\.mp/\.esl-epn-translate/; 
-  $tmp_esl_epn_translate_output =~ s/\.cds/\.esl-epn-translate/;
+  $tmp_esl_epn_translate_output =~ s/\.mp/\.mp.esl-epn-translate/; 
+  $tmp_esl_epn_translate_output =~ s/\.cds/\.cds.esl-epn-translate/;
   $tmp_esl_epn_translate_output =~ s/\.fa$//;
   
-  my $have_specstart = 0;
   my $altstart_opt = ""; # will be redefined below if we read alternative starts for this CDS with -specstart
   if($cds_idx != -1) { 
     if((defined $specstart_AA[$cds_idx]) && (exists $specstart_AA[$cds_idx])) { 
@@ -1273,7 +1272,7 @@ for(my $c = 0; $c < $ref_nmp_and_cds; $c++) {
     }
   }
   $cmd = $esl_epn_translate . " $altstart_opt -startstop $cur_fafile > $tmp_esl_epn_translate_output";
-  print("cmd: $cmd\n");
+  printf("cmd: $cmd\n");
   runCommand($cmd, 0);
   
   # parse esl-epn-translate output
@@ -1615,7 +1614,7 @@ printf("done. [%.1f seconds]\n", ($stop_time - $start_time));
 fetchHits($sqfile, $do_skipaln, "corrected", \@mdl_A, \@seq_accn_A, \%totlen_H, \%p_start_HH, \%c_stop_HH, \%p_strand_HH, $out_root, \%corr_fafile_H);
 
 # combine multi-exon sequences into CDS:
-wrapperCombineExonsIntoCDS($dir, "corrected", \@mdl_A, \@accn_A, \@mdl2mft_map_A, \@mft2mdl_map_AA, \@corr_mft_fafile_A);
+wrapperCombineSequences($dir, "corrected", 0, \@mdl_A, \@accn_A, \@mdl2mft_map_A, \@mft2mdl_map_AA, \@corr_mft_fafile_A); # 0 (3rd arg) means we are not combining mat_peptides into a CDS
 
 #########################################
 # TRANSLATE PREDICTIONS INTO PROTEIN SEQS
@@ -1634,9 +1633,10 @@ my @aa_full_files_A = (); # array of protein sequence files we are about to crea
 $start_time = ($seconds + ($microseconds / 1000000.));
 printf("%-71s ... ", "# Translating coding sequences into proteins/peptides ");
 for(my $c = 0; $c < $ref_nmft; $c++) { 
-  my $is_matpept = ($ref_type_A[$c] eq "mp") ? 1 : 0;
-  my $cur_fafile = ($do_nocorrect) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
+  my $is_matpept      = ($ref_type_A[$c] eq "mp") ? 1 : 0;
+  my $cur_fafile      = ($do_nocorrect) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
   my $aa_full_fafile  = $cur_fafile;
+  my $cds_idx    = (($ref_type_A[$c] eq "cds-mp") || ($ref_type_A[$c] eq "cds-notmp")) ? $ref_type_idx_A[$c]-1 : -1; # subtract 1 from ref_type_idx_A[$c] because operable cds_idx is off-by-one (starts at 0) w.r.t CDS index we would print (starts at 1)
   if($aa_full_fafile =~ m/\.mp/) { 
     $aa_full_fafile  =~ s/\.mp/\.mp.aa.full/;
   }
@@ -1652,11 +1652,21 @@ for(my $c = 0; $c < $ref_nmft; $c++) {
   if(! $is_matpept) { 
     $opts = " -reqstart -reqstop ";
   }
-  $cmd = $esl_epn_translate . " -endatstop -nostop $opts $cur_fafile > $aa_full_fafile";
+  my $altstart_opt = ""; # will be redefined below if we read alternative starts for this CDS with -specstart
+  if($cds_idx != -1) { 
+    if((defined $specstart_AA[$cds_idx]) && (exists $specstart_AA[$cds_idx])) { 
+      $altstart_opt = "-altstart ";
+      foreach my $altstart (@{$specstart_AA[$cds_idx]}) { 
+        $altstart_opt .= $altstart . ",";
+      }
+      $altstart_opt =~ s/\,$//; # remove final ','
+    }
+  }
+  $cmd = $esl_epn_translate . " -endatstop -nostop $opts $altstart_opt $cur_fafile > $aa_full_fafile";
   
   runCommand($cmd, 0);
   
-#    printf("cmd: $cmd\n");
+  printf("cmd2: $cmd\n");
   
   push(@aa_full_files_A, $aa_full_fafile);
 }
@@ -5082,13 +5092,14 @@ sub splitFastaFile {
   return $nfiles_created;
 }
 
-# Subroutine: wrapperCombineExonsIntoCDS()
+# Subroutine: wrapperCombineSequences()
 #
 # Synopsis:   For all CDS, combine all exons into CDS. A wrapper function
 #             for combineExonsIntoCDS().
 #
 # Args:       $dir:             directory for output files
 #             $key:             string for naming output files (e.g.: "predicted" or "corrected")
+#             $do_mp2cds:       '1' if we are combining multiple mat_peptide sequences into a CDS, '0' if not
 #             $mdl_AR:          ref to array of model names 
 #             $acc_order_AR:    ref to array with desired order of accessions
 #             $mdl2mft_map_AR:  ref to array mapping models to CDS
@@ -5099,12 +5110,12 @@ sub splitFastaFile {
 # Returns:    void
 # Dies:       if something unexpected happens when reading the exon fasta files
 #
-sub wrapperCombineExonsIntoCDS {
-  my $sub_name = "combineExonsIntoCDS";
-  my $nargs_exp = 7;
+sub wrapperCombineSequences {
+  my $sub_name = "wrapperCombineSequences";
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($dir, $key, $mdl_AR, $acc_order_AR,$mdl2mft_map_AR, $mft2mdl_map_AAR, $outfile_AR) = @_;
+  my ($dir, $key, $do_mp2cds, $mdl_AR, $acc_order_AR,$mdl2mft_map_AR, $mft2mdl_map_AAR, $outfile_AR) = @_;
 
   my ($seconds, $microseconds) = gettimeofday();
   my $start_time = ($seconds + ($microseconds / 1000000.));
@@ -5117,6 +5128,7 @@ sub wrapperCombineExonsIntoCDS {
     my $nmdl = scalar(@{$mft2mdl_map_AAR->[$f]});
     my $out_fafile = $dir . "/" . $mdl_AR->[$mft2mdl_map_AAR->[$f][0]] . ".fa";
     $out_fafile  =~ s/ref/$key/;
+    printf("f: $f nmdl: $nmdl\n");
     if($nmdl == 1) { 
       # a single exon gene, we should already have the sequence from alignHits
       if(! -s $out_fafile) { die sprintf("ERROR, expected output fasta file for CDS %s does not exist: $out_fafile", $mft_i+1); }
@@ -5124,11 +5136,11 @@ sub wrapperCombineExonsIntoCDS {
     else { 
       # more than one exon/mat_peptide need to be combined to make this CDS/mat_peptide
       # if we're combining exons to make a CDS next line will remove exon substr
-      $out_fafile =~ s/\.exon\.\d+/\./; 
-      # HERE HERE HERE:
-      # if we're combining mature peptide to make a CDS next line will remove mp substr and replace with cds substr
-      my $f2print = $f+1;
-      $out_fafile =~ s/\.mp\.\d+/\.cds$f2print/; 
+      $out_fafile =~ s/\.exon\.\d+\./\./; 
+      if($do_mp2cds) { 
+        my $f2print = $f+1;
+        $out_fafile =~ s/\.mp\.\d+/\.cds.$f2print/; 
+      }
       my @tmp_exon_fafile_A = ();
       for(my $h = 0; $h < $nmdl; $h++) { 
         my $mdl_idx = $mft2mdl_map_AAR->[$f][$h];
@@ -5136,7 +5148,7 @@ sub wrapperCombineExonsIntoCDS {
         $cur_fafile =~ s/ref/$key/;
         push(@tmp_exon_fafile_A, $cur_fafile);
       }
-      combineExonsIntoCDS(\@tmp_exon_fafile_A, $acc_order_AR, $out_fafile);
+      combineSequences(\@tmp_exon_fafile_A, $acc_order_AR, $out_fafile);
     }
     push(@{$outfile_AR}, $out_fafile);
   }
@@ -5148,7 +5160,7 @@ sub wrapperCombineExonsIntoCDS {
   return;
 }
 
-# Subroutine: combineExonsIntoCDS()
+# Subroutine: combineSequences()
 #
 # Synopsis:   Given an array of fasta files each with a different exon 
 #             of a CDS, create a single new fasta file that has the complete
@@ -5162,14 +5174,14 @@ sub wrapperCombineExonsIntoCDS {
 # Returns:    void
 # Dies:       if something unexpected happens when reading the exon fasta files
 #
-sub combineExonsIntoCDS {
-  my $sub_name = "combineExonsIntoCDS";
+sub combineSequences {
+  my $sub_name = "combineSequences";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($exon_fafile_AR, $acc_order_AR, $cds_fafile) = @_;
   
-  #printf("HEYA in combineExonsIntoCDS(), combining files to create $cds_fafile\n");
+  #printf("HEYA in combineSequences(), combining files to create $cds_fafile\n");
   #for(my $f = 0; $f < scalar(@{$exon_fafile_AR}); $f++) { 
   #  printf("adding $exon_fafile_AR->[$f]\n");
   #}
