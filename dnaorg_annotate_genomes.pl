@@ -1242,6 +1242,7 @@ for(my $c = 0; $c < $ref_nmp_and_cds; $c++) {
   my $type = $ref_type_A[$c];
   my $is_matpept = ($type eq "mp")     ? 1 : 0;
   my $is_cds_mp  = ($type eq "cds-mp") ? 1 : 0; 
+  my $cds_idx    = (($ref_type_A[$c] eq "cds-mp") || ($ref_type_A[$c] eq "cds-notmp")) ? $ref_type_idx_A[$c]-1 : -1; # subtract 1 from ref_type_idx_A[$c] because operable cds_idx is off-by-one (starts at 0) w.r.t CDS index we would print (starts at 1)
 
   # initialize data structures
   @{$accn_ext_check_AA[$c]} = ();
@@ -1260,8 +1261,19 @@ for(my $c = 0; $c < $ref_nmp_and_cds; $c++) {
   $tmp_esl_epn_translate_output =~ s/\.cds/\.esl-epn-translate/;
   $tmp_esl_epn_translate_output =~ s/\.fa$//;
   
-  my $other_options = "";
-  $cmd = $esl_epn_translate . " $other_options -startstop $cur_fafile > $tmp_esl_epn_translate_output";
+  my $have_specstart = 0;
+  my $altstart_opt = ""; # will be redefined below if we read alternative starts for this CDS with -specstart
+  if($cds_idx != -1) { 
+    if((defined $specstart_AA[$cds_idx]) && (exists $specstart_AA[$cds_idx])) { 
+      $altstart_opt = "-altstart ";
+      foreach my $altstart (@{$specstart_AA[$cds_idx]}) { 
+        $altstart_opt .= $altstart . ",";
+      }
+      $altstart_opt =~ s/\,$//; # remove final ','
+    }
+  }
+  $cmd = $esl_epn_translate . " $altstart_opt -startstop $cur_fafile > $tmp_esl_epn_translate_output";
+  print("cmd: $cmd\n");
   runCommand($cmd, 0);
   
   # parse esl-epn-translate output
@@ -1608,7 +1620,6 @@ wrapperCombineExonsIntoCDS($dir, "corrected", \@mdl_A, \@accn_A, \@mdl2mft_map_A
 #########################################
 # TRANSLATE PREDICTIONS INTO PROTEIN SEQS
 #########################################
-# TEMPORARILY SKIP THIS STEP IF WE'RE IN MATPEPT MODE
 my @nfullprot_A   = ();  # [0..$i..nmft-1], number of accessions we have a full protein for, for CDS $i
 my @fullprot_AH   = ();  # [0..$i..nmft-1], each element is a hash with keys $key as sequence accessions and values 
                          # of number of full length protein sequences we have for CDS/mat_peptide $i for key $key. Values should
@@ -1623,6 +1634,7 @@ my @aa_full_files_A = (); # array of protein sequence files we are about to crea
 $start_time = ($seconds + ($microseconds / 1000000.));
 printf("%-71s ... ", "# Translating coding sequences into proteins/peptides ");
 for(my $c = 0; $c < $ref_nmft; $c++) { 
+  my $is_matpept = ($ref_type_A[$c] eq "mp") ? 1 : 0;
   my $cur_fafile = ($do_nocorrect) ? $pred_mft_fafile_A[$c] : $corr_mft_fafile_A[$c];
   my $aa_full_fafile  = $cur_fafile;
   if($aa_full_fafile =~ m/\.mp/) { 
@@ -1637,8 +1649,7 @@ for(my $c = 0; $c < $ref_nmft; $c++) {
 
   # translate into AA sequences
   my $opts = "";
-  # TODO: this means that CDS in matpept mode do NOT use -reqstart and -reqstop
-  if(! $do_matpept) { 
+  if(! $is_matpept) { 
     $opts = " -reqstart -reqstop ";
   }
   $cmd = $esl_epn_translate . " -endatstop -nostop $opts $cur_fafile > $aa_full_fafile";
@@ -5114,7 +5125,8 @@ sub wrapperCombineExonsIntoCDS {
       # more than one exon/mat_peptide need to be combined to make this CDS/mat_peptide
       # if we're combining exons to make a CDS next line will remove exon substr
       $out_fafile =~ s/\.exon\.\d+/\./; 
-      # if we're combining mature peptides to make a CDS next line will remove mp substr and replace with cds substr
+      # HERE HERE HERE:
+      # if we're combining mature peptide to make a CDS next line will remove mp substr and replace with cds substr
       my $f2print = $f+1;
       $out_fafile =~ s/\.mp\.\d+/\.cds$f2print/; 
       my @tmp_exon_fafile_A = ();
