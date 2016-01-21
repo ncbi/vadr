@@ -1272,7 +1272,7 @@ for(my $c = 0; $c < $ref_nmp_and_cds; $c++) {
     }
   }
   $cmd = $esl_epn_translate . " $altstart_opt -startstop $cur_fafile > $tmp_esl_epn_translate_output";
-  printf("cmd: $cmd\n");
+  #printf("cmd: $cmd\n");
   runCommand($cmd, 0);
   
   # parse esl-epn-translate output
@@ -1666,8 +1666,7 @@ for(my $c = 0; $c < $ref_nmft; $c++) {
   
   runCommand($cmd, 0);
   
-  printf("cmd2: $cmd\n");
-  
+  #printf("cmd2: $cmd\n");
   push(@aa_full_files_A, $aa_full_fafile);
 }
 ($seconds, $microseconds) = gettimeofday();
@@ -5128,7 +5127,6 @@ sub wrapperCombineSequences {
     my $nmdl = scalar(@{$mft2mdl_map_AAR->[$f]});
     my $out_fafile = $dir . "/" . $mdl_AR->[$mft2mdl_map_AAR->[$f][0]] . ".fa";
     $out_fafile  =~ s/ref/$key/;
-    printf("f: $f nmdl: $nmdl\n");
     if($nmdl == 1) { 
       # a single exon gene, we should already have the sequence from alignHits
       if(! -s $out_fafile) { die sprintf("ERROR, expected output fasta file for CDS %s does not exist: $out_fafile", $mft_i+1); }
