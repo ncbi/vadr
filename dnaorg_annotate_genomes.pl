@@ -6099,7 +6099,7 @@ sub setErrorCode {
   if(defined $err_extra_AR && defined $errextra) { 
     if(defined $err_extra_AR->[$code2idx_HR->{$errcode}] && 
        $err_extra_AR->[$code2idx_HR->{$errcode}] ne "" &&
-       $err_extra_AR->[$code2idx_HR->{$errcode}] !~ m/$errextra/) { # don't append an identical error message
+       (index($err_extra_AR->[$code2idx_HR->{$errcode}], $errextra) == -1)) { # don't append an identical error message
       $err_extra_AR->[$code2idx_HR->{$errcode}] .= "," . $errextra;
     }
     else { 
