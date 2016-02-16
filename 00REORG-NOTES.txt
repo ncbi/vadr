@@ -1,0 +1,32 @@
+EPN, Tue Feb 16 16:22:37 2016
+
+Design goals of reorganization:
+
+1. Split dnaorg_annotate_genomes.pl into dnaorg_build.pl and
+   dnaorg_annotate.pl. 
+   Reason: dnaorg_build.pl needs to only be run once per species
+   (or rather, per update of the reference accession for the species)
+   And dnaorg_annotate.pl can be called many times for each species.
+
+2. Remove need for prerequired run of dnaorg_virus_wrapper.pl.
+
+3. Put reusable modular and documented code into a perl module
+   (dnaorg.pm).
+
+4. Better error handling. DNAORG_FAIL() function prints informative
+   error message to the two main output files (.log and .cmd) before
+   closing those files and exiting.
+
+5. Better logging of commands (all commands that are run are now
+   output to a .cmd file).
+
+6. Better output informing user of output files created by the
+   script. All files with descriptions are now printed.
+
+7. Cleaner code that is more modular, easier to understand by people
+   other than me (think summer student or IEBer), and easier to
+   maintain.
+
+ 
+
+   
