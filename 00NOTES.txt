@@ -794,7 +794,7 @@ ls -ltr NC_001477/*tbl
 #         the script to look for and use a mat_peptide table file
 #         instead of a CDS table.
 #
-perl dnaorg_annotate_genomes.pl -onlybuild -cfarm -matpept -nodup NC_001477 NC_001477.ntlist
+perl dnaorg_annotate_genomes.pl -onlybuild -cfarm -matpept NC_001477.matpept.in -nodup NC_001477 NC_001477.ntlist
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### dnaorg_annotate_genomes.pl: Annotate genomes based on a reference and homology search
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

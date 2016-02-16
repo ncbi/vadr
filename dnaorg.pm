@@ -12,7 +12,7 @@
 #
 #########################
 # Naming conventions used in this file:
-# - Hash  data structures use the abbreviation 'H', typically at the end of 
+# - Hash data structures use the abbreviation 'H', typically at the end of 
 #   a variable name (e.g. %length_H)
 #
 # - Array data structures use the abbreviation 'A', typically at the end of 
@@ -27,7 +27,26 @@
 # 
 #########################
 # Common data structures used in this file:
-# - TODO: FH_HR
+#
+# - $FH_HR: a reference to a hash of file handles. Important keys are "log" and "cmd",
+#           the log and command files we are outputting to. This data structure is passed
+#           into nearly all functions because it is also passed into DNAORG_FAIL() which 
+#           can be called from nearly all functions. DNAORG_FAIL() outputs an error message
+#           both the summary and log files before exiting, and appends a # DNAORG-FAILURE
+#           to those files before closing them and exiting. This is done so the user
+#           has a record of the reason the execution of the program failed.
+#
+# - $ftr_info_HAR: reference to an 'info hash of arrays' in which all arrays are the same 
+#                  size, and contain information on a 'feature' (e.g. CDS or mature peptide)
+#                  The hash has specific keys (e.g. "ref_len"), each of which points to 
+#                  an array with the relevant information. See validateFeatureInfoHashIsComplete()
+#                  for a list and explanation of the keys.
+#                   
+# - $mdl_info_HAR: similar to $ftr_info_HAR, except contains information pertaining to each 
+#                  model, >= 1 of which will model a single feature (1 model for single exon
+#                  CDS, 2 models for dual exon CDS, etc.). See validateModelInfoHashIsComplete()
+#                  for a list and explanation of the keys.
+#                   
 ########################################################################################
 #
 # List of subroutines in this file:
@@ -61,6 +80,15 @@
 # getStrandStats():                        return stats on strands for a given accession
 # DNAORG_FAIL():                           exit with an error, after printing that error to the sum and log files and closing those files
 # fileOpenFailure():                       exit with an error related to opening a file for reading or writing
+# outputProgressPrior():                   output text indicating we're about to perform a step
+# outputProgressComplete():                output text indicating we've completed a step
+# secondsSinceEpoch():                     return seconds and microseconds since the epoch
+# validateExecutableHash:                  given a hash where values are paths to executables, validate that they are executable
+# validateFeatureInfoHashIsComplete():     validate that a 'feature info' hash of arrays is valid and has all expected keys
+# validateModelInfoHashIsComplete():       validate that a 'model info' hash of arrays is valid and has all expected keys
+# validateInfoHashOfArraysIsComplete():    validate that a info hash of arrays is valid and has all expected keys   
+# findValueInArray():                      find which element in an array has a specified value and return its index
+
 use strict;
 use warnings;
 
@@ -1008,7 +1036,9 @@ sub stripVersion {
 #  $sqfile:            Bio::Easel::SqFile object, the sequence file we'll fetch from
 #  $ref_seq_accn:      sequence accession of reference
 #  $ref_totlen:        length of reference 
+#  $out_root:          root of output name files
 #  $do_circular:       true if genome is circularized and we allow features to span stop..start boundary
+#  $do_dirty:          true to *not* remove intermediate files
 #  $mdl_info_HAR:      ref to hash of arrays with information on the models, FILLED HERE
 #  $ftr_info_HAR:      ref to hash of arrays with information on the features, ADDED TO HERE
 #  $all_stk_file:      name of output file we will write the stockholm single sequence 
@@ -1021,15 +1051,15 @@ sub stripVersion {
 #################################################################
 sub fetchReferenceFeatureSequences {
   my $sub_name = "fetchReferenceFeatureSequences()";
-  my $nargs_expected = 9;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($sqfile, $ref_seq_accn, $ref_totlen, $out_root, $do_circular, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $FH_HR) = @_;
+  my ($sqfile, $ref_seq_accn, $ref_totlen, $out_root, $do_circular, $do_dirty, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $FH_HR) = @_;
 
   # contract check
   # ftr_info_HAR should have array data for keys "ref_coords", "ref_strand"
-  my @reqd_ftr_info = ("ref_coords", "ref_strand", "has_models");
-  my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info, $FH_HR);
+  my @reqd_ftr_info_A  = ("ref_coords", "ref_strand", "has_models");
+  my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
   my $nftr_with_models = getNumFeaturesWithModels($ftr_info_HAR, $FH_HR);
 
   my $cur_out_root;
@@ -1045,6 +1075,8 @@ sub fetchReferenceFeatureSequences {
   my $ref_tot_nexons    = 0;  # total number of exons in all CDS or mat_peptides
   my @indi_ref_name_A   = (); # [0..$nmdl-1]: name of individual stockholm alignments and models
   my @indi_cksum_stk_A  = (); # [0..$nmdl-1]: checksum's of each named individual stockholm alignment
+
+  my @files2rm_A = ();  # array of file names to remove at end of this function (remains empty if $do_dirty)
 
   for(my $i = 0; $i < $nftr; $i++) { 
     my $do_model = $ftr_info_HAR->{"has_models"}[$i];
@@ -1076,10 +1108,6 @@ sub fetchReferenceFeatureSequences {
           $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . $i2print;
           $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . $i2print;
         }
-        printf("out_root: $out_root\n");
-        printf("dir_tail: $dir_tail\n");
-        printf("cds_or_mp: $cds_or_mp\n");
-        printf("i2print: $i2print\n");
     
         # determine start and stop of the region we are going to fetch
         my $start = $starts_A[$e];
@@ -1096,15 +1124,19 @@ sub fetchReferenceFeatureSequences {
         # fetch the sequence
         my $cur_fafile = $cur_out_root . ".fa";
         $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
+        if(! $do_dirty) { push(@files2rm_A, $cur_fafile); }
 
         # reformat to stockholm
         my $cur_stkfile = $cur_out_root . ".stk";
         my $cmd = "esl-reformat --informat afa stockholm $cur_fafile > $cur_stkfile";
         runCommand($cmd, 0, $FH_HR);
+        if(! $do_dirty) { push(@files2rm_A, $cur_stkfile); }
     
         # annotate the stockholm file with a blank SS and with a name
         my $cur_named_stkfile = $cur_out_root . ".named.stk";
         my ($mdllen, $cksum) = addNameAndBlankSsToStockholmAlignment($cur_name_root, 1, $cur_stkfile, $cur_named_stkfile, $FH_HR); # 1: add blank SS_cons line
+        if(! $do_dirty) { push(@files2rm_A, $cur_named_stkfile); }
+
         $mdl_info_HAR->{"cmname"}[$nmdl]   = $cur_name_root;
         $mdl_info_HAR->{"checksum"}[$nmdl] = $cksum;
         $mdl_info_HAR->{"length"}[$nmdl]   = $mdllen;
@@ -1129,12 +1161,12 @@ sub fetchReferenceFeatureSequences {
         else           { $cmd .= " >> $all_stk_file"; }
         runCommand($cmd, 0, $FH_HR);
 
-        $mdl_info_HAR->{"map_mft"}[$nmdl]  = $i;
-        $mdl_info_HAR->{"is_first"}[$nmdl] = ($e == 0)           ? 1 : 0;
-        $mdl_info_HAR->{"is_final"}[$nmdl] = ($e == ($nexons-1)) ? 1 : 0;
+        $mdl_info_HAR->{"map_ftr"}[$nmdl]   = $i;
+        $mdl_info_HAR->{"is_first"}[$nmdl]  = ($e == 0)           ? 1 : 0;
+        $mdl_info_HAR->{"is_final"}[$nmdl]  = ($e == ($nexons-1)) ? 1 : 0;
+        $mdl_info_HAR->{"map_exon"}[$nmdl]  = $e;
+        $mdl_info_HAR->{"map_nexon"}[$nmdl] = $nexons;
 
-        $ftr_info_HAR->{"map_exon"}[$i]  = $e;
-        $ftr_info_HAR->{"map_nexon"}[$i] = $nexons;
         if($e == 0) { 
           $ftr_info_HAR->{"first_mdl"}[$i] = $nmdl;
         }
@@ -1149,11 +1181,14 @@ sub fetchReferenceFeatureSequences {
       $ftr_info_HAR->{"nexons"}[$i]    = 0;
       $ftr_info_HAR->{"out_tiny"}[$i]  = "?";
       $ftr_info_HAR->{"out_short"}[$i] = "?";
-      $ftr_info_HAR->{"map_exon"}[$i]  = -1;
-      $ftr_info_HAR->{"map_nexon"}[$i] = -1;
       $ftr_info_HAR->{"first_mdl"}[$i] = -1;
       $ftr_info_HAR->{"final_mdl"}[$i] = -1;
     }
+  }
+
+  # clean up
+  foreach my $file2rm (@files2rm_A) { 
+    runCommand("rm $file2rm", 0, $FH_HR);
   }
 
   return;
@@ -1191,8 +1226,8 @@ sub mapFeaturesToModels {
   my @reqd_mdl_info = ("is_first", "is_final");
   my $nmdl = validateAndGetSizeOfInfoHashOfArrays($mdl_info_HAR, \@reqd_mdl_info);
 
-  my @reqd_ftr_info = ("nexon");
-  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info);
+  my @reqd_ftr_info_A = ("nexon");
+  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A);
 
   my $ftr_idx = -1;
   my $mdl_idx = 0;
@@ -1319,8 +1354,8 @@ sub getNumFeaturesWithModels {
   
   my ($ftr_info_HAR, $FH_HR) = (@_);
 
-  my @reqd_ftr_info = ("has_models");
-  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info, $FH_HR);
+  my @reqd_ftr_info_A = ("has_models");
+  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
   
   my $nftr_with_models = 0;
   for(my $i = 0; $i < $nftr; $i++) { 
@@ -1731,7 +1766,7 @@ sub addNameAndBlankSsToStockholmAlignment {
   my ($name, $do_blank_ss, $in_file, $out_file, $FH_HR) = @_;
 
   if(! -s $in_file) { 
-    DNAORG_FAIL("ERROR in $sub_name, file $in_file does not exist."); 
+    DNAORG_FAIL("ERROR in $sub_name, file $in_file does not exist.", 1, $FH_HR); 
   }
 
   # open and validate file
@@ -1880,12 +1915,14 @@ sub createCmDb {
       my $jobname     = "c." . $out_tail . $i;
       my $errfile     = $out_root . "." . $i . ".err";
       $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.$i.cm > $out_root.$i.cmcalibrate";
-      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . "\"\n";
+      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . "\" > /dev/null\n";
 ####printf("calling $farm_cmd\n");
       runCommand($farm_cmd, 0, $FH_HR);
     }
-    # final step, remove the master CM file, so we can create a new one after we're done calibrating
-    runCommand("rm $out_root.cm", 0, $FH_HR);
+    # final step, remove the master CM file if it exists, so we can create a new one after we're done calibrating
+    if(-e "$out_root.cm") { 
+      runCommand("rm $out_root.cm", 0, $FH_HR);
+    }
   }
 
   return;
@@ -2230,7 +2267,6 @@ sub getSingleFeatureTableInfo {
   foreach $faccn (@{$faccn_AR}) { 
     if(exists $fac_HAR->{$faccn}) { # if this accession has >= 1 qualifiers for this feature
       my $accn = $faccn2accn_HR->{$faccn};
-      printf("accn: $accn\n");
       stripVersion(\$accn);
       if(%{$tbl_HHAR} && %{$tbl_HHAR->{$accn}}) { 
         DNAORG_FAIL("ERROR read data twice in $sub_name for accession $accn", 1, $FH_HR);
@@ -2452,6 +2488,661 @@ sub fileOpenFailure {
     $errmsg = "\nERROR, could not open $filename for $action.\n";
   }
   DNAORG_FAIL($errmsg, $status, $FH_HR);
+}
+
+#################################################################
+# Subroutine : outputProgressPrior()
+# Incept:      EPN, Fri Feb 12 17:22:24 2016
+#
+# Purpose:      Output to $FH1 (and possibly $FH2) a message indicating
+#               that we're about to do 'something' as explained in
+#               $outstr.  Caller should call *this* function, then do
+#               the 'something', then call outputProgressComplete().
+#               We return the number of seconds since the epoch, which
+#               should be passed into the downstream
+#               outputProgressComplete() call if caller wants to
+#               output running time.
+#
+# Arguments: 
+#   $outstr:     string to print to $FH
+#   $progress_w: width of progress messages
+#   $FH1:        file handle to print to
+#   $FH2:        another file handle to print to, can be undef
+# 
+# Returns:     Number of seconds and microseconds since the epoch.
+#
+################################################################# 
+sub outputProgressPrior { 
+  my $nargs_expected = 4;
+  my $sub_name = "outputProgressPrior()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($outstr, $progress_w, $FH1, $FH2) = @_;
+
+  if(defined $FH1) { printf $FH1 ("# %-*s ... ", $progress_w, $outstr); }
+  if(defined $FH2) { printf $FH2 ("# %-*s ... ", $progress_w, $outstr); }
+
+  return secondsSinceEpoch();
+}
+
+#################################################################
+# Subroutine : outputProgressComplete()
+# Incept:      EPN, Fri Feb 12 17:28:19 2016
+#
+# Purpose:     Output to $FH1 (and possibly $FH2) a 
+#              message indicating that we've completed 
+#              'something'.
+#
+#              Caller should call *this* function,
+#              after both a call to outputProgressPrior()
+#              and doing the 'something'.
+#
+#              If $start_secs is defined, we determine the number
+#              of seconds the step took, output it, and 
+#              return it.
+#
+# Arguments: 
+#   $start_secs:    number of seconds either the step took
+#                   (if $secs_is_total) or since the epoch
+#                   (if !$secs_is_total)
+#   $extra_desc:    extra description text to put after timing
+#   $FH1:           file handle to print to
+#   $FH2:           another file handle to print to, can be undef
+# 
+# Returns:     Number of seconds the step took (if $secs is defined,
+#              else 0)
+#
+################################################################# 
+sub outputProgressComplete { 
+  my $nargs_expected = 4;
+  my $sub_name = "outputProgressComplete()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($start_secs, $extra_desc, $FH1, $FH2) = @_;
+
+  my $total_secs = undef;
+  if(defined $start_secs) { 
+    $total_secs = secondsSinceEpoch() - $start_secs;
+  }
+
+  if(defined $FH1) { printf $FH1 ("done."); }
+  if(defined $FH2) { printf $FH2 ("done."); }
+
+  if(defined $total_secs || defined $extra_desc) { 
+    if(defined $FH1) { printf $FH1 (" ["); }
+    if(defined $FH2) { printf $FH2 (" ["); }
+  }
+  if(defined $total_secs) { 
+    if(defined $FH1) { printf $FH1 (sprintf("%.1f seconds%s", $total_secs, (defined $extra_desc) ? ", " : "")); }
+    if(defined $FH2) { printf $FH2 (sprintf("%.1f seconds%s", $total_secs, (defined $extra_desc) ? ", " : "")); }
+  }
+  if(defined $extra_desc) { 
+    if(defined $FH1) { printf $FH1 $extra_desc };
+    if(defined $FH2) { printf $FH2 $extra_desc };
+  }
+  if(defined $total_secs || defined $extra_desc) { 
+    if(defined $FH1) { printf $FH1 ("]"); }
+    if(defined $FH2) { printf $FH2 ("]"); }
+  }
+
+  if(defined $FH1) { printf $FH1 ("\n"); }
+  if(defined $FH2) { printf $FH2 ("\n"); }
+  
+  return (defined $total_secs) ? $total_secs : 0.;
+}
+
+#################################################################
+# Subroutine : secondsSinceEpoch()
+# Incept:      EPN, Sat Feb 13 06:17:03 2016
+#
+# Purpose:     Return the seconds and microseconds since the 
+#              Unix epoch (Jan 1, 1970) using 
+#              Time::HiRes::gettimeofday().
+#
+# Arguments:   NONE
+# 
+# Returns:     Number of seconds and microseconds
+#              since the epoch.
+#
+################################################################# 
+sub secondsSinceEpoch { 
+  my $nargs_expected = 0;
+  my $sub_name = "secondsSinceEpoch()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($seconds, $microseconds) = gettimeofday();
+  return ($seconds + ($microseconds / 1000000.));
+}
+
+#################################################################
+# Subroutine : validateExecutableHash()
+# Incept:      EPN, Sat Feb 13 06:27:51 2016
+#
+# Purpose:     Given a reference to a hash in which the 
+#              values are paths to executables, validate
+#              those files are executable.
+#
+# Arguments: 
+#   $execs_HR: REF to hash, keys are short names to executable
+#              e.g. "cmbuild", values are full paths to that
+#              executable, e.g. "/usr/local/infernal/1.1.1/bin/cmbuild"
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns:     void
+#
+# Dies:        if one or more executables does not exist#
+#
+################################################################# 
+sub validateExecutableHash { 
+  my $nargs_expected = 2;
+  my $sub_name = "validateExecutableHash()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($execs_HR, $FH_HR) = @_;
+
+  my $fail_str = undef;
+  foreach my $key (sort keys %{$execs_HR}) { 
+    if(! -e $execs_HR->{$key}) { 
+      $fail_str .= "\t$execs_HR->{$key} does not exist.\n"; 
+    }
+    elsif(! -x $execs_HR->{$key}) { 
+      $fail_str .= "\t$execs_HR->{$key} does not exist.\n"; 
+    }
+  }
+  
+  if(defined $fail_str) { 
+    DNAORG_FAIL("ERROR in $sub_name(),\n$fail_str", 1, $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: validateFeatureInfoHashIsComplete()
+# Incept:     EPN, Tue Feb 16 10:15:45 2016
+#
+# Purpose:    Validate that a 'feature info' hash is valid and complete.
+#             'Complete' means it has all the expected keys, each of which is an identically sized array.
+#             The expected keys are:
+#                "final_mdl":   index (in arrays of %mdl_info_HA) of final model for this feature
+#                "first_mdl":   index (in arrays of %mdl_info_HA) of first model for this feature
+#                "has_models":  '1' if this feature has homology models, 0 if not, dependent on type
+#                "nexons":      number of exons or segments (also number of models if "has_models" == 1) for this feature
+#                "out_product": output value: name of product for this feature (e.g. "replication-associated protein")
+#                "out_short":   output value: short name for this feature (e.g. "CDS #4 [1 exon; +]")
+#                "out_tiny":    output value: very short name for this feature (e.g. "CDS#4")
+#                "ref_coords":  coordinates for this feature in the reference
+#                "ref_len":     length of this feature in the reference
+#                "ref_strand":  strand for this feature in the reference
+#                "type":        type of feature: "mp", "cds-notmp", or "cds-mp"
+#                "type_idx":    index for the type that this feature is (e.g. 4, if this is the 4th "cds-notmp" feature
+# 
+#             If @{exceptions_AR} is non-empty, then keys in 
+#             in that array need not be in %{$ftr_info_HAR}.
+#
+# Arguments:
+#   $ftr_info_HAR:  REF to hash of arrays of feature information
+#   $exceptions_AR: REF to array of keys that may be excluded from the hash
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: Number of elements in each and every array of %{$ftr_info_HAR}
+#
+# Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
+#            does not exist in $ftr_info_HAR
+#          - if two arrays in $ftr_info_HAR are of different sizes
+#          - if any other key other than those listed above exist in ${%ftr_info_HAR}
+#          - if any key listed in @{$exceptions_AR} is not one of the expected keys
+#################################################################
+sub validateFeatureInfoHashIsComplete { 
+  my $sub_name = "validateFeatureInfoHashIsComplete()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($ftr_info_HAR, $exceptions_AR, $FH_HR) = (@_);
+  
+  my @expected_keys_A = ("final_mdl", "first_mdl", "has_models", "nexons", 
+                         "out_product", "out_short", "out_tiny", "ref_coords",
+                         "ref_len", "ref_strand", "type", "type_idx");
+
+  return validateInfoHashOfArraysIsComplete($ftr_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
+}
+
+#################################################################
+# Subroutine: validateModelInfoHashIsComplete()
+# Incept:     EPN, Tue Feb 16 11:00:03 2016
+#
+# Purpose:    Validate that a 'model info' hash is valid and complete.
+#             'Complete' means it has all the expected keys, each of which is an identically sized array.
+#             The expected keys are:
+#                "checksum":    checksum of the 'alignment' (single sequence) file the model was built from
+#                "cmname":      name of the model, used in infernal output 
+#                "is_final":    '1' if this model is the final model (e.g. final exon) for the feature it models ("map_ftr")
+#                "is_first":    '1' if this model is the first model (e.g. final exon) for the feature it models ("map_ftr")
+#                "length":      length, in nucleotides, of the model
+#                "map_exon":    the exon index this model models (1.."map_nexon" value)
+#                "map_ftr":     the feature index (array index in ftr_info_HAR) this model models
+#                "map_nexon":   the number of exons the feature this model models has 
+#                "out_tiny":    output value: very short name for this model (e.g. "CDS#4.2")
+#
+#             If @{exceptions_AR} is non-empty, then keys in 
+#             in that array need not be in %{$mdl_info_HAR}.
+#
+# Arguments:
+#   $mdl_info_HAR:  REF to hash of arrays of model information
+#   $exceptions_AR: REF to array of keys that may be excluded from the hash
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: Number of elements in each and every array of %{$mdl_info_HAR}
+#
+# Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
+#            does not exist in $mdl_info_HAR
+#          - if two arrays in $mdl_info_HAR are of different sizes
+#          - if any other key other than those listed above exist in ${%mdl_info_HAR}
+#          - if any key listed in @{$exceptions_AR} is not one of the expected keys
+#################################################################
+sub validateModelInfoHashIsComplete { 
+  my $sub_name = "validateModelInfoHashIsComplete()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($ftr_info_HAR, $exceptions_AR, $FH_HR) = (@_);
+  
+  my @expected_keys_A = ("checksum", "cmname", "is_final", "is_first", "length",
+                         "map_exon", "map_ftr", "map_nexon", "out_tiny");
+
+  return validateInfoHashOfArraysIsComplete($ftr_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
+}
+
+#################################################################
+# Subroutine: validateInfoHashOfArraysIsComplete()
+# Incept:     EPN, Tue Feb 16 11:10:40 2016
+#
+# Purpose:    Validate that a 'info' hash is valid and complete.
+#             'Complete' means it has all the expected keys, each of which is an identically sized array.
+#             The expected keys are passed in in @{$expected_AR}.
+#             If @{exceptions_AR} is non-empty, then keys in 
+#             in that array need not be in %{$info_HAR}.
+#
+# Arguments:
+#   $info_HAR:         REF to hash of arrays of model information
+#   $expected_keys_AR: REF to array of keys that are expected to be in the hash
+#   $exceptions_AR:    REF to array of keys in @{$expected_keys_AR} that may be excluded from the hash
+#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: Number of elements in each and every array of %{$info_HAR}
+#
+# Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
+#            does not exist in $info_HAR
+#          - if two arrays in $info_HAR are of different sizes
+#          - if any other key other than those listed above exist in ${%info_HAR}
+#          - if any key listed in @{$exceptions_AR} is not one of the expected keys
+#################################################################
+sub validateInfoHashOfArraysIsComplete { 
+  my $sub_name = "validateInfoHashOfArraysIsComplete()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($info_HAR, $expected_keys_AR, $exceptions_AR, $FH_HR) = (@_);
+  
+  # make sure our exceptions are actually in the expected array
+  if(defined $exceptions_AR) { 
+    foreach my $key (@{$exceptions_AR}) { 
+      if(findValueInArray($expected_keys_AR, $key) == -1) { 
+        DNAORG_FAIL("ERROR in $sub_name, excepted value $key is not an expected key in the feature info hash", 1, $FH_HR);
+      }
+    }
+  }
+
+  # make the list of keys we'll require, this is all expected keys minus any exceptions in @{$exceptions_AR}
+  my @reqd_keys_A = ();
+  foreach my $key (@{$expected_keys_AR}) { 
+    if((! defined $exceptions_AR) || (findValueInArray($key, $exceptions_AR) == -1)) { 
+      push(@reqd_keys_A, $key);
+    }
+  }
+                         
+  my $nftr = validateAndGetSizeOfInfoHashOfArrays($info_HAR, \@reqd_keys_A, $FH_HR);  
+
+  if(scalar(keys %{$info_HAR}) ne scalar(@reqd_keys_A)) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, %d keys expected in the info hash, but %d exist", scalar(@reqd_keys_A), scalar(keys %{$info_HAR})), 1, $FH_HR); 
+  }
+
+  return $nftr;
+}
+
+#################################################################
+# Subroutine : findValueInArray()
+# Incept:      EPN, Tue Feb 16 10:40:57 2016
+#
+# Purpose:     Returns (first) index in @{$AR} that has the value
+#              $value. Returns -1 if it does not exist.
+#
+# Arguments: 
+#   $AR:       REF to array 
+#   $value:    the value we're checking exists in @{$AR}
+# 
+# Returns:     '1' if $value exists in @{$AR}, '0' if not
+#
+# Dies:        if $value does not exist in @{$AR}
+#
+################################################################# 
+sub findValueInArray { 
+  my $nargs_expected = 2;
+  my $sub_name = "validateValueExistsInArray()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR, $value, $FH_HR);
+
+  if(! defined $AR) { 
+    return -1; 
+  }
+
+  for(my $i = 0; $i < scalar(@{$AR}); $i++) {
+      if($AR->[$i] eq $value) { 
+        return $i; 
+      }
+  }
+
+  return -1;
+}
+
+#######################################################################
+# Subroutine: outputConclusionAndCloseFiles()
+# Incept:     EPN, Thu Nov  5 18:25:31 2009 [ssu-align]
+# 
+# Purpose:    Output a list of the main output files created 
+#             and the final few lines of output and optionally the 
+#             run time timing to the summary file. Print date and
+#             system information to the log file. 
+#
+#             Close all open file handles.
+#
+# Arguments: 
+#  $total_secs:           total number of seconds, "" to not print timing
+#  $odir:                 output directory, if "", files were put in cwd
+#  $ofile_keys_AR:        ref to array of output file keys
+#  $ofile_desc_HR:        ref to hash of descriptions of each output file
+#  $ofile_sname_HR:       ref to hash of short names for each file, for printing
+#  $ofile_FH_HR:          ref to hash of open file handles, with key "log" 
+#                         and "cmd"
+#
+# Returns:   Nothing.
+# 
+# Dies:      Never.
+#
+####################################################################
+sub outputConclusionAndCloseFiles { 
+  my $narg_expected = 6;
+  my $sub_name = "outputConclusionAndCloseFiles()";
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  my ($total_secs, $odir, $ofile_keys_AR, $ofile_desc_HR, $ofile_sname_HR, $ofile_FH_HR) = @_;
+
+  my $log_FH = $ofile_FH_HR->{"log"};
+  my $cmd_FH = $ofile_FH_HR->{"cmd"};
+
+  if(defined $log_FH) { 
+    outputString($log_FH, 1, sprintf("#\n"));
+    my $width_desc = length("# ") + maxLengthScalarValueInHash($ofile_desc_HR) + length(" saved in:");
+    foreach my $key (@{$ofile_keys_AR}) { 
+      outputString($log_FH, 1, sprintf("# %-*s %s\n", $width_desc, $ofile_desc_HR->{$key} . " saved in:", $ofile_sname_HR->{$key}));
+    }
+    outputString($log_FH, 1, sprintf("#\n"));
+    outputString($log_FH, 1, sprintf("# All output files created in %s.\n", ($odir eq "") ? "the current working directory" : "directory \.\/$odir\/"));
+    outputString($log_FH, 1, sprintf("#\n"));
+    if($total_secs ne "") { # don't print this if rvr-align is caller
+      outputTiming("# CPU time: ", $total_secs, 1, $log_FH); 
+      outputString($log_FH, 1, "#            hh:mm:ss\n");
+      outputString($log_FH, 1, "# \n");
+      outputString($log_FH, 1, "# DNAORG-SUCCESS\n");
+    }
+  }
+  if(defined $cmd_FH) { 
+    outputString($cmd_FH, 0, "# " . `date`);
+    outputString($cmd_FH, 0, "# " . `uname -a`);
+    if($total_secs ne "") { # don't print this if rvr-align is caller
+      outputString($cmd_FH, 0, "# DNAORG-SUCCESS\n");
+    }
+  }
+
+  foreach my $fh_key (keys (%{$ofile_FH_HR})) { 
+    close $ofile_FH_HR->{$fh_key};
+  }
+
+  return;
+}
+
+#####################################################################
+# Subroutine: outputTiming()
+# Incept:     EPN, Tue Jun 16 08:52:08 2009 [ssu-align]
+# 
+# Purpose:    Output elapsed time in hhhh:mm:ss format.
+# 
+# Arguments:
+# $prefix:               string to print before the hhhh:mm:ss time info.
+# $inseconds:            number of seconds
+# $print_to_stdout:      '1' to print to stdout, '0' not to
+# $FH:                   file handle to print to
+#
+# Returns:    Nothing, if it returns, everything is valid.
+# 
+####################################################################
+sub outputTiming { 
+  my $narg_expected = 4;
+  my $sub_name = "outputTiming()";
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  my ($prefix, $inseconds, $print_to_stdout, $FH) = @_;
+
+  my $time_str = formatTimeString($inseconds);
+  outputString($FH, $print_to_stdout, $prefix . " " . $time_str . "\n");
+  
+  return;
+}
+
+###########################################################
+# Subroutine: outputString()
+# Incept: EPN, Wed Oct 29 20:42:16 2014 [rnavore]
+#
+# Purpose: Given a string and an open file handle <$FH>, 
+#          output the string to the file handle 
+#          and potentially to stdout as well. 
+#          If <$FH> is not defined then do not 
+#          print to a file. 
+#
+# Returns: Nothing. 
+#
+# Dies:    Never.
+#
+###########################################################
+sub outputString {
+  my $narg_expected = 3;
+  my $sub_name = "outputString()";
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  my ($FH, $print_to_stdout, $string) = @_;
+
+  if(defined $FH)      { print $FH $string; }
+  if($print_to_stdout) { print     $string; }
+
+  return;
+}
+
+#####################################################################
+# Subroutine: formatTimeString()
+# Incept:     EPN, Fri Oct 24 13:18:23 2014 [rnavore]
+# 
+# Purpose:    Print a timing in hhhh:mm:ss format to 1 second precision.
+# 
+# Arguments:
+# $inseconds: number of seconds
+#
+# Returns:    string that describes time in hhhh:mm:ss format
+# 
+# Dies:       Never.
+#
+####################################################################
+sub formatTimeString { 
+  my $narg_expected = 1;
+  my $sub_name = "formatTimeString()";
+   if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  my ($inseconds) = @_;
+  my ($i, $hours, $minutes, $seconds, $thours, $tminutes, $tseconds, $ndig_hours);
+
+  $hours = int($inseconds / 3600);
+  $inseconds -= ($hours * 3600);
+  $minutes = int($inseconds / 60);
+  $inseconds -= ($minutes * 60);
+  $seconds = $inseconds;
+  $thours   = sprintf("%02d", $hours);
+  $tminutes = sprintf("%02d", $minutes);
+  $ndig_hours = length($hours);
+  if($ndig_hours < 2) { $ndig_hours = 2; }
+
+  $tseconds = sprintf("%05.2f", $seconds);
+  my $ret_str = sprintf("%*s:%2s:%5s", $ndig_hours, $thours, $tminutes, $tseconds);
+  
+  return $ret_str;
+}
+
+#################################################################
+# Subroutine : maxLengthScalarValueInHash()
+# Incept:      EPN, Mon Nov  3 09:09:59 2014 [rnavore]
+# 
+# Purpose:     Return the maximum length of a scalar value
+#              in a hash.
+#
+# Arguments: 
+#   $HR: reference to the array
+# 
+# Returns:     The length of the maximum length scalar.
+#
+################################################################# 
+sub maxLengthScalarValueInHash { 
+  my $narg_expected = 1;
+  my $sub_name = "maxLengthScalarValueInHash()";
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  my ($HR) = $_[0];
+
+  my $max = 0;
+  my $len = 0;
+  foreach my $key (keys (%{$HR})) { 
+    $len = length($HR->{$key});
+    if($len > $max) { $max = $len; }
+  }
+  return $max;
+}
+
+#################################################################
+# Subroutine: getReferenceFeatureInfo()
+# Incept:     EPN, Tue Feb 16 14:05:51 2016
+# 
+# Purpose:    Fill "ref_strand", "ref_len", "ref_coords" and "out_product"
+#             arrays in the feature info hash of arrays (%{$ftr_info_HAR})
+#             using $cds_tbl_HHAR and possibly $mp_tbl_HHAR.
+#
+# Arguments:
+#   $cds_tbl_HHAR:  ref to CDS hash of hash of arrays, PRE-FILLED
+#   $mp_tbl_HHAR:   ref to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
+#   $ftr_info_HAR:  ref to hash of arrays with feature information, FILLED HERE
+#   $ref_accn:      reference accession
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       Never.
+#
+#################################################################
+sub getReferenceFeatureInfo { 
+  my $sub_name = "getReferenceFeatureInfo()";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+ 
+  my ($cds_tbl_HHAR, $mp_tbl_HHAR, $ftr_info_HAR, $ref_accn, $FH_HR) = @_;
+
+  # initialize the arrays we are about to fill
+  @{$ftr_info_HAR->{"ref_strand"}}     = ();
+  @{$ftr_info_HAR->{"ref_len"}}     = ();
+  @{$ftr_info_HAR->{"ref_coords"}}  = ();
+  @{$ftr_info_HAR->{"out_product"}} = ();
+
+  my $do_matpept = (defined $mp_tbl_HHAR) ? 1 : 0;
+
+  my $ref_mp_strand_str  = ""; 
+  my $ref_cds_strand_str = "";
+
+  if($do_matpept) { 
+    (undef, undef, undef, undef, undef, $ref_mp_strand_str) = getStrandStats($mp_tbl_HHAR, $ref_accn, $FH_HR);
+    getLengthsAndCoords(\%{$mp_tbl_HHAR->{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
+    getQualifierValues($mp_tbl_HHAR, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
+  }
+
+  (undef, undef, undef, undef, undef, $ref_cds_strand_str) = getStrandStats($cds_tbl_HHAR, $ref_accn, $FH_HR);
+  getLengthsAndCoords(\%{$cds_tbl_HHAR->{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
+  getQualifierValues($cds_tbl_HHAR, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
+
+  @{$ftr_info_HAR->{"ref_strand"}} = split("", $ref_mp_strand_str . $ref_cds_strand_str);
+
+  return;
+}
+
+#################################################################
+# Subroutine: addClosedOutputFile()
+# Incept:     EPN, Tue Feb 16 14:22:36 2016
+# 
+# Purpose:    Add information about a created output file (not open)
+#             to 'ofile' data structures, for eventual output in
+#             outputConclusionAndCloseFiles().
+#
+# Arguments:
+#   $ofile_keys_AR:  REF to array of keys in 'ofile' hashes, added to here
+#   $ofile_name_HR:  REF to hash of output file names (full paths), added to here
+#   $ofile_sname_HR: REF to hash of output file names (file names (no directories), added to here
+#   $ofile_desc_HR:  REF to hash of output file descriptions, added to here
+#   $key:            key for the alignment file
+#   $filename:       name of file we are adding
+#   $desc:           description of file
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       If $ofile_desc_HR->{$key} already exists.
+#
+#################################################################
+sub addClosedOutputFile { 
+  my $sub_name = "addClosedOutputFile()";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+ 
+  my ($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, $key, $filename, $desc, $FH_HR) = @_;
+
+  if(exists $ofile_desc_HR->{$key}) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add file $filename with key $key, but that key already exists", 1, $FH_HR);
+  }
+
+  push(@{$ofile_keys_AR}, $key);
+  $ofile_name_HR->{$key}  = $filename; 
+  $ofile_sname_HR->{$key} = removeDirPath($filename); 
+  $ofile_desc_HR->{$key}  = $desc;
+
+  return;
+}
+
+#################################################################
+# Subroutine : removeDirPath()
+# Incept:      EPN, Mon Nov  9 14:30:59 2009 [ssu-align]
+#
+# Purpose:     Given a file name remove the directory path.
+#              For example: "foodir/foodir2/foo.stk" becomes "foo.stk".
+#
+# Arguments: 
+#   $orig_file: name of original file
+# 
+# Returns:     The string $orig_file with dir path removed.
+#
+# Dies:        Never.
+################################################################# 
+sub removeDirPath {
+  my $narg_expected = 1;
+  my $sub_name = "removeDirPath()";
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  my $orig_file = $_[0];
+
+  $orig_file =~ s/^.+\///;
+  return $orig_file;
 }
 
 ###########################################################################
