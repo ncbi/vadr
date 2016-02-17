@@ -35,9 +35,8 @@ my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 # The definition of $usage explains the script and usage:
 my $usage = "\ndnaorg_build.pl <reference accession>\n";
 $usage .= "\n"; 
-$usage .= " FIXME: This script annotates genomes from the same species based\n";
-$usage .= " on reference annotation. The reference accession is the\n";
-$usage .= " first accession listed in <list file with all accessions>\n";
+$usage .= " This script builds homology models for sequence features\n";
+$usage .= " in a reference sequence with the accession <reference accession>\n";
 $usage .= "\n";
 $usage .= " BASIC/COMMON OPTIONS:\n";
 $usage .= "  -c           : genome is circular\n";
@@ -90,7 +89,7 @@ if(defined $dir) {
   $opts_used_short .= "-d $dir ";
   $opts_used_long  .= "# option:  output directory specified as $dir [-d]\n"; 
 }
-if(defined $do_circular) { 
+if($do_circular) { 
   $opts_used_short .= "-c ";
   $opts_used_long  .= "# option:  genome is circular, so features can span stop..start [-c]\n"; 
 }
