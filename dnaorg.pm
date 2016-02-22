@@ -175,7 +175,7 @@ sub parseMatPeptSpecFile {
   my @cds_idx_read_A    = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
   my $max_cds_idx2store = 0;
 
-  open(IN, $infile) || fileOpenFailure($infile, $FH_HR, $!, "reading");
+  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
 
   while(my $line = <IN>) { 
     if($line !~ m/^\#/) { 
@@ -319,7 +319,7 @@ sub parseLengthFile {
 
   my ($lenfile, $len_HR, $FH_HR) = @_;
 
-  open(LEN, $lenfile) || fileOpenFailure($lenfile, $FH_HR, $!, "reading");
+  open(LEN, $lenfile) || fileOpenFailure($lenfile, $!, "reading", $FH_HR);
 
   while(my $line = <LEN>) { 
     # example line
@@ -391,7 +391,7 @@ sub parseEdirectFtableFile {
 
   my ($infile, $only_feature, $sep_HR, $quals_HHAR, $faccn_AR, $fac_HHAR, $faccn2accn_HR, $column_HAR, $FH_HR) = @_;
 
-  open(IN, $infile) || fileOpenFailure($infile, $FH_HR, $!, "reading");
+  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
 
   my $do_only_feature  = 0;
   my $cap_only_feature = undef; # capitalized version of $only_feature
@@ -663,7 +663,7 @@ sub parseEdirectMatPeptideFile {
 
   my ($infile, $dummy_column, $sep_HR, $quals_HHAR, $faccn_AR, $fac_HHAR, $faccn2accn_HR, $column_HAR, $FH_HR) = @_;
 
-  open(IN, $infile) || fileOpenFailure($infile, $FH_HR, $!, "reading");
+  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
 
   # example lines of a .mat_peptide file
   # NC_009942.1	97..465	anchored capsid protein C	
@@ -1033,6 +1033,9 @@ sub stripVersion {
 #           features and models.
 #
 # Arguments:
+#  $execs_HR:          reference to hash with executables, the key "esl-reformat"
+#                      must be defined and the value must be a valid path to an 
+#                      esl-reformat executable, PRE-FILLED
 #  $sqfile:            Bio::Easel::SqFile object, the sequence file we'll fetch from
 #  $ref_seq_accn:      sequence accession of reference
 #  $ref_totlen:        length of reference 
@@ -1051,16 +1054,18 @@ sub stripVersion {
 #################################################################
 sub fetchReferenceFeatureSequences {
   my $sub_name = "fetchReferenceFeatureSequences()";
-  my $nargs_expected = 10;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($sqfile, $ref_seq_accn, $ref_totlen, $out_root, $do_circular, $do_dirty, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $FH_HR) = @_;
+  my ($execs_HR, $sqfile, $ref_seq_accn, $ref_totlen, $out_root, $do_circular, $do_dirty, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $FH_HR) = @_;
 
   # contract check
   # ftr_info_HAR should have array data for keys "ref_coords", "ref_strand"
   my @reqd_ftr_info_A  = ("ref_coords", "ref_strand", "has_models");
   my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
   my $nftr_with_models = getNumFeaturesWithModels($ftr_info_HAR, $FH_HR);
+
+  my $esl_reformat = $execs_HR->{"esl-reformat"};
 
   my $cur_out_root;
   my $cur_name_root;
@@ -1128,7 +1133,7 @@ sub fetchReferenceFeatureSequences {
 
         # reformat to stockholm
         my $cur_stkfile = $cur_out_root . ".stk";
-        my $cmd = "esl-reformat --informat afa stockholm $cur_fafile > $cur_stkfile";
+        my $cmd = "$esl_reformat --informat afa stockholm $cur_fafile > $cur_stkfile";
         runCommand($cmd, 0, $FH_HR);
         if(! $do_dirty) { push(@files2rm_A, $cur_stkfile); }
     
@@ -1706,7 +1711,7 @@ sub fetchSequencesUsingEslFetchCds {
   my $fetch_string; # string output to the input file for esl-fetch-cds.pl
   
   # create the esl-fetch-cds input file
-  open(OUT, ">", $fetch_file) || fileOpenFailure($fetch_file, $FH_HR, $!, "writing");
+  open(OUT, ">", $fetch_file) || fileOpenFailure($fetch_file, $!, "writing", $FH_HR);
   my $naccn = scalar(@{$accn_AR});
   for(my $a = 0; $a < $naccn; $a++) { 
 #  print OUT $accn_A[$a] . "\n";
@@ -3143,6 +3148,147 @@ sub removeDirPath {
 
   $orig_file =~ s/^.+\///;
   return $orig_file;
+}
+
+#################################################################
+# Subroutine : parseListFile()
+# Incept:      EPN, Thu Feb 18 13:05:30 2016
+#
+# Purpose:     Given a file name remove the directory path.
+#              For example: "foodir/foodir2/foo.stk" becomes "foo.stk".
+#
+# Arguments: 
+#   $listfile: name of list file to parse
+#   $do_accn:  '1' if lines are accessions, we should die if any line exists 
+#              more than once in $listfile, and we should strip the version
+#              from each accession. 
+#   $line_AR:  REF to array to fill, each element will be a line 
+#              of $listfile with newline removed. FILLED HERE
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd", can be undef
+#
+# Returns:     void, fills @{$line_AR}
+#
+# Dies:        if $listfile does not exist or is not readable
+#              if $do_accn is 1 and the same line exists more than
+#              once in $listfile
+################################################################# 
+sub parseListFile {
+  my $narg_expected = 4;
+  my $sub_name = "parseListFile()";
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  my ($infile, $do_accn, $line_AR, $FH_HR) = @_;
+
+  my %line_exists_H = ();
+
+  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
+
+  while(my $line = <IN>) { 
+    if($line =~ m/\w/) {  # skip blank lines
+      chomp $line;
+      if($do_accn) { 
+        stripVersion(\$accn); # remove version
+        if(exists $line_exists_H{$line}) { 
+          DNAORG_FAIL("ERROR in $sub_name, the line $line appears twice in the input list file $listfile", 1, $FH_HR); 
+        }
+        $line_exists_H{$accn} = 1;
+      }
+      push(@{$line_AR}, $line);
+    }
+  }
+  close(IN); 
+
+  return;
+}
+
+#################################################################
+# Subroutine:  specstartParseInfile()
+# Incept:      EPN, Thu Feb 18 15:45:49 2016
+#
+# Purpose:     Parse the input file that defines non-standard start 
+#              codons for >= 1 CDS.
+#
+# Arguments: 
+#   $infile:        file to parse
+#   $specstart_AAR: ref to array of arrays to fill here, allowed start codons for each CDS
+#                   if array doesn't exist for a CDS, ATG is only allowed start
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd", can be undef
+#
+# Returns:     void, fills @{$specstart_AAR}
+#
+# Dies:        if $infile does not exist or is not readable,
+#              or we have some problem parsing it.
+################################################################# 
+sub parseSpecStartFile { 
+  my $sub_name = "parseSpecStartFile";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($infile, $specstart_AAR) = @_;
+
+  my $ncds_read      = 0;
+  my $cds_idx2store  = 0;
+  my @cds_idx_read_A = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
+  my $max_cds_idx2store = 0;
+
+  open(IN, $infile) || die "ERROR unable to open $infile for reading in $sub_name";
+
+  while(my $line = <IN>) { 
+    if($line !~ m/^\#/) { 
+      ## example input file:
+      ## This file explains alternative start codons that are expected 
+      ## West Nile lineage 1 CDS #3 (WARF4)
+      ##
+      ## Format of lines in this file:
+      ## <CDS-idx> <alternate start codon 1>:<alternate start codon 2>:<alternate start codon n>
+      #3 GGC
+      #####################
+      # NOTE: in the input file CDS and matpept indices are in coordinate space 1..N, but we store them in 0..N-1
+      chomp $line;
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) != 2) { 
+        die "ERROR in $sub_name, unable to parse specstart input file line: $line"; 
+      }
+      my ($cds_idx, $codon_str) = ($el_A[0], $el_A[1]);
+      my $cds_idx2store = $cds_idx - 1;
+      if($cds_idx2store < 0) { 
+        die "ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file"; 
+      }
+      $cds_idx_read_A[$cds_idx2store] = 1;
+      if($cds_idx2store > $max_cds_idx2store) { 
+        $max_cds_idx2store = $cds_idx2store; 
+      }
+      my @codon_A = split(":", $codon_str);
+      @{$specstart_AAR->[$cds_idx2store]} = ();
+      foreach my $codon (@codon_A) { 
+        $codon =~ tr/a-z/A-Z/;
+        $codon =~ tr/U/T/;
+        push(@{$specstart_AAR->[$cds_idx2store]}, $codon);
+      }
+      $ncds_read++;
+    }
+  }
+  close(IN);
+
+  # Two sanity checks:
+  # 1: we should have stored all and primary info for any CDS $i for which $cds_idx_read_A[$i-1] is 1, and nothing else
+  for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
+    if($cds_idx_read_A[$i]) { 
+     if((! defined $specstart_AAR->[$i]) && (! exists $specstart_AAR->[$i])) { 
+       die sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1);
+     }
+    }
+    else { # we didn't read this one
+      if(defined $specstart_AAR->[$i] || exists $specstart_AAR->[$i]) { 
+        die sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1);
+      }
+    }
+  }
+  # 2: we should have at least read at least one CDS info
+  if($ncds_read == 0) { 
+    die "ERROR in $sub_name, no CDS start codon specifications read in matpept input file $infile"; 
+  }
+
+  return;
 }
 
 ###########################################################################

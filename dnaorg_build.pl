@@ -30,6 +30,7 @@ require "dnaorg.pm";
 
 # hard-coded-paths:
 my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
+my $esl_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 
 # The definition of $usage explains the script and usage:
@@ -206,6 +207,7 @@ $execs_H{"cmbuild"}       = $inf_exec_dir . "cmbuild";
 $execs_H{"cmcalibrate"}   = $inf_exec_dir . "cmcalibrate";
 $execs_H{"cmfetch"}       = $inf_exec_dir . "cmfetch";
 $execs_H{"cmpress"}       = $inf_exec_dir . "cmpress";
+$execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
 $execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
 validateExecutableHash(\%execs_H, \%ofile_FH_H);
 
