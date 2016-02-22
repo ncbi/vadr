@@ -74,6 +74,7 @@
 # createCmDb():                            create a CM database from a stockholm alignment file
 # matpeptValidateCdsRelationships():       validate relationships between CDS and the mature peptides that comprise them
 # checkForSpanningSequenceSegments():      check if two sequence segments span the stop..start boundary in a circular genome
+#                                          (e.g. segment 1 is <stop..stop, segment 2 is start..>start)
 # edirectFtableOrMatPept2SingleFeatureTableInfo(): extract 'feature table information' from a ftable or matpept edirect file
 # getSingleFeatureTableInfo():             get single feature table information from a 'qualifiers' hash of arrays
 # outputBanner():                          output the program banner, commands, date and options used to a file handle
@@ -87,8 +88,16 @@
 # validateFeatureInfoHashIsComplete():     validate that a 'feature info' hash of arrays is valid and has all expected keys
 # validateModelInfoHashIsComplete():       validate that a 'model info' hash of arrays is valid and has all expected keys
 # validateInfoHashOfArraysIsComplete():    validate that a info hash of arrays is valid and has all expected keys   
-# findValueInArray():                      find which element in an array has a specified value and return its index
-
+# findNonNumericValueInArray():            find which element in an array has a specified non-numeric value and return its index
+#
+# outputString():                          output a string to a file handle and possibly also to stdout
+# formatTimeString():                      get a timing in hhhh:mm:ss format.
+# maxLengthScalarValueInHash():            returns maximum length (in characters) of all scalar values in a hash
+# getReferenceFeatureInfo():               get information about a reference feature and add that info to a feature info hash of arrays
+# addClosedOutputFile():                   add information about an output file to 'ofile' data structures
+# removeDirPath():                         remove the directory path from a path, e.g. "foodir/foodir2/foo.stk" becomes "foo.stk"
+# outputConclusionAndCloseFiles():         output a list of files created and final few lines of output and close output files
+# outputTiming():                          output elapsed time in hhhh:mm:ss format
 use strict;
 use warnings;
 
@@ -104,7 +113,7 @@ use warnings;
 # Arguments:
 #   $cmd:         command to run, with a "system" command;
 #   $be_verbose:  '1' to output command to stdout before we run it, '0' not to
-#   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#   $FH_HR:       REF to hash of file handles, including "cmd"
 #
 # Returns:    amount of time the command took, in seconds
 #
@@ -169,11 +178,11 @@ sub parseMatPeptSpecFile {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($infile, $cds2pmatpept_AAR, $cds2amatpept_AAR, $FH_HR) = @_;
-  my $ncds_read_primary = 0;
-  my $ncds_read_all     = 0;
-  my $cds_idx2store     = 0;
+  my $ncds_read_primary = 0;  # number of 'primary' CDS lines read
+  my $ncds_read_all     = 0;  # number of 'all' CDS lines read
+  my $cds_idx2store     = 0;  # index of CDS to store
   my @cds_idx_read_A    = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
-  my $max_cds_idx2store = 0;
+  my $max_cds_idx2store = 0;  # maximum $cds_idx2store seen
 
   open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
 
@@ -208,14 +217,17 @@ sub parseMatPeptSpecFile {
       chomp $line;
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) != 3) { 
-        DNAORG_FAIL("ERROR in $sub_name, unable to parse matpept input file line: $line", 1, $FH_HR); 
+        DNAORG_FAIL("ERROR in $sub_name, unable to parse matpept input file line: $line\nline should have three tokens separated by whitespace", 1, $FH_HR); 
       }
       my ($cds_idx, $primary_or_all, $matpept_str) = ($el_A[0], $el_A[1], $el_A[2]);
+      if($cds_idx !~ m/^\d+$/ || $cds_idx eq "0") { 
+        DNAORG_FAIL("ERROR in $sub_name, parsing $infile, first token should be a positive integer, read $cds_idx on line $line", 1, $FH_HR);
+      }
       $primary_or_all =~ tr/A-Z/a-z/;
       if($primary_or_all ne "all" && $primary_or_all ne "primary") { 
-        DNAORG_FAIL("ERROR in $sub_name, parsing $infile, second token of each non-comment line should be 'all' or 'primary'", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, parsing $infile, second token of each non-comment line should be 'all' or 'primary', found $primary_or_all in line $line", 1, $FH_HR);
       }
-      my $cds_idx2store = $cds_idx - 1;
+      my $cds_idx2store = $cds_idx - 1; # we verified this was a positive integer above
       if($cds_idx2store < 0) { 
         DNAORG_FAIL("ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file", 1, $FH_HR); 
       }
@@ -326,12 +338,17 @@ sub parseLengthFile {
     #HM448898.1	2751
 
     chomp $line;
-    my ($accn, $length) = split(/\s+/, $line);
+    my ($orig_accn, $length) = split(/\s+/, $line);
     if($length !~ m/^\d+$/) { 
       DNAORG_FAIL("ERROR in $sub_name, couldn't parse length file line: $line", 1, $FH_HR); 
     } 
 
+    my $accn = $orig_accn;
     stripVersion(\$accn);
+    if(exists $len_HR->{$accn}) { 
+      DNAORG_FAIL("ERROR in $sub_name, accession $orig_accn exists more than once in $lenfile (possibly with different versions)", 1, $FH_HR); 
+    } 
+      
     $len_HR->{$accn} = $length;
   }
   close(LEN);
@@ -990,8 +1007,13 @@ sub startsStopsFromCoords {
       push(@{$stops_AR},  $2);
       $$nexons_R++;
     }
+    elsif($el =~ m/^(\d+)$/) { # a single nucleotide
+      push(@{$starts_AR}, $1);
+      push(@{$stops_AR},  $1);
+      $$nexons_R++;
+    }
     else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse $orig_coords", 1, $FH_HR); 
+      DNAORG_FAIL("ERROR in $sub_name, unable to parse coordinates $orig_coords", 1, $FH_HR); 
     }
   }
 
@@ -1448,7 +1470,7 @@ sub startsStopsStrandsFromCoordsLength {
 
   # check if we have a spanning exon (that spans stop..start) and if we do
   # and (! $do_circular) then die, because that shouldn't happen.
-  my $have_spanning_exon = checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nexons_R, 0, $strand, $totlen); # 0 says: don't correct the spanning exon
+  my $have_spanning_exon = checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nexons_R, 0, $strand, $totlen); # 1 says: do correct the spanning exon
   if($have_spanning_exon) { 
     if(! $do_circular) { 
       DNAORG_FAIL("ERROR in $sub_name, found exon that spanned stop..start boundary, but we're not allowing circular genomes...", 1, $FH_HR); 
@@ -1654,7 +1676,8 @@ sub lengthFromCoords {
 # Subroutine: fetchSequencesUsingEslFetchCds()
 # Incept:     EPN, Thu Feb 11 15:30:07 2016
 # 
-# Purpose:    Determine the length of a region give its coords in NCBI format.
+# Purpose:    Fetch sequences by calling the esl_fetch_cds program
+#             with the path $esl_fetch_cds. 
 #
 # Arguments:
 #   $esl_fetch_cds:    path to esl-fetch-cds executable
@@ -1940,6 +1963,14 @@ sub createCmDb {
 # Purpose:    Validate the CDS:mat_peptide relationships 
 #             in @{$cds2pmatpept_AAR}, which were probably 
 #             ready from a file in parsed in pasreMatPeptSpecFile().
+#             A CDS:mat_peptide relationship is valid if
+#             the the mat_peptides that comprise the CDS
+#             do in fact completely comprise it (when 
+#             concatenated the mat_peptide coordinates completely
+#             cover the CDS coordinates, in order, with no
+#             overlaps. For example a CDS that spans 1..300
+#             is comprised by three mature peptides with 
+#             coordinates 1..150, 151..223, and 224..300.
 #
 # Arguments:
 #   $cds2pmatpept_AAR: REF to array of arrays, 1st dim value is cds_idx, value is array
@@ -1978,7 +2009,7 @@ sub matpeptValidateCdsRelationships {
   my $prv_stop = undef; # previous mat_peptide's stop position, 
   for(my $cds_idx = 0; $cds_idx < scalar(@{$cds2pmatpept_AAR}); $cds_idx++) { 
     if(($cds_idx < 0) || ($cds_idx >= $ref_ncds)) { 
-      DNAORG_FAIL("ERROR in $sub_name, cds_idx $cds_idx is out of range", 1, $FH_HR); 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, cds_idx $cds_idx is out of range", $cds_idx+1), 1, $FH_HR); 
     }
     my @cds_starts_A  = ();
     my @cds_stops_A   = ();
@@ -2108,6 +2139,7 @@ sub checkForSpanningSequenceSegments {
     # we can easily check and fix these cases:
     my $tmp_start = undef;
     my $tmp_stop  = undef;
+    # remember if we get here, we know we only have 2 exons, i.e scalar(@{$starts_AR}) and scalar(@{$stops_AR}) is 2
     if($strand eq "+" && $stops_AR->[0] == $totlen && $starts_AR->[1] == 1) { 
       $tmp_start = $starts_AR->[0];
       $tmp_stop  = $stops_AR->[1] + $totlen;
@@ -2274,12 +2306,12 @@ sub getSingleFeatureTableInfo {
       my $accn = $faccn2accn_HR->{$faccn};
       stripVersion(\$accn);
       if(%{$tbl_HHAR} && %{$tbl_HHAR->{$accn}}) { 
-        DNAORG_FAIL("ERROR read data twice in $sub_name for accession $accn", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, read data twice in $sub_name for accession $accn", 1, $FH_HR);
       }
       foreach $fac (@{$fac_HAR->{$faccn}}) { # foreach 'fac', accession + set of coords
 
         ($faccn2, $coords, $sort_coord, $strand) = helperBreakdownFac($fac, $fac_sep, $FH_HR);
-        if($faccn ne $faccn2) { DNAORG_FAIL("ERROR inconsistent fac value: $faccn ne $faccn2", 1, $FH_HR); }
+        if($faccn ne $faccn2) { DNAORG_FAIL("ERROR in $sub_name, inconsistent fac value: $faccn ne $faccn2", 1, $FH_HR); }
         
         if(exists $quals_HAR->{$fac}) { # if there's any qualifiers for this fac
           # printf("quals_HA feature: fac: $fac exists!\n"); 
@@ -2304,13 +2336,13 @@ sub getSingleFeatureTableInfo {
                     $save_str = $qval;  
                   }
                   else { 
-                    if($qval =~ m/\Q$qval_sep/) { DNAORG_FAIL("ERROR qualifier_name $qval has the string $qval_sep in it", 1, $FH_HR); }
+                    if($qval =~ m/\Q$qval_sep/) { DNAORG_FAIL("ERROR in $sub_name, qualifier_name $qval has the string $qval_sep in it", 1, $FH_HR); }
                     $save_str .= $qval_sep . $qval; # not first value, concatenate onto previous values
                   }
                 }
               }
-              # if there's no value for this qualifier, put '-'
-              if($save_str eq "") { $save_str = "-"; }
+              # if there's no value for this qualifier, put '<empty>'
+              if($save_str eq "") { $save_str = "<empty>"; }
               push(@{$tbl_HHAR->{$accn}{$column}}, $save_str);
             }
           } 
@@ -2330,6 +2362,8 @@ sub getSingleFeatureTableInfo {
 #
 # Arguments: 
 #    $FH:                file handle to print to
+#    $version:           version of dnaorg
+#    $releasedate:       month/year of version (e.g. "Feb 2016")
 #    $synopsis:          string reporting the date
 #    $command:           command used to execute the script
 #    $date:              date information to print
@@ -2340,13 +2374,13 @@ sub getSingleFeatureTableInfo {
 # Dies: never
 ####################################################################
 sub outputBanner {
-  my $nargs_expected = 5;
+  my $nargs_expected = 7;
   my $sub_name = "outputBanner()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($FH, $synopsis, $command, $date, $opts_used) = @_;
+  my ($FH, $version, $releasedate, $synopsis, $command, $date, $opts_used) = @_;
 
   print $FH ("\# $synopsis\n");
-  print $FH ("\# dnaorg 0.1 (February 2016)\n");
+  print $FH ("\# dnaorg $version ($releasedate)\n");
 #  print $FH ("\# Copyright (C) 2014 HHMI Janelia Research Campus\n");
 #  print $FH ("\# Freely distributed under the GNU General Public License (GPLv3)\n");
   print $FH ("\# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
@@ -2453,7 +2487,7 @@ sub getStrandStats {
       elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "-") { $nneg++; }
       elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "!") { $nbth++; }
       elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "?") { $nunc++; }
-      else { DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to parse strand for feature %d for $accn\n", $i+1), 1, $FH_HR); }
+      else { DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to parse strand (%s) for feature %d for $accn\n", $tbl_HHAR->{$accn}{"strand"}[$i], $i+1), 1, $FH_HR); }
       $strand_str .= $tbl_HHAR->{$accn}{"strand"}[$i];
     }
   }
@@ -2648,7 +2682,7 @@ sub validateExecutableHash {
       $fail_str .= "\t$execs_HR->{$key} does not exist.\n"; 
     }
     elsif(! -x $execs_HR->{$key}) { 
-      $fail_str .= "\t$execs_HR->{$key} does not exist.\n"; 
+      $fail_str .= "\t$execs_HR->{$key} exists but is not an executable file.\n"; 
     }
   }
   
@@ -2763,7 +2797,8 @@ sub validateModelInfoHashIsComplete {
 #             'Complete' means it has all the expected keys, each of which is an identically sized array.
 #             The expected keys are passed in in @{$expected_AR}.
 #             If @{exceptions_AR} is non-empty, then keys in 
-#             in that array need not be in %{$info_HAR}.
+#             in that array do not need to be in %{$info_HAR},
+#             but they can be.
 #
 # Arguments:
 #   $info_HAR:         REF to hash of arrays of model information
@@ -2789,7 +2824,7 @@ sub validateInfoHashOfArraysIsComplete {
   # make sure our exceptions are actually in the expected array
   if(defined $exceptions_AR) { 
     foreach my $key (@{$exceptions_AR}) { 
-      if(findValueInArray($expected_keys_AR, $key) == -1) { 
+      if(findValueInArray($expected_keys_AR, $key, $FH_HRR) == -1) { 
         DNAORG_FAIL("ERROR in $sub_name, excepted value $key is not an expected key in the feature info hash", 1, $FH_HR);
       }
     }
@@ -2798,41 +2833,42 @@ sub validateInfoHashOfArraysIsComplete {
   # make the list of keys we'll require, this is all expected keys minus any exceptions in @{$exceptions_AR}
   my @reqd_keys_A = ();
   foreach my $key (@{$expected_keys_AR}) { 
-    if((! defined $exceptions_AR) || (findValueInArray($key, $exceptions_AR) == -1)) { 
+    if((! defined $exceptions_AR) || (findValueInArray($key, $exceptions_AR, $FH_HR) == -1)) { 
       push(@reqd_keys_A, $key);
     }
   }
                          
   my $nftr = validateAndGetSizeOfInfoHashOfArrays($info_HAR, \@reqd_keys_A, $FH_HR);  
 
-  if(scalar(keys %{$info_HAR}) ne scalar(@reqd_keys_A)) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, %d keys expected in the info hash, but %d exist", scalar(@reqd_keys_A), scalar(keys %{$info_HAR})), 1, $FH_HR); 
-  }
-
   return $nftr;
 }
 
 #################################################################
-# Subroutine : findValueInArray()
+# Subroutine : findNonNumericValueInArray()
 # Incept:      EPN, Tue Feb 16 10:40:57 2016
 #
-# Purpose:     Returns (first) index in @{$AR} that has the value
-#              $value. Returns -1 if it does not exist.
+# Purpose:     Returns (first) index in @{$AR} that has the 
+#              nonnumeric value $value. Returns -1 
+#              if it does not exist.
 #
 # Arguments: 
 #   $AR:       REF to array 
 #   $value:    the value we're checking exists in @{$AR}
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
 # 
-# Returns:     '1' if $value exists in @{$AR}, '0' if not
+# Returns:     index ($i) '1' if $value exists in @{$AR}, '-1' if not
 #
-# Dies:        if $value does not exist in @{$AR}
-#
+# Dies:        if $value is numeric (matches regex /\d+\.?\d*/ or /\d*\.?\d+/)
 ################################################################# 
-sub findValueInArray { 
-  my $nargs_expected = 2;
+sub findNonNumericValueInArray { 
+  my $nargs_expected = 3;
   my $sub_name = "validateValueExistsInArray()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR, $value, $FH_HR);
+
+  if($value =~ m/^\d+\.?\d*$/ || $value =~ m/^\d*\.?\d+$/) {
+      DNAORG_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality");
+  }
 
   if(! defined $AR) { 
     return -1; 
@@ -2844,7 +2880,7 @@ sub findValueInArray {
       }
   }
 
-  return -1;
+  return -1; # did not find it
 }
 
 #######################################################################
@@ -2898,8 +2934,8 @@ sub outputConclusionAndCloseFiles {
     }
   }
   if(defined $cmd_FH) { 
-    outputString($cmd_FH, 0, "# " . `date`);
-    outputString($cmd_FH, 0, "# " . `uname -a`);
+    outputString($cmd_FH, 0, "# " . `date`);      # prints date,        e.g.: 'Mon Feb 22 16:37:09 EST 2016'
+    outputString($cmd_FH, 0, "# " . `uname -a`);  # prints system info, e.g.: 'Linux cbbdev13 2.6.32-573.7.1.el6.x86_64 #1 SMP Tue Sep 22 22:00:00 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux'
     if($total_secs ne "") { # don't print this if rvr-align is caller
       outputString($cmd_FH, 0, "# DNAORG-SUCCESS\n");
     }
@@ -2919,10 +2955,10 @@ sub outputConclusionAndCloseFiles {
 # Purpose:    Output elapsed time in hhhh:mm:ss format.
 # 
 # Arguments:
-# $prefix:               string to print before the hhhh:mm:ss time info.
-# $inseconds:            number of seconds
-# $print_to_stdout:      '1' to print to stdout, '0' not to
-# $FH:                   file handle to print to
+#   $prefix:               string to print before the hhhh:mm:ss time info.
+#   $inseconds:            number of seconds
+#   $print_to_stdout:      '1' to print to stdout, '0' not to
+#   $FH:                   file handle to print to
 #
 # Returns:    Nothing, if it returns, everything is valid.
 # 
@@ -2934,7 +2970,7 @@ sub outputTiming {
   my ($prefix, $inseconds, $print_to_stdout, $FH) = @_;
 
   my $time_str = formatTimeString($inseconds);
-  outputString($FH, $print_to_stdout, $prefix . " " . $time_str . "\n");
+  outputString($FH, $print_to_stdout, $prefix . " " . $time_str . "\n"); # this will always end with a newline
   
   return;
 }
@@ -2948,6 +2984,11 @@ sub outputTiming {
 #          and potentially to stdout as well. 
 #          If <$FH> is not defined then do not 
 #          print to a file. 
+#
+# Arguments:
+#   $FH:              file handle to output to, can be undef
+#   $print_to_stdout: if '1' also output string to stdout
+#   $string:          the string to output
 #
 # Returns: Nothing. 
 #
@@ -2970,7 +3011,7 @@ sub outputString {
 # Subroutine: formatTimeString()
 # Incept:     EPN, Fri Oct 24 13:18:23 2014 [rnavore]
 # 
-# Purpose:    Print a timing in hhhh:mm:ss format to 1 second precision.
+# Purpose:    Get a timing in hhhh:mm:ss format.
 # 
 # Arguments:
 # $inseconds: number of seconds
@@ -2999,6 +3040,7 @@ sub formatTimeString {
 
   $tseconds = sprintf("%05.2f", $seconds);
   my $ret_str = sprintf("%*s:%2s:%5s", $ndig_hours, $thours, $tminutes, $tseconds);
+  # %*s covers two of the arguments: $ndig_hours specifies width of string, $thours is the string
   
   return $ret_str;
 }
