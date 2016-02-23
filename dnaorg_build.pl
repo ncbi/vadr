@@ -10,6 +10,7 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
 require "dnaorg.pm"; 
+require "epn-options.pm";
 
 #######################################################################################
 # What this script does: 
@@ -64,16 +65,16 @@ $opt_group_desc_H{"1"} = "basic options";
 #     option            type       default               group   requires incompat preamble-output                          help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,   undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
 opt_Add("-c",           "boolean", 0,                        1,    undef, undef,   "genome is circular",                    "genome is circular",                                 \%opt_HH, \@opt_order_A);
-opt_Add("-d",           "string",  0,                        1,    undef, undef,   "directory specified as",                "specify output directory is <s> (created with dnaorg_build.pl -d <s>), not <reference accession>\n", \%opt_HH, \@opt_order_A);
+opt_Add("-d",           "string",  undef,                    1,    undef, undef,   "directory specified as",                "specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,                        1,    undef, undef,   "forcing directory overwrite",           "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                        1,    undef, undef,   "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("-matpept",     "string",  undef,                    1,    undef, undef,   "using pre-specified mat_peptide info",  "read mat_peptide info in addition to CDS info, file <f> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("-dirty",       "boolean", undef,                    1,    undef, undef,   "leaving intermediate files on disk",    "do not remove intermediate files, leave them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,   "using pre-specified mat_peptide info",  "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
+opt_Add("--dirty",      "boolean", 0,                        1,    undef, undef,   "leaving intermediate files on disk",    "do not remove intermediate files, leave them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options affecting window/hit definition";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
-opt_Add("-cslow",    "boolean", undef,                    1,    undef, undef,   "running cmcalibrate in slow mode",               "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
-opt_Add("-clocal",   "boolean", undef,                    1,    undef, undef,   "running cmcalibrate on local machine",           "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("--cslow",   "boolean", 0,                     2,    undef, undef,   "running cmcalibrate in slow mode",               "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
+opt_Add("--clocal",  "boolean", 0,                     2,    undef, undef,   "running cmcalibrate on local machine",           "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -87,18 +88,21 @@ my $options_okay =
                 'd=s'          => \$GetOptions_H{"-d"},
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
-                'matpept=s'    => \$GetOptions_H{"-matpept"},
-                'dirty'        => \$GetOptions_H{"-dirty"},
+                'matpept=s'    => \$GetOptions_H{"--matpept"},
+                'dirty'        => \$GetOptions_H{"--dirty"},
 # calibration related options
-                'cslow'        => \$GetOptions_H{"-cslow"},
-                'clocal'       => \$GetOptions_H{"-clocal"});
+                'cslow'        => \$GetOptions_H{"--cslow"},
+                'clocal'       => \$GetOptions_H{"--clocal"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
+my $date          = scalar localtime();
+my $version       = "0.1";
+my $releasedate   = "Feb 2016";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  OutputBanner(*STDOUT, $synopsis);
+  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
@@ -108,7 +112,7 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
 if(scalar(@ARGV) != 1) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
-  print "\nTo see more help on available options, do rvr-align -h\n\n";
+  print "\nTo see more help on available options, do dnaorg_build.pl -h\n\n";
   exit(1);
 }
 my ($ref_accn) = (@ARGV);
@@ -127,7 +131,7 @@ my $do_force       = $opt_HH{"-f"}{"value"};
 my $be_verbose     = $opt_HH{"-v"}{"value"};
 my $matpept_infile = $opt_HH{"-matpept"}{"value"};
 my $do_matpept     = (defined $matpept_infile) ? 1 : 0;
-#my $do_nomatpept   = 0;     
+my $do_nomatpept   = 0;     
 my $do_dirty       = $opt_HH{"-d"}{"value"};
 my $do_cslow       = $opt_HH{"-cslow"}{"value"};
 my $do_clocal      = $opt_HH{"-clocal"}{"value"};
@@ -171,8 +175,7 @@ my $out_root = $dir . "/" . $dir_tail . ".dnaorg_build";
 # output preamble
 my @arg_desc_A = ("reference accession");
 my @arg_A      = ($ref_accn);
-my $date     = scalar localtime();
-outputBanner(*STDOUT, $synopsis, $date);
+outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
@@ -200,7 +203,7 @@ my $cmd_FH = $ofile_FH_H{"cmd"};
 # to close these first.
 
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $synopsis, $date);
+outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
@@ -360,7 +363,7 @@ my %mdl_info_HA = (); # hash of arrays, hash keys: "ftr_idx",  "is_first",  "is_
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file });
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "index", $fasta_file.".ssi", "Index for reference genome sequence file", \%ofile_FH_H);
 
-fetchReferenceFeatureSequences($sqfile, $seq_accn_A[0], $ref_totlen, $out_root, $do_circular, $do_dirty, \%mdl_info_HA, \%ftr_info_HA, $all_stk_file, \%ofile_FH_H); # 0 is 'do_circular' which is irrelevant in this context
+fetchReferenceFeatureSequences(\%execs_H, $sqfile, $seq_accn_A[0], $ref_totlen, $out_root, $do_circular, $do_dirty, \%mdl_info_HA, \%ftr_info_HA, $all_stk_file, \%ofile_FH_H); # 0 is 'do_circular' which is irrelevant in this context
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "refstk", $all_stk_file, "Stockholm alignment file with reference features", \%ofile_FH_H);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);

@@ -98,6 +98,7 @@
 # removeDirPath():                         remove the directory path from a path, e.g. "foodir/foodir2/foo.stk" becomes "foo.stk"
 # outputConclusionAndCloseFiles():         output a list of files created and final few lines of output and close output files
 # outputTiming():                          output elapsed time in hhhh:mm:ss format
+# maxLengthScalarInArray():                determine the max length scalar in an array.
 use strict;
 use warnings;
 
@@ -2818,7 +2819,7 @@ sub validateInfoHashOfArraysIsComplete {
   # make sure our exceptions are actually in the expected array
   if(defined $exceptions_AR) { 
     foreach my $key (@{$exceptions_AR}) { 
-      if(findValueInArray($expected_keys_AR, $key, $FH_HRR) == -1) { 
+      if(findValueInArray($expected_keys_AR, $key, $FH_HR) == -1) { 
         DNAORG_FAIL("ERROR in $sub_name, excepted value $key is not an expected key in the feature info hash", 1, $FH_HR);
       }
     }
@@ -3089,8 +3090,8 @@ sub maxLengthScalarValueInHash {
 #################################################################
 sub getReferenceFeatureInfo { 
   my $sub_name = "getReferenceFeatureInfo()";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
  
   my ($cds_tbl_HHAR, $mp_tbl_HHAR, $ftr_info_HAR, $ref_accn, $FH_HR) = @_;
 
@@ -3145,8 +3146,8 @@ sub getReferenceFeatureInfo {
 #################################################################
 sub addClosedOutputFile { 
   my $sub_name = "addClosedOutputFile()";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
  
   my ($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, $key, $filename, $desc, $FH_HR) = @_;
 
@@ -3222,11 +3223,11 @@ sub parseListFile {
     if($line =~ m/\w/) {  # skip blank lines
       chomp $line;
       if($do_accn) { 
-        stripVersion(\$accn); # remove version
+        stripVersion(\$line); # remove version
         if(exists $line_exists_H{$line}) { 
-          DNAORG_FAIL("ERROR in $sub_name, the line $line appears twice in the input list file $listfile", 1, $FH_HR); 
+          DNAORG_FAIL("ERROR in $sub_name, the line $line appears twice in the input list file $infile", 1, $FH_HR); 
         }
-        $line_exists_H{$accn} = 1;
+        $line_exists_H{$line} = 1;
       }
       push(@{$line_AR}, $line);
     }
@@ -3256,7 +3257,7 @@ sub parseListFile {
 ################################################################# 
 sub parseSpecStartFile { 
   my $sub_name = "parseSpecStartFile";
-  my $nargs_expected = 3;
+  my $narg_expected = 3;
   if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
 
   my ($infile, $specstart_AAR, $FH_HR) = @_;
@@ -3365,7 +3366,7 @@ sub parseSpecStartFile {
 sub wrapperGetInfoUsingEdirect {
   my $sub_name = "wrapperGetInfoUsingEdirect";
   my $nargs_expected = 3;
-  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($infile, $specstart_AAR, $FH_HR) = @_;
 
@@ -3433,6 +3434,33 @@ sub wrapperGetInfoUsingEdirect {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine : maxLengthScalarInArray()
+# Incept:      EPN, Tue Nov  4 15:19:44 2008 [ssu-align]
+# 
+# Purpose:     Return the maximum length of a scalar in an array
+#
+# Arguments: 
+#   $AR: reference to the array
+# 
+# Returns:     The length of the maximum length scalar.
+#
+################################################################# 
+sub maxLengthScalarInArray {
+  my $narg_expected = 1;
+  my $sub_name = "maxLengthScalarInArray()";
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  my ($AR) = $_[0];
+
+  my $max = 0;
+  my $len = 0;
+  foreach my $el (@{$AR}) { 
+    $len = length($el);
+    if($len > $max) { $max = $len; }
+  }
+  return $max;
 }
 
 ###########################################################################

@@ -535,8 +535,8 @@ sub opt_OutputPreamble {
     }
   }
 
-  my $width_lhs = MaxLengthScalarInArray(\@lhs_A);
-  my $width_rhs = MaxLengthScalarInArray(\@rhs_A);
+  my $width_lhs = maxLengthScalarInArray(\@lhs_A);
+  my $width_rhs = maxLengthScalarInArray(\@rhs_A);
   for($i = 0; $i < $nlines; $i++) { 
     printf $FH ("%-*s  %-*s\n", $width_lhs, $lhs_A[$i], $width_rhs, $rhs_A[$i]); 
   }
@@ -603,7 +603,7 @@ sub opt_OutputHelp {
         $nopt++;
       }
     }
-    my $width_lhs = MaxLengthScalarInArray(\@lhs_A);
+    my $width_lhs = maxLengthScalarInArray(\@lhs_A);
     # output formatted string for each option
     for($i = 0; $i < $nopt; $i++) { 
       printf $FH ("  %-*s : %s\n", $width_lhs, $lhs_A[$i], $rhs_A[$i]);
