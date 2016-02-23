@@ -365,9 +365,13 @@ addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_des
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-# verify our model and feature info hashes are complete
+# verify our model and feature info hashes are complete, 
+# if validateFeatureInfoHashIsComplete() fails
+# the program will exit with an error message
+my $nmdl; # the number of homology models (CMs)
 validateFeatureInfoHashIsComplete(\%ftr_info_HA, undef, \%ofile_FH_H);
-my $nmdl = validateModelInfoHashIsComplete  (\%mdl_info_HA, undef, \%ofile_FH_H);
+$nmdl = validateModelInfoHashIsComplete(\%mdl_info_HA, undef, \%ofile_FH_H);
+
 
 ####################################
 # Step 3. Build and calibrate models 
