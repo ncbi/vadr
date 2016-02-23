@@ -1063,12 +1063,11 @@ sub stripVersion {
 #  $ref_seq_accn:      sequence accession of reference
 #  $ref_totlen:        length of reference 
 #  $out_root:          root of output name files
-#  $do_circular:       true if genome is circularized and we allow features to span stop..start boundary
-#  $do_dirty:          true to *not* remove intermediate files
 #  $mdl_info_HAR:      ref to hash of arrays with information on the models, FILLED HERE
 #  $ftr_info_HAR:      ref to hash of arrays with information on the features, ADDED TO HERE
 #  $all_stk_file:      name of output file we will write the stockholm single sequence 
 #                      alignments of all features to
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:             REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void; fills @{$values_HHAR}
@@ -1077,10 +1076,10 @@ sub stripVersion {
 #################################################################
 sub fetchReferenceFeatureSequences {
   my $sub_name = "fetchReferenceFeatureSequences()";
-  my $nargs_expected = 11;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $sqfile, $ref_seq_accn, $ref_totlen, $out_root, $do_circular, $do_dirty, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $FH_HR) = @_;
+  my ($execs_HR, $sqfile, $ref_seq_accn, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR) = @_;
 
   # contract check
   # ftr_info_HAR should have array data for keys "ref_coords", "ref_strand"
@@ -1088,6 +1087,8 @@ sub fetchReferenceFeatureSequences {
   my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
   my $nftr_with_models = getNumFeaturesWithModels($ftr_info_HAR, $FH_HR);
 
+  my $do_dirty    = opt_Get("-d", $opt_HHR); # should we leave intermediates files on disk, instead of removing them?
+  my $do_circular = opt_Get("-c", $opt_HHR); # are we allowing circular genomes?
   my $esl_reformat = $execs_HR->{"esl-reformat"};
 
   my $cur_out_root;
@@ -1866,13 +1867,11 @@ sub getQualifierValues {
 # Arguments:
 #   $execs_HR:       reference to hash with infernal executables, 
 #                    e.g. $execs_HR->{"cmbuild"} is path to cmbuild, PRE-FILLED
-#   $do_calib_slow:  '1' to calibrate using default parameters instead of
-#                    options to make it go much faster
-#   $do_calib_local: '1' to run cmcalibrate locally, '0' to do it on the farm
 #   $stk_file:       stockholm DB file
 #   $out_root:       string for naming output files
 #   $indi_name_AR:   ref to array of individual model names, we only use this if 
 #                    $do_calib_local is 0 or undef, PRE-FILLED
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
 #   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
 #                    
 # Returns:    void
@@ -1881,10 +1880,10 @@ sub getQualifierValues {
 #################################################################
 sub createCmDb { 
   my $sub_name = "createCmDb()";
-  my $nargs_expected = 7;
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $do_calib_slow, $do_calib_local, $stk_file, $out_root, $indi_name_AR, $FH_HR) = @_;
+  my ($execs_HR, $stk_file, $out_root, $indi_name_AR, $opt_HHR, $FH_HR) = @_;
 
   if(! -s $stk_file)  { DNAORG_FAIL("ERROR in $sub_name, $stk_file file does not exist or is empty", 1, $FH_HR); }
 
@@ -1893,6 +1892,9 @@ sub createCmDb {
     my $file = $out_root . ".cm." . $suffix;
     if(-e $file) { unlink $file; }
   }
+
+  my $do_calib_slow  = opt_Get("--cslow", $opt_HHR);  # should we run in 'slow' mode (instead of fast mode)?
+  my $do_calib_local = opt_Get("--clocal", $opt_HHR); # should we run locally (instead of on farm)?
 
   my ($cmbuild_opts,     $cmbuild_cmd);        # options and command for cmbuild
   my ($cmcalibrate_opts, $cmcalibrate_cmd);    # options and command for cmcalibrate

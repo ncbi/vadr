@@ -6,6 +6,9 @@
 # EPN, Tue Feb 23 13:34:31 2016 [incorporation into dnaorg]
 # version: $Id$
 #
+# Many aspects of this module are modelled after Easel's esl_getopts module
+# by Sean Eddy (bioeasel.org).
+# 
 use strict;
 use warnings;
 
@@ -221,7 +224,7 @@ sub opt_IsOn {
 
   if(! exists $opt_HHR->{$optname}) { printf STDERR ("ERROR, $sub_name option $optname does not exist.\n"); exit(1); } 
 
-  return (defined $opt_HHR->{$optname}{"value"} && $opt_HHR->{$optname}{"value"} != 0) ? 1 : 0;
+  return (defined $opt_HHR->{$optname}{"value"} && $opt_HHR->{$optname}{"value"} ne 0) ? 1 : 0;
 }
 
 #####################################################################
@@ -269,7 +272,7 @@ sub opt_IsUsed {
 #             Dies if option does not exist.
 #
 # Arguments:
-# $optname:    string for option (e.g. "-n")
+# $optname:   string for option (e.g. "-n")
 # $opt_HHR:   ref to %opt_HH (see description at top of this file)
 #
 # Returns:    see Purpose.

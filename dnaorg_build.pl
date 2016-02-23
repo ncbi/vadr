@@ -62,14 +62,15 @@ my %opt_group_desc_H = ();
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 $opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat preamble-output                          help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,   undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-c",           "boolean", 0,                        1,    undef, undef,   "genome is circular",                    "genome is circular",                                 \%opt_HH, \@opt_order_A);
-opt_Add("-d",           "string",  undef,                    1,    undef, undef,   "directory specified as",                "specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,    undef, undef,   "forcing directory overwrite",           "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,   "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,   "using pre-specified mat_peptide info",  "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("--dirty",      "boolean", 0,                        1,    undef, undef,   "leaving intermediate files on disk",    "do not remove intermediate files, leave them all on disk", \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                          help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is circular",                    "genome is circular",                                 \%opt_HH, \@opt_order_A);
+opt_Add("-d",           "string",  undef,                    1,    undef, undef,      "directory specified as",                "specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",           "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",  "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
+opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",         "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
+opt_Add("--dirty",      "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",    "do not remove intermediate files, leave them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options affecting window/hit definition";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
@@ -89,6 +90,7 @@ my $options_okay =
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
+                'nomatpept'    => \$GetOptions_H{"--nomatpept"},
                 'dirty'        => \$GetOptions_H{"--dirty"},
 # calibration related options
                 'cslow'        => \$GetOptions_H{"--cslow"},
@@ -123,18 +125,8 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
-# TEMPORARY
-# basic/common options:
-my $dir            = $opt_HH{"-d"}{"value"};
-my $do_circular    = $opt_HH{"-c"}{"value"};
-my $do_force       = $opt_HH{"-f"}{"value"};
-my $be_verbose     = $opt_HH{"-v"}{"value"};
-my $matpept_infile = $opt_HH{"-matpept"}{"value"};
-my $do_matpept     = (defined $matpept_infile) ? 1 : 0;
-my $do_nomatpept   = 0;     
-my $do_dirty       = $opt_HH{"-d"}{"value"};
-my $do_cslow       = $opt_HH{"-cslow"}{"value"};
-my $do_clocal      = $opt_HH{"-clocal"}{"value"};
+my $dir        = opt_Get("-d", \%opt_HH);          # this will be undefined unless -d set on cmdline
+my $do_matpept = opt_IsOn("--matpept", \%opt_HH);
 
 #############################
 # create the output directory
@@ -151,18 +143,18 @@ else {
 }
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
-  if($do_force) { runCommand($cmd, $be_verbose, undef); push(@early_cmd_A, $cmd); }
-  else          { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
   $cmd = "rm $dir";
-  if($do_force) { runCommand($cmd, $be_verbose, undef); push(@early_cmd_A, $cmd); }
-  else          { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-runCommand($cmd, $be_verbose, undef);
+runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -217,8 +209,8 @@ foreach $cmd (@early_cmd_A) {
 # -matpept <f>
 my @cds2pmatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of primary matpept indices that comprise this CDS
 my @cds2amatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of all     matpept indices that comprise this CDS
-if(defined $matpept_infile) { 
-  parseMatPeptSpecFile($matpept_infile, \@cds2pmatpept_AA, \@cds2amatpept_AA, \%ofile_FH_H);
+if($do_matpept) { 
+  parseMatPeptSpecFile(opt_Get("--matpept", \%opt_HH), \@cds2pmatpept_AA, \@cds2amatpept_AA, \%ofile_FH_H);
 }
 
 ###################################################
@@ -266,9 +258,9 @@ my $mp_file = $out_root . ".mat_peptide";
 #      if -nomatpept was   enabled we don't attempt to create a matpept file
 # else if -matpept was     enabled we validate that the resulting matpept file is not empty
 # else if -matpept was not enabled we validate that the resulting matpept file is     empty
-if(! $do_nomatpept) { 
+if(! opt_Get("--nomatpept", \%opt_HH)) { 
   $cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd mat_peptide INSDFeature_location product > $mp_file";
-  runCommand($cmd, $be_verbose, \%ofile_FH_H);
+  runCommand($cmd, opt_Get("-v", \%opt_HH), \%ofile_FH_H);
   
   if($do_matpept) { 
     if(! -s  $mp_file) { 
@@ -282,7 +274,7 @@ if(! $do_nomatpept) {
     }
     else { 
       # remove the empty file we just created
-      runCommand("rm $mp_file", $be_verbose, \%ofile_FH_H);
+      runCommand("rm $mp_file", opt_Get("-v", \%opt_HH), \%ofile_FH_H);
     }
   }
 }
@@ -291,7 +283,7 @@ if(! $do_nomatpept) {
 # create the edirect ftable file
 my $ft_file  = $out_root . ".ftable";
 $cmd = "esearch -db nuccore -query $ref_accn | efetch -format ft > $ft_file";
-runCommand($cmd, $be_verbose, \%ofile_FH_H);
+runCommand($cmd, opt_Get("-v", \%opt_HH), \%ofile_FH_H);
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "ft", $ft_file, "Feature table obtained via edirect", \%ofile_FH_H);
 
 # 3) create the length file
@@ -300,7 +292,7 @@ my $len_file  = $out_root . ".length";
 my $len_file_created = $len_file . ".created";
 my $len_file_lost    = $len_file . ".lost";
 $cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
-runCommand($cmd, $be_verbose, \%ofile_FH_H);
+runCommand($cmd, opt_Get("-v", \%opt_HH), \%ofile_FH_H);
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "len", $len_file, "Sequence length file", \%ofile_FH_H);
 if(! -s $len_file) { 
   DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, \%ofile_FH_H); 
@@ -324,8 +316,8 @@ if($do_matpept) {
   if (! exists ($mp_tbl_HHA{$ref_accn})) { 
     DNAORG_FAIL("ERROR -matpept enabled, but no mature peptide information stored for reference accession", 1, \%ofile_FH_H); 
   }
-  # validate the CDS:mat_peptide relationships that we read from $matpept_infile
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, $do_circular, $totlen_H{$ref_accn}, \%ofile_FH_H);
+  # validate the CDS:mat_peptide relationships that we read from the $matpept input file
+  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $totlen_H{$ref_accn}, \%ofile_FH_H);
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -339,7 +331,7 @@ my @accn_A     = ($ref_accn); # array of accessions
 my @seq_accn_A = ();      # array of actual sequence names in $fasta_file that we'll create, filled in fetchSequencesUsingEslFetchCds
 
 # fetch the reference genome
-fetchSequencesUsingEslFetchCds($execs_H{"esl_fetch_cds"}, 0, $fetch_file, $fasta_file, $do_circular, \@accn_A, \%totlen_H, \@seq_accn_A, undef, undef, \%ofile_FH_H);
+fetchSequencesUsingEslFetchCds($execs_H{"esl_fetch_cds"}, 0, $fetch_file, $fasta_file, opt_Get("-c", \%opt_HH), \@accn_A, \%totlen_H, \@seq_accn_A, undef, undef, \%ofile_FH_H);
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl", \%ofile_FH_H);
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "fasta", $fasta_file, "Sequence file with reference genome", \%ofile_FH_H);
 
@@ -363,7 +355,7 @@ my %mdl_info_HA = (); # hash of arrays, hash keys: "ftr_idx",  "is_first",  "is_
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file });
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "index", $fasta_file.".ssi", "Index for reference genome sequence file", \%ofile_FH_H);
 
-fetchReferenceFeatureSequences(\%execs_H, $sqfile, $seq_accn_A[0], $ref_totlen, $out_root, $do_circular, $do_dirty, \%mdl_info_HA, \%ftr_info_HA, $all_stk_file, \%ofile_FH_H); # 0 is 'do_circular' which is irrelevant in this context
+fetchReferenceFeatureSequences(\%execs_H, $sqfile, $seq_accn_A[0], $ref_totlen, $out_root, \%mdl_info_HA, \%ftr_info_HA, $all_stk_file, \%opt_HH, \%ofile_FH_H); # 0 is 'do_circular' which is irrelevant in this context
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "refstk", $all_stk_file, "Stockholm alignment file with reference features", \%ofile_FH_H);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -379,9 +371,10 @@ $nmdl = validateModelInfoHashIsComplete(\%mdl_info_HA, undef, \%ofile_FH_H);
 ####################################
 # Step 3. Build and calibrate models 
 ####################################
-my $build_str = ($do_clocal) ? "Building and calibrating models" : "Building models and submitting calibration jobs to the farm";
+my $do_clocal = opt_Get("--clocal", \%opt_HH); # are we running calibration locally
+my $build_str = $do_clocal ? "Building and calibrating models" : "Building models and submitting calibration jobs to the farm";
 $start_secs = outputProgressPrior($build_str, $progress_w, $log_FH, *STDOUT);
-createCmDb(\%execs_H, $do_cslow, $do_clocal, $all_stk_file, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%ofile_FH_H);
+createCmDb(\%execs_H, $all_stk_file, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, \%ofile_FH_H);
 if(! $do_clocal) { 
   for(my $i = 0; $i < $nmdl; $i++) { 
     addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "cm$i", "$out_root.$i.cm", 
