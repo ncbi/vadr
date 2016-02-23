@@ -33,89 +33,104 @@ my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 my $esl_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 
-# The definition of $usage explains the script and usage:
-my $usage = "\ndnaorg_build.pl <reference accession>\n";
-$usage .= "\n"; 
-$usage .= " This script builds homology models for sequence features\n";
-$usage .= " in a reference sequence with the accession <reference accession>\n";
-$usage .= "\n";
-$usage .= " BASIC/COMMON OPTIONS:\n";
-$usage .= "  -c           : genome is circular\n";
-$usage .= "  -d <s>       : define output directory as <s>, not <reference accession>\n";
-$usage .= "  -f           : force; if dir <reference accession> exists, overwrite it\n";
-$usage .= "  -v           : be verbose; output commands to stdout as they're run\n";
-$usage .= "  -matpept <f> : read mat_peptide info in addition to CDS info, file <f> explains CDS:mat_peptide relationships\n";
-$usage .= "  -nomatpept   : ignore mat_peptide information for <reference accession> (do not model it)\n";
-$usage .= "  -dirty       : do not remove intermediate files, leave them all on disk\n";
-$usage .= "\n OPTIONS SPECIFIC TO INFERNAL:\n";
-$usage .= "  -cslow  : use default cmcalibrate parameters, not parameters optimized for speed\n";
-$usage .= "  -clocal : run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm\n";
-$usage .= "\n";
+#########################################################
+# Command line and option processing using epn-options.pm
+#
+# opt_HH: 2D hash:
+#         1D key: option name (e.g. "-h")
+#         2D key: string denoting type of information 
+#                 (one of "type", "default", "group", "requires", "incompatible", "preamble", "help")
+#         value:  string explaining 2D key:
+#                 "type":          "boolean", "string", "int" or "real"
+#                 "default":       default value for option
+#                 "group":         integer denoting group number this option belongs to
+#                 "requires":      string of 0 or more other options this option requires to work, each separated by a ','
+#                 "incompatiable": string of 0 or more other options this option is incompatible with, each separated by a ','
+#                 "preamble":      string describing option for preamble section (beginning of output from script)
+#                 "help":          string describing option for help section (printed if -h used)
+#                 "setby":         '1' if option set by user, else 'undef'
+#                 "value":         value for option, can be undef if default is undef
+#
+# opt_order_A: array of options in the order they should be processed
+# 
+# opt_group_desc_H: key: group number (integer), value: description of group for help output
+my %opt_HH = ();      
+my @opt_order_A = (); 
+my %opt_group_desc_H = ();
+
+# Add all options to %opt_HH and @opt_order_A.
+# This section needs to be kept in sync (manually) with the &GetOptions call below
+$opt_group_desc_H{"1"} = "basic options";
+#     option            type       default               group   requires incompat preamble-output                          help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,   undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,                        1,    undef, undef,   "genome is circular",                    "genome is circular",                                 \%opt_HH, \@opt_order_A);
+opt_Add("-d",           "string",  0,                        1,    undef, undef,   "directory specified as",                "specify output directory is <s> (created with dnaorg_build.pl -d <s>), not <reference accession>\n", \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                        1,    undef, undef,   "forcing directory overwrite",           "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        1,    undef, undef,   "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("-matpept",     "string",  undef,                    1,    undef, undef,   "using pre-specified mat_peptide info",  "read mat_peptide info in addition to CDS info, file <f> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
+opt_Add("-dirty",       "boolean", undef,                    1,    undef, undef,   "leaving intermediate files on disk",    "do not remove intermediate files, leave them all on disk", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"2"} = "options affecting window/hit definition";
+#       option       type       default                group  requires incompat  preamble-output                          help-output    
+opt_Add("-cslow",    "boolean", undef,                    1,    undef, undef,   "running cmcalibrate in slow mode",               "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
+opt_Add("-clocal",   "boolean", undef,                    1,    undef, undef,   "running cmcalibrate on local machine",           "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
+
+# This section needs to be kept in sync (manually) with the opt_Add() section above
+my %GetOptions_H = ();
+my $usage    = "Usage: dnaorg_build.pl [-options] <reference accession>\n";
+my $synopsis = "dnaorg_build.pl :: build homology models for features of a reference sequence";
+
+my $options_okay = 
+    &GetOptions('h'            => \$GetOptions_H{"-h"}, 
+# basic options
+                'c'            => \$GetOptions_H{"-c"},
+                'd=s'          => \$GetOptions_H{"-d"},
+                'f'            => \$GetOptions_H{"-f"},
+                'v'            => \$GetOptions_H{"-v"},
+                'matpept=s'    => \$GetOptions_H{"-matpept"},
+                'dirty'        => \$GetOptions_H{"-dirty"},
+# calibration related options
+                'cslow'        => \$GetOptions_H{"-cslow"},
+                'clocal'       => \$GetOptions_H{"-clocal"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 
-################# 
-# process options
-#################
-# basic/common options:
-my $dir            = undef; # set to a value <s> with -d <s>
-my $do_circular    = 0;     # set to '1' with -c, genome is circular and features can span stop..start boundary
-my $do_force       = 0;     # set to '1' with -f, overwrite output dir if it exists
-my $be_verbose     = 0;     # set to '1' with -v, output commands as they're run
-my $do_matpept     = 0;     # set to '1' if -matpept    enabled, genome has a single polyprotein, use mat_peptide info, not CDS
-my $do_nomatpept   = 0;     # set to '1' if -nomatpept  enabled, we will ignore mat_peptide information if it exists for the reference
-my $matpept_infile = undef; # defined if -matpept   enabled, the input file that describes relationship between CDS and mat_peptides
-my $do_dirty       = 0;     # set to '1' if -dirty enabled, we will leave intermediate files that are normally removed
-my $do_cslow       = 0; # set to '1' if -cslow   enabled, use default, slow, cmcalibrate parameters instead of speed optimized ones
-my $do_clocal      = 0; # set to '1' if -clocal  enabled, do not submit cmcalibrate job to farm
+# print help and exit if necessary
+if((! $options_okay) || ($GetOptions_H{"-h"})) { 
+  OutputBanner(*STDOUT, $synopsis);
+  opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
+  if(! $options_okay) { die "ERROR, unrecognized option;"; }
+  else                { exit 0; } # -h, exit with 0 status
+}
 
-&GetOptions("d=s"         => \$dir,
-            "c"           => \$do_circular,
-            "f"           => \$do_force, 
-            "v"           => \$be_verbose,
-            "matpept=s"   => \$matpept_infile,
-            "dirty"       => \$do_dirty,
-            "cslow"       => \$do_cslow, 
-            "clocal"      => \$do_clocal) ||
-    die "Unknown option";
-
-if(scalar(@ARGV) != 1) { die $usage; }
+# check that number of command line args is correct
+if(scalar(@ARGV) != 1) {   
+  print "Incorrect number of command line arguments.\n";
+  print $usage;
+  print "\nTo see more help on available options, do rvr-align -h\n\n";
+  exit(1);
+}
 my ($ref_accn) = (@ARGV);
 
-# store options used, so we can output them 
-my $opts_used_short = "";
-my $opts_used_long  = "";
-if(defined $dir) { 
-  $opts_used_short .= "-d $dir ";
-  $opts_used_long  .= "# option:  output directory specified as $dir [-d]\n"; 
-}
-if($do_circular) { 
-  $opts_used_short .= "-c ";
-  $opts_used_long  .= "# option:  genome is circular, so features can span stop..start [-c]\n"; 
-}
-if($do_force) { 
-  $opts_used_short .= "-f ";
-  $opts_used_long  .= sprintf("# option:  forcing overwrite of %s directory [-f]\n", (defined $dir ? $dir : $ref_accn)); 
-}
-if(defined $matpept_infile) { 
-  $do_matpept = 1;
-  $opts_used_short .= "-matpept $matpept_infile";
-  $opts_used_long  .= "# option:  using mat_peptide info, CDS:mat_peptide relationships explained in $matpept_infile [-matpept]\n";
-}
-if($do_dirty) { 
-  $do_matpept = 1;
-  $opts_used_short .= "-dirty ";
-  $opts_used_long  .= "# option:  do not remove intermediate files, leave them all on disk";
-}
-if($do_cslow) { 
-  $opts_used_short .= "-cslow ";
-  $opts_used_long  .= "# option:  run cmcalibrate in default (slow) mode [-cslow]\n";
-}
-if($do_clocal) { 
-  $opts_used_short .= "-clocal ";
-  $opts_used_long  .= "# option:  running calibration jobs locally instead of on the farm [-clocal]\n";
-}
+# set options in opt_HH
+opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
+
+# validate options (check for conflicts)
+opt_ValidateSet(\%opt_HH, \@opt_order_A);
+
+# TEMPORARY
+# basic/common options:
+my $dir            = $opt_HH{"-d"}{"value"};
+my $do_circular    = $opt_HH{"-c"}{"value"};
+my $do_force       = $opt_HH{"-f"}{"value"};
+my $be_verbose     = $opt_HH{"-v"}{"value"};
+my $matpept_infile = $opt_HH{"-matpept"}{"value"};
+my $do_matpept     = (defined $matpept_infile) ? 1 : 0;
+#my $do_nomatpept   = 0;     
+my $do_dirty       = $opt_HH{"-d"}{"value"};
+my $do_cslow       = $opt_HH{"-cslow"}{"value"};
+my $do_clocal      = $opt_HH{"-clocal"}{"value"};
 
 #############################
 # create the output directory
@@ -153,10 +168,12 @@ my $out_root = $dir . "/" . $dir_tail . ".dnaorg_build";
 #############################################
 # output program banner and open output files
 #############################################
-my $synopsis = "dnaorg_build.pl :: build homology models for features of a reference sequence";
-my $command  = "$executable $opts_used_short $ref_accn";
+# output preamble
+my @arg_desc_A = ("reference accession");
+my @arg_A      = ($ref_accn);
 my $date     = scalar localtime();
-outputBanner(*STDOUT, $synopsis, $command, $date, $opts_used_long);
+outputBanner(*STDOUT, $synopsis, $date);
+opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
 # set output file names and file handles, and open those file handles
@@ -176,13 +193,15 @@ foreach my $key (@ofile_keys_A) {
     exit(1);
   }
 }
+
 my $log_FH = $ofile_FH_H{"log"};
 my $cmd_FH = $ofile_FH_H{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $synopsis, $command, $date, $opts_used_long);
+outputBanner($log_FH, $synopsis, $date);
+opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
 foreach $cmd (@early_cmd_A) { 
@@ -216,6 +235,7 @@ validateExecutableHash(\%execs_H, \%ofile_FH_H);
 ###########################################################################
 my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = outputProgressPrior("Gathering information on reference using edirect", $progress_w, $log_FH, *STDOUT);
+
 my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
                         # 1D: key: accession
                         # 2D: key: column name in gene ftable file
@@ -224,6 +244,9 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
                         # 1D: key: accession
                         # 2D: key: column name in gene ftable file
                         # 3D: per-row values for each column
+
+
+
 
 # 1) create the edirect .mat_peptide file, if necessary
 # 2) create the edirect .ftable file

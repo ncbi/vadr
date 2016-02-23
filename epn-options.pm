@@ -2,7 +2,7 @@
 #
 # epn-options.pm
 # Eric Nawrocki
-# EPN, Tue Oct 28 14:16:44 2014 [rnavore]
+# EPN, Tue Oct 28 14:16:44 2014 [rnavore (rvr-options.pm)]
 # EPN, Tue Feb 23 13:34:31 2016 [incorporation into dnaorg]
 # version: $Id$
 #

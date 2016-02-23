@@ -2331,30 +2331,24 @@ sub getSingleFeatureTableInfo {
 # Arguments: 
 #    $FH:                file handle to print to
 #    $synopsis:          string reporting the date
-#    $command:           command used to execute the script
 #    $date:              date information to print
-#    $opts_used:         string describing options used 
 #
 # Returns:    Nothing, if it returns, everything is valid.
 # 
 # Dies: never
 ####################################################################
 sub outputBanner {
-  my $nargs_expected = 5;
+  my $nargs_expected = 4;
   my $sub_name = "outputBanner()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($FH, $synopsis, $command, $date, $opts_used) = @_;
+  my ($FH, $synopsis, $date) = @_;
 
   print $FH ("\# $synopsis\n");
   print $FH ("\# dnaorg 0.1 (February 2016)\n");
 #  print $FH ("\# Copyright (C) 2014 HHMI Janelia Research Campus\n");
 #  print $FH ("\# Freely distributed under the GNU General Public License (GPLv3)\n");
   print $FH ("\# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
-  if(defined $command) { print $FH ("# command: $command\n"); }
   if(defined $date)    { print $FH ("# date:    $date\n"); }
-  if(defined $opts_used && $opts_used ne "") { 
-    print $FH $opts_used;
-  }
   printf $FH ("#\n");
 
   return;
@@ -3201,7 +3195,7 @@ sub parseListFile {
 }
 
 #################################################################
-# Subroutine:  specstartParseInfile()
+# Subroutine:  parseSpecStartFile()
 # Incept:      EPN, Thu Feb 18 15:45:49 2016
 #
 # Purpose:     Parse the input file that defines non-standard start 
@@ -3220,17 +3214,17 @@ sub parseListFile {
 ################################################################# 
 sub parseSpecStartFile { 
   my $sub_name = "parseSpecStartFile";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  my $nargs_expected = 3;
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
 
-  my ($infile, $specstart_AAR) = @_;
+  my ($infile, $specstart_AAR, $FH_HR) = @_;
 
   my $ncds_read      = 0;
   my $cds_idx2store  = 0;
   my @cds_idx_read_A = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
   my $max_cds_idx2store = 0;
 
-  open(IN, $infile) || die "ERROR unable to open $infile for reading in $sub_name";
+  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
 
   while(my $line = <IN>) { 
     if($line !~ m/^\#/) { 
@@ -3246,12 +3240,12 @@ sub parseSpecStartFile {
       chomp $line;
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) != 2) { 
-        die "ERROR in $sub_name, unable to parse specstart input file line: $line"; 
+        DNAORG_FAIL("ERROR in $sub_name, unable to parse specstart input file line: $line", 1, $FH_HR); 
       }
       my ($cds_idx, $codon_str) = ($el_A[0], $el_A[1]);
       my $cds_idx2store = $cds_idx - 1;
       if($cds_idx2store < 0) { 
-        die "ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file"; 
+        DNAORG_FAIL("ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file in line $line", 1, $FH_HR); 
       }
       $cds_idx_read_A[$cds_idx2store] = 1;
       if($cds_idx2store > $max_cds_idx2store) { 
@@ -3274,18 +3268,126 @@ sub parseSpecStartFile {
   for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
     if($cds_idx_read_A[$i]) { 
      if((! defined $specstart_AAR->[$i]) && (! exists $specstart_AAR->[$i])) { 
-       die sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1);
+       DNAORG_FAIL(sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1), 1, $FH_HR);
      }
     }
     else { # we didn't read this one
       if(defined $specstart_AAR->[$i] || exists $specstart_AAR->[$i]) { 
-        die sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1);
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1), 1, $FH_HR);
       }
     }
   }
   # 2: we should have at least read at least one CDS info
   if($ncds_read == 0) { 
-    die "ERROR in $sub_name, no CDS start codon specifications read in matpept input file $infile"; 
+    DNAORG_FAIL("ERROR in $sub_name, no CDS start codon specifications read in matpept input file $infile", 1, $FH_HR); 
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  wrapperGetInfoUsingEdirect()
+# Incept:      EPN, Tue Feb 23 13:00:23 2016
+#
+# Purpose:     A large block of code that is called once by each
+#              dnaorg_build.pl and dnaorg_annotate.pl to gather
+#              sequence information using Edirect and parse that
+#              Edirect output into usable data structures, by
+#              doing the following:
+#
+#              1) create the edirect .mat_peptide file, if necessary
+#              2) create the edirect .ftable file
+#              3) create the length file
+#              4) parse the edirect .mat_peptide file, if necessary
+#              5) parse the edirect .ftable file
+#              6) parse the length file
+#
+#              
+# Arguments: 
+#   $infile:        file to parse
+#   $out_root:      string that is the 'root' for naming output files
+#   $accn_AR:       ref to an array with the accessions we want information for
+#   $cds_tbl_HHAR:  ref to CDS hash of hash of arrays, FILLED HERE
+#   $mp_tbl_HHAR:   ref to mature peptide hash of hash of arrays, can be undef, else FILLED HERE
+# 
+#   $specstart_AAR: ref to array of arrays to fill here, allowed start codons for each CDS
+#                   if array doesn't exist for a CDS, ATG is only allowed start
+#   $ofile_
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd", can be undef
+#
+# Returns:     void, fills @{$specstart_AAR}
+#
+# Dies:        if $infile does not exist or is not readable,
+#              or we have some problem parsing it.
+################################################################# 
+sub wrapperGetInfoUsingEdirect {
+  my $sub_name = "wrapperGetInfoUsingEdirect";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+
+  my ($infile, $specstart_AAR, $FH_HR) = @_;
+
+  my $ncds_read      = 0;
+  my $cds_idx2store  = 0;
+  my @cds_idx_read_A = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
+  my $max_cds_idx2store = 0;
+
+  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
+
+  while(my $line = <IN>) { 
+    if($line !~ m/^\#/) { 
+      ## example input file:
+      ## This file explains alternative start codons that are expected 
+      ## West Nile lineage 1 CDS #3 (WARF4)
+      ##
+      ## Format of lines in this file:
+      ## <CDS-idx> <alternate start codon 1>:<alternate start codon 2>:<alternate start codon n>
+      #3 GGC
+      #####################
+      # NOTE: in the input file CDS and matpept indices are in coordinate space 1..N, but we store them in 0..N-1
+      chomp $line;
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) != 2) { 
+        DNAORG_FAIL("ERROR in $sub_name, unable to parse specstart input file line: $line", 1, $FH_HR); 
+      }
+      my ($cds_idx, $codon_str) = ($el_A[0], $el_A[1]);
+      my $cds_idx2store = $cds_idx - 1;
+      if($cds_idx2store < 0) { 
+        DNAORG_FAIL("ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file in line $line", 1, $FH_HR); 
+      }
+      $cds_idx_read_A[$cds_idx2store] = 1;
+      if($cds_idx2store > $max_cds_idx2store) { 
+        $max_cds_idx2store = $cds_idx2store; 
+      }
+      my @codon_A = split(":", $codon_str);
+      @{$specstart_AAR->[$cds_idx2store]} = ();
+      foreach my $codon (@codon_A) { 
+        $codon =~ tr/a-z/A-Z/;
+        $codon =~ tr/U/T/;
+        push(@{$specstart_AAR->[$cds_idx2store]}, $codon);
+      }
+      $ncds_read++;
+    }
+  }
+  close(IN);
+
+  # Two sanity checks:
+  # 1: we should have stored all and primary info for any CDS $i for which $cds_idx_read_A[$i-1] is 1, and nothing else
+  for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
+    if($cds_idx_read_A[$i]) { 
+     if((! defined $specstart_AAR->[$i]) && (! exists $specstart_AAR->[$i])) { 
+       DNAORG_FAIL(sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1), 1, $FH_HR);
+     }
+    }
+    else { # we didn't read this one
+      if(defined $specstart_AAR->[$i] || exists $specstart_AAR->[$i]) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1), 1, $FH_HR);
+      }
+    }
+  }
+  # 2: we should have at least read at least one CDS info
+  if($ncds_read == 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, no CDS start codon specifications read in matpept input file $infile", 1, $FH_HR); 
   }
 
   return;
