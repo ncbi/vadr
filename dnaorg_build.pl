@@ -239,83 +239,20 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
                         # 1D: key: accession
                         # 2D: key: column name in gene ftable file
                         # 3D: per-row values for each column
+my %totlen_H   = ();    # key: accession, value: total length of the sequence for that accession
 
 
+# Call the wrapper function that does the following:
+#  1) creates the edirect .mat_peptide file, if necessary
+#  2) creates the edirect .ftable file
+#  3) creates the length file
+#  4) parses the edirect .mat_peptide file, if necessary
+#  5) parses the edirect .ftable file
+#  6) parses the length file
+wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%totlen_H, \@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H,
+                           \%ofile_desc_H, \%opt_HH, \%ofile_FH_H); # 1st argument is undef because we are only getting info for $ref_accn
 
-
-# 1) create the edirect .mat_peptide file, if necessary
-# 2) create the edirect .ftable file
-# 3) create the length file
-# 
-# We create the .mat_peptide file first because we will die with an
-# error if mature peptide info exists and neither -matpept nor
-# -nomatpept was used (and we want to die as early as possible in the
-# script to save the user's time)
-#
-# 1) create the edirect .mat_peptide file, if necessary
-my $mp_file = $out_root . ".mat_peptide";
-
-#      if -nomatpept was   enabled we don't attempt to create a matpept file
-# else if -matpept was     enabled we validate that the resulting matpept file is not empty
-# else if -matpept was not enabled we validate that the resulting matpept file is     empty
-if(! opt_Get("--nomatpept", \%opt_HH)) { 
-  $cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd mat_peptide INSDFeature_location product > $mp_file";
-  runCommand($cmd, opt_Get("-v", \%opt_HH), \%ofile_FH_H);
-  
-  if($do_matpept) { 
-    if(! -s  $mp_file) { 
-      DNAORG_FAIL("ERROR, -matpept enabled but no mature peptide information exists.", 1, \%ofile_FH_H); 
-    }
-    addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "mp", $mp_file, "Mature peptide information obtained via edirect", \%ofile_FH_H);
-  }
-  else { # ! $do_matpept
-    if(-s $mp_file) { 
-      DNAORG_FAIL("ERROR, -matpept not enabled but mature peptide information exists, use -nomatpept to ignore it.", 1, \%ofile_FH_H); 
-    }
-    else { 
-      # remove the empty file we just created
-      runCommand("rm $mp_file", opt_Get("-v", \%opt_HH), \%ofile_FH_H);
-    }
-  }
-}
-
-# 2) create the edirect .ftable file
-# create the edirect ftable file
-my $ft_file  = $out_root . ".ftable";
-$cmd = "esearch -db nuccore -query $ref_accn | efetch -format ft > $ft_file";
-runCommand($cmd, opt_Get("-v", \%opt_HH), \%ofile_FH_H);
-addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "ft", $ft_file, "Feature table obtained via edirect", \%ofile_FH_H);
-
-# 3) create the length file
-# create a file with total lengths of each accession
-my $len_file  = $out_root . ".length";
-my $len_file_created = $len_file . ".created";
-my $len_file_lost    = $len_file . ".lost";
-$cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
-runCommand($cmd, opt_Get("-v", \%opt_HH), \%ofile_FH_H);
-addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "len", $len_file, "Sequence length file", \%ofile_FH_H);
-if(! -s $len_file) { 
-  DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, \%ofile_FH_H); 
-}  
-
-# parse the edirect output data files that we just created
-# first, parse the length file
-my %totlen_H = (); # key: accession, value: total length of the sequence for that accession
-parseLengthFile($len_file, \%totlen_H, \%ofile_FH_H);
-if(! exists $totlen_H{$ref_accn}) { 
-  DNAORG_FAIL("ERROR, problem fetching length of reference accession $ref_accn", 1, \%ofile_FH_H); 
-}
-my $ref_totlen = $totlen_H{$ref_accn}; # total length of reference sequence
-
-edirectFtableOrMatPept2SingleFeatureTableInfo($ft_file, 0, "CDS", \%cds_tbl_HHA, \%ofile_FH_H); # 0: it's not a mat_peptide file
-if(! exists ($cds_tbl_HHA{$ref_accn})) { 
-  DNAORG_FAIL("ERROR no CDS information stored for reference accession", 1, \%ofile_FH_H); 
-}
 if($do_matpept) {  
-  edirectFtableOrMatPept2SingleFeatureTableInfo($mp_file, 1, "mat_peptide", \%mp_tbl_HHA, \%ofile_FH_H); # 1: it is a mat_peptide file
-  if (! exists ($mp_tbl_HHA{$ref_accn})) { 
-    DNAORG_FAIL("ERROR -matpept enabled, but no mature peptide information stored for reference accession", 1, \%ofile_FH_H); 
-  }
   # validate the CDS:mat_peptide relationships that we read from the $matpept input file
   matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $totlen_H{$ref_accn}, \%ofile_FH_H);
 }
@@ -355,6 +292,7 @@ my %mdl_info_HA = (); # hash of arrays, hash keys: "ftr_idx",  "is_first",  "is_
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file });
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "index", $fasta_file.".ssi", "Index for reference genome sequence file", \%ofile_FH_H);
 
+my $ref_totlen = $totlen_H{$ref_accn}; # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
 fetchReferenceFeatureSequences(\%execs_H, $sqfile, $seq_accn_A[0], $ref_totlen, $out_root, \%mdl_info_HA, \%ftr_info_HA, $all_stk_file, \%opt_HH, \%ofile_FH_H); # 0 is 'do_circular' which is irrelevant in this context
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "refstk", $all_stk_file, "Stockholm alignment file with reference features", \%ofile_FH_H);
 

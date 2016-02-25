@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # EPN, Mon Aug 10 10:39:33 2015 [development began on dnaorg_annotate_genomes.pl]
 # EPN, Thu Feb 18 12:48:16 2016 [dnaorg_annotate.pl split off from dnaorg_annotate_genomes.pl]
-
+#
 use strict;
 use warnings;
 use Getopt::Long;
@@ -12,10 +12,26 @@ use Bio::Easel::SqFile;
 require "dnaorg.pm"; 
 require "epn-options.pm";
 
+#######################################################################################
+# What this script does: 
+#
+# Preliminaries: 
+#   - process options
+#   - output program banner and open output files
+#   - parse the optional input files, if necessary
+#   - make sure the required executables are executable
+#
+# Step 1. Gather and process information on reference genome using Edirect
+#
+# Step 2. Fetch and process the reference genome sequence
+#
+# Step 3. Build and calibrate models
+#######################################################################################
+
 # hard-coded-paths:
-my $inf_exec_dir       = "/usr/local/infernal/1.1.1/bin/";
-my $esl_fetch_cds      = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
-my $esl_epn_translate  = "/home/nawrocke/notebook/15_1118_dnaorg_annotate_genomes_translation/git-esl-epn-translate/esl-epn-translate.pl";
+my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
+my $esl_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
+my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -45,18 +61,16 @@ my %opt_group_desc_H = ();
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 $opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat preamble-output                          help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,   undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-d",           "string",  0,                        1,    undef, undef,   "directory specified as",                "specify output directory is <s> (created with dnaorg_build.pl -d <s>), not <reference accession>\n", \%opt_HH, \@opt_order_AA);
-opt_Add("-c",           "boolean", 0,                        1,    undef, undef,   "genome is circular",                    "genome is circular",                                 \%opt_HH, \@opt_order_A);
-opt_Add("-matpept",     "string",  undef,                    1,    undef, undef,   "using pre-specified mat_peptide info",  "read mat_peptide info in addition to CDS info, file <f> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-
-#$opt_group_desc_H{"2"} = "options affecting window/hit definition";
-##       option       type       default                group  requires incompat  preamble-output                          help-output    
-#opt_Add("--b1",      "real",    undef,                     2,    undef, undef,   "bit score threshold for window defn",   "set bit score threshold for window definition to <x>", \%opt_HH, \@opt_order_A);
-#opt_Add("--b2",      "real",    undef,             ,       2,    undef, "--e2",  "bit score threshold for hit defn",      "set bit score threshold for hit definition to <x>",    \%opt_HH, \@opt_order_A);
-#opt_Add("--e2",      "real",    $RNAVORE_H{"DF_E2"},       2,    undef, "--b2",  "E-value threshold for hit defn",        "set E-value   threshold for hit definition to <x>",    \%opt_HH, \@opt_order_A);
-#opt_Add("--toponly", "boolean", 0,                         2,    undef, undef,   "only allow hits on top-strand",         "only search top-strand of target sequence file",       \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                               help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                        "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is circular",                         "genome is circular",                                 \%opt_HH, \@opt_order_A);
+opt_Add("-d",           "string",  undef,                    1,    undef, undef,      "directory specified as",                     "specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
+#opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",           "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                 "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",       "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
+opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",              "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
+opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons", "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirty",      "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",         "do not remove intermediate files, leave them all on disk", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -64,17 +78,26 @@ my $usage    = "Usage: dnaorg_annotate.pl [-options] <file with list of accessio
 my $synopsis = "dnaorg_annotate.pl :: annotate sequences based on a reference annotation";
 
 my $options_okay = 
-    &GetOptions('h'            => \$GetOptions_H{"-h"}, 
+    &GetOptions('h'             => \$GetOptions_H{"-h"}, 
 # basic options
-                'd=s'          => \$GetOptions_H{"-d"},
-                'c'            => \$GetOptions_H{"-c"},
-                'matpept=s'    => \$GetOptions_H{"-matpept"});
+                'c'             => \$GetOptions_H{"-c"},
+                'd=s'           => \$GetOptions_H{"-d"},
+                'f'             => \$GetOptions_H{"-f"},
+                'v'             => \$GetOptions_H{"-v"},
+                'matpept=s'     => \$GetOptions_H{"--matpept"},
+                'nomatpept'     => \$GetOptions_H{"--nomatpept"},
+                '--specstart=s' => \$GetOptions_H{"--specstart"},
+                'dirty'         => \$GetOptions_H{"--dirty"});
 
+my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
+my $executable    = $0;
+my $date          = scalar localtime();
+my $version       = "0.1";
+my $releasedate   = "Feb 2016";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $synopsis);
-  outputBanner(*STDOUT, $synopsis, $command, $date, $opts_used_long);
+  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
@@ -84,10 +107,19 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
 if(scalar(@ARGV) != 1) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
-  print "\nTo see more help on available options, do rvr-align -h\n\n";
+  print "\nTo see more help on available options, do dnaorg_annotate.pl -h\n\n";
   exit(1);
 }
 my ($listfile) = (@ARGV);
+
+# set options in opt_HH
+opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
+
+# validate options (check for conflicts)
+opt_ValidateSet(\%opt_HH, \@opt_order_A);
+
+my $dir        = opt_Get("-d", \%opt_HH);          # this will be undefined unless -d set on cmdline
+my $do_matpept = opt_IsOn("--matpept", \%opt_HH);
 
 ###############
 # Preliminaries
@@ -95,9 +127,9 @@ my ($listfile) = (@ARGV);
 # first, parse the list file, we need to do this first because we need
 # to know what the reference accession <refaccn> is to check if the
 # directory <refaccn> exists
-my @accn_A        = (); # array of accessions
+my @accn_A = (); # array of accessions, $accn_A[0] is our reference
 parseListFile($listfile, 1, \@accn_A, undef); # 1 
-$ref_accn = $accn_A[0];
+my $ref_accn = $accn_A[0];
 
 my $dir_set_as_ref_accn = 0;
 if(! defined $dir) { 
@@ -110,13 +142,18 @@ if(! -d $dir) {
   DNAORG_FAIL(sprintf("ERROR, directory $dir %s does not exist", $dir_set_as_ref_accn ? "(first accession read from $listfile)" : "(specified with -d)"), 1, undef);
 }
 
+my $dir_tail = $dir;
+$dir_tail =~ s/^.+\///; # remove all but last dir
+my $out_root = $dir . "/" . $dir_tail . ".dnaorg_annotate";
+
 #############################################
 # output program banner and open output files
 #############################################
-my $synopsis = "dnaorg_annotate.pl :: annotate sequences using reference homology models";
-my $command  = "$executable $opts_used_short $ref_accn";
-my $date     = scalar localtime();
-outputBanner(*STDOUT, $synopsis, $command, $date, $opts_used_long);
+# output preamble
+my @arg_desc_A = ("file with list of accessions");
+my @arg_A      = ($listfile);
+outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
+opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
 # set output file names and file handles, and open those file handles
@@ -136,34 +173,48 @@ foreach my $key (@ofile_keys_A) {
     exit(1);
   }
 }
+
 my $log_FH = $ofile_FH_H{"log"};
 my $cmd_FH = $ofile_FH_H{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $synopsis, $command, $date, $opts_used_long);
+outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
+opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
-############################################
+########################################
 # parse the optional input files, if nec
-###########################################
-# -matpept <f>
+########################################
+# --matpept <f>
 my @cds2pmatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of primary matpept indices that comprise this CDS
 my @cds2amatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of all     matpept indices that comprise this CDS
-if(defined $matpept_infile) { 
-  parseMatPeptSpecFile($matpept_infile, \@cds2pmatpept_AA, \@cds2amatpept_AA, \%ofile_FH_H);
+if($do_matpept) { 
+  parseMatPeptSpecFile(opt_Get("--matpept", \%opt_HH), \@cds2pmatpept_AA, \@cds2amatpept_AA, \%ofile_FH_H);
 }
-# -specstart <f>
+# --specstart <f>
 my @specstart_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of allowed start codons for this CDS
-if(defined $specstart_infile) { 
-  parseSpecStartFile($specstart_infile, \@specstart_AA, \%ofile_FH_H);
+if(opt_IsOn("--specstart", \%opt_HH)) { 
+  parseSpecStartFile(opt_Get("--specstart", \%opt_HH), \@specstart_AA, \%ofile_FH_H);
 }
 
+###################################################
+# make sure the required executables are executable
+###################################################
+my %execs_H = (); # hash with paths to all required executables
+$execs_H{"cmsearch"}      = $inf_exec_dir . "cmsearch";
+$execs_H{"cmalign"}       = $inf_exec_dir . "cmalign";
+$execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
+$execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
+validateExecutableHash(\%execs_H, \%ofile_FH_H);
+
 ###########################################################################
-# Step 1. Gather and process information on all genomes using Edirect.
+# Step 1. Gather and process information on reference genome using Edirect.
 ###########################################################################
+my $cmd;             # a command to run with runCommand()
 my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
-my $start_secs = outputProgressPrior("Gathering information on all sequences using edirect", $progress_w, $log_FH, *STDOUT);
+my $start_secs = outputProgressPrior(sprintf("Gathering information on %d sequences using edirect", scalar(@accn_A)), $progress_w, $log_FH, *STDOUT);
+
 my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
                         # 1D: key: accession
                         # 2D: key: column name in gene ftable file
@@ -172,64 +223,77 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
                         # 1D: key: accession
                         # 2D: key: column name in gene ftable file
                         # 3D: per-row values for each column
+my %totlen_H   = ();    # key: accession, value: total length of the sequence for that accession
 
-# 1) create the edirect .mat_peptide file, if necessary
-# 2) create the edirect .ftable file
-# 3) create the length file
-# 
-# We create the .mat_peptide file first because we will die with an
-# error if mature peptide info exists and neither -matpept nor
-# -nomatpept was used (and we want to die as early as possible in the
-# script to save the user's time)
-#
-# 1) create the edirect .mat_peptide file, if necessary
-my $mp_file = $out_root . ".mat_peptide";
 
-#      if -nomatpept was   enabled we don't attempt to create a matpept file
-# else if -matpept was     enabled we validate that the resulting matpept file is not empty
-# else if -matpept was not enabled we validate that the resulting matpept file is     empty
-if(! $do_nomatpept) { 
-#  $cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd mat_peptide INSDFeature_location product > $mp_file";
-  $cmd = "cat $listfile | epost -db nuccore -format acc | efetch -format gpc | xtract -insd mat_peptide INSDFeature_location product > $mp_file";
-  runCommand($cmd, $be_verbose, \%ofile_FH_H);
-  
-  if($do_matpept) { 
-    if(! -s  $mp_file) { 
-      DNAORG_FAIL("ERROR, -matpept enabled but no mature peptide information exists.", 1, \%ofile_FH_H); 
-    }
-    addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "mp", $mp_file, "Mature peptide information obtained via edirect", \%ofile_FH_H);
-  }
-  else { # ! $do_matpept
-    if(-s $mp_file) { 
-      DNAORG_FAIL("ERROR, -matpept not enabled but mature peptide information exists, use -nomatpept to ignore it.", 1, \%ofile_FH_H); 
-    }
-    else { 
-      # remove the empty file we just created
-      runCommand("rm $mp_file", $be_verbose, \%ofile_FH_H);
-    }
-  }
+# Call the wrapper function that does the following:
+#  1) creates the edirect .mat_peptide file, if necessary
+#  2) creates the edirect .ftable file
+#  3) creates the length file
+#  4) parses the edirect .mat_peptide file, if necessary
+#  5) parses the edirect .ftable file
+#  6) parses the length file
+wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%totlen_H, \@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H,
+                           \%ofile_desc_H, \%opt_HH, \%ofile_FH_H);
+
+if($do_matpept) {  
+  # validate the CDS:mat_peptide relationships that we read from the $matpept input file
+  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $totlen_H{$ref_accn}, \%ofile_FH_H);
 }
-                
-# 2) create the edirect .ftable file
-# create the edirect ftable file
-my $ft_file  = $out_root . ".ftable";
-#$cmd = "esearch -db nuccore -query $ref_accn | efetch -format ft > $ft_file";
-$cmd = "cat $listfile | epost -db nuccore -format acc | efetch -format ft > $ft_file";
-                runCommand($cmd, $be_verbose, \%ofile_FH_H);
-addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "ft", $ft_file, "Feature table obtained via edirect", \%ofile_FH_H);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-# 3) create the length file
-# create a file with total lengths of each accession
-my $len_file  = $out_root . ".length";
-my $len_file_created = $len_file . ".created";
-                my $len_file_lost    = $len_file . ".lost";
-#$cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
-                $cmd = "cat $listfile | epost -db nuccore -format acc | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
-                runCommand($cmd, $be_verbose, \%ofile_FH_H);
-addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "len", $len_file, "Sequence length file", \%ofile_FH_H);
-if(! -s $len_file) { 
-  DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, \%ofile_FH_H); 
-}  
+#########################################################
+# Step 2. Fetch and process the reference genome sequence
+##########################################################
+$start_secs = outputProgressPrior("Fetching and processing sequences", $progress_w, $log_FH, *STDOUT);
+my $fetch_file = $out_root . ".ref.fg.idfetch.in";
+my $fasta_file = $out_root . ".ref.fg.fa";
+my @seq_accn_A = ();      # array of actual sequence names in $fasta_file that we'll create, filled in fetchSequencesUsingEslFetchCds
+
+# fetch the reference genome
+fetchSequencesUsingEslFetchCds($execs_H{"esl_fetch_cds"}, 0, $fetch_file, $fasta_file, opt_Get("-c", \%opt_HH), \@accn_A, \%totlen_H, \@seq_accn_A, undef, undef, \%ofile_FH_H);
+addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl", \%ofile_FH_H);
+addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "fasta", $fasta_file, "Sequence file with reference genome", \%ofile_FH_H);
+
+my %ftr_info_HA = (); # hash of arrays, values are arrays [0..$nftr-1], 
+                      # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
+my $nftr;             # number of features
+my $nmp;              # number of mature peptide features
+
+# determine reference information for each feature (strand, length, coordinates, product)
+getReferenceFeatureInfo(\%cds_tbl_HHA, ($do_matpept ? \%mp_tbl_HHA : undef), \%ftr_info_HA, $ref_accn, \%ofile_FH_H);
+my @reqd_keys_A = ("ref_strand", "ref_len", "ref_coords", "out_product");
+$nftr = validateAndGetSizeOfInfoHashOfArrays(\%ftr_info_HA, undef, \%ofile_FH_H);
+$nmp  = ($do_matpept) ? scalar(@{$mp_tbl_HHA{$ref_accn}{"coords"}}) : 0;
+
+# determine type of each feature 
+determineFeatureTypes($nmp, ((@cds2pmatpept_AA) ? \@cds2pmatpept_AA : undef), \%ftr_info_HA, \%ofile_FH_H);
+
+# fetch the reference feature sequences and populate information on the models and features
+my $all_stk_file = $out_root . ".ref.all.stk";
+my %mdl_info_HA = (); # hash of arrays, hash keys: "ftr_idx",  "is_first",  "is_final",  values are arrays [0..$nmdl-1];
+my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file });
+addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "index", $fasta_file.".ssi", "Index for reference genome sequence file", \%ofile_FH_H);
+
+my $ref_totlen = $totlen_H{$ref_accn}; # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
+fetchReferenceFeatureSequences(\%execs_H, $sqfile, $seq_accn_A[0], $ref_totlen, $out_root, \%mdl_info_HA, \%ftr_info_HA, $all_stk_file, \%opt_HH, \%ofile_FH_H); # 0 is 'do_circular' which is irrelevant in this context
+addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "refstk", $all_stk_file, "Stockholm alignment file with reference features", \%ofile_FH_H);
+
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+# verify our model and feature info hashes are complete, 
+# if validateFeatureInfoHashIsComplete() fails
+# the program will exit with an error message
+my $nmdl; # the number of homology models (CMs)
+validateFeatureInfoHashIsComplete(\%ftr_info_HA, undef, \%ofile_FH_H);
+$nmdl = validateModelInfoHashIsComplete(\%mdl_info_HA, undef, \%ofile_FH_H);
+
+##########
+# Conclude
+##########
+$total_seconds += secondsSinceEpoch();
+outputConclusionAndCloseFiles($total_seconds, $dir, \@ofile_keys_A, \%ofile_desc_H, \%ofile_sname_H, \%ofile_FH_H);
 
 exit 0;
+
 

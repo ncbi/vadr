@@ -2308,7 +2308,7 @@ sub getSingleFeatureTableInfo {
     if(exists $fac_HAR->{$faccn}) { # if this accession has >= 1 qualifiers for this feature
       my $accn = $faccn2accn_HR->{$faccn};
       stripVersion(\$accn);
-      if(%{$tbl_HHAR} && %{$tbl_HHAR->{$accn}}) { 
+      if(%{$tbl_HHAR} && exists $tbl_HHAR->{$accn}) { 
         DNAORG_FAIL("ERROR in $sub_name, read data twice in $sub_name for accession $accn", 1, $FH_HR);
       }
       foreach $fac (@{$fac_HAR->{$faccn}}) { # foreach 'fac', accession + set of coords
