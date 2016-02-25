@@ -598,7 +598,7 @@ my $nerrcodes_pf = scalar(@err_pf_idx2code_A);
 $err_pf_idx2msg_H{"nop"} = "unable to identify homologous feature";
 $err_pf_idx2msg_H{"nm3"} = "length of nucleotide feature is not a multiple of 3";
 $err_pf_idx2msg_H{"bd5"} = "alignment to reference does not extend to 5' boundary of reference";
-$err_pf_idx2msg_H{"bd3"} = "alignment to reference does not extend to 5' boundary of reference";
+$err_pf_idx2msg_H{"bd3"} = "alignment to reference does not extend to 3' boundary of reference";
 $err_pf_idx2msg_H{"olp"} = "feature does not overlap with same set of features as in reference";
 $err_pf_idx2msg_H{"str"} = "predicted CDS start position is not beginning of ATG start codon";
 $err_pf_idx2msg_H{"stp"} = "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)";
@@ -2116,7 +2116,7 @@ for(my $a = 0; $a < $naccn; $a++) {
       }
       else { 
         $at_least_one_fail = 1;
-        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd3", $hang3 . "nt from 3' end", \%err_pf_code2idx_H, \$cur_nerr);
+        setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "bd3", $hang3 . " nt from 3' end", \%err_pf_code2idx_H, \$cur_nerr);
         if($hang3 >  9) { $hang3 = "+"; } 
       }
     
