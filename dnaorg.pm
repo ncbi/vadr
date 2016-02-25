@@ -2906,9 +2906,9 @@ sub findNonNumericValueInArray {
 #
 ####################################################################
 sub outputConclusionAndCloseFiles { 
-  my $narg_expected = 6;
+  my $nargs_expected = 6;
   my $sub_name = "outputConclusionAndCloseFiles()";
-  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($total_secs, $odir, $ofile_keys_AR, $ofile_desc_HR, $ofile_sname_HR, $ofile_FH_HR) = @_;
 
   my $log_FH = $ofile_FH_HR->{"log"};
@@ -2961,9 +2961,9 @@ sub outputConclusionAndCloseFiles {
 # 
 ####################################################################
 sub outputTiming { 
-  my $narg_expected = 4;
+  my $nargs_expected = 4;
   my $sub_name = "outputTiming()";
-  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($prefix, $inseconds, $print_to_stdout, $FH) = @_;
 
   my $time_str = formatTimeString($inseconds);
@@ -2993,9 +2993,9 @@ sub outputTiming {
 #
 ###########################################################
 sub outputString {
-  my $narg_expected = 3;
+  my $nargs_expected = 3;
   my $sub_name = "outputString()";
-  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($FH, $print_to_stdout, $string) = @_;
 
   if(defined $FH)      { print $FH $string; }
@@ -3019,9 +3019,9 @@ sub outputString {
 #
 ####################################################################
 sub formatTimeString { 
-  my $narg_expected = 1;
+  my $nargs_expected = 1;
   my $sub_name = "formatTimeString()";
-   if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($inseconds) = @_;
   my ($i, $hours, $minutes, $seconds, $thours, $tminutes, $tseconds, $ndig_hours);
 
@@ -3056,9 +3056,9 @@ sub formatTimeString {
 #
 ################################################################# 
 sub maxLengthScalarValueInHash { 
-  my $narg_expected = 1;
+  my $nargs_expected = 1;
   my $sub_name = "maxLengthScalarValueInHash()";
-  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($HR) = $_[0];
 
   my $max = 0;
@@ -3180,9 +3180,9 @@ sub addClosedOutputFile {
 # Dies:        Never.
 ################################################################# 
 sub removeDirPath {
-  my $narg_expected = 1;
+  my $nargs_expected = 1;
   my $sub_name = "removeDirPath()";
-  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my $orig_file = $_[0];
 
   $orig_file =~ s/^.+\///;
@@ -3212,9 +3212,9 @@ sub removeDirPath {
 #              once in $listfile
 ################################################################# 
 sub parseListFile {
-  my $narg_expected = 4;
+  my $nargs_expected = 4;
   my $sub_name = "parseListFile()";
-  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($infile, $do_accn, $line_AR, $FH_HR) = @_;
 
   my %line_exists_H = ();
@@ -3259,114 +3259,6 @@ sub parseListFile {
 ################################################################# 
 sub parseSpecStartFile { 
   my $sub_name = "parseSpecStartFile";
-  my $narg_expected = 3;
-  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
-
-  my ($infile, $specstart_AAR, $FH_HR) = @_;
-
-  my $ncds_read      = 0;
-  my $cds_idx2store  = 0;
-  my @cds_idx_read_A = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
-  my $max_cds_idx2store = 0;
-
-  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
-
-  while(my $line = <IN>) { 
-    if($line !~ m/^\#/) { 
-      ## example input file:
-      ## This file explains alternative start codons that are expected 
-      ## West Nile lineage 1 CDS #3 (WARF4)
-      ##
-      ## Format of lines in this file:
-      ## <CDS-idx> <alternate start codon 1>:<alternate start codon 2>:<alternate start codon n>
-      #3 GGC
-      #####################
-      # NOTE: in the input file CDS and matpept indices are in coordinate space 1..N, but we store them in 0..N-1
-      chomp $line;
-      my @el_A = split(/\s+/, $line);
-      if(scalar(@el_A) != 2) { 
-        DNAORG_FAIL("ERROR in $sub_name, unable to parse specstart input file line: $line", 1, $FH_HR); 
-      }
-      my ($cds_idx, $codon_str) = ($el_A[0], $el_A[1]);
-      my $cds_idx2store = $cds_idx - 1;
-      if($cds_idx2store < 0) { 
-        DNAORG_FAIL("ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file in line $line", 1, $FH_HR); 
-      }
-      $cds_idx_read_A[$cds_idx2store] = 1;
-      if($cds_idx2store > $max_cds_idx2store) { 
-        $max_cds_idx2store = $cds_idx2store; 
-      }
-      my @codon_A = split(":", $codon_str);
-      @{$specstart_AAR->[$cds_idx2store]} = ();
-      foreach my $codon (@codon_A) { 
-        $codon =~ tr/a-z/A-Z/;
-        $codon =~ tr/U/T/;
-        push(@{$specstart_AAR->[$cds_idx2store]}, $codon);
-      }
-      $ncds_read++;
-    }
-  }
-  close(IN);
-
-  # Two sanity checks:
-  # 1: we should have stored all and primary info for any CDS $i for which $cds_idx_read_A[$i-1] is 1, and nothing else
-  for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
-    if($cds_idx_read_A[$i]) { 
-     if((! defined $specstart_AAR->[$i]) && (! exists $specstart_AAR->[$i])) { 
-       DNAORG_FAIL(sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1), 1, $FH_HR);
-     }
-    }
-    else { # we didn't read this one
-      if(defined $specstart_AAR->[$i] || exists $specstart_AAR->[$i]) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1), 1, $FH_HR);
-      }
-    }
-  }
-  # 2: we should have at least read at least one CDS info
-  if($ncds_read == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, no CDS start codon specifications read in matpept input file $infile", 1, $FH_HR); 
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  wrapperGetInfoUsingEdirect()
-# Incept:      EPN, Tue Feb 23 13:00:23 2016
-#
-# Purpose:     A large block of code that is called once by each
-#              dnaorg_build.pl and dnaorg_annotate.pl to gather
-#              sequence information using Edirect and parse that
-#              Edirect output into usable data structures, by
-#              doing the following:
-#
-#              1) create the edirect .mat_peptide file, if necessary
-#              2) create the edirect .ftable file
-#              3) create the length file
-#              4) parse the edirect .mat_peptide file, if necessary
-#              5) parse the edirect .ftable file
-#              6) parse the length file
-#
-#              
-# Arguments: 
-#   $infile:        file to parse
-#   $out_root:      string that is the 'root' for naming output files
-#   $accn_AR:       ref to an array with the accessions we want information for
-#   $cds_tbl_HHAR:  ref to CDS hash of hash of arrays, FILLED HERE
-#   $mp_tbl_HHAR:   ref to mature peptide hash of hash of arrays, can be undef, else FILLED HERE
-# 
-#   $specstart_AAR: ref to array of arrays to fill here, allowed start codons for each CDS
-#                   if array doesn't exist for a CDS, ATG is only allowed start
-#   $ofile_
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd", can be undef
-#
-# Returns:     void, fills @{$specstart_AAR}
-#
-# Dies:        if $infile does not exist or is not readable,
-#              or we have some problem parsing it.
-################################################################# 
-sub wrapperGetInfoUsingEdirect {
-  my $sub_name = "wrapperGetInfoUsingEdirect";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -3451,9 +3343,9 @@ sub wrapperGetInfoUsingEdirect {
 #
 ################################################################# 
 sub maxLengthScalarInArray {
-  my $narg_expected = 1;
+  my $nargs_expected = 1;
   my $sub_name = "maxLengthScalarInArray()";
-  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR) = $_[0];
 
   my $max = 0;
@@ -3463,6 +3355,156 @@ sub maxLengthScalarInArray {
     if($len > $max) { $max = $len; }
   }
   return $max;
+}
+
+#################################################################
+# Subroutine:  wrapperGetInfoUsingEdirect()
+# Incept:      EPN, Tue Feb 23 13:00:23 2016
+#
+# Purpose:     A large block of code that is called once by each
+#              dnaorg_build.pl and dnaorg_annotate.pl to gather
+#              sequence information using Edirect and parse that
+#              Edirect output into usable data structures, by
+#              doing the following:
+#
+#              1) create the edirect .mat_peptide file, if necessary
+#              2) create the edirect .ftable file
+#              3) create the length file
+#              4) parse the edirect .mat_peptide file, if necessary
+#              5) parse the edirect .ftable file
+#              6) parse the length file
+#
+#              
+# Arguments: 
+#   $listfile:       name of list file with all accessions, can be undef, in which case we 
+#                    only gather information for the reference
+#   $ref_accn:       reference accession, first accession in $listfile (although this is 
+#                    not enforced here, caller enforced it)
+#   $out_root:       string that is the 'root' for naming output files
+#   $cds_tbl_HHAR:   REF to CDS hash of hash of arrays, FILLED HERE
+#   $mp_tbl_HHAR:    REF to mature peptide hash of hash of arrays, can be undef, else FILLED HERE
+#   $totlen_HR:      REF to hash, key is accession, value is total length of the sequence (non-duplicated), FILLED HERE
+#   $ofile_keys_AR:  REF to array of output file keys, ADDED TO HERE
+#   $ofile_name_HR:  REF to hash of output file paths, keys are from @{$ofile_keys_AR}, ADDED TO HERE
+#   $ofile_sname_HR: REF to hash of short output file names (no paths), keys are from @{$ofile_keys_AR}, ADDED TO HERE
+#   $ofile_desc_HR:  REF to hash of description for output files, keys are from @{$ofile_keys_AR}, ADDED TO HERE
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#
+# Returns:     void, fills @{$specstart_AAR}
+#
+# Dies:        if $listfile is defined but it does not exist or is empty
+#              if any of the edirect commands exit in error
+#     
+################################################################# 
+sub wrapperGetInfoUsingEdirect {
+  my $sub_name = "wrapperGetInfoUsingEdirect";
+  my $nargs_expected = 12;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $totlen_HR, $ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, $opt_HHR, $FH_HR) = @_;
+
+  my $cmd; # a command to be run by runCommand()
+  my $do_matpept = opt_IsOn("--matpept", $opt_HHR);
+
+  my $have_listfile = (defined $listfile) ? 1 : 0;
+  if(defined $listfile) { 
+    if(! -e $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile does not exist"); }
+    if(! -s $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile exists but is empty"); }
+  }
+
+  # We create the .mat_peptide file first because we will die with an
+  # error if mature peptide info exists and neither -matpept nor
+  # -nomatpept was used (and we want to die as early as possible in the
+  # script to save the user's time)
+  #
+  # 1) create the edirect .mat_peptide file, if necessary
+  my $mp_file = $out_root . ".mat_peptide";
+
+  #      if -nomatpept was   enabled we don't attempt to create a matpept file
+  # else if -matpept was     enabled we validate that the resulting matpept file is not empty
+  # else if -matpept was not enabled we validate that the resulting matpept file is     empty
+  if(! opt_Get("--nomatpept", $opt_HHR)) { 
+    if($have_listfile) {
+      $cmd = "cat $listfile | epost -db nuccore -format acc";
+    }
+    else { 
+      $cmd = "esearch -db nuccore -query $ref_accn";
+    }
+    $cmd .= " | efetch -format gpc | xtract -insd mat_peptide INSDFeature_location product > $mp_file";
+    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  
+    if($do_matpept) { 
+      if(! -s  $mp_file) { 
+        DNAORG_FAIL("ERROR, in $sub_name, -matpept enabled but no mature peptide information exists.", 1, $FH_HR);
+      }
+      addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "mp", $mp_file, "Mature peptide information obtained via edirect", $FH_HR);
+    }
+    else { # ! $do_matpept
+      if(-s $mp_file) { 
+        DNAORG_FAIL("ERROR, in $sub_name, -matpept not enabled but mature peptide information exists, use -nomatpept to ignore it.", 1, $FH_HR); 
+      }
+      else { 
+        # remove the empty file we just created
+        runCommand("rm $mp_file", opt_Get("-v", $opt_HHR), $FH_HR);
+      }
+    }
+  }
+
+  # 2) create the edirect .ftable file
+  # create the edirect ftable file
+  my $ft_file  = $out_root . ".ftable";
+  if($have_listfile) { 
+    $cmd = "cat $listfile | epost -db nuccore -format acc";
+  }
+  else { 
+    $cmd = "esearch -db nuccore -query $ref_accn";
+  }
+  $cmd .= " | efetch -format ft > $ft_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "ft", $ft_file, "Feature table obtained via edirect", $FH_HR);
+
+  # 3) create the length file
+  # create a file with total lengths of each accession
+  my $len_file  = $out_root . ".length";
+#$cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
+$cmd = "cat $listfile | epost -db nuccore -format acc | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
+
+  if($have_listfile) { 
+    $cmd = "cat $listfile | epost -db nuccore -format acc";
+  }
+  else { 
+    $cmd = "esearch -db nuccore -query $ref_accn";
+  }
+  $cmd .= " | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "len", $len_file, "Sequence length file", $FH_HR);
+  if(! -s $len_file) { 
+    DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, $FH_HR); 
+  }  
+
+  # 4) parse the edirect .mat_peptide file, if necessary
+  if($do_matpept) {  
+    edirectFtableOrMatPept2SingleFeatureTableInfo($mp_file, 1, "mat_peptide", $mp_tbl_HHAR, $FH_HR); # 1: it is a mat_peptide file
+    if (! exists ($mp_tbl_HHAR->{$ref_accn})) { 
+      DNAORG_FAIL("ERROR in $sub_name, -matpept enabled, but no mature peptide information stored for reference accession", 1, $FH_HR); 
+    }
+  }
+
+  # 5) parse the edirect .ftable file
+  edirectFtableOrMatPept2SingleFeatureTableInfo($ft_file, 0, "CDS", $cds_tbl_HHAR, $FH_HR); # 0: it's not a mat_peptide file
+  if(! exists ($cds_tbl_HHAR->{$ref_accn})) { 
+    DNAORG_FAIL("ERROR in $sub_name, no CDS information stored for reference accession", 1, $FH_HR); 
+  }
+
+  # 6) parse the length file
+  # first, parse the length file
+  parseLengthFile($len_file, $totlen_HR, $FH_HR);
+  if(! exists $totlen_HR->{$ref_accn}) { 
+    DNAORG_FAIL("ERROR in $sub_name, problem fetching length of reference accession $ref_accn", 1, $FH_HR); 
+  }
+
+  return 0;
 }
 
 ###########################################################################
