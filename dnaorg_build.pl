@@ -262,11 +262,15 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 2. Fetch and process the reference genome sequence
 ##########################################################
 $start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
-my $fetch_file = $out_root . ".ref.fg.idfetch.in";
-my $fasta_file = $out_root . ".ref.fg.fa";
 my @accn_A     = ($ref_accn); # array of accessions 
 my @seq_accn_A = ();      # array of actual sequence names in $fasta_file that we'll create, filled in fetchSequencesUsingEslFetchCds
 
+my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file });
+addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "index", $fasta_file.".ssi", "Index for reference genome sequence file", \%ofile_FH_H);
+
+
+my $fetch_file = $out_root . ".ref.fg.idfetch.in";
+my $fasta_file = $out_root . ".ref.fg.fa";
 # fetch the reference genome
 fetchSequencesUsingEslFetchCds($execs_H{"esl_fetch_cds"}, 0, $fetch_file, $fasta_file, opt_Get("-c", \%opt_HH), \@accn_A, \%totlen_H, \@seq_accn_A, undef, undef, \%ofile_FH_H);
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl", \%ofile_FH_H);
@@ -289,9 +293,6 @@ determineFeatureTypes($nmp, ((@cds2pmatpept_AA) ? \@cds2pmatpept_AA : undef), \%
 # fetch the reference feature sequences and populate information on the models and features
 my $all_stk_file = $out_root . ".ref.all.stk";
 my %mdl_info_HA = (); # hash of arrays, hash keys: "ftr_idx",  "is_first",  "is_final",  values are arrays [0..$nmdl-1];
-my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file });
-addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "index", $fasta_file.".ssi", "Index for reference genome sequence file", \%ofile_FH_H);
-
 my $ref_totlen = $totlen_H{$ref_accn}; # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
 fetchReferenceFeatureSequences(\%execs_H, $sqfile, $seq_accn_A[0], $ref_totlen, $out_root, \%mdl_info_HA, \%ftr_info_HA, $all_stk_file, \%opt_HH, \%ofile_FH_H); # 0 is 'do_circular' which is irrelevant in this context
 addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "refstk", $all_stk_file, "Stockholm alignment file with reference features", \%ofile_FH_H);
@@ -312,7 +313,7 @@ $nmdl = validateModelInfoHashIsComplete(\%mdl_info_HA, undef, \%ofile_FH_H);
 my $do_clocal = opt_Get("--clocal", \%opt_HH); # are we running calibration locally
 my $build_str = $do_clocal ? "Building and calibrating models" : "Building models and submitting calibration jobs to the farm";
 $start_secs = outputProgressPrior($build_str, $progress_w, $log_FH, *STDOUT);
-createCmDb(\%execs_H, $all_stk_file, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, \%ofile_FH_H);
+createCmDb(\%execs_H, $ofile_name_H{"all_stk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, \%ofile_FH_H);
 if(! $do_clocal) { 
   for(my $i = 0; $i < $nmdl; $i++) { 
     addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "cm$i", "$out_root.$i.cm", 

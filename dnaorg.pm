@@ -1285,7 +1285,10 @@ sub mapFeaturesToModels {
 # Subroutine: determineFeatureTypes()
 # Incept:     EPN, Thu Feb 11 14:50:53 2016
 #
-# Purpose:    Determine the type of each feature.
+# Purpose:    Determine the type of each feature, either
+#             'cds-notmp': CDS not comprised of mature peptides
+#             'cds-mp':    CDS comprised of mature peptides
+#             'mp':        mature peptide.
 #
 # Arguments:
 #   $nmp:              number of mature peptides, may be 0
@@ -3374,7 +3377,13 @@ sub maxLengthScalarInArray {
 #              5) parse the edirect .ftable file
 #              6) parse the length file
 #
-#              
+#              Creates the following output files and stores
+#              information on them in the ofile* data structures
+#              by calling the addClosedOutputFile() function:
+#              - $out_root . ".mat_peptide": mature peptide info obtained via edirect
+#              - $out_root . ".ftable":      feature table obtained via edirect
+#              - $out_root . ".length":      sequence length file
+#                      
 # Arguments: 
 #   $listfile:       name of list file with all accessions, can be undef, in which case we 
 #                    only gather information for the reference
@@ -3391,7 +3400,7 @@ sub maxLengthScalarInArray {
 #   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
 #   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
 #
-# Returns:     void, fills @{$specstart_AAR}
+# Returns:     void
 #
 # Dies:        if $listfile is defined but it does not exist or is empty
 #              if any of the edirect commands exit in error
@@ -3399,6 +3408,159 @@ sub maxLengthScalarInArray {
 ################################################################# 
 sub wrapperGetInfoUsingEdirect {
   my $sub_name = "wrapperGetInfoUsingEdirect";
+  my $nargs_expected = 12;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $totlen_HR, $ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, $opt_HHR, $FH_HR) = @_;
+
+  my $cmd; # a command to be run by runCommand()
+  my $do_matpept = opt_IsOn("--matpept", $opt_HHR);
+
+  my $have_listfile = (defined $listfile) ? 1 : 0;
+  if(defined $listfile) { 
+    if(! -e $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile does not exist"); }
+    if(! -s $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile exists but is empty"); }
+  }
+
+  # We create the .mat_peptide file first because we will die with an
+  # error if mature peptide info exists and neither -matpept nor
+  # -nomatpept was used (and we want to die as early as possible in the
+  # script to save the user's time)
+  #
+  # 1) create the edirect .mat_peptide file, if necessary
+  my $mp_file = $out_root . ".mat_peptide";
+
+  #      if -nomatpept was   enabled we don't attempt to create a matpept file
+  # else if -matpept was     enabled we validate that the resulting matpept file is not empty
+  # else if -matpept was not enabled we validate that the resulting matpept file is     empty
+  if(! opt_Get("--nomatpept", $opt_HHR)) { 
+    if($have_listfile) {
+      $cmd = "cat $listfile | epost -db nuccore -format acc";
+    }
+    else { 
+      $cmd = "esearch -db nuccore -query $ref_accn";
+    }
+    $cmd .= " | efetch -format gpc | xtract -insd mat_peptide INSDFeature_location product > $mp_file";
+    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  
+    if($do_matpept) { 
+      if(! -s  $mp_file) { 
+        DNAORG_FAIL("ERROR, in $sub_name, -matpept enabled but no mature peptide information exists.", 1, $FH_HR);
+      }
+      addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "mp", $mp_file, "Mature peptide information obtained via edirect", $FH_HR);
+    }
+    else { # ! $do_matpept
+      if(-s $mp_file) { 
+        DNAORG_FAIL("ERROR, in $sub_name, -matpept not enabled but mature peptide information exists, use -nomatpept to ignore it.", 1, $FH_HR); 
+      }
+      else { 
+        # remove the empty file we just created
+        runCommand("rm $mp_file", opt_Get("-v", $opt_HHR), $FH_HR);
+      }
+    }
+  }
+
+  # 2) create the edirect .ftable file
+  # create the edirect ftable file
+  my $ft_file  = $out_root . ".ftable";
+  if($have_listfile) { 
+    $cmd = "cat $listfile | epost -db nuccore -format acc";
+  }
+  else { 
+    $cmd = "esearch -db nuccore -query $ref_accn";
+  }
+  $cmd .= " | efetch -format ft > $ft_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "ft", $ft_file, "Feature table obtained via edirect", $FH_HR);
+
+  # 3) create the length file
+  # create a file with total lengths of each accession
+  my $len_file  = $out_root . ".length";
+#$cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
+$cmd = "cat $listfile | epost -db nuccore -format acc | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
+
+  if($have_listfile) { 
+    $cmd = "cat $listfile | epost -db nuccore -format acc";
+  }
+  else { 
+    $cmd = "esearch -db nuccore -query $ref_accn";
+  }
+  $cmd .= " | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "len", $len_file, "Sequence length file", $FH_HR);
+  if(! -s $len_file) { 
+    DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, $FH_HR); 
+  }  
+
+  # 4) parse the edirect .mat_peptide file, if necessary
+  if($do_matpept) {  
+    edirectFtableOrMatPept2SingleFeatureTableInfo($mp_file, 1, "mat_peptide", $mp_tbl_HHAR, $FH_HR); # 1: it is a mat_peptide file
+    if (! exists ($mp_tbl_HHAR->{$ref_accn})) { 
+      DNAORG_FAIL("ERROR in $sub_name, -matpept enabled, but no mature peptide information stored for reference accession", 1, $FH_HR); 
+    }
+  }
+
+  # 5) parse the edirect .ftable file
+  edirectFtableOrMatPept2SingleFeatureTableInfo($ft_file, 0, "CDS", $cds_tbl_HHAR, $FH_HR); # 0: it's not a mat_peptide file
+  if(! exists ($cds_tbl_HHAR->{$ref_accn})) { 
+    DNAORG_FAIL("ERROR in $sub_name, no CDS information stored for reference accession", 1, $FH_HR); 
+  }
+
+  # 6) parse the length file
+  # first, parse the length file
+  parseLengthFile($len_file, $totlen_HR, $FH_HR);
+  if(! exists $totlen_HR->{$ref_accn}) { 
+    DNAORG_FAIL("ERROR in $sub_name, problem fetching length of reference accession $ref_accn", 1, $FH_HR); 
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine:  wrapperFetchAndProcessReferenceSequence()
+# Incept:      EPN, Fri Feb 26 09:27:39 2016
+#
+# Purpose:     A large block of code that is called once by each
+#              dnaorg_build.pl and dnaorg_annotate.pl to fetch
+#              the reference sequence and process information about it.
+#              This function does the following:
+# 
+#              1) fetches the reference sequence
+#              2) determines reference information for each feature (strand, length, coordinates, product)
+#              3) determine type of each reference feature ('cds-mp', 'cds-notmp', or 'mp')
+#              4) fetch the reference feature sequences and populate information on the models and features
+#
+#              Creates the following output files and stores
+#              information on them in the ofile* data structures
+#              by calling the addClosedOutputFile() function:
+#              - $out_root . ".mat_peptide": mature peptide info obtained via edirect
+#              - $out_root . ".ftable":      feature table obtained via edirect
+#              - $out_root . ".length":      sequence length file
+#              
+# Arguments: 
+#   $accn_AR:        REF to array of accessions, PRE-FILLED
+#   $seq_accn_AR:    REF to array of sequence names in newly created sequence file, FILLED HERE
+#   $out_root:       string that is the 'root' for naming output files
+#   $cds_tbl_HHAR:   REF to CDS hash of hash of arrays, PRE-FILLED
+#   $mp_tbl_HHAR:    REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
+#   $totlen_HR:      REF to hash, key is accession, value is total length of the sequence (non-duplicated), PRE-FILLED
+#   $ofile_keys_AR:  REF to array of output file keys, ADDED TO HERE
+#   $ofile_name_HR:  REF to hash of output file paths, keys are from @{$ofile_keys_AR}, ADDED TO HERE
+#   $ofile_sname_HR: REF to hash of short output file names (no paths), keys are from @{$ofile_keys_AR}, ADDED TO HERE
+#   $ofile_desc_HR:  REF to hash of description for output files, keys are from @{$ofile_keys_AR}, ADDED TO HERE
+#   $mdl_info_HAR:   REF to hash of arrays with information on the models, FILLED HERE
+#   $ftr_info_HAR:   REF to hash of arrays with information on the features, FILLED HERE
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#
+# Returns:     void
+#
+# Dies:        if $listfile is defined but it does not exist or is empty
+#              if any of the edirect commands exit in error
+#     
+################################################################# 
+sub wrapperFetchAndProcessReferenceSequence { 
+  my $sub_name = "wrapperFetchAndProcessReferenceSequence()"
   my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
