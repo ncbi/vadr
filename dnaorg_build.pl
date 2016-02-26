@@ -172,30 +172,29 @@ opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
 # set output file names and file handles, and open those file handles
-my %ofile_name_H          = (); # full name for (full path to) output files
-my %ofile_sname_H         = (); # short name for (no dir path) output files
-my %ofile_FH_H            = (); # file handle for output files, keys are in @ofile_keys_A
-my @ofile_keys_A          = ("log", "cmd"); 
-my %ofile_desc_H          = (); # description of each output file
-$ofile_desc_H{"log"}      = "Output printed to screen";
-$ofile_desc_H{"cmd"}      = "List of executed commands";
+my %ofile_info_HH = ();  # hash of information on output files we created,
+                         # 1D keys: 
+                         #  "fullpath":  full path to the file
+                         #  "nodirpath": file name, full path minus all directories
+                         #  "desc":      short description of the file
+                         #  "FH":        file handle to output to for this file, maybe undef
+                         # 2D keys:
+                         #  "log": log file of what's output to stdout
+                         #  "cmd": command file with list of all commands executed
+my @ofile_info_2d_keys_A = (); # the 2nd dim keys in %ofile_info_HH
 
-foreach my $key (@ofile_keys_A) { 
-  $ofile_name_H{$key}  = $out_root . "." . $key;
-  $ofile_sname_H{$key} = $dir_tail . ".dnaorg_build." . $key; # short name (lacks directory)
-  if(! open($ofile_FH_H{$key}, ">", $ofile_name_H{$key})) { 
-    printf STDERR ("ERROR, unable to open $ofile_name_H{$key} for writing.\n"); 
-    exit(1);
-  }
-}
-
-my $log_FH = $ofile_FH_H{"log"};
-my $cmd_FH = $ofile_FH_H{"cmd"};
+# open the log and command files 
+openAndAddFileToOutputInfo(\%ofile_info_HH, \@ofile_info_2d_keys_A, "log", $out_root . ".log", "Output printed to screen");
+openAndAddFileToOutputInfo(\%ofile_info_HH, \@ofile_info_2d_keys_A, "cmd", $out_root . ".cmd", "List of executed commands");
+my $log_FH = $ofile_info_HH{"FH"}{"log"};
+my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
 # now we have the log file open, output the banner there too
+printf("Before\n");
 outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
+printf("after\n");
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
@@ -210,7 +209,7 @@ foreach $cmd (@early_cmd_A) {
 my @cds2pmatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of primary matpept indices that comprise this CDS
 my @cds2amatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of all     matpept indices that comprise this CDS
 if($do_matpept) { 
-  parseMatPeptSpecFile(opt_Get("--matpept", \%opt_HH), \@cds2pmatpept_AA, \@cds2amatpept_AA, \%ofile_FH_H);
+  parseMatPeptSpecFile(opt_Get("--matpept", \%opt_HH), \@cds2pmatpept_AA, \@cds2amatpept_AA, $ofile_info_HH{"FH"});
 }
 
 ###################################################
@@ -223,7 +222,7 @@ $execs_H{"cmfetch"}       = $inf_exec_dir . "cmfetch";
 $execs_H{"cmpress"}       = $inf_exec_dir . "cmpress";
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
 $execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
-validateExecutableHash(\%execs_H, \%ofile_FH_H);
+validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################
 # Step 1. Gather and process information on reference genome using Edirect.
@@ -248,12 +247,12 @@ my %totlen_H   = ();    # key: accession, value: total length of the sequence fo
 #  4) parses the edirect .mat_peptide file, if necessary
 #  5) parses the edirect .ftable file
 #  6) parses the length file
-wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%totlen_H, \@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H,
-                           \%ofile_desc_H, \%opt_HH, \%ofile_FH_H); # 1st argument is undef because we are only getting info for $ref_accn
+wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%totlen_H, \%ofile_info_HH, \@ofile_info_2d_keys_A, 
+                           \%opt_HH, $ofile_info_HH{"FH"}); # 1st argument is undef because we are only getting info for $ref_accn
 
 if($do_matpept) {  
   # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $totlen_H{$ref_accn}, \%ofile_FH_H);
+  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $totlen_H{$ref_accn}, $ofile_info_HH{"FH"});
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -277,14 +276,14 @@ my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1],
 wrapperFetchAndProcessReferenceSequence(\@accn_A, $out_root, \%cds_tbl_HHA,
                                         ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                         ($do_matpept) ? \@cds2pmatpept_AA : undef, 
-                                        \%totlen_H, \@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, 
+                                        \%totlen_H, \%ofile_info_HH, \@ofile_info_2d_keys_A, 
                                         \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
-                                        \%opt_HH, \%ofile_FH_H);
+                                        \%opt_HH, $ofile_info_HH{"FH"});
 
 # verify our model and feature info hashes are complete, 
 # if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
-my $nftr = validateFeatureInfoHashIsComplete(\%ftr_info_HA, undef, \%ofile_FH_H); # nftr: number of features
-my $nmdl = validateModelInfoHashIsComplete  (\%mdl_info_HA, undef, \%ofile_FH_H); # nmdl: number of homology models
+my $nftr = validateFeatureInfoHashIsComplete(\%ftr_info_HA, undef, $ofile_info_HH{"FH"}); # nftr: number of features
+my $nmdl = validateModelInfoHashIsComplete  (\%mdl_info_HA, undef, $ofile_info_HH{"FH"}); # nmdl: number of homology models
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -294,16 +293,16 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 my $do_clocal = opt_Get("--clocal", \%opt_HH); # are we running calibration locally
 my $build_str = $do_clocal ? "Building and calibrating models" : "Building models and submitting calibration jobs to the farm";
 $start_secs = outputProgressPrior($build_str, $progress_w, $log_FH, *STDOUT);
-createCmDb(\%execs_H, $ofile_name_H{"refstk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, \%ofile_FH_H);
+createCmDb(\%execs_H, $ofile_info_HH{"fullpath"}{"refstk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, $ofile_info_HH{"FH"});
 if(! $do_clocal) { 
   for(my $i = 0; $i < $nmdl; $i++) { 
-    addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "cm$i", "$out_root.$i.cm", 
-                        sprintf("CM file #%d, %s (currently calibrating on the farm)", $i+1, $mdl_info_HA{"out_tiny"}[$i]), \%ofile_FH_H);
+    addClosedFileToOutputInfo(\%ofile_info_HH, \@ofile_info_2d_keys_A, "cm$i", "$out_root.$i.cm", 
+                              sprintf("CM file #%d, %s (currently calibrating on the farm)", $i+1, $mdl_info_HA{"out_tiny"}[$i]));
+
   }
 }
 else { 
-  addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "cm", "$out_root.cm", 
-                      "CM file with all $nmdl models", \%ofile_FH_H);
+  addClosedFileToOutputInfo(\%ofile_info_HH, \@ofile_info_2d_keys_A, "cm", "$out_root.cm", "CM file with all $nmdl models");
 }
 
 outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
@@ -324,8 +323,7 @@ else {
 outputString($log_FH, 1, sprintf("#\n"));
 
 $total_seconds += secondsSinceEpoch();
-outputConclusionAndCloseFiles($total_seconds, $dir, \@ofile_keys_A, \%ofile_desc_H, \%ofile_sname_H, \%ofile_FH_H);
-
+outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH, \@ofile_info_2d_keys_A);
 exit 0;
 
 

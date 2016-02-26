@@ -94,7 +94,7 @@
 # formatTimeString():                      get a timing in hhhh:mm:ss format.
 # maxLengthScalarValueInHash():            returns maximum length (in characters) of all scalar values in a hash
 # getReferenceFeatureInfo():               get information about a reference feature and add that info to a feature info hash of arrays
-# addClosedOutputFile():                   add information about an output file to 'ofile' data structures
+# addClosedFileToOutputFile():             add information about a closed output file to 'ofile' data structures
 # removeDirPath():                         remove the directory path from a path, e.g. "foodir/foodir2/foo.stk" becomes "foo.stk"
 # outputConclusionAndCloseFiles():         output a list of files created and final few lines of output and close output files
 # outputTiming():                          output elapsed time in hhhh:mm:ss format
@@ -2895,13 +2895,10 @@ sub findNonNumericValueInArray {
 #             Close all open file handles.
 #
 # Arguments: 
-#  $total_secs:           total number of seconds, "" to not print timing
-#  $odir:                 output directory, if "", files were put in cwd
-#  $ofile_keys_AR:        ref to array of output file keys
-#  $ofile_desc_HR:        ref to hash of descriptions of each output file
-#  $ofile_sname_HR:       ref to hash of short names for each file, for printing
-#  $ofile_FH_HR:          ref to hash of open file handles, with key "log" 
-#                         and "cmd"
+#  $total_secs:            total number of seconds, "" to not print timing
+#  $odir:                  output directory, if "", files were put in cwd
+#  $ofile_info_HHR:        REF to the 2D hash of output file information
+#  $ofile_info_2d_keys_AR: REF to array of 2D keys in $ofile_info_HHR
 #
 # Returns:   Nothing.
 # 
@@ -2909,19 +2906,21 @@ sub findNonNumericValueInArray {
 #
 ####################################################################
 sub outputConclusionAndCloseFiles { 
-  my $nargs_expected = 6;
+  my $nargs_expected = 4;
   my $sub_name = "outputConclusionAndCloseFiles()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($total_secs, $odir, $ofile_keys_AR, $ofile_desc_HR, $ofile_sname_HR, $ofile_FH_HR) = @_;
+  my ($total_secs, $odir, $ofile_info_HHR, $ofile_info_2d_keys_AR) = @_;
 
-  my $log_FH = $ofile_FH_HR->{"log"};
-  my $cmd_FH = $ofile_FH_HR->{"cmd"};
+  my $log_FH = $ofile_info_HHR->{"FH"}{"log"};
+  my $cmd_FH = $ofile_info_HHR->{"FH"}{"cmd"};
+
+  my $key2d; # a key in the 2nd dimension of $ofile_info_HHR
 
   if(defined $log_FH) { 
     outputString($log_FH, 1, sprintf("#\n"));
-    my $width_desc = length("# ") + maxLengthScalarValueInHash($ofile_desc_HR) + length(" saved in:");
-    foreach my $key (@{$ofile_keys_AR}) { 
-      outputString($log_FH, 1, sprintf("# %-*s %s\n", $width_desc, $ofile_desc_HR->{$key} . " saved in:", $ofile_sname_HR->{$key}));
+    my $width_desc = length("# ") + maxLengthScalarValueInHash($ofile_info_HHR->{"desc"}) + length(" saved in:");
+    foreach $key2d (@{$ofile_info_2d_keys_AR}) { 
+      outputString($log_FH, 1, sprintf("# %-*s %s\n", $width_desc, $ofile_info_HHR->{"desc"}{$key2d} . " saved in:", $ofile_info_HHR->{"nodirpath"}{$key2d}));
     }
     outputString($log_FH, 1, sprintf("#\n"));
     outputString($log_FH, 1, sprintf("# All output files created in %s.\n", ($odir eq "") ? "the current working directory" : "directory \.\/$odir\/"));
@@ -2941,8 +2940,10 @@ sub outputConclusionAndCloseFiles {
     }
   }
 
-  foreach my $fh_key (keys (%{$ofile_FH_HR})) { 
-    close $ofile_FH_HR->{$fh_key};
+  foreach $key2d (keys (%{$ofile_info_HHR->{"FH"}})) { 
+    if(defined $ofile_info_HHR->{"FH"}{$key2d}) { 
+      close $ofile_info_HHR->{"FH"}{$key2d};
+    }
   }
 
   return;
@@ -3127,7 +3128,48 @@ sub getReferenceFeatureInfo {
 }
 
 #################################################################
-# Subroutine: addClosedOutputFile()
+# Subroutine: openAndAddFileToOutputInfo()
+# Incept:     EPN, Fri Feb 26 11:11:09 2016
+# 
+# Purpose:    Add information about a output file and open that
+#             output file. Eventually we'll output information on
+#             this file with outputConclusionAndCloseFiles().
+#
+#             Most of the work is done by helperAddFileToOutputInfo().
+#
+# Arguments:
+#   $ofile_info_HHR:        REF to the 2D hash of output file information, ADDED TO HERE 
+#   $ofile_info_2d_keys_AR: REF to array of 2D keys in $ofile_info_HHR, ADDED TO HERE
+#   $key2d:                 2D key for the file we're adding and opening, e.g. "log"
+#   $fullpath:              full path to the file we're adding and opening
+#   $desc:                  description of the file we're adding and opening
+#
+# Returns:    void
+# 
+# Dies:       If $ofile_info_HHR{*}{$key} already exists.
+#
+#################################################################
+sub openAndAddFileToOutputInfo { 
+  my $sub_name = "openAndAddFileToOutputInfo";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
+ 
+  my ($ofile_info_HHR, $ofile_info_2d_keys_AR, $key2d, $fullpath, $desc) = @_;
+
+  # this helper function does everything but open the file handle
+  helperAddFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, $key2d, $fullpath, $desc);
+
+  # and open the file handle
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  if(! open($ofile_info_HHR->{"FH"}{$key2d}, ">", $fullpath)) { 
+    DNAORG_FAIL("ERROR in $sub_name, unable to open $fullpath for writing.", 1, $FH_HR); 
+  }
+
+  return;
+}
+#################################################################
+# Subroutine: addClosedFileToOutputInfo()
 # Incept:     EPN, Tue Feb 16 14:22:36 2016
 # 
 # Purpose:    Add information about a created output file (not open)
@@ -3135,61 +3177,80 @@ sub getReferenceFeatureInfo {
 #             outputConclusionAndCloseFiles().
 #
 # Arguments:
-#   $ofile_keys_AR:  REF to array of keys in 'ofile' hashes, added to here
-#   $ofile_name_HR:  REF to hash of output file names (full paths), added to here
-#   $ofile_sname_HR: REF to hash of output file names (file names (no directories), added to here
-#   $ofile_desc_HR:  REF to hash of output file descriptions, added to here
-#   $key:            key for the alignment file
-#   $filename:       name of file we are adding
-#   $desc:           description of file
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#   $ofile_info_HHR:        REF to the 2D hash of output file information, ADDED TO HERE 
+#                           for 1D key $key
+#   $ofile_info_2d_keys_AR: REF to array of 2D keys in $ofile_info_HHR, ADDED TO HERE
+#   $key2d:                 2D key for the file we're adding and opening, e.g. "fasta"
+#   $fullpath:              full path to the closed file we're adding
+#   $desc:                  description of the closed file we're adding 
 #
 # Returns:    void
 # 
 # Dies:       If $ofile_desc_HR->{$key} already exists.
 #
 #################################################################
-sub addClosedOutputFile { 
-  my $sub_name = "addClosedOutputFile()";
-  my $nargs_expected = 8;
+sub addClosedFileToOutputInfo { 
+  my $sub_name = "addClosedFileToOutputInfo()";
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, $key, $filename, $desc, $FH_HR) = @_;
+  my ($ofile_info_HHR, $ofile_info_2d_keys_AR, $key2d, $fullpath, $desc) = @_;
 
-  if(exists $ofile_desc_HR->{$key}) { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to add file $filename with key $key, but that key already exists", 1, $FH_HR);
-  }
+  # this helper function does everything but set the file handle ("FH") value
+  helperAddFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, $key2d, $fullpath, $desc);
 
-  push(@{$ofile_keys_AR}, $key);
-  $ofile_name_HR->{$key}  = $filename; 
-  $ofile_sname_HR->{$key} = removeDirPath($filename); 
-  $ofile_desc_HR->{$key}  = $desc;
+  # set FH value to undef
+  $ofile_info_HHR->{"FH"}{$key2d} = undef;
 
   return;
 }
 
 #################################################################
-# Subroutine : removeDirPath()
-# Incept:      EPN, Mon Nov  9 14:30:59 2009 [ssu-align]
-#
-# Purpose:     Given a file name remove the directory path.
-#              For example: "foodir/foodir2/foo.stk" becomes "foo.stk".
-#
-# Arguments: 
-#   $orig_file: name of original file
+# Subroutine: helperAddFileToOutputInfo()
+# Incept:     EPN, Fri Feb 26 14:35:36 2016
 # 
-# Returns:     The string $orig_file with dir path removed.
+# Purpose:    Add information about a output file to the output info
+#             data structures. Helper function that's called by both 
+#             openAndAddFileToOutputInfo() and addClosedFileToOutputInfo().
 #
-# Dies:        Never.
-################################################################# 
-sub removeDirPath {
-  my $nargs_expected = 1;
-  my $sub_name = "removeDirPath()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my $orig_file = $_[0];
+# Arguments:
+#   $ofile_info_HHR:        REF to the 2D hash of output file information, ADDED TO HERE 
+#                           for 1D key $key
+#   $ofile_info_2d_keys_AR: REF to array of 2D keys in $ofile_info_HHR, ADDED TO HERE
+#   $key2d:                 2D key for the file we're adding and opening, e.g. "log"
+#   $fullpath:              full path to the file we're adding and opening
+#   $desc:                  description of the file we're adding and opening
+#
+# Returns:    void
+# 
+# Dies:       If $ofile_info_HHR{*}{$key} already exists.
+#
+#################################################################
+sub helperAddFileToOutputInfo { 
+  my $sub_name = "helperAddFileToOutputInfo";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
+ 
+  my ($ofile_info_HHR, $ofile_info_2d_keys_AR, $key2d, $fullpath, $desc) = @_;
 
-  $orig_file =~ s/^.+\///;
-  return $orig_file;
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  # make sure we don't already have any information for this 2nd dim key $key2d:
+  foreach my $key1d (keys (%{$ofile_info_HHR})) { 
+    if(exists $ofile_info_HHR->{$key1d}{$key2d}) { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add file $fullpath with key $key2d, but that key already exists for first dim key $key1d", 1, $FH_HR);
+    }
+  }
+
+  # set the values of the 2D hash
+  my $nodirpath = removeDirPath($fullpath);
+  push(@{$ofile_info_2d_keys_AR}, $key2d);
+  $ofile_info_HHR->{"fullpath"}{$key2d}  = $fullpath;
+  $ofile_info_HHR->{"nodirpath"}{$key2d} = $nodirpath;
+  $ofile_info_HHR->{"desc"}{$key2d}      = $desc;
+
+  return;
 }
 
 #################################################################
@@ -3378,27 +3439,25 @@ sub maxLengthScalarInArray {
 #              6) parse the length file
 #
 #              Creates the following output files and stores
-#              information on them in the ofile* data structures
-#              by calling the addClosedOutputFile() function:
+#              information on them in %{$ofile_info_HHR}
+#              by calling the addClosedFileToOutputInfo() function:
 #              - $out_root . ".mat_peptide": mature peptide info obtained via edirect
 #              - $out_root . ".ftable":      feature table obtained via edirect
 #              - $out_root . ".length":      sequence length file
 #                      
 # Arguments: 
-#   $listfile:       name of list file with all accessions, can be undef, in which case we 
-#                    only gather information for the reference
-#   $ref_accn:       reference accession, first accession in $listfile (although this is 
-#                    not enforced here, caller enforced it)
-#   $out_root:       string that is the 'root' for naming output files
-#   $cds_tbl_HHAR:   REF to CDS hash of hash of arrays, FILLED HERE
-#   $mp_tbl_HHAR:    REF to mature peptide hash of hash of arrays, can be undef, else FILLED HERE
-#   $totlen_HR:      REF to hash, key is accession, value is total length of the sequence (non-duplicated), FILLED HERE
-#   $ofile_keys_AR:  REF to array of output file keys, ADDED TO HERE
-#   $ofile_name_HR:  REF to hash of output file paths, keys are from @{$ofile_keys_AR}, ADDED TO HERE
-#   $ofile_sname_HR: REF to hash of short output file names (no paths), keys are from @{$ofile_keys_AR}, ADDED TO HERE
-#   $ofile_desc_HR:  REF to hash of description for output files, keys are from @{$ofile_keys_AR}, ADDED TO HERE
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#   $listfile:              name of list file with all accessions, can be undef, in which case we 
+#                           only gather information for the reference
+#   $ref_accn:              reference accession, first accession in $listfile (although this is 
+#                           not enforced here, caller enforced it)
+#   $out_root:              string that is the 'root' for naming output files
+#   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, FILLED HERE
+#   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else FILLED HERE
+#   $totlen_HR:             REF to hash, key is accession, value is total length of the sequence (non-duplicated), FILLED HERE
+#   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
+#   $ofile_info_2d_keys_AR: REF to array of 2nd dim keys in $ofile_info_HHR
+#   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#   $FH_HR:                 REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
 #
 # Returns:     void
 #
@@ -3408,10 +3467,10 @@ sub maxLengthScalarInArray {
 ################################################################# 
 sub wrapperGetInfoUsingEdirect {
   my $sub_name = "wrapperGetInfoUsingEdirect";
-  my $nargs_expected = 12;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $totlen_HR, $ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, $opt_HHR, $FH_HR) = @_;
+  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $totlen_HR, $ofile_info_HHR, $ofile_info_2d_keys_AR, $opt_HHR, $FH_HR) = @_;
 
   my $cmd; # a command to be run by runCommand()
   my $do_matpept = opt_IsOn("--matpept", $opt_HHR);
@@ -3447,7 +3506,7 @@ sub wrapperGetInfoUsingEdirect {
       if(! -s  $mp_file) { 
         DNAORG_FAIL("ERROR, in $sub_name, -matpept enabled but no mature peptide information exists.", 1, $FH_HR);
       }
-      addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "mp", $mp_file, "Mature peptide information obtained via edirect", $FH_HR);
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "mp", $mp_file, "Mature peptide information obtained via edirect");
     }
     else { # ! $do_matpept
       if(-s $mp_file) { 
@@ -3471,7 +3530,7 @@ sub wrapperGetInfoUsingEdirect {
   }
   $cmd .= " | efetch -format ft > $ft_file";
   runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "ft", $ft_file, "Feature table obtained via edirect", $FH_HR);
+  addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "ft", $ft_file, "Feature table obtained via edirect");
 
   # 3) create the length file
   # create a file with total lengths of each accession
@@ -3484,7 +3543,7 @@ sub wrapperGetInfoUsingEdirect {
   }
   $cmd .= " | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
   runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "len", $len_file, "Sequence length file", $FH_HR);
+  addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "len", $len_file, "Sequence length file");
   if(! -s $len_file) { 
     DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, $FH_HR); 
   }  
@@ -3529,31 +3588,29 @@ sub wrapperGetInfoUsingEdirect {
 #
 #              Creates the following output files and stores
 #              information on them in the ofile* data structures
-#              by calling the addClosedOutputFile() function:
+#              by calling the addClosedFileToOutputInfo() function:
 #              - $out_root . ".ref.ft.idfetch.in": input file for esl-fetch-cds.pl
 #              - $out_root . ".ref.fg.fa":         sequence file with reference genome 
 #              - $out_root . ".ref.all.stk":       Stockholm alignment file with reference features
 #              
 # Arguments: 
-#   $accn_AR:          REF to array of accessions, PRE-FILLED
-#   $out_root:         string that is the 'root' for naming output files
-#   $cds_tbl_HHAR:     REF to CDS hash of hash of arrays, PRE-FILLED
-#   $mp_tbl_HHAR:      REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
-#   $cds2pmatpept_AAR: REF to 2D array, 1st dim: cds index (-1, off-by-one), 
-#                      2nd dim: value array of primary matpept indices that comprise this CDS, 
-#                      may be undef if $mp_tbl_HHAR is undef
-#   $totlen_HR:        REF to hash, key is accession, value is total length of the sequence (non-duplicated), PRE-FILLED
-#   $ofile_keys_AR:    REF to array of output file keys, ADDED TO HERE
-#   $ofile_name_HR:    REF to hash of output file paths, keys are from @{$ofile_keys_AR}, ADDED TO HERE
-#   $ofile_sname_HR:   REF to hash of short output file names (no paths), keys are from @{$ofile_keys_AR}, ADDED TO HERE
-#   $ofile_desc_HR:    REF to hash of description for output files, keys are from @{$ofile_keys_AR}, ADDED TO HERE
-#   $ftr_info_HAR:     REF to hash of arrays with information on the features, FILLED HERE
-#   $mdl_info_HAR:     REF to hash of arrays with information on the models, FILLED HERE
-#   $execs_HR:         REF to hash with executables, the key "esl_fetch_cds"
-#                      must be defined and the value must be a valid path to an 
-#                      esl_fetch_cds Perl script, PRE-FILLED
-#   $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
-#   $FH_HR:            REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#   $accn_AR:               REF to array of accessions, PRE-FILLED
+#   $out_root:              string that is the 'root' for naming output files
+#   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
+#   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
+#   $cds2pmatpept_AAR:      REF to 2D array, 1st dim: cds index (-1, off-by-one), 
+#                           2nd dim: value array of primary matpept indices that comprise this CDS, 
+#                           may be undef if $mp_tbl_HHAR is undef
+#   $totlen_HR:             REF to hash, key is accession, value is total length of the sequence (non-duplicated), PRE-FILLED
+#   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
+#   $ofile_info_2d_keys_AR: REF to array of 2nd dim keys in $ofile_info_HHR
+#   $ftr_info_HAR:          REF to hash of arrays with information on the features, FILLED HERE
+#   $mdl_info_HAR:          REF to hash of arrays with information on the models, FILLED HERE
+#   $execs_HR:              REF to hash with executables, the key "esl_fetch_cds"
+#                           must be defined and the value must be a valid path to an 
+#                           esl_fetch_cds Perl script, PRE-FILLED
+#   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#   $FH_HR:                 REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
 #
 # Returns:     void
 #
@@ -3563,10 +3620,10 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAndProcessReferenceSequence()";
-  my $nargs_expected = 15;
+  my $nargs_expected = 13;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($accn_AR, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $totlen_HR, $ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, $ftr_info_HAR, $mdl_info_HAR, $execs_HR, $opt_HHR, $FH_HR) = @_;
+  my ($accn_AR, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $totlen_HR, $ofile_info_HHR, $ofile_info_2d_keys_AR, $ftr_info_HAR, $mdl_info_HAR, $execs_HR, $opt_HHR, $FH_HR) = @_;
 
   # contract check
   if((defined $mp_tbl_HHAR) && (! defined $cds2pmatpept_AAR)) { 
@@ -3583,8 +3640,8 @@ sub wrapperFetchAndProcessReferenceSequence {
   my @ref_seqname_A = ();                                 # will contain a single value, the reference sequence name in the file $fasta_file
   fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, 0, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, \@ref_seqname_A, undef, undef, $FH_HR);
   my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
-  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl", $FH_HR);
-  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "fasta", $fasta_file, "Sequence file with reference genome", $FH_HR);
+  addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
+  addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "fasta", $fasta_file, "Sequence file with reference genome");
 
   # 2) determine reference information for each feature (strand, length, coordinates, product)
   getReferenceFeatureInfo($cds_tbl_HHAR, $mp_tbl_HHAR, $ftr_info_HAR, $ref_accn, $FH_HR); # $mp_tbl_HHAR may be undefined and that's okay
@@ -3600,7 +3657,7 @@ sub wrapperFetchAndProcessReferenceSequence {
   my $ref_seqname  = $ref_seqname_A[0];          # the reference sequence name the fetched sequence file $fasta_file
   my $all_stk_file = $out_root . ".ref.all.stk"; # name of output alignment file we are about to create
   fetchReferenceFeatureSequences($execs_HR, $sqfile, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
-  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "refstk", $all_stk_file, "Stockholm alignment file with reference features", $FH_HR);
+  addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "refstk", $all_stk_file, "Stockholm alignment file with reference features");
 
   # clean up
   if(opt_Get("--dirty", $opt_HHR)) { 
@@ -3608,6 +3665,31 @@ sub wrapperFetchAndProcessReferenceSequence {
   }
 
   return 0;
+}
+
+#################################################################
+# Subroutine : removeDirPath()
+# Incept:      EPN, Mon Nov  9 14:30:59 2009 [ssu-align]
+#
+# Purpose:     Given a full path of a file remove the directory path.
+#              For example: "foodir/foodir2/foo.stk" becomes "foo.stk".
+#
+# Arguments: 
+#   $fullpath: name of original file
+# 
+# Returns:     The string $fullpath with dir path removed.
+#
+################################################################# 
+sub removeDirPath {
+  my $sub_name = "removeDirPath()";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my $fullpath = $_[0];
+
+  $fullpath =~ s/^.+\///;
+
+  return $fullpath;
 }
 
 ###########################################################################
