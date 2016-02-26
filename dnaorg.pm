@@ -1059,7 +1059,7 @@ sub stripVersion {
 #  $execs_HR:          reference to hash with executables, the key "esl-reformat"
 #                      must be defined and the value must be a valid path to an 
 #                      esl-reformat executable, PRE-FILLED
-#  $sqfile:            Bio::Easel::SqFile object, the sequence file we'll fetch from
+#  $sqfile:            Bio::Easel::SqFile object, the sequence file we'll fetch from, already opened by caller
 #  $ref_seq_accn:      sequence accession of reference
 #  $ref_totlen:        length of reference 
 #  $out_root:          root of output name files
@@ -3476,9 +3476,6 @@ sub wrapperGetInfoUsingEdirect {
   # 3) create the length file
   # create a file with total lengths of each accession
   my $len_file  = $out_root . ".length";
-#$cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
-$cmd = "cat $listfile | epost -db nuccore -format acc | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
-
   if($have_listfile) { 
     $cmd = "cat $listfile | epost -db nuccore -format acc";
   }
@@ -3525,33 +3522,38 @@ $cmd = "cat $listfile | epost -db nuccore -format acc | efetch -format gpc | xtr
 #              the reference sequence and process information about it.
 #              This function does the following:
 # 
-#              1) fetches the reference sequence
+#              1) fetches the reference sequence into a fasta file and indexes that fasta file
 #              2) determines reference information for each feature (strand, length, coordinates, product)
-#              3) determine type of each reference feature ('cds-mp', 'cds-notmp', or 'mp')
-#              4) fetch the reference feature sequences and populate information on the models and features
+#              3) determines type of each reference feature ('cds-mp', 'cds-notmp', or 'mp')
+#              4) fetches the reference feature sequences and populate information on the models and features
 #
 #              Creates the following output files and stores
 #              information on them in the ofile* data structures
 #              by calling the addClosedOutputFile() function:
-#              - $out_root . ".mat_peptide": mature peptide info obtained via edirect
-#              - $out_root . ".ftable":      feature table obtained via edirect
-#              - $out_root . ".length":      sequence length file
+#              - $out_root . ".ref.ft.idfetch.in": input file for esl-fetch-cds.pl
+#              - $out_root . ".ref.fg.fa":         sequence file with reference genome 
+#              - $out_root . ".ref.all.stk":       Stockholm alignment file with reference features
 #              
 # Arguments: 
-#   $accn_AR:        REF to array of accessions, PRE-FILLED
-#   $seq_accn_AR:    REF to array of sequence names in newly created sequence file, FILLED HERE
-#   $out_root:       string that is the 'root' for naming output files
-#   $cds_tbl_HHAR:   REF to CDS hash of hash of arrays, PRE-FILLED
-#   $mp_tbl_HHAR:    REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
-#   $totlen_HR:      REF to hash, key is accession, value is total length of the sequence (non-duplicated), PRE-FILLED
-#   $ofile_keys_AR:  REF to array of output file keys, ADDED TO HERE
-#   $ofile_name_HR:  REF to hash of output file paths, keys are from @{$ofile_keys_AR}, ADDED TO HERE
-#   $ofile_sname_HR: REF to hash of short output file names (no paths), keys are from @{$ofile_keys_AR}, ADDED TO HERE
-#   $ofile_desc_HR:  REF to hash of description for output files, keys are from @{$ofile_keys_AR}, ADDED TO HERE
-#   $mdl_info_HAR:   REF to hash of arrays with information on the models, FILLED HERE
-#   $ftr_info_HAR:   REF to hash of arrays with information on the features, FILLED HERE
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#   $accn_AR:          REF to array of accessions, PRE-FILLED
+#   $out_root:         string that is the 'root' for naming output files
+#   $cds_tbl_HHAR:     REF to CDS hash of hash of arrays, PRE-FILLED
+#   $mp_tbl_HHAR:      REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
+#   $cds2pmatpept_AAR: REF to 2D array, 1st dim: cds index (-1, off-by-one), 
+#                      2nd dim: value array of primary matpept indices that comprise this CDS, 
+#                      may be undef if $mp_tbl_HHAR is undef
+#   $totlen_HR:        REF to hash, key is accession, value is total length of the sequence (non-duplicated), PRE-FILLED
+#   $ofile_keys_AR:    REF to array of output file keys, ADDED TO HERE
+#   $ofile_name_HR:    REF to hash of output file paths, keys are from @{$ofile_keys_AR}, ADDED TO HERE
+#   $ofile_sname_HR:   REF to hash of short output file names (no paths), keys are from @{$ofile_keys_AR}, ADDED TO HERE
+#   $ofile_desc_HR:    REF to hash of description for output files, keys are from @{$ofile_keys_AR}, ADDED TO HERE
+#   $ftr_info_HAR:     REF to hash of arrays with information on the features, FILLED HERE
+#   $mdl_info_HAR:     REF to hash of arrays with information on the models, FILLED HERE
+#   $execs_HR:         REF to hash with executables, the key "esl_fetch_cds"
+#                      must be defined and the value must be a valid path to an 
+#                      esl_fetch_cds Perl script, PRE-FILLED
+#   $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#   $FH_HR:            REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
 #
 # Returns:     void
 #
@@ -3560,110 +3562,49 @@ $cmd = "cat $listfile | epost -db nuccore -format acc | efetch -format gpc | xtr
 #     
 ################################################################# 
 sub wrapperFetchAndProcessReferenceSequence { 
-  my $sub_name = "wrapperFetchAndProcessReferenceSequence()"
-  my $nargs_expected = 12;
+  my $sub_name = "wrapperFetchAndProcessReferenceSequence()";
+  my $nargs_expected = 15;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $totlen_HR, $ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, $opt_HHR, $FH_HR) = @_;
+  my ($accn_AR, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $totlen_HR, $ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, $ftr_info_HAR, $mdl_info_HAR, $execs_HR, $opt_HHR, $FH_HR) = @_;
 
-  my $cmd; # a command to be run by runCommand()
-  my $do_matpept = opt_IsOn("--matpept", $opt_HHR);
-
-  my $have_listfile = (defined $listfile) ? 1 : 0;
-  if(defined $listfile) { 
-    if(! -e $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile does not exist"); }
-    if(! -s $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile exists but is empty"); }
+  # contract check
+  if((defined $mp_tbl_HHAR) && (! defined $cds2pmatpept_AAR)) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract violation, mp_tbl_HHAR variable is defined but cds2pmatpept_AAR variable is not", 1, $FH_HR);
+  }
+  if((! defined $mp_tbl_HHAR) && (defined $cds2pmatpept_AAR)) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract violation, mp_tbl_HHAR variable is not defined but cds2pmatpept_AAR variable is", 1, $FH_HR);
   }
 
-  # We create the .mat_peptide file first because we will die with an
-  # error if mature peptide info exists and neither -matpept nor
-  # -nomatpept was used (and we want to die as early as possible in the
-  # script to save the user's time)
-  #
-  # 1) create the edirect .mat_peptide file, if necessary
-  my $mp_file = $out_root . ".mat_peptide";
+  # 1) fetch the reference sequence into a fasta file and index that fasta file
+  my $ref_accn      = $accn_AR->[0];                      # the reference accession
+  my $fetch_file    = $out_root . ".ref.fg.idfetch.in";   # the esl_fetch_cds.pl input file we are about to create
+  my $fasta_file    = $out_root . ".ref.fg.fa";           # the fasta file we are about to create
+  my @ref_seqname_A = ();                                 # will contain a single value, the reference sequence name in the file $fasta_file
+  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, 0, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, \@ref_seqname_A, undef, undef, $FH_HR);
+  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
+  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl", $FH_HR);
+  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "fasta", $fasta_file, "Sequence file with reference genome", $FH_HR);
 
-  #      if -nomatpept was   enabled we don't attempt to create a matpept file
-  # else if -matpept was     enabled we validate that the resulting matpept file is not empty
-  # else if -matpept was not enabled we validate that the resulting matpept file is     empty
-  if(! opt_Get("--nomatpept", $opt_HHR)) { 
-    if($have_listfile) {
-      $cmd = "cat $listfile | epost -db nuccore -format acc";
-    }
-    else { 
-      $cmd = "esearch -db nuccore -query $ref_accn";
-    }
-    $cmd .= " | efetch -format gpc | xtract -insd mat_peptide INSDFeature_location product > $mp_file";
-    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  
-    if($do_matpept) { 
-      if(! -s  $mp_file) { 
-        DNAORG_FAIL("ERROR, in $sub_name, -matpept enabled but no mature peptide information exists.", 1, $FH_HR);
-      }
-      addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "mp", $mp_file, "Mature peptide information obtained via edirect", $FH_HR);
-    }
-    else { # ! $do_matpept
-      if(-s $mp_file) { 
-        DNAORG_FAIL("ERROR, in $sub_name, -matpept not enabled but mature peptide information exists, use -nomatpept to ignore it.", 1, $FH_HR); 
-      }
-      else { 
-        # remove the empty file we just created
-        runCommand("rm $mp_file", opt_Get("-v", $opt_HHR), $FH_HR);
-      }
-    }
-  }
+  # 2) determine reference information for each feature (strand, length, coordinates, product)
+  getReferenceFeatureInfo($cds_tbl_HHAR, $mp_tbl_HHAR, $ftr_info_HAR, $ref_accn, $FH_HR); # $mp_tbl_HHAR may be undefined and that's okay
+  my @reqd_keys_A = ("ref_strand", "ref_len", "ref_coords", "out_product");
+  validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, undef, $FH_HR);
 
-  # 2) create the edirect .ftable file
-  # create the edirect ftable file
-  my $ft_file  = $out_root . ".ftable";
-  if($have_listfile) { 
-    $cmd = "cat $listfile | epost -db nuccore -format acc";
-  }
-  else { 
-    $cmd = "esearch -db nuccore -query $ref_accn";
-  }
-  $cmd .= " | efetch -format ft > $ft_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "ft", $ft_file, "Feature table obtained via edirect", $FH_HR);
+  # 3) determine type of each reference feature ('cds-mp', 'cds-notmp', or 'mp')
+  my $nmp = (defined $mp_tbl_HHAR) ? scalar(@{$mp_tbl_HHAR->{$ref_accn}{"coords"}}) : 0; # number of mature peptides
+  determineFeatureTypes($nmp, $cds2pmatpept_AAR, $ftr_info_HAR, $FH_HR); # $cds2pmatpept_AAR may be undef and that's okay
 
-  # 3) create the length file
-  # create a file with total lengths of each accession
-  my $len_file  = $out_root . ".length";
-#$cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
-$cmd = "cat $listfile | epost -db nuccore -format acc | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
+  # 4) fetch the reference feature sequences and populate information on the models and features
+  my $ref_totlen   = $totlen_HR->{$ref_accn};    # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
+  my $ref_seqname  = $ref_seqname_A[0];          # the reference sequence name the fetched sequence file $fasta_file
+  my $all_stk_file = $out_root . ".ref.all.stk"; # name of output alignment file we are about to create
+  fetchReferenceFeatureSequences($execs_HR, $sqfile, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
+  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "refstk", $all_stk_file, "Stockholm alignment file with reference features", $FH_HR);
 
-  if($have_listfile) { 
-    $cmd = "cat $listfile | epost -db nuccore -format acc";
-  }
-  else { 
-    $cmd = "esearch -db nuccore -query $ref_accn";
-  }
-  $cmd .= " | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedOutputFile($ofile_keys_AR, $ofile_name_HR, $ofile_sname_HR, $ofile_desc_HR, "len", $len_file, "Sequence length file", $FH_HR);
-  if(! -s $len_file) { 
-    DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, $FH_HR); 
-  }  
-
-  # 4) parse the edirect .mat_peptide file, if necessary
-  if($do_matpept) {  
-    edirectFtableOrMatPept2SingleFeatureTableInfo($mp_file, 1, "mat_peptide", $mp_tbl_HHAR, $FH_HR); # 1: it is a mat_peptide file
-    if (! exists ($mp_tbl_HHAR->{$ref_accn})) { 
-      DNAORG_FAIL("ERROR in $sub_name, -matpept enabled, but no mature peptide information stored for reference accession", 1, $FH_HR); 
-    }
-  }
-
-  # 5) parse the edirect .ftable file
-  edirectFtableOrMatPept2SingleFeatureTableInfo($ft_file, 0, "CDS", $cds_tbl_HHAR, $FH_HR); # 0: it's not a mat_peptide file
-  if(! exists ($cds_tbl_HHAR->{$ref_accn})) { 
-    DNAORG_FAIL("ERROR in $sub_name, no CDS information stored for reference accession", 1, $FH_HR); 
-  }
-
-  # 6) parse the length file
-  # first, parse the length file
-  parseLengthFile($len_file, $totlen_HR, $FH_HR);
-  if(! exists $totlen_HR->{$ref_accn}) { 
-    DNAORG_FAIL("ERROR in $sub_name, problem fetching length of reference accession $ref_accn", 1, $FH_HR); 
+  # clean up
+  if(opt_Get("--dirty", $opt_HHR)) { 
+    unlink $fasta_file . ".ssi"; # remove the file that was created when we created $sqfile
   }
 
   return 0;

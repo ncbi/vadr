@@ -241,7 +241,6 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
                         # 3D: per-row values for each column
 my %totlen_H   = ();    # key: accession, value: total length of the sequence for that accession
 
-
 # Call the wrapper function that does the following:
 #  1) creates the edirect .mat_peptide file, if necessary
 #  2) creates the edirect .ftable file
@@ -262,50 +261,32 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 2. Fetch and process the reference genome sequence
 ##########################################################
 $start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
-my @accn_A     = ($ref_accn); # array of accessions 
-my @seq_accn_A = ();      # array of actual sequence names in $fasta_file that we'll create, filled in fetchSequencesUsingEslFetchCds
+my @accn_A      = ($ref_accn); # array of accessions 
+my %mdl_info_HA = ();          # hash of arrays, values are arrays [0..$nmdl-1];
+                               # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
+                               # filled in wrapperFetchAndProcessReferenceSequence()
+my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1], 
+                               # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
+                               # filled in wrapperFetchAndProcessReferenceSequence()
 
-my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file });
-addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "index", $fasta_file.".ssi", "Index for reference genome sequence file", \%ofile_FH_H);
-
-
-my $fetch_file = $out_root . ".ref.fg.idfetch.in";
-my $fasta_file = $out_root . ".ref.fg.fa";
-# fetch the reference genome
-fetchSequencesUsingEslFetchCds($execs_H{"esl_fetch_cds"}, 0, $fetch_file, $fasta_file, opt_Get("-c", \%opt_HH), \@accn_A, \%totlen_H, \@seq_accn_A, undef, undef, \%ofile_FH_H);
-addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl", \%ofile_FH_H);
-addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "fasta", $fasta_file, "Sequence file with reference genome", \%ofile_FH_H);
-
-my %ftr_info_HA = (); # hash of arrays, values are arrays [0..$nftr-1], 
-                      # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
-my $nftr;             # number of features
-my $nmp;              # number of mature peptide features
-
-# determine reference information for each feature (strand, length, coordinates, product)
-getReferenceFeatureInfo(\%cds_tbl_HHA, ($do_matpept ? \%mp_tbl_HHA : undef), \%ftr_info_HA, $ref_accn, \%ofile_FH_H);
-my @reqd_keys_A = ("ref_strand", "ref_len", "ref_coords", "out_product");
-$nftr = validateAndGetSizeOfInfoHashOfArrays(\%ftr_info_HA, undef, \%ofile_FH_H);
-$nmp  = ($do_matpept) ? scalar(@{$mp_tbl_HHA{$ref_accn}{"coords"}}) : 0;
-
-# determine type of each feature 
-determineFeatureTypes($nmp, ((@cds2pmatpept_AA) ? \@cds2pmatpept_AA : undef), \%ftr_info_HA, \%ofile_FH_H);
-
-# fetch the reference feature sequences and populate information on the models and features
-my $all_stk_file = $out_root . ".ref.all.stk";
-my %mdl_info_HA = (); # hash of arrays, hash keys: "ftr_idx",  "is_first",  "is_final",  values are arrays [0..$nmdl-1];
-my $ref_totlen = $totlen_H{$ref_accn}; # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
-fetchReferenceFeatureSequences(\%execs_H, $sqfile, $seq_accn_A[0], $ref_totlen, $out_root, \%mdl_info_HA, \%ftr_info_HA, $all_stk_file, \%opt_HH, \%ofile_FH_H); # 0 is 'do_circular' which is irrelevant in this context
-addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "refstk", $all_stk_file, "Stockholm alignment file with reference features", \%ofile_FH_H);
-
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+# Call the wrapper function that does the following:
+#   1) fetches the reference sequence into a fasta file and indexes that fasta file
+#   2) determines reference information for each feature (strand, length, coordinates, product)
+#   3) determines type of each reference feature ('cds-mp', 'cds-notmp', or 'mp')
+#   4) fetches the reference feature sequences and populate information on the models and features
+wrapperFetchAndProcessReferenceSequence(\@accn_A, $out_root, \%cds_tbl_HHA,
+                                        ($do_matpept) ? \%mp_tbl_HHA      : undef, 
+                                        ($do_matpept) ? \@cds2pmatpept_AA : undef, 
+                                        \%totlen_H, \@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, 
+                                        \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
+                                        \%opt_HH, \%ofile_FH_H);
 
 # verify our model and feature info hashes are complete, 
-# if validateFeatureInfoHashIsComplete() fails
-# the program will exit with an error message
-my $nmdl; # the number of homology models (CMs)
-validateFeatureInfoHashIsComplete(\%ftr_info_HA, undef, \%ofile_FH_H);
-$nmdl = validateModelInfoHashIsComplete(\%mdl_info_HA, undef, \%ofile_FH_H);
+# if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
+my $nftr = validateFeatureInfoHashIsComplete(\%ftr_info_HA, undef, \%ofile_FH_H); # nftr: number of features
+my $nmdl = validateModelInfoHashIsComplete  (\%mdl_info_HA, undef, \%ofile_FH_H); # nmdl: number of homology models
 
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ####################################
 # Step 3. Build and calibrate models 
@@ -313,7 +294,7 @@ $nmdl = validateModelInfoHashIsComplete(\%mdl_info_HA, undef, \%ofile_FH_H);
 my $do_clocal = opt_Get("--clocal", \%opt_HH); # are we running calibration locally
 my $build_str = $do_clocal ? "Building and calibrating models" : "Building models and submitting calibration jobs to the farm";
 $start_secs = outputProgressPrior($build_str, $progress_w, $log_FH, *STDOUT);
-createCmDb(\%execs_H, $ofile_name_H{"all_stk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, \%ofile_FH_H);
+createCmDb(\%execs_H, $ofile_name_H{"refstk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, \%ofile_FH_H);
 if(! $do_clocal) { 
   for(my $i = 0; $i < $nmdl; $i++) { 
     addClosedOutputFile(\@ofile_keys_A, \%ofile_name_H, \%ofile_sname_H, \%ofile_desc_H, "cm$i", "$out_root.$i.cm", 
@@ -327,6 +308,9 @@ else {
 
 outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
+##########
+# Conclude
+##########
 # a quick note to the user about what to do next
 outputString($log_FH, 1, sprintf("#\n"));
 if(! $do_clocal) { 
@@ -339,9 +323,6 @@ else {
 }
 outputString($log_FH, 1, sprintf("#\n"));
 
-##########
-# Conclude
-##########
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \@ofile_keys_A, \%ofile_desc_H, \%ofile_sname_H, \%ofile_FH_H);
 
