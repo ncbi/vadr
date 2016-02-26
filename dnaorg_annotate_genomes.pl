@@ -2457,9 +2457,9 @@ for(my $a = 0; $a < $naccn; $a++) {
         }
         else {
           push(@cur_out_A, sprintf("  %6s", "?"));
-          $multiple_of_3_char = $ss3_no_char;
+          $multiple_of_3_char = $ss3_unsure_char;
         }
-        if($multiple_of_3_char ne $ss3_yes_char) { 
+        if((! defined ($cds_len)) || (($cds_len % 3) != 0)) { 
           setErrorCode(\@{$cur_err_pf_AA[$mft_i]}, \@{$cur_err_extra_pf_AA[$mft_i]}, "nm3", (defined $cds_len) ? $cds_len : "?", \%err_pf_code2idx_H, \$cur_nerr);
         }
         
