@@ -25,7 +25,6 @@ require "epn-options.pm";
 #
 # Step 2. Fetch and process the reference genome sequence
 #
-# Step 3. Build and calibrate models
 #######################################################################################
 
 # hard-coded-paths:
@@ -71,6 +70,7 @@ opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",              "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons", "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--dirty",      "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",         "do not remove intermediate files, leave them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("--model",      "string",  undef,                    1,    undef, undef,      "use model in file",                          "use model file <s>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -86,8 +86,9 @@ my $options_okay =
                 'v'             => \$GetOptions_H{"-v"},
                 'matpept=s'     => \$GetOptions_H{"--matpept"},
                 'nomatpept'     => \$GetOptions_H{"--nomatpept"},
-                '--specstart=s' => \$GetOptions_H{"--specstart"},
-                'dirty'         => \$GetOptions_H{"--dirty"});
+                'specstart=s'   => \$GetOptions_H{"--specstart"},
+                'dirty'         => \$GetOptions_H{"--dirty"},
+                'model'         => \$GetOptions_H{"--model"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -119,7 +120,7 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
 my $dir        = opt_Get("-d", \%opt_HH);          # this will be undefined unless -d set on cmdline
-my $do_matpept = opt_IsOn("--matpept", \%opt_HH);
+my $do_matpept = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --matpept set on cmdline 
 
 ###############
 # Preliminaries
@@ -204,6 +205,7 @@ if(opt_IsOn("--specstart", \%opt_HH)) {
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmsearch"}      = $inf_exec_dir . "cmsearch";
 $execs_H{"cmalign"}       = $inf_exec_dir . "cmalign";
+$execs_H{"cmpress"}       = $inf_exec_dir . "cmpress";
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
 $execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
@@ -237,8 +239,8 @@ wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_
                            \%opt_HH, $ofile_info_HH{"FH"}); # 1st argument is undef because we are only getting info for $ref_accn
 
 if($do_matpept) {  
-  # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $totlen_H{$ref_accn}, $ofile_info_HH{"FH"});
+    # validate the CDS:mat_peptide relationships that we read from the $matpept input file
+    matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $totlen_H{$ref_accn}, $ofile_info_HH{"FH"});
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -272,6 +274,43 @@ my $nmdl = validateModelInfoHashIsComplete  (\%mdl_info_HA, undef, $ofile_info_H
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
+# verify that we have the model file we need
+my $model_file = opt_Get("--model", \%opt_HH);     # this will be undefined unless --model set on cmdline
+if(! defined $model_file) { 
+  # -model not used, make sure we already have the CM DB file from
+  # an earlier dnaorg_build.pl run. 
+  $model_file = $out_root . ".dnaorg_build.ref.cm";
+  if(! -s $model_file) { 
+    # the model file does not (yet) exist. This is probably the first
+    # time we've run dnaorg_annotate.pl and we have several individual
+    # CM files because each was calibrated independently on the
+    # farm. In this case, we concatenate the individual files to
+    # create one CM database.
+    $start_secs = outputProgressPrior("Creating CM database by concatenating individual CM files", $progress_w, $log_FH, *STDOUT);
+    concatenate_individual_cm_files($model_file, $out_root, \%opt_HH, \%ofile_info_HH);
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
+}
+
+# validate that we have the CM binary index files from cmpress that we need, 
+# if we don't, then create them
+my $do_press = 0;
+for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
+  my $file = $model_file . "." . $suffix;
+  if(! -s $file) { $do_press = 1; }
+}
+if($do_press) { 
+  # run cmpress to create the CM binary index files
+  $start_secs = outputProgressPrior("Preparing the CM database for homology search using cmpress", $progress_w, $log_FH, *STDOUT);
+  press_cm_database($model_file, $execs_H{"cmpress"}, \%opt_HH, \%ofile_info_HH);
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
+# validate the CM we are about to use to annotate was actually created for the current reference
+$start_secs = outputProgressPrior("Verifying CM database created for current reference $ref_accn", $progress_w, $log_FH, *STDOUT);
+validate_cms_built_from_reference($model_file, \%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 ##########
 # Conclude
 ##########
@@ -281,3 +320,170 @@ outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
 
+###############
+# SUBROUTINES #
+################################################################
+# naming convention: words separated by underscores
+# (e.g. 'get_value_from_array()') for subroutines in *this* file as
+# opposed to a Perl module where they're named in camel caps
+# (e.g. getValueFromArray()).
+#################################################################
+
+#################################################################
+# Subroutine : concatenate_individual_cm_files()
+# Incept:      EPN, Mon Feb 29 10:53:53 2016
+#
+# Purpose:     Concatenate individual CM files created and calibrated
+#              by a previous call to dnaorg_build.pl into one 
+#              CM file.
+#
+# Arguments: 
+#   $model_file:     the full path to the concatenated model file to create
+#   $out_root:       output root the individual CM files share
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $ofile_info_HHR: REF to the 2D hash of output file information
+# 
+# Returns:     void
+# 
+# Dies: If any of the expected individual CM files do not exist.
+#
+################################################################# 
+sub concatenate_individual_cm_files {
+  my $sub_name = "concatenate_individual_cm_files()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($model_file, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  # concatenate the files into a CM DB and run cmpress on it
+  my $cat_cmd = "cat";
+  my $out_root_no_dnaorg_annotate = $out_root;
+  $out_root_no_dnaorg_annotate =~ s/\.dnaorg_annotate$//;
+  for(my $i = 0; $i < $nmdl; $i++) { 
+    my $indi_model = $out_root_no_dnaorg_annotate . ".dnaorg_build.ref.$i.cm";
+    if(! -s ($indi_model)) { 
+      DNAORG_FAIL("ERROR, model database file $model_file does not exist, nor does individual model file $indi_model.\nDid you run 'dnaorg_build.pl $ref_accn' -- it doesn't seem like you have.", 1, $FH_HR);
+    }
+    $cat_cmd .= " $indi_model ";
+  }
+  $cat_cmd .= " > $model_file";
+  runCommand($cat_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  addClosedFileToOutputInfo($ofile_info_HHR, "cm", $model_file, "CM file (a concatenation of individual files created by dnaorg_build.pl)");
+
+  # remove the binary index files if they exist, possibly from an earlier cmbuild/cmpress:
+  for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
+    my $file = $model_file . "." . $suffix;
+    if(-e $file) { 
+      runCommand("rm $file", opt_Get("-v", $opt_HHR), $FH_HR);
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine : press_cm_database()
+# Incept:      EPN, Mon Feb 29 14:26:52 2016
+#
+# Purpose:     Run cmpress on a CM database file.
+#
+# Arguments: 
+#   $model_file:     the full path to the concatenated model file to create
+#   $cmpress:        path to cmpress executable
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $ofile_info_HHR: REF to the 2D hash of output file information
+# 
+# Returns:     void
+# 
+# Dies: If any of the expected individual CM files do not exist.
+#
+################################################################# 
+sub press_cm_database {
+  my $sub_name = "press_cm_database()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($model_file, $cmpress, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  # remove the binary index files if they exist, possibly from an earlier cmbuild/cmpress:
+  for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
+    my $file = $model_file . "." . $suffix;
+    if(-e $file) { 
+      runCommand("rm $file", opt_Get("-v", $opt_HHR), $FH_HR);
+    }
+  }
+
+  my $cmpress_cmd = "$cmpress $model_file > /dev/null"; # output is irrelevant
+  runCommand($cmpress_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1m", $model_file.".i1m", "index file for the CM, created by cmpress");
+  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1i", $model_file.".i1i", "index file for the CM, created by cmpress");
+  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1f", $model_file.".i1f", "index file for the CM, created by cmpress");
+  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1p", $model_file.".i1p", "index file for the CM, created by cmpress");
+
+  return;
+}
+
+#################################################################
+# Subroutine : validate_cms_built_from_reference()
+# Incept:      EPN, Mon Feb 29 11:21:11 2016
+#
+# Purpose:     Validate the CMs in a model file were built from
+#              the current reference, with information in $mdl_info_HAR->{"cksum"}.
+#
+# Arguments: 
+#  $model_file:      the full path to the concatenated model file to create
+#  $mdl_info_HAR:    REF to hash of arrays with information on the models, PRE-FILLED
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+# 
+# Returns:     void
+# 
+# Dies: If at least one CM was not built from the current reference.
+#
+################################################################# 
+sub validate_cms_built_from_reference { 
+  my $sub_name = "validate_cms_built_from_reference()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($model_file, $mdl_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  # validate we have a complete model info hash
+  validateModelInfoHashIsComplete($mdl_info_HAR, undef, $FH_HR);
+
+  # get the checksum lines from the CM file into a file
+  my $cksum_file  = $model_file . ".cksum";
+  $cmd = "grep ^CKSUM $model_file | awk '{ print \$2 '} > $cksum_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+
+  # for each of the checksums in the CM file, make sure they match the checksum from
+  # the alignment file used to build that CM, which is in $mdl_info_HAR->{"checksum"}[$i]
+  open(CKSUM, $cksum_file) || fileOpenFailure($cksum_file, $!, "reading", $FH_HR);
+  my $i = 0;
+  while(my $cksum = <CKSUM>) { 
+    chomp $cksum;
+    if($cksum != $mdl_info_HAR->{"checksum"}[$i]) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, checksum mismatch for CM %d (CM: %d != alignment: %d)", $i+1, $cksum, $mdl_info_HAR->{"checksum"}[$i]), 1, $FH_HR);
+    }
+    $i++;
+  }
+  close(CKSUM);
+
+  # clean up this file, unless -d used (in which case we don't remove intermediate files) 
+  if(! opt_Get("-d", $opt_HHR)) { 
+    unlink $cksum_file;
+  }
+  else { 
+    addClosedFileToOutputInfo($ofile_info_HHR, "cmchecksum", $cksum_file, "Checksum lines from the CM file");
+  }
+  return;
+}

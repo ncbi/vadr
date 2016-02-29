@@ -1705,8 +1705,6 @@ sub lengthFromCoords {
 #
 # Arguments:
 #   $esl_fetch_cds:    path to esl-fetch-cds executable
-#   $do_force:         '1' to overwrite $out_fetch_file and $out_fasta_file if they exist,
-#                      '0' to die if they exist
 #   $out_fetch_file:   name of file to use as input to $esl_fetch_cds, created here
 #   $out_fasta_file:   name of fasta file to create, created here
 #   $do_circular:      '1' to duplicate genome, '0' not to
@@ -1728,30 +1726,14 @@ sub lengthFromCoords {
 #################################################################
 sub fetchSequencesUsingEslFetchCds { 
   my $sub_name = "fetchSequencesUsingEslFetchCds";
-  my $nargs_expected = 11;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($esl_fetch_cds, $do_force, $fetch_file, $fasta_file, $do_circular, $accn_AR, $totlen_HR, $seq_accn_AR, $accn2seq_accn_HR, $seq_accn2accn_HR, $FH_HR) = @_;
+  my ($esl_fetch_cds, $fetch_file, $fasta_file, $do_circular, $accn_AR, $totlen_HR, $seq_accn_AR, $accn2seq_accn_HR, $seq_accn2accn_HR, $FH_HR) = @_;
 
   # contract check
   if(! -e $esl_fetch_cds) { 
     DNAORG_FAIL("ERROR in $sub_name, required executable $esl_fetch_cds does not exist", 1, $FH_HR); 
-  }
-
-  my @out_files_A = ($fetch_file, $fasta_file, $fasta_file.".ssi");
-  if($do_force) { 
-    foreach my $out_file (@out_files_A) { 
-      if(-e $out_file) { 
-        unlink $out_file;
-      }
-    }
-  }
-  else { 
-    foreach my $out_file (@out_files_A) { 
-      if(-e $out_file) { 
-        DNAORG_FAIL("ERROR in $sub_name, output file $out_file already exists, and do_force option is off", 1, $FH_HR);
-      }
-    }
   }
 
   my $seq_accn;     # sequence accession
@@ -2452,7 +2434,9 @@ sub DNAORG_FAIL {
     }
     # close each file handle
     foreach my $key (keys %{$FH_HR}) { 
-      close $FH_HR->{$key};
+      if(defined $FH_HR->{$key}) { 
+        close $FH_HR->{$key};
+      }
     }
   }
   
@@ -2874,7 +2858,7 @@ sub validateInfoHashOfArraysIsComplete {
 #             be either defined or not defined.
 #
 # Arguments:
-#   $ofile_info_HHR:  REF to hash of hashes of information
+#   $ofile_info_HHR:  REF to hash of hashes of output file information
 # 
 # Returns: Number of elements in each and every 2d hash (except possibly %{$ofile_info_HHR->{"FH"}})
 #
@@ -3756,7 +3740,7 @@ sub wrapperFetchAndProcessReferenceSequence {
   my $fetch_file    = $out_root . ".ref.fg.idfetch.in";   # the esl_fetch_cds.pl input file we are about to create
   my $fasta_file    = $out_root . ".ref.fg.fa";           # the fasta file we are about to create
   my @ref_seqname_A = ();                                 # will contain a single value, the reference sequence name in the file $fasta_file
-  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, 0, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, \@ref_seqname_A, undef, undef, $FH_HR);
+  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, \@ref_seqname_A, undef, undef, $FH_HR);
   my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
   addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
   addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
