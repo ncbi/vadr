@@ -3661,8 +3661,9 @@ sub wrapperFetchAndProcessReferenceSequence {
   # 4) fetch the reference feature sequences and populate information on the models and features
   my $ref_totlen   = $totlen_HR->{$ref_accn};    # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
   my $ref_seqname  = $ref_seqname_A[0];          # the reference sequence name the fetched sequence file $fasta_file
-  my $all_stk_file = $out_root . ".ref.all.stk"; # name of output alignment file we are about to create, each single sequence is separate alignment,
-                                                 # and this single file contains all such separate alignments, one per feature
+  my $all_stk_file = $out_root . ".ref.all.stk"; # name of output alignment file we are about to create, each single reference feature 
+                                                 # sequence is a separate 'alignment', and this single file contains all such 
+                                                 # separate alignments, one per feature
   fetchReferenceFeatureSequences($execs_HR, $sqfile, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
   addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "refstk", $all_stk_file, "Stockholm alignment file with reference features");
 
