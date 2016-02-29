@@ -36,6 +36,19 @@
 #           to those files before closing them and exiting. This is done so the user
 #           has a record of the reason the execution of the program failed.
 #
+# - $ofile_info_HHR: reference to an 'info hash of hashes' in which all 2nd dim hashes are the same
+#                    size and have the same set of keys, and contain information on an outputfile
+#                    created by the main script (e.g. dnaorg_build.pl). The 1st dim hash keys describe
+#                    the type of information, e.g. "fullpath" is the full path of the file, and 2nd
+#                    dim keys pertain to which file, e.g. "log" for the log file which contains 
+#                    all the output printed to stdout during the course of the execution of the script.
+#                    A special 1d key is 'order' which is used for keeping track of the order that
+#                    the files are added in, mainly so we can output information on them in the same
+#                    order. The HH values for "order" are 1..$num_ofiles, where $num_ofiles is the
+#                    number of total output files (scalar(keys %{$ofile_info_HHR{"order"}})).
+#                    See validateOutputFileInfoHashOfHashes() for a list and explanation of all
+#                    of the keys. 
+# 
 # - $ftr_info_HAR: reference to an 'info hash of arrays' in which all arrays are the same 
 #                  size, and contain information on a 'feature' (e.g. CDS or mature peptide)
 #                  The hash has specific keys (e.g. "ref_len"), each of which points to 
@@ -2807,7 +2820,7 @@ sub validateModelInfoHashIsComplete {
 #             but they can be.
 #
 # Arguments:
-#   $info_HAR:         REF to hash of arrays of model information
+#   $info_HAR:         REF to hash of arrays of information
 #   $expected_keys_AR: REF to array of keys that are expected to be in the hash
 #   $exceptions_AR:    REF to array of keys in @{$expected_keys_AR} that may be excluded from the hash
 #   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
@@ -2850,6 +2863,99 @@ sub validateInfoHashOfArraysIsComplete {
 }
 
 #################################################################
+# Subroutine: validateOutputFileInfoHashOfHashes()
+# Incept:     EPN, Mon Feb 29 09:21:51 2016
+#
+# Purpose:    Validate an 'output file' info hash of hashes.
+#             A valid info hash of hashes has the same set of 2d
+#             keys for each 1d key except for "FH". The set of 1d keys is 
+#             "order", "fullpath", "nodirpath" and "desc". For
+#             "FH", the value for each $ofile_info_HH{"FH"}{$key2d} can
+#             be either defined or not defined.
+#
+# Arguments:
+#   $ofile_info_HHR:  REF to hash of hashes of information
+# 
+# Returns: Number of elements in each and every 2d hash (except possibly %{$ofile_info_HHR->{"FH"}})
+#
+# Dies:    - if one of the expected keys (listed above) does not exist in $ofile_info_HHR
+#          - if two 2d hashes in $ofile_info_HHR (besides %{$ofile_info_HHR->{"FH"}}) are of different sizes
+#          - if two 2d hashes in $ofile_info_HHR (besides %{$ofile_info_HHR->{"FH"}}) have different set of keys
+#################################################################
+sub validateOutputFileInfoHashOfHashes { 
+  my $sub_name = "validateOutputFileInfoHashOfHashes()";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($ofile_info_HHR) = (@_);
+  
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my @same_keys1d_A = ("order", "fullpath", "nodirpath", "desc"); # all of these 2nd dim hashes should have same set of keys
+  my @all_keys1d_A   = (@same_keys1d_A, "FH");             # all 1d keys
+  my $i;     # a counter
+  my $key1d; # a 1st dim key
+  my $key2d; # a 2nd dim key
+
+  # make sure we don't have any extra 1d keys we don't expect
+  foreach $key1d (keys %{$ofile_info_HHR}) { 
+    my $found_it = 0;
+    foreach my $tmp_key1d (@all_keys1d_A) { 
+      if($key1d eq $tmp_key1d) { 
+        $found_it = 1;
+      }
+    }
+    if($found_it == 0) { 
+      DNAORG_FAIL("ERROR in $sub_name, unexpected 1d key $key1d exists.", 1, $FH_HR);
+    }     
+  } 
+  
+  # make sure all 2nd dim keys for all 1st dim keys are the same as the 2nd dim keys for 1st dim key "order"
+  if(! defined $ofile_info_HHR->{"order"}) { 
+    DNAORG_FAIL("ERROR in $sub_name, expected 1d key order does not exist.", 1, $FH_HR);
+  }
+  foreach my $key1d (@same_keys1d_A) { 
+    if($key1d ne "order") { # skip "order"
+      if(! defined $ofile_info_HHR->{$key1d}) { 
+        DNAORG_FAIL("ERROR in $sub_name, expected 1d key $key1d does not exist.", 1, $FH_HR);
+      }
+      # we make sure the set of 2d keys in $ofile_info_HHR->{"order"} and $ofile_info_HHR->{$key1d} are 
+      # identical in 2 steps:
+      # 1) make sure all 2d keys from $ofile_info_HHR->{"order"} are also in $ofile_info_HHR->{"order"}
+      foreach $key2d (keys %{$ofile_info_HHR->{"order"}}) { 
+        if(! defined $ofile_info_HHR->{$key1d}{$key2d}) { 
+          DNAORG_FAIL("ERROR in $sub_name, 2nd dim key $key2d exists for ofile_info_HHR->{order} but not for ofile_info_HHR->{$key1d}", 1, $FH_HR); 
+        }
+      }
+      # 2) make sure all the 2d keys in $ofile_info_HHR->{$key1d} are also in $ofile_info_HHR->{"order"}
+      foreach $key2d (keys %{$ofile_info_HHR->{$key1d}}) { 
+        if(! defined $ofile_info_HHR->{"order"}{$key2d}) { 
+          DNAORG_FAIL("ERROR in $sub_name, 2nd dim key $key2d exists for ofile_info_HHR->{order} but not for ofile_info_HHR->{$key1d}", 1, $FH_HR); 
+        }
+      }
+    }
+  }
+
+  # make sure that $ofile_info_HHR->{"order"} has all values 1..$nkey2d
+  my $nkey2d = scalar(keys %{$ofile_info_HHR->{"order"}});
+  my @check_A = (); 
+  for ($i = 1; $i <= $nkey2d; $i++) { 
+    $check_A[$i] = 0; # changed to 1 when we observe it below
+  }
+  foreach $key2d (keys %{$ofile_info_HHR->{"order"}}) { 
+    $check_A[$ofile_info_HHR->{"order"}{$key2d}] = 1;
+  }
+  for ($i = 1; $i <= $nkey2d; $i++) { 
+    if($check_A[$i] != 1) { 
+      DNAORG_FAIL("ERROR in $sub_name, invalid values for ofile_info_HH{order}, $nkey2d 2nd dim keys, but value $i does not exist", 1, $FH_HR);
+    }
+  }
+
+  return $nkey2d;
+}
+
+#################################################################
 # Subroutine : findNonNumericValueInArray()
 # Incept:      EPN, Tue Feb 16 10:40:57 2016
 #
@@ -2873,7 +2979,7 @@ sub findNonNumericValueInArray {
   my ($AR, $value, $FH_HR);
 
   if($value =~ m/^\d+\.?\d*$/ || $value =~ m/^\d*\.?\d+$/) {
-      DNAORG_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality");
+      DNAORG_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", 1, $FH_HR);
   }
 
   if(! defined $AR) { 
@@ -2904,7 +3010,6 @@ sub findNonNumericValueInArray {
 #  $total_secs:            total number of seconds, "" to not print timing
 #  $odir:                  output directory, if "", files were put in cwd
 #  $ofile_info_HHR:        REF to the 2D hash of output file information
-#  $ofile_info_2d_keys_AR: REF to array of 2D keys in $ofile_info_HHR
 #
 # Returns:   Nothing.
 # 
@@ -2912,10 +3017,12 @@ sub findNonNumericValueInArray {
 #
 ####################################################################
 sub outputConclusionAndCloseFiles { 
-  my $nargs_expected = 4;
+  my $nargs_expected = 3;
   my $sub_name = "outputConclusionAndCloseFiles()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($total_secs, $odir, $ofile_info_HHR, $ofile_info_2d_keys_AR) = @_;
+  my ($total_secs, $odir, $ofile_info_HHR) = @_;
+
+  validateOutputFileInfoHashOfHashes($ofile_info_HHR);
 
   my $log_FH = $ofile_info_HHR->{"FH"}{"log"};
   my $cmd_FH = $ofile_info_HHR->{"FH"}{"cmd"};
@@ -2925,8 +3032,14 @@ sub outputConclusionAndCloseFiles {
   if(defined $log_FH) { 
     outputString($log_FH, 1, sprintf("#\n"));
     my $width_desc = length("# ") + maxLengthScalarValueInHash($ofile_info_HHR->{"desc"}) + length(" saved in:");
-    foreach $key2d (@{$ofile_info_2d_keys_AR}) { 
-      outputString($log_FH, 1, sprintf("# %-*s %s\n", $width_desc, $ofile_info_HHR->{"desc"}{$key2d} . " saved in:", $ofile_info_HHR->{"nodirpath"}{$key2d}));
+    my $cur_idx = 1;
+    my $num_ofile = validateOutputFileInfoHashOfHashes($ofile_info_HHR); # this function validates we have exactly 1 of each "order" value of 1..$num_ofile
+    for(my $i = 1; $i <= $num_ofile; $i++) { 
+      foreach $key2d (keys (%{$ofile_info_HHR->{"order"}})) { 
+        if($ofile_info_HHR->{"order"}{$key2d} == $i) { 
+          outputString($log_FH, 1, sprintf("# %-*s %s\n", $width_desc, $ofile_info_HHR->{"desc"}{$key2d} . " saved in:", $ofile_info_HHR->{"nodirpath"}{$key2d}));
+        }
+      }
     }
     outputString($log_FH, 1, sprintf("#\n"));
     outputString($log_FH, 1, sprintf("# All output files created in %s.\n", ($odir eq "") ? "the current working directory" : "directory \.\/$odir\/"));
@@ -3145,7 +3258,6 @@ sub getReferenceFeatureInfo {
 #
 # Arguments:
 #   $ofile_info_HHR:        REF to the 2D hash of output file information, ADDED TO HERE 
-#   $ofile_info_2d_keys_AR: REF to array of 2D keys in $ofile_info_HHR, ADDED TO HERE
 #   $key2d:                 2D key for the file we're adding and opening, e.g. "log"
 #   $fullpath:              full path to the file we're adding and opening
 #   $desc:                  description of the file we're adding and opening
@@ -3157,13 +3269,13 @@ sub getReferenceFeatureInfo {
 #################################################################
 sub openAndAddFileToOutputInfo { 
   my $sub_name = "openAndAddFileToOutputInfo";
-  my $nargs_expected = 5;
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($ofile_info_HHR, $ofile_info_2d_keys_AR, $key2d, $fullpath, $desc) = @_;
+  my ($ofile_info_HHR, $key2d, $fullpath, $desc) = @_;
 
   # this helper function does everything but open the file handle
-  helperAddFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, $key2d, $fullpath, $desc);
+  helperAddFileToOutputInfo($ofile_info_HHR, $key2d, $fullpath, $desc);
 
   # and open the file handle
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
@@ -3185,7 +3297,6 @@ sub openAndAddFileToOutputInfo {
 # Arguments:
 #   $ofile_info_HHR:        REF to the 2D hash of output file information, ADDED TO HERE 
 #                           for 1D key $key
-#   $ofile_info_2d_keys_AR: REF to array of 2D keys in $ofile_info_HHR, ADDED TO HERE
 #   $key2d:                 2D key for the file we're adding and opening, e.g. "fasta"
 #   $fullpath:              full path to the closed file we're adding
 #   $desc:                  description of the closed file we're adding 
@@ -3197,13 +3308,13 @@ sub openAndAddFileToOutputInfo {
 #################################################################
 sub addClosedFileToOutputInfo { 
   my $sub_name = "addClosedFileToOutputInfo()";
-  my $nargs_expected = 5;
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($ofile_info_HHR, $ofile_info_2d_keys_AR, $key2d, $fullpath, $desc) = @_;
+  my ($ofile_info_HHR, $key2d, $fullpath, $desc) = @_;
 
   # this helper function does everything but set the file handle ("FH") value
-  helperAddFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, $key2d, $fullpath, $desc);
+  helperAddFileToOutputInfo($ofile_info_HHR, $key2d, $fullpath, $desc);
 
   # set FH value to undef
   $ofile_info_HHR->{"FH"}{$key2d} = undef;
@@ -3222,7 +3333,6 @@ sub addClosedFileToOutputInfo {
 # Arguments:
 #   $ofile_info_HHR:        REF to the 2D hash of output file information, ADDED TO HERE 
 #                           for 1D key $key
-#   $ofile_info_2d_keys_AR: REF to array of 2D keys in $ofile_info_HHR, ADDED TO HERE
 #   $key2d:                 2D key for the file we're adding and opening, e.g. "log"
 #   $fullpath:              full path to the file we're adding and opening
 #   $desc:                  description of the file we're adding and opening
@@ -3234,10 +3344,10 @@ sub addClosedFileToOutputInfo {
 #################################################################
 sub helperAddFileToOutputInfo { 
   my $sub_name = "helperAddFileToOutputInfo";
-  my $nargs_expected = 5;
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($ofile_info_HHR, $ofile_info_2d_keys_AR, $key2d, $fullpath, $desc) = @_;
+  my ($ofile_info_HHR, $key2d, $fullpath, $desc) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
@@ -3251,10 +3361,14 @@ sub helperAddFileToOutputInfo {
 
   # set the values of the 2D hash
   my $nodirpath = removeDirPath($fullpath);
-  push(@{$ofile_info_2d_keys_AR}, $key2d);
+  my $nidx = (defined $ofile_info_HHR->{"order"}) ? (scalar(keys %{$ofile_info_HHR->{"order"}})) : 0;
+  $ofile_info_HHR->{"order"}{$key2d}     = $nidx+1; # first 2d key added will be '1', 2nd will be '2', etc.
   $ofile_info_HHR->{"fullpath"}{$key2d}  = $fullpath;
   $ofile_info_HHR->{"nodirpath"}{$key2d} = $nodirpath;
   $ofile_info_HHR->{"desc"}{$key2d}      = $desc;
+
+  # validate that we've correctly updatd the output info 2D hash
+  validateOutputFileInfoHashOfHashes($ofile_info_HHR);
 
   return;
 }
@@ -3461,7 +3575,6 @@ sub maxLengthScalarInArray {
 #   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else FILLED HERE
 #   $totlen_HR:             REF to hash, key is accession, value is total length of the sequence (non-duplicated), FILLED HERE
 #   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
-#   $ofile_info_2d_keys_AR: REF to array of 2nd dim keys in $ofile_info_HHR
 #   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
 #   $FH_HR:                 REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
 #
@@ -3473,10 +3586,10 @@ sub maxLengthScalarInArray {
 ################################################################# 
 sub wrapperGetInfoUsingEdirect {
   my $sub_name = "wrapperGetInfoUsingEdirect";
-  my $nargs_expected = 10;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $totlen_HR, $ofile_info_HHR, $ofile_info_2d_keys_AR, $opt_HHR, $FH_HR) = @_;
+  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $totlen_HR, $ofile_info_HHR, $opt_HHR, $FH_HR) = @_;
 
   my $cmd; # a command to be run by runCommand()
   my $do_matpept = opt_IsOn("--matpept", $opt_HHR);
@@ -3512,7 +3625,7 @@ sub wrapperGetInfoUsingEdirect {
       if(! -s  $mp_file) { 
         DNAORG_FAIL("ERROR, in $sub_name, -matpept enabled but no mature peptide information exists.", 1, $FH_HR);
       }
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "mp", $mp_file, "Mature peptide information obtained via edirect");
+      addClosedFileToOutputInfo($ofile_info_HHR, "mp", $mp_file, "Mature peptide information obtained via edirect");
     }
     else { # ! $do_matpept
       if(-s $mp_file) { 
@@ -3536,7 +3649,7 @@ sub wrapperGetInfoUsingEdirect {
   }
   $cmd .= " | efetch -format ft > $ft_file";
   runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "ft", $ft_file, "Feature table obtained via edirect");
+  addClosedFileToOutputInfo($ofile_info_HHR, "ft", $ft_file, "Feature table obtained via edirect");
 
   # 3) create the length file
   # create a file with total lengths of each accession
@@ -3549,7 +3662,7 @@ sub wrapperGetInfoUsingEdirect {
   }
   $cmd .= " | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
   runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "len", $len_file, "Sequence length file");
+  addClosedFileToOutputInfo($ofile_info_HHR, "len", $len_file, "Sequence length file");
   if(! -s $len_file) { 
     DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, $FH_HR); 
   }  
@@ -3609,7 +3722,6 @@ sub wrapperGetInfoUsingEdirect {
 #                           may be undef if $mp_tbl_HHAR is undef
 #   $totlen_HR:             REF to hash, key is accession, value is total length of the sequence (non-duplicated), PRE-FILLED
 #   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
-#   $ofile_info_2d_keys_AR: REF to array of 2nd dim keys in $ofile_info_HHR
 #   $ftr_info_HAR:          REF to hash of arrays with information on the features, FILLED HERE
 #   $mdl_info_HAR:          REF to hash of arrays with information on the models, FILLED HERE
 #   $execs_HR:              REF to hash with executables, the key "esl_fetch_cds"
@@ -3626,10 +3738,10 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAndProcessReferenceSequence()";
-  my $nargs_expected = 13;
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($accn_AR, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $totlen_HR, $ofile_info_HHR, $ofile_info_2d_keys_AR, $ftr_info_HAR, $mdl_info_HAR, $execs_HR, $opt_HHR, $FH_HR) = @_;
+  my ($accn_AR, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $totlen_HR, $ofile_info_HHR, $ftr_info_HAR, $mdl_info_HAR, $execs_HR, $opt_HHR, $FH_HR) = @_;
 
   # contract check
   if((defined $mp_tbl_HHAR) && (! defined $cds2pmatpept_AAR)) { 
@@ -3646,8 +3758,8 @@ sub wrapperFetchAndProcessReferenceSequence {
   my @ref_seqname_A = ();                                 # will contain a single value, the reference sequence name in the file $fasta_file
   fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, 0, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, \@ref_seqname_A, undef, undef, $FH_HR);
   my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
-  addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
-  addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "fasta", $fasta_file, "Sequence file with reference genome");
+  addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
+  addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
 
   # 2) determine reference information for each feature (strand, length, coordinates, product)
   getReferenceFeatureInfo($cds_tbl_HHAR, $mp_tbl_HHAR, $ftr_info_HAR, $ref_accn, $FH_HR); # $mp_tbl_HHAR may be undefined and that's okay
@@ -3662,10 +3774,10 @@ sub wrapperFetchAndProcessReferenceSequence {
   my $ref_totlen   = $totlen_HR->{$ref_accn};    # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
   my $ref_seqname  = $ref_seqname_A[0];          # the reference sequence name the fetched sequence file $fasta_file
   my $all_stk_file = $out_root . ".ref.all.stk"; # name of output alignment file we are about to create, each single reference feature 
-                                                 # sequence is a separate 'alignment', and this single file contains all such 
+                                                 # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
                                                  # separate alignments, one per feature
   fetchReferenceFeatureSequences($execs_HR, $sqfile, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
-  addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_2d_keys_AR, "refstk", $all_stk_file, "Stockholm alignment file with reference features");
+  addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, "Stockholm alignment file with reference features");
 
   # clean up
   if(opt_Get("--dirty", $opt_HHR)) { 

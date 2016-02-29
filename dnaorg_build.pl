@@ -181,20 +181,17 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          # 2D keys:
                          #  "log": log file of what's output to stdout
                          #  "cmd": command file with list of all commands executed
-my @ofile_info_2d_keys_A = (); # the 2nd dim keys in %ofile_info_HH
 
 # open the log and command files 
-openAndAddFileToOutputInfo(\%ofile_info_HH, \@ofile_info_2d_keys_A, "log", $out_root . ".log", "Output printed to screen");
-openAndAddFileToOutputInfo(\%ofile_info_HH, \@ofile_info_2d_keys_A, "cmd", $out_root . ".cmd", "List of executed commands");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", "Output printed to screen");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", "List of executed commands");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
 # now we have the log file open, output the banner there too
-printf("Before\n");
 outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
-printf("after\n");
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
@@ -247,7 +244,7 @@ my %totlen_H   = ();    # key: accession, value: total length of the sequence fo
 #  4) parses the edirect .mat_peptide file, if necessary
 #  5) parses the edirect .ftable file
 #  6) parses the length file
-wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%totlen_H, \%ofile_info_HH, \@ofile_info_2d_keys_A, 
+wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%totlen_H, \%ofile_info_HH, 
                            \%opt_HH, $ofile_info_HH{"FH"}); # 1st argument is undef because we are only getting info for $ref_accn
 
 if($do_matpept) {  
@@ -276,7 +273,7 @@ my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1],
 wrapperFetchAndProcessReferenceSequence(\@accn_A, $out_root, \%cds_tbl_HHA,
                                         ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                         ($do_matpept) ? \@cds2pmatpept_AA : undef, 
-                                        \%totlen_H, \%ofile_info_HH, \@ofile_info_2d_keys_A, 
+                                        \%totlen_H, \%ofile_info_HH, 
                                         \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
                                         \%opt_HH, $ofile_info_HH{"FH"});
 
@@ -296,13 +293,13 @@ $start_secs = outputProgressPrior($build_str, $progress_w, $log_FH, *STDOUT);
 createCmDb(\%execs_H, $ofile_info_HH{"fullpath"}{"refstk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, $ofile_info_HH{"FH"});
 if(! $do_clocal) { 
   for(my $i = 0; $i < $nmdl; $i++) { 
-    addClosedFileToOutputInfo(\%ofile_info_HH, \@ofile_info_2d_keys_A, "cm$i", "$out_root.$i.cm", 
+    addClosedFileToOutputInfo(\%ofile_info_HH, "cm$i", "$out_root.$i.cm", 
                               sprintf("CM file #%d, %s (currently calibrating on the farm)", $i+1, $mdl_info_HA{"out_tiny"}[$i]));
 
   }
 }
 else { 
-  addClosedFileToOutputInfo(\%ofile_info_HH, \@ofile_info_2d_keys_A, "cm", "$out_root.cm", "CM file with all $nmdl models");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "cm", "$out_root.cm", "CM file with all $nmdl models");
 }
 
 outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
@@ -323,7 +320,7 @@ else {
 outputString($log_FH, 1, sprintf("#\n"));
 
 $total_seconds += secondsSinceEpoch();
-outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH, \@ofile_info_2d_keys_A);
+outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
 
