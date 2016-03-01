@@ -93,7 +93,7 @@ sub opt_Add {
     }
   }
   elsif($type eq "integer") { 
-    if(defined $default && (! verify_interger($default))) { 
+    if(defined $default && (! verify_integer($default))) { 
       print STDERR ("ERROR, $sub_name trying to add $optname of 'integer' type but default is $default.\n"); exit(1); 
     }
     if(defined $help && $help !~ m/\<n\>/) { 

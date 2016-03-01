@@ -70,12 +70,12 @@ opt_Add("-f",           "boolean", 0,                        1,    undef, undef,
 opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",  "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",         "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
-opt_Add("--dirty",      "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",    "do not remove intermediate files, leave them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",    "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options affecting window/hit definition";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
-opt_Add("--cslow",   "boolean", 0,                     2,    undef, undef,   "running cmcalibrate in slow mode",               "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
-opt_Add("--clocal",  "boolean", 0,                     2,    undef, undef,   "running cmcalibrate on local machine",           "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("--slow",   "boolean", 0,                     2,    undef, undef,   "running cmcalibrate in slow mode",               "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
+opt_Add("--local",  "boolean", 0,                     2,    undef, undef,   "running cmcalibrate on local machine",           "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -93,8 +93,8 @@ my $options_okay =
                 'nomatpept'    => \$GetOptions_H{"--nomatpept"},
                 'dirty'        => \$GetOptions_H{"--dirty"},
 # calibration related options
-                'cslow'        => \$GetOptions_H{"--cslow"},
-                'clocal'       => \$GetOptions_H{"--clocal"});
+                'slow'         => \$GetOptions_H{"--slow"},
+                'local'        => \$GetOptions_H{"--local"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -266,16 +266,17 @@ my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1],
                                # filled in wrapperFetchAndProcessReferenceSequence()
 
 # Call the wrapper function that does the following:
-#   1) fetches the reference sequence into a fasta file and indexes that fasta file
-#   2) determines reference information for each feature (strand, length, coordinates, product)
-#   3) determines type of each reference feature ('cds-mp', 'cds-notmp', or 'mp')
-#   4) fetches the reference feature sequences and populate information on the models and features
-wrapperFetchAndProcessReferenceSequence(\@accn_A, $out_root, \%cds_tbl_HHA,
-                                        ($do_matpept) ? \%mp_tbl_HHA      : undef, 
-                                        ($do_matpept) ? \@cds2pmatpept_AA : undef, 
-                                        \%totlen_H, \%ofile_info_HH, 
-                                        \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
-                                        \%opt_HH, $ofile_info_HH{"FH"});
+#  1) fetches the sequences listed in @{$accn_AR} into a fasta file and indexes that fasta file,
+#     the reference sequence is $accn_AR->[0].
+#  2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
+#  3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
+#  4) fetches the reference sequence feature and populates information on the models and features
+wrapperFetchAllSequencesAndProcessReferenceSequence(\@accn_A, $out_root, \%cds_tbl_HHA,
+                                                    ($do_matpept) ? \%mp_tbl_HHA      : undef, 
+                                                    ($do_matpept) ? \@cds2pmatpept_AA : undef, 
+                                                    \%totlen_H, \%ofile_info_HH, 
+                                                    \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
+                                                    \%opt_HH, $ofile_info_HH{"FH"});
 
 # verify our model and feature info hashes are complete, 
 # if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
@@ -287,11 +288,11 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ####################################
 # Step 3. Build and calibrate models 
 ####################################
-my $do_clocal = opt_Get("--clocal", \%opt_HH); # are we running calibration locally
-my $build_str = $do_clocal ? "Building and calibrating models" : "Building models and submitting calibration jobs to the farm";
+my $do_local = opt_Get("--local", \%opt_HH); # are we running calibration locally
+my $build_str = $do_local ? "Building and calibrating models" : "Building models and submitting calibration jobs to the farm";
 $start_secs = outputProgressPrior($build_str, $progress_w, $log_FH, *STDOUT);
 createCmDb(\%execs_H, $ofile_info_HH{"fullpath"}{"refstk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, $ofile_info_HH{"FH"});
-if(! $do_clocal) { 
+if(! $do_local) { 
   for(my $i = 0; $i < $nmdl; $i++) { 
     addClosedFileToOutputInfo(\%ofile_info_HH, "cm$i", "$out_root.$i.cm", 
                               sprintf("CM file #%d, %s (currently calibrating on the farm)", $i+1, $mdl_info_HA{"out_tiny"}[$i]));
@@ -309,7 +310,7 @@ outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 ##########
 # a quick note to the user about what to do next
 outputString($log_FH, 1, sprintf("#\n"));
-if(! $do_clocal) { 
+if(! $do_local) { 
   outputString($log_FH, 1, "# When the $nmdl cmcalibrate jobs on the farm finish, you can use dnaorg_annotate.pl\n");
   outputString($log_FH, 1, "# to use them to annotate genomes.\n");
 }

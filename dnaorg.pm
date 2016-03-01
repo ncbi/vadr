@@ -1100,7 +1100,7 @@ sub fetchReferenceFeatureSequences {
   my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
   my $nftr_with_models = getNumFeaturesWithModels($ftr_info_HAR, $FH_HR);
 
-  my $do_dirty    = opt_Get("-d", $opt_HHR); # should we leave intermediates files on disk, instead of removing them?
+  my $do_keep     = opt_Get("--keep", $opt_HHR); # should we leave intermediates files on disk, instead of removing them?
   my $do_circular = opt_Get("-c", $opt_HHR); # are we allowing circular genomes?
   my $esl_reformat = $execs_HR->{"esl-reformat"};
 
@@ -1118,7 +1118,7 @@ sub fetchReferenceFeatureSequences {
   my @indi_ref_name_A   = (); # [0..$nmdl-1]: name of individual stockholm alignments and models
   my @indi_cksum_stk_A  = (); # [0..$nmdl-1]: checksum's of each named individual stockholm alignment
 
-  my @files2rm_A = ();  # array of file names to remove at end of this function (remains empty if $do_dirty)
+  my @files2rm_A = ();  # array of file names to remove at end of this function (remains empty if $do_keep)
 
   for(my $i = 0; $i < $nftr; $i++) { 
     my $do_model = $ftr_info_HAR->{"has_models"}[$i];
@@ -1166,18 +1166,18 @@ sub fetchReferenceFeatureSequences {
         # fetch the sequence
         my $cur_fafile = $cur_out_root . ".fa";
         $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
-        if(! $do_dirty) { push(@files2rm_A, $cur_fafile); }
+        if(! $do_keep) { push(@files2rm_A, $cur_fafile); }
 
         # reformat to stockholm
         my $cur_stkfile = $cur_out_root . ".stk";
         my $cmd = "$esl_reformat --informat afa stockholm $cur_fafile > $cur_stkfile";
         runCommand($cmd, 0, $FH_HR);
-        if(! $do_dirty) { push(@files2rm_A, $cur_stkfile); }
+        if(! $do_keep) { push(@files2rm_A, $cur_stkfile); }
     
         # annotate the stockholm file with a blank SS and with a name
         my $cur_named_stkfile = $cur_out_root . ".named.stk";
         my ($mdllen, $cksum) = addNameAndBlankSsToStockholmAlignment($cur_name_root, 1, $cur_stkfile, $cur_named_stkfile, $FH_HR); # 1: add blank SS_cons line
-        if(! $do_dirty) { push(@files2rm_A, $cur_named_stkfile); }
+        if(! $do_keep) { push(@files2rm_A, $cur_named_stkfile); }
 
         $mdl_info_HAR->{"cmname"}[$nmdl]   = $cur_name_root;
         $mdl_info_HAR->{"checksum"}[$nmdl] = $cksum;
@@ -1897,8 +1897,8 @@ sub createCmDb {
     if(-e $file) { unlink $file; }
   }
 
-  my $do_calib_slow  = opt_Get("--cslow", $opt_HHR);  # should we run in 'slow' mode (instead of fast mode)?
-  my $do_calib_local = opt_Get("--clocal", $opt_HHR); # should we run locally (instead of on farm)?
+  my $do_calib_slow  = opt_Get("--slow", $opt_HHR);  # should we run in 'slow' mode (instead of fast mode)?
+  my $do_calib_local = opt_Get("--local", $opt_HHR); # should we run locally (instead of on farm)?
 
   my ($cmbuild_opts,     $cmbuild_cmd);        # options and command for cmbuild
   my ($cmcalibrate_opts, $cmcalibrate_cmd);    # options and command for cmcalibrate
@@ -3676,25 +3676,28 @@ sub wrapperGetInfoUsingEdirect {
 }
 
 #################################################################
-# Subroutine:  wrapperFetchAndProcessReferenceSequence()
+# Subroutine:  wrapperFetchAllSequencesAndProcessReferenceSequence()
 # Incept:      EPN, Fri Feb 26 09:27:39 2016
 #
 # Purpose:     A large block of code that is called once by each
 #              dnaorg_build.pl and dnaorg_annotate.pl to fetch
-#              the reference sequence and process information about it.
+#              either the reference sequence (if dnaorg_build.pl is caller) 
+#              or all sequences (if dnaorg_annotate.pl is caller), 
+#              and process information about the reference sequence.
 #              This function does the following:
 # 
-#              1) fetches the reference sequence into a fasta file and indexes that fasta file
-#              2) determines reference information for each feature (strand, length, coordinates, product)
-#              3) determines type of each reference feature ('cds-mp', 'cds-notmp', or 'mp')
-#              4) fetches the reference feature sequences and populate information on the models and features
+#              1) fetches the sequences listed in @{$accn_AR} into a fasta file and indexes that fasta file,
+#                 the reference sequence is $accn_AR->[0].
+#              2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
+#              3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
+#              4) fetches the reference sequence feature and populates information on the models and features
 #
 #              Creates the following output files and stores
 #              information on them in the ofile* data structures
 #              by calling the addClosedFileToOutputInfo() function:
-#              - $out_root . ".ref.ft.idfetch.in": input file for esl-fetch-cds.pl
-#              - $out_root . ".ref.fg.fa":         sequence file with reference genome 
-#              - $out_root . ".ref.all.stk":       Stockholm alignment file with reference features
+#              - $out_root . ".ft.idfetch.in": input file for esl-fetch-cds.pl
+#              - $out_root . ".fg.fa":         sequence file with reference genome 
+#              - $out_root . ".ref.all.stk":   Stockholm alignment file with reference features
 #              
 # Arguments: 
 #   $accn_AR:               REF to array of accessions, PRE-FILLED
@@ -3720,8 +3723,8 @@ sub wrapperGetInfoUsingEdirect {
 #              if any of the edirect commands exit in error
 #     
 ################################################################# 
-sub wrapperFetchAndProcessReferenceSequence { 
-  my $sub_name = "wrapperFetchAndProcessReferenceSequence()";
+sub wrapperFetchAllSequencesAndProcessReferenceSequence { 
+  my $sub_name = "wrapperFetchAllSequencesAndProcessReferenceSequence()";
   my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -3736,9 +3739,10 @@ sub wrapperFetchAndProcessReferenceSequence {
   }
 
   # 1) fetch the reference sequence into a fasta file and index that fasta file
-  my $ref_accn      = $accn_AR->[0];                      # the reference accession
-  my $fetch_file    = $out_root . ".ref.fg.idfetch.in";   # the esl_fetch_cds.pl input file we are about to create
-  my $fasta_file    = $out_root . ".ref.fg.fa";           # the fasta file we are about to create
+  my $have_only_ref = (scalar(@{$accn_AR}) == 1) ? 1 : 0;   # '1' if we only have the reference
+  my $ref_accn      = $accn_AR->[0];                        # the reference accession
+  my $fetch_file    = sprintf($out_root . "%s.fg.idfetch.in", ($have_only_ref) ? ".ref" : "");  # the esl_fetch_cds.pl input file we are about to create
+  my $fasta_file    = sprintf($out_root . "%s.fg.fa",         ($have_only_ref) ? ".ref" : "");  # the fasta file we are about to create
   my @ref_seqname_A = ();                                 # will contain a single value, the reference sequence name in the file $fasta_file
   fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, \@ref_seqname_A, undef, undef, $FH_HR);
   my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
@@ -3764,7 +3768,7 @@ sub wrapperFetchAndProcessReferenceSequence {
   addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, "Stockholm alignment file with reference features");
 
   # clean up
-  if(opt_Get("--dirty", $opt_HHR)) { 
+  if(opt_Get("--keep", $opt_HHR)) { 
     unlink $fasta_file . ".ssi"; # remove the file that was created when we created $sqfile
   }
 
@@ -3794,6 +3798,72 @@ sub removeDirPath {
   $fullpath =~ s/^.+\///;
 
   return $fullpath;
+}
+
+#################################################################
+# Subroutine : validateFileExistsAndIsNonEmpty()
+# Incept:      EPN, Mon Feb 29 16:16:07 2016
+#
+# Purpose:     Check if a file exists and is non-empty.
+#              If it does not exist or it is empty,
+#              die via DNAORG_FAIL().
+#
+# Arguments: 
+#   $filename:         file that we are checking on
+#   $calling_sub_name: name of calling subroutine (can be undef)
+#   $FH_HR:            ref to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies:        If $filename does not exist or is empty.
+#
+################################################################# 
+sub validateFileExistsAndIsNonEmpty { 
+  my $nargs_expected = 3;
+  my $sub_name = "validateFileExistsAndIsNonEmpty()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($filename, $caller_sub_name, $FH_HR) = @_;
+
+  if(! -e $filename) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, %sfile $filename does not exist.", (defined $caller_sub_name ? "called by $caller_sub_name," : "")), 1, $FH_HR);
+  }
+  elsif(! -s $filename) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, %sfile $filename exists but is empty.", (defined $caller_sub_name ? "called by $caller_sub_name," : "")), 1, $FH_HR);
+  }
+  
+  return;
+}
+
+#################################################################
+# Subroutine : countLinesInFile()
+# Incept:      EPN, Tue Mar  1 09:36:56 2016
+#
+# Purpose:     Count the number of lines in a file
+#              by opening it and reading in all lines.
+#
+# Arguments: 
+#   $filename:         file that we are checking on
+#   $FH_HR:            ref to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies:        If $filename does not exist.
+#
+################################################################# 
+sub countLinesInFile { 
+  my $nargs_expected = 2;
+  my $sub_name = "countLinesInFile()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($filename, $FH_HR) = @_;
+
+  my $nlines = 0;
+  open(IN, $filename) || fileOpenFailure($filename, $!, "reading", $FH_HR);
+  while(<IN>) { 
+    $nlines++;
+  }
+  close(IN);
+
+  return $nlines;
 }
 
 ###########################################################################

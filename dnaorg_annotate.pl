@@ -31,6 +31,7 @@ require "epn-options.pm";
 my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 my $esl_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
+my $esl_ssplit     = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -60,17 +61,19 @@ my %opt_group_desc_H = ();
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 $opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                               help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                        "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is circular",                         "genome is circular",                                 \%opt_HH, \@opt_order_A);
-opt_Add("-d",           "string",  undef,                    1,    undef, undef,      "directory specified as",                     "specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
-#opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",           "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                 "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",       "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",              "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
-opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons", "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--dirty",      "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",         "do not remove intermediate files, leave them all on disk", \%opt_HH, \@opt_order_A);
-opt_Add("--model",      "string",  undef,                    1,    undef, undef,      "use model in file",                          "use model file <s>", \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                                 help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                          "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is circular",                           "genome is circular",                                 \%opt_HH, \@opt_order_A);
+opt_Add("-d",           "string",  undef,                    1,    undef, undef,      "directory specified as",                       "specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                   "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",         "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
+opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
+opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",   "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",      "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("--model",      "string",  undef,                    1,    undef, undef,      "use model in file",                            "use model file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",        "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
+opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 10,                       1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> minutes for cmscan jobs on farm to finish", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -87,14 +90,22 @@ my $options_okay =
                 'matpept=s'     => \$GetOptions_H{"--matpept"},
                 'nomatpept'     => \$GetOptions_H{"--nomatpept"},
                 'specstart=s'   => \$GetOptions_H{"--specstart"},
-                'dirty'         => \$GetOptions_H{"--dirty"},
-                'model'         => \$GetOptions_H{"--model"});
+                'keep'          => \$GetOptions_H{"--keep"},
+                'model=s'       => \$GetOptions_H{"--model"}, 
+                'local'         => \$GetOptions_H{"--local"}, 
+                'nseq=s'        => \$GetOptions_H{"--nseq"}, 
+                'wait=s'        => \$GetOptions_H{"--wait"}); 
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
 my $version       = "0.1";
 my $releasedate   = "Feb 2016";
+
+# make *STDOUT file handle 'hot' so it automatically flushes whenever
+# it is printed to
+select *STDOUT;
+$| = 1;
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -203,18 +214,19 @@ if(opt_IsOn("--specstart", \%opt_HH)) {
 # make sure the required executables are executable
 ###################################################
 my %execs_H = (); # hash with paths to all required executables
-$execs_H{"cmsearch"}      = $inf_exec_dir . "cmsearch";
+$execs_H{"cmscan"}        = $inf_exec_dir . "cmscan";
 $execs_H{"cmalign"}       = $inf_exec_dir . "cmalign";
 $execs_H{"cmpress"}       = $inf_exec_dir . "cmpress";
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
 $execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
+$execs_H{"esl_ssplit"}    = $esl_ssplit;
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################
 # Step 1. Gather and process information on reference genome using Edirect.
 ###########################################################################
 my $cmd;             # a command to run with runCommand()
-my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
+my $progress_w = 65; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = outputProgressPrior(sprintf("Gathering information on %d sequences using edirect", scalar(@accn_A)), $progress_w, $log_FH, *STDOUT);
 
 my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
@@ -256,16 +268,17 @@ my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1],
                                # filled in wrapperFetchAndProcessReferenceSequence()
 
 # Call the wrapper function that does the following:
-#   1) fetches the reference sequence into a fasta file and indexes that fasta file
-#   2) determines reference information for each feature (strand, length, coordinates, product)
-#   3) determines type of each reference feature ('cds-mp', 'cds-notmp', or 'mp')
-#   4) fetches the reference feature sequences and populate information on the models and features
-wrapperFetchAndProcessReferenceSequence(\@accn_A, $out_root, \%cds_tbl_HHA,
-                                        ($do_matpept) ? \%mp_tbl_HHA      : undef, 
-                                        ($do_matpept) ? \@cds2pmatpept_AA : undef, 
-                                        \%totlen_H, \%ofile_info_HH,
-                                        \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
-                                        \%opt_HH, $ofile_info_HH{"FH"});
+#   1) fetches the sequences listed in @{$accn_AR} into a fasta file and indexes that fasta file,
+#      the reference sequence is $accn_AR->[0].
+#   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
+#   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
+#   4) fetches the reference sequence feature and populates information on the models and features
+wrapperFetchAllSequencesAndProcessReferenceSequence(\@accn_A, $out_root, \%cds_tbl_HHA,
+                                                    ($do_matpept) ? \%mp_tbl_HHA      : undef, 
+                                                    ($do_matpept) ? \@cds2pmatpept_AA : undef, 
+                                                    \%totlen_H, \%ofile_info_HH,
+                                                    \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
+                                                    \%opt_HH, $ofile_info_HH{"FH"});
 
 # verify our model and feature info hashes are complete, 
 # if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
@@ -279,7 +292,8 @@ my $model_file = opt_Get("--model", \%opt_HH);     # this will be undefined unle
 if(! defined $model_file) { 
   # -model not used, make sure we already have the CM DB file from
   # an earlier dnaorg_build.pl run. 
-  $model_file = $out_root . ".dnaorg_build.ref.cm";
+  $model_file = $out_root . ".ref.cm";
+  $model_file =~ s/\dnaorg\_annotate/dnaorg\_build/; # we name this file dnaorg_build, not dnaorg_annotate
   if(! -s $model_file) { 
     # the model file does not (yet) exist. This is probably the first
     # time we've run dnaorg_annotate.pl and we have several individual
@@ -310,6 +324,78 @@ if($do_press) {
 $start_secs = outputProgressPrior("Verifying CM database created for current reference $ref_accn", $progress_w, $log_FH, *STDOUT);
 validate_cms_built_from_reference($model_file, \%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#########################################################
+# Step 3. Perform homology searches
+##########################################################
+my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
+validateFileExistsAndIsNonEmpty($seq_file, undef, $ofile_info_HH{"FH"});
+
+# cmscan output files
+my $stdout_file = (opt_Get("--keep", \%opt_HH)) ? $out_root . ".stdout" : "/dev/null"; # only save the stdout if --keep used at cmdline
+my $tblout_file = $out_root . ".tblout";
+
+# determine how many jobs we need to run to satisfy <n> per job (where n is from --nseq <n>),
+# if more than 1 and --local not used, we split up the sequence file and submit jobs to farm,
+# if only 1 or --local used, we just run it locally
+my $nfarmjobs = scalar(@accn_A) / opt_Get("--nseq", \%opt_HH); 
+
+if(($nfarmjobs == 1) || (opt_Get("--local", \%opt_HH))) { 
+  # run jobs locally
+  $start_secs = outputProgressPrior("Running cmscan locally", $progress_w, $log_FH, *STDOUT);
+  run_cmscan($execs_H{"cmscan"}, 1, $model_file, $seq_file, $stdout_file, $tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+else { 
+  # we need to split up the sequence file, and submit a separate cmscan job for each
+  my @tmp_tblout_file_A = (); # the array of tblout files, we'll remove after we're done, unless --keep
+  my @tmp_seq_file_A = ();    # the array of sequence files, we'll remove after we're done, unless --keep
+  my @tmp_err_file_A = ();    # the array of error files, we'll remove after we're done, unless --keep
+  my $nfasta_created = split_fasta_file($execs_H{"esl_ssplit"}, $seq_file, $nfarmjobs, \%opt_HH, \%ofile_info_HH);
+  # we may redefined $nfarmjobs here, split_fasta_file will return the actual number of fasta files created, 
+  # which can differ from the requested amount (which is $nfarmjobs) that we pass in
+
+  # now submit a job for each
+  $start_secs = outputProgressPrior("Submitting $nfasta_created cmscan jobs to the farm", $progress_w, $log_FH, *STDOUT);
+  for(my $z = 1; $z <= $nfarmjobs; $z++) { 
+    run_cmscan($execs_H{"cmscan"}, 0, $model_file,  # 0: do not run locally
+               $seq_file . "." . $z, 
+               ($stdout_file eq "/dev/null") ? "/dev/null" : $stdout_file . "." . $z,
+               $tblout_file . "." . $z, 
+               \%opt_HH, \%ofile_info_HH);
+    push(@tmp_seq_file_A,    $seq_file    . "." . $z);
+    push(@tmp_tblout_file_A, $tblout_file . "." . $z);
+    push(@tmp_err_file_A,    $tblout_file . "." . $z . ".err"); # this will be the name of the error output file, set in run_cmscan
+  }
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  # wait for the jobs to finish
+  $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", \%opt_HH)), 
+                                    $progress_w, $log_FH, *STDOUT);
+  my $njobs_finished = wait_for_farm_jobs_to_finish(\@tmp_tblout_file_A, "# [ok]", opt_Get("--wait", \%opt_HH));
+  if($njobs_finished != $nfasta_created){ 
+    DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfasta_created are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
+  }
+
+  # remove temporary files, unless --keep
+  if(! opt_Get("--keep", \%opt_HH)) { 
+    my $rm_cmd = "rm ";
+    foreach my $tmp_file (@tmp_seq_file_A, @tmp_tblout_file_A, @tmp_err_file_A) { 
+      $rm_cmd .= $tmp_file . " ";
+    }
+    runCommand($rm_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  }
+
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
+#########################################################
+# Step 4. Parse homology search results into usable data structuers
+##########################################################
+#%results_AAH = (); # 1st dim: array, 0..$nmdl-1, one per model
+#                   # 2nd dim: array, 0..$naccn-1, one per accessions
+#                   # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_score", "p_5hangover", "p_3hangover", "p_fid2ref"
+#initialize_results_array_of_array_of_hashes(\%results_AAH, \%mdl_info_HAR, \@seq_accn_A);
 
 ##########
 # Conclude
@@ -486,4 +572,173 @@ sub validate_cms_built_from_reference {
     addClosedFileToOutputInfo($ofile_info_HHR, "cmchecksum", $cksum_file, "Checksum lines from the CM file");
   }
   return;
+}
+
+#################################################################
+# Subroutine : run_cmscan()
+# Incept:      EPN, Mon Feb 29 15:09:22 2016
+#
+# Purpose:     Run Infernal's cmscan executable using $model_file
+#              as the CM file on sequence file $seq_file.
+#
+# Arguments: 
+#  $cmscan:          path to the cmscan executable file
+#  $do_local:        '1' to run locally, '0' to submit job to farm
+#  $model_file:      path to the CM file
+#  $seq_file:        path to the sequence file
+#  $stdout_file:     path to the stdout file to create, can be "/dev/null", or undef 
+#  $tblout_file:     path to the cmscan --tblout file to create
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+# 
+# Returns:     void
+# 
+# Dies: If at least one CM was not built from the current reference.
+#
+################################################################# 
+sub run_cmscan { 
+  my $sub_name = "run_cmscan()";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($cmscan, $do_local, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
+  validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
+
+  # where I got these filter threshold options from: F1, F2, F2b, F3 and F3b from nhmmer, F4, F4b, F5, and F6 from --rfam
+  my $opts .= " --noali --cpu 0 --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 --tblout $tblout_file --verbose --nohmmonly ";
+
+  my $cmd = "$cmscan $opts $model_file $seq_file > $stdout_file";
+
+  # run cmscan, either locally or by submitting jobs to the farm
+  if($do_local) { 
+    # run locally
+    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  }
+  else { 
+    # submit job to farm and return
+    my $jobname = removeDirPath($seq_file);
+    my $errfile = $tblout_file . ".err";
+    if(-e $errfile) { 
+      runCommand("rm $errfile", opt_Get("-v", $opt_HHR), $FH_HR);
+    }
+    my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G " . "\"" . $cmd . "\" > /dev/null\n";
+    runCommand($farm_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine : wait_for_farm_jobs_to_finish()
+# Incept:      EPN, Mon Feb 29 16:20:54 2016
+#
+# Purpose: Wait for jobs on the farm to finish by checking the final
+#          line of their output files (in @{$outfile_AR}) to see
+#          if the final line is exactly the string
+#          $finished_string. We'll wait a maximum of $nmin
+#          minutes, then return the number of jobs that have
+#          finished. If all jobs finish before $nmin minutes we
+#          return at that point.
+#
+# Arguments: 
+#  $outfile_AR:      path to the cmscan executable file
+#  $finished_str:    string that indicates a job is finished e.g. "[ok]"
+#  $nmin:            number of minutes to wait
+# 
+# Returns:     Number of jobs (<= scalar(@{$outfile_AR})) that have
+#              finished.
+# 
+# Dies: never.
+#
+################################################################# 
+sub wait_for_farm_jobs_to_finish { 
+  my $sub_name = "wait_for_farm_jobs_to_finish()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($outfile_AR, $finished_str, $nmin) = @_;
+
+  my $njobs = scalar(@{$outfile_AR});
+  my $nfinished      = 0;   # number of jobs finished
+  my $cur_sleep_secs = 15;  # number of seconds to wait between checks, we'll double this until we reach $max_sleep, every $doubling_secs seconds
+  my $doubling_secs  = 120; # number of seconds to wait before doublign $cur_sleep
+  my $max_sleep_secs = 120; # maximum number of seconds we'll wait between checks
+  my $secs_waited    = 0;   # number of total seconds we've waited thus far
+  while($secs_waited < (($nmin * 60) + $cur_sleep_secs)) { # we add $cur_sleep so we check one final time before exiting after time limit is reached
+    # check to see if jobs are finished, every $cur_sleep seconds
+    sleep($cur_sleep_secs);
+    $secs_waited += $cur_sleep_secs;
+    if($secs_waited >= $doubling_secs) { 
+      $cur_sleep_secs *= 2;
+      if($cur_sleep_secs > $max_sleep_secs) { # reset to max if we've exceeded it
+        $cur_sleep_secs = $max_sleep_secs;
+      }
+    }
+
+    $nfinished = 0; # important to reset this
+    for(my $i = 0; $i < $njobs; $i++) { 
+      if(-s $outfile_AR->[$i]) { 
+        my $final_line = `tail -n 1 $outfile_AR->[$i]`;
+        chomp $final_line;
+        if($final_line eq $finished_str) { 
+          $nfinished++;
+        }
+      }
+    }
+    if($nfinished == $njobs) { 
+      # we're done break out of it
+      return $nfinished;
+    }
+  }
+  
+  return $nfinished;
+}
+
+#################################################################
+# Subroutine : split_fasta_file()
+# Incept:      EPN, Tue Mar  1 09:30:10 2016
+#
+# Purpose: Split up a fasta file into <n> smaller files by calling
+#          the esl-ssplit perl script.
+#
+# Arguments: 
+#  $esl_ssplit:      path to the esl-ssplit.pl script to use
+#  $fasta_file:      fasta file to split up
+#  $nfiles:          desired number of files to split $fasta_file into
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+# 
+# Returns:    Number of files actually created (can differ from requested
+#             amount (which is $nfiles)).
+#
+# Dies:       if esl-ssplit command fails
+#
+################################################################# 
+sub split_fasta_file { 
+  my $sub_name = "split_fasta_file()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($esl_ssplit, $fasta_file, $nfiles, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $outfile = $fasta_file . ".esl-ssplit";
+  my $cmd = "$esl_ssplit -v -n $fasta_file $nfiles > $outfile";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+
+  # parse output to determine exactly how many files were created:
+  my $nfiles_created = countLinesInFile($outfile, $FH_HR);
+
+  if(! opt_Get("--keep", $opt_HHR)) { 
+    runCommand("rm $outfile", opt_Get("-v", $opt_HHR), $FH_HR);
+  }
+
+  return $nfiles_created;
 }
