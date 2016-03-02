@@ -91,7 +91,7 @@ my $options_okay =
                 'v'            => \$GetOptions_H{"-v"},
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
                 'nomatpept'    => \$GetOptions_H{"--nomatpept"},
-                'dirty'        => \$GetOptions_H{"--dirty"},
+                'keep'         => \$GetOptions_H{"--keep"},
 # calibration related options
                 'slow'         => \$GetOptions_H{"--slow"},
                 'local'        => \$GetOptions_H{"--local"});

@@ -1106,8 +1106,7 @@ sub fetchReferenceFeatureSequences {
 
   my $cur_out_root;
   my $cur_name_root;
-  my $dir_tail = $out_root;
-  $dir_tail =~ s/^.+\///;
+  my $dir_tail = removeScriptNameFromString(removeDirPath($out_root)); # remove the directory path and any 'script-specific name', e.g. 'dnaorg_build'
   my $fetch_input;
   my $fetch_output;
   my $nmdl = 0;               # number of HMMs (and alignments used to build those HMMs)
@@ -3500,33 +3499,6 @@ sub parseSpecStartFile {
 }
 
 #################################################################
-# Subroutine : maxLengthScalarInArray()
-# Incept:      EPN, Tue Nov  4 15:19:44 2008 [ssu-align]
-# 
-# Purpose:     Return the maximum length of a scalar in an array
-#
-# Arguments: 
-#   $AR: reference to the array
-# 
-# Returns:     The length of the maximum length scalar.
-#
-################################################################# 
-sub maxLengthScalarInArray {
-  my $nargs_expected = 1;
-  my $sub_name = "maxLengthScalarInArray()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($AR) = $_[0];
-
-  my $max = 0;
-  my $len = 0;
-  foreach my $el (@{$AR}) { 
-    $len = length($el);
-    if($len > $max) { $max = $len; }
-  }
-  return $max;
-}
-
-#################################################################
 # Subroutine:  wrapperGetInfoUsingEdirect()
 # Incept:      EPN, Tue Feb 23 13:00:23 2016
 #
@@ -3550,6 +3522,9 @@ sub maxLengthScalarInArray {
 #              - $out_root . ".ftable":      feature table obtained via edirect
 #              - $out_root . ".length":      sequence length file
 #                      
+#              As a special case, if $opt_HHR->{"--skipfetch"} is 'on',
+#              then we skip the edirect steps and use pre-existing files.
+#              
 # Arguments: 
 #   $listfile:              name of list file with all accessions, can be undef, in which case we 
 #                           only gather information for the reference
@@ -3579,6 +3554,9 @@ sub wrapperGetInfoUsingEdirect {
   my $cmd; # a command to be run by runCommand()
   my $do_matpept = opt_IsOn("--matpept", $opt_HHR);
 
+  # should we skip the edirect calls?
+  my $do_skip = (opt_Exists("--skipfetch", $opt_HHR) && opt_Get("--skipfetch", $opt_HHR)) ? 1 : 0;
+
   my $have_listfile = (defined $listfile) ? 1 : 0;
   if(defined $listfile) { 
     if(! -e $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile does not exist"); }
@@ -3596,7 +3574,7 @@ sub wrapperGetInfoUsingEdirect {
   #      if -nomatpept was   enabled we don't attempt to create a matpept file
   # else if -matpept was     enabled we validate that the resulting matpept file is not empty
   # else if -matpept was not enabled we validate that the resulting matpept file is     empty
-  if(! opt_Get("--nomatpept", $opt_HHR)) { 
+  if((! $do_skip) && (! opt_Get("--nomatpept", $opt_HHR))) { 
     if($have_listfile) {
       $cmd = "cat $listfile | epost -db nuccore -format acc";
     }
@@ -3626,31 +3604,40 @@ sub wrapperGetInfoUsingEdirect {
   # 2) create the edirect .ftable file
   # create the edirect ftable file
   my $ft_file  = $out_root . ".ftable";
-  if($have_listfile) { 
-    $cmd = "cat $listfile | epost -db nuccore -format acc";
+  if(! $do_skip) { 
+    if($have_listfile) { 
+      $cmd = "cat $listfile | epost -db nuccore -format acc";
+    }
+    else { 
+      $cmd = "esearch -db nuccore -query $ref_accn";
+    }
+    $cmd .= " | efetch -format ft > $ft_file";
+    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+    addClosedFileToOutputInfo($ofile_info_HHR, "ft", $ft_file, "Feature table obtained via edirect");
   }
-  else { 
-    $cmd = "esearch -db nuccore -query $ref_accn";
-  }
-  $cmd .= " | efetch -format ft > $ft_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedFileToOutputInfo($ofile_info_HHR, "ft", $ft_file, "Feature table obtained via edirect");
 
   # 3) create the length file
   # create a file with total lengths of each accession
   my $len_file  = $out_root . ".length";
-  if($have_listfile) { 
-    $cmd = "cat $listfile | epost -db nuccore -format acc";
+  if(! $do_skip) { 
+    if($have_listfile) { 
+      $cmd = "cat $listfile | epost -db nuccore -format acc";
+    }
+    else { 
+      $cmd = "esearch -db nuccore -query $ref_accn";
+    }
+    $cmd .= " | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
+    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+    addClosedFileToOutputInfo($ofile_info_HHR, "len", $len_file, "Sequence length file");
   }
-  else { 
-    $cmd = "esearch -db nuccore -query $ref_accn";
-  }
-  $cmd .= " | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedFileToOutputInfo($ofile_info_HHR, "len", $len_file, "Sequence length file");
   if(! -s $len_file) { 
-    DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, $FH_HR); 
-  }  
+    if($do_skip) { 
+      DNAORG_FAIL("ERROR, no length information in file $len_file, are you sure you should be using --skipfetch?", 1, $FH_HR); 
+    }
+    else { 
+      DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, $FH_HR); 
+    }
+  }
 
   # 4) parse the edirect .mat_peptide file, if necessary
   if($do_matpept) {  
@@ -3799,6 +3786,38 @@ sub removeDirPath {
   $fullpath =~ s/^.+\///;
 
   return $fullpath;
+}
+
+#################################################################
+# Subroutine : removeScriptNameFromString()
+# Incept:      EPN, Wed Mar  2 14:04:14 2016
+#
+# Purpose:     Remove a 'dnaorg_*' script name from a string and
+#              return the modified version. 
+#              For example: "NC_001346.dnaorg_annotate' becomes 'NC_001346'
+#
+# Arguments: 
+#   $string: string to potentially modify
+# 
+# Returns:     The string $string with any script names removed.
+#
+################################################################# 
+sub removeScriptNameFromString { 
+  my $sub_name = "removeScriptNameFromString()";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my $string = $_[0];
+
+  my @script_A = ("dnaorg_build", "dnaorg_annotate");
+
+  foreach my $script (@script_A) { 
+    $string =~ s/\.$script\./\./g; # if bordered by two '.', leave one of them
+    $string =~ s/\.$script$//g;    # if this ends the string and a '.' precedes it, remove ".$string"
+    $string =~ s/$script//g;       # if it's a substr, but not caught by the two commands above, remove it
+  }
+
+  return $string;
 }
 
 #################################################################

@@ -69,11 +69,16 @@ opt_Add("-v",           "boolean", 0,                        1,    undef, undef,
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",         "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",   "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",      "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--model",      "string",  undef,                    1,    undef, undef,      "use model in file",                            "use model file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",        "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
 opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 10,                       1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> minutes for cmscan jobs on farm to finish", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"2"} = "options for skipping stages, primarily useful for debugging";
+#     option            type       default               group   requires incompat                 preamble-output            help-output    
+opt_Add("--skipfetch",  "boolean", 0,                       2,    undef,"--nseq,--local,--wait",   "skip the cmscan step",    "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",   "boolean", 0,                       2,    undef,"--nseq,--local,--wait",   "skip the cmscan step",    "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -94,7 +99,9 @@ my $options_okay =
                 'model=s'       => \$GetOptions_H{"--model"}, 
                 'local'         => \$GetOptions_H{"--local"}, 
                 'nseq=s'        => \$GetOptions_H{"--nseq"}, 
-                'wait=s'        => \$GetOptions_H{"--wait"}); 
+                'wait=s'        => \$GetOptions_H{"--wait"},
+                'skipfetch'     => \$GetOptions_H{"--skipfetch"},
+                'skipscan'      => \$GetOptions_H{"--skipscan"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -226,8 +233,11 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 # Step 1. Gather and process information on reference genome using Edirect.
 ###########################################################################
 my $cmd;             # a command to run with runCommand()
-my $progress_w = 65; # the width of the left hand column in our progress output, hard-coded
-my $start_secs = outputProgressPrior(sprintf("Gathering information on %d sequences using edirect", scalar(@accn_A)), $progress_w, $log_FH, *STDOUT);
+my $progress_w = 70; # the width of the left hand column in our progress output, hard-coded
+my $progress_str = (opt_Get("--skipfetch", \%opt_HH)) ? 
+    sprintf("Processing information on %d sequences fetched earlier using edirect", scalar(@accn_A)) : 
+    sprintf("Gathering information on %d sequences using edirect", scalar(@accn_A));
+my $start_secs = outputProgressPrior($progress_str, $progress_w, $log_FH, *STDOUT);
 
 my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
                         # 1D: key: accession
@@ -341,62 +351,64 @@ my $tblout_file = $out_root . ".tblout";
 # if only 1 or --local used, we just run it locally
 my $nfarmjobs = scalar(@accn_A) / opt_Get("--nseq", \%opt_HH); 
 
-if(($nfarmjobs == 1) || (opt_Get("--local", \%opt_HH))) { 
-  # run jobs locally
-  $start_secs = outputProgressPrior("Running cmscan locally", $progress_w, $log_FH, *STDOUT);
-  run_cmscan($execs_H{"cmscan"}, 1, $model_file, $seq_file, $stdout_file, $tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
-else { 
-  # we need to split up the sequence file, and submit a separate cmscan job for each
-  my @tmp_tblout_file_A = (); # the array of tblout files, we'll remove after we're done, unless --keep
-  my @tmp_seq_file_A = ();    # the array of sequence files, we'll remove after we're done, unless --keep
-  my @tmp_err_file_A = ();    # the array of error files, we'll remove after we're done, unless --keep
-  my $nfasta_created = split_fasta_file($execs_H{"esl_ssplit"}, $seq_file, $nfarmjobs, \%opt_HH, \%ofile_info_HH);
-  # we may redefined $nfarmjobs here, split_fasta_file will return the actual number of fasta files created, 
-  # which can differ from the requested amount (which is $nfarmjobs) that we pass in
-
-  # now submit a job for each
-  $start_secs = outputProgressPrior("Submitting $nfasta_created cmscan jobs to the farm", $progress_w, $log_FH, *STDOUT);
-  for(my $z = 1; $z <= $nfarmjobs; $z++) { 
-    run_cmscan($execs_H{"cmscan"}, 0, $model_file,  # 0: do not run locally
-               $seq_file . "." . $z, 
-               ($stdout_file eq "/dev/null") ? "/dev/null" : $stdout_file . "." . $z,
-               $tblout_file . "." . $z, 
-               \%opt_HH, \%ofile_info_HH);
-    push(@tmp_seq_file_A,    $seq_file    . "." . $z);
-    push(@tmp_tblout_file_A, $tblout_file . "." . $z);
-    push(@tmp_err_file_A,    $tblout_file . "." . $z . ".err"); # this will be the name of the error output file, set in run_cmscan
+if(! opt_Get("--skipscan", \%opt_HH)) { 
+  if(($nfarmjobs == 1) || (opt_Get("--local", \%opt_HH))) { 
+    # run jobs locally
+    $start_secs = outputProgressPrior("Running cmscan locally", $progress_w, $log_FH, *STDOUT);
+    run_cmscan($execs_H{"cmscan"}, 1, $model_file, $seq_file, $stdout_file, $tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-  # wait for the jobs to finish
-  $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", \%opt_HH)), 
-                                    $progress_w, $log_FH, *STDOUT);
-  my $njobs_finished = wait_for_farm_jobs_to_finish(\@tmp_tblout_file_A, "# [ok]", opt_Get("--wait", \%opt_HH));
-  if($njobs_finished != $nfasta_created){ 
-    DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfasta_created are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
-  }
-
-  # concatenate all the results files into one 
-  my $cat_cmd = "cat ";
-  foreach my $tmp_file (@tmp_tblout_file_A) { 
-    $cat_cmd .= $tmp_file . " ";
-  }
-  $cat_cmd .= "> $tblout_file";
-  runCommand($cat_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-
-  # remove temporary files, unless --keep
-  if(! opt_Get("--keep", \%opt_HH)) { 
-    my $rm_cmd = "rm ";
-    foreach my $tmp_file (@tmp_seq_file_A, @tmp_tblout_file_A, @tmp_err_file_A) { 
-      $rm_cmd .= $tmp_file . " ";
+  else { 
+    # we need to split up the sequence file, and submit a separate cmscan job for each
+    my @tmp_tblout_file_A = (); # the array of tblout files, we'll remove after we're done, unless --keep
+    my @tmp_seq_file_A = ();    # the array of sequence files, we'll remove after we're done, unless --keep
+    my @tmp_err_file_A = ();    # the array of error files, we'll remove after we're done, unless --keep
+    my $nfasta_created = split_fasta_file($execs_H{"esl_ssplit"}, $seq_file, $nfarmjobs, \%opt_HH, \%ofile_info_HH);
+    # we may redefined $nfarmjobs here, split_fasta_file will return the actual number of fasta files created, 
+    # which can differ from the requested amount (which is $nfarmjobs) that we pass in
+    
+    # now submit a job for each
+    $start_secs = outputProgressPrior("Submitting $nfasta_created cmscan jobs to the farm", $progress_w, $log_FH, *STDOUT);
+    for(my $z = 1; $z <= $nfarmjobs; $z++) { 
+      run_cmscan($execs_H{"cmscan"}, 0, $model_file,  # 0: do not run locally
+                 $seq_file . "." . $z, 
+                 ($stdout_file eq "/dev/null") ? "/dev/null" : $stdout_file . "." . $z,
+                 $tblout_file . "." . $z, 
+                 \%opt_HH, \%ofile_info_HH);
+      push(@tmp_seq_file_A,    $seq_file    . "." . $z);
+      push(@tmp_tblout_file_A, $tblout_file . "." . $z);
+      push(@tmp_err_file_A,    $tblout_file . "." . $z . ".err"); # this will be the name of the error output file, set in run_cmscan
     }
-    runCommand($rm_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-  }
-
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+    
+    # wait for the jobs to finish
+    $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", \%opt_HH)), 
+                                      $progress_w, $log_FH, *STDOUT);
+    my $njobs_finished = wait_for_farm_jobs_to_finish(\@tmp_tblout_file_A, "# [ok]", opt_Get("--wait", \%opt_HH));
+    if($njobs_finished != $nfasta_created){ 
+      DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfasta_created are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
+    }
+    
+    # concatenate all the results files into one 
+    my $cat_cmd = "cat ";
+    foreach my $tmp_file (@tmp_tblout_file_A) { 
+      $cat_cmd .= $tmp_file . " ";
+    }
+    $cat_cmd .= "> $tblout_file";
+    runCommand($cat_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+    
+    # remove temporary files, unless --keep
+    if(! opt_Get("--keep", \%opt_HH)) { 
+      my $rm_cmd = "rm ";
+      foreach my $tmp_file (@tmp_seq_file_A, @tmp_tblout_file_A, @tmp_err_file_A) { 
+        $rm_cmd .= $tmp_file . " ";
+      }
+      runCommand($rm_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+    }
+    
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  } # end of 'else' entered if($nfarmjobs > 1 && ! --local)
+} # end of if(! opt_Get(--skipscan", \%opt_HH))
 
 #########################################################
 # Step 4. Parse homology search results into usable data structuers
@@ -419,6 +431,8 @@ parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \@seqname_A, \@accn_A, \%totlen
 
 # dump results
 dump_results(\@results_AAH, \%mdl_info_HA, \@seqname_A, \@accn_A, \%totlen_H, *STDOUT);
+
+exit 0;
 
 ##########
 # Conclude
@@ -807,7 +821,7 @@ sub parse_cmscan_tblout {
   my $line_ctr = 0;
   while(my $line = <IN>) { 
     $line_ctr++;
-    if($line =~ m/^\# \S/ && (! $did_field_check)) { 
+    if(($line =~ m/^\#/) && (! $did_field_check)) { 
       # sanity check, make sure the fields are what we expect
       if($line !~ m/#target name\s+accession\s+query name\s+accession\s+mdl\s+mdl\s+from\s+mdl to\s+seq from\s+seq to\s+strand\s+trunc\s+pass\s+gc\s+bias\s+score\s+E-value inc description of target/) { 
         DNAORG_FAIL("ERROR in $sub_name, unexpected field names in $tblout_file\n$line\n", 1, $FH_HR);
@@ -838,7 +852,7 @@ sub parse_cmscan_tblout {
       my $seqlen = $totlen_HR->{$accn_AR->[$seqidx]}; # sequence length, used to exclude storing of hits that start and stop after $seqlen, 
                                                       # which can occur in circular genomes, where we've duplicated the sequence
 
-      store_hit($results_AAHR, $mdlname, $seqname, $mdllen, $seqlen, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $FH_HR);
+      store_hit($results_AAHR, $mdlidx, $seqidx, $mdllen, $seqlen, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $FH_HR);
     }
   }
   close(IN);
@@ -962,7 +976,7 @@ sub dump_results {
                   $accn_AR->[$i],
                   $totlen_HR->{$accn_AR->[$i]});
       foreach my $key (sort keys %{$results_AAHR->[$m][$i]}) { 
-        printf $FH ("%s: %s\n", $key, $results_AAHR->[$m][$i]{$key});
+        printf $FH ("%s: %s ", $key, $results_AAHR->[$m][$i]{$key});
       }
       printf $FH ("\n")
     }
