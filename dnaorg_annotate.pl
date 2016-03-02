@@ -260,6 +260,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 2. Fetch and process the reference genome sequence
 ##########################################################
 $start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
+my @seqname_A   = ();          # actual name of all sequences in fasta file, after being fetched, same order as @accn_A
 my %mdl_info_HA = ();          # hash of arrays, values are arrays [0..$nmdl-1];
                                # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
                                # filled in wrapperFetchAndProcessReferenceSequence()
@@ -273,7 +274,7 @@ my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1],
 #   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\@accn_A, $out_root, \%cds_tbl_HHA,
+wrapperFetchAllSequencesAndProcessReferenceSequence(\@accn_A, \@seqname_A, $out_root, \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
                                                     \%totlen_H, \%ofile_info_HH,
@@ -377,6 +378,14 @@ else {
     DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfasta_created are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
   }
 
+  # concatenate all the results files into one 
+  my $cat_cmd = "cat ";
+  foreach my $tmp_file (@tmp_tblout_file_A) { 
+    $cat_cmd .= $tmp_file . " ";
+  }
+  $cat_cmd .= "> $tblout_file";
+  runCommand($cat_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+
   # remove temporary files, unless --keep
   if(! opt_Get("--keep", \%opt_HH)) { 
     my $rm_cmd = "rm ";
@@ -394,8 +403,22 @@ else {
 ##########################################################
 #%results_AAH = (); # 1st dim: array, 0..$nmdl-1, one per model
 #                   # 2nd dim: array, 0..$naccn-1, one per accessions
-#                   # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_score", "p_5hangover", "p_3hangover", "p_fid2ref"
-#initialize_results_array_of_array_of_hashes(\%results_AAH, \%mdl_info_HAR, \@seq_accn_A);
+#                   # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5hangover", "p_3hangover", "p_evalue", "p_fid2ref"
+my $naccn = scalar(@accn_A);
+# initialize the results AAH
+my @results_AAH = ();
+for(my $m = 0; $m < $nmdl; $m++) { 
+  @{$results_AAH[$m]} = ();
+  for(my $a = 0; $a < $naccn; $a++) { 
+    %{$results_AAH[$m][$a]} = ();
+  }
+}
+
+# parse the cmscan results
+parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \@seqname_A, \@accn_A, \%totlen_H, \@results_AAH, $ofile_info_HH{"FH"});
+
+# dump results
+dump_results(\@results_AAH, \%mdl_info_HA, \@seqname_A, \@accn_A, \%totlen_H, *STDOUT);
 
 ##########
 # Conclude
@@ -741,4 +764,208 @@ sub split_fasta_file {
   }
 
   return $nfiles_created;
+}
+
+#################################################################
+# Subroutine : parse_cmscan_tblout()
+# Incept:      EPN, Tue Mar  1 13:56:46 2016
+#
+# Purpose:    Parse Infernal 1.1 cmscan --tblout output and store
+#             results in $results_AAH.
+#
+# Arguments: 
+#  $tblout_file:   tblout file to parse
+#  $mdl_info_HAR:  REF to hash of arrays with information on the models, PRE-FILLED
+#  $seqname_AR:    REF to array of sequence names, PRE-FILLED
+#  $accn_AR:       REF to array of accessions, same order as @{$seqname_AR}, PRE-FILLED
+#  $totlen_HR:     REF to hash of total lengths of all accessions (keys are values from @{$accn_AR}), PRE-FILLED
+#  $results_AAHR:  REF to results AAH, FILLED HERE
+#  $FH_HR:         REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if we find a hit to a model or sequence that we don't
+#             have stored in $mdl_info_HAR or $seqname_AR
+#
+################################################################# 
+sub parse_cmscan_tblout { 
+  my $sub_name = "parse_cmscan_tblout()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($tblout_file, $mdl_info_HAR, $seqname_AR, $accn_AR, $totlen_HR, $results_AAHR, $FH_HR) = @_;
+  
+  # make an 'order hash' for the model names and sequence names,
+  my %mdlname_index_H = (); # mdlname_index_H{$model_name} = <n>, means that $model_name is the <n>th model in the @{$mdl_info_HAR{*}} arrays
+  my %seqname_index_H = (); # seqname_order_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seqname_AR}} array
+  getIndexHashForArray($mdl_info_HAR->{"cmname"}, \%mdlname_index_H, $FH_HR);
+  getIndexHashForArray($seqname_AR, \%seqname_index_H, $FH_HR);
+
+  open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
+
+  my $did_field_check = 0; # set to '1' below after we check the fields of the file
+  my $line_ctr = 0;
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    if($line =~ m/^\# \S/ && (! $did_field_check)) { 
+      # sanity check, make sure the fields are what we expect
+      if($line !~ m/#target name\s+accession\s+query name\s+accession\s+mdl\s+mdl\s+from\s+mdl to\s+seq from\s+seq to\s+strand\s+trunc\s+pass\s+gc\s+bias\s+score\s+E-value inc description of target/) { 
+        DNAORG_FAIL("ERROR in $sub_name, unexpected field names in $tblout_file\n$line\n", 1, $FH_HR);
+      }
+      $did_field_check = 1;
+    }
+    elsif($line !~ m/^\#/) { 
+      chomp $line;
+      # example line:
+      #Maize-streak_r23.NC_001346.ref.mft.4        -         NC_001346:genome-duplicated:NC_001346:1:2689:+:NC_001346:1:2689:+: -          cm        1      819     2527     1709      -    no    1 0.44   0.2  892.0         0 !   -
+      my @elA = split(/\s+/, $line);
+      my ($mdlname, $seqname, $mod, $mdlfrom, $mdlto, $from, $to, $strand, $score, $evalue) = 
+          ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
+
+      if(! exists $mdlname_index_H{$mdlname}) { 
+        DNAORG_FAIL("ERROR in $sub_name, do not have information for model $mdlname read in $tblout_file on line $line_ctr", 1, $FH_HR);
+      }
+      if(! exists $seqname_index_H{$seqname}) { 
+        DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $tblout_file on line $line_ctr", 1, $FH_HR);
+      }
+
+      my $mdlidx = $mdlname_index_H{$mdlname}; # model    index for the hit in results_AAH (1st dim of results_AAH)
+      my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+      my $mdllen = $mdl_info_HAR->{"length"}[$mdlidx]; # model length, used to determine how far hit is from boundary of the model
+      if(! exists $totlen_HR->{$accn_AR->[$seqidx]}) { 
+        DNAORG_FAIL("ERROR in $sub_name, do not have length information for sequence $seqname, accession $accn_AR->[$seqidx]", 1, $FH_HR);
+      }
+      my $seqlen = $totlen_HR->{$accn_AR->[$seqidx]}; # sequence length, used to exclude storing of hits that start and stop after $seqlen, 
+                                                      # which can occur in circular genomes, where we've duplicated the sequence
+
+      store_hit($results_AAHR, $mdlname, $seqname, $mdllen, $seqlen, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $FH_HR);
+    }
+  }
+  close(IN);
+  
+  return;
+}
+
+#################################################################
+# Subroutine : store_hit()
+# Incept:      EPN, Tue Mar  1 14:33:38 2016
+#
+# Purpose:    Helper function for parse_cmscan_tblout().
+#             Given info on a hit and a ref to the results AAH, 
+#             store info on it. 
+#
+# Arguments: 
+#  $results_AAHR:  REF to results AAH, FILLED HERE
+#  $mdlidx:        model index, 1st dim index in results_AAH to store in
+#  $seqidx:        sequence index, 2nd dim index in results_AAH to store in
+#  $mdllen:        model length
+#  $seqlen:        sequence length (before duplicating, if relevant)
+#  $mdlfrom:       start position of hit
+#  $mdlto:         stop position of hit
+#  $seqfrom:       start position of hit
+#  $seqto:         stop position of hit
+#  $strand:        strand of hit
+#  $evalue:        E-value of hit
+#  $FH_HR:         REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       never
+#
+################################################################# 
+sub store_hit { 
+  my $sub_name = "store_hit()";
+  my $nargs_exp = 12;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($results_AAHR, $mdlidx, $seqidx, $mdllen, $seqlen, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $FH_HR) = @_;
+
+  # only consider hits where either the start or end are less than the total length
+  # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
+  # rule for deciding which of duplicate hits we'll store 
+  if(($seqfrom <= $seqlen) || ($seqto <= $seqlen)) { 
+
+# Code block below is how we used to modify start/stop if hit spanned
+# stop..start boundary, now we just store it as it is, and then modify
+# the start and/or stop when we output its coordinates. This removes a
+# nasty off-by-one with negative indices that kept recurring in
+# various situations.
+# 
+# This is kept here for reference
+#
+#    # deal with case where one but not both of from to is > L:
+#    if($seqfrom > $L || $seqto > $L) { 
+#      $seqfrom -= $L; 
+#      $seqto   -= $L; 
+#      if($seqfrom < 0)  { $seqfrom--; }
+#      if($seqto   < 0)  { $seqto--; }
+#    }
+    
+    # we only store the first hit we see, this is safe because we know 
+    # that this will be the lowest E-value
+    if(%{$results_AAHR->[$mdlidx][$seqidx]}) { 
+      # a hit for this model:seq pair already exists, make sure it has a lower E-value than the current one
+      if($results_AAHR->[$mdlidx][$seqidx]{"p_evalue"} > $evalue) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, already have hit stored for model index $mdlidx seq index $seqidx with higher evalue (%g > %g), this implies hits were not sorted by E-value...", $results_AAHR->[$mdlidx][$seqidx]{"evalue"}, $evalue), 1, $FH_HR); 
+      }
+    }
+    else { 
+      # no hit yet exists, make one
+      %{$results_AAHR->[$mdlidx][$seqidx]} = ();
+      $results_AAHR->[$mdlidx][$seqidx]{"p_start"}     = $seqfrom;
+      $results_AAHR->[$mdlidx][$seqidx]{"p_stop"}      = $seqto;
+      $results_AAHR->[$mdlidx][$seqidx]{"p_strand"}    = $strand;
+      $results_AAHR->[$mdlidx][$seqidx]{"p_5hangover"} = ($mdlfrom - 1);
+      $results_AAHR->[$mdlidx][$seqidx]{"p_3hangover"} = ($mdllen - $mdlto);
+      $results_AAHR->[$mdlidx][$seqidx]{"p_evalue"}    = $evalue;
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine : dump_results()
+# Incept:      EPN, Tue Mar  1 14:54:27 2016
+#
+# Purpose:    Dump results data structure to $FH. Probably only
+#             useful for debugging.
+#
+# Arguments: 
+#  $results_AAHR:  REF to results AAH, PRE-FILLED
+#  $mdl_info_HAR:  REF to hash of arrays with information on the models, PRE-FILLED
+#  $seqname_AR:    REF to array of sequence names, PRE-FILLED
+#  $accn_AR:       REF to array of accessions, same order as @{$seqname_AR}, PRE-FILLED
+#  $totlen_HR:     REF to hash of total lengths of all accessions (keys are values from @{$accn_AR}), PRE-FILLED
+#  $FH:            file handle to output to
+#
+# Returns:    void
+#
+# Dies:       never
+#
+################################################################# 
+sub dump_results {
+  my $sub_name = "dump_results()";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($results_AAHR, $mdl_info_HAR, $seqname_AR, $accn_AR, $totlen_HR, $FH) = @_;
+
+  my $nmdl = scalar(@{$results_AAHR});
+  my $nseq = scalar(@{$seqname_AR}); 
+  
+  for(my $m = 0; $m < $nmdl; $m++) { 
+    for(my $i = 0; $i < $nseq; $i++) { 
+      printf $FH ("model($m): %20s  seq($i): %20s  accn: %10s  len: %10d  ", 
+                  $mdl_info_HAR->{"cmname"}[$m],
+                  $seqname_AR->[$i],
+                  $accn_AR->[$i],
+                  $totlen_HR->{$accn_AR->[$i]});
+      foreach my $key (sort keys %{$results_AAHR->[$m][$i]}) { 
+        printf $FH ("%s: %s\n", $key, $results_AAHR->[$m][$i]{$key});
+      }
+      printf $FH ("\n")
+    }
+  }
+  return;
 }

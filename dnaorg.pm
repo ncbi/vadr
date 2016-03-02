@@ -198,7 +198,7 @@ sub parseMatPeptSpecFile {
   my @cds_idx_read_A    = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
   my $max_cds_idx2store = 0;  # maximum $cds_idx2store seen
 
-  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
+  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
 
   while(my $line = <IN>) { 
     if($line !~ m/^\#/) { 
@@ -345,7 +345,7 @@ sub parseLengthFile {
 
   my ($lenfile, $len_HR, $FH_HR) = @_;
 
-  open(LEN, $lenfile) || fileOpenFailure($lenfile, $!, "reading", $FH_HR);
+  open(LEN, $lenfile) || fileOpenFailure($lenfile, $sub_name, $!, "reading", $FH_HR);
 
   while(my $line = <LEN>) { 
     # example line
@@ -422,7 +422,7 @@ sub parseEdirectFtableFile {
 
   my ($infile, $only_feature, $sep_HR, $quals_HHAR, $faccn_AR, $fac_HHAR, $faccn2accn_HR, $column_HAR, $FH_HR) = @_;
 
-  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
+  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
 
   my $do_only_feature  = 0;
   my $cap_only_feature = undef; # capitalized version of $only_feature
@@ -694,7 +694,7 @@ sub parseEdirectMatPeptideFile {
 
   my ($infile, $dummy_column, $sep_HR, $quals_HHAR, $faccn_AR, $fac_HHAR, $faccn2accn_HR, $column_HAR, $FH_HR) = @_;
 
-  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
+  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
 
   # example lines of a .mat_peptide file
   # NC_009942.1	97..465	anchored capsid protein C	
@@ -1740,7 +1740,7 @@ sub fetchSequencesUsingEslFetchCds {
   my $fetch_string; # string output to the input file for esl-fetch-cds.pl
   
   # create the esl-fetch-cds input file
-  open(OUT, ">", $fetch_file) || fileOpenFailure($fetch_file, $!, "writing", $FH_HR);
+  open(OUT, ">", $fetch_file) || fileOpenFailure($fetch_file, $sub_name, $!, "writing", $FH_HR);
   my $naccn = scalar(@{$accn_AR});
   for(my $a = 0; $a < $naccn; $a++) { 
 #  print OUT $accn_A[$a] . "\n";
@@ -2508,28 +2508,29 @@ sub getStrandStats {
 #              and to STDERR, then exit with <$status>.
 #
 # Arguments: 
-#   $filename: file that we couldn't open
-#   $status:   error status
-#   $action:   "reading", "writing", "appending"
-#   $FH_HR:    ref to hash of open file handles to close
+#   $filename:   file that we couldn't open
+#   $c_sub_name: name of calling subroutine name
+#   $status:     error status
+#   $action:     "reading", "writing", "appending"
+#   $FH_HR:      ref to hash of open file handles to close
 # 
 # Returns:     Nothing, this function will exit the program.
 #
 ################################################################# 
 sub fileOpenFailure { 
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   my $sub_name = "fileOpenFailure()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($filename, $status, $action, $FH_HR) = @_;
+  my ($filename, $c_sub_name, $status, $action, $FH_HR) = @_;
 
-  my $errmsg;
   if(($action eq "reading") && (! (-e $filename))) { 
-    $errmsg = "\nERROR, could not open $filename for reading. It does not exist.\n";
+    DNAORG_FAIL(sprintf("ERROR, could not open %s%s for reading. It does not exist.", $filename, (defined $c_sub_name) ? " in subroutine $c_sub_name" : ""), $status, $FH_HR);
   }
   else { 
-    $errmsg = "\nERROR, could not open $filename for $action.\n";
+    DNAORG_FAIL(sprintf("ERROR, could not open %s%s for %s", $filename, (defined $c_sub_name) ? " in subroutine $c_sub_name" : "", $action), $status, $FH_HR);
   }
-  DNAORG_FAIL($errmsg, $status, $FH_HR);
+
+  return; # never reached
 }
 
 #################################################################
@@ -3387,7 +3388,7 @@ sub parseListFile {
 
   my %line_exists_H = ();
 
-  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
+  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
 
   while(my $line = <IN>) { 
     if($line =~ m/\w/) {  # skip blank lines
@@ -3437,7 +3438,7 @@ sub parseSpecStartFile {
   my @cds_idx_read_A = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
   my $max_cds_idx2store = 0;
 
-  open(IN, $infile) || fileOpenFailure($infile, $!, "reading", $FH_HR);
+  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
 
   while(my $line = <IN>) { 
     if($line !~ m/^\#/) { 
@@ -3701,6 +3702,7 @@ sub wrapperGetInfoUsingEdirect {
 #              
 # Arguments: 
 #   $accn_AR:               REF to array of accessions, PRE-FILLED
+#   $seqname_AR:            REF to array of actual sequence names in fasta file we create here, FILLED HERE
 #   $out_root:              string that is the 'root' for naming output files
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
 #   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
@@ -3725,10 +3727,10 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAllSequencesAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAllSequencesAndProcessReferenceSequence()";
-  my $nargs_expected = 12;
+  my $nargs_expected = 13;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($accn_AR, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $totlen_HR, $ofile_info_HHR, $ftr_info_HAR, $mdl_info_HAR, $execs_HR, $opt_HHR, $FH_HR) = @_;
+  my ($accn_AR, $seqname_AR, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $totlen_HR, $ofile_info_HHR, $ftr_info_HAR, $mdl_info_HAR, $execs_HR, $opt_HHR, $FH_HR) = @_;
 
   # contract check
   if((defined $mp_tbl_HHAR) && (! defined $cds2pmatpept_AAR)) { 
@@ -3743,8 +3745,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   my $ref_accn      = $accn_AR->[0];                        # the reference accession
   my $fetch_file    = sprintf($out_root . "%s.fg.idfetch.in", ($have_only_ref) ? ".ref" : "");  # the esl_fetch_cds.pl input file we are about to create
   my $fasta_file    = sprintf($out_root . "%s.fg.fa",         ($have_only_ref) ? ".ref" : "");  # the fasta file we are about to create
-  my @ref_seqname_A = ();                                 # will contain a single value, the reference sequence name in the file $fasta_file
-  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, \@ref_seqname_A, undef, undef, $FH_HR);
+  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, $seqname_AR, undef, undef, $FH_HR);
   my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
   addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
   addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
@@ -3760,7 +3761,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
 
   # 4) fetch the reference feature sequences and populate information on the models and features
   my $ref_totlen   = $totlen_HR->{$ref_accn};    # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
-  my $ref_seqname  = $ref_seqname_A[0];          # the reference sequence name the fetched sequence file $fasta_file
+  my $ref_seqname  = $seqname_AR->[0];           # the reference sequence name the fetched sequence file $fasta_file
   my $all_stk_file = $out_root . ".ref.all.stk"; # name of output alignment file we are about to create, each single reference feature 
                                                  # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
                                                  # separate alignments, one per feature
@@ -3857,13 +3858,58 @@ sub countLinesInFile {
   my ($filename, $FH_HR) = @_;
 
   my $nlines = 0;
-  open(IN, $filename) || fileOpenFailure($filename, $!, "reading", $FH_HR);
+  open(IN, $filename) || fileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
   while(<IN>) { 
     $nlines++;
   }
   close(IN);
 
   return $nlines;
+}
+
+#################################################################
+# Subroutine : getIndexHashForArray()
+# Incept:      EPN, Tue Mar  1 14:11:38 2016
+#
+# Purpose:     Create an 'index hash' %{$index_HR} for an array
+#              @{$AR}, such that $index_HR{$value} = $n, if 
+#              $AR->[$n] = $value. 
+#              
+# Arguments: 
+#   $AR:       REF to the array, PRE-FILLED
+#   $index_HR: REF to the hash to fill, FILLED HERE
+#   $FH_HR:    REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies:        If there are any duplicate values in array as
+#              measured by eq, or if any elements in the array
+#              are numeric (as determined by verify_real() from
+#              epn-options.pm)
+#
+################################################################# 
+sub getIndexHashForArray { 
+  my $nargs_expected = 3;
+  my $sub_name = "getIndexHashForArray()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR, $index_HR, $FH_HR) = @_;
+
+  # initialize
+  %{$index_HR} = (); 
+
+  for(my $i = 0; $i < scalar(@{$AR}); $i++) { 
+    my $el = $AR->[$i];
+    # verify it's not a number
+    if(verify_real($el)) { 
+      DNAORG_FAIL("ERROR in $sub_name(), value $el is numeric"); 
+    }
+    if(exists $index_HR->{$el}) { 
+      DNAORG_FAIL("ERROR in $sub_name(), the value $el appears twice in the array"); 
+    }
+    $index_HR->{$el} = $i;
+  }
+
+  return;
 }
 
 ###########################################################################
