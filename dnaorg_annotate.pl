@@ -77,8 +77,13 @@ opt_Add("--wait",       "integer", 10,                       1,    undef,"--loca
 
 $opt_group_desc_H{"2"} = "options for skipping stages, primarily useful for debugging";
 #     option            type       default               group   requires incompat                 preamble-output            help-output    
-opt_Add("--skipfetch",  "boolean", 0,                       2,    undef,"--nseq,--local,--wait",   "skip the cmscan step",    "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipedirect", "boolean", 0,                       2,    undef,"--nseq,--local,--wait",   "skip the edirect steps",   "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipscan",   "boolean", 0,                       2,    undef,"--nseq,--local,--wait",   "skip the cmscan step",    "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"3"} = "optional output files";
+#       option       type       default                group  requires incompat  preamble-output                          help-output    
+opt_Add("--mdlinfo",    "boolean", 0,                        1,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--ftrinfo",    "boolean", 0,                        1,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -100,8 +105,12 @@ my $options_okay =
                 'local'         => \$GetOptions_H{"--local"}, 
                 'nseq=s'        => \$GetOptions_H{"--nseq"}, 
                 'wait=s'        => \$GetOptions_H{"--wait"},
-                'skipfetch'     => \$GetOptions_H{"--skipfetch"},
-                'skipscan'      => \$GetOptions_H{"--skipscan"});
+# options for skipping stages
+                'skipedirect'   => \$GetOptions_H{"--skipedirect"},
+                'skipscan'      => \$GetOptions_H{"--skipscan"},
+# optional output files
+                'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
+                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -194,6 +203,14 @@ my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
+# open optional output files
+if(opt_Get("--mdlinfo", \%opt_HH)) { 
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "mdlinfo", $out_root . ".mdlinfo", "Model information (created due to --mdlinfo)");
+}
+if(opt_Get("--ftrinfo", \%opt_HH)) { 
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", "Feature information (created due to --ftrinfo)");
+}
+
 # now we have the log file open, output the banner there too
 outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
@@ -234,7 +251,7 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 ###########################################################################
 my $cmd;             # a command to run with runCommand()
 my $progress_w = 70; # the width of the left hand column in our progress output, hard-coded
-my $progress_str = (opt_Get("--skipfetch", \%opt_HH)) ? 
+my $progress_str = (opt_Get("--skipedirect", \%opt_HH)) ? 
     sprintf("Processing information on %d sequences fetched earlier using edirect", scalar(@accn_A)) : 
     sprintf("Gathering information on %d sequences using edirect", scalar(@accn_A));
 my $start_secs = outputProgressPrior($progress_str, $progress_w, $log_FH, *STDOUT);
@@ -445,16 +462,44 @@ $start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta fil
 fetch_hits_given_results($sqfile, $out_root_and_key, \%mdl_info_HA, \@seq_name_A, \@results_AAH, $results_prefix, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-####################################################################
-# Step 6. Combine multi-exon CDS into single CDS sequences
-####################################################################
-$start_secs = outputProgressPrior("Combining multiple exon predicted CDS", $progress_w, $log_FH, *STDOUT);
-combine_model_hits($results_prefix, \@seq_name_A, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+#############################################################################
+# Step 6. For features modelled by multiple models (e.g. multi-exon CDS)
+#         combine all relevant hits into predicted feature sequences.
+#############################################################################
+$start_secs = outputProgressPrior("Combining predicted exons into CDS", $progress_w, $log_FH, *STDOUT);
+combine_model_hits($out_root_and_key, $results_prefix, \@seq_name_A, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#########################################################
+# Step 7. For features modelled by multiple other features (e.g. CDS comprised
+#         of multiple mature peptides) combine the individual feature sequences into 
+#         single sequences.
+#########################################################
+# output optional output files
+if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
+  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
+}
+if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
+  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
+}
+
+$start_secs = outputProgressPrior("Combining predicted mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
+combine_feature_hits($out_root_and_key, $results_prefix, \@seq_name_A, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+
 
 ##########
 # Conclude
 ##########
+# output optional output files
+if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
+  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
+}
+if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
+  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
+}
+
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 
@@ -1054,14 +1099,13 @@ sub fetch_hits_given_results {
         my $stop  = $results_AAHR->[$m][$s]{$stop_key};
 
         my $new_name .= $seq_name . "/" . $start . "-" . $stop;
-        printf("adding $new_name $start $stop $seq_name to fetch_AA\n");
         push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
         $nseq2fetch++;
       }
     }
-    my $mdl_info_key = $results_prefix . ".hits";
+    my $mdl_info_key = $results_prefix . "hits";
     if($nseq2fetch > 0) { 
-      my $out_fafile = $out_root_and_key . ".". $mdl_name . ".fa";
+      my $out_fafile = $out_root_and_key . ".". $mdl_info_HAR->{"filename_root"}[$m] . ".fa";
       $sqfile->fetch_subseqs(\@fetch_AA, undef, $out_fafile);
       # save information on this to the output file info hash
       my $ofile_info_key = $results_prefix . "hits" . ".model" . $m;
@@ -1089,6 +1133,8 @@ sub fetch_hits_given_results {
 #             much of the work.
 #
 # Arguments: 
+#  $out_root_and_key:  output root for the files we'll create here, 
+#                      usually $out_root . ".predicted", or $out_root . ".corrected"
 #  $results_prefix:    prefix used for naming mdl fasta files in fetch_hits(), e.g. "p_" for 'predicted'
 #  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
 #  $mdl_info_HAR:      REF to hash of arrays with information on the models, PRE-FILLED
@@ -1103,20 +1149,18 @@ sub fetch_hits_given_results {
 ################################################################# 
 sub combine_model_hits { 
   my $sub_name = "combine_model_hits";
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($results_prefix, $seq_name_AR, $mdl_info_HAR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($out_root_and_key, $results_prefix, $seq_name_AR, $mdl_info_HAR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
-  my @tmp_mdl_fafile_A = (); # temporary array of exon fafiles for all exons in current CDS
-  
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
   my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nmdl: number of homology models
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # we only do this for features annotated by models
       my $mdl_idx        = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
-      my $mdl_info_key   = $results_prefix . ".hits";
+      my $mdl_info_key   = $results_prefix . "hits";
       my $ofile_info_key = $mdl_info_HAR->{$mdl_info_key}[$mdl_idx];
       my $mdl_hit_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
       validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
@@ -1134,11 +1178,10 @@ sub combine_model_hits {
       #######################################
       else { 
         # more than one model's hit files need to be combined to make this feature 
-        my $ftr_hit_fafile = $mdl_hit_fafile;
-        $ftr_hit_fafile =~ s/\.exon\.\d+\./\./; # remove 'exon' substring, if it exists
+        my $ftr_hit_fafile = $out_root_and_key . ".". $ftr_info_HAR->{"filename_root"}[$ftr_idx] . ".fa";
         my @tmp_hit_fafile_A = ($mdl_hit_fafile);
         for($mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-          $mdl_info_key   = $results_prefix . ".hits";
+          $mdl_info_key   = $results_prefix . "hits";
           $ofile_info_key = $mdl_info_HAR->{$mdl_info_key}[$mdl_idx];
           $mdl_hit_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
           validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
@@ -1148,10 +1191,69 @@ sub combine_model_hits {
         combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $ofile_info_HHR->{"FH"});
         my $ofile_info_key = $results_prefix . "hits" . ".ftr" . $ftr_idx;
         addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, "fasta file with predicted hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
-      # now save this file in the mdl_info_HAR
-        my $ftr_info_key = $results_prefix . ".hits";
+        # now save this file in the ftr_info_HAR
+        my $ftr_info_key = $results_prefix . "hits";
         $ftr_info_HAR->{$ftr_info_key}[$ftr_idx] = $ofile_info_key;
       }
+    }
+  }
+  return;
+}
+
+#################################################################
+# Subroutine:  combine_feature_hits()
+# Incept:      EPN, Thu Mar  3 12:15:55 2016
+#
+# Purpose:    For all features that are annotated by combining
+#             multiple other features ($ftr_info_HAR->{"annot_type"}[*] 
+#             = "multifeature", e.g. CDS made up of mature peptides)
+#             create the feature fasta file for each.Calls 
+#             'combine_sequences()' which does much of the work.
+#
+# Arguments: 
+#  $out_root_and_key:  output root for the files we'll create here, 
+#                      usually $out_root . ".predicted", or $out_root . ".corrected"
+#  $results_prefix:    prefix used for naming mdl fasta files in fetch_hits(), e.g. "p_" for 'predicted'
+#  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
+#  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If we have a problem reading the fasta files
+#
+################################################################# 
+sub combine_feature_hits { 
+  my $sub_name = "combine_feature_hits";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_root_and_key, $results_prefix, $seq_name_AR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
+  my $ftr_info_key = $results_prefix . "hits";
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features annotated by models
+      # get the array of primary children feature indices for this feature
+      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
+      getPrimaryChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
+      my @tmp_hit_fafile_A = ();
+      my $combined_ftr_hit_fafile = $out_root_and_key . ".". $ftr_info_HAR->{"filename_root"}[$ftr_idx] . ".fa";
+      foreach $ftr_idx (@primary_children_idx_A) { 
+        my $ofile_info_key = $ftr_info_HAR->{$ftr_info_key}[$ftr_idx];
+        my $ftr_hit_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+        validateFileExistsAndIsNonEmpty($ftr_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+        push(@tmp_hit_fafile_A, $ftr_hit_fafile);
+      }
+      # combine the sequences into 1 file
+      combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $ofile_info_HHR->{"FH"});
+      my $ofile_info_key = $results_prefix . "hits" . ".ftr" . $ftr_idx;
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, "fasta file with predicted hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . scalar(@primary_children_idx_A) . " combined feature predictions");
+
+      # now save this file in the ftr_info_HAR
+      $ftr_info_HAR->{$ftr_info_key}[$ftr_idx] = $ofile_info_key;
     }
   }
   return;

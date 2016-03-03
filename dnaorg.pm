@@ -1119,12 +1119,15 @@ sub fetchReferenceFeatureSequences {
   my @files2rm_A = ();  # array of file names to remove at end of this function (remains empty if $do_keep)
 
   for(my $i = 0; $i < $nftr; $i++) { 
-    my $do_model = ($ftr_info_HAR->{"annot_type"}[$i] eq "model") ? 1 : 0;
+    my $cds_or_mp     = ($ftr_info_HAR->{"type"}[$i] eq "mp") ? "mp" : "cds";
+    my $do_model      = ($ftr_info_HAR->{"annot_type"}[$i] eq "model") ? 1 : 0;
+    my $ftr_type      = $ftr_info_HAR->{"type"}[$i];
+    my $ftr_type_idx  = $ftr_info_HAR->{"type_idx"}[$i];
+    $ftr_info_HAR->{"first_mdl"}[$i] = -1; # remains -1 if $do_model is FALSE
+    $ftr_info_HAR->{"final_mdl"}[$i] = -1; # remains -1 if $do_model is FALSE
+    $ftr_info_HAR->{"nmodels"}[$i]    = 0; # remains 0 if $do_model is FALSE
 
     if($do_model) { 
-      my $cds_or_mp = ($ftr_info_HAR->{"type"}[$i] eq "mp") ? "mp" : "cds";
-      my $i2print   = $ftr_info_HAR->{"type_idx"}[$i];
-
       # determine start and stop positions of all exons/segments
       my @starts_A = ();
       my @stops_A  = ();
@@ -1141,12 +1144,12 @@ sub fetchReferenceFeatureSequences {
 
       for(my $e = 0; $e < $nexons; $e++) { 
         if($nexons > 1) { 
-          $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . $i2print . ".exon." . ($e+1);
-          $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . $i2print . ".exon." . ($e+1);
+          $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . $ftr_type_idx . ".exon." . ($e+1);
+          $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . $ftr_type_idx . ".exon." . ($e+1);
         }
         else { 
-          $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . $i2print;
-          $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . $i2print;
+          $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . $ftr_type_idx;
+          $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . $ftr_type_idx;
         }
     
         # determine start and stop of the region we are going to fetch
@@ -1182,18 +1185,11 @@ sub fetchReferenceFeatureSequences {
         $mdl_info_HAR->{"length"}[$nmdl]   = $mdllen;
 
         # store information on this model's name for output purposes
+        $mdl_info_HAR->{"filename_root"}[$nmdl] = sprintf("$ftr_type.%s", 
+                                                          ($nexons == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
         $mdl_info_HAR->{"out_tiny"}[$nmdl] = sprintf("%s#%s", 
                                                      (($cds_or_mp eq "mp") ? "MP" : "CDS"), 
-                                                     ($nexons == 1) ? sprintf("%d", $i2print) : sprintf("%d.%d", $i2print, ($e+1)));
-        if($e == ($nexons-1)) { 
-          my $short = ($cds_or_mp eq "mp") ? sprintf("MP #%d", $i2print) : sprintf("CDS #%d", $i2print);
-          my $tiny  = $short;
-          $tiny =~ s/\s+//g; # remove whitespace
-          if($nexons > 1) { $short .= sprintf(" [$nexons %s; $strand]", ($cds_or_mp eq "mp") ? "segments" : "exons"); }
-          else            { $short .= sprintf(" [single %s; $strand]",  ($cds_or_mp eq "mp") ? "segment"  : "exon"); }
-          $ftr_info_HAR->{"out_tiny"}[$i]    = $tiny;
-          $ftr_info_HAR->{"out_short"}[$i]   = $short;
-        }
+                                                     ($nexons == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
         
         # now append the named alignment to the growing stockholm alignment database $all_stk_file
         $cmd = "cat $cur_named_stkfile";
@@ -1216,14 +1212,21 @@ sub fetchReferenceFeatureSequences {
         $nmdl++;
       }
     } # end of 'if($do_model)'
-    else { 
-      # this feature is NOT modelled ($ftr_info_HAR->{"annot_type"}[$i] ne "model")
-      $ftr_info_HAR->{"nmodels"}[$i]    = 0;
-      $ftr_info_HAR->{"out_tiny"}[$i]  = "?";
-      $ftr_info_HAR->{"out_short"}[$i] = "?";
-      $ftr_info_HAR->{"first_mdl"}[$i] = -1;
-      $ftr_info_HAR->{"final_mdl"}[$i] = -1;
+                         
+    # store information on this feature's name for output purposes
+    my $short = ($cds_or_mp eq "mp") ? sprintf("MP #%d", $ftr_type_idx) : sprintf("CDS #%d", $ftr_type_idx);
+    my $tiny  = $short;
+    $tiny =~ s/\s+//g; # remove whitespace
+    if($ftr_info_HAR->{"annot_type"}[$i] eq "model") { 
+      if($ftr_info_HAR->{"nmodels"}[$i] > 1) { $short .= sprintf(" [%d %s; %s]", $ftr_info_HAR->{"nmodels"}, ($cds_or_mp eq "mp") ? "segments" : "exons", $ftr_info_HAR->{"ref_strand"}[$i]); }
+      else                                   { $short .= sprintf(" [single %s; %s]",  ($cds_or_mp eq "mp") ? "segment"  : "exon", $ftr_info_HAR->{"ref_strand"}[$i]); }
     }
+    elsif($ftr_info_HAR->{"annot_type"}[$i] eq "multifeature") { 
+      $short .= sprintf(" [%d mature_peptide(s)]", $ftr_info_HAR->{"primary_children_ftr_num"}[$i]);
+    }
+    $ftr_info_HAR->{"out_tiny"}[$i]      = $tiny;
+    $ftr_info_HAR->{"out_short"}[$i]     = $short;
+    $ftr_info_HAR->{"filename_root"}[$i] = $ftr_type . "." . $ftr_type_idx;
   }
 
   # clean up
@@ -1279,8 +1282,11 @@ sub determineFeatureTypes {
   @{$ftr_info_HAR->{"type_idx"}}                 = ();
   @{$ftr_info_HAR->{"annot_type"}}               = ();
   @{$ftr_info_HAR->{"primary_children_ftr_str"}} = ();
+  @{$ftr_info_HAR->{"primary_children_ftr_num"}} = ();
   @{$ftr_info_HAR->{"all_children_ftr_str"}}     = ();
+  @{$ftr_info_HAR->{"all_children_ftr_num"}}     = ();
   @{$ftr_info_HAR->{"parent_ftr"}}               = ();
+  @{$ftr_info_HAR->{"p_hits"}}                   = ();
 
   if(! defined $cds2pmatpept_AAR) { 
     # trivial, all features are CDS
@@ -1289,8 +1295,11 @@ sub determineFeatureTypes {
       $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
       $ftr_info_HAR->{"type_idx"}[$c]                 = $c+1;
       $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
       $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
       $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+      $ftr_info_HAR->{"p_hits"}[$c]                   = "";  # changed later when we create fasta sequence files of hits
     }
   }
   else { 
@@ -1304,8 +1313,11 @@ sub determineFeatureTypes {
       $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
       $ftr_info_HAR->{"type_idx"}[$c]                 = $c+1;
       $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain "", only changed for annot_type eq "multifeature"
       $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain "", only changed for annot_type eq "multifeature"
       $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+      $ftr_info_HAR->{"p_hits"}[$c]                   = "";  # changed later when we create fasta sequence files of hits
     }
 
     # then come the CDS, but we need to consult $cds2pmatpept_AAR to see if they are comprised of mature peptides ("cds-mp") 
@@ -1323,8 +1335,11 @@ sub determineFeatureTypes {
         $ftr_info_HAR->{"annot_type"}[$c]               = "multifeature"; # this feature is annotated by multiple other features
         $ftr_info_HAR->{"type_idx"}[$c]                 = $cds_idx+1;
         $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = ""; # added to below when we go through $cds2pmatpept_AAR
+        $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;  # added to below when we go through $cds2pmatpept_AAR
         $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = ""; # added to below when we go through $cds2amatpept_AAR
+        $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0; # added to below when we go through $cds2amatpept_AAR
         $ftr_info_HAR->{"parent_ftr"}[$c]               = -1; # changed to a valid value below
+        $ftr_info_HAR->{"p_hits"}[$c]                   = "";  # changed later when we create fasta sequence files of hits
 
         # step through @{$cds2pmatpept_AAR} and create the primary_children_ftr_str for this CDS
         for(my $z = 0; $z < scalar(@{$cds2pmatpept_AAR->[$cds_idx]}); $z++) { 
@@ -1333,6 +1348,7 @@ sub determineFeatureTypes {
           }
           my $mp_idx = $cds2pmatpept_AAR->[$cds_idx][$z];
           $ftr_info_HAR->{"primary_children_ftr_str"}[$c] .= $mp_idx;
+          $ftr_info_HAR->{"primary_children_ftr_num"}[$c]++;
         }
         # step through @{$cds2amatpept_AAR} and create the all_children_ftr_str for this CDS
         for(my $z = 0; $z < scalar(@{$cds2amatpept_AAR->[$cds_idx]}); $z++) { 
@@ -1341,6 +1357,7 @@ sub determineFeatureTypes {
           }
           my $mp_idx = $cds2amatpept_AAR->[$cds_idx][$z];
           $ftr_info_HAR->{"all_children_ftr_str"}[$c] .= $mp_idx;
+          $ftr_info_HAR->{"all_children_ftr_num"}[$c]++;
           $ftr_info_HAR->{"parent_ftr"}[$mp_idx] = $c;
         }
       }
@@ -1350,8 +1367,11 @@ sub determineFeatureTypes {
         $ftr_info_HAR->{"type_idx"}[$c]                 = $cds_idx+1;
         $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
         $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
+        $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
         $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
+        $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
         $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+        $ftr_info_HAR->{"p_hits"}[$c]                   = "";  # changed later when we create fasta sequence files of hits
       }
     }
     
@@ -1692,7 +1712,7 @@ sub lengthFromCoords {
 #   $out_fasta_file:   name of fasta file to create, created here
 #   $do_circular:      '1' to duplicate genome, '0' not to
 #   $accn_AR:          ref to array of accessions to fetch, PRE-FILLED
-#   $totlen_HR:        ref to hash with total lengths of each sequence, PREF-FILLED
+#   $totlen_HR:        ref to hash with total lengths of each sequence, PRE-FILLED
 #   $seq_accn_AR:      ref to array of sequence names in newly created sequence file, FILLED HERE
 #   $accn2seq_accn_HR: ref to hash, keys are accessions from @{$accn_AR}, values are
 #                      sequence accessions from @{$seq_accn_AR}, can be undef if unwanted
@@ -2201,7 +2221,7 @@ sub edirectFtableOrMatPept2SingleFeatureTableInfo {
   my %faccn2accn_H    = ();      # key: full accession, value: short accession, used for convenience
   my %column_HA       = ();      # key: feature, e.g. "CDS"
                                  # value: array of qualifiers that exist for that feature in at least 1 faccn
-  my $dummy_column    = "DuMmY"; # name of 'dummy' column that we don't actually print, for use with -matpept only
+  my $dummy_column    = "DuMmY"; # name of 'dummy' column that we don't actually print, for use with --matpept only
   my %sep_H           = ();      # hash of 'separation' values we use to concatenate multiple strings into 
                                  # one, to ease with their storage
   $sep_H{"qnqv"}      = "!!";    # string that separates 'qualifier name' and and 'qualifier_values' 
@@ -2729,7 +2749,8 @@ sub validateFeatureInfoHashIsComplete {
   my @expected_keys_A = ("final_mdl", "first_mdl", "annot_type", "nmodels", 
                          "out_product", "out_short", "out_tiny", "ref_coords",
                          "ref_len", "ref_strand", "type", "type_idx", 
-                         "parent_ftr", "primary_children_ftr_str", "all_children_ftr_str");
+                         "parent_ftr", "primary_children_ftr_str", "primary_children_ftr_num", 
+                         "all_children_ftr_str", "all_children_ftr_num");
 
   return validateInfoHashOfArraysIsComplete($ftr_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
@@ -3510,7 +3531,7 @@ sub parseSpecStartFile {
 #              - $out_root . ".ftable":      feature table obtained via edirect
 #              - $out_root . ".length":      sequence length file
 #                      
-#              As a special case, if $opt_HHR->{"--skipfetch"} is 'on',
+#              As a special case, if $opt_HHR->{"--skipedirect"} is 'on',
 #              then we skip the edirect steps and use pre-existing files.
 #              
 # Arguments: 
@@ -3543,7 +3564,7 @@ sub wrapperGetInfoUsingEdirect {
   my $do_matpept = opt_IsOn("--matpept", $opt_HHR);
 
   # should we skip the edirect calls?
-  my $do_skip = (opt_Exists("--skipfetch", $opt_HHR) && opt_Get("--skipfetch", $opt_HHR)) ? 1 : 0;
+  my $do_skip = (opt_Exists("--skipedirect", $opt_HHR) && opt_Get("--skipedirect", $opt_HHR)) ? 1 : 0;
 
   my $have_listfile = (defined $listfile) ? 1 : 0;
   if(defined $listfile) { 
@@ -3552,16 +3573,16 @@ sub wrapperGetInfoUsingEdirect {
   }
 
   # We create the .mat_peptide file first because we will die with an
-  # error if mature peptide info exists and neither -matpept nor
-  # -nomatpept was used (and we want to die as early as possible in the
+  # error if mature peptide info exists and neither --matpept nor
+  # --nomatpept was used (and we want to die as early as possible in the
   # script to save the user's time)
   #
   # 1) create the edirect .mat_peptide file, if necessary
   my $mp_file = $out_root . ".mat_peptide";
 
-  #      if -nomatpept was   enabled we don't attempt to create a matpept file
-  # else if -matpept was     enabled we validate that the resulting matpept file is not empty
-  # else if -matpept was not enabled we validate that the resulting matpept file is     empty
+  #      if --nomatpept was   enabled we don't attempt to create a matpept file
+  # else if --matpept was     enabled we validate that the resulting matpept file is not empty
+  # else if --matpept was not enabled we validate that the resulting matpept file is     empty
   if((! $do_skip) && (! opt_Get("--nomatpept", $opt_HHR))) { 
     if($have_listfile) {
       $cmd = "cat $listfile | epost -db nuccore -format acc";
@@ -3574,13 +3595,13 @@ sub wrapperGetInfoUsingEdirect {
   
     if($do_matpept) { 
       if(! -s  $mp_file) { 
-        DNAORG_FAIL("ERROR, in $sub_name, -matpept enabled but no mature peptide information exists.", 1, $FH_HR);
+        DNAORG_FAIL("ERROR, in $sub_name, --matpept enabled but no mature peptide information exists.", 1, $FH_HR);
       }
       addClosedFileToOutputInfo($ofile_info_HHR, "mp", $mp_file, "Mature peptide information obtained via edirect");
     }
     else { # ! $do_matpept
       if(-s $mp_file) { 
-        DNAORG_FAIL("ERROR, in $sub_name, -matpept not enabled but mature peptide information exists, use -nomatpept to ignore it.", 1, $FH_HR); 
+        DNAORG_FAIL("ERROR, in $sub_name, --matpept not enabled but mature peptide information exists, use --nomatpept to ignore it.", 1, $FH_HR); 
       }
       else { 
         # remove the empty file we just created
@@ -3620,7 +3641,7 @@ sub wrapperGetInfoUsingEdirect {
   }
   if(! -s $len_file) { 
     if($do_skip) { 
-      DNAORG_FAIL("ERROR, no length information in file $len_file, are you sure you should be using --skipfetch?", 1, $FH_HR); 
+      DNAORG_FAIL("ERROR, no length information in file $len_file, are you sure you should be using --skipedirect?", 1, $FH_HR); 
     }
     else { 
       DNAORG_FAIL("ERROR, no length information obtained using edirect.", 1, $FH_HR); 
@@ -3631,7 +3652,7 @@ sub wrapperGetInfoUsingEdirect {
   if($do_matpept) {  
     edirectFtableOrMatPept2SingleFeatureTableInfo($mp_file, 1, "mat_peptide", $mp_tbl_HHAR, $FH_HR); # 1: it is a mat_peptide file
     if (! exists ($mp_tbl_HHAR->{$ref_accn})) { 
-      DNAORG_FAIL("ERROR in $sub_name, -matpept enabled, but no mature peptide information stored for reference accession", 1, $FH_HR); 
+      DNAORG_FAIL("ERROR in $sub_name, --matpept enabled, but no mature peptide information stored for reference accession", 1, $FH_HR); 
     }
   }
 
@@ -3677,7 +3698,7 @@ sub wrapperGetInfoUsingEdirect {
 #              
 # Arguments: 
 #   $accn_AR:               REF to array of accessions, PRE-FILLED
-#   $seq_name_AR:            REF to array of actual sequence names in fasta file we create here, FILLED HERE
+#   $seq_name_AR:           REF to array of actual sequence names in fasta file we create here, FILLED HERE
 #   $sqfile_R:              REF to a Bio::Easel::SqFile object, CREATED HERE
 #   $out_root:              string that is the 'root' for naming output files
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
@@ -3720,15 +3741,21 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     DNAORG_FAIL("ERROR in $sub_name, contract violation, mp_tbl_HHAR variable is not defined but cds2pmatpept_AAR variable is", 1, $FH_HR);
   }
 
-  # 1) fetch the reference sequence into a fasta file and index that fasta file
+  # 1) fetch the sequences into a fasta file and index that fasta file
   my $have_only_ref = (scalar(@{$accn_AR}) == 1) ? 1 : 0;   # '1' if we only have the reference
   my $ref_accn      = $accn_AR->[0];                        # the reference accession
   my $fetch_file    = sprintf($out_root . "%s.fg.idfetch.in", ($have_only_ref) ? ".ref" : "");  # the esl_fetch_cds.pl input file we are about to create
   my $fasta_file    = sprintf($out_root . "%s.fg.fa",         ($have_only_ref) ? ".ref" : "");  # the fasta file we are about to create
+  # remove the .ssi files if they exist
+  my $ssi_file = $fasta_file . ".ssi";
+  if(-e $ssi_file) { 
+    runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
+  }
   fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, $seq_name_AR, undef, undef, $FH_HR);
-  $$sqfile_R = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
   addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
   addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
+
+  $$sqfile_R = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
 
   # 2) determine reference information for each feature (strand, length, coordinates, product)
   getReferenceFeatureInfo($cds_tbl_HHAR, $mp_tbl_HHAR, $ftr_info_HAR, $ref_accn, $FH_HR); # $mp_tbl_HHAR may be undefined and that's okay
@@ -3914,6 +3941,51 @@ sub getIndexHashForArray {
       DNAORG_FAIL("ERROR in $sub_name(), the value $el appears twice in the array"); 
     }
     $index_HR->{$el} = $i;
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine : getPrimaryChildrenFromFeatureInfo()
+# Incept:      EPN, Thu Mar  3 12:27:38 2016
+#
+# Purpose:     Fill @{$AR} with the space delimited tokens of 
+#              @{$ftr_info_HAR->{"primary_children_ftr_str"}}
+#              and return.
+#              
+# Arguments: 
+#   $ftr_info_HAR: REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:      index of feature we're interested in
+#   $AR:           REF to array to fill, FILLED HERE
+#   $FH_HR:        REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: if feature info hash is not 'complete', or if
+#       there are no primary children for feature index $ftr_idx,
+#       or if it is not of type 'multifeature'.
+################################################################# 
+sub getPrimaryChildrenFromFeatureInfo { 
+  my $nargs_expected = 4;
+  my $sub_name = "getPrimaryChildrenFromFeatureInfo";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $AR, $FH_HR) = @_;
+
+  @{$AR} = ();
+
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR);
+  if($ftr_idx >= $nftr) { 
+    DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but only $nftr exist.", 1, $FH_HR);
+  }
+  if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "multifeature") { 
+    DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but it is not annotated type of multifeature.", 1, $FH_HR);
+  }
+
+  @{$AR} = split(/\s+/, $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]);
+
+  if(scalar(@{$AR}) == 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but it has no primary children.", 1, $FH_HR);
   }
 
   return;

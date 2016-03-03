@@ -77,6 +77,11 @@ $opt_group_desc_H{"2"} = "options affecting window/hit definition";
 opt_Add("--slow",   "boolean", 0,                     2,    undef, undef,   "running cmcalibrate in slow mode",               "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
 opt_Add("--local",  "boolean", 0,                     2,    undef, undef,   "running cmcalibrate on local machine",           "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{"3"} = "optional output files";
+#       option       type       default                group  requires incompat  preamble-output                          help-output    
+opt_Add("--mdlinfo",    "boolean", 0,                        1,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--ftrinfo",    "boolean", 0,                        1,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
 my $usage    = "Usage: dnaorg_build.pl [-options] <reference accession>\n";
@@ -94,7 +99,10 @@ my $options_okay =
                 'keep'         => \$GetOptions_H{"--keep"},
 # calibration related options
                 'slow'         => \$GetOptions_H{"--slow"},
-                'local'        => \$GetOptions_H{"--local"});
+                'local'        => \$GetOptions_H{"--local"},
+# optional output files
+                'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
+                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -189,6 +197,14 @@ my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
+
+# open optional output files
+if(opt_Get("--mdlinfo", \%opt_HH)) { 
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "mdlinfo", $out_root . ".mdlinfo", "Model information (created due to --mdlinfo)");
+}
+if(opt_Get("--ftrinfo", \%opt_HH)) { 
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", "Feature information (created due to --ftrinfo)");
+}
 
 # now we have the log file open, output the banner there too
 outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
@@ -289,8 +305,7 @@ my $nmdl = validateModelInfoHashIsComplete  (\%mdl_info_HA, undef, $ofile_info_H
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-dumpInfoHashOfArrays("ftr_info", 0, \%ftr_info_HA, *STDOUT);
-exit 0;
+#dumpInfoHashOfArrays("ftr_info", 0, \%ftr_info_HA, *STDOUT);
 
 ####################################
 # Step 3. Build and calibrate models 
@@ -315,6 +330,14 @@ outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 ##########
 # Conclude
 ##########
+# output optional output files
+if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
+  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
+}
+if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
+  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
+}
+
 # a quick note to the user about what to do next
 outputString($log_FH, 1, sprintf("#\n"));
 if(! $do_local) { 
