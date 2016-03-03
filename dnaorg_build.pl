@@ -258,13 +258,14 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ##########################################################
 $start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
 my @accn_A      = ($ref_accn); # array of accessions 
-my @seqname_A   = ();          # actual name of reference sequence in fasta file, after being fetched, not the same as $ref_accn
+my @seq_name_A   = ();          # actual name of reference sequence in fasta file, after being fetched, not the same as $ref_accn
 my %mdl_info_HA = ();          # hash of arrays, values are arrays [0..$nmdl-1];
                                # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
                                # filled in wrapperFetchAllSequencesAndProcessReferenceSequence()
 my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1], 
                                # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
                                # filled in wrapperFetchAllSequencesAndProcessReferenceSequence()
+my $sqfile = undef;            # pointer to the Bio::Easel::SqFile object we'll open in wrapperFetchAllSequencesAndProcessReferenceSequence()
 
 
 # Call the wrapper function that does the following:
@@ -273,9 +274,10 @@ my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1],
 #  2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #  3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #  4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\@accn_A, \@seqname_A, $out_root, \%cds_tbl_HHA,
+wrapperFetchAllSequencesAndProcessReferenceSequence(\@accn_A, \@seq_name_A, \$sqfile, $out_root, \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
+                                                    ($do_matpept) ? \@cds2amatpept_AA : undef, 
                                                     \%totlen_H, \%ofile_info_HH, 
                                                     \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
                                                     \%opt_HH, $ofile_info_HH{"FH"});
@@ -286,6 +288,9 @@ my $nftr = validateFeatureInfoHashIsComplete(\%ftr_info_HA, undef, $ofile_info_H
 my $nmdl = validateModelInfoHashIsComplete  (\%mdl_info_HA, undef, $ofile_info_HH{"FH"}); # nmdl: number of homology models
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+dumpInfoHashOfArrays("ftr_info", 0, \%ftr_info_HA, *STDOUT);
+exit 0;
 
 ####################################
 # Step 3. Build and calibrate models 

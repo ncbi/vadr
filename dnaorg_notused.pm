@@ -16,6 +16,7 @@
 # parseSingleFeatureTableFile():           parse a single feature table output from outputSingleFeatureTable()
 # dumpHashOfHashOfArrays():                print the contents of a hash of hash of arrays, possibly for debugging purposes
 # compareTwoHahsOfHashOfArrays():          compare two hash of hash of arrays
+# mapFeaturesToModels():                   fill a 2D array that maps each feature to the models that model it 
 
 use strict;
 use warnings;
@@ -404,4 +405,62 @@ sub compareTwoHashOfHashOfArrays {
   }
 
   return ($found_diff) ? 0 : 1;
+}
+
+#################################################################
+# Subroutine: mapFeaturesToModels()
+# Incept:     EPN, Thu Feb 11 14:48:20 2016
+#
+# Purpose:    Fill the two-dimensional array that maps features 
+#             to model indices.
+#
+# Arguments:
+#   $ftr2mdl_map_AAR: ref to 2D array that maps features to models
+#                     1D:    feature index
+#                     2D:    number of exons/segments for this feature ($ftr_info_HAR->{"nexon"})
+#                     value: model index in $mdl_info_HAR
+#   $ftr_info_HAR:    ref to hash of arrays with info on features, PRE-FILLED
+#   $mdl_info_HAR:    ref to hash of arrays with info on model, PRE-FILLED
+#   $do_print:        '1' to print out map after creating map
+#   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $ftr_info_HAR or $mdl_info_HAR is invalid upon entering
+#################################################################
+sub mapFeaturesToModels { 
+  my $sub_name  = "mapFeaturesToModels()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr2mdl_map_AAR, $ftr_info_HAR, $mdl_info_HAR, $do_print, $FH_HR) = (@_);
+
+  # contract check, make sure that %{$mdl_info_HAR} and %{$ftr_info_HAR} are valid and have the info we need
+  my @reqd_mdl_info = ("is_first", "is_final");
+  my $nmdl = validateAndGetSizeOfInfoHashOfArrays($mdl_info_HAR, \@reqd_mdl_info);
+
+  my @reqd_ftr_info_A = ("nexon");
+  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A);
+
+  my $ftr_idx = -1;
+  my $mdl_idx = 0;
+  for(my $h = 0; $h < $nmdl; $h++) { 
+    if($mdl_info_HAR->{"is_first"}[$h]) { 
+      $ftr_idx++;
+      $mdl_idx = 0;
+    }
+    $ftr2mdl_map_AAR->[$ftr_idx][$mdl_idx] = $h;
+    if($do_print) { 
+      printf("ftr2mdl_map_AAR->[$ftr_idx][$mdl_idx]: $h\n");
+    }
+    $mdl_idx++;
+    
+    # and verify that this agrees with %{$ftr_info_HAR}
+    if($mdl_info_HAR->{"is_final"}[$h]) { 
+      if($ftr_info_HAR->{"nexon"}[$ftr_idx] != $mdl_idx) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, observed $mdl_idx total models for feature $ftr_idx, but expected %d", $ftr_info_HAR->{"nexon"}{$ftr_idx}), 1, $FH_HR);
+      }
+    }
+  }
+  return;
 }

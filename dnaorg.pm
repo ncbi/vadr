@@ -73,7 +73,6 @@
 # startsStopsFromCoords():                 extract start and stop positions from a coordinates string
 # stripVersion():                          remove version from an accession.version string
 # fetchReferenceFeatureSequences():        fetch sequences of features for a reference sequence
-# mapFeaturesToModels():                   fill a 2D array that maps each feature to the models that model it 
 # determineFeatureTypes():                 determine what type each feature is (e.g. "mp", "cds-notmp", "cds-mp")
 # getNumFeaturesWithModels():              determine number of features that are modelled
 # startsStopsStrandsFromCoordsLength():    determine start, stop and strands from a coordinate string and length
@@ -1096,7 +1095,7 @@ sub fetchReferenceFeatureSequences {
 
   # contract check
   # ftr_info_HAR should have array data for keys "ref_coords", "ref_strand"
-  my @reqd_ftr_info_A  = ("ref_coords", "ref_strand", "has_models");
+  my @reqd_ftr_info_A  = ("ref_coords", "ref_strand", "annot_type");
   my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
   my $nftr_with_models = getNumFeaturesWithModels($ftr_info_HAR, $FH_HR);
 
@@ -1120,7 +1119,7 @@ sub fetchReferenceFeatureSequences {
   my @files2rm_A = ();  # array of file names to remove at end of this function (remains empty if $do_keep)
 
   for(my $i = 0; $i < $nftr; $i++) { 
-    my $do_model = $ftr_info_HAR->{"has_models"}[$i];
+    my $do_model = ($ftr_info_HAR->{"annot_type"}[$i] eq "model") ? 1 : 0;
 
     if($do_model) { 
       my $cds_or_mp = ($ftr_info_HAR->{"type"}[$i] eq "mp") ? "mp" : "cds";
@@ -1131,7 +1130,7 @@ sub fetchReferenceFeatureSequences {
       my @stops_A  = ();
       my $nexons   = 0;
       startsStopsStrandsFromCoordsLength($ftr_info_HAR->{"ref_coords"}[$i], $ref_totlen, $do_circular, \@starts_A, \@stops_A, undef, \$nexons, $FH_HR);
-      $ftr_info_HAR->{"nexons"}[$i] = $nexons;
+      $ftr_info_HAR->{"nmodels"}[$i] = $nexons;
       my $strand = $ftr_info_HAR->{"ref_strand"}[$i];
 
       # if we're on the negative strand, reverse the arrays, they'll be in the incorrect order
@@ -1218,8 +1217,8 @@ sub fetchReferenceFeatureSequences {
       }
     } # end of 'if($do_model)'
     else { 
-      # this feature is NOT modelled ($ftr_info_HAR->{"has_models"}[$i] == 0)
-      $ftr_info_HAR->{"nexons"}[$i]    = 0;
+      # this feature is NOT modelled ($ftr_info_HAR->{"annot_type"}[$i] ne "model")
+      $ftr_info_HAR->{"nmodels"}[$i]    = 0;
       $ftr_info_HAR->{"out_tiny"}[$i]  = "?";
       $ftr_info_HAR->{"out_short"}[$i] = "?";
       $ftr_info_HAR->{"first_mdl"}[$i] = -1;
@@ -1232,64 +1231,6 @@ sub fetchReferenceFeatureSequences {
     runCommand("rm $file2rm", 0, $FH_HR);
   }
 
-  return;
-}
-
-#################################################################
-# Subroutine: mapFeaturesToModels()
-# Incept:     EPN, Thu Feb 11 14:48:20 2016
-#
-# Purpose:    Fill the two-dimensional array that maps features 
-#             to model indices.
-#
-# Arguments:
-#   $ftr2mdl_map_AAR: ref to 2D array that maps features to models
-#                     1D:    feature index
-#                     2D:    number of exons/segments for this feature ($ftr_info_HAR->{"nexon"})
-#                     value: model index in $mdl_info_HAR
-#   $ftr_info_HAR:    ref to hash of arrays with info on features, PRE-FILLED
-#   $mdl_info_HAR:    ref to hash of arrays with info on model, PRE-FILLED
-#   $do_print:        '1' to print out map after creating map
-#   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       if $ftr_info_HAR or $mdl_info_HAR is invalid upon entering
-#################################################################
-sub mapFeaturesToModels { 
-  my $sub_name  = "mapFeaturesToModels()";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($ftr2mdl_map_AAR, $ftr_info_HAR, $mdl_info_HAR, $do_print, $FH_HR) = (@_);
-
-  # contract check, make sure that %{$mdl_info_HAR} and %{$ftr_info_HAR} are valid and have the info we need
-  my @reqd_mdl_info = ("is_first", "is_final");
-  my $nmdl = validateAndGetSizeOfInfoHashOfArrays($mdl_info_HAR, \@reqd_mdl_info);
-
-  my @reqd_ftr_info_A = ("nexon");
-  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A);
-
-  my $ftr_idx = -1;
-  my $mdl_idx = 0;
-  for(my $h = 0; $h < $nmdl; $h++) { 
-    if($mdl_info_HAR->{"is_first"}[$h]) { 
-      $ftr_idx++;
-      $mdl_idx = 0;
-    }
-    $ftr2mdl_map_AAR->[$ftr_idx][$mdl_idx] = $h;
-    if($do_print) { 
-      printf("ftr2mdl_map_AAR->[$ftr_idx][$mdl_idx]: $h\n");
-    }
-    $mdl_idx++;
-    
-    # and verify that this agrees with %{$ftr_info_HAR}
-    if($mdl_info_HAR->{"is_final"}[$h]) { 
-      if($ftr_info_HAR->{"nexon"}[$ftr_idx] != $mdl_idx) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, observed $mdl_idx total models for feature $ftr_idx, but expected %d", $ftr_info_HAR->{"nexon"}{$ftr_idx}), 1, $FH_HR);
-      }
-    }
-  }
   return;
 }
 
@@ -1308,6 +1249,10 @@ sub mapFeaturesToModels {
 #                      2nd dim: value array of primary matpept indices that comprise this CDS, 
 #                      OR undefined if all features are CDS and there are no mature peptides; 
 #                      PRE-FILLED
+#   $cds2amatpept_AAR: 1st dim: cds index (-1, off-by-one), 
+#                      2nd dim: value array of all matpept indices that comprise this CDS, 
+#                      OR undefined if all features are CDS and there are no mature peptides; 
+#                      PRE-FILLED
 #   $ftr_info_HAR:     ref to hash of arrays to fill "type" and "type_idx" arrays for
 #                      "type"     values are one of: "cds-notmp", "cds-mp", or "mp",
 #                      "type_idx" values are indices of each feature for its type
@@ -1320,26 +1265,32 @@ sub mapFeaturesToModels {
 #################################################################
 sub determineFeatureTypes {
   my $sub_name  = "determineFeatureTypes()";
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($nmp, $cds2pmatpept_AAR, $ftr_info_HAR, $FH_HR) = (@_);
+  my ($nmp, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR) = (@_);
 
   my $c; # counter
 
   my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, undef, $FH_HR);
 
   # initialize arrays
-  @{$ftr_info_HAR->{"type"}}       = ();
-  @{$ftr_info_HAR->{"type_idx"}}   = ();
-  @{$ftr_info_HAR->{"has_models"}} = ();
+  @{$ftr_info_HAR->{"type"}}                     = ();
+  @{$ftr_info_HAR->{"type_idx"}}                 = ();
+  @{$ftr_info_HAR->{"annot_type"}}               = ();
+  @{$ftr_info_HAR->{"primary_children_ftr_str"}} = ();
+  @{$ftr_info_HAR->{"all_children_ftr_str"}}     = ();
+  @{$ftr_info_HAR->{"parent_ftr"}}               = ();
 
   if(! defined $cds2pmatpept_AAR) { 
     # trivial, all features are CDS
     for($c = 0; $c < $nftr; $c++) { 
-      $ftr_info_HAR->{"type"}[$c]       = "cds-notmp";
-      $ftr_info_HAR->{"has_models"}[$c] = 1; # this feature does have homology models
-      $ftr_info_HAR->{"type_idx"}[$c]   = $c+1;
+      $ftr_info_HAR->{"type"}[$c]                     = "cds-notmp";
+      $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
+      $ftr_info_HAR->{"type_idx"}[$c]                 = $c+1;
+      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
     }
   }
   else { 
@@ -1349,42 +1300,75 @@ sub determineFeatureTypes {
     # first comes the $nmp mature peptides
     my $ncds = $nftr - $nmp;
     for($c = 0; $c < $nmp; $c++) { 
-      $ftr_info_HAR->{"type"}[$c]       = "mp";
-      $ftr_info_HAR->{"has_models"}[$c] = 1; # this feature does have homology models
-      $ftr_info_HAR->{"type_idx"}[$c]   = $c+1;
+      $ftr_info_HAR->{"type"}[$c]                     = "mp";
+      $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
+      $ftr_info_HAR->{"type_idx"}[$c]                 = $c+1;
+      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
     }
+
     # then come the CDS, but we need to consult $cds2pmatpept_AAR to see if they are comprised of mature peptides ("cds-mp") 
     # or not ("cds-notmp")
     my $nnotmp_idxed = 0; # we increment this as we index cds-notmp 
     my $nnotmp_extra = 0; # # of cds-notmp that occur after final cds-mp (idx >= scalar(@cds2pmatpept_AA))
     for(my $cds_idx = 0; $cds_idx < $ncds; $cds_idx++) { 
       $c = $nmp + $cds_idx;
-      if((defined $cds2pmatpept_AAR->[$cds_idx]) && (exists $cds2pmatpept_AAR->[$cds_idx])) { 
+      if(defined $cds2pmatpept_AAR->[$cds_idx]) {
+        if(! defined $cds2amatpept_AAR->[$cds_idx]) { 
+          DNAORG_FAIL("ERROR in $sub_name, cds_idx has 'primary' mature peptide information but not 'all' mature peptide information.", 1, $FH_HR);
+        }
         # a CDS that is comprised of mature peptides
-        $ftr_info_HAR->{"type"}[$c]         = "cds-mp";
-        $ftr_info_HAR->{"type_idx"}->[$c]   = $cds_idx+1;
-        $ftr_info_HAR->{"has_models"}->[$c] = 0; # this feature does not have homology models
+        $ftr_info_HAR->{"type"}[$c]                     = "cds-mp";
+        $ftr_info_HAR->{"annot_type"}[$c]               = "multifeature"; # this feature is annotated by multiple other features
+        $ftr_info_HAR->{"type_idx"}[$c]                 = $cds_idx+1;
+        $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = ""; # added to below when we go through $cds2pmatpept_AAR
+        $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = ""; # added to below when we go through $cds2amatpept_AAR
+        $ftr_info_HAR->{"parent_ftr"}[$c]               = -1; # changed to a valid value below
+
+        # step through @{$cds2pmatpept_AAR} and create the primary_children_ftr_str for this CDS
+        for(my $z = 0; $z < scalar(@{$cds2pmatpept_AAR->[$cds_idx]}); $z++) { 
+          if($ftr_info_HAR->{"primary_children_ftr_str"}[$c] ne "") { 
+            $ftr_info_HAR->{"primary_children_ftr_str"}[$c] .= " ";
+          }
+          my $mp_idx = $cds2pmatpept_AAR->[$cds_idx][$z];
+          $ftr_info_HAR->{"primary_children_ftr_str"}[$c] .= $mp_idx;
+        }
+        # step through @{$cds2amatpept_AAR} and create the all_children_ftr_str for this CDS
+        for(my $z = 0; $z < scalar(@{$cds2amatpept_AAR->[$cds_idx]}); $z++) { 
+          if($ftr_info_HAR->{"all_children_ftr_str"}[$c] ne "") { 
+            $ftr_info_HAR->{"all_children_ftr_str"}[$c] .= " ";
+          }
+          my $mp_idx = $cds2amatpept_AAR->[$cds_idx][$z];
+          $ftr_info_HAR->{"all_children_ftr_str"}[$c] .= $mp_idx;
+          $ftr_info_HAR->{"parent_ftr"}[$mp_idx] = $c;
+        }
       }
       else { 
         # a CDS that is NOT comprised of mature peptides
-        $ftr_info_HAR->{"type"}[$c] = "cds-notmp";
-        $ftr_info_HAR->{"type_idx"}->[$c]   = $cds_idx+1;
-        $ftr_info_HAR->{"has_models"}->[$c] = 1; # this feature does have homology models
+        $ftr_info_HAR->{"type"}[$c]                     = "cds-notmp";
+        $ftr_info_HAR->{"type_idx"}[$c]                 = $cds_idx+1;
+        $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
+        $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
+        $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
+        $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
       }
     }
+    
+    # 
   }
   return;
 }
 
 #################################################################
-# Subroutine: getNumFeaturesWithModels()
+# Subroutine: getNumFeaturesAnnotatedByModels()
 # Incept:     EPN, Thu Feb 11 14:50:53 2016
 #
-# Purpose:    Return number of features for which "has_models" array values are 1.
+# Purpose:    Return number of features for which "annot_type" array values are "model".
 #
 # Arguments: 
-#   $ftr_info_HAR: ref to hash of arrays to fill "type" and "type_idx" arrays for
-#                  must have at least the "has_models" array, else we die 
+#   $ftr_info_HAR: ref to hash of arrays with feature info.
+#                  must have at least the "annot_types" array, else we die 
 #   $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    number of features for which the has_models array values are 1
@@ -1398,12 +1382,12 @@ sub getNumFeaturesWithModels {
   
   my ($ftr_info_HAR, $FH_HR) = (@_);
 
-  my @reqd_ftr_info_A = ("has_models");
+  my @reqd_ftr_info_A = ("annot_type");
   my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
   
   my $nftr_with_models = 0;
   for(my $i = 0; $i < $nftr; $i++) { 
-    if($ftr_info_HAR->{"has_models"}[$i]) { $nftr_with_models++; }
+    if($ftr_info_HAR->{"annot_type"}[$i] eq "model") { $nftr_with_models++; }
   }
   return $nftr_with_models;
 }
@@ -2705,8 +2689,11 @@ sub validateExecutableHash {
 #             The expected keys are:
 #                "final_mdl":   index (in arrays of %mdl_info_HA) of final model for this feature
 #                "first_mdl":   index (in arrays of %mdl_info_HA) of first model for this feature
-#                "has_models":  '1' if this feature has homology models, 0 if not, dependent on type
-#                "nexons":      number of exons or segments (also number of models if "has_models" == 1) for this feature
+#                "annot_type":  annotation type:
+#                               "model":         if this feature's annotation is derived from models (type: 'mp' or 'cds-notmp'
+#                               "multifeature": if this feature's annotation is derived from multiple other features (type: 'cds-mp')
+#                "nmodels":     number of models for this feature (e.g. number of exons or segments) for this feature, 
+#                               0 if 'annotation' eq 'multifeature'
 #                "out_product": output value: name of product for this feature (e.g. "replication-associated protein")
 #                "out_short":   output value: short name for this feature (e.g. "CDS #4 [1 exon; +]")
 #                "out_tiny":    output value: very short name for this feature (e.g. "CDS#4")
@@ -2715,7 +2702,7 @@ sub validateExecutableHash {
 #                "ref_strand":  strand for this feature in the reference
 #                "type":        type of feature: "mp", "cds-notmp", or "cds-mp"
 #                "type_idx":    index for the type that this feature is (e.g. 4, if this is the 4th "cds-notmp" feature
-# 
+#              
 #             If @{exceptions_AR} is non-empty, then keys in 
 #             in that array need not be in %{$ftr_info_HAR}.
 #
@@ -2739,9 +2726,10 @@ sub validateFeatureInfoHashIsComplete {
  
   my ($ftr_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("final_mdl", "first_mdl", "has_models", "nexons", 
+  my @expected_keys_A = ("final_mdl", "first_mdl", "annot_type", "nmodels", 
                          "out_product", "out_short", "out_tiny", "ref_coords",
-                         "ref_len", "ref_strand", "type", "type_idx");
+                         "ref_len", "ref_strand", "type", "type_idx", 
+                         "parent_ftr", "primary_children_ftr_str", "all_children_ftr_str");
 
   return validateInfoHashOfArraysIsComplete($ftr_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
@@ -3689,13 +3677,18 @@ sub wrapperGetInfoUsingEdirect {
 #              
 # Arguments: 
 #   $accn_AR:               REF to array of accessions, PRE-FILLED
-#   $seqname_AR:            REF to array of actual sequence names in fasta file we create here, FILLED HERE
+#   $seq_name_AR:            REF to array of actual sequence names in fasta file we create here, FILLED HERE
+#   $sqfile_R:              REF to a Bio::Easel::SqFile object, CREATED HERE
 #   $out_root:              string that is the 'root' for naming output files
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
 #   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
 #   $cds2pmatpept_AAR:      REF to 2D array, 1st dim: cds index (-1, off-by-one), 
 #                           2nd dim: value array of primary matpept indices that comprise this CDS, 
 #                           may be undef if $mp_tbl_HHAR is undef
+#   $cds2amatpept_AAR:      1st dim: cds index (-1, off-by-one), 
+#                           2nd dim: value array of all matpept indices that comprise this CDS, 
+#                           OR undefined if all features are CDS and there are no mature peptides; 
+#                           PRE-FILLED
 #   $totlen_HR:             REF to hash, key is accession, value is total length of the sequence (non-duplicated), PRE-FILLED
 #   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
 #   $ftr_info_HAR:          REF to hash of arrays with information on the features, FILLED HERE
@@ -3714,10 +3707,10 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAllSequencesAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAllSequencesAndProcessReferenceSequence()";
-  my $nargs_expected = 13;
+  my $nargs_expected = 15;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($accn_AR, $seqname_AR, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $totlen_HR, $ofile_info_HHR, $ftr_info_HAR, $mdl_info_HAR, $execs_HR, $opt_HHR, $FH_HR) = @_;
+  my ($accn_AR, $seq_name_AR, $sqfile_R, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $totlen_HR, $ofile_info_HHR, $ftr_info_HAR, $mdl_info_HAR, $execs_HR, $opt_HHR, $FH_HR) = @_;
 
   # contract check
   if((defined $mp_tbl_HHAR) && (! defined $cds2pmatpept_AAR)) { 
@@ -3732,8 +3725,8 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   my $ref_accn      = $accn_AR->[0];                        # the reference accession
   my $fetch_file    = sprintf($out_root . "%s.fg.idfetch.in", ($have_only_ref) ? ".ref" : "");  # the esl_fetch_cds.pl input file we are about to create
   my $fasta_file    = sprintf($out_root . "%s.fg.fa",         ($have_only_ref) ? ".ref" : "");  # the fasta file we are about to create
-  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, $seqname_AR, undef, undef, $FH_HR);
-  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
+  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, $seq_name_AR, undef, undef, $FH_HR);
+  $$sqfile_R = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
   addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
   addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
 
@@ -3744,21 +3737,16 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
 
   # 3) determine type of each reference feature ('cds-mp', 'cds-notmp', or 'mp')
   my $nmp = (defined $mp_tbl_HHAR) ? scalar(@{$mp_tbl_HHAR->{$ref_accn}{"coords"}}) : 0; # number of mature peptides
-  determineFeatureTypes($nmp, $cds2pmatpept_AAR, $ftr_info_HAR, $FH_HR); # $cds2pmatpept_AAR may be undef and that's okay
+  determineFeatureTypes($nmp, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR); # $cds2pmatpept_AAR may be undef and that's okay
 
   # 4) fetch the reference feature sequences and populate information on the models and features
   my $ref_totlen   = $totlen_HR->{$ref_accn};    # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
-  my $ref_seqname  = $seqname_AR->[0];           # the reference sequence name the fetched sequence file $fasta_file
+  my $ref_seqname  = $seq_name_AR->[0];           # the reference sequence name the fetched sequence file $fasta_file
   my $all_stk_file = $out_root . ".ref.all.stk"; # name of output alignment file we are about to create, each single reference feature 
                                                  # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
                                                  # separate alignments, one per feature
-  fetchReferenceFeatureSequences($execs_HR, $sqfile, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
+  fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
   addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, "Stockholm alignment file with reference features");
-
-  # clean up
-  if(opt_Get("--keep", $opt_HHR)) { 
-    unlink $fasta_file . ".ssi"; # remove the file that was created when we created $sqfile
-  }
 
   return 0;
 }

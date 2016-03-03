@@ -270,13 +270,14 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 2. Fetch and process the reference genome sequence
 ##########################################################
 $start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
-my @seqname_A   = ();          # actual name of all sequences in fasta file, after being fetched, same order as @accn_A
+my @seq_name_A   = ();          # actual name of all sequences in fasta file, after being fetched, same order as @accn_A
 my %mdl_info_HA = ();          # hash of arrays, values are arrays [0..$nmdl-1];
                                # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
                                # filled in wrapperFetchAndProcessReferenceSequence()
 my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1], 
                                # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
                                # filled in wrapperFetchAndProcessReferenceSequence()
+my $sqfile = undef;            # pointer to the Bio::Easel::SqFile object we'll open in wrapperFetchAllSequencesAndProcessReferenceSequence()
 
 # Call the wrapper function that does the following:
 #   1) fetches the sequences listed in @{$accn_AR} into a fasta file and indexes that fasta file,
@@ -284,9 +285,10 @@ my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1],
 #   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\@accn_A, \@seqname_A, $out_root, \%cds_tbl_HHA,
+wrapperFetchAllSequencesAndProcessReferenceSequence(\@accn_A, \@seq_name_A, \$sqfile, $out_root, \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
+                                                    ($do_matpept) ? \@cds2amatpept_AA : undef, 
                                                     \%totlen_H, \%ofile_info_HH,
                                                     \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
                                                     \%opt_HH, $ofile_info_HH{"FH"});
@@ -416,6 +418,7 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
 #%results_AAH = (); # 1st dim: array, 0..$nmdl-1, one per model
 #                   # 2nd dim: array, 0..$naccn-1, one per accessions
 #                   # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5hangover", "p_3hangover", "p_evalue", "p_fid2ref"
+$start_secs = outputProgressPrior("Parsing cmscan results", $progress_w, $log_FH, *STDOUT);
 my $naccn = scalar(@accn_A);
 # initialize the results AAH
 my @results_AAH = ();
@@ -427,12 +430,27 @@ for(my $m = 0; $m < $nmdl; $m++) {
 }
 
 # parse the cmscan results
-parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \@seqname_A, \@accn_A, \%totlen_H, \@results_AAH, $ofile_info_HH{"FH"});
+parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \@seq_name_A, \@accn_A, \%totlen_H, \@results_AAH, $ofile_info_HH{"FH"});
 
 # dump results
-dump_results(\@results_AAH, \%mdl_info_HA, \@seqname_A, \@accn_A, \%totlen_H, *STDOUT);
+# dump_results(\@results_AAH, \%mdl_info_HA, \@seq_name_A, \@accn_A, \%totlen_H, *STDOUT);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-exit 0;
+#########################################################
+# Step 5. Fetch predicted hits into fasta files.
+##########################################################
+my $out_root_and_key = $out_root . ".predicted";
+my $results_prefix = "p_"; # we want to fetch the hits with information stored with 3rd dimension keys that begin with "p_" in @results_AAH
+$start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta files", $progress_w, $log_FH, *STDOUT);
+fetch_hits_given_results($sqfile, $out_root_and_key, \%mdl_info_HA, \@seq_name_A, \@results_AAH, $results_prefix, \%opt_HH, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+####################################################################
+# Step 6. Combine multi-exon CDS into single CDS sequences
+####################################################################
+$start_secs = outputProgressPrior("Combining multiple exon predicted CDS", $progress_w, $log_FH, *STDOUT);
+combine_model_hits($results_prefix, \@seq_name_A, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ##########
 # Conclude
@@ -440,7 +458,6 @@ exit 0;
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 
-exit 0;
 
 
 ###############
@@ -483,10 +500,9 @@ sub concatenate_individual_cm_files {
 
   # concatenate the files into a CM DB and run cmpress on it
   my $cat_cmd = "cat";
-  my $out_root_no_dnaorg_annotate = $out_root;
-  $out_root_no_dnaorg_annotate =~ s/\.dnaorg_annotate$//;
+  my $out_root_no_dnaorg_annotate = removeScriptNameFromString($out_root); # this removes 'dnaorg_annotate' from $out_root
   for(my $i = 0; $i < $nmdl; $i++) { 
-    my $indi_model = $out_root_no_dnaorg_annotate . ".dnaorg_build.ref.$i.cm";
+    my $indi_model = $out_root_no_dnaorg_annotate . ".dnaorg_build.ref.$i.cm"; # dnaorg_build created the CMs
     if(! -s ($indi_model)) { 
       DNAORG_FAIL("ERROR, model database file $model_file does not exist, nor does individual model file $indi_model.\nDid you run 'dnaorg_build.pl $ref_accn' -- it doesn't seem like you have.", 1, $FH_HR);
     }
@@ -790,8 +806,8 @@ sub split_fasta_file {
 # Arguments: 
 #  $tblout_file:   tblout file to parse
 #  $mdl_info_HAR:  REF to hash of arrays with information on the models, PRE-FILLED
-#  $seqname_AR:    REF to array of sequence names, PRE-FILLED
-#  $accn_AR:       REF to array of accessions, same order as @{$seqname_AR}, PRE-FILLED
+#  $seq_name_AR:    REF to array of sequence names, PRE-FILLED
+#  $accn_AR:       REF to array of accessions, same order as @{$seq_name_AR}, PRE-FILLED
 #  $totlen_HR:     REF to hash of total lengths of all accessions (keys are values from @{$accn_AR}), PRE-FILLED
 #  $results_AAHR:  REF to results AAH, FILLED HERE
 #  $FH_HR:         REF to hash of file handles
@@ -799,7 +815,7 @@ sub split_fasta_file {
 # Returns:    void
 #
 # Dies:       if we find a hit to a model or sequence that we don't
-#             have stored in $mdl_info_HAR or $seqname_AR
+#             have stored in $mdl_info_HAR or $seq_name_AR
 #
 ################################################################# 
 sub parse_cmscan_tblout { 
@@ -807,13 +823,13 @@ sub parse_cmscan_tblout {
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $mdl_info_HAR, $seqname_AR, $accn_AR, $totlen_HR, $results_AAHR, $FH_HR) = @_;
+  my ($tblout_file, $mdl_info_HAR, $seq_name_AR, $accn_AR, $totlen_HR, $results_AAHR, $FH_HR) = @_;
   
   # make an 'order hash' for the model names and sequence names,
   my %mdlname_index_H = (); # mdlname_index_H{$model_name} = <n>, means that $model_name is the <n>th model in the @{$mdl_info_HAR{*}} arrays
-  my %seqname_index_H = (); # seqname_order_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seqname_AR}} array
+  my %seqname_index_H = (); # seqname_order_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
   getIndexHashForArray($mdl_info_HAR->{"cmname"}, \%mdlname_index_H, $FH_HR);
-  getIndexHashForArray($seqname_AR, \%seqname_index_H, $FH_HR);
+  getIndexHashForArray($seq_name_AR, \%seqname_index_H, $FH_HR);
 
   open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
 
@@ -948,8 +964,8 @@ sub store_hit {
 # Arguments: 
 #  $results_AAHR:  REF to results AAH, PRE-FILLED
 #  $mdl_info_HAR:  REF to hash of arrays with information on the models, PRE-FILLED
-#  $seqname_AR:    REF to array of sequence names, PRE-FILLED
-#  $accn_AR:       REF to array of accessions, same order as @{$seqname_AR}, PRE-FILLED
+#  $seq_name_AR:    REF to array of sequence names, PRE-FILLED
+#  $accn_AR:       REF to array of accessions, same order as @{$seq_name_AR}, PRE-FILLED
 #  $totlen_HR:     REF to hash of total lengths of all accessions (keys are values from @{$accn_AR}), PRE-FILLED
 #  $FH:            file handle to output to
 #
@@ -963,23 +979,265 @@ sub dump_results {
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($results_AAHR, $mdl_info_HAR, $seqname_AR, $accn_AR, $totlen_HR, $FH) = @_;
+  my ($results_AAHR, $mdl_info_HAR, $seq_name_AR, $accn_AR, $totlen_HR, $FH) = @_;
 
   my $nmdl = scalar(@{$results_AAHR});
-  my $nseq = scalar(@{$seqname_AR}); 
+  my $nseq = scalar(@{$seq_name_AR}); 
   
   for(my $m = 0; $m < $nmdl; $m++) { 
-    for(my $i = 0; $i < $nseq; $i++) { 
-      printf $FH ("model($m): %20s  seq($i): %20s  accn: %10s  len: %10d  ", 
+    for(my $s = 0; $s < $nseq; $s++) { 
+      printf $FH ("model($m): %20s  seq($s): %20s  accn: %10s  len: %10d  ", 
                   $mdl_info_HAR->{"cmname"}[$m],
-                  $seqname_AR->[$i],
-                  $accn_AR->[$i],
-                  $totlen_HR->{$accn_AR->[$i]});
-      foreach my $key (sort keys %{$results_AAHR->[$m][$i]}) { 
-        printf $FH ("%s: %s ", $key, $results_AAHR->[$m][$i]{$key});
+                  $seq_name_AR->[$s],
+                  $accn_AR->[$s],
+                  $totlen_HR->{$accn_AR->[$s]});
+      foreach my $key (sort keys %{$results_AAHR->[$m][$s]}) { 
+        printf $FH ("%s: %s ", $key, $results_AAHR->[$m][$s]{$key});
       }
       printf $FH ("\n")
     }
   }
+  return;
+}
+
+#################################################################
+# Subroutine:  fetch_hits_given_results()
+# Incept:      EPN, Wed Mar  2 15:25:55 2016
+#
+# Purpose:    Given the results data structure, fetch all
+#             hits to fasta files.
+#
+# Arguments: 
+#  $sqfile:            REF to Bio::Easel::SqFile object, open sequence file containing
+#                      usually $out_root . ".predicted", or $out_root . ".corrected"
+#  $out_root_and_key:  output root for the files we'll create here, 
+#                      usually $out_root . ".predicted", or $out_root . ".corrected"
+#  $mdl_info_HAR:      REF to hash of arrays with information on the models, PRE-FILLED
+#  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
+#  $results_AAHR:      REF to results AAH, PRE-FILLED
+#  $results_prefix:    prefix to results 3rd dim keys to use, e.g. "p_" to use "p_start" and "p_stop"
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#################################################################
+sub fetch_hits_given_results { 
+  my $sub_name = "fetch_hits_given_results";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $out_root_and_key, $mdl_info_HAR, $seq_name_AR, $results_AAHR, $results_prefix, $opt_HHR, $ofile_info_HHR) = @_;
+    
+  my $nmdl = scalar(@{$results_AAHR});
+  my $nseq = scalar(@{$seq_name_AR}); 
+
+  my $start_key = $results_prefix . "start"; # key for 'start' in 3rd dim of @{$results_AAHR}
+  my $stop_key  = $results_prefix . "stop";  # key for 'stop'  in 3rd dim of @{$results_AAHR}
+  
+  for(my $m = 0; $m < $nmdl; $m++) { 
+    my @fetch_AA = ();
+    my $mdl_name = $mdl_info_HAR->{"cmname"}[$m];
+    my $nseq2fetch = 0; # number of sequences we'll fetch
+    for(my $s = 0; $s < $nseq; $s++) { 
+      my $seq_name = $seq_name_AR->[$s];
+      if($s == 0 && (! %{$results_AAHR->[$m][$s]})) { 
+        DNAORG_FAIL("ERROR in $sub_name(), no hit from model $mdl_name to the reference sequence $seq_name", 1, $ofile_info_HHR->{"FH"}); 
+      }
+      if(%{$results_AAHR->[$m][$s]}) { # hit exists
+        if(! exists $results_AAHR->[$m][$s]{$start_key}) { 
+          DNAORG_FAIL("ERROR in $sub_name(), no start value for hit of model $mdl_name to the sequence $seq_name", 1, $ofile_info_HHR->{"FH"}); 
+        }
+        if(! exists $results_AAHR->[$m][$s]{$stop_key}) { 
+          DNAORG_FAIL("ERROR in $sub_name(), no stop value for hit of model $mdl_name to the sequence $seq_name", 1, $ofile_info_HHR->{"FH"}); 
+        }
+        my $start = $results_AAHR->[$m][$s]{$start_key};
+        my $stop  = $results_AAHR->[$m][$s]{$stop_key};
+
+        my $new_name .= $seq_name . "/" . $start . "-" . $stop;
+        printf("adding $new_name $start $stop $seq_name to fetch_AA\n");
+        push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
+        $nseq2fetch++;
+      }
+    }
+    my $mdl_info_key = $results_prefix . ".hits";
+    if($nseq2fetch > 0) { 
+      my $out_fafile = $out_root_and_key . ".". $mdl_name . ".fa";
+      $sqfile->fetch_subseqs(\@fetch_AA, undef, $out_fafile);
+      # save information on this to the output file info hash
+      my $ofile_info_key = $results_prefix . "hits" . ".model" . $m;
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $out_fafile, "fasta file with predicted hits for model " . $mdl_info_HAR->{"out_tiny"}[$m]);
+      # now save this file in the mdl_info_HAR
+      $mdl_info_HAR->{$mdl_info_key}[$m] = $ofile_info_key;
+    }
+    else { 
+      $mdl_info_HAR->{$mdl_info_key}[$m] = ""; # no file for this model
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  combine_model_hits()
+# Incept:      EPN, Thu Mar  3 11:39:17 2016
+#
+# Purpose:    For all features annotated by models 
+#             ($ftr_info_HAR->{"annot_type"}[*] = "model")
+#             assign (for single model features) or create
+#             (for multiple model features) the hit fasta file
+#             for each. Calls 'combine_sequences()' which does
+#             much of the work.
+#
+# Arguments: 
+#  $results_prefix:    prefix used for naming mdl fasta files in fetch_hits(), e.g. "p_" for 'predicted'
+#  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
+#  $mdl_info_HAR:      REF to hash of arrays with information on the models, PRE-FILLED
+#  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If we have a problem reading the fasta files
+#
+################################################################# 
+sub combine_model_hits { 
+  my $sub_name = "combine_model_hits";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($results_prefix, $seq_name_AR, $mdl_info_HAR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my @tmp_mdl_fafile_A = (); # temporary array of exon fafiles for all exons in current CDS
+  
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
+  my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nmdl: number of homology models
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # we only do this for features annotated by models
+      my $mdl_idx        = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
+      my $mdl_info_key   = $results_prefix . ".hits";
+      my $ofile_info_key = $mdl_info_HAR->{$mdl_info_key}[$mdl_idx];
+      my $mdl_hit_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+      validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+
+      #######################################
+      # single model (e.g. exon) features
+      #######################################
+      if($ftr_info_HAR->{"nmodels"}[$ftr_idx] == 1) { 
+        # a single model (e.g. exon) gene, we should already have the sequence from fetch_hits
+        my $ftr_info_key = $mdl_info_key;
+        $ftr_info_HAR->{$ftr_info_key}[$ftr_idx] = $ofile_info_key;
+      }
+      #######################################
+      # multi model (e.g. exon) features
+      #######################################
+      else { 
+        # more than one model's hit files need to be combined to make this feature 
+        my $ftr_hit_fafile = $mdl_hit_fafile;
+        $ftr_hit_fafile =~ s/\.exon\.\d+\./\./; # remove 'exon' substring, if it exists
+        my @tmp_hit_fafile_A = ($mdl_hit_fafile);
+        for($mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
+          $mdl_info_key   = $results_prefix . ".hits";
+          $ofile_info_key = $mdl_info_HAR->{$mdl_info_key}[$mdl_idx];
+          $mdl_hit_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+          validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+          push(@tmp_hit_fafile_A, $mdl_hit_fafile);
+        }
+        # combine the sequences into 1 file
+        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $ofile_info_HHR->{"FH"});
+        my $ofile_info_key = $results_prefix . "hits" . ".ftr" . $ftr_idx;
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, "fasta file with predicted hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+      # now save this file in the mdl_info_HAR
+        my $ftr_info_key = $results_prefix . ".hits";
+        $ftr_info_HAR->{$ftr_info_key}[$ftr_idx] = $ofile_info_key;
+      }
+    }
+  }
+  return;
+}
+
+#################################################################
+# Subroutine:  combine_sequences()
+# Incept:      EPN, Wed Mar  2 16:11:40 2016
+#
+# Purpose:    Helper function for combine_multiple_hits(). Given an array of
+#             fasta files, each with a different subsequence from the
+#             same parent sequences, create a single new fasta file
+#             that has the subsequences concatenated together.  An
+#             example is stitching together exons into a CDS.  Uses
+#             BioEasel's sqfile module.
+#
+# Arguments: 
+#  $indi_file_AR: REF to array of fasta files to combine
+#  $seq_name_AR:  REF to array with order of sequence names
+#  $multi_file:   name of multi file to create
+#  $FH_HR:        REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       If we have a problem reading the fasta files
+#
+#################################################################
+sub combine_sequences {
+  my $sub_name = "combine_sequences";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($indi_file_AR, $seq_name_AR, $multi_file, $FH_HR) = @_;
+  
+  my @sqfile_A  = (); # array of open Bio::Easel::SqFile objects, one per indi_file_AR element
+  my @sqname_AA = (); # 2D array of sequence names, read from the indi files
+  my $nfiles = scalar(@{$indi_file_AR});
+  my %rawname_map_HA   = (); # key: sequence name minus coords, value: array [0..$f..$nfiles-1], value: ssi index of accession in file $f
+  my %rawname_ct_H     = (); # key: sequence name minus coords, value: number of files accession exists in
+  my %rawname_coords_H = (); # key: sequence name minus coords, value: concatenated set of coordinates for this accession
+  for(my $f = 0; $f < $nfiles; $f++) { 
+    if(! -s $indi_file_AR->[$f]) { 
+      DNAORG_FAIL("ERROR in $sub_name, file $indi_file_AR->[$f] does not exist, we need to use it to combine exons into a CDS file", 1, $FH_HR);
+    }
+    $sqfile_A[$f] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$f] });
+    # get names all of sequences in each file
+    for(my $i = 0; $i < $sqfile_A[$f]->nseq_ssi; $i++) { 
+      $sqname_AA[$f][$i] = $sqfile_A[$f]->fetch_seq_name_given_ssi_number($i);
+      my ($acc, $coords) = split("/", $sqname_AA[$f][$i]);
+      if(! defined $coords || $coords !~ m/\-/) { 
+        DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$f][$i] into accession and coordinates", 1, $FH_HR);
+      }
+      $rawname_map_HA{$acc}[$f] = $i;
+      if(! exists $rawname_ct_H{$acc}) { 
+        $rawname_ct_H{$acc} = 1;
+        $rawname_coords_H{$acc} = $coords;
+      }
+      else { 
+        $rawname_ct_H{$acc}++;
+        $rawname_coords_H{$acc} .= "," . $coords;
+      }
+    }
+  }
+  
+  # now for each accession that exists in all files, fetch all exons for that accession
+  # into a new sequence
+  open(OUT, ">", $multi_file) || die "ERROR unable to open $multi_file for writing";
+  foreach my $seq_name (@{$seq_name_AR}) { 
+    if(exists $rawname_ct_H{$seq_name} && $rawname_ct_H{$seq_name} == $nfiles) { 
+      print OUT ">" . $seq_name . "/" . $rawname_coords_H{$seq_name} . "\n";
+      for(my $f = 0; $f < $nfiles; $f++) { 
+        my $sqname = $sqname_AA[$f][($rawname_map_HA{$seq_name}[$f])];
+        my $sqonly = $sqfile_A[$f]->fetch_seq_to_fasta_string($sqname);
+        $sqonly =~ s/^\>.+\n//;
+        print OUT $sqonly;
+      }
+    }
+  }
+  close(OUT);
+
+  # clean up: remove all 'ssi' files we just created
+  for(my $f = 0; $f < $nfiles; $f++) { 
+    if(-e $indi_file_AR->[$f] . ".ssi") { 
+      unlink $indi_file_AR->[$f] . ".ssi";
+    }
+  }
+
   return;
 }
