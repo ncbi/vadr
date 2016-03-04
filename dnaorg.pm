@@ -55,10 +55,14 @@
 #                  an array with the relevant information. See validateFeatureInfoHashIsComplete()
 #                  for a list and explanation of the keys.
 #                   
-# - $mdl_info_HAR: similar to $ftr_info_HAR, except contains information pertaining to each 
+# - $mdl_info_HAR: similar to ${ftr,err}_info_HAR, except contains information pertaining to each 
 #                  model, >= 1 of which will model a single feature (1 model for single exon
 #                  CDS, 2 models for dual exon CDS, etc.). See validateModelInfoHashIsComplete()
 #                  for a list and explanation of the keys.
+#                   
+# - $err_info_HAR: similar to ${ftr,mdl}_info_HAR, except contains information pertaining to each 
+#                  error code. See validateErrorInfoHashIsComplete() for a list and explanation 
+#                  of the keys.
 #                   
 ########################################################################################
 #
@@ -2777,12 +2781,52 @@ sub validateModelInfoHashIsComplete {
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($ftr_info_HAR, $exceptions_AR, $FH_HR) = (@_);
+  my ($mdl_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
   my @expected_keys_A = ("checksum", "cmname", "is_final", "is_first", "length",
                          "map_exon", "map_ftr", "map_nexon", "out_tiny");
 
-  return validateInfoHashOfArraysIsComplete($ftr_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
+  return validateInfoHashOfArraysIsComplete($mdl_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
+}
+
+#################################################################
+# Subroutine: validateErrorInfoHashIsComplete()
+# Incept:     EPN, Fri Mar  4 12:56:43 2016
+#
+# Purpose:    Validate that a 'error info' hash is valid and complete.
+#             'Complete' means it has all the expected keys, each of which is an identically sized array.
+#             The expected keys are:
+#                "code":     the error code, e.g. "nop"
+#                "msg":      the message for this error, e.g. ""unable to identify homologous feature"
+#                "type":     type of this error, either "feature" (error occurs for a single feature) or "sequence"
+#                            (error occurs for an entire sequence)
+#
+#             If @{exceptions_AR} is non-empty, then keys in 
+#             in that array need not be in %{$err_info_HAR}.
+#
+# Arguments:
+#   $err_info_HAR:  REF to hash of arrays of error information
+#   $exceptions_AR: REF to array of keys that may be excluded from the hash
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: Number of elements in each and every array of %{$err_info_HAR}
+#
+# Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
+#            does not exist in $err_info_HAR
+#          - if two arrays in $err_info_HAR are of different sizes
+#          - if any other key other than those listed above exist in ${%err_info_HAR}
+#          - if any key listed in @{$exceptions_AR} is not one of the expected keys
+#################################################################
+sub validateErrorInfoHashIsComplete { 
+  my $sub_name = "validateErrorInfoHashIsComplete()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($err_info_HAR, $exceptions_AR, $FH_HR) = (@_);
+  
+  my @expected_keys_A = ("code", "msg", "type");
+
+  return validateInfoHashOfArraysIsComplete($err_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
 
 #################################################################
@@ -4077,6 +4121,110 @@ sub getConsistentSizeOfInfoHashOfArrays {
   }
 
   return $nel;
+}
+
+#################################################################
+# Subroutine: initializeHardCodedErrorInfoHash()
+# Incept:     EPN, Fri Mar  4 12:56:43 2016
+#
+# Purpose:    Set the values in a error info hash,
+#             using the hardcoded information in this
+#             function.
+#
+# Arguments:
+#   $err_info_HAR:  REF to hash of arrays of error information, FILLED HERE
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: void
+#
+# Dies:    if $err_info_HAR already has keys upon entering this function
+#
+#################################################################
+sub initializeHardCodedErrorInfoHash { 
+  my $sub_name = "initializeHardCodedErrorInfoHash";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($err_info_HAR, $FH_HR) = (@_);
+
+  if(scalar (keys(%{$err_info_HAR})) > 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, error info hash of arrays already has at least one key", 1, $FH_HR);
+  }
+
+  # add each error code, this function will die if we try to add the same code twice, or if the 3rd argument is 
+  # neither "sequence" nor "feature"
+  addToErrorInfoHash($err_info_HAR, "nop", "feature", "unable to identify homologous feature", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "nm3", "feature", "length of nucleotide feature is not a multiple of 3", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "bd5", "feature", "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "bd3", "feature", "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "olp", "feature", "feature does not overlap with same set of features as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "str", "feature", "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "stp", "feature", "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ajb", "feature", "mature peptide is not adjacent to same set of mature peptides before it as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "aja", "feature", "mature peptide is not adjacent to same set of mature peptides after it as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "trc", "feature", "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ext", "feature", "first in-frame stop codon exists 3' of stop position predicted by homology to reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ntr", "feature", "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "nst", "feature", "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "aji", "feature", "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "int", "feature", "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not translated due to early stop (ntr)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "inp", "feature", "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ori", "sequence", "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine: addToErrorInfoHash
+# Incept:     EPN, Fri Mar  4 13:09:52 2016
+#
+# Purpose:    Add an element to the error info hash.
+#             Die if the same error code already exists.
+#
+# Arguments:
+#   $err_info_HAR:  REF to hash of arrays of error information, FILLED HERE
+#   $code:          the code of the element we are adding
+#   $type:          the type of the element we are adding
+#   $msg:           the error message of the element we are adding
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: void
+#
+# Dies:    if $err_info_HAR->{"$code"} already exists
+#          if $type ne "feature and ne "sequence"
+#
+#################################################################
+sub addToErrorInfoHash { 
+  my $sub_name = "addToErrorInfoHash";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($err_info_HAR, $code, $type, $msg, $FH_HR) = (@_);
+
+  # check if $code already exists
+  if(exists $err_info_HAR->{"code"}) { 
+    my $nerr = validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); # this validates all arrays are the same size
+    for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+      my $other_code = $err_info_HAR->{"code"}[$err_idx]; 
+      if($code eq $other_code) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to add code $code, but it already exists as element in the error info hash", $err_idx+1), 1, $FH_HR);
+      }
+    }
+  }
+
+  if(($type ne "feature") && ($type ne "sequence")) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with type $type that is not neither \"feature\" nor \"sequence\"."); 
+  }
+
+  if(! exists $err_info_HAR->{"code"}) { @{$err_info_HAR->{"code"}} = (); }
+  if(! exists $err_info_HAR->{"type"}) { @{$err_info_HAR->{"type"}} = (); }
+  if(! exists $err_info_HAR->{"msg"})  { @{$err_info_HAR->{"msg"}} = (); }
+  
+  push(@{$err_info_HAR->{"code"}}, $code); 
+  push(@{$err_info_HAR->{"type"}}, $type); 
+  push(@{$err_info_HAR->{"msg"}}, $msg); 
+
+  return;
 }
 
 ###########################################################################

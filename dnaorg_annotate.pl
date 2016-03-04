@@ -85,6 +85,7 @@ $opt_group_desc_H{"3"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
 opt_Add("--mdlinfo",    "boolean", 0,                        1,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
 opt_Add("--ftrinfo",    "boolean", 0,                        1,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--errinfo",    "boolean", 0,                        1,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -111,7 +112,8 @@ my $options_okay =
                 'skipscan'      => \$GetOptions_H{"--skipscan"},
 # optional output files
                 'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
-                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});
+                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"}, 
+                'errinfo'      => \$GetOptions_H{"--errinfo"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -210,6 +212,9 @@ if(opt_Get("--mdlinfo", \%opt_HH)) {
 }
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
   openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", "Feature information (created due to --ftrinfo)");
+}
+if(opt_Get("--errinfo", \%opt_HH)) { 
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "errinfo", $out_root . ".errinfo", "Error information (created due to --errinfo)");
 }
 
 # now we have the log file open, output the banner there too
@@ -488,7 +493,6 @@ if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) {
 if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
   dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
-exit 0;
 
 ###########################################################################
 # Before we translate the sequences, we take some extra steps to correct
@@ -539,8 +543,16 @@ my @accn_stp_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: sour
                                 # 1st of 2 reasons we shouldn't translate it
 
 # initialize data structures
-my %error_AAH = ();
-initialize_error_AAH(\%error_AAH, \%ftr_info_HA);
+my %err_info_HA = (); 
+initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
+
+if(exists $ofile_info_HH{"FH"}{"errinfo"}) { 
+  dumpInfoHashOfArrays("Error information (%err_info_HA)", 0, \%err_info_HA, $ofile_info_HH{"FH"}{"errinfo"});
+}
+
+exit 0;
+
+#initialize_error_AAH(\%error_AAH, \%ftr_info_HA);
 
 # Translate predicted CDS/mat_peptide sequences using esl-epn-translate to identify 
 # in-frame stop codons.
@@ -554,7 +566,7 @@ for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
   %{$corr_mft_stop_trc_or_ext_AH[$ftr_idx]}  = ();
   
   my $ofile_info_key = $ftr_info_HA{"p_hits"}[$ftr_idx];
-  my $cur_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+  my $cur_fafile     = $ofile_info_HH{"fullpath"}{$ofile_info_key};
   
   # translate into AA sequences
   # MAKE THESE FILES HAVE KEY p_esl_epn_translate_output
@@ -1658,6 +1670,49 @@ sub combine_sequences {
   for(my $f = 0; $f < $nfiles; $f++) { 
     if(-e $indi_file_AR->[$f] . ".ssi") { 
       unlink $indi_file_AR->[$f] . ".ssi";
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  initialize_error_instances_AHH()
+# Incept:      EPN, Fri Mar  4 12:26:42 2016
+#
+# Purpose:    Initialize the error instances array of arrays of 
+#             2 dimensional hashes. The array is [0..$f..$nftr-1] 
+#             where $f is a feature index in %{ftr_info_HA}. 
+#             The key in the 1st hash dimension is an error code, 
+#             the key in the 2nd hash dimension is a sequence 
+#             name (from $accn_AR).
+#
+# Arguments: 
+#  $err_instances_AHHR: REF to the array of 2D hashes, initialized here
+#  $err_info_HAR:       REF to the error info hash of arrays, PRE-FILLED
+#  $ftr_info_HAR:       REF to the feature info hash of arrays, PRE-FILLED
+#  $FH_HR:              REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       If err_info_HAR is not complete
+#
+#################################################################
+sub initialize_error_instances_AHH { 
+  my $sub_name = "initialize_error_instances_AHH";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($err_instances_AHHR, $err_info_HAR, $ftr_info_HAR, $FH_HR) = @_;
+  
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); 
+  my $nerr = validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
+
+  @{$err_instances_AHHR} = ();
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    %{$err_instances_AHHR->[$ftr_idx]} = (); 
+    for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+      %{$err_instances_AHHR->[$ftr_idx]{$err_info_HAR->{"code"}[$err_idx]}} = ();
     }
   }
 
