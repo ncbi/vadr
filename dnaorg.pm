@@ -4227,6 +4227,174 @@ sub addToErrorInfoHash {
   return;
 }
 
+#################################################################
+# Subroutine: dashCoordsStringCommaDelimitedToLength
+# Incept:     EPN, Fri Mar  4 15:24:25 2016
+#
+# Purpose:    Given a string with >= 1 'dash coordinate' strings
+#             separated by commas (e.g. "10-100,101-250") return the
+#             total length of all coordinates summed together.  Die if
+#             the string is not in the correct format.
+#
+# Arguments:
+#   $dash_coords_str: the dashed coords string
+#   $caller_sub_name: name of caller, can be undef
+#   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: total length
+#
+# Dies:    - if we can't parse $dash_coords_str because it's
+#            in an unexpected format
+#          - if any coordinate is negative
+#
+#################################################################
+sub dashCoordsStringCommaDelimitedToLength {
+  my $sub_name = "addToErrorInfoHash";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($dash_coords_str, $caller_sub_name, $FH_HR) = (@_);
+  
+  my $len = 0;
+  my @start_stop_A = split(",", $dash_coords_str);
+  foreach my $start_stop (@start_stop_A) { 
+    $len += dashCoordsToLength($start_stop, $caller_sub_name, $FH_HR); 
+    # dashCoordsToLength() will die if $start_stop has a negative index or is incorrectly formatted in some other way
+  }
+  
+  return $len;
+}
+
+#################################################################
+# Subroutine: dashCoordsToLength
+# Incept:     EPN, Fri Mar  4 15:29:07 2016
+#
+# Purpose:    Given a string with 1 'dash coordinate' 
+#             (e.g. "10-100), return the length implied.
+#             Die if either start or stop is negative or
+#             if there's something else is wrong with the
+#             format of $dash_coords
+# Arguments:
+#   $start_stop: the dashed coords string
+#   $caller_sub_name: name of caller, can be undef
+#   $FH_HR:      REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: length
+#
+# Dies:    - if we can't parse $start_stop because it's
+#            in an unexpected format
+#          - if any coordinate is negative
+#
+#################################################################
+sub dashCoordsToLength { 
+  my $sub_name = "dashCoordsToLength";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($start_stop, $caller_sub_name, $FH_HR) = (@_);
+
+  my $len = undef;
+
+  if($start_stop =~ m/^\-\d+\-\-\d+$/) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, %sstart and stop positions are negative in coords string $start_stop", 
+                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
+  }
+  elsif($start_stop =~ m/^\-\d+\-\d+$/) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, %sstart position is negative in coords string $start_stop", 
+                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
+  }
+  elsif($start_stop =~ m/^\d+\-\-\d+$/) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, %sstop position is negative in coords string $start_stop", 
+                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
+  }
+
+  if($start_stop =~ m/^(\d+)\-(\d+)$/) { 
+    $len = (abs($1 - $2) + 1);
+  }
+  else { 
+    DNAORG_FAIL("ERROR in $sub_name, called by $caller_sub_name, unable to parse start-stop string: $start_stop", 1, $FH_HR); 
+  }
+
+  return $len;
+}
+
+#################################################################
+# Subroutine: removeFileUsingSystemRm
+# Incept:     EPN, Fri Mar  4 15:57:25 2016
+#
+# Purpose:    Remove a file from the filesystem by using
+#             the system rm command.
+# Arguments:
+#   $file:            file to remove
+#   $caller_sub_name: name of caller, can be undef
+#   $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: void
+#
+# Dies:    - if the file does not exist
+#
+#################################################################
+sub removeFileUsingSystemRm { 
+  my $sub_name = "removeFileUsingSystemRm";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($file, $caller_sub_name, $opt_HHR, $FH_HR) = (@_);
+  
+  if(! -e $file) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, %s trying to remove file $file but it does not exist", 
+                (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
+  }
+
+  runCommand("rm $file", opt_Get("-v", $opt_HHR), $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine: dumpArrayOfHashesOfHashes()
+# Incept:     EPN, Fri Mar  4 16:02:28 2016
+# Synopsis:   Dump the contents of an array of hashes of hashes.
+#
+# Args:       $name2print:  name of array of hashes of hashes
+#             $AHHR:        ref of the array of hashes of hashes
+#             $FH:          file handle to print (often *STDOUT)
+#
+# Returns:    void
+# 
+#################################################################
+sub dumpArrayOfHashesOfHashes { 
+  my $sub_name = "dumpArrayOfHashesOfHashes()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($name2print, $AHHR, $FH) = @_;
+
+  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
+
+  my $nel1 = scalar(@{$AHHR});
+  for(my $i1 = 0; $i1 < $nel1; $i1++) { 
+    printf $FH ("*A*HH el %2d\n", ($i1+1)); 
+    my $nel2 = scalar(keys %{$AHHR->[$i1]}); 
+    my $i2 = 0;
+    foreach my $key2 (sort keys %{$AHHR->[$i1]}) { 
+      printf("\tA*H*H el %2d key: $key2\n", ($i2+1)); 
+      $i2++;
+      my $nel3 = scalar(keys %{$AHHR->[$i1]{$key2}});
+      my $i3 = 0;
+      foreach my $key3 (sort keys %{$AHHR->[$i1]{$key2}}) { 
+        printf("\tAH*H* el %2d key: $key3 value: %s\n", ($i3+1), $AHHR->[$i1]{$key2}{$key3}); 
+        $i3++;
+      }
+      printf $FH ("\n");
+    }
+    printf $FH ("\n");
+  }
+
+  return;
+}
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;

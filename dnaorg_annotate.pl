@@ -523,24 +523,24 @@ my @did_corr_exon_stop_ext_AH = ();   # [0..$i..ref_nexons-1], each element is a
  my @corr_mft_fafile_A = (); # array of corrected CDS/mat_peptide sequence files, filled below
 
 my @accn_ext_check_AA     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
-                                # accessions to check for 'ext' error, b/c no in-frame stop within 
-                                # predicted start..stop
-my @accn_trc_error_AH     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
-                                # accessions that have 'trc' error, b/c in-frame stop exists between predicted start..stop
-my @accn_ext_error_AH     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
-                                # accessions that have 'ext' error, b/c no in-frame stop exists between predicted start..stop
-my @accn_nst_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
-                                # feature has no in-frame stop
-                                # 2nd of 2 reasons we shouldn't translate it
-                                # these should be rare, these are a subset of the accessions in
-                                # @accn_ext_check_AA, the ones that had no valid stop in-frame
-                                # for the rest of the sequence (possibly duplicated)
-my @accn_str_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
-                                # feature has an invalid start 
-                                # 1st of 2 reasons we shouldn't translate it
-my @accn_stp_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
-                                # feature's predicted stop is not a valid stop codon
-                                # 1st of 2 reasons we shouldn't translate it
+#                                # accessions to check for 'ext' error, b/c no in-frame stop within 
+#                                # predicted start..stop
+#my @accn_trc_error_AH     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
+#                                # accessions that have 'trc' error, b/c in-frame stop exists between predicted start..stop
+#my @accn_ext_error_AH     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
+#                                # accessions that have 'ext' error, b/c no in-frame stop exists between predicted start..stop
+#my @accn_nst_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
+#                                # feature has no in-frame stop
+#                                # 2nd of 2 reasons we shouldn't translate it
+#                                # these should be rare, these are a subset of the accessions in
+#                                # @accn_ext_check_AA, the ones that had no valid stop in-frame
+#                                # for the rest of the sequence (possibly duplicated)
+#my @accn_str_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
+#                                # feature has an invalid start 
+#                                # 1st of 2 reasons we shouldn't translate it
+#my @accn_stp_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
+#                                # feature's predicted stop is not a valid stop codon
+#                                # 1st of 2 reasons we shouldn't translate it
 
 # initialize data structures
 my %err_info_HA = (); 
@@ -550,9 +550,8 @@ if(exists $ofile_info_HH{"FH"}{"errinfo"}) {
   dumpInfoHashOfArrays("Error information (%err_info_HA)", 0, \%err_info_HA, $ofile_info_HH{"FH"}{"errinfo"});
 }
 
-exit 0;
-
-#initialize_error_AAH(\%error_AAH, \%ftr_info_HA);
+my @err_instances_AHH = ();
+initialize_error_instances_AHH(\@err_instances_AHH, \%err_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
 
 # Translate predicted CDS/mat_peptide sequences using esl-epn-translate to identify 
 # in-frame stop codons.
@@ -562,188 +561,36 @@ for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
   my $is_cds     = (! $is_matpept);
   my $type_idx   = $ftr_info_HA{"type_idx"}[$ftr_idx];
 
-  @{$accn_ext_check_AA[$ftr_idx]} = ();
-  %{$corr_mft_stop_trc_or_ext_AH[$ftr_idx]}  = ();
+#  @{$accn_ext_check_AA[$ftr_idx]} = ();
+#  %{$corr_mft_stop_trc_or_ext_AH[$ftr_idx]}  = ();
   
   my $ofile_info_key = $ftr_info_HA{"p_hits"}[$ftr_idx];
   my $cur_fafile     = $ofile_info_HH{"fullpath"}{$ofile_info_key};
   
-  # translate into AA sequences
-  # MAKE THESE FILES HAVE KEY p_esl_epn_translate_output
-  my $tmp_esl_epn_translate_output = $cur_fafile . ".esl-epn-translate";
+  # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
+  my $esl_epn_translate_outfile = $cur_fafile . ".esl-epn-translate";
+
   # deal with alternative starts here
-  my $altstart_opt = ""; # will be redefined below if we read alternative starts for this CDS with -specstart
-  if($is_cds && defined $specstart_AA[($type_idx-1)]) { 
-    $altstart_opt = "-altstart ";
-    foreach my $altstart (@{$specstart_AA[($type_idx-1)]}) { 
-      $altstart_opt .= $altstart . ",";
-    }
-    $altstart_opt =~ s/\,$//; # remove final ','
+  my $altstart_opt = "";
+  if($is_cds && opt_IsUsed("--specstart", \%opt_HH)) { 
+    $altstart_opt = "-altstart " . get_altstart_list(\@specstart_AA, $type_idx-1, $ofile_info_HH{"FH"}); 
   }
-
-  $cmd = $esl_epn_translate . " $altstart_opt -startstop $cur_fafile > $tmp_esl_epn_translate_output";
-  runCommand($cmd, opt_Get("-v", %opt_HH), $ofile_info_HH{"FH"});
+  $cmd = $esl_epn_translate . " $altstart_opt -startstop $cur_fafile > $esl_epn_translate_outfile";
+  runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
   
-  # parse esl-epn-translate output
-  open(IN, $tmp_esl_epn_translate_output) || fileOpenFailure($tmp_esl_epn_translate_output, "main", $!, "reading", $ofile_info_HH{"FH"});
+  parse_esl_epn_translate_startstop_outfile($esl_epn_translate_outfile, $ftr_idx, \%ftr_info_HA, \@err_instances_AHH, $ofile_info_HH{"FH"});
 
-  while(my $line = <IN>) { 
-    # example line
-    #HQ693465/1-306 1 1 304
-    if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
-      my ($accn, $coords, $start_is_valid, $stop_is_valid, $first_stop_first_posn) = ($1, $2, $3, $4, $5);
-      
-      # A wrinkle here related to CDS comprised of mat_peptide
-      # sequences, the final codon of the final mat_peptide sequence
-      # for the CDS *SHOULD NOT* encode a stop codon. This is NCBI
-      # annotation protocol. The three nucleotides 5' of the final
-      # mat_peptide stop are in fact the stop codon. This presents a
-      # problem for us here, because we 'create' the full CDS by
-      # simply concatenating all the mat_peptide coding sequences
-      # together. However, when we do that the resulting CDS will
-      # necessarily be missing the stop codon. NCBI CDS annotation
-      # however, *does* include the stop codon, so this is an
-      # inconsistency.
-      #
-      # What this means is that normally for a mat_peptide comprised
-      # CDS, the $stop_is_valid value will be 0 because
-      # esl-epn-translate has not checked the correct 3 nucleotides to
-      # see if it is a valid stop codon. To deal with this, we've
-      # previously stored whether the final mat_peptide's next 3
-      # nucleotides encode a valid stop codon or not. We have that in
-      # $matpept_cds_stop_codon_AH() which was filled following a call
-      # to matpeptCheckCdsRelationships() which manually checks the
-      # next 3 nucleotides 3' of the stop position. So we use that
-      # value to override $stop_is_valid here.
-      if($is_cds_mp) { # a mat_peptide comprised CDS
-        #my $seq_accn = $accn2seq_accn_H{$accn};
-        my $seq_accn = undef;
-        #my $cur_stop_codon = $matpept_cds_stop_codon_AH[($ftr_idx - $ref_nmft)]{$seq_accn};
-        my $cur_stop_codon = undef;
-        #printf("REEXAMINING stop_is_valid, was: $stop_is_valid, now: ");
-        $stop_is_valid = ((defined $cur_stop_codon) && 
-                          ($cur_stop_codon eq "TAG" || $cur_stop_codon eq "TAA" || $cur_stop_codon eq "TGA" || $cur_stop_codon eq "TAR"))
-            ? 1 : 0;
-        #printf("$stop_is_valid\n");
-      }
-
-      # determine what first_stop_first_posn would be if the final codon is the first in-frame stop
-      my @start_stop_A = split(",", $coords);
-      my $cds_len = 0;
-      foreach my $start_stop (@start_stop_A) { 
-        if($start_stop =~ /(\-?\d+)\-(\-?\d+)/) { 
-          $cds_len += abs($1 - $2) + 1;
-          my ($tmp_start, $tmp_stop) = ($1, $2);
-          if(($tmp_start < 0 && $tmp_stop > 0) || ($tmp_start > 0 && $tmp_stop < 0)) { $cds_len--; } # correct for off-by-one error due to fact that posn 0 is not a nt
-        }
-        else { 
-          die "ERROR unable to parse coordinates ($coords) read from esl-epn-translate.pl output";
-        }
-      }
-      my $final_codon_first_posn = $cds_len - 2;
-      my $early_inframe_stop     = (($first_stop_first_posn != 0) && ($first_stop_first_posn != $final_codon_first_posn)) ? 1 : 0;
-
-      # We now have all of the relevant data on the current
-      # CDS/mat_peptide sequence and we need to use that to determine
-      # what errors each sequence should throw (at least for those
-      # that can tell should be thrown at this point in the
-      # processing) as well as any corrections to stop predictions
-      # that we should make prior to translation (trc errors are
-      # thrown when this happens).
-      # 
-      # There are 4 relevant variables that dictate which errors
-      # should be thrown/checked for later and whether a stop
-      # correction should be made. The table gives all possible
-      # combinations of values of those variables and lists the
-      # outcome of each possibility.
-      #
-      # Variables we know from earlier processing:
-      # $is_matpept:     '1' if current feature is a mature peptide, '0' if it is a CDS
-      #
-      # Variables derived from esl-epn-translate output we're currently parsing
-      # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
-      # $stop_is_valid:      '1' if current feature's final 3 nt encode a valid stop codon and total feature length is multiple of 3
-      # $early_inframe_stop: '1' if an inframe stop exists prior to predicted stop
-      #
-      # 7 possibilities, each with different outcome (P1-P7):
-      #                                                                                       | make correction to |
-      # idx | is_matpept | start_is_valid | stop_is_valid | early_inframe_stop ||   errors    | stop coordinate?   |
-      # ----|------------|----------------|---------------|--------------------||-------------|--------------------|
-      #  P1 |      false |          false |          any  |                any ||         str |                 no |
-      #  P2 |      false |           true |        false  |              false ||     stp ext?|     maybe (if ext) |
-      #  P3 |      false |           true |        false  |               true ||     stp trc |                yes |
-      #  P4 |      false |           true |         true  |              false ||        none |                 no |
-      #  P5 |      false |           true |         true  |               true ||         trc |                yes |
-      # -----------------------------------------------------------------------||-----------------------------------
-      #  P6 |       true |            any |          any  |              false ||        ntr? |                 no |
-      #  P7 |       true |            any |          any  |               true ||    trc ntr? |                yes |
-      # ------------------------------------------------------------------------------------------------------------
-      # 
-      # in table above:
-      # '?' after error code means that error is possible, we have to check for it later           
-      # 'any' means that any value is possible, outcome is unaffected by value
-      #
-      if(! $is_matpept) { 
-        if(! $start_is_valid) { # possibility 1 (P1)
-          #printf("HEYA $accn $c possibility 1 (str)\n");
-          $accn_str_error_AH[$ftr_idx]{$accn} = 1;
-        }
-        else { 
-          # $start_is_valid is 1
-          if(! $stop_is_valid) { 
-            if(! $early_inframe_stop) { 
-              # possibility 2 (P2): stp error, need to check for ext error later
-              #printf("HEYA $accn $ftr_idx possibility 2 (stp, maybe ext)\n");
-              $accn_stp_error_AH[$ftr_idx]{$accn} = 1;
-              push(@{$accn_ext_check_AA[$ftr_idx]}, $accn);
-            }
-            else { # $early_inframe_stop is 1
-              # possibility 3 (P3): stp and trc error
-              #printf("HEYA $accn $ftr_idx possibility 3 (trc and stp)\n");
-              $accn_stp_error_AH[$ftr_idx]{$accn} = 1;
-              $accn_trc_error_AH[$ftr_idx]{$accn} = 1;
-              $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
-              if($final_codon_first_posn == $first_stop_first_posn) { die "ERROR trying to correct a stop by 0 nt"; }
-              #printf("HEYAA set corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} to $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn}\n");
-            }
-          } # end of 'if(! $stop_is_valid)'
-          else { # $stop_is_valid is 1
-            if(! $early_inframe_stop) { 
-              #printf("HEYA $accn $ftr_idx possibility 4 (no errors)\n");
-              ;# possibility 4 (P4): no errors, do nothing
-            }
-            else { 
-              # possibility 5 (P5): trc error
-              #printf("HEYA $accn $ftr_idx possibility 5 (trc)\n");
-              $accn_trc_error_AH[$ftr_idx]{$accn} = 1;
-              $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
-              if($final_codon_first_posn == $first_stop_first_posn) { die "ERROR trying to correct a stop by 0 nt"; }
-              #printf("HEYAA set corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} to $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn}\n");
-            }
-          }              
-        }
-      } # end of 'if(! $is_matpept)'
-      else { # $is_matpept is 1 
-        if(! $early_inframe_stop) { 
-          # possibility 6 (P6): maybe ntr error later, but can't check for it now, do nothing;
-          #printf("HEYA $accn $ftr_idx possibility 6 (no error)\n");
-        }
-        else { # $early_inframe_stop is '1'
-          # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
-          #printf("HEYA $accn $ftr_idx possibility 7 (trc)\n");
-          $accn_trc_error_AH[$ftr_idx]{$accn} = 1;
-          $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
-          if($final_codon_first_posn == $first_stop_first_posn) { die "ERROR trying to correct a stop by 0 nt"; }
-          #printf("HEYAA set corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} to $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn}\n");
-        }
-      }
-    }
-    else { 
-      die "ERROR, unable to parse esl-epn-translate.pl output line: $line\n";
-    }
+  if(! opt_Get("--keep", \%opt_HH)) { 
+    removeFileUsingSystemRm($esl_epn_translate_outfile, "dnaorg_annotate.pl:main", \%opt_HH, \%ofile_info_HH);
   }
-  close(IN);
+  else { 
+    addClosedFileToOutputInfo(\%ofile_info_HH, "p_esl_epn_translate_outfile.ftr." . $ftr_idx, $esl_epn_translate_outfile, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
+  }
 }
+
+dumpArrayOfHashesOfHashes("Error instances (%err_instances_AHH)", \@err_instances_AHH, *STDOUT);
+
+exit 0;  
 
 ########################################################################
 ##########
@@ -1716,5 +1563,165 @@ sub initialize_error_instances_AHH {
     }
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine:  parse_esl_epn_translate_startstop_outfile()
+# Incept:      EPN, Fri Mar  4 13:56:56 2016
+#
+# Purpose:    Parse an output file from esl-epn-translate.pl run
+#             with the --startstop option and store the relevant 
+#             information we derive from it in @{$err_instances_AHHR}. 
+#
+# Arguments: 
+#  $translate_outfile:  path to the file to parse
+#  $ftr_idx:            feature index the translate output is for
+#  $ftr_info_HAR:       REF to the feature info hash of arrays, PRE-FILLED
+#  $err_instances_AHHR: REF to the error instances AAH, PRE-FILLED
+#  $FH_HR:              REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       If we have trouble parsing $translate_outfile
+#
+#################################################################
+sub parse_esl_epn_translate_startstop_outfile { 
+  my $sub_name = "parse_esl_epn_translate_startstop_outfile";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($translate_outfile, $ftr_idx, $ftr_info_HAR, $err_instances_AHHR, $FH_HR) = @_;
+  
+  # is this a mature peptide?
+  my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
+
+  open(IN, $translate_outfile) || fileOpenFailure($translate_outfile, "main", $!, "reading", $FH_HR);
+
+  while(my $line = <IN>) { 
+    # example line
+    #HQ693465/1-306 1 1 304
+    if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
+      my ($seq_name, $coords, $start_is_valid, $stop_is_valid, $first_stop_posn1) = ($1, $2, $3, $4, $5);
+      
+      # determine if we have an early stop
+      my $cds_len            = dashCoordsStringCommaDelimitedToLength($coords, $sub_name, $FH_HR);
+      my $final_codon_posn1  = $cds_len - 2; # final codon position 1 
+      my $early_inframe_stop;
+      if($first_stop_posn1 == $final_codon_posn1) { # first stop is the final codon
+        $early_inframe_stop = 0;
+      }
+      elsif($first_stop_posn1 == 0) { # esl-epn-translate didn't find any in-frame stop
+        $early_inframe_stop = 0;
+      }
+      else { # there is an early stop
+        $early_inframe_stop = 1; 
+      }
+
+      # We now have all of the relevant data on the current
+      # CDS/mat_peptide sequence and we need to use to determine
+      # what errors each sequence should throw (at least for those
+      # that can tell should be thrown at this point in the
+      # processing) as well as any corrections to stop predictions
+      # that we should make prior to translation (trc errors are
+      # thrown when this happens).
+      # 
+      # There are 4 relevant variables that dictate which errors
+      # should be thrown/checked for later and whether a stop
+      # correction should be made. The table gives all possible
+      # combinations of values of those variables and lists the
+      # outcome of each possibility.
+      #
+      # Variables we know from earlier processing:
+      # $is_matpept:     '1' if current feature is a mature peptide, '0' if it is a CDS
+      #
+      # Variables derived from esl-epn-translate output we're currently parsing
+      # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
+      # $stop_is_valid:      '1' if current feature's final 3 nt encode a valid stop codon and total feature length is multiple of 3
+      # $early_inframe_stop: '1' if an inframe stop exists prior to predicted stop
+      #
+      # 7 possibilities, each with different outcome (P1-P7):
+      #                                                                                       | make correction to |
+      # idx | is_matpept | start_is_valid | stop_is_valid | early_inframe_stop ||   errors    | stop coordinate?   |
+      # ----|------------|----------------|---------------|--------------------||-------------|--------------------|
+      #  P1 |      false |          false |          any  |                any ||         str |                 no |
+      #  P2 |      false |           true |        false  |              false ||     stp ext?|     maybe (if ext) |
+      #  P3 |      false |           true |        false  |               true ||     stp trc |                yes |
+      #  P4 |      false |           true |         true  |              false ||        none |                 no |
+      #  P5 |      false |           true |         true  |               true ||         trc |                yes |
+      # -----------------------------------------------------------------------||-----------------------------------
+      #  P6 |       true |            any |          any  |              false ||        ntr? |                 no |
+      #  P7 |       true |            any |          any  |               true ||    trc ntr? |                yes |
+      # ------------------------------------------------------------------------------------------------------------
+      # 
+      # in table above:
+      # '?' after error code means that error is possible, we have to check for it later           
+      # 'any' means that any value is possible, outcome is unaffected by value
+      #
+      if(! $is_matpept) { 
+        if(! $start_is_valid) { # possibility 1 (P1)
+          $err_instances_AHHR->[$ftr_idx]{"str"}{$seq_name} = "yes";
+          # printf("in $sub_name, feature index $ftr_idx, seq $seq_name $c possibility 1 (str)\n");
+        }
+        else { 
+          # $start_is_valid is 1
+          if(! $stop_is_valid) { 
+            if(! $early_inframe_stop) { 
+              # possibility 2 (P2): stp error, need to check for ext error later
+              $err_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} = "yes";
+              $err_instances_AHHR->[$ftr_idx]{"ext"}{$seq_name} = "maybe";
+              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
+            }
+            else { # $early_inframe_stop is 1
+              # possibility 3 (P3): stp and trc error
+              $err_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} = "yes";
+              $err_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name} = "yes" . "." . -1 * ($final_codon_posn1 - $first_stop_posn1);
+              if($final_codon_posn1 == $first_stop_posn1) { 
+                DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to correct a stop codon by 0 nt for feature %s sequence $seq_name", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR); 
+              }
+              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 3 (trc and stp)\n");
+            }
+          } # end of 'if(! $stop_is_valid)'
+          else { # $stop_is_valid is 1
+            if(! $early_inframe_stop) { 
+              ; 
+              # possibility 4 (P4): no errors, do nothing
+              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 4 (no errors)\n");
+            }
+            else { 
+              # possibility 5 (P5): trc error
+              $err_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name} = "yes" . "." . -1 * ($final_codon_posn1 - $first_stop_posn1);
+              if($final_codon_posn1 == $first_stop_posn1) { 
+                DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to correct a stop codon by 0 nt for feature %s sequence $seq_name", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR); 
+              }
+              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 5 (trc)\n");
+            }
+          }              
+        }
+      } # end of 'if(! $is_matpept)'
+      else { # $is_matpept is 1 
+        if(! $early_inframe_stop) { 
+          ; 
+          # possibility 6 (P6): maybe ntr error later, but can't check for it now, do nothing;
+          #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 6 (no error)\n");
+        }
+        else { # $early_inframe_stop is '1'
+          # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
+          #printf("HEYA $accn $ftr_idx possibility 7 (trc)\n");
+          $err_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name} = "yes" . "." . -1 * ($final_codon_posn1 - $first_stop_posn1);
+          if($final_codon_posn1 == $first_stop_posn1) { 
+            DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to correct a stop codon by 0 nt for feature %s sequence $seq_name", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR); 
+          }
+          #printf("HEYAA set corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} to $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn}\n");
+          #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 7 (trc error, maybe ntr error)\n");
+        }
+      }
+    }
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, unable to parse esl-epn-translate.pl output line:\n$line\n", 1, $FH_HR);
+    }
+  }
+  close(IN);
+  
   return;
 }
