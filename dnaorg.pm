@@ -1197,11 +1197,12 @@ sub fetchReferenceFeatureSequences {
         else           { $cmd .= " >> $all_stk_file"; }
         runCommand($cmd, 0, $FH_HR);
 
-        $mdl_info_HAR->{"map_ftr"}[$nmdl]   = $i;
-        $mdl_info_HAR->{"is_first"}[$nmdl]  = ($e == 0)           ? 1 : 0;
-        $mdl_info_HAR->{"is_final"}[$nmdl]  = ($e == ($nexons-1)) ? 1 : 0;
-        $mdl_info_HAR->{"map_exon"}[$nmdl]  = $e;
-        $mdl_info_HAR->{"map_nexon"}[$nmdl] = $nexons;
+        $mdl_info_HAR->{"map_ftr"}[$nmdl]    = $i;
+        $mdl_info_HAR->{"is_first"}[$nmdl]   = ($e == 0)           ? 1 : 0;
+        $mdl_info_HAR->{"is_final"}[$nmdl]   = ($e == ($nexons-1)) ? 1 : 0;
+        $mdl_info_HAR->{"map_exon"}[$nmdl]   = $e;
+        $mdl_info_HAR->{"map_nexon"}[$nmdl]  = $nexons;
+        $mdl_info_HAR->{"append_num"}[$nmdl] = 0; # maybe be changed later in determineFeatureTypes()
 
         if($e == 0) { 
           $ftr_info_HAR->{"first_mdl"}[$i] = $nmdl;
@@ -1359,7 +1360,7 @@ sub determineFeatureTypes {
           $ftr_info_HAR->{"all_children_ftr_str"}[$c] .= $mp_idx;
           $ftr_info_HAR->{"all_children_ftr_num"}[$c]++;
           $ftr_info_HAR->{"parent_ftr"}[$mp_idx] = $c;
-        }
+        }          
       }
       else { 
         # a CDS that is NOT comprised of mature peptides
@@ -1606,27 +1607,10 @@ sub validateAndGetSizeOfInfoHashOfArrays {
     }
   }
 
-  # check consistency: each array should be the same size
-  my $nel = -1;
-  my $nkey = scalar(keys %{$HAR});
-  my $nel_key = undef;
-  foreach my $key (sort keys %{$HAR}) { 
-    if($nel == -1) { 
-      $nel = scalar(@{$HAR->{$key}});
-      $nel_key = $key;
-    }
-    else { 
-      if($nel != scalar(@{$HAR->{$key}})) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, expected number of elements in array for key $key is $nel (from key $nel_key) but %d exist!", scalar(@{$HAR->{$key}})), 1, $FH_HR);
-      }
-    }
-    # make sure all values are defined
-    for(my $i = 0; $i < $nel; $i++) { 
-      if(! defined $HAR->{$key}[$i]) { 
-        DNAORG_FAIL("ERROR in $sub_name, undefined value: key: $key index: $i", 1, $FH_HR); 
-      }        
-    }
-  }
+  # get size and check consistency
+  my $nel = getConsistentSizeOfInfoHashOfArrays($HAR, $FH_HR); 
+  # this will die if not all elements are the same size, or any values are undefined
+
 
   return $nel;
 }
@@ -3688,6 +3672,7 @@ sub wrapperGetInfoUsingEdirect {
 #              2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #              3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #              4) fetches the reference sequence feature and populates information on the models and features
+#              5) look for special cases, where we want to append the 3 nt 3' of the final mature peptide in a cds-mp feature type
 #
 #              Creates the following output files and stores
 #              information on them in the ofile* data structures
@@ -3774,6 +3759,9 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
                                                  # separate alignments, one per feature
   fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
   addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, "Stockholm alignment file with reference features");
+
+  # 5) look for special cases, where we want to append the 3 nt 3' of the final mature peptide in a cds-mp feature type
+  annotateAppendFeatures($ftr_info_HAR, $mdl_info_HAR, $FH_HR);
 
   return 0;
 }
@@ -3974,7 +3962,7 @@ sub getPrimaryChildrenFromFeatureInfo {
 
   @{$AR} = ();
 
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR);
+  my $nftr = getConsistentSizeOfInfoHashOfArrays($ftr_info_HAR, $FH_HR);
   if($ftr_idx >= $nftr) { 
     DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but only $nftr exist.", 1, $FH_HR);
   }
@@ -3989,6 +3977,106 @@ sub getPrimaryChildrenFromFeatureInfo {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine : annotateAppendFeatures()
+# Incept:      EPN, Thu Mar  3 16:36:09 2016
+#
+# Purpose:     Look for and add information about special features
+#              and their corresponding models where we want to 
+#              annotate *past* the 3' end for the multifeature
+#              that is comprised of other features. The specific
+#              case we want to handle is to annotate the 3 nt 3'
+#              of the end of the final mature peptide of a mature
+#              peptide derived CDS, which is the stop codon.
+#              
+# Arguments: 
+#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
+#   $mdl_info_HAR: REF to hash of arrays with information on the models, ADDED TO HERE
+#   $FH_HR:        REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: 
+################################################################# 
+sub annotateAppendFeatures { 
+  my $nargs_expected = 3;
+  my $sub_name = "annotateAppendFeatures()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $mdl_info_HAR, $FH_HR) = @_;
+
+  my $nftr = getConsistentSizeOfInfoHashOfArrays($ftr_info_HAR, $FH_HR);
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp" && 
+       $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
+      # find final feature 
+      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
+      getPrimaryChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, \@primary_children_idx_A, $FH_HR);
+      my $final_ftr_idx = $primary_children_idx_A[(scalar(@primary_children_idx_A)-1)];
+      my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
+      $mdl_info_HAR->{"append_num"}[$final_mdl_idx] = 3; # we want to append the 3 nt 3' of this model 
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: getConsistentSizeOfInfoHashOfArrays()
+# Incept:     EPN, Fri Mar  4 08:57:17 2016
+#
+# Purpose:    Return number of hash keys ($nkey) in a 'info hash',
+#             which is actually a hash of arrays.
+#             No keys are required, but at least one must exist.
+#             Die if all existing keys do not have the exact
+#             same number of ($nkey) elements in their arrays.
+#             Die if any values are undefined.
+#
+# Arguments:
+#   $info_HAR:  REF to hash of arrays of hash
+#   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: Number of elements in each and every array of %{$info_HAR}
+#
+# Dies:    - if two arrays in %{$HAR} are of different sizes
+#          - if %{$HAR} has no keys
+#          - if any value of $HAR{$key}[] is undef 
+#################################################################
+sub getConsistentSizeOfInfoHashOfArrays { 
+  my $sub_name = "getConsistentSizeOfInfoHashOfArrays()";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($HAR, $FH_HR) = (@_);
+  
+  if((! %{$HAR}) || (scalar(keys %{$HAR}) == 0)) { 
+    DNAORG_FAIL("ERROR in $sub_name, hash of arrays does not exist or has no keys", 1, $FH_HR);
+  }
+
+  # get size and check consistency: each array should be the same size
+  my $nel = -1;
+  my $nkey = scalar(keys %{$HAR});
+  my $nel_key = undef;
+  foreach my $key (sort keys %{$HAR}) { 
+    if($nel == -1) { 
+      $nel = scalar(@{$HAR->{$key}});
+      $nel_key = $key;
+    }
+    else { 
+      if($nel != scalar(@{$HAR->{$key}})) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, expected number of elements in array for key $key is $nel (from key $nel_key) but %d exist!", scalar(@{$HAR->{$key}})), 1, $FH_HR);
+      }
+    }
+    # check that all values are defined
+    for(my $i = 0; $i < $nel; $i++) { 
+      if(! defined $HAR->{$key}[$i]) { 
+        DNAORG_FAIL("ERROR in $sub_name, undefined value: key: $key index: $i", 1, $FH_HR); 
+      }        
+    }
+  }
+
+  return $nel;
 }
 
 ###########################################################################

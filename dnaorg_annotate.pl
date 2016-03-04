@@ -32,6 +32,7 @@ my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 my $esl_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 my $esl_ssplit     = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
+my $esl_epn_translate  = "/home/nawrocke/notebook/15_1118_dnaorg_annotate_genomes_translation/git-esl-epn-translate/esl-epn-translate.pl";
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -475,6 +476,11 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #         of multiple mature peptides) combine the individual feature sequences into 
 #         single sequences.
 #########################################################
+
+$start_secs = outputProgressPrior("Combining predicted mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
+combine_feature_hits($out_root_and_key, $results_prefix, \@seq_name_A, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 # output optional output files
 if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
   dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
@@ -482,13 +488,252 @@ if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) {
 if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
   dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
+exit 0;
 
-$start_secs = outputProgressPrior("Combining predicted mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
-combine_feature_hits($out_root_and_key, $results_prefix, \@seq_name_A, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+###########################################################################
+# Before we translate the sequences, we take some extra steps to correct
+# stop predictions:
+# - for all features with a valid start codon: look for in-frame stops
+# - for all features with a valid start codon but no in-frame stops up
+#   until predicted stop position (thus, stop is an invalid stop) look
+#   downstream for first in-frame stop after predicted stop position
+#
+# CORRECT PREDICTIONS 
+# - for all features: look for in-frame stops
+# - for CDS/mature_peptides with 
+# - combine new exons into new CDS
+###########################################################################
+$start_secs = outputProgressPrior("Identifying internal starts/stops in coding sequences", $progress_w, $log_FH, *STDOUT);
 
+#my $accn;                    # name of source accession CDS/mat_peptide sequence came from
+my @corr_mft_stop_trc_or_ext_AH = ();  # [0..$i..nmft-1], each element is a hash with keys $key as sequence accessions and values 
+                                       # are number of nucleotides that the prediction of the stop coordinate should be corrected
+                                       # based on an esl-translate translation of the predicted CDS/mat_peptide sequence, values can be negative
+                                       # or positive. If negative: a trc error, if positive: a ext error
+my %c_stop_HH  = ();                  # corrected stop positions of hits,  start with a copy of p_stop_HH
+my @did_corr_exon_stop_trc_AH = ();   # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
+                                      # are '1' if this exon's stop position was corrected for a 'trc' error (early stop)
+my @did_corr_exon_stop_ext_AH = ();   # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
+                                      # are '1' if this exon's stop position was corrected for a 'ext' error (late stop (past predicted stop))
+ my %corr_fafile_H = ();     # hash of names of fasta files for corrected exon sequences, keys: model name from @mdl_A, value: name of file
+ my @corr_mft_fafile_A = (); # array of corrected CDS/mat_peptide sequence files, filled below
 
+my @accn_ext_check_AA     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
+                                # accessions to check for 'ext' error, b/c no in-frame stop within 
+                                # predicted start..stop
+my @accn_trc_error_AH     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
+                                # accessions that have 'trc' error, b/c in-frame stop exists between predicted start..stop
+my @accn_ext_error_AH     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
+                                # accessions that have 'ext' error, b/c no in-frame stop exists between predicted start..stop
+my @accn_nst_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
+                                # feature has no in-frame stop
+                                # 2nd of 2 reasons we shouldn't translate it
+                                # these should be rare, these are a subset of the accessions in
+                                # @accn_ext_check_AA, the ones that had no valid stop in-frame
+                                # for the rest of the sequence (possibly duplicated)
+my @accn_str_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
+                                # feature has an invalid start 
+                                # 1st of 2 reasons we shouldn't translate it
+my @accn_stp_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
+                                # feature's predicted stop is not a valid stop codon
+                                # 1st of 2 reasons we shouldn't translate it
 
+# initialize data structures
+my %error_AAH = ();
+initialize_error_AAH(\%error_AAH, \%ftr_info_HA);
+
+# Translate predicted CDS/mat_peptide sequences using esl-epn-translate to identify 
+# in-frame stop codons.
+for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+  my $is_matpept = ($ftr_info_HA{"type"}[$ftr_idx] eq "mp")     ? 1 : 0;
+  my $is_cds_mp  = ($ftr_info_HA{"type"}[$ftr_idx] eq "cds-mp") ? 1 : 0;
+  my $is_cds     = (! $is_matpept);
+  my $type_idx   = $ftr_info_HA{"type_idx"}[$ftr_idx];
+
+  @{$accn_ext_check_AA[$ftr_idx]} = ();
+  %{$corr_mft_stop_trc_or_ext_AH[$ftr_idx]}  = ();
+  
+  my $ofile_info_key = $ftr_info_HA{"p_hits"}[$ftr_idx];
+  my $cur_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+  
+  # translate into AA sequences
+  # MAKE THESE FILES HAVE KEY p_esl_epn_translate_output
+  my $tmp_esl_epn_translate_output = $cur_fafile . ".esl-epn-translate";
+  # deal with alternative starts here
+  my $altstart_opt = ""; # will be redefined below if we read alternative starts for this CDS with -specstart
+  if($is_cds && defined $specstart_AA[($type_idx-1)]) { 
+    $altstart_opt = "-altstart ";
+    foreach my $altstart (@{$specstart_AA[($type_idx-1)]}) { 
+      $altstart_opt .= $altstart . ",";
+    }
+    $altstart_opt =~ s/\,$//; # remove final ','
+  }
+
+  $cmd = $esl_epn_translate . " $altstart_opt -startstop $cur_fafile > $tmp_esl_epn_translate_output";
+  runCommand($cmd, opt_Get("-v", %opt_HH), $ofile_info_HH{"FH"});
+  
+  # parse esl-epn-translate output
+  open(IN, $tmp_esl_epn_translate_output) || fileOpenFailure($tmp_esl_epn_translate_output, "main", $!, "reading", $ofile_info_HH{"FH"});
+
+  while(my $line = <IN>) { 
+    # example line
+    #HQ693465/1-306 1 1 304
+    if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
+      my ($accn, $coords, $start_is_valid, $stop_is_valid, $first_stop_first_posn) = ($1, $2, $3, $4, $5);
+      
+      # A wrinkle here related to CDS comprised of mat_peptide
+      # sequences, the final codon of the final mat_peptide sequence
+      # for the CDS *SHOULD NOT* encode a stop codon. This is NCBI
+      # annotation protocol. The three nucleotides 5' of the final
+      # mat_peptide stop are in fact the stop codon. This presents a
+      # problem for us here, because we 'create' the full CDS by
+      # simply concatenating all the mat_peptide coding sequences
+      # together. However, when we do that the resulting CDS will
+      # necessarily be missing the stop codon. NCBI CDS annotation
+      # however, *does* include the stop codon, so this is an
+      # inconsistency.
+      #
+      # What this means is that normally for a mat_peptide comprised
+      # CDS, the $stop_is_valid value will be 0 because
+      # esl-epn-translate has not checked the correct 3 nucleotides to
+      # see if it is a valid stop codon. To deal with this, we've
+      # previously stored whether the final mat_peptide's next 3
+      # nucleotides encode a valid stop codon or not. We have that in
+      # $matpept_cds_stop_codon_AH() which was filled following a call
+      # to matpeptCheckCdsRelationships() which manually checks the
+      # next 3 nucleotides 3' of the stop position. So we use that
+      # value to override $stop_is_valid here.
+      if($is_cds_mp) { # a mat_peptide comprised CDS
+        #my $seq_accn = $accn2seq_accn_H{$accn};
+        my $seq_accn = undef;
+        #my $cur_stop_codon = $matpept_cds_stop_codon_AH[($ftr_idx - $ref_nmft)]{$seq_accn};
+        my $cur_stop_codon = undef;
+        #printf("REEXAMINING stop_is_valid, was: $stop_is_valid, now: ");
+        $stop_is_valid = ((defined $cur_stop_codon) && 
+                          ($cur_stop_codon eq "TAG" || $cur_stop_codon eq "TAA" || $cur_stop_codon eq "TGA" || $cur_stop_codon eq "TAR"))
+            ? 1 : 0;
+        #printf("$stop_is_valid\n");
+      }
+
+      # determine what first_stop_first_posn would be if the final codon is the first in-frame stop
+      my @start_stop_A = split(",", $coords);
+      my $cds_len = 0;
+      foreach my $start_stop (@start_stop_A) { 
+        if($start_stop =~ /(\-?\d+)\-(\-?\d+)/) { 
+          $cds_len += abs($1 - $2) + 1;
+          my ($tmp_start, $tmp_stop) = ($1, $2);
+          if(($tmp_start < 0 && $tmp_stop > 0) || ($tmp_start > 0 && $tmp_stop < 0)) { $cds_len--; } # correct for off-by-one error due to fact that posn 0 is not a nt
+        }
+        else { 
+          die "ERROR unable to parse coordinates ($coords) read from esl-epn-translate.pl output";
+        }
+      }
+      my $final_codon_first_posn = $cds_len - 2;
+      my $early_inframe_stop     = (($first_stop_first_posn != 0) && ($first_stop_first_posn != $final_codon_first_posn)) ? 1 : 0;
+
+      # We now have all of the relevant data on the current
+      # CDS/mat_peptide sequence and we need to use that to determine
+      # what errors each sequence should throw (at least for those
+      # that can tell should be thrown at this point in the
+      # processing) as well as any corrections to stop predictions
+      # that we should make prior to translation (trc errors are
+      # thrown when this happens).
+      # 
+      # There are 4 relevant variables that dictate which errors
+      # should be thrown/checked for later and whether a stop
+      # correction should be made. The table gives all possible
+      # combinations of values of those variables and lists the
+      # outcome of each possibility.
+      #
+      # Variables we know from earlier processing:
+      # $is_matpept:     '1' if current feature is a mature peptide, '0' if it is a CDS
+      #
+      # Variables derived from esl-epn-translate output we're currently parsing
+      # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
+      # $stop_is_valid:      '1' if current feature's final 3 nt encode a valid stop codon and total feature length is multiple of 3
+      # $early_inframe_stop: '1' if an inframe stop exists prior to predicted stop
+      #
+      # 7 possibilities, each with different outcome (P1-P7):
+      #                                                                                       | make correction to |
+      # idx | is_matpept | start_is_valid | stop_is_valid | early_inframe_stop ||   errors    | stop coordinate?   |
+      # ----|------------|----------------|---------------|--------------------||-------------|--------------------|
+      #  P1 |      false |          false |          any  |                any ||         str |                 no |
+      #  P2 |      false |           true |        false  |              false ||     stp ext?|     maybe (if ext) |
+      #  P3 |      false |           true |        false  |               true ||     stp trc |                yes |
+      #  P4 |      false |           true |         true  |              false ||        none |                 no |
+      #  P5 |      false |           true |         true  |               true ||         trc |                yes |
+      # -----------------------------------------------------------------------||-----------------------------------
+      #  P6 |       true |            any |          any  |              false ||        ntr? |                 no |
+      #  P7 |       true |            any |          any  |               true ||    trc ntr? |                yes |
+      # ------------------------------------------------------------------------------------------------------------
+      # 
+      # in table above:
+      # '?' after error code means that error is possible, we have to check for it later           
+      # 'any' means that any value is possible, outcome is unaffected by value
+      #
+      if(! $is_matpept) { 
+        if(! $start_is_valid) { # possibility 1 (P1)
+          #printf("HEYA $accn $c possibility 1 (str)\n");
+          $accn_str_error_AH[$ftr_idx]{$accn} = 1;
+        }
+        else { 
+          # $start_is_valid is 1
+          if(! $stop_is_valid) { 
+            if(! $early_inframe_stop) { 
+              # possibility 2 (P2): stp error, need to check for ext error later
+              #printf("HEYA $accn $ftr_idx possibility 2 (stp, maybe ext)\n");
+              $accn_stp_error_AH[$ftr_idx]{$accn} = 1;
+              push(@{$accn_ext_check_AA[$ftr_idx]}, $accn);
+            }
+            else { # $early_inframe_stop is 1
+              # possibility 3 (P3): stp and trc error
+              #printf("HEYA $accn $ftr_idx possibility 3 (trc and stp)\n");
+              $accn_stp_error_AH[$ftr_idx]{$accn} = 1;
+              $accn_trc_error_AH[$ftr_idx]{$accn} = 1;
+              $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
+              if($final_codon_first_posn == $first_stop_first_posn) { die "ERROR trying to correct a stop by 0 nt"; }
+              #printf("HEYAA set corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} to $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn}\n");
+            }
+          } # end of 'if(! $stop_is_valid)'
+          else { # $stop_is_valid is 1
+            if(! $early_inframe_stop) { 
+              #printf("HEYA $accn $ftr_idx possibility 4 (no errors)\n");
+              ;# possibility 4 (P4): no errors, do nothing
+            }
+            else { 
+              # possibility 5 (P5): trc error
+              #printf("HEYA $accn $ftr_idx possibility 5 (trc)\n");
+              $accn_trc_error_AH[$ftr_idx]{$accn} = 1;
+              $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
+              if($final_codon_first_posn == $first_stop_first_posn) { die "ERROR trying to correct a stop by 0 nt"; }
+              #printf("HEYAA set corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} to $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn}\n");
+            }
+          }              
+        }
+      } # end of 'if(! $is_matpept)'
+      else { # $is_matpept is 1 
+        if(! $early_inframe_stop) { 
+          # possibility 6 (P6): maybe ntr error later, but can't check for it now, do nothing;
+          #printf("HEYA $accn $ftr_idx possibility 6 (no error)\n");
+        }
+        else { # $early_inframe_stop is '1'
+          # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
+          #printf("HEYA $accn $ftr_idx possibility 7 (trc)\n");
+          $accn_trc_error_AH[$ftr_idx]{$accn} = 1;
+          $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} = -1 * ($final_codon_first_posn - $first_stop_first_posn);
+          if($final_codon_first_posn == $first_stop_first_posn) { die "ERROR trying to correct a stop by 0 nt"; }
+          #printf("HEYAA set corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} to $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn}\n");
+        }
+      }
+    }
+    else { 
+      die "ERROR, unable to parse esl-epn-translate.pl output line: $line\n";
+    }
+  }
+  close(IN);
+}
+
+########################################################################
 ##########
 # Conclude
 ##########
@@ -1051,7 +1296,11 @@ sub dump_results {
 #
 # Purpose:    Given the results data structure, fetch all
 #             hits to fasta files.
-#
+#             As an extra step, fetch any 'appended' sequence
+#             for models in which $mdl_info_HAR->{"append_num"}[$mdl_idx]
+#             is non-zero. This will go to a separate file,
+#             and we'll append it to sequence hits from other 
+#             models in combine_feature_hits.
 # Arguments: 
 #  $sqfile:            REF to Bio::Easel::SqFile object, open sequence file containing
 #                      usually $out_root . ".predicted", or $out_root . ".corrected"
@@ -1076,13 +1325,21 @@ sub fetch_hits_given_results {
   my $nmdl = scalar(@{$results_AAHR});
   my $nseq = scalar(@{$seq_name_AR}); 
 
-  my $start_key = $results_prefix . "start"; # key for 'start' in 3rd dim of @{$results_AAHR}
-  my $stop_key  = $results_prefix . "stop";  # key for 'stop'  in 3rd dim of @{$results_AAHR}
+  my $start_key  = $results_prefix . "start";  # key for 'start'  in 3rd dim of @{$results_AAHR}
+  my $stop_key   = $results_prefix . "stop";   # key for 'stop'   in 3rd dim of @{$results_AAHR}
+  my $strand_key = $results_prefix . "strand"; # key for 'strand' in 3rd dim of @{$results_AAHR}
   
+  my $mdl_info_key        = $results_prefix . "hits";
+  my $mdl_info_append_key = $results_prefix . "hits.append";
+
   for(my $m = 0; $m < $nmdl; $m++) { 
-    my @fetch_AA = ();
+    my @fetch_AA        = ();
+    my @fetch_append_AA = ();
     my $mdl_name = $mdl_info_HAR->{"cmname"}[$m];
-    my $nseq2fetch = 0; # number of sequences we'll fetch
+    my $nseq2fetch        = 0; # number of sequences we'll fetch
+    my $nseq2fetch_append = 0; # number of sequences we'll fetch for append file
+    my $append_num = ($mdl_info_HAR->{"append_num"}[$m]);
+
     for(my $s = 0; $s < $nseq; $s++) { 
       my $seq_name = $seq_name_AR->[$s];
       if($s == 0 && (! %{$results_AAHR->[$m][$s]})) { 
@@ -1095,15 +1352,35 @@ sub fetch_hits_given_results {
         if(! exists $results_AAHR->[$m][$s]{$stop_key}) { 
           DNAORG_FAIL("ERROR in $sub_name(), no stop value for hit of model $mdl_name to the sequence $seq_name", 1, $ofile_info_HHR->{"FH"}); 
         }
-        my $start = $results_AAHR->[$m][$s]{$start_key};
-        my $stop  = $results_AAHR->[$m][$s]{$stop_key};
+        my $start  = $results_AAHR->[$m][$s]{$start_key};
+        my $stop   = $results_AAHR->[$m][$s]{$stop_key};
+        my $strand = $results_AAHR->[$m][$s]{$strand_key};
 
-        my $new_name .= $seq_name . "/" . $start . "-" . $stop;
+        my $new_name = $seq_name . "/" . $start . "-" . $stop;
         push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
+
         $nseq2fetch++;
+
+        if($append_num > 0) { 
+          my $append_start;
+          my $append_stop;
+          if($strand eq "+") { 
+            $append_start = $stop + 1;
+            $append_stop  = $stop + $append_num;
+          }
+          else { 
+            $append_start = $stop - 1;
+            $append_stop  = $stop + $append_num;
+          }
+          my $append_new_name = $seq_name . "/" . $append_start . "-" . $append_stop;
+          printf("added $append_new_name $append_start $append_stop $seq_name to fetch_append_AA\n");
+          push(@fetch_append_AA, [$append_new_name, $append_start, $append_stop, $seq_name]);
+        
+          $nseq2fetch_append++;
+        }
       }
     }
-    my $mdl_info_key = $results_prefix . "hits";
+
     if($nseq2fetch > 0) { 
       my $out_fafile = $out_root_and_key . ".". $mdl_info_HAR->{"filename_root"}[$m] . ".fa";
       $sqfile->fetch_subseqs(\@fetch_AA, undef, $out_fafile);
@@ -1112,9 +1389,23 @@ sub fetch_hits_given_results {
       addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $out_fafile, "fasta file with predicted hits for model " . $mdl_info_HAR->{"out_tiny"}[$m]);
       # now save this file in the mdl_info_HAR
       $mdl_info_HAR->{$mdl_info_key}[$m] = $ofile_info_key;
+
+      if($nseq2fetch_append > 0) { 
+        my $out_fafile = $out_root_and_key . ".". $mdl_info_HAR->{"filename_root"}[$m] . ".append.fa";
+        $sqfile->fetch_subseqs(\@fetch_append_AA, undef, $out_fafile);
+        # save information on this to the output file info hash
+        my $ofile_info_key = $results_prefix . "hits" . ".model" . $m . ".append";
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $out_fafile, "fasta file with predicted appended hits for model " . $mdl_info_HAR->{"out_tiny"}[$m]);
+        # now save this file in the mdl_info_HAR
+        $mdl_info_HAR->{$mdl_info_append_key}[$m] = $ofile_info_key;
+      }
+      else { 
+        $mdl_info_HAR->{$mdl_info_append_key}[$m] = ""; # no file to append for this model either
+      }
     }
     else { 
-      $mdl_info_HAR->{$mdl_info_key}[$m] = ""; # no file for this model
+      $mdl_info_HAR->{$mdl_info_key}[$m]        = ""; # no file for this model
+      $mdl_info_HAR->{$mdl_info_append_key}[$m] = ""; # no file to append for this model either
     }
   }
 
@@ -1157,10 +1448,14 @@ sub combine_model_hits {
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
   my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nmdl: number of homology models
 
+  my $ftr_info_key        = $results_prefix . "hits";
+  my $ftr_info_append_key = $results_prefix . "hits.append";
+  my $mdl_info_key        = $results_prefix . "hits";
+  my $mdl_info_append_key = $results_prefix . "hits.append";
+
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # we only do this for features annotated by models
       my $mdl_idx        = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
-      my $mdl_info_key   = $results_prefix . "hits";
       my $ofile_info_key = $mdl_info_HAR->{$mdl_info_key}[$mdl_idx];
       my $mdl_hit_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
       validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
@@ -1170,7 +1465,6 @@ sub combine_model_hits {
       #######################################
       if($ftr_info_HAR->{"nmodels"}[$ftr_idx] == 1) { 
         # a single model (e.g. exon) gene, we should already have the sequence from fetch_hits
-        my $ftr_info_key = $mdl_info_key;
         $ftr_info_HAR->{$ftr_info_key}[$ftr_idx] = $ofile_info_key;
       }
       #######################################
@@ -1192,11 +1486,28 @@ sub combine_model_hits {
         my $ofile_info_key = $results_prefix . "hits" . ".ftr" . $ftr_idx;
         addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, "fasta file with predicted hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
         # now save this file in the ftr_info_HAR
-        my $ftr_info_key = $results_prefix . "hits";
         $ftr_info_HAR->{$ftr_info_key}[$ftr_idx] = $ofile_info_key;
       }
+
+      # check if there's a file to append
+      my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+      if($mdl_info_HAR->{$mdl_info_append_key}[$final_mdl_idx] ne "") { 
+        # yes, there is
+        my $ofile_info_append_key = $mdl_info_HAR->{$mdl_info_append_key}[$final_mdl_idx];
+        my $mdl_hit_append_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_append_key};
+        validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+        $ftr_info_HAR->{$ftr_info_append_key}[$ftr_idx] = $ofile_info_append_key;
+      }
+      else { # no file to append, set to ""
+        $ftr_info_HAR->{$ftr_info_append_key}[$ftr_idx] = "";
+      }
+    } # end of 'if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model")'
+    else { # $ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "model"
+      # these never have anything appended
+      $ftr_info_HAR->{$ftr_info_append_key}[$ftr_idx] = "";
     }
   }
+  
   return;
 }
 
@@ -1207,7 +1518,7 @@ sub combine_model_hits {
 # Purpose:    For all features that are annotated by combining
 #             multiple other features ($ftr_info_HAR->{"annot_type"}[*] 
 #             = "multifeature", e.g. CDS made up of mature peptides)
-#             create the feature fasta file for each.Calls 
+#             create the feature fasta file for each. Calls 
 #             'combine_sequences()' which does much of the work.
 #
 # Arguments: 
@@ -1232,7 +1543,8 @@ sub combine_feature_hits {
   my ($out_root_and_key, $results_prefix, $seq_name_AR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-  my $ftr_info_key = $results_prefix . "hits";
+  my $ftr_info_key        = $results_prefix . "hits";
+  my $ftr_info_append_key = $results_prefix . "hits.append";
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features annotated by models
@@ -1246,6 +1558,14 @@ sub combine_feature_hits {
         my $ftr_hit_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
         validateFileExistsAndIsNonEmpty($ftr_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
         push(@tmp_hit_fafile_A, $ftr_hit_fafile);
+        # check if this feature has a mandatory file to append
+        if($ftr_info_HAR->{$ftr_info_append_key}[$ftr_idx] ne "") { 
+          # it does, append it
+          my $ofile_info_append_key = $ftr_info_HAR->{$ftr_info_append_key}[$ftr_idx];
+          my $ftr_hit_append_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_append_key};
+          validateFileExistsAndIsNonEmpty($ftr_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+          push(@tmp_hit_fafile_A, $ftr_hit_append_fafile);
+        }
       }
       # combine the sequences into 1 file
       combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $ofile_info_HHR->{"FH"});
