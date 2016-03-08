@@ -2824,7 +2824,7 @@ sub validateErrorInfoHashIsComplete {
  
   my ($err_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("code", "msg", "type");
+  my @expected_keys_A = ("code", "pertype", "valtype", "msg", "incompat", "requires");
 
   return validateInfoHashOfArraysIsComplete($err_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
@@ -2864,7 +2864,7 @@ sub validateInfoHashOfArraysIsComplete {
   # make sure our exceptions are actually in the expected array
   if(defined $exceptions_AR) { 
     foreach my $key (@{$exceptions_AR}) { 
-      if(findValueInArray($expected_keys_AR, $key, $FH_HR) == -1) { 
+      if(findNonNumericValueInArray($expected_keys_AR, $key, $FH_HR) == -1) { 
         DNAORG_FAIL("ERROR in $sub_name, excepted value $key is not an expected key in the feature info hash", 1, $FH_HR);
       }
     }
@@ -2873,7 +2873,7 @@ sub validateInfoHashOfArraysIsComplete {
   # make the list of keys we'll require, this is all expected keys minus any exceptions in @{$exceptions_AR}
   my @reqd_keys_A = ();
   foreach my $key (@{$expected_keys_AR}) { 
-    if((! defined $exceptions_AR) || (findValueInArray($key, $exceptions_AR, $FH_HR) == -1)) { 
+    if((! defined $exceptions_AR) || (findNonNumericValueInArray($key, $exceptions_AR, $FH_HR) == -1)) { 
       push(@reqd_keys_A, $key);
     }
   }
@@ -2997,10 +2997,10 @@ sub findNonNumericValueInArray {
   my $nargs_expected = 3;
   my $sub_name = "validateValueExistsInArray()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($AR, $value, $FH_HR);
+  my ($AR, $value, $FH_HR) = @_;
 
-  if($value =~ m/^\d+\.?\d*$/ || $value =~ m/^\d*\.?\d+$/) {
-      DNAORG_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", 1, $FH_HR);
+  if(verify_real($value)) { 
+    DNAORG_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", 1, $FH_HR);
   }
 
   if(! defined $AR) { 
@@ -3008,9 +3008,9 @@ sub findNonNumericValueInArray {
   }
 
   for(my $i = 0; $i < scalar(@{$AR}); $i++) {
-      if($AR->[$i] eq $value) { 
-        return $i; 
-      }
+    if($AR->[$i] eq $value) { 
+      return $i; 
+    }
   }
 
   return -1; # did not find it
@@ -4153,23 +4153,32 @@ sub initializeHardCodedErrorInfoHash {
 
   # add each error code, this function will die if we try to add the same code twice, or if the 3rd argument is 
   # neither "sequence" nor "feature"
-  addToErrorInfoHash($err_info_HAR, "nop", "feature", "unable to identify homologous feature", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "nm3", "feature", "length of nucleotide feature is not a multiple of 3", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "bd5", "feature", "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "bd3", "feature", "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "olp", "feature", "feature does not overlap with same set of features as in reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "str", "feature", "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "stp", "feature", "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ajb", "feature", "mature peptide is not adjacent to same set of mature peptides before it as in reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "aja", "feature", "mature peptide is not adjacent to same set of mature peptides after it as in reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "trc", "feature", "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ext", "feature", "first in-frame stop codon exists 3' of stop position predicted by homology to reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ntr", "feature", "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "nst", "feature", "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "aji", "feature", "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "int", "feature", "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not translated due to early stop (ntr)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "inp", "feature", "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ori", "sequence", "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "nop", "feature",  "yes",         "unable to identify homologous feature", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "nm3", "feature",  "yes",         "length of nucleotide feature is not a multiple of 3", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "bd5", "feature",  "nonzero_int", "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "bd3", "feature",  "nonzero_int", "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "olp", "feature",  "string",      "feature does not overlap with same set of features as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "str", "feature",  "yes",         "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "stp", "feature",  "yes",         "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ajb", "feature",  "string",      "mature peptide is not adjacent to same set of mature peptides before it as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "aja", "feature",  "string",      "mature peptide is not adjacent to same set of mature peptides after it as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "trc", "feature",  "nonzero_int", "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ext", "feature",  "nonzero_int", "first in-frame stop codon exists 3' of stop position predicted by homology to reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ntr", "feature",  "yes",         "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "nst", "feature",  "yes",         "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "aji", "feature",  "yes",         "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "int", "feature",  "yes",         "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not translated due to early stop (ntr)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "inp", "feature",  "yes",         "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ori", "sequence", "yes",         "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
+
+  # define the incompatibilities, these are 2 sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
+  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,olp,str,stp,ajb,aja,trc,ext,ntr,nst,aji,int,inp", $FH_HR);
+  setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext", $FH_HR);
+  setIncompatibilityErrorInfoHash($err_info_HAR, "trc", "ext,nst", $FH_HR);
+
+  # define the required combinations, these are 1 sided, error code arg 2 requires error code arg 3, but error code arg 3 does not require err code arg 2
+  setRequiredErrorInfoHash($err_info_HAR, "ext", "stp", $FH_HR);
+  setRequiredErrorInfoHash($err_info_HAR, "nst", "stp", $FH_HR);
 
   return;
 }
@@ -4184,7 +4193,8 @@ sub initializeHardCodedErrorInfoHash {
 # Arguments:
 #   $err_info_HAR:  REF to hash of arrays of error information, FILLED HERE
 #   $code:          the code of the element we are adding
-#   $type:          the type of the element we are adding
+#   $pertype:       the 'per-type' of the element we are adding, "sequence" or "feature"
+#   $valtype:       the 'value-type' of the element we are adding, "yes", "string" or "nonzero_int"
 #   $msg:           the error message of the element we are adding
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 # 
@@ -4196,10 +4206,10 @@ sub initializeHardCodedErrorInfoHash {
 #################################################################
 sub addToErrorInfoHash { 
   my $sub_name = "addToErrorInfoHash";
-  my $nargs_expected = 5;
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($err_info_HAR, $code, $type, $msg, $FH_HR) = (@_);
+  my ($err_info_HAR, $code, $pertype, $valtype, $msg, $FH_HR) = (@_);
 
   # check if $code already exists
   if(exists $err_info_HAR->{"code"}) { 
@@ -4212,17 +4222,134 @@ sub addToErrorInfoHash {
     }
   }
 
-  if(($type ne "feature") && ($type ne "sequence")) { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with type $type that is not neither \"feature\" nor \"sequence\"."); 
+  if(($pertype ne "feature") && ($pertype ne "sequence")) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\"."); 
+  }
+  if(($valtype ne "yes") && ($valtype ne "string") && ($valtype ne "nonzero_int")) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with value type $valtype that is not neither \"yes\" nor \"string\" nor \"nonzero_int\"."); 
   }
 
-  if(! exists $err_info_HAR->{"code"}) { @{$err_info_HAR->{"code"}} = (); }
-  if(! exists $err_info_HAR->{"type"}) { @{$err_info_HAR->{"type"}} = (); }
-  if(! exists $err_info_HAR->{"msg"})  { @{$err_info_HAR->{"msg"}} = (); }
+  if(! exists $err_info_HAR->{"code"})     { @{$err_info_HAR->{"code"}} = (); }
+  if(! exists $err_info_HAR->{"pertype"})  { @{$err_info_HAR->{"pertype"}} = (); }
+  if(! exists $err_info_HAR->{"valtype"})  { @{$err_info_HAR->{"valtype"}} = (); }
+  if(! exists $err_info_HAR->{"msg"})      { @{$err_info_HAR->{"msg"}} = (); }
+  if(! exists $err_info_HAR->{"incompat"}) { @{$err_info_HAR->{"incompat"}} = (); }
+  if(! exists $err_info_HAR->{"requires"}) { @{$err_info_HAR->{"requires"}} = (); }
   
-  push(@{$err_info_HAR->{"code"}}, $code); 
-  push(@{$err_info_HAR->{"type"}}, $type); 
-  push(@{$err_info_HAR->{"msg"}}, $msg); 
+  push(@{$err_info_HAR->{"code"}},    $code); 
+  push(@{$err_info_HAR->{"pertype"}}, $pertype); 
+  push(@{$err_info_HAR->{"valtype"}}, $valtype); 
+  push(@{$err_info_HAR->{"msg"}},     $msg); 
+  push(@{$err_info_HAR->{"incompat"}}, ""); # initialized to no incompatabilities, possibly added later with setIncompatibilityErrorInfoHash()
+  push(@{$err_info_HAR->{"requires"}}, ""); # initialized to no incompatabilities, possibly added later with setIncompatibilityErrorInfoHash()
+
+  return;
+}
+
+#################################################################
+# Subroutine: setIncompatibilityErrorInfoHash
+# Incept:     EPN, Tue Mar  8 11:18:14 2016
+#
+# Purpose:    Add to the incompatibility value for an error code $code1 given
+#             a string of other error codes $code2. Incompatibilities
+#             are bi-directional, so we add an incompatibility between 
+#             $code1 and $code2 and between $code2 and $code1.
+#
+# Arguments:
+#   $err_info_HAR:  REF to hash of arrays of error information, FILLED HERE
+#   $code1:         the code of the element we are adding incompatibility for
+#   $code2str:      the codes $code1 is incompatible with, separated by a comma
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: void
+#
+# Dies:    if one of the error codes in $code1 or $code2str do not
+#          exist in %{$err_info_HAR}.
+#
+#################################################################
+sub setIncompatibilityErrorInfoHash { 
+  my $sub_name = "setIncompatibilityErrorInfoHash";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($err_info_HAR, $code1, $code2str, $FH_HR) = (@_);
+
+  my $idx1 = findNonNumericValueInArray($err_info_HAR->{"code"}, $code1, $FH_HR);
+  if($idx1 == -1) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add incompatibility for code $code1, but it does not exist in the error info hash", 1, $FH_HR);
+  }
+
+  my @code2_A = split(',', $code2str);
+  foreach my $code2 (@code2_A) { 
+    my $idx2 = findNonNumericValueInArray($err_info_HAR->{"code"}, $code2, $FH_HR);
+    if($idx2 == -1) { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add incompatibility between codes $code1 and $code2, but $code2 does not exist in the error info hash", 1, $FH_HR);
+    }
+    if($idx1 == $idx2) { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add incompatibility between a code and itself: $code1 and $code2", 1, $FH_HR);
+    }
+
+    # add ',' if necessary
+    if($err_info_HAR->{"incompat"}[$idx1] ne "") { $err_info_HAR->{"incompat"}[$idx1] .= ","; }
+    if($err_info_HAR->{"incompat"}[$idx2] ne "") { $err_info_HAR->{"incompat"}[$idx2] .= ","; }
+
+    # this is a bi-directional relationship
+    $err_info_HAR->{"incompat"}[$idx1] .= $idx2;
+    $err_info_HAR->{"incompat"}[$idx2] .= $idx1;
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: setRequiredErrorInfoHash
+# Incept:     EPN, Tue Mar  8 11:38:26 2016
+#
+# Purpose:    Add to the required value for an error code $code1 given
+#             a string of other error codes $code2. Required values
+#             are uni-directional, so we add only a requirement between
+#             $code1 and $code2, but not between $code2 and $code1.
+#
+# Arguments:
+#   $err_info_HAR:  REF to hash of arrays of error information, FILLED HERE
+#   $code1:         the code of the element we are adding requirement for
+#   $code2str:      the codes $code1 requires, separated by a comma
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: void
+#
+# Dies:    if one of the error codes in $code1 or $code2str do not
+#          exist in %{$err_info_HAR}.
+#
+#################################################################
+sub setRequiredErrorInfoHash { 
+  my $sub_name = "setRequiredErrorInfoHash";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($err_info_HAR, $code1, $code2str, $FH_HR) = (@_);
+
+  my $idx1 = findNonNumericValueInArray($err_info_HAR->{"code"}, $code1, $FH_HR);
+  if($idx1 == -1) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add requirement for code $code1, but it does not exist in the error info hash", 1, $FH_HR);
+  }
+
+  my @code2_A = split(',', $code2str);
+  foreach my $code2 (@code2_A) { 
+    my $idx2 = findNonNumericValueInArray($err_info_HAR->{"code"}, $code2, $FH_HR);
+    if($idx2 == -1) { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add requirement between codes $code1 and $code2, but $code2 does not exist in the error info hash", 1, $FH_HR);
+    }
+    if($idx1 == $idx2) { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add requirement between a code and itself: $code1 and $code2", 1, $FH_HR);
+    }
+
+    # add ',' if necessary
+    if($err_info_HAR->{"requires"}[$idx1] ne "") { $err_info_HAR->{"incompat"}[$idx1] .= ","; }
+
+    # this is a uni-directional relationship
+    $err_info_HAR->{"requires"}[$idx1] .= $idx2;
+  }
 
   return;
 }
@@ -4249,7 +4376,7 @@ sub addToErrorInfoHash {
 #
 #################################################################
 sub dashCoordsStringCommaDelimitedToLength {
-  my $sub_name = "addToErrorInfoHash";
+  my $sub_name = "dashCoordsStringCommaDelimitedToLength()";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -4394,6 +4521,46 @@ sub dumpArrayOfHashesOfHashes {
 
   return;
 }
+
+#################################################################
+# Subroutine: findValueInArray()
+# Incept:     EPN, Tue Mar  8 11:26:03 2016
+# Synopsis:   Look for a value in an array and return the index
+#             of it, if found, else return -1. If it exists more than
+#             once, return the minimum index.
+#
+# Arguments:
+#  $value:   value to look for
+#  $AR:      array to look in
+#
+# Returns:    void
+# 
+#################################################################
+sub findValueInArray { 
+  my $sub_name = "findValueInArray()";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($value, $AR, $FH_HR) = @_;
+
+  if(verify_real($value)) { # compare with ==
+    for(my $i = 0; $i < scalar(@{$AR}); $i++) { 
+      my $el = $AR->[$i];
+      if(verify_real($el) && ($value == $el)) { 
+        return $i;
+      }
+    }
+  }
+  else { 
+    for(my $i = 0; $i < scalar(@{$AR}); $i++) { 
+      my $el = $AR->[$i];
+      if((! verify_real($el)) && ($value eq $el)) { 
+        return $i;
+      }
+    }
+  }
+  return -1;
+}  
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value
