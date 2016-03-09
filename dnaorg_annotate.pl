@@ -454,16 +454,18 @@ for(my $m = 0; $m < $nmdl; $m++) {
 
 # parse the cmscan results
 parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \@seq_name_A, \@accn_A, \%totlen_H, \@results_AAH, $ofile_info_HH{"FH"});
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-# dump results
-# dump_results(\@results_AAH, \%mdl_info_HA, \@seq_name_A, \@accn_A, \%totlen_H, *STDOUT);
+# calculate the lengths
+my $results_prefix = "p_"; # we want to fetch the hits with information stored with 3rd dimension keys that begin with "p_" in @results_AAH
+$start_secs = outputProgressPrior("Calculating predicted feature lengths ", $progress_w, $log_FH, *STDOUT);
+calculate_results_lengths(\%mdl_info_HA, \%ftr_info_HA, scalar(@seq_name_A), \@results_AAH, $results_prefix, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
 # Step 5. Fetch predicted hits into fasta files.
 ##########################################################
 my $out_root_and_key = $out_root . ".predicted";
-my $results_prefix = "p_"; # we want to fetch the hits with information stored with 3rd dimension keys that begin with "p_" in @results_AAH
 $start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta files", $progress_w, $log_FH, *STDOUT);
 fetch_hits_given_results($sqfile, $out_root_and_key, \%mdl_info_HA, \@seq_name_A, \@results_AAH, $results_prefix, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -494,54 +496,14 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
   dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
 
-###########################################################################
-# Before we translate the sequences, we take some extra steps to correct
-# stop predictions:
-# - for all features with a valid start codon: look for in-frame stops
-# - for all features with a valid start codon but no in-frame stops up
-#   until predicted stop position (thus, stop is an invalid stop) look
-#   downstream for first in-frame stop after predicted stop position
-#
-# CORRECT PREDICTIONS 
-# - for all features: look for in-frame stops
-# - for CDS/mature_peptides with 
-# - combine new exons into new CDS
-###########################################################################
+#########################################################
+# Step 8. Examine each predicted feature to see if:
+#         - start codon is valid
+#         - where first in-frame stop exists (for all features with valid start codon)
+#         Store the relevant information in @err_instances_AHH to either output later
+#         or examine more later.
+#########################################################
 $start_secs = outputProgressPrior("Identifying internal starts/stops in coding sequences", $progress_w, $log_FH, *STDOUT);
-
-#my $accn;                    # name of source accession CDS/mat_peptide sequence came from
-my @corr_mft_stop_trc_or_ext_AH = ();  # [0..$i..nmft-1], each element is a hash with keys $key as sequence accessions and values 
-                                       # are number of nucleotides that the prediction of the stop coordinate should be corrected
-                                       # based on an esl-translate translation of the predicted CDS/mat_peptide sequence, values can be negative
-                                       # or positive. If negative: a trc error, if positive: a ext error
-my %c_stop_HH  = ();                  # corrected stop positions of hits,  start with a copy of p_stop_HH
-my @did_corr_exon_stop_trc_AH = ();   # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
-                                      # are '1' if this exon's stop position was corrected for a 'trc' error (early stop)
-my @did_corr_exon_stop_ext_AH = ();   # [0..$i..ref_nexons-1], each element is a hash with keys $key as sequence accessions and values 
-                                      # are '1' if this exon's stop position was corrected for a 'ext' error (late stop (past predicted stop))
- my %corr_fafile_H = ();     # hash of names of fasta files for corrected exon sequences, keys: model name from @mdl_A, value: name of file
- my @corr_mft_fafile_A = (); # array of corrected CDS/mat_peptide sequence files, filled below
-
-my @accn_ext_check_AA     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
-#                                # accessions to check for 'ext' error, b/c no in-frame stop within 
-#                                # predicted start..stop
-#my @accn_trc_error_AH     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
-#                                # accessions that have 'trc' error, b/c in-frame stop exists between predicted start..stop
-#my @accn_ext_error_AH     = (); # [0..$c..$ref_nmp_and_cds-1][0..$j..$n] for each feature $c, array of source 
-#                                # accessions that have 'ext' error, b/c no in-frame stop exists between predicted start..stop
-#my @accn_nst_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
-#                                # feature has no in-frame stop
-#                                # 2nd of 2 reasons we shouldn't translate it
-#                                # these should be rare, these are a subset of the accessions in
-#                                # @accn_ext_check_AA, the ones that had no valid stop in-frame
-#                                # for the rest of the sequence (possibly duplicated)
-#my @accn_str_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
-#                                # feature has an invalid start 
-#                                # 1st of 2 reasons we shouldn't translate it
-#my @accn_stp_error_AH     = (); # 1st dim [0..$c..$ref_nmp_and_cds-1], key: source accn, value: 1 if this 
-#                                # feature's predicted stop is not a valid stop codon
-#                                # 1st of 2 reasons we shouldn't translate it
-
 # initialize data structures
 my %err_info_HA = (); 
 initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
@@ -555,30 +517,23 @@ initialize_error_instances_AHH(\@err_instances_AHH, \%err_info_HA, \%ftr_info_HA
 
 # Translate predicted CDS/mat_peptide sequences using esl-epn-translate to identify 
 # in-frame stop codons.
-for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-  my $is_matpept = ($ftr_info_HA{"type"}[$ftr_idx] eq "mp")     ? 1 : 0;
-  my $is_cds_mp  = ($ftr_info_HA{"type"}[$ftr_idx] eq "cds-mp") ? 1 : 0;
-  my $is_cds     = (! $is_matpept);
-  my $type_idx   = $ftr_info_HA{"type_idx"}[$ftr_idx];
-
-#  @{$accn_ext_check_AA[$ftr_idx]} = ();
-#  %{$corr_mft_stop_trc_or_ext_AH[$ftr_idx]}  = ();
-  
+my $ftr_idx;
+for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
   my $ofile_info_key = $ftr_info_HA{"p_hits"}[$ftr_idx];
   my $cur_fafile     = $ofile_info_HH{"fullpath"}{$ofile_info_key};
-  
-  # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
   my $esl_epn_translate_outfile = $cur_fafile . ".esl-epn-translate";
-
+  
   # deal with alternative starts here
   my $altstart_opt = "";
-  if($is_cds && opt_IsUsed("--specstart", \%opt_HH)) { 
-    $altstart_opt = "-altstart " . get_altstart_list(\@specstart_AA, $type_idx-1, $ofile_info_HH{"FH"}); 
+  if(($ftr_info_HA{"type"}[$ftr_idx] eq "cds-mp" || $ftr_info_HA{"type"}[$ftr_idx] eq "cds-notmp") && 
+     opt_IsUsed("--specstart", \%opt_HH)) { 
+    $altstart_opt = "-altstart " . get_altstart_list(\@specstart_AA, $ftr_info_HA{"type_idx"}[$ftr_idx]-1, $ofile_info_HH{"FH"}); 
   }
+
+  # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
   $cmd = $esl_epn_translate . " $altstart_opt -startstop $cur_fafile > $esl_epn_translate_outfile";
   runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-  
-  parse_esl_epn_translate_startstop_outfile($esl_epn_translate_outfile, $ftr_idx, \%ftr_info_HA, \@err_instances_AHH, $ofile_info_HH{"FH"});
+  parse_esl_epn_translate_startstop_outfile($esl_epn_translate_outfile, $ftr_idx, \%ftr_info_HA, \%err_info_HA, \@err_instances_AHH, $ofile_info_HH{"FH"});
 
   if(! opt_Get("--keep", \%opt_HH)) { 
     removeFileUsingSystemRm($esl_epn_translate_outfile, "dnaorg_annotate.pl:main", \%opt_HH, \%ofile_info_HH);
@@ -588,9 +543,73 @@ for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
   }
 }
 
+#########################################################
+# Step 9. For all features that have a valid start but
+#         no in-frame stop codon, look for a downstream in-frame stop.
+#########################################################
+my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
+getIndexHashForArray(\@seq_name_A, \%seqname_index_H, $ofile_info_HH{"FH"});
+
+for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+  my $mdl_idx = $ftr_info_HA{"final_mdl"}[$ftr_idx];
+  foreach my $seq_name (keys %{$err_instances_AHH[$ftr_idx]{"ext"}}) { 
+    my $seq_idx       = $seqname_index_H{$seq_name};
+    my $cur_start     = $results_AAH[$mdl_idx][$seq_idx]{"p_start"};
+    my $cur_stop      = $results_AAH[$mdl_idx][$seq_idx]{"p_stop"};
+    my $cur_strand    = $results_AAH[$mdl_idx][$seq_idx]{"p_strand"};
+    #printf("HEYAV $accn posn_to_start 0: $posn_to_start c: $c final_mdl $final_mdl\n");
+    my $plen          = (abs($cur_stop - $cur_start)) + 1;
+    my $offset        = ($plen % 3); 
+    # printf("plen: $plen, offset: $offset changing posn_to_start: $posn_to_start to %d\n", $posn_to_start-$offset);
+    my $posn_to_start = $cur_stop;
+    $posn_to_start   -= $offset; # only want to look for downstream stops in-frame with respect to the START codon, not the predicted STOP
+    if($cur_strand) { $posn_to_start++; }
+    else            { $posn_to_start--; }
+
+    my $totlen = $totlen_H{$accn_A[$seq_idx]};
+    if($posn_to_start > $totlen) { 
+      if(opt_Get("-c", \%opt_HH)) { 
+        # genome is circularized, we've duplicated it, it's okay that our possible start is > $totlen at this point, but we want to subtract $totlen here
+        $posn_to_start -= $totlen;
+      }
+      else { 
+        DNAORG_FAIL("ERROR when looking for inframe stop for sequence $seq_name, trying to start search at position $posn_to_start but length of sequence is $totlen", 1, $ofile_info_HH{"FH"}); 
+      }
+    }
+    my ($ext_corr_stop, $ext_stop_codon) = check_for_downstream_stop($sqfile, $seq_name, $posn_to_start, $totlen, $cur_strand, $ofile_info_HH{"FH"});
+    if($ext_corr_stop == 0) { 
+      # no stop found: nst error
+      error_instance_add(\@err_instances_AHH, \%err_info_HA, $ftr_idx, "nst", $seq_name, "yes", $ofile_info_HH{"FH"});
+      # remove ext error 'maybe'
+      error_instance_remove_maybe(\@err_instances_AHH, \%err_info_HA, $ftr_idx, "ext", $seq_name, $ofile_info_HH{"FH"});
+    }
+    else { 
+      # stop found: ext error
+      $ext_corr_stop -= $offset; # account for offset
+      $ext_corr_stop++; # ext_corr_stop is w.r.t to the next posn after the predicted stop (either +1 or -1 depending on strand), we want 
+                        # it to be w.r.t the actual predicted stop, so we have to add one.
+      error_instance_add(\@err_instances_AHH, \%err_info_HA, $ftr_idx, "ext", $seq_name, $ext_corr_stop, $ofile_info_HH{"FH"});
+      # remove nst error 'maybe'
+      error_instance_remove_maybe(\@err_instances_AHH, \%err_info_HA, $ftr_idx, "nst", $seq_name, $ofile_info_HH{"FH"});
+    }
+  }
+}
+
 dumpArrayOfHashesOfHashes("Error instances (%err_instances_AHH)", \@err_instances_AHH, *STDOUT);
 
-exit 0;  
+#########################################################
+# Step 10. For all features with either a 'trc' or 'ext'
+#          error, add a new stop position to the results_AAH
+#          data structure the 'corrected' stop. We utilize
+#          the 'p_cumlen' values in the @results_AAH to 
+#          simplify this for multi-exon features. 
+#########################################################
+$start_secs = outputProgressPrior("Calculating predicted feature lengths ", $progress_w, $log_FH, *STDOUT);
+calculate_results_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, \@seq_name_A, \@results_AAH, \@err_instances_AHH, \%opt_HH, $ofile_info_HH{"FH"});
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+# dump results
+dump_results(\@results_AAH, \%mdl_info_HA, \@seq_name_A, \@accn_A, \%totlen_H, *STDOUT);
 
 ########################################################################
 ##########
@@ -976,7 +995,7 @@ sub parse_cmscan_tblout {
   
   # make an 'order hash' for the model names and sequence names,
   my %mdlname_index_H = (); # mdlname_index_H{$model_name} = <n>, means that $model_name is the <n>th model in the @{$mdl_info_HAR{*}} arrays
-  my %seqname_index_H = (); # seqname_order_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
+  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
   getIndexHashForArray($mdl_info_HAR->{"cmname"}, \%mdlname_index_H, $FH_HR);
   getIndexHashForArray($seq_name_AR, \%seqname_index_H, $FH_HR);
 
@@ -1311,6 +1330,7 @@ sub combine_model_hits {
   my $ftr_info_append_key = $results_prefix . "hits.append";
   my $mdl_info_key        = $results_prefix . "hits";
   my $mdl_info_append_key = $results_prefix . "hits.append";
+  my $offset_key          = $results_prefix . "offset";
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # we only do this for features annotated by models
@@ -1524,6 +1544,68 @@ sub combine_sequences {
 }
 
 #################################################################
+# Subroutine:  calculate_results_lengths()
+# Incept:      EPN, Tue Mar  8 16:12:44 2016
+#
+# Purpose:    For all results in @{$results_AAH}, determine the
+#             length ("len") and cumulative length ("cumlen") for 
+#             each prediction. For model M of feature F, the cumumlative
+#             length" is the length in nucleotides in the
+#             predictions of all other models M' that also model
+#             feature F, and are 5' of M, plus the length of M.
+#             For example, if M is the third exon of a feature, and has
+#             length 201, and the length of the first two exons are 99 
+#             and 51 nucleotides respectively, the cumulative length of
+#             M is 351.
+#
+# Arguments: 
+#  $mdl_info_HAR:    REF to hash of arrays with information on the models, PRE-FILLED
+#  $ftr_info_HAR:    REF to hash of arrays with information on the features, ADDED TO HERE
+#  $nseq:            number of sequences we have results for
+#  $results_AAHR:    REF to results AAH, ADDED TO HERE
+#  $results_prefix:  prefix used in results for predictions, e.g. "p_" for 'predicted'
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:           REF to hash of file handles
+#
+# Returns:    void
+#
+################################################################# 
+sub calculate_results_lengths {
+  my $sub_name = "calculate_results_lengths()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HAR, $ftr_info_HAR, $nseq, $results_AAHR, $results_prefix, $opt_HHR, $FH_HR) = @_;
+
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+
+  my $start_key  = $results_prefix . "start";
+  my $stop_key   = $results_prefix . "stop";
+  my $strand_key = $results_prefix . "strand";
+  my $len_key    = $results_prefix . "len";
+  my $cumlen_key = $results_prefix . "cumlen";
+  
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_HA{"annot_type"}[$ftr_idx] eq "model") { 
+      for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+        my $cumlen = 0;
+        for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
+          if(exists $results_AAHR->[$mdl_idx][$seq_idx]{$start_key}) { 
+            my $len  = abs($results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} - $results_AAHR->[$mdl_idx][$seq_idx]{$start_key}) + 1;
+            $cumlen += $len;
+            $results_AAHR->[$mdl_idx][$seq_idx]{$len_key}    = $len;
+            $results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} = $cumlen;
+          }     
+        }         
+      }
+    }
+  }
+  
+  return;
+}
+
+#################################################################
 # Subroutine:  initialize_error_instances_AHH()
 # Incept:      EPN, Fri Mar  4 12:26:42 2016
 #
@@ -1578,6 +1660,7 @@ sub initialize_error_instances_AHH {
 #  $translate_outfile:  path to the file to parse
 #  $ftr_idx:            feature index the translate output is for
 #  $ftr_info_HAR:       REF to the feature info hash of arrays, PRE-FILLED
+#  $err_info_HAR:       REF to the error info HA, PRE-FILLED
 #  $err_instances_AHHR: REF to the error instances AAH, PRE-FILLED
 #  $FH_HR:              REF to hash of file handles
 #
@@ -1588,16 +1671,16 @@ sub initialize_error_instances_AHH {
 #################################################################
 sub parse_esl_epn_translate_startstop_outfile { 
   my $sub_name = "parse_esl_epn_translate_startstop_outfile";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($translate_outfile, $ftr_idx, $ftr_info_HAR, $err_instances_AHHR, $FH_HR) = @_;
+  my ($translate_outfile, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_instances_AHHR, $FH_HR) = @_;
   
   # is this a mature peptide?
   my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
 
   open(IN, $translate_outfile) || fileOpenFailure($translate_outfile, "main", $!, "reading", $FH_HR);
-
+  
   while(my $line = <IN>) { 
     # example line
     #HQ693465/1-306 1 1 304
@@ -1617,7 +1700,7 @@ sub parse_esl_epn_translate_startstop_outfile {
       else { # there is an early stop
         $early_inframe_stop = 1; 
       }
-
+      
       # We now have all of the relevant data on the current
       # CDS/mat_peptide sequence and we need to use to determine
       # what errors each sequence should throw (at least for those
@@ -1660,7 +1743,7 @@ sub parse_esl_epn_translate_startstop_outfile {
       #
       if(! $is_matpept) { 
         if(! $start_is_valid) { # possibility 1 (P1)
-          $err_instances_AHHR->[$ftr_idx]{"str"}{$seq_name} = "yes";
+          error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "str", $seq_name, "yes", $FH_HR);
           # printf("in $sub_name, feature index $ftr_idx, seq $seq_name $c possibility 1 (str)\n");
         }
         else { 
@@ -1668,17 +1751,15 @@ sub parse_esl_epn_translate_startstop_outfile {
           if(! $stop_is_valid) { 
             if(! $early_inframe_stop) { 
               # possibility 2 (P2): stp error, need to check for ext error later
-              $err_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} = "yes";
-              $err_instances_AHHR->[$ftr_idx]{"ext"}{$seq_name} = "maybe";
+              error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "stp", $seq_name, "yes",   $FH_HR);
+              error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
+              error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
               #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
             }
             else { # $early_inframe_stop is 1
               # possibility 3 (P3): stp and trc error
-              $err_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} = "yes";
-              $err_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name} = "yes" . "." . -1 * ($final_codon_posn1 - $first_stop_posn1);
-              if($final_codon_posn1 == $first_stop_posn1) { 
-                DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to correct a stop codon by 0 nt for feature %s sequence $seq_name", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR); 
-              }
+              error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "stp", $seq_name, "yes", $FH_HR);
+              error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "trc", $seq_name, -1 * ($final_codon_posn1 - $first_stop_posn1), $FH_HR);
               #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 3 (trc and stp)\n");
             }
           } # end of 'if(! $stop_is_valid)'
@@ -1690,10 +1771,7 @@ sub parse_esl_epn_translate_startstop_outfile {
             }
             else { 
               # possibility 5 (P5): trc error
-              $err_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name} = "yes" . "." . -1 * ($final_codon_posn1 - $first_stop_posn1);
-              if($final_codon_posn1 == $first_stop_posn1) { 
-                DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to correct a stop codon by 0 nt for feature %s sequence $seq_name", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR); 
-              }
+              error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "trc", $seq_name, -1 * ($final_codon_posn1 - $first_stop_posn1), $FH_HR);
               #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 5 (trc)\n");
             }
           }              
@@ -1707,13 +1785,7 @@ sub parse_esl_epn_translate_startstop_outfile {
         }
         else { # $early_inframe_stop is '1'
           # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
-          #printf("HEYA $accn $ftr_idx possibility 7 (trc)\n");
-          $err_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name} = "yes" . "." . -1 * ($final_codon_posn1 - $first_stop_posn1);
-          if($final_codon_posn1 == $first_stop_posn1) { 
-            DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to correct a stop codon by 0 nt for feature %s sequence $seq_name", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR); 
-          }
-          #printf("HEYAA set corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn} to $corr_mft_stop_trc_or_ext_AH[$ftr_idx]{$accn}\n");
-          #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 7 (trc error, maybe ntr error)\n");
+          error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "trc", $seq_name, -1 * ($final_codon_posn1 - $first_stop_posn1), $FH_HR);
         }
       }
     }
@@ -1723,5 +1795,417 @@ sub parse_esl_epn_translate_startstop_outfile {
   }
   close(IN);
   
+  return;
+}
+
+#################################################################
+# Subroutine:  error_instance_add()
+# Incept:      EPN, Tue Mar  8 11:06:18 2016
+#
+# Purpose:    Add an $err_code error to the @{$err_instances_AHHR} 
+#             for feature index $ftr_idx, sequence name $seq_name.
+#
+# Arguments: 
+#  $err_instances_AHHR: REF to error instances to add to, ADDED TO HERE
+#  $err_info_HAR:       REF to the error info hash of arrays, PRE-FILLED
+#  $ftr_idx:            REF to the feature info hash of arrays, PRE-FILLED
+#  $err_code:           error code we're adding an error for
+#  $seq_name:           sequence name
+#  $value:              value to add as $err_instances_AHHR->[$ftr_idx]{$code}{$seq_name}
+#  $FH_HR:              REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       - If we find an error instance incompatibility.
+#             - If value is not compatible with "valtype" for $err_code in %err_info_HAR
+#
+#################################################################
+sub error_instance_add { 
+  my $sub_name = "error_instance_add()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($err_instances_AHHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $value, $FH_HR) = @_;
+  
+  # determine the error code index in %err_info_HAR (this could be optimized by passing in  hash that maps
+  # error codes to indices in %err_info_HAR)
+  my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
+  if($err_idx == -1) { 
+    DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code", 1, $FH_HR);
+  }
+
+  # check that the value is compatible with it's expected value type
+  my $err_valtype = $err_info_HAR->{"valtype"}[$err_idx];
+
+  # as a special case, we allow the value "maybe" for all types, as long
+  # as no value already exists
+  if($value eq "maybe") { 
+    # it shouldn't already exist
+    if(exists $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, trying to set to maybe but value %s already exists.", 
+                          $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+    }
+  }
+  else { # value ne "maybe"
+    if($err_valtype eq "yes") {
+      # it shouldn't already exist, unless it's maybe
+      if((exists $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) && ($err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} ne "maybe")) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value type is $err_valtype, but non-maybe value %s already exists.", 
+                          $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      }
+      # value must be yes
+      if($value ne "yes") { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value type is $err_valtype, but trying to set $value.", 
+                            $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+
+      }
+    }
+    elsif($err_valtype eq "nonzero_int") {
+      # it's okay if the value already exists
+      # value must be an integer
+      if(! verify_integer($value)) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value type is $err_valtype, but trying to set $value.", 
+                            $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      }
+      # value can't be zero
+      if($value == 0) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value type is $err_valtype, but trying to set $value.", 
+                            $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      }
+    }
+    elsif($err_valtype eq "string") { 
+      # it shouldn't already exist, unless it's maybe
+      if((exists $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) && ($err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} ne "maybe")) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value type is $err_valtype, but non-maybe value %s already exists.", 
+                          $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      }
+    }
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, error code $err_code has unexpected value type $err_valtype", 1, $FH_HR);
+    }
+  }
+
+  # add the value
+  $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} = $value;
+
+  return;
+}
+
+#################################################################
+# Subroutine:  error_instance_remove_maybe()
+# Incept:      EPN, Tue Mar  8 13:50:22 2016
+#
+# Purpose:    Remove an error $err_code from @{$err_instances_AHHR} 
+#             for feature index $ftr_idx, sequence name $seq_name,
+#             where the current value is "maybe".
+#
+# Arguments: 
+#  $err_instances_AHHR: REF to error instances to add to, ADDED TO HERE
+#  $err_info_HAR:       REF to the error info hash of arrays, PRE-FILLED
+#  $ftr_idx:            REF to the feature info hash of arrays, PRE-FILLED
+#  $err_code:           error code we're adding an error for
+#  $seq_name:           sequence name
+#  $FH_HR:              REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       - If current value does not exist or is "maybe"
+#
+#################################################################
+sub error_instance_remove_maybe { 
+  my $sub_name = "error_instance_remove_maybe()";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($err_instances_AHHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $FH_HR) = @_;
+  
+  if(! exists $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
+    DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, no value exists.", 1, $FH_HR);
+  }
+
+  if($err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} ne "maybe") { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value we are trying to remove is not \"maybe\" but rather %s.", 
+                        $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR); 
+  }
+  
+  # okay, it exists and is 'maybe', remove it:
+  delete $err_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name};
+
+  return;
+}
+
+
+#################################################################
+# Subroutine:  check_for_downstream_stop()
+# Incept:      EPN, Tue Mar  8 13:15:47 2016
+#
+# Purpose:    Check for an in-frame stop codon in the subsequence
+#             starting at position $posn on strand $strand in sequence
+#             $seq_accn in open sequence file $sqfile.
+#
+# Arguments: 
+#  $sqfile:       open Bio::Easel::SqFile object to fetch sequences from
+#  $seq_name:     sequence name to look for stop in
+#  $posn:         position to start looking for stop in
+#  $maxdist:      total number of nucleotides to look for in-frame stop
+#                 $posn+$maxdist is the final nucleotide we will examine
+#                 when looking for a stop
+#  $strand:       strand on which to look for stop codon
+#  $FH_HR:        REF to hash of file handles
+#
+# Returns:    Two values:
+#             $ret_posn:   final (3rd) position of first in-frame stop in $sequence
+#                          *RELATIVE TO $posn*, e.g. if this value is '3' then the first
+#                          3 nt of the sequence starting at $posn is a stop codon.
+#             $stop_codon: in-frame stop codon found, either "TAA", "TAG", "TGA" or "TAR" or undef if
+#                          none found
+#
+# Dies:       if unable to fetch sequence from $sqfile
+#
+#################################################################
+sub check_for_downstream_stop { 
+  my $sub_name = "check_for_downstream_stop()";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $seq_name, $posn, $maxdist, $strand, $FH_HR) = @_;
+
+  my $seqlen = $sqfile->fetch_seq_length_given_name($seq_name);
+
+  # determine final position we'll look at
+  my $final_posn = $posn + $maxdist;
+  if($final_posn > $seqlen) { 
+    $final_posn = $seqlen; 
+  }
+
+  my $begin_posn = $posn;
+  my $target_subseq_len = 600; # we'll look at this many nucleotides at a time
+  my $inframe_stop_posn = 0;
+  my $stop_codon = undef; # type of stop codon found, e.g. "TAA", "TAG", "TGA", or "TAR"
+  my $keep_going = 1; # set to 0 if we find a stop codon or we go past $final_posn
+  while($keep_going) { 
+    my @fetch_AA = (); # the 2D array we use to fetch sequence chunks
+    @{$fetch_AA[0]} = ();
+    my $end_posn;
+    if($strand eq "+") { 
+      $end_posn = $begin_posn + ($target_subseq_len - 1);
+      if($end_posn > $final_posn) { 
+        $end_posn = $final_posn; 
+        $keep_going = 0; # breaks loop
+      }
+    }
+    else { 
+      $end_posn = $begin_posn - ($target_subseq_len - 1);
+      if($end_posn < 1) { 
+        $end_posn = 1;
+        $keep_going = 0; # breaks loop
+      }
+    }
+    @{$fetch_AA[0]} = ($seq_name . "/" . $begin_posn . "-" . $end_posn, $begin_posn, $end_posn, $seq_name);
+    my (undef, $cur_subseq) = split(/\n/, $sqfile->fetch_subseqs(\@fetch_AA, -1, undef)); 
+    # look for in-frame stop in $cur_subseq sequence fragment
+    ($inframe_stop_posn, $stop_codon) = find_inframe_stop($cur_subseq);
+
+    if($inframe_stop_posn != 0) { 
+      $keep_going = 0; # breaks loop
+    }
+    else { # only update these if we didn't find an in-frame stop
+           # if we did find an in-frame stop, then we don't want to update
+           # these so we can infer the stop posn below
+      $begin_posn = $end_posn;
+      if($strand eq "+") { $begin_posn++; }
+      else               { $begin_posn--; }
+    }
+  } # end of while($keep_going)
+
+  if($inframe_stop_posn != 0) {
+    # we need to return the stop position relative to $posn that was passed in
+    if($strand eq "+") { 
+      $inframe_stop_posn += ($begin_posn - 1);
+      $inframe_stop_posn -= $posn;
+    }
+    else { # strand eq "-" 
+      $inframe_stop_posn = ($begin_posn - $inframe_stop_posn) + 1;
+      $inframe_stop_posn = $posn - $inframe_stop_posn;
+    }
+  }
+
+  return($inframe_stop_posn, $stop_codon); # if $inframe_stop_posn is 0, we didn't find an in-frame stop codon, and stop codon will be undef
+}
+
+#################################################################
+# Subroutine:  find_inframe_stop()
+# Incept:      EPN, Tue Mar  8 13:39:23 2016
+#
+# Purpose:    Given a subsequence, find the first inframe stop in it
+#             and return the final position of it. Return 0 if none exist
+#             in the subsequence.
+#
+# Arguments: 
+#  $sequence:     the actual sequence to search in as a string, no newlines
+#
+# Returns:    Two values:
+#             $ret_posn:   final (3rd) position of first in-frame stop in $sequence.
+#                          0 if no in-frame stop exists
+#             $stop_codon: in-frame stop codon found, either "TAA", "TAG", "TGA", or "TAR" or undef if
+#                          none found
+#
+# Dies:       never
+#
+#################################################################
+sub find_inframe_stop {
+  my $sub_name = "find_inframe_stop()";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sequence) = @_;
+
+  # convert to uppercase and convert Us to Ts
+  $sequence =~ tr/a-z/A-Z/;
+  $sequence =~ tr/U/T/;
+
+  # use substr to get each codon and check if it's a stop
+  my $posn = 0;
+  my $len  = length($sequence);
+  my $ret_posn   = undef;
+  my $stop_codon = undef;
+  while((! defined $ret_posn) && 
+        ($posn+2) < $len) { 
+    my $codon = substr($sequence, $posn, 3);
+    if($codon eq "TAA") { 
+      $stop_codon = "TAA";
+      $ret_posn   = $posn+3; # add 3 to get coords into 1..L, (adding 2 would keep us in 0..L-1 coord space)
+    }
+    elsif($codon eq "TAG") { 
+      $stop_codon = "TAG";
+      $ret_posn   = $posn+3; # add 3 to get coords into 1..L, (adding 2 would keep us in 0..L-1 coord space)
+    }
+    elsif($codon eq "TGA") { 
+      $stop_codon = "TGA";
+      $ret_posn   = $posn+3; # add 3 to get coords into 1..L, (adding 2 would keep us in 0..L-1 coord space)
+    }
+    elsif($codon eq "TAR") { 
+      $stop_codon = "TAR";
+      $ret_posn   = $posn+3; # add 3 to get coords into 1..L, (adding 2 would keep us in 0..L-1 coord space)
+    }
+    $posn += 3;
+  }
+  
+  if(! defined $ret_posn) { 
+    $ret_posn = 0; 
+  }
+  
+  return ($ret_posn, $stop_codon);
+}
+
+#################################################################
+# Subroutine:  calculate_results_corrected_stops()
+# Incept:      EPN, Tue Mar  8 20:23:29 2016
+#
+# Purpose:    For all results in @{$results_AAH} for which an 
+#             'trc' or 'ext' error exists in \@err_instances_AHH, 
+#             determine what the corrected stop position should be
+#             and set it as "c_stop".
+#
+# Arguments: 
+#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
+#  $ftr_info_HAR:       REF to hash of arrays with information on the features, ADDED TO HERE
+#  $seq_name_AR:        REF to array with sequence names
+#  $results_AAHR:       REF to results AAH, ADDED TO HERE
+#  $err_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
+#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:              REF to hash of file handles
+#
+# Returns:    void
+#
+################################################################# 
+sub calculate_results_corrected_stops {
+  my $sub_name = "calculate_results_corrected_stops()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HAR, $ftr_info_HAR, $seq_name_AR, $results_AAHR, $err_instances_AHHR, $opt_HHR, $FH_HR) = @_;
+
+  # total counts of things
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = scalar(@seq_name_A);
+
+  # keys in the 3rd dim of @{$results_AAHR}
+  my $start_key     = "p_start";
+  my $stop_key      = "p_stop";
+  my $strand_key    = "p_strand";
+  my $cumlen_key    = "p_cumlen";
+  my $corr_stop_key = "c_stop";
+
+  # lengths
+  my $newlen;       # the new, corrected length of a prediction
+  my $cumlen;       # the stored, cumulative length of a prediction, filled in results_calculate_lengths()
+  my $remaininglen; # the current remaining len (<= $newlen) of the new length 
+  my $len_corr;     # correction to the length due to trc or ext error, will be negative for trc, positive for ext
+
+  # model indices
+  my $first_mdl_idx; # the first model index that models the current feature 
+  my $final_mdl_idx; # the final model index that models the current feature 
+
+  # loop through all features and sequences, and correct stop
+  # stop predictions for all trc and ext errors
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      my $seq_name = $seq_name_A[$seq_idx];
+
+      # only one of trc or ext can exist, they're 'incompatible' in err_info_HAR
+      #################################
+      # block that handles trc errors #
+      #################################
+      if(exists $err_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
+        $len_corr = $err_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name};
+        if($len_corr >= 0) { 
+          DNAORG_FAIL("ERROR in $sub_name, trc error with non-negative correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
+        }
+        # determine the new length of the prediction, this is the old length plus the correction (which is negative)
+        $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
+        $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+        $newlen = $results_AAHR->[$final_mdl_idx][$seq_idx]{$cumlen_key} + $len_corr;
+        if($newlen <= 0) { 
+          DNAORG_FAIL(sprintf("ERROR in $sub_name, trc error has length correction ($len_corr) longer than predicted length (%d) for ftr: $ftr_idx seq_name: $seq_name", 
+                              $results_AAHR->[$final_mdl_idx][$seq_idx]{$cumlen_key}), 1, $FH_HR);
+        }
+        # determine which model to set corrected stop position for, and set it
+        $remaininglen = $newlen;
+        for(my $mdl_idx = $first_mdl_idx; $mdl_idx <= $final_mdl_idx; $mdl_idx++) { 
+          $cumlen = $results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key};
+          if($newlen <= $cumlen) { # this is the model to update
+            if($results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
+              $results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $results_AAHR->[$mdl_idx][$seq_idx]{$start_key} + $remaininglen - 1;
+            }
+            else { # negative strand
+              $results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $results_AAHR->[$mdl_idx][$seq_idx]{$start_key} - $remaininglen + 1;
+            }
+            $mdl_idx = $final_mdl_idx+1; # this breaks us out of the for loop
+          }
+          $remaininglen -= $cumlen; # update $remaininglen
+        }
+      }
+      #################################
+      # block that handles ext errors #
+      #################################
+      elsif(exists $err_instances_AHH[$ftr_idx]{"ext"}{$seq_name}) { 
+        $len_corr = $err_instances_AHH[$ftr_idx]{"ext"}{$seq_name};
+        if($len_corr <= 0) { 
+          DNAORG_FAIL("ERROR in $sub_name, ext error with non-positive correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
+        }
+        # ext are easier, always modify stop of final model
+        my $mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+        if($results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
+          $results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $results_AAHR->[$mdl_idx][$seq_idx]{$start_key} + $len_corr;
+        }
+        else { # negative strand
+          $results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $results_AAHR->[$mdl_idx][$seq_idx]{$start_key} - $len_corr;
+        }
+      }
+    } # end of loop over $seq_idx
+  } # end of loop over $ftr_idx
+
   return;
 }
