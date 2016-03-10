@@ -4006,10 +4006,6 @@ sub getPrimaryChildrenFromFeatureInfo {
 
   @{$AR} = ();
 
-  my $nftr = getConsistentSizeOfInfoHashOfArrays($ftr_info_HAR, $FH_HR);
-  if($ftr_idx >= $nftr) { 
-    DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but only $nftr exist.", 1, $FH_HR);
-  }
   if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "multifeature") { 
     DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but it is not annotated type of multifeature.", 1, $FH_HR);
   }
@@ -4109,7 +4105,7 @@ sub getConsistentSizeOfInfoHashOfArrays {
     }
     else { 
       if($nel != scalar(@{$HAR->{$key}})) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, expected number of elements in array for key $key is $nel (from key $nel_key) but %d exist!", scalar(@{$HAR->{$key}})), 1, $FH_HR);
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, expected number of elements in array for key $key is $nel (from key $nel_key) but %d exist for key $key!", scalar(@{$HAR->{$key}})), 1, $FH_HR);
       }
     }
     # check that all values are defined
