@@ -436,19 +436,20 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
 } # end of if(! opt_Get(--skipscan", \%opt_HH))
 
 #########################################################
-# Step 4. Parse homology search results into usable data structuers
+# Step 4. Parse homology search results into usable data structures
 ##########################################################
 #%results_AAH = (); # 1st dim: array, 0..$nmdl-1, one per model
 #                   # 2nd dim: array, 0..$naccn-1, one per accessions
 #                   # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5hangover", "p_3hangover", "p_evalue", "p_fid2ref"
 $start_secs = outputProgressPrior("Parsing cmscan results", $progress_w, $log_FH, *STDOUT);
-my $naccn = scalar(@accn_A);
+my $nseq = scalar(@seq_name_A);
+
 # initialize the results AAH
 my @results_AAH = ();
 for(my $m = 0; $m < $nmdl; $m++) { 
   @{$results_AAH[$m]} = ();
-  for(my $a = 0; $a < $naccn; $a++) { 
-    %{$results_AAH[$m][$a]} = ();
+  for(my $s = 0; $s < $nseq; $s++) { 
+    %{$results_AAH[$m][$s]} = ();
   }
 }
 
@@ -457,17 +458,15 @@ parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \@seq_name_A, \@accn_A, \%totle
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the lengths
-my $results_prefix = "p_"; # we want to fetch the hits with information stored with 3rd dimension keys that begin with "p_" in @results_AAH
 $start_secs = outputProgressPrior("Calculating predicted feature lengths ", $progress_w, $log_FH, *STDOUT);
-calculate_results_lengths(\%mdl_info_HA, \%ftr_info_HA, scalar(@seq_name_A), \@results_AAH, $results_prefix, \%opt_HH, $ofile_info_HH{"FH"});
+calculate_results_predicted_lengths(\%mdl_info_HA, \%ftr_info_HA, scalar(@seq_name_A), \@results_AAH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
 # Step 5. Fetch predicted hits into fasta files.
 ##########################################################
-my $out_root_and_key = $out_root . ".predicted";
 $start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta files", $progress_w, $log_FH, *STDOUT);
-fetch_hits_given_results($sqfile, $out_root_and_key, \%mdl_info_HA, \@seq_name_A, \@results_AAH, $results_prefix, \%opt_HH, \%ofile_info_HH);
+fetch_hits_given_results($sqfile, $out_root, "predicted", \%mdl_info_HA, \@seq_name_A, \@results_AAH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #############################################################################
@@ -475,17 +474,16 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #         combine all relevant hits into predicted feature sequences.
 #############################################################################
 $start_secs = outputProgressPrior("Combining predicted exons into CDS", $progress_w, $log_FH, *STDOUT);
-combine_model_hits($out_root_and_key, $results_prefix, \@seq_name_A, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+combine_model_hits($out_root, "predicted", \@seq_name_A, \%mdl_info_HA, \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
 # Step 7. For features modelled by multiple other features (e.g. CDS comprised
-#         of multiple mature peptides) combine the individual feature sequences into 
-#         single sequences.
+#         of multiple mature peptides) combine the individual predicted feature
+#         sequences into single sequences.
 #########################################################
-
 $start_secs = outputProgressPrior("Combining predicted mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
-combine_feature_hits($out_root_and_key, $results_prefix, \@seq_name_A, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+combine_feature_hits($out_root, "predicted", \@seq_name_A, \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # output optional output files
@@ -519,7 +517,7 @@ initialize_error_instances_AHH(\@err_instances_AHH, \%err_info_HA, \%ftr_info_HA
 # in-frame stop codons.
 my $ftr_idx;
 for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-  my $ofile_info_key = $ftr_info_HA{"p_hits"}[$ftr_idx];
+  my $ofile_info_key = $ftr_info_HA{"predicted.hits"}[$ftr_idx];
   my $cur_fafile     = $ofile_info_HH{"fullpath"}{$ofile_info_key};
   my $esl_epn_translate_outfile = $cur_fafile . ".esl-epn-translate";
   
@@ -539,7 +537,7 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     removeFileUsingSystemRm($esl_epn_translate_outfile, "dnaorg_annotate.pl:main", \%opt_HH, \%ofile_info_HH);
   }
   else { 
-    addClosedFileToOutputInfo(\%ofile_info_HH, "p_esl_epn_translate_outfile.ftr." . $ftr_idx, $esl_epn_translate_outfile, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
+    addClosedFileToOutputInfo(\%ofile_info_HH, "predicted.esl_epn_translate_outfile.ftr." . $ftr_idx, $esl_epn_translate_outfile, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
   }
 }
 
@@ -601,15 +599,48 @@ dumpArrayOfHashesOfHashes("Error instances (%err_instances_AHH)", \@err_instance
 # Step 10. For all features with either a 'trc' or 'ext'
 #          error, add a new stop position to the results_AAH
 #          data structure the 'corrected' stop. We utilize
-#          the 'p_cumlen' values in the @results_AAH to 
+#          the 'cumlen' values in the @results_AAH to 
 #          simplify this for multi-exon features. 
 #########################################################
-$start_secs = outputProgressPrior("Calculating predicted feature lengths ", $progress_w, $log_FH, *STDOUT);
+$start_secs = outputProgressPrior("Correcting homology search stop predictions", $progress_w, $log_FH, *STDOUT);
 calculate_results_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, \@seq_name_A, \@results_AAH, \@err_instances_AHH, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # dump results
 dump_results(\@results_AAH, \%mdl_info_HA, \@seq_name_A, \@accn_A, \%totlen_H, *STDOUT);
+
+
+#########################################################
+# Step 11. Refetch corrected hits into new files.
+#########################################################
+$start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta files", $progress_w, $log_FH, *STDOUT);
+fetch_hits_given_results($sqfile, $out_root, "corrected", \%mdl_info_HA, \@seq_name_A, \@results_AAH, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#############################################################################
+# Step 12. For features modelled by multiple models (e.g. multi-exon CDS)
+#          combine all relevant hits into corrected feature sequences.
+#############################################################################
+$start_secs = outputProgressPrior("Combining corrected exons into CDS", $progress_w, $log_FH, *STDOUT);
+combine_model_hits($out_root, "corrected", \@seq_name_A, \%mdl_info_HA, \%ftr_info_HA, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#########################################################
+# Step 13. For features modelled by multiple other features (e.g. CDS comprised
+#          of multiple mature peptides) combine the individual corrected feature
+#          sequences into single sequences.
+#########################################################
+$start_secs = outputProgressPrior("Combining corrected mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
+combine_feature_hits($out_root, "corrected", \@seq_name_A, \%ftr_info_HA, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+# output optional output files
+if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
+  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
+}
+if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
+  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
+}
 
 ########################################################################
 ##########
@@ -1182,33 +1213,33 @@ sub dump_results {
 # Arguments: 
 #  $sqfile:            REF to Bio::Easel::SqFile object, open sequence file containing
 #                      usually $out_root . ".predicted", or $out_root . ".corrected"
-#  $out_root_and_key:  output root for the files we'll create here, 
-#                      usually $out_root . ".predicted", or $out_root . ".corrected"
+#  $out_root:          output root for the files we'll create here, 
+#  $out_key:           key for the output files we'll create here, usually "predicted" or "corrected"
 #  $mdl_info_HAR:      REF to hash of arrays with information on the models, PRE-FILLED
 #  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
 #  $results_AAHR:      REF to results AAH, PRE-FILLED
-#  $results_prefix:    prefix to results 3rd dim keys to use, e.g. "p_" to use "p_start" and "p_stop"
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
 #################################################################
 sub fetch_hits_given_results { 
   my $sub_name = "fetch_hits_given_results";
-  my $nargs_exp = 8;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $out_root_and_key, $mdl_info_HAR, $seq_name_AR, $results_AAHR, $results_prefix, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($sqfile, $out_root, $out_key, $mdl_info_HAR, $seq_name_AR, $results_AAHR, $ofile_info_HHR) = @_;
     
   my $nmdl = scalar(@{$results_AAHR});
   my $nseq = scalar(@{$seq_name_AR}); 
 
-  my $start_key  = $results_prefix . "start";  # key for 'start'  in 3rd dim of @{$results_AAHR}
-  my $stop_key   = $results_prefix . "stop";   # key for 'stop'   in 3rd dim of @{$results_AAHR}
-  my $strand_key = $results_prefix . "strand"; # key for 'strand' in 3rd dim of @{$results_AAHR}
+  my $out_root_and_key = $out_root . "." . $out_key;
+
+  my $start_key           = $out_key . ".start";  # key for 'start'  in 3rd dim of @{$results_AAHR}
+  my $stop_key            = $out_key . ".stop";   # key for 'stop'   in 3rd dim of @{$results_AAHR}
+  my $strand_key          = $out_key . ".strand"; # key for 'strand' in 3rd dim of @{$results_AAHR}
   
-  my $mdl_info_key        = $results_prefix . "hits";
-  my $mdl_info_append_key = $results_prefix . "hits.append";
+  my $mdl_info_key        = $out_key . ".hits";
+  my $mdl_info_append_key = $out_key . ".hits.append";
 
   for(my $m = 0; $m < $nmdl; $m++) { 
     my @fetch_AA        = ();
@@ -1224,15 +1255,16 @@ sub fetch_hits_given_results {
         DNAORG_FAIL("ERROR in $sub_name(), no hit from model $mdl_name to the reference sequence $seq_name", 1, $ofile_info_HHR->{"FH"}); 
       }
       if(%{$results_AAHR->[$m][$s]}) { # hit exists
-        if(! exists $results_AAHR->[$m][$s]{$start_key}) { 
+        if(! exists $results_AAHR->[$m][$s]{"p_start"}) { 
           DNAORG_FAIL("ERROR in $sub_name(), no start value for hit of model $mdl_name to the sequence $seq_name", 1, $ofile_info_HHR->{"FH"}); 
         }
-        if(! exists $results_AAHR->[$m][$s]{$stop_key}) { 
+        if(! exists $results_AAHR->[$m][$s]{"p_stop"}) { 
           DNAORG_FAIL("ERROR in $sub_name(), no stop value for hit of model $mdl_name to the sequence $seq_name", 1, $ofile_info_HHR->{"FH"}); 
         }
-        my $start  = $results_AAHR->[$m][$s]{$start_key};
-        my $stop   = $results_AAHR->[$m][$s]{$stop_key};
-        my $strand = $results_AAHR->[$m][$s]{$strand_key};
+        my $start  = $results_AAHR->[$m][$s]{"p_start"};
+        # use corrected stop ("c_stop") if it exists
+        my $stop   = (exists $results_AAHR->[$m][$s]{"c_stop"}) ? $results_AAHR->[$m][$s]{"c_stop"} : $results_AAHR->[$m][$s]{"p_stop"};
+        my $strand = $results_AAHR->[$m][$s]{"p_strand"};
 
         my $new_name = $seq_name . "/" . $start . "-" . $stop;
         push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
@@ -1263,8 +1295,8 @@ sub fetch_hits_given_results {
       my $out_fafile = $out_root_and_key . ".". $mdl_info_HAR->{"filename_root"}[$m] . ".fa";
       $sqfile->fetch_subseqs(\@fetch_AA, undef, $out_fafile);
       # save information on this to the output file info hash
-      my $ofile_info_key = $results_prefix . "hits" . ".model" . $m;
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $out_fafile, "fasta file with predicted hits for model " . $mdl_info_HAR->{"out_tiny"}[$m]);
+      my $ofile_info_key = $out_key . ".hits.model" . $m;
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $out_fafile, "fasta file with $out_key hits for model " . $mdl_info_HAR->{"out_tiny"}[$m]);
       # now save this file in the mdl_info_HAR
       $mdl_info_HAR->{$mdl_info_key}[$m] = $ofile_info_key;
 
@@ -1272,8 +1304,8 @@ sub fetch_hits_given_results {
         my $out_fafile = $out_root_and_key . ".". $mdl_info_HAR->{"filename_root"}[$m] . ".append.fa";
         $sqfile->fetch_subseqs(\@fetch_append_AA, undef, $out_fafile);
         # save information on this to the output file info hash
-        my $ofile_info_key = $results_prefix . "hits" . ".model" . $m . ".append";
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $out_fafile, "fasta file with predicted appended hits for model " . $mdl_info_HAR->{"out_tiny"}[$m]);
+        my $ofile_info_key = $out_key . ".hits.model" . $m . ".append";
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $out_fafile, "fasta file with $out_key appended hits for model " . $mdl_info_HAR->{"out_tiny"}[$m]);
         # now save this file in the mdl_info_HAR
         $mdl_info_HAR->{$mdl_info_append_key}[$m] = $ofile_info_key;
       }
@@ -1302,13 +1334,11 @@ sub fetch_hits_given_results {
 #             much of the work.
 #
 # Arguments: 
-#  $out_root_and_key:  output root for the files we'll create here, 
-#                      usually $out_root . ".predicted", or $out_root . ".corrected"
-#  $results_prefix:    prefix used for naming mdl fasta files in fetch_hits(), e.g. "p_" for 'predicted'
+#  $out_root:          output root for the files we'll create here, 
+#  $out_key:           key for the output files we'll create here, usually "predicted" or "corrected"
 #  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
 #  $mdl_info_HAR:      REF to hash of arrays with information on the models, PRE-FILLED
 #  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
@@ -1318,19 +1348,20 @@ sub fetch_hits_given_results {
 ################################################################# 
 sub combine_model_hits { 
   my $sub_name = "combine_model_hits";
-  my $nargs_exp = 7;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_root_and_key, $results_prefix, $seq_name_AR, $mdl_info_HAR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($out_root, $out_key, $seq_name_AR, $mdl_info_HAR, $ftr_info_HAR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
   my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nmdl: number of homology models
 
-  my $ftr_info_key        = $results_prefix . "hits";
-  my $ftr_info_append_key = $results_prefix . "hits.append";
-  my $mdl_info_key        = $results_prefix . "hits";
-  my $mdl_info_append_key = $results_prefix . "hits.append";
-  my $offset_key          = $results_prefix . "offset";
+  my $ftr_info_key        = $out_key . ".hits";
+  my $ftr_info_append_key = $out_key . ".hits.append";
+  my $mdl_info_key        = $out_key . ".hits";
+  my $mdl_info_append_key = $out_key . ".hits.append";
+  my $offset_key          = $out_key . ".offset";
+  my $out_root_and_key    = $out_root . "." . $out_key;
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # we only do this for features annotated by models
@@ -1354,7 +1385,7 @@ sub combine_model_hits {
         my $ftr_hit_fafile = $out_root_and_key . ".". $ftr_info_HAR->{"filename_root"}[$ftr_idx] . ".fa";
         my @tmp_hit_fafile_A = ($mdl_hit_fafile);
         for($mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-          $mdl_info_key   = $results_prefix . "hits";
+          $mdl_info_key   = $out_key . "hits";
           $ofile_info_key = $mdl_info_HAR->{$mdl_info_key}[$mdl_idx];
           $mdl_hit_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
           validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
@@ -1362,8 +1393,8 @@ sub combine_model_hits {
         }
         # combine the sequences into 1 file
         combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $ofile_info_HHR->{"FH"});
-        my $ofile_info_key = $results_prefix . "hits" . ".ftr" . $ftr_idx;
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, "fasta file with predicted hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+        my $ofile_info_key = $out_key . "hits" . ".ftr" . $ftr_idx;
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
         # now save this file in the ftr_info_HAR
         $ftr_info_HAR->{$ftr_info_key}[$ftr_idx] = $ofile_info_key;
       }
@@ -1401,12 +1432,10 @@ sub combine_model_hits {
 #             'combine_sequences()' which does much of the work.
 #
 # Arguments: 
-#  $out_root_and_key:  output root for the files we'll create here, 
-#                      usually $out_root . ".predicted", or $out_root . ".corrected"
-#  $results_prefix:    prefix used for naming mdl fasta files in fetch_hits(), e.g. "p_" for 'predicted'
+#  $out_root:          output root for the files we'll create here, 
+#  $out_key:           key for the output files we'll create here, usually "predicted" or "corrected"
 #  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
 #  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
@@ -1416,14 +1445,15 @@ sub combine_model_hits {
 ################################################################# 
 sub combine_feature_hits { 
   my $sub_name = "combine_feature_hits";
-  my $nargs_exp = 6;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_root_and_key, $results_prefix, $seq_name_AR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($out_root, $out_key, $seq_name_AR, $ftr_info_HAR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-  my $ftr_info_key        = $results_prefix . "hits";
-  my $ftr_info_append_key = $results_prefix . "hits.append";
+  my $ftr_info_key        = $out_key . "hits";
+  my $ftr_info_append_key = $out_key . "hits.append";
+  my $out_root_and_key    = $out_root . "." . $out_key;
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features annotated by models
@@ -1448,8 +1478,8 @@ sub combine_feature_hits {
       }
       # combine the sequences into 1 file
       combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $ofile_info_HHR->{"FH"});
-      my $ofile_info_key = $results_prefix . "hits" . ".ftr" . $ftr_idx;
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, "fasta file with predicted hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . scalar(@primary_children_idx_A) . " combined feature predictions");
+      my $ofile_info_key = $out_key . "hits" . ".ftr" . $ftr_idx;
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . scalar(@primary_children_idx_A) . " combined feature predictions");
 
       # now save this file in the ftr_info_HAR
       $ftr_info_HAR->{$ftr_info_key}[$ftr_idx] = $ofile_info_key;
@@ -1544,12 +1574,12 @@ sub combine_sequences {
 }
 
 #################################################################
-# Subroutine:  calculate_results_lengths()
+# Subroutine:  calculate_results_predicted_lengths()
 # Incept:      EPN, Tue Mar  8 16:12:44 2016
 #
 # Purpose:    For all results in @{$results_AAH}, determine the
 #             length ("len") and cumulative length ("cumlen") for 
-#             each prediction. For model M of feature F, the cumumlative
+#             each prediction. For model M of feature F, the cumulative
 #             length" is the length in nucleotides in the
 #             predictions of all other models M' that also model
 #             feature F, and are 5' of M, plus the length of M.
@@ -1557,34 +1587,38 @@ sub combine_sequences {
 #             length 201, and the length of the first two exons are 99 
 #             and 51 nucleotides respectively, the cumulative length of
 #             M is 351.
+# 
+#             This function should be called before calculate_results_corrected_stops(),
+#             which will update the length values as necessary for the corrected stops.
+#             If, here, any "c_stop" values exist (indicating that calculate_results_corrected_stops()
+#             was already called, then we die in error.
 #
 # Arguments: 
 #  $mdl_info_HAR:    REF to hash of arrays with information on the models, PRE-FILLED
 #  $ftr_info_HAR:    REF to hash of arrays with information on the features, ADDED TO HERE
 #  $nseq:            number of sequences we have results for
 #  $results_AAHR:    REF to results AAH, ADDED TO HERE
-#  $results_prefix:  prefix used in results for predictions, e.g. "p_" for 'predicted'
-#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:           REF to hash of file handles
 #
 # Returns:    void
 #
 ################################################################# 
-sub calculate_results_lengths {
-  my $sub_name = "calculate_results_lengths()";
-  my $nargs_exp = 7;
+sub calculate_results_predicted_lengths {
+  my $sub_name = "calculate_results_predicted_lengths()";
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_info_HAR, $ftr_info_HAR, $nseq, $results_AAHR, $results_prefix, $opt_HHR, $FH_HR) = @_;
+  my ($mdl_info_HAR, $ftr_info_HAR, $nseq, $results_AAHR, $opt_HHR, $FH_HR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
 
-  my $start_key  = $results_prefix . "start";
-  my $stop_key   = $results_prefix . "stop";
-  my $strand_key = $results_prefix . "strand";
-  my $len_key    = $results_prefix . "len";
-  my $cumlen_key = $results_prefix . "cumlen";
+  my $start_key  = "p_start";
+  my $stop_key   = "p_stop";
+  my $strand_key = "p_strand";
+  my $len_key    = "len";
+  my $cumlen_key = "cumlen";
+  my $forbid_key = "c_stop";
   
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HA{"annot_type"}[$ftr_idx] eq "model") { 
@@ -1592,6 +1626,9 @@ sub calculate_results_lengths {
         my $cumlen = 0;
         for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
           if(exists $results_AAHR->[$mdl_idx][$seq_idx]{$start_key}) { 
+            if(exists $results_AAHR->[$mdl_idx][$seq_idx]{$forbid_key}) { 
+              DNAORG_FAIL("ERROR in $sub_name(), results_AAHR->[$mdl_idx][$seq_idx]{$forbid_key} exists, but it shouldn't.", 1, $FH_HR);
+            }
             my $len  = abs($results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} - $results_AAHR->[$mdl_idx][$seq_idx]{$start_key}) + 1;
             $cumlen += $len;
             $results_AAHR->[$mdl_idx][$seq_idx]{$len_key}    = $len;
@@ -2135,7 +2172,8 @@ sub calculate_results_corrected_stops {
   my $start_key     = "p_start";
   my $stop_key      = "p_stop";
   my $strand_key    = "p_strand";
-  my $cumlen_key    = "p_cumlen";
+  my $len_key       = "len";
+  my $cumlen_key    = "cumlen";
   my $corr_stop_key = "c_stop";
 
   # lengths
@@ -2174,6 +2212,12 @@ sub calculate_results_corrected_stops {
         # determine which model to set corrected stop position for, and set it
         $remaininglen = $newlen;
         for(my $mdl_idx = $first_mdl_idx; $mdl_idx <= $final_mdl_idx; $mdl_idx++) { 
+          if(! exists $results_AAHR->[$mdl_idx][$seq_idx]{$len_key}) { 
+            DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
+          }
+          if(! exists $results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
+            DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
+          }
           $cumlen = $results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key};
           if($newlen <= $cumlen) { # this is the model to update
             if($results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
@@ -2182,11 +2226,24 @@ sub calculate_results_corrected_stops {
             else { # negative strand
               $results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $results_AAHR->[$mdl_idx][$seq_idx]{$start_key} - $remaininglen + 1;
             }
-            $mdl_idx = $final_mdl_idx+1; # this breaks us out of the for loop
-          }
+            # update "len" and "cumlen"
+            $results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} -= ($results_AAHR->[$mdl_idx][$seq_idx]{$len_key} - $remaininglen);
+            $results_AAHR->[$mdl_idx][$seq_idx]{$len_key}     = $remaininglen;
+            # now for all remaining models for this feature, set "cumlen" to 0, indicating that that model prediction 
+            # doesn't really exist due to an early stop in a previous model
+            $mdl_idx++;
+            while($mdl_idx <= $final_mdl_idx) { 
+              if(! exists $results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
+                DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
+              }
+              $results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} = 0;
+              $mdl_idx++;
+            }
+            # after this look $mdl_idx == $final_mdl_idx+1, so we will break out of 'for(my $mdl_idx' loop
+          } # end of 'if($newlen <= $cumlen)'
           $remaininglen -= $cumlen; # update $remaininglen
-        }
-      }
+        } # end of 'for(my $mdl_idx' loop
+      } # end of 'if(exists $err_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}'
       #################################
       # block that handles ext errors #
       #################################
@@ -2197,12 +2254,21 @@ sub calculate_results_corrected_stops {
         }
         # ext are easier, always modify stop of final model
         my $mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+        if(! exists $results_AAHR->[$mdl_idx][$seq_idx]{$len_key}) { 
+          DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
+        }
+        if(! exists $results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
+          DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
+        }
         if($results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
           $results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $results_AAHR->[$mdl_idx][$seq_idx]{$start_key} + $len_corr;
         }
         else { # negative strand
           $results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $results_AAHR->[$mdl_idx][$seq_idx]{$start_key} - $len_corr;
         }
+        # update "len" and "cumlen"
+        $results_AAHR->[$mdl_idx][$seq_idx]{$len_key}    += $len_corr;
+        $results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} += $len_corr;
       }
     } # end of loop over $seq_idx
   } # end of loop over $ftr_idx
