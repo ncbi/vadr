@@ -634,6 +634,45 @@ $start_secs = outputProgressPrior("Combining corrected mature peptides into CDS"
 combine_feature_hits($out_root, "corrected", \@seq_name_A, \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
+#########################################################
+# Step 14. Translate corrected feature sequences into proteins
+#########################################################
+$start_secs = outputProgressPrior("Translating corrected nucleotide features into protein sequences", $progress_w, $log_FH, *STDOUT);
+
+for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+  my $ofile_info_key    = $ftr_info_HA{"corrected.hits"}[$ftr_idx];
+  my $nucleotide_fafile = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+  my $protein_fafile    = $nucleotide_fafile;
+  $protein_fafile       =~ s/\.fa$/\.translated\.fa/;
+  my $opts = "";
+  if($ftr_info_HA{"type"}[$ftr_idx] ne "mp") { 
+    $opts = " -reqstart -reqstop ";
+  }
+
+  # deal with alternative starts here
+  my $altstart_opt = "";
+  if(($ftr_info_HA{"type"}[$ftr_idx] eq "cds-mp" || $ftr_info_HA{"type"}[$ftr_idx] eq "cds-notmp") && 
+     opt_IsUsed("--specstart", \%opt_HH)) { 
+    $altstart_opt = "-altstart " . get_altstart_list(\@specstart_AA, $ftr_info_HA{"type_idx"}[$ftr_idx]-1, $ofile_info_HH{"FH"}); 
+  }
+
+  # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
+  $cmd = $esl_epn_translate . " -endatstop -nostop $opts $altstart_opt $nucleotide_fafile > $protein_fafile";
+  runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+
+  my $ofile_info_key = "translated.corrected.hits.ftr" . $ftr_idx;
+
+  addClosedFileToOutputInfo(\%ofile_info_HH, $ofile_info_key, $protein_fafile, sprintf("fasta file with translations of corrected hits for feature " . $ftr_info_HA{"out_tiny"}[$ftr_idx] . " composed of %d segments", $ftr_info_HA{"final_mdl"}[$ftr_idx] - $ftr_info_HA{"first_mdl"}[$ftr_idx] + 1));
+
+  # now save this file in the ftr_info_HAR
+  my $ftr_info_key = "translated.corrected.hits";
+  $ftr_info_HA{$ftr_info_key}[$ftr_idx] = $ofile_info_key;
+
+}
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+########################################################################
+
 # output optional output files
 if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
   dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
@@ -1233,10 +1272,6 @@ sub fetch_hits_given_results {
   my $nseq = scalar(@{$seq_name_AR}); 
 
   my $out_root_and_key = $out_root . "." . $out_key;
-
-  my $start_key           = $out_key . ".start";  # key for 'start'  in 3rd dim of @{$results_AAHR}
-  my $stop_key            = $out_key . ".stop";   # key for 'stop'   in 3rd dim of @{$results_AAHR}
-  my $strand_key          = $out_key . ".strand"; # key for 'strand' in 3rd dim of @{$results_AAHR}
   
   my $mdl_info_key        = $out_key . ".hits";
   my $mdl_info_append_key = $out_key . ".hits.append";
@@ -1265,28 +1300,35 @@ sub fetch_hits_given_results {
         # use corrected stop ("c_stop") if it exists
         my $stop   = (exists $results_AAHR->[$m][$s]{"c_stop"}) ? $results_AAHR->[$m][$s]{"c_stop"} : $results_AAHR->[$m][$s]{"p_stop"};
         my $strand = $results_AAHR->[$m][$s]{"p_strand"};
+        my $cumlen = $results_AAHR->[$m][$s]{"cumlen"};
 
-        my $new_name = $seq_name . "/" . $start . "-" . $stop;
-        push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
-
-        $nseq2fetch++;
-
-        if($append_num > 0) { 
-          my $append_start;
-          my $append_stop;
-          if($strand eq "+") { 
-            $append_start = $stop + 1;
-            $append_stop  = $stop + $append_num;
+        # if $cumlen == 0, that means that it was deliberately set as 0 
+        # in calculate_results_corrected_stops() to indicate this model's 
+        # sequence should not be fetched due to an early stop in a previous
+        # model for the same feature
+        if($cumlen > 0) { 
+          my $new_name = $seq_name . "/" . $start . "-" . $stop;
+          push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
+          
+          $nseq2fetch++;
+          
+          if($append_num > 0) { 
+            my $append_start;
+            my $append_stop;
+            if($strand eq "+") { 
+              $append_start = $stop + 1;
+              $append_stop  = $stop + $append_num;
+            }
+            else { 
+              $append_start = $stop - 1;
+              $append_stop  = $stop + $append_num;
+            }
+            my $append_new_name = $seq_name . "/" . $append_start . "-" . $append_stop;
+            printf("added $append_new_name $append_start $append_stop $seq_name to fetch_append_AA\n");
+            push(@fetch_append_AA, [$append_new_name, $append_start, $append_stop, $seq_name]);
+            
+            $nseq2fetch_append++;
           }
-          else { 
-            $append_start = $stop - 1;
-            $append_stop  = $stop + $append_num;
-          }
-          my $append_new_name = $seq_name . "/" . $append_start . "-" . $append_stop;
-          printf("added $append_new_name $append_start $append_stop $seq_name to fetch_append_AA\n");
-          push(@fetch_append_AA, [$append_new_name, $append_start, $append_stop, $seq_name]);
-        
-          $nseq2fetch_append++;
         }
       }
     }
