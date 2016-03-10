@@ -29,6 +29,7 @@ require "epn-options.pm";
 
 # hard-coded-paths:
 my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
+my $hmmer_exec_dir = "/usr/local/hmmer/3.1/bin/";
 my $esl_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 my $esl_ssplit     = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
@@ -244,11 +245,13 @@ if(opt_IsOn("--specstart", \%opt_HH)) {
 # make sure the required executables are executable
 ###################################################
 my %execs_H = (); # hash with paths to all required executables
-$execs_H{"cmscan"}        = $inf_exec_dir . "cmscan";
-$execs_H{"cmalign"}       = $inf_exec_dir . "cmalign";
-$execs_H{"cmfetch"}       = $inf_exec_dir . "cmfetch";
-$execs_H{"cmpress"}       = $inf_exec_dir . "cmpress";
-$execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
+$execs_H{"cmscan"}        = $inf_exec_dir   . "cmscan";
+$execs_H{"cmalign"}       = $inf_exec_dir   . "cmalign";
+$execs_H{"cmfetch"}       = $inf_exec_dir   . "cmfetch";
+$execs_H{"cmpress"}       = $inf_exec_dir   . "cmpress";
+$execs_H{"hmmbuild"}      = $hmmer_exec_dir . "hmmbuild";
+$execs_H{"hmmalign"}      = $hmmer_exec_dir . "hmmalign";
+$execs_H{"esl-reformat"}  = $esl_exec_dir   . "esl-reformat";
 $execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
 $execs_H{"esl_ssplit"}    = $esl_ssplit;
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
@@ -469,14 +472,14 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 define_model_and_feature_output_file_names($out_root, \%mdl_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
 
 #########################################################
-# Step 5. Fetch predicted hits into fasta files.
+# Step 6. Fetch predicted hits into fasta files.
 ##########################################################
 $start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta files", $progress_w, $log_FH, *STDOUT);
 fetch_hits_given_results($sqfile, "predicted", \%mdl_info_HA, \@seq_name_A, \@results_AAH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #############################################################################
-# Step 6. For features modelled by multiple models (e.g. multi-exon CDS)
+# Step 7. For features modelled by multiple models (e.g. multi-exon CDS)
 #         combine all relevant hits into predicted feature sequences.
 #############################################################################
 $start_secs = outputProgressPrior("Combining predicted exons into CDS", $progress_w, $log_FH, *STDOUT);
@@ -492,7 +495,7 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
 }
 
 #########################################################
-# Step 7. For features modelled by multiple other features (e.g. CDS comprised
+# Step 8. For features modelled by multiple other features (e.g. CDS comprised
 #         of multiple mature peptides) combine the individual predicted feature
 #         sequences into single sequences.
 #########################################################
@@ -501,7 +504,7 @@ combine_feature_hits("predicted", \@seq_name_A, \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 8. Examine each predicted feature to see if:
+# Step 9. Examine each predicted feature to see if:
 #         - start codon is valid
 #         - where first in-frame stop exists (for all features with valid start codon)
 #         Store the relevant information in @err_instances_AHH to either output later
@@ -520,8 +523,8 @@ initialize_error_instances_AHH(\@err_instances_AHH, \%err_info_HA, \%ftr_info_HA
 wrapper_esl_epn_translate_startstop($esl_epn_translate, "predicted", \%ftr_info_HA, (@specstart_AA ? \@specstart_AA : undef), \%err_info_HA, \@err_instances_AHH, \%opt_HH, \%ofile_info_HH);
 
 #########################################################
-# Step 9. For all features that have a valid start but
-#         no in-frame stop codon, look for a downstream in-frame stop.
+# Step 10. For all features that have a valid start but
+#          no in-frame stop codon, look for a downstream in-frame stop.
 #########################################################
 my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
 getIndexHashForArray(\@seq_name_A, \%seqname_index_H, $ofile_info_HH{"FH"});
@@ -575,7 +578,7 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
 dumpArrayOfHashesOfHashes("Error instances (%err_instances_AHH)", \@err_instances_AHH, *STDOUT);
 
 #########################################################
-# Step 10. For all features with either a 'trc' or 'ext'
+# Step 11. For all features with either a 'trc' or 'ext'
 #          error, add a new stop position to the results_AAH
 #          data structure the 'corrected' stop. We utilize
 #          the 'cumlen' values in the @results_AAH to 
@@ -589,14 +592,14 @@ calculate_results_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, \@seq_name_A, \@
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 11. Refetch corrected hits into new files.
+# Step 12. Refetch corrected hits into new files.
 #########################################################
 $start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta files", $progress_w, $log_FH, *STDOUT);
 fetch_hits_given_results($sqfile, "corrected", \%mdl_info_HA, \@seq_name_A, \@results_AAH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #############################################################################
-# Step 12. For features modelled by multiple models (e.g. multi-exon CDS)
+# Step 13. For features modelled by multiple models (e.g. multi-exon CDS)
 #          combine all relevant hits into corrected feature sequences.
 #############################################################################
 $start_secs = outputProgressPrior("Combining corrected exons into CDS", $progress_w, $log_FH, *STDOUT);
@@ -604,7 +607,7 @@ combine_model_hits("corrected", \@seq_name_A, \%mdl_info_HA, \%ftr_info_HA, \%of
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 13. For features modelled by multiple other features (e.g. CDS comprised
+# Step 14. For features modelled by multiple other features (e.g. CDS comprised
 #          of multiple mature peptides) combine the individual corrected feature
 #          sequences into single sequences.
 #########################################################
@@ -613,17 +616,24 @@ combine_feature_hits("corrected", \@seq_name_A, \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 14. Translate corrected feature sequences into proteins
+# Step 15. Translate corrected feature sequences into proteins
 #########################################################
 $start_secs = outputProgressPrior("Translating corrected nucleotide features into protein sequences", $progress_w, $log_FH, *STDOUT);
 translate_feature_sequences("corrected", "corrected.translated", (@specstart_AA ? \@specstart_AA : undef), \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 15. Create multiple DNA alignments
+# Step 16. Create multiple alignments of DNA sequences
 #########################################################
 $start_secs = outputProgressPrior("Aligning corrected nucleotide hits", $progress_w, $log_FH, *STDOUT);
 align_hits(\%execs_H, $model_file, \%mdl_info_HA, \@seq_name_A, \@results_AAH, \%ofile_info_HH); 
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#########################################################
+# Step 17. Create multiple alignements of protein sequences
+#########################################################
+$start_secs = outputProgressPrior("Aligning translated protein sequences", $progress_w, $log_FH, *STDOUT);
+align_protein_sequences(\%execs_H, "corrected.translated", \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ########################################################################
@@ -2443,7 +2453,6 @@ sub align_hits {
     my $ref_seq_idx = 0; # this will remain '0'
     for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
       if(defined $results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
-        printf("calling pairwise_identity with ref_seq_idx: $ref_seq_idx seq_idx: $seq_idx\n");
         $results_AAH[$mdl_idx][$seq_idx]{"fid2ref"} = $msa->pairwise_identity($ref_seq_idx, $seq_idx);
         # printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
 
@@ -2580,7 +2589,9 @@ sub define_model_and_feature_output_file_names {
 
   my @both_file_types_A = ("predicted.hits.fa", "predicted.hits.append.fa", "corrected.hits.fa", "corrected.hits.append.fa");
   my @mdl_only_file_types_A  = ("corrected.hits.stk");
-  my @ftr_only_file_types_A  = ("predicted.hits.fa.esl-epn-translate", "corrected.translated.hits.fa");
+  my @ftr_only_file_types_A  = ("predicted.hits.fa.esl-epn-translate", "corrected.translated.hits.fa", 
+                                "corrected.translated.hits.stk", "corrected.translated.hmm", 
+                                "corrected.translated.hmmbuild", "corrected.translated.hmmstk");
 
   for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     foreach my $file_type (@both_file_types_A, @mdl_only_file_types_A) { 
@@ -2687,4 +2698,95 @@ sub wrapper_esl_epn_translate_startstop {
       addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $esl_epn_translate_outfile, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
     }
   }
+}
+
+#################################################################
+# Subroutine:  align_protein_sequences
+# Incept:      EPN, Thu Mar 10 15:52:44 2016
+#
+# Purpose:    For each protein sequence feature, fetch the reference
+#             sequence, build an HMM from it and align all other
+#             proteins to it.
+#
+# Arguments: 
+#  $execs_HR:       REF to a hash with "hmmbuild" and "hmmalign"
+#                   executable paths
+#  $out_key:        key for the output files we'll create here, usually "corrected.translated",
+#                   this key will be stored in $ftr_info_HAR
+#  $ftr_info_HAR:   REF to hash of arrays with information on the features, ADDED TO HERE
+#  $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+################################################################# 
+sub align_protein_sequences { 
+  my $sub_name = "align_protein_sequences()";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $out_key, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
+
+  my $ftr_info_fa_file_key       = $out_key . ".hits.fa";
+  my $ftr_info_stk_file_key      = $out_key . ".hits.stk";
+  my $ftr_info_hmm_file_key      = $out_key . ".hmm";
+  my $ftr_info_hmmbuild_file_key = $out_key . ".hmmbuild";
+  my $ftr_info_hmmstk_file_key   = $out_key . ".hmmstk";
+
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $fa_file       = $ftr_info_HAR->{$ftr_info_fa_file_key}[$ftr_idx];
+    my $stk_file      = $ftr_info_HAR->{$ftr_info_stk_file_key}[$ftr_idx];
+    my $hmm_file      = $ftr_info_HAR->{$ftr_info_hmm_file_key}[$ftr_idx];
+    my $hmmbuild_file = $ftr_info_HAR->{$ftr_info_hmmbuild_file_key}[$ftr_idx];
+    my $hmmstk_file   = $ftr_info_HAR->{$ftr_info_hmmstk_file_key}[$ftr_idx];
+
+    my $prot_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $fa_file });
+    my $ref_prot_str = $prot_sqfile->fetch_consecutive_seqs(1, "", -1, undef); # the reference protein sequence string
+    my ($ref_prot_name, $ref_prot_seq) = split(/\n/, $ref_prot_str);
+    $ref_prot_name =~ s/^\>//; # remove fasta header line '>'
+
+    # write it out to a new stockholm alignment file
+    open(OUT, ">", $hmmstk_file) || die "ERROR, unable to open $hmmstk_file for writing.";
+    print OUT ("# STOCKHOLM 1.0\n");
+    print OUT ("$ref_prot_name $ref_prot_seq\n");
+    print OUT ("//\n");
+    close OUT;
+
+    # build an HMM from this single sequence alignment:
+    my $cmd = $execs_HR->{"hmmbuild"} . " $hmm_file $hmmstk_file > $hmmbuild_file";
+    runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"}); 
+
+    # store the files we just created
+    my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmm_file_key, $ofile_info_HHR->{"FH"});
+    addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmm_file, sprintf("HMM built from the reference protein sequence for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+
+    # remove the hmmbuild and hmmbuild alignment files, unless --keep
+    if(! opt_Get("--keep", $opt_HHR)) { 
+      removeFileUsingSystemRm($hmmstk_file,   $sub_name, $opt_HHR, $ofile_info_HHR);
+      removeFileUsingSystemRm($hmmbuild_file, $sub_name, $opt_HHR, $ofile_info_HHR);
+    }
+    else { 
+      $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmmstk_file_key, $ofile_info_HHR->{"FH"});
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmstk_file, sprintf("Stockholm alignment of reference protein for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+      $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmmbuild_file_key, $ofile_info_HHR->{"FH"});
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmbuild_file, sprintf("hmmbuild output file for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+    }
+
+    # align all sequences to this HMM
+    $cmd = $execs_HR->{"hmmalign"} . " $hmm_file $fa_file > $stk_file";
+    runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+
+    # store the file in ofile_info_HH
+    $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_stk_file_key, $ofile_info_HHR->{"FH"});
+    addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, sprintf("alignment of all protein sequences to reference for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+    
+    # remove the .ssi files, always
+    if(-e $fa_file . ".ssi") { 
+      removeFileUsingSystemRm($fa_file . ".ssi", $sub_name, $opt_HHR, $ofile_info_HHR);
+    }
+  }
+
+  return;
 }
