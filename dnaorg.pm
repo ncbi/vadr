@@ -1700,7 +1700,7 @@ sub lengthFromCoords {
 #   $out_fasta_file:   name of fasta file to create, created here
 #   $do_circular:      '1' to duplicate genome, '0' not to
 #   $accn_AR:          ref to array of accessions to fetch, PRE-FILLED
-#   $totlen_HR:        ref to hash with total lengths of each sequence, PRE-FILLED
+#   $totlen_AR:        ref to array with total lengths of each sequence, PRE-FILLED
 #   $seq_accn_AR:      ref to array of sequence names in newly created sequence file, FILLED HERE
 #   $accn2seq_accn_HR: ref to hash, keys are accessions from @{$accn_AR}, values are
 #                      sequence accessions from @{$seq_accn_AR}, can be undef if unwanted
@@ -1720,7 +1720,7 @@ sub fetchSequencesUsingEslFetchCds {
   my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($esl_fetch_cds, $fetch_file, $fasta_file, $do_circular, $accn_AR, $totlen_HR, $seq_accn_AR, $accn2seq_accn_HR, $seq_accn2accn_HR, $FH_HR) = @_;
+  my ($esl_fetch_cds, $fetch_file, $fasta_file, $do_circular, $accn_AR, $totlen_AR, $seq_accn_AR, $accn2seq_accn_HR, $seq_accn2accn_HR, $FH_HR) = @_;
 
   # contract check
   if(! -e $esl_fetch_cds) { 
@@ -1735,18 +1735,18 @@ sub fetchSequencesUsingEslFetchCds {
   my $naccn = scalar(@{$accn_AR});
   for(my $a = 0; $a < $naccn; $a++) { 
 #  print OUT $accn_A[$a] . "\n";
-    my $accn = $accn_AR->[$a];
-    if(! exists $totlen_HR->{$accn}) { DNAORG_FAIL("ERROR no total length read for accession $accn", 1, $FH_HR); } 
+    my $accn   = $accn_AR->[$a];
+    my $totlen = $totlen_AR->[$a];
 
     if($do_circular) { 
-      $fetch_string = "join(" . $accn . ":1.." . $totlen_HR->{$accn} . "," . $accn . ":1.." . $totlen_HR->{$accn} . ")\n";
+      $fetch_string = "join(" . $accn . ":1.." . $totlen . "," . $accn . ":1.." . $totlen . ")\n";
       print OUT $accn . ":" . "genome-duplicated" . "\t" . $fetch_string;
-      $seq_accn = $accn . ":genome-duplicated:" . $accn . ":1:" . $totlen_HR->{$accn} . ":+:" . $accn . ":1:" . $totlen_HR->{$accn} . ":+:";
+      $seq_accn = $accn . ":genome-duplicated:" . $accn . ":1:" . $totlen . ":+:" . $accn . ":1:" . $totlen . ":+:";
     }
     else { # $do_circular is FALSE
-      $fetch_string = $accn . ":1.." . $totlen_HR->{$accn} . "\n";
+      $fetch_string = $accn . ":1.." . $totlen . "\n";
       print OUT $accn . ":" . "genome" . "\t" . $fetch_string;
-      $seq_accn = $accn . ":genome:" . $accn . ":1:" . $totlen_HR->{$accn} . ":+:";
+      $seq_accn = $accn . ":genome:" . $accn . ":1:" . $totlen . ":+:";
     }
     if(defined $seq_accn_AR)      { push(@{$seq_accn_AR},        $seq_accn); }
     if(defined $accn2seq_accn_HR) { $accn2seq_accn_HR->{$accn} = $seq_accn;  }
@@ -2991,11 +2991,11 @@ sub validateOutputFileInfoHashOfHashes {
 # 
 # Returns:     index ($i) '1' if $value exists in @{$AR}, '-1' if not
 #
-# Dies:        if $value is numeric (matches regex /\d+\.?\d*/ or /\d*\.?\d+/)
+# Dies:        if $value is numeric
 ################################################################# 
 sub findNonNumericValueInArray { 
   my $nargs_expected = 3;
-  my $sub_name = "validateValueExistsInArray()";
+  my $sub_name = "findNonNumericValueInArray()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR, $value, $FH_HR) = @_;
 
@@ -3004,7 +3004,7 @@ sub findNonNumericValueInArray {
   }
 
   if(! defined $AR) { 
-    return -1; 
+    DNAORG_FAIL("ERROR in $sub_name, array reference is not defined", 1, $FH_HR);
   }
 
   for(my $i = 0; $i < scalar(@{$AR}); $i++) {
@@ -3014,6 +3014,47 @@ sub findNonNumericValueInArray {
   }
 
   return -1; # did not find it
+}
+
+#################################################################
+# Subroutine : numNonNumericValueInArray()
+# Incept:      EPN, Fri Mar 11 06:34:51 2016
+#
+# Purpose:     Returns number of times nonnumeric value 
+#              $value exists in @{$AR}. Returns 0 if
+#              it doesn't exist.
+#
+# Arguments: 
+#   $AR:       REF to array 
+#   $value:    the value we're looking for in @{$AR}
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns:     Number of occurences of $value in @{$AR}.
+#
+# Dies:        if $value is numeric
+################################################################# 
+sub numNonNumericValueInArray { 
+  my $nargs_expected = 3;
+  my $sub_name = "numNonNumericValueInArray()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR, $value, $FH_HR) = @_;
+
+  if(verify_real($value)) { 
+    DNAORG_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", 1, $FH_HR);
+  }
+
+  if(! defined $AR) { 
+    DNAORG_FAIL("ERROR in $sub_name, array reference is not defined", 1, $FH_HR);
+  }
+
+  my $ct = 0;
+  for(my $i = 0; $i < scalar(@{$AR}); $i++) {
+    if($AR->[$i] eq $value) { 
+      $ct++;
+    }
+  }
+
+  return $ct;
 }
 
 #######################################################################
@@ -3570,7 +3611,7 @@ sub parseSpecStartFile {
 #   $out_root:              string that is the 'root' for naming output files
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, FILLED HERE
 #   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else FILLED HERE
-#   $totlen_HR:             REF to hash, key is accession, value is total length of the sequence (non-duplicated), FILLED HERE
+#   $seq_info_HAR:          REF to 2D hash with sequence information, ADDED TO HERE
 #   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
 #   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
 #   $FH_HR:                 REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
@@ -3586,7 +3627,7 @@ sub wrapperGetInfoUsingEdirect {
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $totlen_HR, $ofile_info_HHR, $opt_HHR, $FH_HR) = @_;
+  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $seq_info_HAR, $ofile_info_HHR, $opt_HHR, $FH_HR) = @_;
 
   my $cmd; # a command to be run by runCommand()
   my $do_matpept = opt_IsOn("--matpept", $opt_HHR);
@@ -3690,11 +3731,19 @@ sub wrapperGetInfoUsingEdirect {
     DNAORG_FAIL("ERROR in $sub_name, no CDS information stored for reference accession", 1, $FH_HR); 
   }
 
-  # 6) parse the length file
-  # first, parse the length file
-  parseLengthFile($len_file, $totlen_HR, $FH_HR);
-  if(! exists $totlen_HR->{$ref_accn}) { 
-    DNAORG_FAIL("ERROR in $sub_name, problem fetching length of reference accession $ref_accn", 1, $FH_HR); 
+  # 6) parse the length file, and store accession lengths in $seq_info_HAR
+  my %accn_len_H = ();
+  parseLengthFile($len_file, \%accn_len_H, $FH_HR);
+  my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
+  if($nseq == 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, no accessions in seq_info_HAR", 1, $FH_HR); 
+  }
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
+    if(! exists $accn_len_H{$accn_name}) { 
+      DNAORG_FAIL("ERROR in $sub_name, problem fetching length of reference accession $ref_accn", 1, $FH_HR); 
+    }
+    $seq_info_HAR->{"accn_len"}[$seq_idx] = $accn_len_H{$accn_name};
   }
 
   return 0;
@@ -3711,8 +3760,8 @@ sub wrapperGetInfoUsingEdirect {
 #              and process information about the reference sequence.
 #              This function does the following:
 # 
-#              1) fetches the sequences listed in @{$accn_AR} into a fasta file and indexes that fasta file,
-#                 the reference sequence is $accn_AR->[0].
+#              1) fetches the sequences listed in @{$seq_info_HAR->{"accn_name"}} into a 
+#                 fasta file and indexes that fasta file, the reference sequence is $seq_info_HAR->{"accn_name"}[0].
 #              2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #              3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #              4) fetches the reference sequence feature and populates information on the models and features
@@ -3726,8 +3775,9 @@ sub wrapperGetInfoUsingEdirect {
 #              - $out_root . ".ref.all.stk":   Stockholm alignment file with reference features
 #              
 # Arguments: 
-#   $accn_AR:               REF to array of accessions, PRE-FILLED
-#   $seq_name_AR:           REF to array of actual sequence names in fasta file we create here, FILLED HERE
+#   $execs_HR:              REF to hash with executables, the key "esl_fetch_cds"
+#                           must be defined and the value must be a valid path to an 
+#                           esl_fetch_cds Perl script, PRE-FILLED
 #   $sqfile_R:              REF to a Bio::Easel::SqFile object, CREATED HERE
 #   $out_root:              string that is the 'root' for naming output files
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
@@ -3739,15 +3789,11 @@ sub wrapperGetInfoUsingEdirect {
 #                           2nd dim: value array of all matpept indices that comprise this CDS, 
 #                           OR undefined if all features are CDS and there are no mature peptides; 
 #                           PRE-FILLED
-#   $totlen_HR:             REF to hash, key is accession, value is total length of the sequence (non-duplicated), PRE-FILLED
-#   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
-#   $ftr_info_HAR:          REF to hash of arrays with information on the features, FILLED HERE
 #   $mdl_info_HAR:          REF to hash of arrays with information on the models, FILLED HERE
-#   $execs_HR:              REF to hash with executables, the key "esl_fetch_cds"
-#                           must be defined and the value must be a valid path to an 
-#                           esl_fetch_cds Perl script, PRE-FILLED
+#   $ftr_info_HAR:          REF to hash of arrays with information on the features, FILLED HERE
+#   $seq_info_HAR:          REF to 2D hash with sequence information, ADDED TO HERE 
 #   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
-#   $FH_HR:                 REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
 #
 # Returns:     void
 #
@@ -3757,10 +3803,12 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAllSequencesAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAllSequencesAndProcessReferenceSequence()";
-  my $nargs_expected = 15;
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($accn_AR, $seq_name_AR, $sqfile_R, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $totlen_HR, $ofile_info_HHR, $ftr_info_HAR, $mdl_info_HAR, $execs_HR, $opt_HHR, $FH_HR) = @_;
+  my ($execs_HR, $sqfile_R, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
   # contract check
   if((defined $mp_tbl_HHAR) && (! defined $cds2pmatpept_AAR)) { 
@@ -3771,8 +3819,9 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   }
 
   # 1) fetch the sequences into a fasta file and index that fasta file
-  my $have_only_ref = (scalar(@{$accn_AR}) == 1) ? 1 : 0;   # '1' if we only have the reference
-  my $ref_accn      = $accn_AR->[0];                        # the reference accession
+  my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
+  my $have_only_ref = ($nseq == 1) ? 1 : 0;            # '1' if we only have the reference
+  my $ref_accn      = $seq_info_HAR->{"accn_name"}[0]; # the reference accession
   my $fetch_file    = sprintf($out_root . "%s.fg.idfetch.in", ($have_only_ref) ? ".ref" : "");  # the esl_fetch_cds.pl input file we are about to create
   my $fasta_file    = sprintf($out_root . "%s.fg.fa",         ($have_only_ref) ? ".ref" : "");  # the fasta file we are about to create
   # remove the .ssi files if they exist
@@ -3780,7 +3829,8 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   if(-e $ssi_file) { 
     runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
   }
-  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $accn_AR, $totlen_HR, $seq_name_AR, undef, undef, $FH_HR);
+  @{$seq_info_HAR->{"seq_name"}} = ();
+  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR->{"accn_name"}, $seq_info_HAR->{"accn_len"}, $seq_info_HAR->{"seq_name"}, undef, undef, $FH_HR);
   addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
   addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
 
@@ -3796,11 +3846,11 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   determineFeatureTypes($nmp, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR); # $cds2pmatpept_AAR may be undef and that's okay
 
   # 4) fetch the reference feature sequences and populate information on the models and features
-  my $ref_totlen   = $totlen_HR->{$ref_accn};    # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
-  my $ref_seqname  = $seq_name_AR->[0];           # the reference sequence name the fetched sequence file $fasta_file
-  my $all_stk_file = $out_root . ".ref.all.stk"; # name of output alignment file we are about to create, each single reference feature 
-                                                 # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
-                                                 # separate alignments, one per feature
+  my $ref_totlen   = $seq_info_HAR->{"accn_len"}[0]; # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
+  my $ref_seqname  = $seq_info_HAR->{"seq_name"}[0]; # the reference sequence name the fetched sequence file $fasta_file
+  my $all_stk_file = $out_root . ".ref.all.stk";     # name of output alignment file we are about to create, each single reference feature 
+                                                     # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
+                                                     # separate alignments, one per feature
   fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
   addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, "Stockholm alignment file with reference features");
 
@@ -3979,7 +4029,7 @@ sub getIndexHashForArray {
 }
 
 #################################################################
-# Subroutine : getPrimaryChildrenFromFeatureInfo()
+# Subroutine : getPrimaryOrAllChildrenFromFeatureInfo()
 # Incept:      EPN, Thu Mar  3 12:27:38 2016
 #
 # Purpose:     Fill @{$AR} with the space delimited tokens of 
@@ -3987,33 +4037,44 @@ sub getIndexHashForArray {
 #              and return.
 #              
 # Arguments: 
-#   $ftr_info_HAR: REF to hash of arrays with information on the features, PRE-FILLED
-#   $ftr_idx:      index of feature we're interested in
-#   $AR:           REF to array to fill, FILLED HERE
-#   $FH_HR:        REF to hash of file handles
+#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:        index of feature we're interested in
+#   $primary_or_all: "primary" to fill array with primary children ("primary_children_ftr_str")
+#                    "all" to fill array with all children ("all_children_ftr_str")
+#   $AR:             REF to array to fill, FILLED HERE
+#   $FH_HR:          REF to hash of file handles
 # 
 # Returns:     Nothing.
 # 
 # Dies: if feature info hash is not 'complete', or if
-#       there are no primary children for feature index $ftr_idx,
-#       or if it is not of type 'multifeature'.
+#       there are no primary/all children for feature index $ftr_idx,
+#       or if it is not of type 'multifeature', or
+#       if $primary_or_all is neither "primary" nor "all"
 ################################################################# 
-sub getPrimaryChildrenFromFeatureInfo { 
-  my $nargs_expected = 4;
-  my $sub_name = "getPrimaryChildrenFromFeatureInfo";
+sub getPrimaryOrAllChildrenFromFeatureInfo { 
+  my $nargs_expected = 5;
+  my $sub_name = "getPrimaryOrAllChildrenFromFeatureInfo";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $ftr_idx, $AR, $FH_HR) = @_;
+  my ($ftr_info_HAR, $ftr_idx, $primary_or_all, $AR, $FH_HR) = @_;
 
-  @{$AR} = ();
+  if(($primary_or_all ne "primary") && ($primary_or_all ne "all")) { 
+    DNAORG_FAIL("ERROR in $sub_name, special primary_or_all variable is neither \"primary\" nor \"all\"", 1, $FH_HR);
+  }    
 
   if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "multifeature") { 
     DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but it is not annotated type of multifeature.", 1, $FH_HR);
   }
 
-  @{$AR} = split(/\s+/, $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]);
+  @{$AR} = ();
+  if($primary_or_all eq "primary") { 
+    @{$AR} = split(/\s+/, $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]);
+  }
+  elsif($primary_or_all eq "all") { 
+    @{$AR} = split(/\s+/, $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]);
+  }
 
   if(scalar(@{$AR}) == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but it has no primary children.", 1, $FH_HR);
+    DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but it has no $primary_or_all children.", 1, $FH_HR);
   }
 
   return;
@@ -4052,7 +4113,7 @@ sub annotateAppendFeatures {
        $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
       # find final feature 
       my @primary_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, \@primary_children_idx_A, $FH_HR);
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
       my $final_ftr_idx = $primary_children_idx_A[(scalar(@primary_children_idx_A)-1)];
       my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
       $mdl_info_HAR->{"append_num"}[$final_mdl_idx] = 3; # we want to append the 3 nt 3' of this model 
@@ -4557,6 +4618,37 @@ sub findValueInArray {
   }
   return -1;
 }  
+
+#################################################################
+# Subroutine: getMonocharacterString()
+# Incept:     EPN, Thu Mar 10 21:02:35 2016
+#
+# Purpose:    Return a string of length $len of repeated instances
+#             of the character $char.
+#
+# Arguments:
+#   $len:   desired length of the string to return
+#   $char:  desired character
+#
+# Returns:  A string of $char repeated $len times.
+# 
+# Dies:     Never.
+#
+#################################################################
+sub getMonocharacterString {
+  my $sub_name = "getMonocharacterString";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($len, $char) = @_;
+
+  my $ret_str = "";
+  for(my $i = 0; $i < $len; $i++) { 
+    $ret_str .= $char;
+  }
+
+  return $ret_str;
+}
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value

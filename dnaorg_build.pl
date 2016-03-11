@@ -251,7 +251,10 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
                         # 1D: key: accession
                         # 2D: key: column name in gene ftable file
                         # 3D: per-row values for each column
-my %totlen_H   = ();    # key: accession, value: total length of the sequence for that accession
+my %seq_info_HA = ();   # hash of arrays, avlues are arrays [0..$nseq-1];
+                        # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
+                        # $seq_info_HA{"accn_name"}[0] is our reference accession
+@{$seq_info_HA{"accn_name"}} = ($ref_accn);
 
 # Call the wrapper function that does the following:
 #  1) creates the edirect .mat_peptide file, if necessary
@@ -260,12 +263,12 @@ my %totlen_H   = ();    # key: accession, value: total length of the sequence fo
 #  4) parses the edirect .mat_peptide file, if necessary
 #  5) parses the edirect .ftable file
 #  6) parses the length file
-wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%totlen_H, \%ofile_info_HH, 
+wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH, 
                            \%opt_HH, $ofile_info_HH{"FH"}); # 1st argument is undef because we are only getting info for $ref_accn
 
 if($do_matpept) {  
   # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $totlen_H{$ref_accn}, $ofile_info_HH{"FH"});
+  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $seq_info_HA{"accn_len"}[0], $ofile_info_HH{"FH"});
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -273,8 +276,6 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 2. Fetch and process the reference genome sequence
 ##########################################################
 $start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
-my @accn_A      = ($ref_accn); # array of accessions 
-my @seq_name_A   = ();          # actual name of reference sequence in fasta file, after being fetched, not the same as $ref_accn
 my %mdl_info_HA = ();          # hash of arrays, values are arrays [0..$nmdl-1];
                                # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
                                # filled in wrapperFetchAllSequencesAndProcessReferenceSequence()
@@ -285,18 +286,17 @@ my $sqfile = undef;            # pointer to the Bio::Easel::SqFile object we'll 
 
 
 # Call the wrapper function that does the following:
-#  1) fetches the sequences listed in @{$accn_AR} into a fasta file and indexes that fasta file,
-#     the reference sequence is $accn_AR->[0] (this is the only element of the array)
-#  2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
-#  3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
-#  4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\@accn_A, \@seq_name_A, \$sqfile, $out_root, \%cds_tbl_HHA,
+#   1) fetches the sequences listed in @{$seq_info_HAR->{"accn_name"} into a fasta file 
+#      and indexes that fasta file, the reference sequence is $seq_info_HAR->{"accn_name"}[0].
+#   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
+#   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
+#   4) fetches the reference sequence feature and populates information on the models and features
+wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
                                                     ($do_matpept) ? \@cds2amatpept_AA : undef, 
-                                                    \%totlen_H, \%ofile_info_HH, 
-                                                    \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
-                                                    \%opt_HH, $ofile_info_HH{"FH"});
+                                                    \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA,
+                                                    \%opt_HH, \%ofile_info_HH);
 
 # verify our model and feature info hashes are complete, 
 # if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message

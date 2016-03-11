@@ -84,9 +84,13 @@ opt_Add("--skipscan",   "boolean", 0,                       2,    undef,"--nseq,
 
 $opt_group_desc_H{"3"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                        1,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
-opt_Add("--ftrinfo",    "boolean", 0,                        1,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--errinfo",    "boolean", 0,                        1,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
+opt_Add("--mdlinfo",    "boolean", 0,                        3,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--ftrinfo",    "boolean", 0,                        3,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--errinfo",    "boolean", 0,                        3,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"4"} = "options controlling the tabular annotation output";
+#       option         type       default                group  requires incompat   preamble-output                          help-output    
+opt_Add("--seqrow",    "boolean", 0,                        4,    undef,   undef,   "sequence-as-rows output",               "ouput tabular annotation in sequence-as-rows format", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -114,7 +118,8 @@ my $options_okay =
 # optional output files
                 'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"}, 
-                'errinfo'      => \$GetOptions_H{"--errinfo"});
+                'errinfo'      => \$GetOptions_H{"--errinfo"}, 
+                'seqrow'       => \$GetOptions_H{"--seqrow"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -159,9 +164,13 @@ my $do_matpept = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --m
 # first, parse the list file, we need to do this first because we need
 # to know what the reference accession <refaccn> is to check if the
 # directory <refaccn> exists
-my @accn_A = (); # array of accessions, $accn_A[0] is our reference
-parseListFile($listfile, 1, \@accn_A, undef); # 1 
-my $ref_accn = $accn_A[0];
+my %seq_info_HA = ();  # hash of arrays, avlues are arrays [0..$nseq-1];
+                       # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
+                       # $seq_info_HA{"accn_name"}[0] is our reference accession
+@{$seq_info_HA{"accn_name"}} = ();
+parseListFile($listfile, 1, $seq_info_HA{"accn_name"}, undef); # 1 
+my $nseq = scalar(@{$seq_info_HA{"accn_name"}});
+my $ref_accn = $seq_info_HA{"accn_name"}[0];
 
 my $dir_set_as_ref_accn = 0;
 if(! defined $dir) { 
@@ -262,8 +271,8 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 my $cmd;             # a command to run with runCommand()
 my $progress_w = 70; # the width of the left hand column in our progress output, hard-coded
 my $progress_str = (opt_Get("--skipedirect", \%opt_HH)) ? 
-    sprintf("Processing information on %d sequences fetched earlier using edirect", scalar(@accn_A)) : 
-    sprintf("Gathering information on %d sequences using edirect", scalar(@accn_A));
+    sprintf("Processing information on %d sequences fetched earlier using edirect", $nseq) : 
+    sprintf("Gathering information on %d sequences using edirect", $nseq);
 my $start_secs = outputProgressPrior($progress_str, $progress_w, $log_FH, *STDOUT);
 
 my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
@@ -274,7 +283,6 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
                         # 1D: key: accession
                         # 2D: key: column name in gene ftable file
                         # 3D: per-row values for each column
-my %totlen_H   = ();    # key: accession, value: total length of the sequence for that accession
 
 
 # Call the wrapper function that does the following:
@@ -284,12 +292,12 @@ my %totlen_H   = ();    # key: accession, value: total length of the sequence fo
 #  4) parses the edirect .mat_peptide file, if necessary
 #  5) parses the edirect .ftable file
 #  6) parses the length file
-wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%totlen_H, \%ofile_info_HH,
+wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH,
                            \%opt_HH, $ofile_info_HH{"FH"}); # 1st argument is undef because we are only getting info for $ref_accn
 
 if($do_matpept) {  
-    # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-    matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $totlen_H{$ref_accn}, $ofile_info_HH{"FH"});
+  # validate the CDS:mat_peptide relationships that we read from the $matpept input file
+  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $seq_info_HA{"accn_len"}[0], $ofile_info_HH{"FH"});
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -297,28 +305,26 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 2. Fetch and process the reference genome sequence
 ##########################################################
 $start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
-my @seq_name_A   = ();          # actual name of all sequences in fasta file, after being fetched, same order as @accn_A
-my %mdl_info_HA = ();          # hash of arrays, values are arrays [0..$nmdl-1];
-                               # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
-                               # filled in wrapperFetchAndProcessReferenceSequence()
-my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1], 
-                               # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
-                               # filled in wrapperFetchAndProcessReferenceSequence()
-my $sqfile = undef;            # pointer to the Bio::Easel::SqFile object we'll open in wrapperFetchAllSequencesAndProcessReferenceSequence()
+my %mdl_info_HA = ();  # hash of arrays, values are arrays [0..$nmdl-1];
+                       # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
+                       # filled in wrapperFetchAndProcessReferenceSequence()
+my %ftr_info_HA = ();  # hash of arrays, values are arrays [0..$nftr-1], 
+                       # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
+                       # filled in wrapperFetchAndProcessReferenceSequence()
+my $sqfile = undef;    # pointer to the Bio::Easel::SqFile object we'll open in wrapperFetchAllSequencesAndProcessReferenceSequence()
 
 # Call the wrapper function that does the following:
-#   1) fetches the sequences listed in @{$accn_AR} into a fasta file and indexes that fasta file,
-#      the reference sequence is $accn_AR->[0].
+#   1) fetches the sequences listed in @{$seq_info_HAR->{"accn_name"} into a fasta file 
+#      and indexes that fasta file, the reference sequence is $seq_info_HAR->{"accn_name"}[0].
 #   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\@accn_A, \@seq_name_A, \$sqfile, $out_root, \%cds_tbl_HHA,
+wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
                                                     ($do_matpept) ? \@cds2amatpept_AA : undef, 
-                                                    \%totlen_H, \%ofile_info_HH,
-                                                    \%ftr_info_HA, \%mdl_info_HA, \%execs_H,
-                                                    \%opt_HH, $ofile_info_HH{"FH"});
+                                                    \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, 
+                                                    \%opt_HH, \%ofile_info_HH);
 
 # verify our model and feature info hashes are complete, 
 # if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
@@ -327,7 +333,9 @@ my $nmdl = validateModelInfoHashIsComplete  (\%mdl_info_HA, undef, $ofile_info_H
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-# verify that we have the model file we need
+#########################################################
+# Step 3. Verify we have the model file that we need to do homology searches
+##########################################################
 my $model_file = opt_Get("--model", \%opt_HH);     # this will be undefined unless --model set on cmdline
 if(! defined $model_file) { 
   # -model not used, make sure we already have the CM DB file from
@@ -366,7 +374,7 @@ validate_cms_built_from_reference($model_file, \%mdl_info_HA, \%opt_HH, \%ofile_
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 3. Perform homology searches
+# Step 4. Perform homology searches
 ##########################################################
 my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
 validateFileExistsAndIsNonEmpty($seq_file, undef, $ofile_info_HH{"FH"});
@@ -378,7 +386,7 @@ my $tblout_file = $out_root . ".tblout";
 # determine how many jobs we need to run to satisfy <n> per job (where n is from --nseq <n>),
 # if more than 1 and --local not used, we split up the sequence file and submit jobs to farm,
 # if only 1 or --local used, we just run it locally
-my $nfarmjobs = scalar(@accn_A) / opt_Get("--nseq", \%opt_HH); 
+my $nfarmjobs = $nseq / opt_Get("--nseq", \%opt_HH); 
 
 if(! opt_Get("--skipscan", \%opt_HH)) { 
   if(($nfarmjobs == 1) || (opt_Get("--local", \%opt_HH))) { 
@@ -440,13 +448,12 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
 } # end of if(! opt_Get(--skipscan", \%opt_HH))
 
 #########################################################
-# Step 4. Parse homology search results into usable data structures
+# Step 5. Parse homology search results into usable data structures
 ##########################################################
 #%results_AAH = (); # 1st dim: array, 0..$nmdl-1, one per model
 #                   # 2nd dim: array, 0..$naccn-1, one per accessions
 #                   # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5hangover", "p_3hangover", "p_evalue", "p_fid2ref"
 $start_secs = outputProgressPrior("Parsing cmscan results", $progress_w, $log_FH, *STDOUT);
-my $nseq = scalar(@seq_name_A);
 
 # initialize the results AAH
 my @results_AAH = ();
@@ -458,32 +465,32 @@ for(my $m = 0; $m < $nmdl; $m++) {
 }
 
 # parse the cmscan results
-parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \@seq_name_A, \@accn_A, \%totlen_H, \@results_AAH, $ofile_info_HH{"FH"});
+parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \%seq_info_HA, \@results_AAH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the lengths
 $start_secs = outputProgressPrior("Calculating predicted feature lengths ", $progress_w, $log_FH, *STDOUT);
-calculate_results_predicted_lengths(\%mdl_info_HA, \%ftr_info_HA, scalar(@seq_name_A), \@results_AAH, $ofile_info_HH{"FH"});
+calculate_results_predicted_lengths(\%mdl_info_HA, \%ftr_info_HA, $nseq, \@results_AAH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 5. Define names of all per-model and per-feature output files we're about to create
+# Step 6. Define names of all per-model and per-feature output files we're about to create
 ##########################################################
 define_model_and_feature_output_file_names($out_root, \%mdl_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
 
 #########################################################
-# Step 6. Fetch predicted hits into fasta files.
+# Step 7. Fetch predicted hits into fasta files.
 ##########################################################
 $start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta files", $progress_w, $log_FH, *STDOUT);
-fetch_hits_given_results($sqfile, "predicted", \%mdl_info_HA, \@seq_name_A, \@results_AAH, \%ofile_info_HH);
+fetch_hits_given_results($sqfile, "predicted", \%mdl_info_HA, $seq_info_HA{"seq_name"}, \@results_AAH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #############################################################################
-# Step 7. For features modelled by multiple models (e.g. multi-exon CDS)
+# Step 8. For features modelled by multiple models (e.g. multi-exon CDS)
 #         combine all relevant hits into predicted feature sequences.
 #############################################################################
 $start_secs = outputProgressPrior("Combining predicted exons into CDS", $progress_w, $log_FH, *STDOUT);
-combine_model_hits("predicted", \@seq_name_A, \%mdl_info_HA, \%ftr_info_HA, \%ofile_info_HH);
+combine_model_hits("predicted", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # output optional output files
@@ -495,20 +502,20 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
 }
 
 #########################################################
-# Step 8. For features modelled by multiple other features (e.g. CDS comprised
+# Step 9. For features modelled by multiple other features (e.g. CDS comprised
 #         of multiple mature peptides) combine the individual predicted feature
 #         sequences into single sequences.
 #########################################################
 $start_secs = outputProgressPrior("Combining predicted mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
-combine_feature_hits("predicted", \@seq_name_A, \%ftr_info_HA, \%ofile_info_HH);
+combine_feature_hits("predicted", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 9. Examine each predicted feature to see if:
-#         - start codon is valid
-#         - where first in-frame stop exists (for all features with valid start codon)
-#         Store the relevant information in @err_instances_AHH to either output later
-#         or examine more later.
+# Step 10. Examine each predicted feature to see if:
+#          - start codon is valid
+#          - where first in-frame stop exists (for all features with valid start codon)
+#          Store the relevant information in @err_instances_AHH to either output later
+#          or examine more later.
 #########################################################
 $start_secs = outputProgressPrior("Identifying internal starts/stops in coding sequences", $progress_w, $log_FH, *STDOUT);
 # initialize data structures
@@ -523,11 +530,11 @@ initialize_error_instances_AHH(\@err_instances_AHH, \%err_info_HA, \%ftr_info_HA
 wrapper_esl_epn_translate_startstop($esl_epn_translate, "predicted", \%ftr_info_HA, (@specstart_AA ? \@specstart_AA : undef), \%err_info_HA, \@err_instances_AHH, \%opt_HH, \%ofile_info_HH);
 
 #########################################################
-# Step 10. For all features that have a valid start but
+# Step 11. For all features that have a valid start but
 #          no in-frame stop codon, look for a downstream in-frame stop.
 #########################################################
 my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
-getIndexHashForArray(\@seq_name_A, \%seqname_index_H, $ofile_info_HH{"FH"});
+getIndexHashForArray($seq_info_HA{"seq_name"}, \%seqname_index_H, $ofile_info_HH{"FH"});
 
 my $ftr_idx;
 for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -546,7 +553,7 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     if($cur_strand) { $posn_to_start++; }
     else            { $posn_to_start--; }
 
-    my $totlen = $totlen_H{$accn_A[$seq_idx]};
+    my $totlen = $seq_info_HA{"accn_len"}[$seq_idx];
     if($posn_to_start > $totlen) { 
       if(opt_Get("-c", \%opt_HH)) { 
         # genome is circularized, we've duplicated it, it's okay that our possible start is > $totlen at this point, but we want to subtract $totlen here
@@ -578,65 +585,104 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
 dumpArrayOfHashesOfHashes("Error instances (%err_instances_AHH)", \@err_instances_AHH, *STDOUT);
 
 #########################################################
-# Step 11. For all features with either a 'trc' or 'ext'
+# Step 12. For all features with either a 'trc' or 'ext'
 #          error, add a new stop position to the results_AAH
 #          data structure the 'corrected' stop. We utilize
 #          the 'cumlen' values in the @results_AAH to 
 #          simplify this for multi-exon features. 
 #########################################################
 # dump results
-dump_results(\@results_AAH, \%mdl_info_HA, \@seq_name_A, \@accn_A, \%totlen_H, *STDOUT);
+dump_results(\@results_AAH, \%mdl_info_HA, \%seq_info_HA, *STDOUT);
 
 $start_secs = outputProgressPrior("Correcting homology search stop predictions", $progress_w, $log_FH, *STDOUT);
-calculate_results_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, \@seq_name_A, \@results_AAH, \@err_instances_AHH, \%opt_HH, $ofile_info_HH{"FH"});
+calculate_results_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, $seq_info_HA{"seq_name"}, \@results_AAH, \@err_instances_AHH, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 12. Refetch corrected hits into new files.
+# Step 13. Refetch corrected hits into new files.
 #########################################################
 $start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta files", $progress_w, $log_FH, *STDOUT);
-fetch_hits_given_results($sqfile, "corrected", \%mdl_info_HA, \@seq_name_A, \@results_AAH, \%ofile_info_HH);
+fetch_hits_given_results($sqfile, "corrected", \%mdl_info_HA, $seq_info_HA{"seq_name"}, \@results_AAH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #############################################################################
-# Step 13. For features modelled by multiple models (e.g. multi-exon CDS)
+# Step 14. For features modelled by multiple models (e.g. multi-exon CDS)
 #          combine all relevant hits into corrected feature sequences.
 #############################################################################
 $start_secs = outputProgressPrior("Combining corrected exons into CDS", $progress_w, $log_FH, *STDOUT);
-combine_model_hits("corrected", \@seq_name_A, \%mdl_info_HA, \%ftr_info_HA, \%ofile_info_HH);
+combine_model_hits("corrected", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 14. For features modelled by multiple other features (e.g. CDS comprised
+# Step 15. For features modelled by multiple other features (e.g. CDS comprised
 #          of multiple mature peptides) combine the individual corrected feature
 #          sequences into single sequences.
 #########################################################
 $start_secs = outputProgressPrior("Combining corrected mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
-combine_feature_hits("corrected", \@seq_name_A, \%ftr_info_HA, \%ofile_info_HH);
+combine_feature_hits("corrected", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 15. Translate corrected feature sequences into proteins
+# Step 16. Translate corrected feature sequences into proteins
 #########################################################
 $start_secs = outputProgressPrior("Translating corrected nucleotide features into protein sequences", $progress_w, $log_FH, *STDOUT);
 translate_feature_sequences("corrected", "corrected.translated", (@specstart_AA ? \@specstart_AA : undef), \%ftr_info_HA, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 16. Create multiple alignments of DNA sequences
+# Step 17. Create multiple alignments of DNA sequences
 #########################################################
 $start_secs = outputProgressPrior("Aligning corrected nucleotide hits", $progress_w, $log_FH, *STDOUT);
-align_hits(\%execs_H, $model_file, \%mdl_info_HA, \@seq_name_A, \@results_AAH, \%ofile_info_HH); 
+align_hits(\%execs_H, $model_file, \%mdl_info_HA, $seq_info_HA{"seq_name"}, \@results_AAH, \%ofile_info_HH); 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 17. Create multiple alignements of protein sequences
+# Step 18. Create multiple alignements of protein sequences
 #########################################################
 $start_secs = outputProgressPrior("Aligning translated protein sequences", $progress_w, $log_FH, *STDOUT);
 align_protein_sequences(\%execs_H, "corrected.translated", \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ########################################################################
+# Step 19. Output annotations
+########################################################################
+# open files for writing
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",     $out_root . ".tbl",           "All annotations in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl", $out_root . ".fail.tbl",      "Annotations for all sequences with >= 1 failure in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl", $out_root . ".error.tbl",      "Annotations for all sequences with >= 1 error in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr", $out_root . ".peraccn.errors", "List of errors, one line per sequence");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr", $out_root . ".all.errors",     "List of errors, one line per error");
+
+# output headers
+output_header_error_files(\%ftr_info_HA, \%ofile_info_HH);
+
+my @out_col_header_AA = (); # used only if $do_seqrow
+                            # ref to 2D array of output tokens for column headers
+                            # first dim: [0..4], 0, 1, and 3 are arrays of header tokens, 2 and 4 are dashed lines that are
+my @out_row_header_A  = (); # used only if $do_seqcol
+                            # ref to array of output tokens for column or row headers
+my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
+                            # explanations of each header
+
+# which format: seq-as-rows or seq-as-cols?
+my $do_seqcol = 1;
+my $do_seqrow = 0;
+if(opt_Get("--seqrow", \%opt_HH)) { 
+  $do_seqcol = 0;
+  $do_seqrow = 1;
+}
+
+my $origin_seq = undef;
+# fill the data structures with the heading information
+output_tbl_get_headings(\@out_col_header_AA, \@out_row_header_A, \@out_header_exp_A, 
+                        $origin_seq, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+
+# output the top of the table if $do_seqrow
+if($do_seqrow) { 
+  output_tbl_seqrow_top(\@out_col_header_AA, \%ofile_info_HH);
+}
+
+
 
 # output optional output files
 if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
@@ -1012,9 +1058,7 @@ sub split_fasta_file {
 # Arguments: 
 #  $tblout_file:   tblout file to parse
 #  $mdl_info_HAR:  REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_name_AR:    REF to array of sequence names, PRE-FILLED
-#  $accn_AR:       REF to array of accessions, same order as @{$seq_name_AR}, PRE-FILLED
-#  $totlen_HR:     REF to hash of total lengths of all accessions (keys are values from @{$accn_AR}), PRE-FILLED
+#  $seq_info_HAR:  REF to hash of arrays with sequence information, PRE-FILLED
 #  $results_AAHR:  REF to results AAH, FILLED HERE
 #  $FH_HR:         REF to hash of file handles
 #
@@ -1026,16 +1070,16 @@ sub split_fasta_file {
 ################################################################# 
 sub parse_cmscan_tblout { 
   my $sub_name = "parse_cmscan_tblout()";
-  my $nargs_exp = 7;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $mdl_info_HAR, $seq_name_AR, $accn_AR, $totlen_HR, $results_AAHR, $FH_HR) = @_;
+  my ($tblout_file, $mdl_info_HAR, $seq_info_HAR, $results_AAHR, $FH_HR) = @_;
   
   # make an 'order hash' for the model names and sequence names,
   my %mdlname_index_H = (); # mdlname_index_H{$model_name} = <n>, means that $model_name is the <n>th model in the @{$mdl_info_HAR{*}} arrays
-  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
-  getIndexHashForArray($mdl_info_HAR->{"cmname"}, \%mdlname_index_H, $FH_HR);
-  getIndexHashForArray($seq_name_AR, \%seqname_index_H, $FH_HR);
+  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
+  getIndexHashForArray($mdl_info_HAR->{"cmname"},   \%mdlname_index_H, $FH_HR);
+  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seqname_index_H, $FH_HR);
 
   open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
 
@@ -1068,11 +1112,11 @@ sub parse_cmscan_tblout {
       my $mdlidx = $mdlname_index_H{$mdlname}; # model    index for the hit in results_AAH (1st dim of results_AAH)
       my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
       my $mdllen = $mdl_info_HAR->{"length"}[$mdlidx]; # model length, used to determine how far hit is from boundary of the model
-      if(! exists $totlen_HR->{$accn_AR->[$seqidx]}) { 
-        DNAORG_FAIL("ERROR in $sub_name, do not have length information for sequence $seqname, accession $accn_AR->[$seqidx]", 1, $FH_HR);
+      if(! exists $seq_info_HAR->{"accn_len"}[$seqidx]) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
       }
-      my $seqlen = $totlen_HR->{$accn_AR->[$seqidx]}; # sequence length, used to exclude storing of hits that start and stop after $seqlen, 
-                                                      # which can occur in circular genomes, where we've duplicated the sequence
+      my $seqlen = $seq_info_HAR->{"accn_len"}[$seqidx]; # sequence length, used to exclude storing of hits that start and stop after $seqlen, 
+                                                         # which can occur in circular genomes, where we've duplicated the sequence
 
       store_hit($results_AAHR, $mdlidx, $seqidx, $mdllen, $seqlen, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $FH_HR);
     }
@@ -1170,9 +1214,7 @@ sub store_hit {
 # Arguments: 
 #  $results_AAHR:  REF to results AAH, PRE-FILLED
 #  $mdl_info_HAR:  REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_name_AR:    REF to array of sequence names, PRE-FILLED
-#  $accn_AR:       REF to array of accessions, same order as @{$seq_name_AR}, PRE-FILLED
-#  $totlen_HR:     REF to hash of total lengths of all accessions (keys are values from @{$accn_AR}), PRE-FILLED
+#  $seq_info_HAR:  REF to hash of arrays with sequence information, PRE-FILLED
 #  $FH:            file handle to output to
 #
 # Returns:    void
@@ -1182,21 +1224,21 @@ sub store_hit {
 ################################################################# 
 sub dump_results {
   my $sub_name = "dump_results()";
-  my $nargs_exp = 6;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($results_AAHR, $mdl_info_HAR, $seq_name_AR, $accn_AR, $totlen_HR, $FH) = @_;
+  my ($results_AAHR, $mdl_info_HAR, $seq_info_HAR, $FH) = @_;
 
   my $nmdl = scalar(@{$results_AAHR});
-  my $nseq = scalar(@{$seq_name_AR}); 
+  my $nseq = scalar(@{$seq_info_HAR->{"seq_name"}});
   
   for(my $m = 0; $m < $nmdl; $m++) { 
     for(my $s = 0; $s < $nseq; $s++) { 
       printf $FH ("model($m): %20s  seq($s): %20s  accn: %10s  len: %10d  ", 
                   $mdl_info_HAR->{"cmname"}[$m],
-                  $seq_name_AR->[$s],
-                  $accn_AR->[$s],
-                  $totlen_HR->{$accn_AR->[$s]});
+                  $seq_info_HAR->{"seq_name"}[$s],
+                  $seq_info_HAR->{"accn_name"}->[$s],
+                  $seq_info_HAR->{"accn_len"}[$s]);
       foreach my $key (sort keys %{$results_AAHR->[$m][$s]}) { 
         printf $FH ("%s: %s ", $key, $results_AAHR->[$m][$s]{$key});
       }
@@ -1443,7 +1485,7 @@ sub combine_feature_hits {
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features annotated by models
       # get the array of primary children feature indices for this feature
       my @primary_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
       my @tmp_hit_fafile_A = ();
       my $combined_ftr_hit_fafile = $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx];
       foreach my $cur_ftr_idx (@primary_children_idx_A) { 
@@ -1635,7 +1677,7 @@ sub calculate_results_predicted_lengths {
 #             where $f is a feature index in %{ftr_info_HA}. 
 #             The key in the 1st hash dimension is an error code, 
 #             the key in the 2nd hash dimension is a sequence 
-#             name (from $accn_AR).
+#             name (from array $seq_info_HAR{}).
 #
 # Arguments: 
 #  $err_instances_AHHR: REF to the array of 2D hashes, initialized here
@@ -2150,7 +2192,7 @@ sub calculate_results_corrected_stops {
   # total counts of things
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = scalar(@seq_name_A);
+  my $nseq = scalar(@{$seq_name_AR});
 
   # keys in the 3rd dim of @{$results_AAHR}
   my $start_key     = "p_start";
@@ -2175,7 +2217,7 @@ sub calculate_results_corrected_stops {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
       for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-        my $seq_name = $seq_name_A[$seq_idx];
+        my $seq_name = $seq_name_AR->[$seq_idx];
         
         # only one of trc or ext can exist, they're 'incompatible' in err_info_HAR
         #################################
@@ -2312,7 +2354,7 @@ sub translate_feature_sequences {
     }
     elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
       my @primary_children_idx_A = ();
-      getPrimaryChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
       $nsegments = scalar(@primary_children_idx_A);
     }
     else { 
@@ -2788,5 +2830,1021 @@ sub align_protein_sequences {
     }
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine:  output_header_error_files
+# Incept:      EPN, Thu Mar 10 18:57:48 2016
+#
+# Purpose:    Output the header lines for the all errors and 
+#             per-accession error files.
+#
+# Arguments: 
+#  $ftr_info_HAR:   REF to hash of arrays with information on the features
+#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+################################################################# 
+sub output_header_error_files { 
+  my $sub_name = "output_header_error_files";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $ofile_info_HHR) = @_;
+
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
+
+  my $allerr_FH = $ofile_info_HHR->{"FH"}{"allerr"};
+  my $pererr_FH = $ofile_info_HHR->{"FH"}{"pererr"};
+
+  # all errors file header
+  printf $allerr_FH ("# Each error encountered is printed below, one error per line.\n");
+  printf $allerr_FH ("# Each line has four columns with the following labels:\n");
+  printf $allerr_FH ("#   \"accn\"         : sequence accession\n");
+  printf $allerr_FH ("#   \"idx\"          : feature index, full feature names are listed below for each index\n");
+  printf $allerr_FH ("#   \"code\"         : 3 digit error code\n");
+  printf $allerr_FH ("#   \"error-message\": error message, possibly with additional information at end enclosed in \"[]\"\n");
+  printf $allerr_FH ("#\n");
+  printf $allerr_FH ("# List of features:\n");
+
+  # per accession errors file header
+  printf $pererr_FH ("# Each accession for which at least one error was found is printed below.\n");
+  printf $pererr_FH ("# One line per accession. Each line is formatted as follows:\n");
+  printf $pererr_FH ("#   <accession> <idxA>:<errorcodeA1>(,<errorcodeAM>) <idxN>:<errorcodeN1>(,<errorcodeNM>)\n");
+  printf $pererr_FH ("# For indices (<idx>) A to N, each with M error codes.\n");
+  printf $pererr_FH ("# Each index refers to a 'feature' in the reference accession as defined below.\n");
+  printf $pererr_FH ("# If no index exists, then the error pertains to the entire sequence.\n");
+
+  # print feature list
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $str = sprintf("# Feature \#%d: %s %s\n", $ftr_idx, $ftr_info_HAR->{"out_short"}[$ftr_idx], $ftr_info_HAR->{"out_product"}[$ftr_idx]);
+    print $allerr_FH $str;
+    print $pererr_FH $str;
+  }
+
+  # a few more all error lines
+  printf $allerr_FH ("# \"N/A\" in feature index and desc columns (idx and desc) indicates error pertains to the entire sequence\n");
+  printf $allerr_FH ("#       as opposed to a specific feature.\n");
+  printf $allerr_FH ("#\n");
+
+  # output multifeature relationships (e.g. CDS made up of mature peptides)
+  output_multifeature_relationships($pererr_FH, $ftr_info_HAR, $ofile_info_HH{"FH"});
+  output_multifeature_relationships($allerr_FH, $ftr_info_HAR, $ofile_info_HH{"FH"});
+
+  printf $allerr_FH ("%-10s  %3s  %-5s  %4s  error-message\n", "#accn", "idx", "desc", "code");
+  printf $pererr_FH ("#\n");
+
+  return;
+}
+
+#################################################################
+# Subroutine:  output_multifeature_relationships
+# Incept:      EPN, Thu Mar 10 19:15:38 2016
+#
+# Purpose:    Output the multi-feature relationships, e.g. CDS comprised of
+#             multiple features.
+#
+# Arguments: 
+#  $FH:             file handle to print to
+#  $ftr_info_HAR:   REF to hash of arrays with information on the features
+#  $FH_HR:          REF to hash of file handles
+#
+# Returns:    void
+#
+################################################################# 
+sub output_multifeature_relationships { 
+  my $sub_name = "output_multifeature_relationships";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($FH, $ftr_info_HAR, $FH_HR) = @_;
+
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+
+  my $nprinted = 0;
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features annotated by models
+      if($nprinted == 0) { 
+        print $FH ("# CDS:MAT_PEPTIDE relationships:\n");
+        print $FH ("#\n");
+      }
+      
+      if($ftr_info_HAR->{"type"}[$ftr_idx] ne "cds-mp") { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, unexpected type %s for multifeature, feature #%d %s, expected cds-mp", $ftr_info_HAR->{"type"}[$ftr_idx], $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
+      }
+      
+      # get the array of primary children feature indices for this feature
+      my @children_idx_A = (); # feature indices of the primary children of this feature
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@children_idx_A, $FH_HR);
+      printf $FH ("# %s is comprised of the following primary features in order:\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
+      foreach my $child_ftr_idx (@children_idx_A) { 
+        printf $FH "%s ", $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
+      }
+      print $FH "\n";
+      
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@children_idx_A, $FH_HR);
+      printf $FH ("# %s encodes all of the following features in order:\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
+      foreach my $child_ftr_idx (@children_idx_A) { 
+        printf $FH "%s ", $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
+      }
+      print $FH "\n";
+      $nprinted++;
+    }
+  }
+  print $FH "#\n";
+  my $div_line = "# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n";
+  print $FH $div_line;
+
+  return;
+}
+
+#################################################################
+# Subroutine : output_tbl_get_headings()
+# Incept:      EPN, Thu Mar 10 20:34:07 2016
+#
+# Purpose:     Fill header data structures with strings for headers
+#              in tabular annotation output.
+#
+#             IMPORTANT: This function must stay in sync with the long
+#             block of code in the main script entitled 'Pass through
+#             all accessions, and gather and output annotation for
+#             each'. Here we define the headers of the output, in the
+#             main script we add output for each of those headers, so
+#             they must stay in sync.
+# Arguments: 
+#  $out_col_header_AAR: ref to 2D array of column headers, FILLED HERE
+#                       iff output format is seq-as-rows
+#  $out_row_header_AR:  ref to 1D array of row headers, FILLED HERE 
+#                       iff output format is seq-as-cols
+#  $out_header_exp_AR:  ref to 1D array of header explanations, each
+#                       element is a line to be printed in explanatory
+#                       section of the output; FILLED HERE
+#  $origin_seq:         origin sequence, or undef if ! defined
+#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
+#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
+#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:     REF to the 2D hash of output file information
+# 
+# Returns:     void
+# 
+# Dies: never
+#
+################################################################# 
+sub output_tbl_get_headings { 
+  my $sub_name = "output_tbl_get_headings";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($out_col_header_AAR, $out_row_header_AR, $out_header_exp_AR, $origin_seq, $mdl_info_HAR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+  my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+
+  # which format: seq-as-rows or seq-as-cols?
+  my $do_seqcol = 1;
+  my $do_seqrow = 0;
+  if(opt_Get("--seqrow", $opt_HHR)) { 
+    $do_seqcol = 0;
+    $do_seqrow = 1;
+  }
+  # determine optional modes
+  my $do_nofid    = 0; # '1' to skip fid output
+  my $do_noss3    = 0; # '1' to skip ss3 output
+  my $do_nostop   = 0; # '1' to skip stop output
+  my $do_nomdlb   = 0; # '1' to skip model boundary output
+  my $do_noolap   = 0; # '1' to skip overlap output
+  my $do_noexist  = 0; # '1' to skip comparison to existing GenBank annotation
+  my $do_fullolap = 0; # '1' to output full overlap strings
+  my $do_fulladj  = 0; # '1' to output full adjacency strings
+  my $do_matpept  = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
+
+  # miscellaneous variables
+  my $width_result = 5 + $nmdl + 2; # an important width 
+  my $row_div_char = ":"; # divides rows
+  my $width;    # width of a field
+  my $pad;      # string of all spaces used for pretty formatting
+  my $tok1;     # first  level token (line 1 of column headers) 
+  my $tok2;     # second level token (line 2 of column headers) 
+  my $tok3;     # third  level token (line 3 of column headers) 
+  my $tok4;     # fourth level token (line 4 of column headers) 
+  my $tok5;     # fifth  level token (line 5 of column headers) 
+  my $exp_tok1; # first  level explanation token, only used if has to be different from $tok1
+  my $exp_tok4; # fourth level explanation token, only used if has to be different from $tok4
+  my @pf_text_A = (); # array of lines to print about pass/fail strings to explanation at the end
+  my $pf_idx = 1;     # pass/fail index
+  my %need_to_define_H = (); # hash of terms we need to define in explanatory text
+
+## If $do_seqrow: 
+## We store the column headers in a 2D array @{$out_col_header_AAR}
+## The first dimension is of size 5, one array for each 'line' of
+## output in the sequence-per-row output format. The 2nd dimension
+## arrays are different sizes because at higher levels single
+## columns can pertain to multiple columns at lower levels, for
+## example, "origin sequence" at level 2 pertains to all of "#", 
+## "start", "stop", "offst", and "PF" at level 4. When we output
+## the headings we don't have to know the relationship between
+## the levels, we simply format them to the proper width and
+## print them.
+##
+## Example of sequence-per-row output:
+#                                                                      CDS #1 [single exon; +]                          CDS #2 [2 exons; -]                                        
+#                                          origin sequence                 movement protein                        replication-associated protein                                         GenBank annotation
+#                                   ----------------------  ---------------------------------------------  --------------------------------------------------------------------------    -------------------                   
+# idx accession           totlen  # start  stop offst PF    start1    stop1  fid1 md1 length SS3 stp PF    start1    stop1  fid1 md1   start2    stop2  fid2 md2 length SS3 stp PF     cds   exons  match             overlaps?  result      
+#---- -------------------  ------ -- ----- ----- ----- --  -------- -------- ----- --- ------ --- --- --  -------- -------- ----- ---   ------    ------ ---- --- ------ --- --- --     ----- -----  -----   -------------------  ------------
+#
+#
+## If $do_seqcol: 
+##  We store the row headers in a 1D array @{$out_row_header_AR}.
+##  We have the same values as in the column headers, but each
+##  level is concatenated together per row. Here's the row header
+##  information that pertains to the example column header example
+##  above.
+#
+#  idx
+#  accession
+#  totlen
+#  origin sequence:#
+#  origin sequence:start
+#  origin sequence:stop
+#  origin sequence:offst
+#  origin sequence:PF
+#  CDS #1 [single exon; +]:movement protein:start1
+#  CDS #1 [single exon; +]:movement protein:stop1
+#  CDS #1 [single exon; +]:movement protein:fid1
+#  CDS #1 [single exon; +]:movement protein:md1
+#  CDS #1 [single exon; +]:movement protein:length
+#  CDS #1 [single exon; +]:movement protein:SS3
+#  CDS #1 [single exon; +]:movement protein:stp
+#  CDS #1 [single exon; +]:movement protein:PF
+#  CDS #2 [2 exons; -]:replication associated protein:start1
+#  CDS #2 [2 exons; -]:replication associated protein:stop1
+#  CDS #2 [2 exons; -]:replication associated protein:fid1
+#  CDS #2 [2 exons; -]:replication associated protein:md1
+#  CDS #2 [2 exons; -]:replication associated protein:start2
+#  CDS #2 [2 exons; -]:replication associated protein:stop2
+#  CDS #2 [2 exons; -]:replication associated protein:fid2
+#  CDS #2 [2 exons; -]:replication associated protein:md2
+#  CDS #2 [2 exons; -]:replication associated protein:length
+#  CDS #2 [2 exons; -]:replication associated protein:SS3
+#  CDS #2 [2 exons; -]:replication associated protein:stp
+#  CDS #2 [2 exons; -]:replication associated protein:PF
+#  GenBank annotation:cds
+#  GenBank annotation:exons
+#  GenBank annotation:match
+#  overlaps?
+#  result
+
+  # first, initialize the @{$out_header_exp_AR} with the first two lines:
+  push(@{$out_header_exp_AR}, "#\n");
+  if($do_seqrow) { 
+    push(@{$out_header_exp_AR}, "# Explanations of column headings (in left to right order):\n");
+  }
+  elsif($do_seqcol) { 
+    push(@{$out_header_exp_AR}, "# Explanations of row headings on each page:\n");
+  }
+  push(@{$out_header_exp_AR}, "#\n");
+
+  # column/row #2: 'idx'
+  $tok1 = sprintf("%-4s  ", "");
+  $tok2 = $tok1;
+  $tok3 = $tok1;
+  $tok4 = sprintf("%-4s  ", " idx");
+  $tok5 = sprintf("%-4s  ", "----");
+  if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "index of genome in list", $FH_HR);
+
+  # column/row #2: 'accession'
+  $tok1 = sprintf("%-19s  ", "");
+  $tok2 = $tok1;
+  $tok3 = $tok1;
+  $tok4 = sprintf("%-19s  ", " accession");
+  $tok5 = sprintf("%-19s  ", "-------------------");
+  if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "GenBank accession for genomic sequence", $FH_HR);
+
+  # column/row #3: 'totlen'
+  $tok1 = sprintf("%-6s", "");
+  $tok2 = $tok1;
+  $tok3 = $tok1;
+  $tok4 = sprintf("%-6s", "totlen");
+  $tok5 = sprintf("%-6s", "------");
+  if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "total length (nt) for accession", $FH_HR);
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR); # adds a blank line
+
+  if(defined $origin_seq) { 
+    # column/row #4: 'origin sequence:#'
+    $tok1 = sprintf("  %22s", "");
+    $tok2 = sprintf("  %22s", "   origin sequence");
+    $tok3 = sprintf("  %22s", "----------------------");
+    $tok4 = sprintf(" %2s", " #");
+    $tok5 = sprintf(" %2s", "--");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "number of occurrences of origin sequence (input with -oseq) in genome", $FH_HR);
+
+    # column/row #5: 'origin sequence:start'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "start");
+    $tok5 = sprintf(" %5s", "-----");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "start position of lone occurrence of origin sequence (if only 1 exists)", $FH_HR);
+
+    # column/row #6: 'origin sequence:stop'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "stop");
+    $tok5 = sprintf(" %5s", "-----");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of lone occurrence of origin sequence (if only 1 exists)", $FH_HR);
+
+    # column/row #7: 'origin sequence:offst'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "offst");
+    $tok5 = sprintf(" %5s", "-----");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise", $FH_HR);
+
+    # column/row #7: 'origin sequence:PF'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %2s", "PF");
+    $tok5 = sprintf(" %2s", "--");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "'P' (for PASS) if there is exactly 1 occurrence of the offset, else 'F' for FAIL", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR); # adds a blank line
+    push(@pf_text_A, "P/F character $pf_idx pertains to the origin sequence test");
+    $pf_idx++;
+  } # end of 'if(defined $orig_seq)'
+
+  # create columns for 5'UTR, if $do_matpept:
+  if($do_matpept) { 
+    $width = 6 + 1 + 6 + 1 + 6; #20
+    $tok1 = sprintf("  %*s", $width, "");
+    $tok2 = sprintf("         %*s", $width, "5' UTR");
+    $tok3 = sprintf("  %*s", $width, getMonocharacterString($width, "-"));
+    $tok4 = sprintf("  %6s", "start");
+    $tok5 = sprintf("  ------");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "start position of 5' UTR (inferred from other predictions, \"?\" if first mat_peptide is not predicted)", $FH_HR);
+
+    $tok4 = sprintf(" %6s", "stop");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of 5' UTR (inferred from other predictions, \"?\" if first mat_peptide is not predicted)", $FH_HR);
+
+    $tok4 = sprintf(" %6s", "length");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "length of 5' UTR (inferred from other predictions, \"?\" if first mat_peptide is not predicted)", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR); # adds a blank line
+  }
+
+  # create columns for main features (CDS/mat_peptide)
+  $width = 0;
+  my $do_explanation = 1;
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $width += 18;
+    my $ftr_idx = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
+    my $ftr_out_short   = $ftr_info_HAR->{"out_short"}[$ftr_idx];
+    my $ftr_out_product = $ftr_info_HAR->{"out_product"}[$ftr_idx];
+    my $mdl_exon_idx    = $mdl_info_HAR->{"map_exon"}[$mdl_idx];
+    my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
+    if(! $do_nofid)  { $width += 6;  }
+    if(! $do_nomdlb) { $width += 4;  }
+    if(! $do_noolap) { $width += 11; }
+    if($is_matpept)  { $width += 11; }
+    if($mdl_info_HAR->{"is_final"}[$mdl_idx]) { 
+      $width += 9;
+      if(! $do_noss3)  { $width += 4; }
+      if(! $do_nostop) { $width += 4; }
+      $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(($width-length($ftr_out_short))/2, " "));
+      $exp_tok1 = ($is_matpept) ? "MP #<i>" : "CDS #<i>";
+      $tok2 = sprintf("  %*s", $width, substr($ftr_out_short, 0, $width) . getMonocharacterString(($width-length($ftr_out_short))/2, " "));
+      $tok3 = sprintf("  %s", getMonocharacterString($width, "-"));
+      $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mdl_exon_idx+1));
+      $exp_tok4 = "start<j>";
+      $tok5 = sprintf("  %8s", "--------");
+      if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+      elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      $width = 0; # reset width, this is impt
+    }
+    else { # not the final exon, still need start coordinate
+      $width += 1;
+      $tok1 = sprintf("    %s", $ftr_out_short);   # used only for output_tbl_get_headings_seq_col_helper
+      $tok2 = sprintf("    %s", $ftr_out_product); # used only for output_tbl_get_headings_seq_col_helper
+      $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mdl_exon_idx+1));
+      $exp_tok4 = "start<j>";
+      $tok5 = sprintf("  %8s", "--------");
+      if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+    }
+    my $exp_substr = ($is_matpept) ? "coding sequence part <j> of mat_peptide" : "exon #<j> of CDS #<i>";
+    if($do_explanation) { 
+      output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "start position of $exp_substr (\"NP\" if no prediction)", $FH_HR);
+      output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation", $FH_HR);
+    }
+    
+    # stop, fid, and md rows take place for all exons
+    # only token 4 changes
+    $tok4 = sprintf(" %8s", sprintf("%s%s", "stop", $mdl_exon_idx+1));
+    $exp_tok4 = "stop<j>";
+    $tok5 = sprintf(" %8s", "--------");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+    if($do_explanation) { 
+      output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "stop  position of $exp_substr (\"NP\" if no prediction)", $FH_HR);
+      output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation", $FH_HR);
+    }
+    
+    if(! $do_nofid) { 
+      $tok4 = sprintf(" %5s", sprintf("%s%s", "fid", $mdl_exon_idx+1));
+      $exp_tok4 = "fid<j>";
+      $tok5 = sprintf(" %5s", "-----");
+      if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "fractional identity between $exp_substr and reference genome (\"NP\" if no prediction)", $FH_HR);
+      }
+    }
+
+    $exp_substr = $is_matpept ? "mat_peptide coding sequence" : "exon coding sequence";
+    if(! $do_nomdlb) { 
+      $tok4 = sprintf(" %3s", sprintf("%s%s", "md", $mdl_exon_idx+1));
+      $exp_tok4 = "md<j>";
+      $tok5 = sprintf(" %3s", "---");
+      if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "annotation indicating if alignment to reference extends to 5' and 3' end of reference $exp_substr.", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "first character pertains to 5' end and second character pertains to 3' end.", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "possible values for each of the two characters:", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \".\":   alignment extends to boundary of reference", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"t\":   position has been corrected based on predicted, truncated protein sequence", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop (5' of predicted stop)", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"e\":   position has been corrected based on predicted, extended protein sequence", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop (3' of predicted stop)", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"-\":   exon/segment is not predicted due to stop codon in earlier exon/segment", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"NP\":  (spanning both characters) no prediction", $FH_HR);
+      }
+    }
+    
+    if(! $do_noolap) { 
+      $tok4 = sprintf(" %10s", sprintf("%s%s", "overlaps", $mdl_exon_idx+1));
+      $exp_tok4 = "overlaps<j>";
+      $tok5 = sprintf(" %10s", "----------");
+      if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s overlaps with", ($is_matpept) ? "mat_peptide" : "exon", ($is_matpept) ? "mat_peptide" : "exon"), $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);
+        $need_to_define_H{"overlap"} = 1;
+      }
+    }
+
+    if($is_matpept) { 
+      $tok4 = sprintf(" %10s", sprintf("%s%s", "adjcnces", $mdl_exon_idx+1));
+      $exp_tok4 = "adjcnces<j>";
+      $tok5 = sprintf(" %10s", "----------");
+      if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s is adjacent with", ($is_matpept) ? "mat_peptide" : "exon", ($is_matpept) ? "mat_peptide" : "exon"), $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);      
+      }
+      $need_to_define_H{"adjacent"} = 1;
+    }
+
+    $exp_substr = $is_matpept ? "mat_peptide coding sequence" : "CDS";
+    if($mdl_info_HAR->{"is_final"}[$mdl_idx]) { 
+      $tok4 = sprintf(" %6s", "length");
+      $tok5 = sprintf(" %6s", "------");
+      if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, sprintf("length of $exp_substr #<i> (all %s summed)", $is_matpept ? "segments" : "exons"), $FH_HR);
+      }      
+
+      if((! $is_matpept) && (! $do_noss3)) { # skip this in matpept mode, we don't check start/stop of mat_peptides, only CDS, later
+        $tok4 = sprintf(" %3s", "ss3");
+        $tok5 = sprintf(" %3s", "---");
+        if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+        if($do_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, else '!'", $FH_HR);          
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, else '!'", $FH_HR);      
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);
+        }
+      }
+      if((! $is_matpept) && (! $do_nostop)) { # skip this in matpept mode, we only check stop of final mat_peptide, later
+        $tok4 = sprintf(" %3s", "stp");
+        $tok5 = sprintf(" %3s", "---");
+        if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+        if($do_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "the predicted stop codon for this CDS (\"NP\" if no prediction)", $FH_HR);
+        }
+      }
+      
+      $tok4 = sprintf(" %2s", "PF");
+      $tok5 = sprintf(" %2s", "--");
+      if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+      elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); }
+      if($do_explanation) { 
+        if($is_matpept) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this mat_peptide PASSED ('P') or FAILED ('F')", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a mat_peptide coding sequence PASSES ('P') if and only if", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon or homologous reference mat_peptide", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      does not", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after its predicted", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      end or reference mat_peptide does not", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) has a pairwise alignment to the homologous reference met_peptide that", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      extends to the 5' and 3' boundary of the reference annotation", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) overlaps with exact same set of other mat_peptides as the homologous", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference mat_peptide", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (6) is adjacent to the exact same set of other mat_peptides as the", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference mat_peptide", $FH_HR);
+          push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d mature peptides, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
+          $pf_idx += $nftr;
+          $need_to_define_H{"adjacent"} = 1;
+        }
+        else { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first exon", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon at end of its final exon", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of its exons have a pairwise alignment to the homologous", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference exon that extends to the 5' and 3' boundary of the", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference annotation.", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) all of its exons overlap with exact same set of other exons as the", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference CDS", $FH_HR);
+          push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
+          $pf_idx += $nftr;
+          $need_to_define_H{"overlap"} = 1;
+        }
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+      }
+    }
+    $do_explanation = 0; # once we see the final exon of the first CDS, we don't need to print CDS explanations anymore
+  } # end of 'if($mdl_is_final_AR->[$mdl_idx])'
+
+  # create columns for 3'UTR, if $do_matpept:
+  if($do_matpept) { 
+    $width = 6 + 1 + 6 + 1 + 6; #20
+    $tok1 = sprintf("  %*s", $width, "");
+    $tok2 = sprintf("         %*s", $width, "3' UTR");
+    $tok3 = sprintf("  %*s", $width, getMonocharacterString($width, "-"));
+    $tok4 = sprintf("  %6s", "start");
+    $tok5 = sprintf("  ------");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "start position of 3' UTR (inferred from other predictions, \"?\" if final mat_peptide is not predicted)", $FH_HR);
+
+    $tok4 = sprintf(" %6s", "stop");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of 3' UTR (inferred from other predictions, \"?\" if final mat_peptide is not predicted)", $FH_HR);
+
+    $tok4 = sprintf(" %6s", "length");
+    $tok5 = sprintf(" ------");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "length of 3' UTR (inferred from other predictions, \"?\" if final mat_peptide is not predicted)", $FH_HR);
+
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+  }
+
+  # create columns for CDS annotation in mat_peptide mode, if nec
+  if($do_matpept) { 
+    $do_explanation = 1;
+    my $nmultifeature = numNonNumericValueInArray($ftr_info_HAR->{"annot_type"}, "multifeature", $FH_HR);
+    foreach (my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
+        $width = 6 + 1 + 6 + 1 + 6; #20
+        $tok1     = sprintf("  %*s", $width, "");
+        $tok2     = sprintf("  %*s", $width, $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . getMonocharacterString(($width-length($ftr_info_HAR->{"out_tiny"}[$ftr_idx])), " "));
+        my $exp_tok2 = "CDS #<i>";
+        $tok3 = sprintf("  %s", getMonocharacterString($width, "-"));
+        $tok4 = sprintf("  %6s", "start");
+        $tok5 = sprintf("  ------");
+        if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+        elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+        if($do_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "start position of CDS #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
+        }
+        
+        $tok4 = sprintf(" %6s", "stop");
+        $tok5 = sprintf(" %6s", "------");
+        if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+        if($do_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "stop  position of CDS #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
+        }
+        
+        $tok4 = sprintf(" %6s", "length");
+        $tok5 = sprintf(" %6s", "------");
+        if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+        if($do_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "length of CDS #<i> (\"?\" if any of the mat_peptides that comprise this CDS are not predicted)", $FH_HR);
+        }
+
+        $tok4 = sprintf(" %6s", "startc");
+        $tok5 = sprintf(" %6s", "------");
+        if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+        if($do_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "start codon of CDS #<i> (\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
+        }
+        
+        $tok4 = sprintf(" %6s", "stopc");
+        $tok5 = sprintf(" %6s", "------");
+        if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+        if($do_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "stop codon of CDS #<i> (\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
+        }
+        
+        if(! $do_noss3) { 
+          $tok4 = sprintf(" %3s", "ss3");
+          $tok5 = sprintf(" %3s", "---");
+          if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+          elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+          if($do_explanation) { 
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, '!' if not,", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  and '?' if first mat_peptide for this CDS is not predicted", $FH_HR);          
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, '!' if not,", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                      and '?' if final mat_peptide for this CDS is not predicted", $FH_HR);      
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, '!' if it is not a", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  multiple of 3, and '?' if any of the mat_peptides that comprise it are not predicted.", $FH_HR);
+          }
+        }
+        
+        $tok4 = sprintf(" %6s", "PF");
+        $tok5 = sprintf(" %6s", "---");
+        if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+        elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+        if($do_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first mat_peptide", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after the end of its final mat_peptide", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of the mat_peptides that comprise it are adjacent", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+          if($nmultifeature == 1) { 
+            push(@pf_text_A, sprintf("P/F character %d pertains to the lone CDS.", $pf_idx));
+          }
+          else {
+            push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nmultifeature-1, $nmultifeature));
+          }
+          $pf_idx += $nmultifeature;
+        }
+        $do_explanation = 0;
+      }
+    }
+  }
+
+  # "totlen"
+  $tok1 = sprintf("  %6s", "");
+  $tok2 = sprintf("  %6s", "");
+  $tok3 = sprintf("  %6s", "");
+  $tok4 = sprintf("  %6s", "totlen");
+  $tok5 = sprintf("  %6s", "------");
+  if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "total length (nt) for accession (repeated for convenience)", $FH_HR);
+
+  # "avgid"
+  $tok1 = sprintf("  %5s", "");
+  $tok2 = sprintf("  %5s", "");
+  $tok3 = sprintf("  %5s", "");
+  $tok4 = sprintf("  %5s", "avgid");
+  $tok5 = sprintf("  %5s", "-----");
+  if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "average fractional identity of all pairwise alignments for this accession", $FH_HR);
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+
+  # existing GenBank annotation
+  if(! $do_noexist) { 
+    $tok1 = sprintf("  %19s", "");
+    $tok2 = sprintf("  %19s", "GenBank annotation");
+    $tok3 = sprintf("  %19s", "-------------------");
+    $tok4 = sprintf("  %5s", ($do_matpept) ? "mp" : "cds");
+    $tok5 = sprintf("  %5s", "-----");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, sprintf("number of %s in the existing GenBank annotation for this accession", ($do_matpept) ? "mat_peptides" : "CDS"), $FH_HR);
+    
+    $tok4 = sprintf("  %5s", "exons");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "total number of exons in the existing GenBank annotation for this accession", $FH_HR);
+    
+    $tok4 = sprintf("  %5s", "match");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                undef, undef, undef, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "number of exons in the existing GenBank annotation for which existing and predicted annotation agree exactly", $FH_HR);
+  }
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+
+  # overlaps?
+  if($do_fullolap) { 
+    $tok1 = sprintf("  %20s", "");
+    $tok2 = sprintf("  %20s", "");
+    $tok3 = sprintf("  %20s", "");
+    $tok4 = sprintf("  %20s", " overlaps?");
+    $tok5 = sprintf("  %20s", "--------------------");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "text describing which (if any) of the predicted features overlap with each other", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first character:   'P' for PASS if predicted annotation for this accession has same overlaps as the reference", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                   'F' for FAIL if it does not", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character:  total number of overlaps between any two features", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "remainder of line: text explaining which features overlap", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  e.g.: \"3.2/4.1\" indicates exon/segment #2 of feature #3 overlaps with exon/segment #1 of feature #4 on either strand", $FH_HR);
+    push(@pf_text_A, "P/F character $pf_idx pertains to the overlap test of all features");
+    $pf_idx++;
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+    $need_to_define_H{"overlap"} = 1;
+  }
+
+  # adjacencies?
+  if($do_fulladj) { 
+    $tok1 = sprintf("  %122s", "");
+    $tok2 = sprintf("  %122s", "");
+    $tok3 = sprintf("  %122s", "");
+    $tok4 = sprintf("  %122s", " adjacencies?");
+    $tok5 = sprintf("  %122s", "--------------------");
+    if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+    elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "text describing which (if any) of the predicted features are adjacent to each other", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "two features i and j are adjacent if i < j and final nt of i is 1 less than first nt of j", $FH_HR);
+      output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first character:   'P' for PASS if predicted annotation for this accession has same adjacencies as the reference", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                   'F' for FAIL if it does not", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character:  total number of adjacencies between any two features", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "remainder of line: text explaining which features are adjacent", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  e.g.: \"3.2|4.1\" indicates exon/segment #2 of feature #3 is adjacent to exon/segment #1 of feature #4 on either strand", $FH_HR);
+    push(@pf_text_A, "P/F character $pf_idx pertains to the full adjacency test of all features");
+    $pf_idx++;
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+    $need_to_define_H{"adjacent"} = 1;
+  }
+
+  # result
+  $tok1 = sprintf("  %*s",  $width_result, "");
+  $tok2 = sprintf("  %*s",  $width_result, "");
+  $tok3 = sprintf("  %*s",  $width_result, "");
+  $tok4 = sprintf("  %-*s", $width_result, "result");
+  $tok5 = sprintf("  %-*s", $width_result, getMonocharacterString($width_result, "-"));
+  if   ($do_seqrow) { output_tbl_get_headings_seq_row_helper($out_col_header_AAR,                $tok1, $tok2, $tok3, $tok4, $tok5); }
+  elsif($do_seqcol) { output_tbl_get_headings_seq_col_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); }
+
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "\"PASS\" or \"FAIL\". \"PASS\" if and only if all tests for this accession PASSED ('P')", $FH_HR);
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, sprintf("as indicated in the \"PF\" %s.", ($do_seqcol) ? "rows" : "columns"), $FH_HR);
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, sprintf("After that is a string of %d characters, these are the individual P/F results in order.", $pf_idx-1), $FH_HR);
+  foreach my $pf_text_str (@pf_text_A) { 
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, $pf_text_str, $FH_HR);
+  }
+  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "See explanations of the individual P/F values above.", $FH_HR);
+
+  if((defined $need_to_define_H{"overlap"}) || (defined $need_to_define_H{"adjacent"})) {
+     output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+     push(@{$out_header_exp_AR}, "# Definitions of non-obvious terms above:\n", $FH_HR);
+     output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+     if(defined $need_to_define_H{"overlap"}) { 
+       push(@{$out_header_exp_AR}, "# overlap:  two features i and j overlap if they are on both on the same strand and overlap by >= 1 nt.\n");
+     }
+     if(defined $need_to_define_H{"adjacent"}) { 
+       push(@{$out_header_exp_AR}, "# adjacent: two features i and j are adjacent if they are on the same strand and\n");
+       push(@{$out_header_exp_AR}, "#           start_i < start_j and stop_i+1 == start_j.\n");
+       push(@{$out_header_exp_AR}, "#           (Note that on the positive strand start_i <= stop_i for all i,\n");
+       push(@{$out_header_exp_AR}, "#           (and that  on the negative strand start_i >= stop_i for all i)\n");
+     }
+  }
+  return;
+}
+
+#################################################################
+# Subroutine: output_tbl_get_headings_seq_col_helper()
+# Incept:     EPN, Fri Mar 11 04:50:55 2016
+#
+# Purpose:   Helper function for output_tbl_get_headings() when
+#            used in sequences-as-columnss modes. Given up to 3 tokens,
+#            add them to the appropriate place in @{$out_col_header_AAR}.
+#
+# Arguments:
+#   $out_col_header_AAR: ref to output column header 2D array
+#   $div_char:           divider character to put between tokens
+#   $tok1:               token 1, can be undef
+#   $tok2:               token 2, can be undef
+#   $tok3:               token 3, can be undef
+#             
+# Returns:  void
+# 
+# Dies:     Never.
+#
+#################################################################
+sub output_tbl_get_headings_seq_col_helper { 
+  my $sub_name = "output_tbl_get_headings_seq_col_helper";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_row_header_AR, $div_char, $tok1, $tok2, $tok3) = @_;
+  
+  # remove whitespace at beginning and end of tokens
+  if(defined $tok1) { $tok1 =~ s/^\s+//; $tok1 =~ s/\s+$//; }
+  if(defined $tok2) { $tok2 =~ s/^\s+//; $tok2 =~ s/\s+$//; }
+  if(defined $tok3) { $tok3 =~ s/^\s+//; $tok3 =~ s/\s+$//; }
+
+  my $toadd = $tok1;
+  if(defined $tok2) { $toadd .= $div_char . $tok2; }
+  if(defined $tok3) { $toadd .= $div_char . $tok3; }
+
+  push(@{$out_row_header_AR}, $toadd); 
+
+  return;
+}
+
+#################################################################
+#
+# Subroutine: output_tbl_get_headings_seq_row_helper()
+# Incept:     EPN, Fri Mar 11 04:49:04 2016
+#
+# Purpose:   Helper function for output_tbl_get_headings() when
+#            used in sequences-as-rows modes. Given up to 5 tokens,
+#            add them to the appropriate place in @{$out_col_header_AAR}.
+#
+# Arguments:
+#   $out_col_header_AAR: ref to output column header 2D array
+#   $tok1:               token 1, can be undef
+#   $tok2:               token 2, can be undef
+#   $tok3:               token 3, can be undef
+#   $tok4:               token 3, can be undef
+#   $tok5:               token 3, can be undef
+#             
+# Returns:  void
+# 
+# Dies:     Never.
+#
+#################################################################
+sub output_tbl_get_headings_seq_row_helper { 
+  my $sub_name = "output_tbl_get_headings_seq_row_helper";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_col_header_AAR, $tok1, $tok2, $tok3, $tok4, $tok5) = @_;
+
+  if(defined $tok1) { push(@{$out_col_header_AAR->[0]}, $tok1); }
+  if(defined $tok2) { push(@{$out_col_header_AAR->[1]}, $tok2); }
+  if(defined $tok3) { push(@{$out_col_header_AAR->[2]}, $tok3); }
+  if(defined $tok4) { push(@{$out_col_header_AAR->[3]}, $tok4); }
+  if(defined $tok5) { push(@{$out_col_header_AAR->[4]}, $tok5); }
+  
+  return;
+}
+
+#################################################################
+#
+# Subroutine: output_tbl_get_headings_explanation_helper()
+# Incept:     EPN, Thu Mar 10 21:05:36 2016
+#
+# Purpose:   Helper function for output_tbl_get_headings() for 
+#            adding explanatory text to the @{$out_header_exp_AR} array.
+#             Given up to 3 tokens that define the header, and one that is the 
+#             explanatory text. Can be used in 3 modes:
+#
+#             Mode 1: at least one of $tok1, $tok2, $tok3 is defined
+#                     and $desc is defined 
+#                     In this mode, determine header by concatenating all of
+#                     $tok1, $tok2, and $tok3 that are defined and use
+#                     $desc as the description.
+#
+#             Mode 2: none of $tok1, $tok2, $tok3 is defined and $desc is
+#                     defined.
+#                     In this mode, header is blank, and use $desc as 
+#                     the description.
+#
+#             Mode 3: none of $tok1, $tok2, $tok3 is defined and $desc is
+#                     not defined either
+#                     In this mode, add a blank line to @{$out_row_header_AR}.
+#
+# Arguments:
+#   $out_header_exp_AR:  ref to output column header 2D array
+#   $tok1:               token 1, can be undef
+#   $tok2:               token 2, can be undef
+#   $tok3:               token 3, can be undef
+#   $desc:               description text, can be undef
+#   $FH_HR:              REF to hash of file handles
+#             
+# Returns:  void
+# 
+# Dies:     if desc is not defined but a header token is
+#
+#################################################################
+sub output_tbl_get_headings_explanation_helper { 
+  my $sub_name = "output_tbl_get_headings_explanation_helper";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_header_exp_AR, $tok1, $tok2, $tok3, $desc, $FH_HR) = @_;
+
+  my $width = 35;
+  if(defined $tok1) { $tok1 =~ s/^\s+//; $tok1 =~ s/\s+$//; }
+  if(defined $tok2) { $tok2 =~ s/^\s+//; $tok2 =~ s/\s+$//; }
+  if(defined $tok3) { $tok3 =~ s/^\s+//; $tok3 =~ s/\s+$//; }
+
+  my $header = "";
+  if(defined $tok1) { 
+    $header .= $tok1;
+  }
+  if(defined $tok2) { 
+    if($header ne "") { $header .= ":"; }
+    $header .= $tok2;
+  }
+  if(defined $tok3) { 
+    if($header ne "") { $header .= ":"; }
+    $header .= $tok3;
+  }
+  if($header ne "") { 
+    $header = "\"" . $header . "\":";
+  }
+
+  if(defined $desc) { 
+    push(@{$out_header_exp_AR}, sprintf("# %-*s %s\n", $width, $header, $desc)); 
+  }
+  else { 
+    if($header ne "") { 
+      DNAORG_FAIL("ERROR in $sub_name, desc is not defined but one of the header tokens is", 1, $FH_HR);
+    }
+    push(@{$out_header_exp_AR}, "#\n");
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: output_tbl_seqrow_top()
+# Incept:     EPN, Fri Mar 11 05:24:14 2016
+#
+# Purpose:   Output the top section of the tabular annotation output files
+#            in sequences-as-rows mode.
+#
+# Arguments:
+#  $out_col_header_AAR: ref to 2D array of column headers, PRE-FILLED
+#  $ofile_info_HHR:     REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub output_tbl_seqrow_top { 
+  my $sub_name = "output_tbl_seqrow_top";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_col_header_AAR, $ofile_info_HHR) = @_;
+
+  foreach my $FH ($ofile_info_HHR->{"FH"}{"tbl"}, $ofile_info_HHR->{"FH"}{"failtbl"}, $ofile_info_HHR->{"FH"}{"errtbl"}) { 
+    for(my $i = 0; $i < 5; $i++) { 
+      print $FH "#";
+      my $ncols = scalar(@{$out_col_header_AA[$i]});
+      for(my $j = 0; $j < $ncols; $j++) { 
+        print $FH $out_col_header_AA[$i][$j];
+      }
+      print $FH "\n";
+    }
+  }
   return;
 }
