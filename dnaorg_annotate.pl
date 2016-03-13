@@ -582,8 +582,6 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
   }
 }
 
-dumpArrayOfHashesOfHashes("Error instances (%err_instances_AHH)", \@err_instances_AHH, *STDOUT);
-
 #########################################################
 # Step 12. For all features with either a 'trc' or 'ext'
 #          error, add a new stop position to the results_AAH
@@ -591,13 +589,25 @@ dumpArrayOfHashesOfHashes("Error instances (%err_instances_AHH)", \@err_instance
 #          the 'cumlen' values in the @results_AAH to 
 #          simplify this for multi-exon features. 
 #########################################################
-# dump results
-dump_results(\@results_AAH, \%mdl_info_HA, \%seq_info_HA, *STDOUT);
 
 $start_secs = outputProgressPrior("Correcting homology search stop predictions", $progress_w, $log_FH, *STDOUT);
 calculate_results_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, $seq_info_HA{"seq_name"}, \@results_AAH, \@err_instances_AHH, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
+#########################################################
+# Step 13. Identify overlap and adjacency errors.
+#########################################################
+
+$start_secs = outputProgressPrior("Identifying overlap and adjacency errors", $progress_w, $log_FH, *STDOUT);
+calculate_results_overlaps_and_adjacencies(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@results_AAH, \@err_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+# dump results
+dump_results(\@results_AAH, \%mdl_info_HA, \%seq_info_HA, *STDOUT);
+
+dumpArrayOfHashesOfHashes("Error instances (%err_instances_AHH)", \@err_instances_AHH, *STDOUT);
+
+exit 0;
 #########################################################
 # Step 13. Refetch corrected hits into new files.
 #########################################################
@@ -637,7 +647,14 @@ align_hits(\%execs_H, $model_file, \%mdl_info_HA, $seq_info_HA{"seq_name"}, \@re
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 18. Create multiple alignements of protein sequences
+# Step 18. Create multiple alignments of protein sequences
+#########################################################
+$start_secs = outputProgressPrior("Aligning translated protein sequences", $progress_w, $log_FH, *STDOUT);
+align_protein_sequences(\%execs_H, "corrected.translated", \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#########################################################
+# Step 19. Update results string to include overlap and adjacency strings
 #########################################################
 $start_secs = outputProgressPrior("Aligning translated protein sequences", $progress_w, $log_FH, *STDOUT);
 align_protein_sequences(\%execs_H, "corrected.translated", \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
@@ -2300,6 +2317,181 @@ sub calculate_results_corrected_stops {
       } # end of loop over $seq_idx
     } # end of if $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model"
   } # end of loop over $ftr_idx
+  return;
+}
+
+#################################################################
+# Subroutine:  calculate_results_overlaps_and_adjacencies()
+# Incept:      EPN, Sat Mar 12 10:40:29 2016
+#
+# Purpose:    For all results in @{$results_AAH}, determine which
+#             predictions for the same sequence are adjacent to 
+#             and overlap with each other and save those strings
+#             in $results_AAHR. For those that are 
+#             inconsistent with the reference, create the 
+#             appropriate 'olp', 'aja', or 'ajb' error in 
+#             \@err_instances_AHH, 
+#
+# Arguments: 
+#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
+#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
+#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, ADDED TO HERE
+#  $results_AAHR:       REF to results AAH, ADDED TO HERE
+#  $err_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
+#  $err_info_HAR:       REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:              REF to hash of file handles
+#
+# Returns:    void
+#
+################################################################# 
+sub calculate_results_overlaps_and_adjacencies { 
+  my $sub_name = "calculate_results_overlaps_and_adjacencies()";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $results_AAHR, $err_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # total counts of things
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = scalar(@{$seq_info_HAR->{"seq_name"}});
+  my $ftr_idx;
+  my $mdl_idx;
+  my $seq_idx;
+  
+  # for each sequence, fill a temporary array with starts, stops and strands
+  # then send it to overlapsAndAdjacenciesHelper() to get the adjacency and
+  # overlap strings
+  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+    my @start_A  = ();
+    my @stop_A   = ();
+    my @strand_A = ();
+    for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+      if(exists $results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
+        push(@start_A,  $results_AAHR->[$mdl_idx][$seq_idx]{"p_start"});
+        push(@stop_A,   (exists $results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"} ? 
+                         $results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"} : 
+                         $results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"}));
+        push(@strand_A, $results_AAHR->[$mdl_idx][$seq_idx]{"p_strand"});
+      }
+      else { 
+        push(@start_A,  -1);
+        push(@stop_A,   -1);
+        push(@strand_A, "");
+      }
+    }
+    my $len = opt_Get("-c", $opt_HHR) ? $seq_info_HAR->{"seq_len"}[$seq_idx] : -1;
+    my @ajb_str_A = (); # [0..$nmdl-1] string describing 'before' adjacencies for each model
+    my @aja_str_A = (); # [0..$nmdl-1] string describing 'after'  adjacencies for each model
+    my @olp_str_A = (); # [0..$nmdl-1] string describing overlaps for each model
+    overlapsAndAdjacenciesHelper(\@start_A, \@stop_A, \@strand_A, $len, 
+                                 \@ajb_str_A, \@aja_str_A, \@olp_str_A, $FH_HR);
+    
+    # populate @results_AAHR, and keep track of per-feature error messages
+    my @ftr_olp_err_msg_A = ();
+    my @ftr_aja_err_msg_A = ();
+    my @ftr_ajb_err_msg_A = ();
+    # initialize
+    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      $ftr_olp_err_msg_A[$ftr_idx] = "";
+      $ftr_ajb_err_msg_A[$ftr_idx] = "";
+      $ftr_ajb_err_msg_A[$ftr_idx] = "";
+    }
+    for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+      my $ftr_idx = $mdl_info_HAR->{"map_ftr"};
+      $results_AAHR->[$mdl_idx][$seq_idx]{"ajb_str"} = $ajb_str_A[$mdl_idx];
+      $results_AAHR->[$mdl_idx][$seq_idx]{"aja_str"} = $aja_str_A[$mdl_idx];
+      $results_AAHR->[$mdl_idx][$seq_idx]{"olp_str"} = $olp_str_A[$mdl_idx];
+      if($ajb_str_A[$mdl_idx] ne $mdl_info_HAR->{"ajb_str"}[$mdl_idx]) { 
+        my @diff_A = ();
+        compareTwoOverlapOrAdjacencyStrings($ajb_str_A[$mdl_idx], 
+                                            $mdl_info_HAR->{"adj_str"}[$mdl_idx], 
+                                            $nmdl-1,
+                                            \@diff_A, $FH_HR);
+        
+        if($ftr_ajb_err_msg_A[$ftr_idx] ne "") { 
+          $ftr_ajb_err_msg_A[$ftr_idx] .= "; "; 
+        }
+        $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("%s: ", $mdl_info_HAR->{"out_short"}[$mdl_idx]);
+        my $ndiff = 0;
+        for(my $i = 0; $i < $mdl_idx; $i++) { 
+          if($ndiff > 0) { 
+            $ftr_ajb_err_msg_A[$ftr_idx] .= "";
+          }
+          if($diff_A[$i] == -1) { 
+            $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("+%s", $mdl_info_HAR->{"out_short"}[$i]);
+          }
+          if($diff_A[$i] == 1) { 
+            $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("-%s", $mdl_info_HAR->{"out_short"}[$i]);
+          }
+          $ndiff++;
+        }
+      }
+      if($aja_str_A[$mdl_idx] ne $mdl_info_HAR->{"aja_str"}[$mdl_idx]) { 
+        my @diff_A = ();
+        compareTwoOverlapOrAdjacencyStrings($aja_str_A[$mdl_idx], 
+                                            $mdl_info_HAR->{"adj_str"}[$mdl_idx], 
+                                            $nmdl-1,
+                                            \@diff_A, $FH_HR);
+
+        if($ftr_aja_err_msg_A[$ftr_idx] ne "") { 
+          $ftr_aja_err_msg_A[$ftr_idx] .= "; "; 
+        }
+        $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("%s: ", $mdl_info_HAR->{"out_short"}[$mdl_idx]);
+        my $ndiff = 0;
+        for(my $i = 0; $i < $mdl_idx; $i++) { 
+          if($ndiff > 0) { 
+            $ftr_aja_err_msg_A[$ftr_idx] .= "";
+          }
+          if($diff_A[$i] == -1) { 
+            $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("+%s", $mdl_info_HAR->{"out_short"}[$i]);
+          }
+          if($diff_A[$i] == 1) { 
+            $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("-%s", $mdl_info_HAR->{"out_short"}[$i]);
+          }
+          $ndiff++;
+        }
+      }
+      if($olp_str_A[$mdl_idx] ne $mdl_info_HAR->{"olp_str"}[$mdl_idx]) { 
+        my @diff_A = ();
+        compareTwoOverlapOrAdjacencyStrings($olp_str_A[$mdl_idx], 
+                                            $mdl_info_HAR->{"adj_str"}[$mdl_idx], 
+                                            $nmdl-1,
+                                            \@diff_A, $FH_HR);
+
+        if($ftr_olp_err_msg_A[$ftr_idx] ne "") { 
+          $ftr_olp_err_msg_A[$ftr_idx] .= "; "; 
+        }
+        $ftr_olp_err_msg_A[$ftr_idx] .= sprintf("%s: ", $mdl_info_HAR->{"out_short"}[$mdl_idx]);
+        my $ndiff = 0;
+        for(my $i = 0; $i < $mdl_idx; $i++) { 
+          if($ndiff > 0) { 
+            $ftr_olp_err_msg_A[$ftr_idx] .= "";
+          }
+          if($diff_A[$i] == -1) { 
+            $ftr_olp_err_msg_A[$ftr_idx] .= sprintf("+%s", $mdl_info_HAR->{"out_short"}[$i]);
+          }
+          if($diff_A[$i] == 1) { 
+            $ftr_olp_err_msg_A[$ftr_idx] .= sprintf("-%s", $mdl_info_HAR->{"out_short"}[$i]);
+          }
+          $ndiff++;
+        }
+      }
+    } # end of 'for(mdl_idx'
+    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if($ftr_olp_err_msg_A[$ftr_idx] ne "") { 
+        error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "olp", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_olp_err_msg_A[$ftr_idx], $FH_HR);
+      }
+      if($ftr_ajb_err_msg_A[$ftr_idx] ne "") { 
+        error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "ajb", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_ajb_err_msg_A[$ftr_idx], $FH_HR);
+      }
+      if($ftr_aja_err_msg_A[$ftr_idx] ne "") { 
+        error_instance_add($err_instances_AHHR, $err_info_HAR, $ftr_idx, "aja", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_aja_err_msg_A[$ftr_idx], $FH_HR);
+      }
+    }
+  } # end of 'for(my $seq_idx"
   return;
 }
 

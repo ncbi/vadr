@@ -1184,9 +1184,12 @@ sub fetchReferenceFeatureSequences {
         my ($mdllen, $cksum) = addNameAndBlankSsToStockholmAlignment($cur_name_root, 1, $cur_stkfile, $cur_named_stkfile, $FH_HR); # 1: add blank SS_cons line
         if(! $do_keep) { push(@files2rm_A, $cur_named_stkfile); }
 
-        $mdl_info_HAR->{"cmname"}[$nmdl]   = $cur_name_root;
-        $mdl_info_HAR->{"checksum"}[$nmdl] = $cksum;
-        $mdl_info_HAR->{"length"}[$nmdl]   = $mdllen;
+        $mdl_info_HAR->{"cmname"}[$nmdl]     = $cur_name_root;
+        $mdl_info_HAR->{"checksum"}[$nmdl]   = $cksum;
+        $mdl_info_HAR->{"length"}[$nmdl]     = $mdllen;
+        $mdl_info_HAR->{"ref_start"}[$nmdl]  = $start;
+        $mdl_info_HAR->{"ref_stop"}[$nmdl]   = $stop;
+        $mdl_info_HAR->{"ref_strand"}[$nmdl] = $strand;
 
         # store information on this model's name for output purposes
         $mdl_info_HAR->{"filename_root"}[$nmdl] = sprintf("$ftr_type.%s", 
@@ -2755,6 +2758,9 @@ sub validateFeatureInfoHashIsComplete {
 #                "is_final":    '1' if this model is the final model (e.g. final exon) for the feature it models ("map_ftr")
 #                "is_first":    '1' if this model is the first model (e.g. final exon) for the feature it models ("map_ftr")
 #                "length":      length, in nucleotides, of the model
+#                "ref_start":   start position of modelled region in the reference genome
+#                "ref_stop":    stop position of modelled region in the reference genome
+#                "ref_strand":  strand of modelled region in the reference genome
 #                "map_exon":    the exon index this model models (1.."map_nexon" value)
 #                "map_ftr":     the feature index (array index in ftr_info_HAR) this model models
 #                "map_nexon":   the number of exons the feature this model models has 
@@ -2784,6 +2790,7 @@ sub validateModelInfoHashIsComplete {
   my ($mdl_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
   my @expected_keys_A = ("checksum", "cmname", "is_final", "is_first", "length",
+                         "ref_start", "ref_stop", "ref_strand", 
                          "map_exon", "map_ftr", "map_nexon", "out_tiny");
 
   return validateInfoHashOfArraysIsComplete($mdl_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
@@ -3857,6 +3864,9 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   # 5) look for special cases, where we want to append the 3 nt 3' of the final mature peptide in a cds-mp feature type
   annotateAppendFeatures($ftr_info_HAR, $mdl_info_HAR, $FH_HR);
 
+  # 6) add information on the overlaps and adjacencies
+  annotateOverlapsAndAdjacencies($mdl_info_HAR, $seq_info_HAR, $opt_HHR, $FH_HR);
+
   return 0;
 }
 
@@ -4117,6 +4127,164 @@ sub annotateAppendFeatures {
       my $final_ftr_idx = $primary_children_idx_A[(scalar(@primary_children_idx_A)-1)];
       my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
       $mdl_info_HAR->{"append_num"}[$final_mdl_idx] = 3; # we want to append the 3 nt 3' of this model 
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine : annotateOverlapsAndAdjacencies()
+# Incept:      EPN, Fri Mar 11 20:24:46 2016
+#
+# Purpose:     Add information about which models overlap and
+#              are adjacent to one another in the reference.
+#              
+# Arguments: 
+#   $mdl_info_HAR: REF to hash of arrays with information on the models, ADDED TO HERE
+#   $seq_info_HAR: REF to hash of arrays with sequence information, PRE-FILLED
+#   $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:        REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: 
+################################################################# 
+sub annotateOverlapsAndAdjacencies { 
+  my $nargs_expected = 4;
+  my $sub_name = "annotateOverlapsAndAdjacencies()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($mdl_info_HAR, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
+
+  # initialize
+  @{$mdl_info_HAR->{"ajb_str"}} = ();
+  @{$mdl_info_HAR->{"aja_str"}} = ();
+  @{$mdl_info_HAR->{"olp_str"}} = ();
+
+  my $len = (opt_Get("-c", $opt_HHR)) ? $seq_info_HAR->{"seq_len"}[0] : -1;
+  overlapsAndAdjacenciesHelper($mdl_info_HAR->{"ref_start"}, $mdl_info_HAR->{"ref_stop"}, 
+                               $mdl_info_HAR->{"ref_strand"}, $len, $mdl_info_HAR->{"ajb_str"},
+                               $mdl_info_HAR->{"aja_str"}, $mdl_info_HAR->{"olp_str"}, $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine : overlapsAndAdjacenciesHelper()
+# Incept:      EPN, Sat Mar 12 10:27:59 2016
+#
+# Purpose:     Helper function for annotateOverlapsAndAdjacencies()
+#              and dnaorg_annotate.pl:calculate_results_overlaps_and_adjacencies().
+#
+#              Given refs to three arrays, one with start positions,
+#              one with stop positions and one with strands, 
+#              determine which indices in the arrays are adjacent
+#              to each other and overlap with each other
+#              are adjacent to one another in the reference.
+#              
+# Arguments: 
+#   $start_AR:   REF to array with start positions 
+#   $stop_AR:    REF to array with stop positions 
+#   $strand_AR:  REF to array with strands
+#   $len:        total length of the sequence, so we can 
+#                check if we're adjacent $len..1, if -1
+#                don't check for this special case
+#   $ajb_str_AR: REF to array to fill strings of 'before' adjacencies 
+#   $aja_str_AR: REF to array to fill strings of 'after' adjacencies
+#   $olp_str_AR: REF to array to fill strings of overlaps
+#   $FH_HR:      REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: 
+################################################################# 
+sub overlapsAndAdjacenciesHelper() { 
+  my $nargs_expected = 8;
+  my $sub_name = "overlapsAndAdjacenciesHelper()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($start_AR, $stop_AR, $strand_AR, $len, $ajb_str_AR, $aja_str_AR, $olp_str_AR, $FH_HR) = @_;
+
+  my $nmdl = scalar(@{$start_AR});
+  my @adj_AA = (); # [0..$i..$nmdl-1][0..$j..$nmdl-1], value is '1' if $i and $j are adjacent
+  my @olp_AA = (); # [0..$i..$nmdl-1][0..$j..$nmdl-1], value is '1' if $i and $j overlap
+  my $mdl_idx1; # counter over models
+  my $mdl_idx2; # counter over models
+
+  # initialize
+  for($mdl_idx1 = 0; $mdl_idx1 < $nmdl; $mdl_idx1++) { 
+    for($mdl_idx2 = 0; $mdl_idx2 < $nmdl; $mdl_idx2++) { 
+      $adj_AA[$mdl_idx1][$mdl_idx2] = 0;
+      $olp_AA[$mdl_idx1][$mdl_idx2] = 0;
+    }
+  }
+
+  # fill the matrices
+  for($mdl_idx1 = 0; $mdl_idx1 < $nmdl; $mdl_idx1++) { 
+    my $start1  = $start_AR->[$mdl_idx1];
+    my $stop1   = $stop_AR->[$mdl_idx1];
+    my $strand1 = $strand_AR->[$mdl_idx1];
+    if($start1 != -1) { # a flag that we don't have a start..stop, strand for this model
+      for($mdl_idx2 = 0; $mdl_idx2 < $nmdl; $mdl_idx2++) { 
+        my $start2  = $start_AR->[$mdl_idx2];
+        my $stop2   = $start_AR->[$mdl_idx2];
+        my $strand2 = $strand_AR->[$mdl_idx2];
+        if($start2 == -1 && ($mdl_idx1 != $mdl_idx2)) { 
+        # $start2 == -1 is a flag that we don't have a start..stop, strand for this model
+          if($strand1 eq $strand2) { 
+            # strands match
+            if((($strand1 eq "+") && (($stop1+1) == $start2)) || 
+               (($strand1 eq "-") && (($stop1-1) == $start2)) || 
+               (($strand1 eq "+") && (($stop2+1) == $start1)) || 
+               (($strand1 eq "-") && (($stop2-1) == $start1))) { 
+              # $mdl_idx1 and $mdl_idx2 are adjacent
+              $adj_AA[$mdl_idx1][$mdl_idx2] = 1;
+            }
+            if(($len != -1) && 
+               ((($strand1 eq "+") && ($stop1 == $len) && ($start2 == 1)) || 
+                (($strand1 eq "-") && ($stop1 == 1)    && ($start2 == $len)) || 
+                (($strand1 eq "+") && ($stop2 == $len) && ($start1 == 1)) || 
+                (($strand1 eq "-") && ($stop2 == 1)    && ($start1 == $len)))) { 
+              # $mdl_idx1 and $mdl_idx2 are adjacent, one ends the seq, the other begins it
+              $adj_AA[$mdl_idx1][$mdl_idx2] = 1;
+            }            
+            if(getOverlap($start1, $stop1, $start2, $stop2) > 0) { 
+              $olp_AA[$mdl_idx1][$mdl_idx2] = 1;
+            }
+          }
+        }
+      }
+    }
+  }
+  # make sure the matrices are symmetrical
+  for($mdl_idx1 = 0; $mdl_idx1 < $nmdl; $mdl_idx1++) { 
+    for($mdl_idx2 = 0; $mdl_idx2 < $nmdl; $mdl_idx2++) { 
+      if($adj_AA[$mdl_idx1][$mdl_idx2] != $adj_AA[$mdl_idx2][$mdl_idx1]) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem filling adjacency matrix, it is not symmetrical [$mdl_idx1][$mdl_idx2] ($adj_AA[$mdl_idx1][$mdl_idx2]) != [$mdl_idx2][$mdl_idx1] ($adj_AA[$mdl_idx2][$mdl_idx1]", 1, $FH_HR);
+      }
+      if($olp_AA[$mdl_idx1][$mdl_idx2] != $olp_AA[$mdl_idx2][$mdl_idx1]) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem filling adjacency matrix, it is not symmetrical [$mdl_idx1][$mdl_idx2] ($adj_AA[$mdl_idx1][$mdl_idx2]) != [$mdl_idx2][$mdl_idx1] ($adj_AA[$mdl_idx2][$mdl_idx1]", 1, $FH_HR);
+      }
+    }
+  }
+
+  # convert 2D arrays into a series of strings, one per model
+  for($mdl_idx1 = 0; $mdl_idx1 < $nmdl; $mdl_idx1++) { 
+    $ajb_str_AR->[$mdl_idx1] = "";
+    $aja_str_AR->[$mdl_idx1] = "";
+    $olp_str_AR->[$mdl_idx1] = "";
+    for($mdl_idx2 = 0; $mdl_idx2 < $nmdl; $mdl_idx2++) { 
+      if($adj_AA[$mdl_idx1][$mdl_idx2]) { 
+        if($mdl_idx1 < $mdl_idx2) { 
+          $aja_str_AR->[$mdl_idx1] .= ($aja_str_AR->[$mdl_idx1] eq "") ? $mdl_idx2 : "," . $mdl_idx2;
+        }
+        else { 
+          $ajb_str_AR->[$mdl_idx1] .= ($ajb_str_AR->[$mdl_idx1] eq "") ? $mdl_idx2 : "," . $mdl_idx2;
+        }
+      }
+      if($olp_AA[$mdl_idx1][$mdl_idx2]) { 
+        $olp_str_AR->[$mdl_idx1] .= ($olp_str_AR->[$mdl_idx1] eq "") ? $mdl_idx2 : "," . $mdl_idx2;
+      }
     }
   }
 
@@ -4648,6 +4816,78 @@ sub getMonocharacterString {
   }
 
   return $ret_str;
+}
+
+#################################################################
+# Subroutine: compareTwoOverlapOrAdjacencyStrings()
+# Incept:     EPN, Sat Mar 12 12:40:54 2016
+#
+# Purpose:    Given two strings that represent adjacencies: 
+#             indices separated by commas, compare them and 
+#             return an array indicating differences.
+#
+# Arguments:
+#   $str1:    first string, format "<idx1>,<idx2>,...,<idxN>"
+#   $str2:    second string
+#   $max:     max possible index that can be in $str1 and $str2
+#   $diff_AR: ref to array to fill with differences
+#             $diff_AR->[$idx] = 0  means $idx exists in both $str1 and $str2
+#             $diff_AR->[$idx] = -1 means $idx exists only in $str1
+#             $diff_AR->[$idx] = 1  means $idx exists only in $str2
+#   $FH_HR:  REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  A string of $char repeated $len times.
+# 
+# Dies:     Never.
+#
+#################################################################
+sub compareTwoOverlapOrAdjacencyStrings { 
+  my $sub_name = "compareTwoOverlapOrAdjacencyStrings";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($str1, $str2, $max, $diff_AR, $FH_HR) = @_;
+
+  my $el; # an array element
+
+  # turn them into strings
+  my @str1_A = split(",", $str1);
+  my @str2_A = split(",", $str2);
+  
+  @{$diff_AR} = ();
+  for(my $i = 0; $i <= $max; $i++) { 
+    $diff_AR->[$i] = 0;
+  }
+
+  foreach $el (@str1_A) { 
+    if(! verify_integer($el)) { 
+      DNAORG_FAIL("ERROR in $sub_name, element $el in $str1 is not an integer", 1, $FH_HR);
+    }
+    if($el < 0) {  
+      DNAORG_FAIL("ERROR in $sub_name, element $el in $str1 is negative, should be between 0 and $max", 1, $FH_HR);
+    }
+    if($el > $max) {  
+      DNAORG_FAIL("ERROR in $sub_name, element $el in $str1 is above $max, should be between 0 and $max", 1, $FH_HR);
+    }
+    $diff_AR->[$el]--;
+  }
+  foreach $el (@str2_A) { 
+    if(! verify_integer($el)) { 
+      DNAORG_FAIL("ERROR in $sub_name, element $el in $str2 is not an integer", 1, $FH_HR);
+    }
+    if($el < 0) {  
+      DNAORG_FAIL("ERROR in $sub_name, element $el in $str2 is negative, should be between 0 and $max", 1, $FH_HR);
+    }
+    if($el > $max) {  
+      DNAORG_FAIL("ERROR in $sub_name, element $el in $str2 is above $max, should be between 0 and $max", 1, $FH_HR);
+    }
+    $diff_AR->[$el]++;
+  }
+  # now $diff_AR->[$el] == 0  if either $el doesn't exist in both of $str1 and $str2, or exists in both of them
+  #     $diff_AR->[$el] == -1 if $el only exists $str1
+  #     $diff_AR->[$el] == 1  if $el only exists $str2
+
+  return;
 }
 
 ###########################################################################
