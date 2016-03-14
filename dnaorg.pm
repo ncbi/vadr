@@ -1210,6 +1210,8 @@ sub fetchReferenceFeatureSequences {
         $mdl_info_HAR->{"map_exon"}[$nmdl]   = $e;
         $mdl_info_HAR->{"map_nexon"}[$nmdl]  = $nexons;
         $mdl_info_HAR->{"append_num"}[$nmdl] = 0; # maybe be changed later in determineFeatureTypes()
+        $mdl_info_HAR->{"out_idx"}[$nmdl] = sprintf("%d.%d", 
+                                                    $mdl_info_HAR->{"map_ftr"}[$nmdl]+1, $mdl_info_HAR->{"map_exon"}[$nmdl]+1);
 
         if($e == 0) { 
           $ftr_info_HAR->{"first_mdl"}[$i] = $nmdl;
@@ -2763,6 +2765,7 @@ sub validateFeatureInfoHashIsComplete {
 #                "map_ftr":     the feature index (array index in ftr_info_HAR) this model models
 #                "map_nexon":   the number of exons the feature this model models has 
 #                "out_tiny":    output value: very short name for this model (e.g. "CDS#4.2")
+#                "out_idx":     output value: feature index and segment index this model (e.g. "4.2")
 #
 #             If @{exceptions_AR} is non-empty, then keys in 
 #             in that array need not be in %{$mdl_info_HAR}.
@@ -2789,7 +2792,7 @@ sub validateModelInfoHashIsComplete {
   
   my @expected_keys_A = ("checksum", "cmname", "is_final", "is_first", "length",
                          "ref_start", "ref_stop", "ref_strand", 
-                         "map_exon", "map_ftr", "map_nexon", "out_tiny");
+                         "map_exon", "map_ftr", "map_nexon", "out_tiny", "out_idx");
 
   return validateInfoHashOfArraysIsComplete($mdl_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
@@ -4155,14 +4158,19 @@ sub annotateOverlapsAndAdjacencies {
   my ($mdl_info_HAR, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
 
   # initialize
-  @{$mdl_info_HAR->{"ajb_str"}} = ();
-  @{$mdl_info_HAR->{"aja_str"}} = ();
-  @{$mdl_info_HAR->{"olp_str"}} = ();
+  @{$mdl_info_HAR->{"idx_ajb_str"}} = ();
+  @{$mdl_info_HAR->{"idx_aja_str"}} = ();
+  @{$mdl_info_HAR->{"idx_olp_str"}} = ();
+  @{$mdl_info_HAR->{"out_ajb_str"}} = ();
+  @{$mdl_info_HAR->{"out_aja_str"}} = ();
+  @{$mdl_info_HAR->{"out_olp_str"}} = ();
 
   my $len = (opt_Get("-c", $opt_HHR)) ? $seq_info_HAR->{"seq_len"}[0] : -1;
-  overlapsAndAdjacenciesHelper($mdl_info_HAR->{"ref_start"}, $mdl_info_HAR->{"ref_stop"}, 
-                               $mdl_info_HAR->{"ref_strand"}, $len, $mdl_info_HAR->{"ajb_str"},
-                               $mdl_info_HAR->{"aja_str"}, $mdl_info_HAR->{"olp_str"}, $FH_HR);
+  overlapsAndAdjacenciesHelper($mdl_info_HAR,
+                               $mdl_info_HAR->{"ref_start"}, $mdl_info_HAR->{"ref_stop"}, $mdl_info_HAR->{"ref_strand"}, $len, 
+                               $mdl_info_HAR->{"idx_ajb_str"}, $mdl_info_HAR->{"idx_aja_str"}, $mdl_info_HAR->{"idx_olp_str"}, 
+                               $mdl_info_HAR->{"out_ajb_str"}, $mdl_info_HAR->{"out_aja_str"}, $mdl_info_HAR->{"out_olp_str"}, 
+                               $FH_HR);
 
   return;
 }
@@ -4181,27 +4189,32 @@ sub annotateOverlapsAndAdjacencies {
 #              are adjacent to one another in the reference.
 #              
 # Arguments: 
-#   $start_AR:   REF to array with start positions 
-#   $stop_AR:    REF to array with stop positions 
-#   $strand_AR:  REF to array with strands
-#   $len:        total length of the sequence, so we can 
-#                check if we're adjacent $len..1, if -1
-#                don't check for this special case
-#   $ajb_str_AR: REF to array to fill strings of 'before' adjacencies 
-#   $aja_str_AR: REF to array to fill strings of 'after' adjacencies
-#   $olp_str_AR: REF to array to fill strings of overlaps
-#   $FH_HR:      REF to hash of file handles
+#   $mdl_info_HAR:   REF to hash of arrays with information on the models, ADDED TO HERE
+#   $start_AR:       REF to array with start positions 
+#   $stop_AR:        REF to array with stop positions 
+#   $strand_AR:      REF to array with strands
+#   $len:            total length of the sequence, so we can 
+#                    check if we're adjacent $len..1, if -1
+#                    don't check for this special case
+#   $idx_ajb_str_AR: REF to array to fill with strings of 'before' adjacency model indices
+#   $idx_aja_str_AR: REF to array to fill with strings of 'after' adjacency model indices
+#   $idx_olp_str_AR: REF to array to fill with strings of overlaps model indices
+#   $out_ajb_str_AR: REF to array to fill with strings of 'before' adjacency model descriptions
+#   $out_aja_str_AR: REF to array to fill with strings of 'after' adjacency model descriptions
+#   $out_olp_str_AR: REF to array to fill with strings of overlaps
+#   $FH_HR:          REF to hash of file handles
 # 
 # Returns:     Nothing.
 # 
 # Dies: 
 ################################################################# 
 sub overlapsAndAdjacenciesHelper() { 
-  my $nargs_expected = 8;
+  my $nargs_expected = 12;
   my $sub_name = "overlapsAndAdjacenciesHelper()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($start_AR, $stop_AR, $strand_AR, $len, $ajb_str_AR, $aja_str_AR, $olp_str_AR, $FH_HR) = @_;
+  my ($mdl_info_HAR, $start_AR, $stop_AR, $strand_AR, $len, $idx_ajb_str_AR, $idx_aja_str_AR, $idx_olp_str_AR, 
+      $out_ajb_str_AR, $out_aja_str_AR, $out_olp_str_AR, $FH_HR) = @_;
 
   my $nmdl = scalar(@{$start_AR});
   my @adj_AA = (); # [0..$i..$nmdl-1][0..$j..$nmdl-1], value is '1' if $i and $j are adjacent
@@ -4274,20 +4287,28 @@ sub overlapsAndAdjacenciesHelper() {
 
   # convert 2D arrays into a series of strings, one per model
   for($mdl_idx1 = 0; $mdl_idx1 < $nmdl; $mdl_idx1++) { 
-    $ajb_str_AR->[$mdl_idx1] = "";
-    $aja_str_AR->[$mdl_idx1] = "";
-    $olp_str_AR->[$mdl_idx1] = "";
+    $idx_ajb_str_AR->[$mdl_idx1] = "";
+    $idx_aja_str_AR->[$mdl_idx1] = "";
+    $idx_olp_str_AR->[$mdl_idx1] = "";
+    $out_ajb_str_AR->[$mdl_idx1] = "";
+    $out_aja_str_AR->[$mdl_idx1] = "";
+    $out_olp_str_AR->[$mdl_idx1] = "";
+    my $mdl_out1 = $mdl_info_HAR->{"out_idx"}[$mdl_idx1];
     for($mdl_idx2 = 0; $mdl_idx2 < $nmdl; $mdl_idx2++) { 
+      my $mdl_out2 = $mdl_info_HAR->{"out_idx"}[$mdl_idx2];
       if($adj_AA[$mdl_idx1][$mdl_idx2]) { 
         if($mdl_idx1 < $mdl_idx2) { 
-          $aja_str_AR->[$mdl_idx1] .= ($aja_str_AR->[$mdl_idx1] eq "") ? $mdl_idx2 : "," . $mdl_idx2;
+          $idx_aja_str_AR->[$mdl_idx1] .= ($idx_aja_str_AR->[$mdl_idx1] eq "") ? $mdl_idx2 : "," . $mdl_idx2;
+          $out_aja_str_AR->[$mdl_idx1] .= ($out_aja_str_AR->[$mdl_idx1] eq "") ? $mdl_out2 : "," . $mdl_out2;
         }
         else { 
-          $ajb_str_AR->[$mdl_idx1] .= ($ajb_str_AR->[$mdl_idx1] eq "") ? $mdl_idx2 : "," . $mdl_idx2;
+          $idx_ajb_str_AR->[$mdl_idx1] .= ($idx_ajb_str_AR->[$mdl_idx1] eq "") ? $mdl_idx2 : "," . $mdl_idx2;
+          $out_ajb_str_AR->[$mdl_idx1] .= ($out_ajb_str_AR->[$mdl_idx1] eq "") ? $mdl_out2 : "," . $mdl_out2;
         }
       }
       if($olp_AA[$mdl_idx1][$mdl_idx2]) { 
-        $olp_str_AR->[$mdl_idx1] .= ($olp_str_AR->[$mdl_idx1] eq "") ? $mdl_idx2 : "," . $mdl_idx2;
+        $idx_olp_str_AR->[$mdl_idx1] .= ($idx_olp_str_AR->[$mdl_idx1] eq "") ? $mdl_idx2 : "," . $mdl_idx2;
+        $out_olp_str_AR->[$mdl_idx1] .= ($out_olp_str_AR->[$mdl_idx1] eq "") ? $mdl_out2 : "," . $mdl_out2;
       }
     }
   }
@@ -4823,7 +4844,7 @@ sub getMonocharacterString {
 }
 
 #################################################################
-# Subroutine: compareTwoOverlapOrAdjacencyStrings()
+# Subroutine: compareTwoOverlapOrAdjacencyIndexStrings()
 # Incept:     EPN, Sat Mar 12 12:40:54 2016
 #
 # Purpose:    Given two strings that represent adjacencies: 
@@ -4845,8 +4866,8 @@ sub getMonocharacterString {
 # Dies:     Never.
 #
 #################################################################
-sub compareTwoOverlapOrAdjacencyStrings { 
-  my $sub_name = "compareTwoOverlapOrAdjacencyStrings";
+sub compareTwoOverlapOrAdjacencyIndexStrings { 
+  my $sub_name = "compareTwoOverlapOrAdjacencyIndexStrings";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 

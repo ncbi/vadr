@@ -28,12 +28,12 @@ require "epn-options.pm";
 #######################################################################################
 
 # hard-coded-paths:
-my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
-my $hmmer_exec_dir = "/usr/local/hmmer/3.1/bin/";
-my $esl_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
-my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
-my $esl_ssplit     = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
-my $esl_epn_translate  = "/home/nawrocke/notebook/15_1118_dnaorg_annotate_genomes_translation/git-esl-epn-translate/esl-epn-translate.pl";
+my $inf_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
+my $hmmer_exec_dir    = "/usr/local/hmmer/3.1/bin/";
+my $esl_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
+my $esl_fetch_cds     = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
+my $esl_ssplit        = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
+my $esl_epn_translate = "/home/nawrocke/notebook/15_1118_dnaorg_annotate_genomes_translation/git-esl-epn-translate/esl-epn-translate.pl";
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -2383,11 +2383,16 @@ sub results_calculate_overlaps_and_adjacencies {
       }
     }
     my $len = opt_Get("-c", $opt_HHR) ? $seq_info_HAR->{"seq_len"}[$seq_idx] : -1;
-    my @ajb_str_A = (); # [0..$nmdl-1] string describing 'before' adjacencies for each model
-    my @aja_str_A = (); # [0..$nmdl-1] string describing 'after'  adjacencies for each model
-    my @olp_str_A = (); # [0..$nmdl-1] string describing overlaps for each model
-    overlapsAndAdjacenciesHelper(\@start_A, \@stop_A, \@strand_A, $len, 
-                                 \@ajb_str_A, \@aja_str_A, \@olp_str_A, $FH_HR);
+    my @idx_ajb_str_A = (); # [0..$nmdl-1] string of mdl indices describing 'before' adjacencies for each model
+    my @idx_aja_str_A = (); # [0..$nmdl-1] string of mdl indices describing 'after'  adjacencies for each model
+    my @idx_olp_str_A = (); # [0..$nmdl-1] string of mdl indices describing overlaps for each model
+    my @out_ajb_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing 'before' adjacencies for each model
+    my @out_aja_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing 'after'  adjacencies for each model
+    my @out_olp_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing overlaps for each model
+    overlapsAndAdjacenciesHelper($mdl_info_HAR, \@start_A, \@stop_A, \@strand_A, $len, 
+                                 \@idx_ajb_str_A, \@idx_aja_str_A, \@idx_olp_str_A, 
+                                 \@out_ajb_str_A, \@out_aja_str_A, \@out_olp_str_A, 
+                                 $FH_HR);
     
     # populate @results_AAHR, and keep track of per-feature error messages
     my @ftr_olp_err_msg_A = ();
@@ -2401,15 +2406,18 @@ sub results_calculate_overlaps_and_adjacencies {
     }
     for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
       my $ftr_idx = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-      $results_AAHR->[$mdl_idx][$seq_idx]{"ajb_str"} = $ajb_str_A[$mdl_idx];
-      $results_AAHR->[$mdl_idx][$seq_idx]{"aja_str"} = $aja_str_A[$mdl_idx];
-      $results_AAHR->[$mdl_idx][$seq_idx]{"olp_str"} = $olp_str_A[$mdl_idx];
-      if($ajb_str_A[$mdl_idx] ne $mdl_info_HAR->{"ajb_str"}[$mdl_idx]) { 
+      $results_AAHR->[$mdl_idx][$seq_idx]{"idx_ajb_str"} = $idx_ajb_str_A[$mdl_idx];
+      $results_AAHR->[$mdl_idx][$seq_idx]{"idx_aja_str"} = $idx_aja_str_A[$mdl_idx];
+      $results_AAHR->[$mdl_idx][$seq_idx]{"idx_olp_str"} = $idx_olp_str_A[$mdl_idx];
+      $results_AAHR->[$mdl_idx][$seq_idx]{"out_ajb_str"} = $out_ajb_str_A[$mdl_idx];
+      $results_AAHR->[$mdl_idx][$seq_idx]{"out_aja_str"} = $out_aja_str_A[$mdl_idx];
+      $results_AAHR->[$mdl_idx][$seq_idx]{"out_olp_str"} = $out_olp_str_A[$mdl_idx];
+      if($idx_ajb_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx]) { 
         my @diff_A = ();
-        compareTwoOverlapOrAdjacencyStrings($ajb_str_A[$mdl_idx], 
-                                            $mdl_info_HAR->{"ajb_str"}[$mdl_idx], 
-                                            $nmdl-1,
-                                            \@diff_A, $FH_HR);
+        compareTwoOverlapOrAdjacencyIndexStrings($idx_ajb_str_A[$mdl_idx], 
+                                                 $mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx], 
+                                                 $nmdl-1,
+                                                 \@diff_A, $FH_HR);
         
         if($ftr_ajb_err_msg_A[$ftr_idx] ne "") { 
           $ftr_ajb_err_msg_A[$ftr_idx] .= "; "; 
@@ -2429,12 +2437,12 @@ sub results_calculate_overlaps_and_adjacencies {
           $ndiff++;
         }
       }
-      if($aja_str_A[$mdl_idx] ne $mdl_info_HAR->{"aja_str"}[$mdl_idx]) { 
+      if($idx_aja_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_aja_str"}[$mdl_idx]) { 
         my @diff_A = ();
-        compareTwoOverlapOrAdjacencyStrings($aja_str_A[$mdl_idx], 
-                                            $mdl_info_HAR->{"aja_str"}[$mdl_idx], 
-                                            $nmdl-1,
-                                            \@diff_A, $FH_HR);
+        compareTwoOverlapOrAdjacencyIndexStrings($idx_aja_str_A[$mdl_idx], 
+                                                 $mdl_info_HAR->{"idx_aja_str"}[$mdl_idx], 
+                                                 $nmdl-1,
+                                                 \@diff_A, $FH_HR);
 
         if($ftr_aja_err_msg_A[$ftr_idx] ne "") { 
           $ftr_aja_err_msg_A[$ftr_idx] .= "; "; 
@@ -2454,12 +2462,12 @@ sub results_calculate_overlaps_and_adjacencies {
           $ndiff++;
         }
       }
-      if($olp_str_A[$mdl_idx] ne $mdl_info_HAR->{"olp_str"}[$mdl_idx]) { 
+      if($idx_olp_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_olp_str"}[$mdl_idx]) { 
         my @diff_A = ();
-        compareTwoOverlapOrAdjacencyStrings($olp_str_A[$mdl_idx], 
-                                            $mdl_info_HAR->{"olp_str"}[$mdl_idx], 
-                                            $nmdl-1,
-                                            \@diff_A, $FH_HR);
+        compareTwoOverlapOrAdjacencyIndexStrings($idx_olp_str_A[$mdl_idx], 
+                                                 $mdl_info_HAR->{"idx_olp_str"}[$mdl_idx], 
+                                                 $nmdl-1,
+                                                 \@diff_A, $FH_HR);
 
         if($ftr_olp_err_msg_A[$ftr_idx] ne "") { 
           $ftr_olp_err_msg_A[$ftr_idx] .= "; "; 
@@ -4266,8 +4274,8 @@ sub output_tbl_all_sequences {
         my $start_codon_char   = ""; # set below if $is_first
         my $stop_codon_char    = ""; # set below if $is_final
         my $multiple_of_3_char = ""; # set below if $is_final
-        my $ref_olp_str = $results_AAHR->[$mdl_idx][$seq_idx]{"olp_str"};
-        my $ref_adj_str = combine_ajb_and_aja_strings($results_AAHR->[$mdl_idx][$seq_idx]{"ajb_str"}, $results_AAHR->[$mdl_idx][$seq_idx]{"aja_str"});
+        my $ref_olp_str = $results_AAHR->[$mdl_idx][$seq_idx]{"out_olp_str"};
+        my $ref_adj_str = combine_ajb_and_aja_strings($results_AAHR->[$mdl_idx][$seq_idx]{"out_ajb_str"}, $results_AAHR->[$mdl_idx][$seq_idx]{"out_aja_str"});
 
         if(exists $results_HR->{"p_start"}) { 
           # hit exists
@@ -4288,7 +4296,7 @@ sub output_tbl_all_sequences {
             if(! $do_nofid)  { push(@cur_out_A, sprintf(" %5s", "-")); }   # fid
             if(! $do_nomdlb) { push(@cur_out_A, "  " . "--"); }            # mdlb
             if(! $do_noolap) { push(@cur_out_A, sprintf(" %10s", "-")); }  # olap
-            if($is_matpept)  {  push(@cur_out_A, sprintf(" %10s", "-")); } # adj
+            if($is_matpept)  { push(@cur_out_A, sprintf(" %10s", "-")); } # adj
           }
           else { 
             # not special case in which a trc error exists in earlier segment,
@@ -4311,23 +4319,25 @@ sub output_tbl_all_sequences {
               }
             }
             if(! $do_noolap) { 
-              if($results_HR->{"olp_str"} ne $ref_olp_str) { 
+              my $out_olp_str = ($results_HR->{"out_olp_str"} eq "") ? "NONE" : $results_HR->{"out_olp_str"};
+              if($results_HR->{"out_olp_str"} ne $ref_olp_str) { 
                 $at_least_one_fail = 1; 
-                push(@cur_out_A, sprintf(" %10s", "F:" . $results_HR->{"olp_str"})); 
+                push(@cur_out_A, sprintf(" %10s", "F:" . $out_olp_str));
               }
               else { 
-                push(@cur_out_A, sprintf(" %10s", "P:" . $results_HR->{"olp_str"})); 
+                push(@cur_out_A, sprintf(" %10s", "P:" . $out_olp_str));
               }
             }
 
             if($is_matpept) { 
-              my $adj_str = combine_ajb_and_aja_strings($results_HR->{"ajb_str"}, $results_HR->{"aja_str"});
+              my $adj_str = combine_ajb_and_aja_strings($results_HR->{"out_ajb_str"}, $results_HR->{"out_aja_str"});
+              my $out_adj_str = ($adj_str eq "") ? "NONE" : $adj_str;
               if($adj_str ne $ref_adj_str) { 
                 $at_least_one_fail = 1; 
-                push(@cur_out_A, sprintf(" %10s", "F:" . $adj_str));
+                push(@cur_out_A, sprintf(" %10s", "F:" . $out_adj_str));
               }
               else { 
-                push(@cur_out_A, sprintf(" %10s", "P:" . $adj_str));
+                push(@cur_out_A, sprintf(" %10s", "P:" . $out_adj_str));
               }
             }
             if($is_first) { 
