@@ -4225,10 +4225,11 @@ sub overlapsAndAdjacenciesHelper() {
     if($start1 != -1) { # a flag that we don't have a start..stop, strand for this model
       for($mdl_idx2 = 0; $mdl_idx2 < $nmdl; $mdl_idx2++) { 
         my $start2  = $start_AR->[$mdl_idx2];
-        my $stop2   = $start_AR->[$mdl_idx2];
+        my $stop2   = $stop_AR->[$mdl_idx2];
         my $strand2 = $strand_AR->[$mdl_idx2];
-        if($start2 == -1 && ($mdl_idx1 != $mdl_idx2)) { 
-        # $start2 == -1 is a flag that we don't have a start..stop, strand for this model
+        #printf("HEYA mdl_idx1 $start1..$stop1 $strand1  mdl_idx2 $start2..$stop2 $strand2\n");
+        if($start2 != -1 && ($mdl_idx1 != $mdl_idx2)) { 
+          # $start2 == -1 is a flag that we don't have a start..stop, strand for this model
           if($strand1 eq $strand2) { 
             # strands match
             if((($strand1 eq "+") && (($stop1+1) == $start2)) || 
@@ -4237,6 +4238,7 @@ sub overlapsAndAdjacenciesHelper() {
                (($strand1 eq "-") && (($stop2-1) == $start1))) { 
               # $mdl_idx1 and $mdl_idx2 are adjacent
               $adj_AA[$mdl_idx1][$mdl_idx2] = 1;
+              #printf("HEYAA $mdl_idx1 and $mdl_idx2 are adjacent\n");
             }
             if(($len != -1) && 
                ((($strand1 eq "+") && ($stop1 == $len) && ($start2 == 1)) || 
@@ -4245,8 +4247,12 @@ sub overlapsAndAdjacenciesHelper() {
                 (($strand1 eq "-") && ($stop2 == 1)    && ($start1 == $len)))) { 
               # $mdl_idx1 and $mdl_idx2 are adjacent, one ends the seq, the other begins it
               $adj_AA[$mdl_idx1][$mdl_idx2] = 1;
+              printf("HEYAA $mdl_idx1 and $mdl_idx2 are adjacent\n");
             }            
-            if(getOverlap($start1, $stop1, $start2, $stop2) > 0) { 
+            if(getOverlap(($start1 < $stop1) ? $start1 : $stop1,
+                          ($start1 < $stop1) ? $stop1  : $start1,
+                          ($start2 < $stop2) ? $start2 : $stop2,
+                          ($start2 < $stop2) ? $stop2  : $start2, $FH_HR) > 0) { 
               $olp_AA[$mdl_idx1][$mdl_idx2] = 1;
             }
           }
@@ -4886,6 +4892,173 @@ sub compareTwoOverlapOrAdjacencyStrings {
   #     $diff_AR->[$el] == 1  if $el only exists $str2
 
   return;
+}
+
+#################################################################
+# Subroutine: fetchStopCodon()
+# Incept:     EPN, Mon Mar 14 13:34:02 2016
+#
+# Synopsis:   Fetch a stop codon given it's final position,
+#             and strand.
+#
+# Args:       $sqfile:   Bio::Easel::SqFile object, open sequence
+#                        file containing $seqname;
+#             $seq_name: name of sequence to fetch part of
+#             $stop:     final position of the stop codon
+#             $strand:   strand we want ("+" or "-")
+#             $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#             
+# Returns:    The stop codon as a string
+# 
+# Dies:       If $stop (or $stop - 2) is negative.
+#################################################################
+sub fetchStopCodon {
+  my $sub_name = "fetchStopCodon";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $seq_name, $stop, $strand, $FH_HR) = @_;
+
+  my $stop_codon_posn;
+  if($strand eq "-") { 
+    $stop_codon_posn = $stop + 2;
+  }
+  else { 
+    $stop_codon_posn = $stop - 2;
+  }
+  if($stop_codon_posn < 0) { 
+    DNAORG_FAIL("ERROR in $sub_name(), trying to fetch stop codon for $seq_name positions $stop_codon_posn..$stop, but we expect positive positions", 1, $FH_HR);
+  }
+  # printf("in $sub_name, seqname $seqname, stop $stop\n");
+
+  return fetchCodon($sqfile, $seq_name, $stop_codon_posn, $strand);
+}
+
+#################################################################
+# Subroutine: fetchCodon()
+# Incept:     EPN, Mon Mar 14 13:37:31 2016
+# 
+# Synopsis:   Fetch a codon given it's first position
+#             and the strand and a Bio::Easel::SqFile object
+#             that is the open sequence file with the desired
+#             sequence.
+#
+# Args:       $sqfile:   Bio::Easel::SqFile object, open sequence
+#                        file containing $seqname;
+#             $seq_name: name of sequence to fetch part of
+#             $start:    start position of the codon
+#             $strand:   strand we want ("+" or "-")
+#
+# Returns:    The codon as a string
+#
+#################################################################
+sub fetchCodon {
+  my $sub_name = "fetchCodon";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $seqname, $start, $strand) = @_;
+
+  my $codon_start = $start;
+  my $codon_stop  = ($strand eq "-") ? $start - 2 : $start + 2; 
+
+  my $newname = $seqname . "/" . $codon_start . "-" . $codon_stop;
+
+  my @fetch_AA = ();
+  push(@fetch_AA, [$newname, $codon_start, $codon_stop, $seqname]);
+
+  my $faseq = $sqfile->fetch_subseqs(\@fetch_AA, -1);
+
+  my ($header, $seq) = split("\n", $faseq);
+
+  # printf("\nin $sub_name, $seqname $start $strand returning $seq\n");
+  
+  return $seq;
+}
+
+#################################################################
+# Subroutine: validateStopCodon()
+# Incept:     EPN, Mon Mar 14 13:47:57 2016
+# 
+# Purpose:    Given a codon, return '1' if it's a valid stop codon,
+#             else return 0.
+#
+# Args:
+#  $codon:  the codon
+#
+# Returns:    The codon as a string
+#
+#################################################################
+sub validateStopCodon {
+  my $sub_name = "validateStopCodon";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($codon) = @_;
+  
+  $codon =~ tr/a-z/A-Z/;
+  $codon =~ tr/U/T/;
+
+  if($codon eq "TAA" || 
+     $codon eq "TGA" || 
+     $codon eq "TAG" || 
+     $codon eq "TAR") { 
+    return 1;
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine: getOverlap()
+# Incept:     EPN, Mon Mar 14 13:47:57 2016
+#
+# Purpose:    Calculate number of nucleotides of overlap between
+#             two regions.
+#
+# Args:
+#  $start1: start position of hit 1 (must be <= $end1)
+#  $end1:   end   position of hit 1 (must be >= $end1)
+#  $start2: start position of hit 2 (must be <= $end2)
+#  $end2:   end   position of hit 2 (must be >= $end2)
+#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  Number of nucleotides of overlap between hit1 and hit2,
+#           0 if none
+#
+# Dies:     if $end1 < $start1 or $end2 < $start2.
+
+sub getOverlap {
+  my $sub_name = "getOverlap";
+  my $nargs_exp = 5;
+  if(scalar(@_) != 5) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($start1, $end1, $start2, $end2, $FH_HR) = @_; 
+
+  #printf("in $sub_name $start1..$end1 $start2..$end2\n");
+
+  if($start1 > $end1) { DNAORG_FAIL("ERROR in $sub_name start1 > end1 ($start1 > $end1)", 1, $FH_HR); }
+  if($start2 > $end2) { DNAORG_FAIL("ERROR in $sub_name start2 > end2 ($start2 > $end2)", 1, $FH_HR); }
+
+  # Given: $start1 <= $end1 and $start2 <= $end2.
+  
+  # Swap if nec so that $start1 <= $start2.
+  if($start1 > $start2) { 
+    my $tmp;
+    $tmp   = $start1; $start1 = $start2; $start2 = $tmp;
+    $tmp   =   $end1;   $end1 =   $end2;   $end2 = $tmp;
+  }
+  
+  # 3 possible cases:
+  # Case 1. $start1 <=   $end1 <  $start2 <=   $end2  Overlap is 0
+  # Case 2. $start1 <= $start2 <=   $end1 <    $end2  
+  # Case 3. $start1 <= $start2 <=   $end2 <=   $end1
+  if($end1 < $start2) { return 0; }                      # case 1
+  if($end1 <   $end2) { return ($end1 - $start2 + 1); }  # case 2
+  if($end2 <=  $end1) { return ($end2 - $start2 + 1); }  # case 3
+  die "ERROR in $sub_name, unforeseen case in $start1..$end1 and $start2..$end2";
+
+  return; # NOT REACHED
 }
 
 ###########################################################################
