@@ -1630,7 +1630,6 @@ sub validateAndGetSizeOfInfoHashOfArrays {
 #             strings of all features.
 #
 # Arguments:
-#   $tbl_HAR:   REF to hash of arrays for accession we're interested in, PRE-FILLED
 #   $len_AR:    REF to array to fill with lengths of features in %{$tbl_HAR}, FILLED HERE
 #   $coords_AR: REF to array to fill with coordinates for each gene, FILLED HERE
 #   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
@@ -1702,15 +1701,8 @@ sub lengthFromCoords {
 #   $out_fetch_file:   name of file to use as input to $esl_fetch_cds, created here
 #   $out_fasta_file:   name of fasta file to create, created here
 #   $do_circular:      '1' to duplicate genome, '0' not to
-#   $accn_AR:          ref to array of accessions to fetch, PRE-FILLED
-#   $totlen_AR:        ref to array with total lengths of each sequence, PRE-FILLED
-#   $seq_accn_AR:      ref to array of sequence names in newly created sequence file, FILLED HERE
-#   $accn2seq_accn_HR: ref to hash, keys are accessions from @{$accn_AR}, values are
-#                      sequence accessions from @{$seq_accn_AR}, can be undef if unwanted
-#                      FILLED HERE (if defined)
-#   $seq_accn2accn_HR: ref to hash, keys are accessions from @{$seq_accn_AR}, values are
-#                      sequence accessions from @{$accn_AR}, can be undef if unwanted
-#                      FILLED HERE (if defined)
+#   $seq_info_HAR:     REF to 2D hash with sequence information, ADDED TO HERE
+#                      "seq_name", and "seq_len" arrays filled here
 #   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns:    void
@@ -1720,40 +1712,46 @@ sub lengthFromCoords {
 #################################################################
 sub fetchSequencesUsingEslFetchCds { 
   my $sub_name = "fetchSequencesUsingEslFetchCds";
-  my $nargs_expected = 10;
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($esl_fetch_cds, $fetch_file, $fasta_file, $do_circular, $accn_AR, $totlen_AR, $seq_accn_AR, $accn2seq_accn_HR, $seq_accn2accn_HR, $FH_HR) = @_;
+  my ($esl_fetch_cds, $fetch_file, $fasta_file, $do_circular, $seq_info_HAR, $FH_HR) = @_;
 
   # contract check
   if(! -e $esl_fetch_cds) { 
     DNAORG_FAIL("ERROR in $sub_name, required executable $esl_fetch_cds does not exist", 1, $FH_HR); 
   }
 
-  my $seq_accn;     # sequence accession
+  my ($accn_name, $accn_len, $seq_name, $seq_len); # accession name/length (from GenBank) sequence name/length in the sequence file we create
+
+  @{$seq_info_HAR->{"seq_name"}} = (); # initialize
+  @{$seq_info_HAR->{"seq_len"}}  = (); # initialize
+  my $seq_name_AR  = \@{$seq_info_HAR->{"seq_name"}};
+  my $seq_len_AR = \@{$seq_info_HAR->{"seq_len"}};
+
   my $fetch_string; # string output to the input file for esl-fetch-cds.pl
   
   # create the esl-fetch-cds input file
   open(OUT, ">", $fetch_file) || fileOpenFailure($fetch_file, $sub_name, $!, "writing", $FH_HR);
-  my $naccn = scalar(@{$accn_AR});
+  my $naccn = scalar(@{$seq_info_HAR->{"accn_name"}});
   for(my $a = 0; $a < $naccn; $a++) { 
-#  print OUT $accn_A[$a] . "\n";
-    my $accn   = $accn_AR->[$a];
-    my $totlen = $totlen_AR->[$a];
+    my $accn_name = $seq_info_HAR->{"accn_name"}[$a];
+    my $accn_len  = $seq_info_HAR->{"accn_len"}[$a];
 
     if($do_circular) { 
-      $fetch_string = "join(" . $accn . ":1.." . $totlen . "," . $accn . ":1.." . $totlen . ")\n";
-      print OUT $accn . ":" . "genome-duplicated" . "\t" . $fetch_string;
-      $seq_accn = $accn . ":genome-duplicated:" . $accn . ":1:" . $totlen . ":+:" . $accn . ":1:" . $totlen . ":+:";
+      $fetch_string = "join(" . $accn_name . ":1.." . $accn_len . "," . $accn_name . ":1.." . $accn_len . ")\n";
+      print OUT $accn_name . ":" . "genome-duplicated" . "\t" . $fetch_string;
+      $seq_name = $accn_name . ":genome-duplicated:" . $accn_name . ":1:" . $accn_len . ":+:" . $accn_name . ":1:" . $accn_len . ":+:";
+      $seq_len  = 2 * $accn_len;
     }
     else { # $do_circular is FALSE
-      $fetch_string = $accn . ":1.." . $totlen . "\n";
-      print OUT $accn . ":" . "genome" . "\t" . $fetch_string;
-      $seq_accn = $accn . ":genome:" . $accn . ":1:" . $totlen . ":+:";
+      $fetch_string = $accn_name . ":1.." . $accn_len . "\n";
+      print OUT $accn_name . ":" . "genome" . "\t" . $fetch_string;
+      $seq_name = $accn_name . ":genome:" . $accn_name . ":1:" . $accn_len . ":+:";
+      $seq_len  = $accn_len;
     }
-    if(defined $seq_accn_AR)      { push(@{$seq_accn_AR},        $seq_accn); }
-    if(defined $accn2seq_accn_HR) { $accn2seq_accn_HR->{$accn} = $seq_accn;  }
-    if(defined $seq_accn2accn_HR) { $seq_accn2accn_HR->{$seq_accn} = $accn;  }
+    push(@{$seq_info_HAR->{"seq_name"}}, $seq_name);
+    push(@{$seq_info_HAR->{"seq_len"}}, $seq_len);
   }
   close(OUT);
   
@@ -3837,7 +3835,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
   }
   @{$seq_info_HAR->{"seq_name"}} = ();
-  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR->{"accn_name"}, $seq_info_HAR->{"accn_len"}, $seq_info_HAR->{"seq_name"}, undef, undef, $FH_HR);
+  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR, $FH_HR);
   addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
   addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
 
