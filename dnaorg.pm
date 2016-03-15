@@ -1234,7 +1234,7 @@ sub fetchReferenceFeatureSequences {
     my $tiny  = $short;
     $tiny =~ s/\s+//g; # remove whitespace
     if($ftr_info_HAR->{"annot_type"}[$i] eq "model") { 
-      if($ftr_info_HAR->{"nmodels"}[$i] > 1) { $short .= sprintf(" [%d %s; %s]", $ftr_info_HAR->{"nmodels"}, ($cds_or_mp eq "mp") ? "segments" : "exons", $ftr_info_HAR->{"ref_strand"}[$i]); }
+      if($ftr_info_HAR->{"nmodels"}[$i] > 1) { $short .= sprintf(" [%d %s; %s]", $ftr_info_HAR->{"nmodels"}[$i], ($cds_or_mp eq "mp") ? "segments" : "exons", $ftr_info_HAR->{"ref_strand"}[$i]); }
       else                                   { $short .= sprintf(" [single %s; %s]",  ($cds_or_mp eq "mp") ? "segment"  : "exon", $ftr_info_HAR->{"ref_strand"}[$i]); }
     }
     elsif($ftr_info_HAR->{"annot_type"}[$i] eq "multifeature") { 
