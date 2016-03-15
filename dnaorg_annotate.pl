@@ -1328,7 +1328,7 @@ sub fetch_hits_given_results {
         # if "prv_trc_flag" is set, this means the sequence should not
         # be fetched due to an early stop (trc error) in a previous
         # model for the same feature
-        if($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"prv_trc_flag"}) { 
+        if(! $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"prv_trc_flag"}) { 
           my $new_name = $seq_name . "/" . $start . "-" . $stop;
           push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
           
@@ -2779,10 +2779,22 @@ sub ftr_results_calculate {
             }
             else { 
               # update $cds_out_stop, when we exit this loop over children, $cds_out_stop will be stop of final model's annotation
-              $cds_out_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"};
-              $cds_fetch_stop = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
-                  $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
-                  $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
+              # if we 'append' sequence to this model (as we do for the final mature peptide to get the stop codon which is
+              # not annotated by GenBank
+              if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}) { 
+                my ($out_append_start, $out_append_stop) = 
+                    create_output_start_and_stop($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}, 
+                                                 $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"},
+                                                 $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                $cds_out_stop = $out_append_stop;
+                $cds_fetch_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"};
+              }
+              else { 
+                $cds_out_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"};
+                $cds_fetch_stop = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
+                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
+                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
+              }
               $stop_strand = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
 
               # check if we're adjacent to the next model
