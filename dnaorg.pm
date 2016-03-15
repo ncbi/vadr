@@ -2911,7 +2911,7 @@ sub validateErrorInfoHashIsComplete {
  
   my ($err_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("code", "pertype", "valtype", "msg", "incompat", "requires");
+  my @expected_keys_A = ("code", "pertype", "maybe_allowed", "msg", "incompat", "requires");
 
   return validateInfoHashOfArraysIsComplete($err_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
@@ -4483,23 +4483,24 @@ sub initializeHardCodedErrorInfoHash {
 
   # add each error code, this function will die if we try to add the same code twice, or if the 3rd argument is 
   # neither "sequence" nor "feature"
-  addToErrorInfoHash($err_info_HAR, "nop", "feature",  "yes",         "unable to identify homologous feature", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "nm3", "feature",  "yes",         "length of nucleotide feature is not a multiple of 3", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "bd5", "feature",  "nonzero_int", "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "bd3", "feature",  "nonzero_int", "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "olp", "feature",  "string",      "feature does not overlap with same set of features as in reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "str", "feature",  "yes",         "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "stp", "feature",  "yes",         "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ajb", "feature",  "string",      "mature peptide is not adjacent to same set of mature peptides before it as in reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "aja", "feature",  "string",      "mature peptide is not adjacent to same set of mature peptides after it as in reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "trc", "feature",  "nonzero_int", "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ext", "feature",  "nonzero_int", "first in-frame stop codon exists 3' of stop position predicted by homology to reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ntr", "feature",  "string",      "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "nst", "feature",  "yes",         "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "aji", "feature",  "string",      "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "int", "feature",  "yes",         "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not translated due to early stop (ntr)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "inp", "feature",  "yes",         "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ori", "sequence", "yes",         "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
+                                   #code    pertype   maybe_allowed?  msg (description)
+  addToErrorInfoHash($err_info_HAR, "nop", "feature",  0,             "unable to identify homologous feature", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "nm3", "feature",  0,             "length of nucleotide feature is not a multiple of 3", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "bd5", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "bd3", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "olp", "feature",  0,             "feature does not overlap with same set of features as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "str", "feature",  0,             "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "stp", "feature",  0,             "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ajb", "feature",  0,             "mature peptide is not adjacent to same set of mature peptides before it as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "aja", "feature",  0,             "mature peptide is not adjacent to same set of mature peptides after it as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "trc", "feature",  0,             "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ext", "feature",  1,             "first in-frame stop codon exists 3' of stop position predicted by homology to reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,             "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,             "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not translated due to early stop (ntr)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
 
   # define the incompatibilities, these are 2 sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,olp,str,stp,ajb,aja,trc,ext,ntr,nst,aji,int,inp", $FH_HR);
@@ -4524,7 +4525,8 @@ sub initializeHardCodedErrorInfoHash {
 #   $err_info_HAR:  REF to hash of arrays of error information, FILLED HERE
 #   $code:          the code of the element we are adding
 #   $pertype:       the 'per-type' of the element we are adding, "sequence" or "feature"
-#   $valtype:       the 'value-type' of the element we are adding, "yes", "string" or "nonzero_int"
+#   $maybe_allowed: 1, if we're allowing this error to be set as 'maybe', to facilitate
+#                   reexamination later.
 #   $msg:           the error message of the element we are adding
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 # 
@@ -4539,7 +4541,7 @@ sub addToErrorInfoHash {
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($err_info_HAR, $code, $pertype, $valtype, $msg, $FH_HR) = (@_);
+  my ($err_info_HAR, $code, $pertype, $maybe_allowed, $msg, $FH_HR) = (@_);
 
   # check if $code already exists
   if(exists $err_info_HAR->{"code"}) { 
@@ -4553,25 +4555,25 @@ sub addToErrorInfoHash {
   }
 
   if(($pertype ne "feature") && ($pertype ne "sequence")) { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\"."); 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\".", 1, $FH_HR); 
   }
-  if(($valtype ne "yes") && ($valtype ne "string") && ($valtype ne "nonzero_int")) { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with value type $valtype that is not neither \"yes\" nor \"string\" nor \"nonzero_int\"."); 
+  if(($maybe_allowed ne "1") && ($maybe_allowed ne "0")) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with invalid maybe_allowed value of $maybe_allowed", 1, $FH_HR);
   }
 
-  if(! exists $err_info_HAR->{"code"})     { @{$err_info_HAR->{"code"}} = (); }
-  if(! exists $err_info_HAR->{"pertype"})  { @{$err_info_HAR->{"pertype"}} = (); }
-  if(! exists $err_info_HAR->{"valtype"})  { @{$err_info_HAR->{"valtype"}} = (); }
-  if(! exists $err_info_HAR->{"msg"})      { @{$err_info_HAR->{"msg"}} = (); }
-  if(! exists $err_info_HAR->{"incompat"}) { @{$err_info_HAR->{"incompat"}} = (); }
-  if(! exists $err_info_HAR->{"requires"}) { @{$err_info_HAR->{"requires"}} = (); }
+  if(! exists $err_info_HAR->{"code"})          { @{$err_info_HAR->{"code"}} = (); }
+  if(! exists $err_info_HAR->{"pertype"})       { @{$err_info_HAR->{"pertype"}} = (); }
+  if(! exists $err_info_HAR->{"maybe_allowed"}) { @{$err_info_HAR->{"maybe_allowed"}} = (); }
+  if(! exists $err_info_HAR->{"msg"})           { @{$err_info_HAR->{"msg"}} = (); }
+  if(! exists $err_info_HAR->{"incompat"})      { @{$err_info_HAR->{"incompat"}} = (); }
+  if(! exists $err_info_HAR->{"requires"})      { @{$err_info_HAR->{"requires"}} = (); }
   
-  push(@{$err_info_HAR->{"code"}},    $code); 
-  push(@{$err_info_HAR->{"pertype"}}, $pertype); 
-  push(@{$err_info_HAR->{"valtype"}}, $valtype); 
-  push(@{$err_info_HAR->{"msg"}},     $msg); 
-  push(@{$err_info_HAR->{"incompat"}}, ""); # initialized to no incompatabilities, possibly added later with setIncompatibilityErrorInfoHash()
-  push(@{$err_info_HAR->{"requires"}}, ""); # initialized to no incompatabilities, possibly added later with setIncompatibilityErrorInfoHash()
+  push(@{$err_info_HAR->{"code"}},          $code); 
+  push(@{$err_info_HAR->{"pertype"}},       $pertype); 
+  push(@{$err_info_HAR->{"maybe_allowed"}}, $maybe_allowed); 
+  push(@{$err_info_HAR->{"msg"}},           $msg); 
+  push(@{$err_info_HAR->{"incompat"}},      ""); # initialized to no incompatabilities, possibly added later with setIncompatibilityErrorInfoHash()
+  push(@{$err_info_HAR->{"requires"}},      ""); # initialized to no incompatabilities, possibly added later with setIncompatibilityErrorInfoHash()
 
   return;
 }
