@@ -55,9 +55,13 @@
 #                  an array with the relevant information. See validateFeatureInfoHashIsComplete()
 #                  for a list and explanation of the keys.
 #                   
-# - $mdl_info_HAR: similar to ${ftr,err}_info_HAR, except contains information pertaining to each 
-#                  model, >= 1 of which will model a single feature (1 model for single exon
-#                  CDS, 2 models for dual exon CDS, etc.). See validateModelInfoHashIsComplete()
+# - $mdl_info_HAR: similar to ${ftr,seq,err}_info_HAR, except contains information pertaining 
+#                  to each model, >= 1 of which will model a single feature (1 model for single
+#                  exon CDS, 2 models for dual exon CDS, etc.). See 
+#                  validateModelInfoHashIsComplete() for a list and explanation of the keys.
+#                   
+# - $seq_info_HAR: similar to ${ftr,mdl,err}_info_HAR, except contains information pertaining 
+#                  to each sequence. See validateSequenceInfoHashIsComplete()
 #                  for a list and explanation of the keys.
 #                   
 # - $err_info_HAR: similar to ${ftr,mdl}_info_HAR, except contains information pertaining to each 
@@ -103,6 +107,7 @@
 # validateExecutableHash:                  given a hash where values are paths to executables, validate that they are executable
 # validateFeatureInfoHashIsComplete():     validate that a 'feature info' hash of arrays is valid and has all expected keys
 # validateModelInfoHashIsComplete():       validate that a 'model info' hash of arrays is valid and has all expected keys
+# validateSequenceInfoHashIsComplete():    validate that a 'sequence info' hash of arrays is valid and has all expected keys
 # validateInfoHashOfArraysIsComplete():    validate that a info hash of arrays is valid and has all expected keys   
 # findNonNumericValueInArray():            find which element in an array has a specified non-numeric value and return its index
 #
@@ -1130,6 +1135,7 @@ sub fetchReferenceFeatureSequences {
     $ftr_info_HAR->{"first_mdl"}[$i] = -1; # remains -1 if $do_model is FALSE
     $ftr_info_HAR->{"final_mdl"}[$i] = -1; # remains -1 if $do_model is FALSE
     $ftr_info_HAR->{"nmodels"}[$i]    = 0; # remains 0 if $do_model is FALSE
+    $ftr_info_HAR->{"append_num"}[$i] = 0; # maybe changed later in determineFeatureTypes()
 
     if($do_model) { 
       # determine start and stop positions of all exons/segments
@@ -1209,7 +1215,7 @@ sub fetchReferenceFeatureSequences {
         $mdl_info_HAR->{"is_final"}[$nmdl]   = ($e == ($nexons-1)) ? 1 : 0;
         $mdl_info_HAR->{"map_exon"}[$nmdl]   = $e;
         $mdl_info_HAR->{"map_nexon"}[$nmdl]  = $nexons;
-        $mdl_info_HAR->{"append_num"}[$nmdl] = 0; # maybe be changed later in determineFeatureTypes()
+        $mdl_info_HAR->{"append_num"}[$nmdl] = 0; # maybe changed later in determineFeatureTypes()
         $mdl_info_HAR->{"out_idx"}[$nmdl] = sprintf("%d.%d", 
                                                     $mdl_info_HAR->{"map_ftr"}[$nmdl]+1, $mdl_info_HAR->{"map_exon"}[$nmdl]+1);
 
@@ -2727,8 +2733,8 @@ sub validateExecutableHash {
 # Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
 #            does not exist in $ftr_info_HAR
 #          - if two arrays in $ftr_info_HAR are of different sizes
-#          - if any other key other than those listed above exist in ${%ftr_info_HAR}
 #          - if any key listed in @{$exceptions_AR} is not one of the expected keys
+#
 #################################################################
 sub validateFeatureInfoHashIsComplete { 
   my $sub_name = "validateFeatureInfoHashIsComplete()";
@@ -2780,8 +2786,8 @@ sub validateFeatureInfoHashIsComplete {
 # Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
 #            does not exist in $mdl_info_HAR
 #          - if two arrays in $mdl_info_HAR are of different sizes
-#          - if any other key other than those listed above exist in ${%mdl_info_HAR}
 #          - if any key listed in @{$exceptions_AR} is not one of the expected keys
+#
 #################################################################
 sub validateModelInfoHashIsComplete { 
   my $sub_name = "validateModelInfoHashIsComplete()";
@@ -2795,6 +2801,79 @@ sub validateModelInfoHashIsComplete {
                          "map_exon", "map_ftr", "map_nexon", "out_tiny", "out_idx");
 
   return validateInfoHashOfArraysIsComplete($mdl_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
+}
+
+#################################################################
+# Subroutine: validateSequenceInfoHashIsComplete()
+# Incept:     EPN, Tue Mar 15 05:35:22 2016
+#
+# Purpose:    Validate that a 'sequence info' hash is valid and complete.
+#             'Complete' means it has all the expected keys, each of which is an identically sized array.
+#             The expected keys are:
+#                "seq_name":    name of the sequence in the sequence file we create and search in
+#                "seq_len":     length of the sequence with name in "seq_name"in the sequence file we create and search in
+#                "accn_name":   accession of the sequence in GenBank
+#                "accn_len":    length of the sequence in GenBank, will be same as value in "seq_len" only if
+#                               the -c option is not used to indicate a circular genome, if the -c option is
+#                               used, then this will equal 2*seq_len.
+#
+#             This function also validates that one of the following is true:
+#             1) -c is 'off' in %{$opt_HHR} and all "seq_len" and "accn_len" values are equal
+#             2) -c is 'on'  in %{$opt_HHR} and all "seq_len" values are 2 * the "accn_len" values
+#
+#             If @{exceptions_AR} is non-empty, then keys in 
+#             in that array need not be in %{$seq_info_HAR}.
+#
+# Arguments:
+#   $seq_info_HAR:  REF to hash of arrays of model information
+#   $exceptions_AR: REF to array of keys that may be excluded from the hash
+#   $opts_HHR:      REF to the 2D hash of command line options
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: Number of elements in each and every array of %{$seq_info_HAR}
+#
+# Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
+#            does not exist in $seq_info_HAR
+#          - if two arrays in $seq_info_HAR are of different sizes
+#          - if any key listed in @{$exceptions_AR} is not one of the expected keys
+#          - if -c enabled     but not all seq_len values are 2X corresponding accn_len values
+#          - if -c not enabled but not all seq_len values are equal to corresponding accn_len values
+#
+#################################################################
+sub validateSequenceInfoHashIsComplete { 
+  my $sub_name = "validateSequenceInfoHashIsComplete()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($seq_info_HAR, $exceptions_AR, $opt_HHR, $FH_HR) = (@_);
+  
+  my @expected_keys_A = ("seq_name", "seq_len", "accn_name", "accn_len");
+
+  my $nseq = validateInfoHashOfArraysIsComplete($seq_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
+  # above call will die if we are invalid
+
+  if(opt_Get("-c", $opt_HHR)) { 
+    # -c option on, seq_len should be 2X accn_len
+    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      if($seq_info_HAR->{"seq_len"}[$seq_idx] != (2 * $seq_info_HAR->{"accn_len"}[$seq_idx])) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, -c option on, but for sequence %s, seq_len value of %d not equal to 2X accn_len of %d", 
+                            $seq_info_HAR->{"seq_name"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $seq_info_HAR->{"accn_len"}[$seq_idx]),
+                    1, $FH_HR);
+      }
+    }
+  }
+  else { 
+    # -c option off, seq_len should be accn_len
+    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      if($seq_info_HAR->{"seq_len"}[$seq_idx] != $seq_info_HAR->{"accn_len"}[$seq_idx]) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, -c option off, but for sequence %s, seq_len value of %d not equal to accn_len of %d", 
+                            $seq_info_HAR->{"seq_name"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $seq_info_HAR->{"accn_len"}[$seq_idx]),
+                    1, $FH_HR);
+      }
+    }
+  }
+
+  return $nseq;
 }
 
 #################################################################
@@ -4128,6 +4207,7 @@ sub annotateAppendFeatures {
       my $final_ftr_idx = $primary_children_idx_A[(scalar(@primary_children_idx_A)-1)];
       my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
       $mdl_info_HAR->{"append_num"}[$final_mdl_idx] = 3; # we want to append the 3 nt 3' of this model 
+      $ftr_info_HAR->{"append_num"}[$ftr_idx] = 3; # we want to append the 3 nt 3' of this feature
     }
   }
 
@@ -4414,9 +4494,9 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "aja", "feature",  "string",      "mature peptide is not adjacent to same set of mature peptides after it as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "trc", "feature",  "nonzero_int", "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ext", "feature",  "nonzero_int", "first in-frame stop codon exists 3' of stop position predicted by homology to reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ntr", "feature",  "yes",         "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ntr", "feature",  "string",      "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "nst", "feature",  "yes",         "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "aji", "feature",  "yes",         "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "aji", "feature",  "string",      "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "int", "feature",  "yes",         "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not translated due to early stop (ntr)", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  "yes",         "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ori", "sequence", "yes",         "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
@@ -4916,10 +4996,57 @@ sub compareTwoOverlapOrAdjacencyIndexStrings {
 }
 
 #################################################################
+# Subroutine: checkForIndexInOverlapOrAdjacencyIndexString
+# Incept:     EPN, Tue Mar 15 10:20:22 2016
+#
+# Purpose:    Given a 'index' string that describes overlaps
+#             or adjacencies, check if the index $idx is in it.
+#             Return '1' if it is, else return '0'.
+#
+# Arguments:
+#   $str:     string, format "<idx1>,<idx2>,...,<idxN>"
+#   $idx:     index we're checking for
+#   $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  '1' if $idx is in $str, else '0'
+# 
+# Dies:     If $idx is not integer >= 0
+#
+#################################################################
+sub checkForIndexInOverlapOrAdjacencyIndexString { 
+  my $sub_name = "checkForIndexInOverlapOrAdjacencyIndexString()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($str, $idx, $FH_HR) = @_;
+
+  if((! verify_integer($idx)) || ($idx < 0)) { 
+    DNAORG_FAIL("ERROR in $sub_name, expected index to be integer greater than or equal to 0, got $idx", 1, $FH_HR);
+  }
+  if($str eq "") { 
+    return 0;
+  }
+  if($str =~ m/\,$idx\,/) { 
+    return 1;
+  }
+  if($str =~ m/^$idx$/) { 
+    return 1;
+  }
+  if($str =~ m/^$idx\,/) { 
+    return 1;
+  }
+  if($str =~ m/\,$idx$/) { 
+    return 1;
+  }
+
+  return 0;
+}
+
+#################################################################
 # Subroutine: fetchStopCodon()
 # Incept:     EPN, Mon Mar 14 13:34:02 2016
 #
-# Synopsis:   Fetch a stop codon given it's final position,
+# Synopsis:   Fetch a stop codon given its final position,
 #             and strand.
 #
 # Args:       $sqfile:   Bio::Easel::SqFile object, open sequence
@@ -4953,6 +5080,38 @@ sub fetchStopCodon {
   # printf("in $sub_name, seqname $seqname, stop $stop\n");
 
   return fetchCodon($sqfile, $seq_name, $stop_codon_posn, $strand);
+}
+
+#################################################################
+# Subroutine: fetchStartCodon()
+# Incept:     EPN, Tue Mar 15 10:18:34 2016
+#
+# Synopsis:   Fetch a start codon given its first position,
+#             and strand.
+#
+# Args:       $sqfile:   Bio::Easel::SqFile object, open sequence
+#                        file containing $seqname;
+#             $seq_name: name of sequence to fetch part of
+#             $stop:     final position of the stop codon
+#             $strand:   strand we want ("+" or "-")
+#             $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#             
+# Returns:    The stop codon as a string
+# 
+# Dies:       If $start is negative.
+#################################################################
+sub fetchStartCodon {
+  my $sub_name = "fetchStartCodon";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $seq_name, $start, $strand, $FH_HR) = @_;
+
+  if($start < 0) { 
+    DNAORG_FAIL("ERROR in $sub_name(), trying to fetch start codon for $seq_name at position $start on strand $strand, but we expect positive positions", 1, $FH_HR);
+  }
+
+  return fetchCodon($sqfile, $seq_name, $start, $strand);
 }
 
 #################################################################
