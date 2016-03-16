@@ -76,14 +76,15 @@ opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,
 opt_Add("--model",      "string",  undef,                    1,    undef, undef,      "use model in file",                            "use model file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",        "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
 opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 10,                       1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> minutes for cmscan jobs on farm to finish", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 100,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> minutes for cmscan jobs on farm to finish", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for skipping stages, primarily useful for debugging";
-#     option               type       default               group   requires    incompat                  preamble-output              help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       2,   undef,      "--nseq,--local,--wait",  "skip the edirect steps",    "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                       2,   undef,      "--nseq,--local,--wait",  "skip the cmscan step",      "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipalign",     "boolean", 0,                       2,"--skipscan",  undef,                    "skip the alignment steps",  "skip the alignment steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                       2,"--skipscan",  undef,                    "skip the translation steps","skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+#     option               type       default               group   requires    incompat                  preamble-output                    help-output    
+opt_Add("--skipedirect",   "boolean", 0,                       2,   undef,      "--nseq,--local,--wait",  "skip the edirect steps",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                       2,   undef,      "--nseq,--local,--wait",  "skip the sequence fetching steps", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",      "boolean", 0,                       2,   undef,      "--nseq,--local,--wait",  "skip the cmscan step",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipalign",     "boolean", 0,                       2,"--skipscan",  undef,                    "skip the alignment steps",         "skip the alignment steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skiptranslate", "boolean", 0,                       2,"--skipscan",  undef,                    "skip the translation steps",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"34"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
@@ -115,6 +116,7 @@ my $options_okay =
                 'wait=s'        => \$GetOptions_H{"--wait"},
 # options for skipping stages
                 'skipedirect'   => \$GetOptions_H{"--skipedirect"},
+                'skipfetch'     => \$GetOptions_H{"--skipfetch"},
                 'skipscan'      => \$GetOptions_H{"--skipscan"},
                 'skipalign'     => \$GetOptions_H{"--skipalign"},
                 'skiptranslate' => \$GetOptions_H{"--skiptranslate"},
@@ -320,7 +322,8 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #########################################################
 # Step 2. Fetch and process the reference genome sequence
 ##########################################################
-$start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
+my $step_desc = opt_Get("--skipfetch", \%opt_HH) ? "Processing the reference genome from previously fetched sequence file" : "Fetching all sequences and processing the reference genome";
+$start_secs = outputProgressPrior($step_desc, $progress_w, $log_FH, *STDOUT);
 my %mdl_info_HA = ();  # hash of arrays, values are arrays [0..$nmdl-1];
                        # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
                        # filled in wrapperFetchAndProcessReferenceSequence()
@@ -411,10 +414,11 @@ if(opt_IsUsed("--origin", \%opt_HH)) {
 # Step 4. Perform homology searches
 ##########################################################
 my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
-validateFileExistsAndIsNonEmpty($seq_file, undef, $ofile_info_HH{"FH"});
+validateFileExistsAndIsNonEmpty($seq_file, "dnaorg_annotate.pl:main", $ofile_info_HH{"FH"});
 
 # cmscan output files
-my $stdout_file = (opt_Get("--keep", \%opt_HH)) ? $out_root . ".stdout" : "/dev/null"; # only save the stdout if --keep used at cmdline
+#my $stdout_file = (opt_Get("--keep", \%opt_HH)) ? $out_root . ".stdout" : "/dev/null"; # only save the stdout if --keep used at cmdline
+my $stdout_file = "/dev/null";
 my $tblout_file = $out_root . ".tblout";
 
 # determine how many jobs we need to run to satisfy <n> per job (where n is from --nseq <n>),
@@ -436,6 +440,7 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     my @tmp_seq_file_A = ();    # the array of sequence files, we'll remove after we're done, unless --keep
     my @tmp_err_file_A = ();    # the array of error files, we'll remove after we're done, unless --keep
     my $nfasta_created = split_fasta_file($execs_H{"esl_ssplit"}, $seq_file, $nfarmjobs, \%opt_HH, \%ofile_info_HH);
+    my $nfarmjobs = $nfasta_created;
     # we may redefined $nfarmjobs here, split_fasta_file will return the actual number of fasta files created, 
     # which can differ from the requested amount (which is $nfarmjobs) that we pass in
     
@@ -555,14 +560,14 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 11. For all features that have a valid start but
 #          no in-frame stop codon, look for a downstream in-frame stop.
 #########################################################
-my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
-getIndexHashForArray($seq_info_HA{"seq_name"}, \%seqname_index_H, $ofile_info_HH{"FH"});
+my %seq_name_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
+getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
 
 my $ftr_idx;
 for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
   my $mdl_idx = $ftr_info_HA{"final_mdl"}[$ftr_idx];
   foreach my $seq_name (keys %{$err_ftr_instances_AHH[$ftr_idx]{"ext"}}) { 
-    my $seq_idx       = $seqname_index_H{$seq_name};
+    my $seq_idx       = $seq_name_index_H{$seq_name};
     my $cur_start     = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"};
     my $cur_stop      = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_stop"};
     my $cur_strand    = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_strand"};
@@ -646,9 +651,9 @@ ftr_results_calculate($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@ft
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # dump results
-dump_results(*STDOUT, \@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, \%ofile_info_HH);
+# dump_results(*STDOUT, \@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, \%ofile_info_HH);
 
-dumpArrayOfHashesOfHashes("Error instances (%err_ftr_instances_AHH)", \@err_ftr_instances_AHH, *STDOUT);
+# dumpArrayOfHashesOfHashes("Error instances (%err_ftr_instances_AHH)", \@err_ftr_instances_AHH, *STDOUT);
 
 #########################################################
 # Step 13. Refetch corrected hits into new files.
@@ -686,7 +691,7 @@ if(! opt_Get("--skiptranslate", \%opt_HH)) {
 #########################################################
 # Step 17. Create multiple alignments of DNA sequences
 #########################################################
-my $step_desc = opt_Get("--skipalign", \%opt_HH) ? "Parsing previously created nucleotide alignments" : "Aligning and parsing corrected nucleotide hits";
+$step_desc = opt_Get("--skipalign", \%opt_HH) ? "Parsing previously created nucleotide alignments" : "Aligning and parsing corrected nucleotide hits";
 $start_secs = outputProgressPrior($step_desc, $progress_w, $log_FH, *STDOUT);
 align_hits(\%execs_H, $model_file, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH); 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -711,12 +716,14 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl", $out_root . ".error.tbl", 
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr", $out_root . ".peraccn.errors", "List of errors, one line per sequence");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr", $out_root . ".all.errors",     "List of errors, one line per error");
 
-# output headers
-output_header_error_files(\%ftr_info_HA, \%ofile_info_HH);
-
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
                             # explanations of each header
+
+############################
+# tabular annotation files #
+############################
+$start_secs = outputProgressPrior("Generating tabular annotation output", $progress_w, $log_FH, *STDOUT);
 
 # fill the data structures with the header information for the tabular annotation file
 output_tbl_get_headings(\@out_row_header_A, \@out_header_exp_A, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
@@ -724,10 +731,23 @@ output_tbl_get_headings(\@out_row_header_A, \@out_header_exp_A, \%mdl_info_HA, \
 # for each sequence, output the tabular annotation
 output_tbl_all_sequences(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+###############
+# error files #
+###############
+$start_secs = outputProgressPrior("Generating error code output", $progress_w, $log_FH, *STDOUT);
+
 # output the error files
+output_errors_header(\%ftr_info_HA, \%ofile_info_HH);
 output_errors_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, \%ofile_info_HH);
 
-# output optional output files
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+################################
+# output optional output files #
+################################
+# 
 if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
   dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
 }
@@ -968,6 +988,11 @@ sub run_cmscan {
 
   my $cmd = "$cmscan $opts $model_file $seq_file > $stdout_file";
 
+  # remove the tblout file if it exists, this is important because we'll use the existence and
+  # final line of this file to determine when the jobs are finished, if it already exists, we'll
+  # think the job is finished before it actual is.
+  if(-e $tblout_file) { removeFileUsingSystemRm($tblout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
+
   # run cmscan, either locally or by submitting jobs to the farm
   if($do_local) { 
     # run locally
@@ -977,9 +1002,7 @@ sub run_cmscan {
     # submit job to farm and return
     my $jobname = removeDirPath($seq_file);
     my $errfile = $tblout_file . ".err";
-    if(-e $errfile) { 
-      runCommand("rm $errfile", opt_Get("-v", $opt_HHR), $FH_HR);
-    }
+    if(-e $errfile) { removeFileUsingSystemRm($errfile, $sub_name, $opt_HHR, $ofile_info_HHR); }
     my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G " . "\"" . $cmd . "\" > /dev/null\n";
     runCommand($farm_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
   }
@@ -3320,13 +3343,20 @@ sub align_hits {
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nmdl: number of homology models
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $ofile_info_HHR->{"FH"}); # nseq: number of sequences
 
+  # get index hash for @{$seq_info_HAR->{"seq_name"}} array
+  # this simplifies determining sequence index in @{%seq_info_HAR->{}}
+  # arrays for a given sequence name.
+  my %seq_name_idx_H = (); # key: $seq_name, value: idx of $seq_name in @{$seq_info_HAR->{"seq_name"}}
+  getIndexHashForArray(\@{$seq_info_HAR->{"seq_name"}}, \%seq_name_idx_H, $ofile_info_HHR->{"FH"});
+
+  # validate that we have the model file to fetch from
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $ofile_info_HHR->{"FH"});
 
   my $mdl_fa_file_key   = "corrected.hits.fa";
   my $mdl_stk_file_key  = "corrected.hits.stk";
 
   for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    # get fasta file to align
+    # validate that we have the fasta file we need
     my $fa_file  = $mdl_info_HAR->{$mdl_fa_file_key}[$mdl_idx];
     validateFileExistsAndIsNonEmpty($fa_file, $sub_name, $ofile_info_HHR->{"FH"});
     my $stk_file = $mdl_info_HAR->{$mdl_stk_file_key}[$mdl_idx];
@@ -3367,16 +3397,23 @@ sub align_hits {
     }          
     
     my $ref_seq_idx = 0; # this will remain '0'
-    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      if(defined $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
-        $mdl_results_AAH[$mdl_idx][$seq_idx]{"fid2ref"} = $msa->pairwise_identity($ref_seq_idx, $seq_idx);
+    my $msa_nseq = $msa->nseq;
+    for(my $msa_seq_idx = 0; $msa_seq_idx < $msa_nseq; $msa_seq_idx++) { 
+      my $msa_seq_name = $msa->get_sqname($msa_seq_idx);
+      my $seq_name = seq_name_from_msa_seq_name($msa_seq_name, $ofile_info_HHR->{"FH"}); 
+      if(! exists $seq_name_idx_H{$seq_name}) { 
+        DNAORG_FAIL("ERROR in $sub_name, sequence $seq_name derived from MSA seq name: $msa_seq_name does not exist in seq_info_HAR", 1, $ofile_info_HHR->{"FH"});
+      }
+      my $seq_idx = $seq_name_idx_H{$seq_name};
+      if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
+        $mdl_results_AAH[$mdl_idx][$seq_idx]{"fid2ref"} = $msa->pairwise_identity($ref_seq_idx, $msa_seq_idx);
         # printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
 
         # determine the RF positions that are gaps in this sequence
         # and the positions of the inserted residues in this sequence
         my @tmp_refdel_A = (); # array of deletions, temporary because we'll convert it to a string at end of function
         my @tmp_refins_A = (); # array of deletions, temporary because we'll convert it to a string at end of function
-        my $aseqstring  = $msa->get_sqstring_aligned($seq_idx);
+        my $aseqstring  = $msa->get_sqstring_aligned($msa_seq_idx);
         my @aseq_A = split("", $aseqstring);
         my $rfpos = 0;
         for(my $apos = 0; $apos < $alen; $apos++) { 
@@ -3404,14 +3441,14 @@ sub align_hits {
         # convert arrays of refdel and refins to strings, to be stored in results_AAHR
         my $el;
 
-        # first refdel
+        # refdel
         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} = "";
         foreach $el (@tmp_refdel_A) { 
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} .= $el . ",";
         }
         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} =~ s/\,$//; # remove final comma
 
-        # second refins
+        # refins
         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} = "";
         foreach $el (@tmp_refins_A) { 
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} .= $el . ",";
@@ -3716,7 +3753,7 @@ sub align_protein_sequences {
 }
 
 #################################################################
-# Subroutine:  output_header_error_files
+# Subroutine:  output_errors_header
 # Incept:      EPN, Thu Mar 10 18:57:48 2016
 #
 # Purpose:    Output the header lines for the all errors and 
@@ -3729,8 +3766,8 @@ sub align_protein_sequences {
 # Returns:    void
 #
 ################################################################# 
-sub output_header_error_files { 
-  my $sub_name = "output_header_error_files";
+sub output_errors_header { 
+  my $sub_name = "output_errors_header";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -5174,7 +5211,7 @@ sub validate_origin_seq {
     }
   }
 
-  printf("in $sub_name, $origin_seq returning $origin_offset\n");
+  # printf("in $sub_name, $origin_seq returning $origin_offset\n");
 
   return $origin_offset;
 }
@@ -5414,6 +5451,77 @@ sub output_errors_all_sequences {
       print $per_FH $per_line . "\n";
     }
   } # end of 'for($seq_idx = 0'...
-
   return;
+}
+
+#################################################################
+# Subroutine: seq_name_from_msa_seq_name()
+# Incept:     EPN, Wed Mar 16 05:15:57 2016
+#
+# Purpose:   Convert a sequence name from an MSA created in this
+#            script to the sequence name it was derived from
+#            using the rule: 
+#            <msa_seq_name> = <seq_name>/(?:\d+\-\d+)(?:,\d+-\d+)*/
+#
+# Arguments:
+#  $msa_seq_name: the sequence name from the MSA
+#  $FH_HR:        REF to hash of file handles
+#             
+# Returns:  <seq_name> derived from <msa_seq_name>
+# 
+# Dies:     If <msa_seq_name> is not in the expected format.
+#
+#################################################################
+sub seq_name_from_msa_seq_name { 
+  my $sub_name = "seq_name_from_msa_seq_name";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($msa_seq_name, $FH_HR) = @_;
+
+  my $seq_name = undef;
+  if($msa_seq_name =~ /^(\S+)\/(?:\d+\-\d+)(?:,\d+-\d+)*$/) { # '?:' just tells Perl not to capture group
+    $seq_name = $1;
+  }
+  else { 
+    DNAORG_FAIL("ERROR in $sub_name, unexpected format of msa sequence name: $msa_seq_name", 1, $FH_HR);
+  }
+
+  return $seq_name;
+}
+
+#################################################################
+# Subroutine: accn_name_from_seq_name()
+# Incept:     EPN, Wed Mar 16 06:16:25 2016
+#
+# Purpose:   Convert a sequence name from a sequence file fetched
+#            in this script to the accessoin name it was derived
+#            from using the rule: 
+#            <seq_name> = <accn_name>\:genome.+$/
+#
+# Arguments:
+#  $seq_name: the sequence name
+#  $FH_HR:    REF to hash of file handles
+#             
+# Returns:  <accn_name> derived from <seq_name>
+# 
+# Dies:     If <seq_name> is not in the expected format.
+#
+#################################################################
+sub accn_name_from_seq_name { 
+  my $sub_name = "accn_name_from_seq_name";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name, $FH_HR) = @_;
+
+  my $accn_name = undef;
+  if($seq_name =~ /^(\S+)\:genome.+$/) { 
+    $accn_name = $1;
+  }
+  else { 
+    DNAORG_FAIL("ERROR in $sub_name, unexpected format of sequence file sequence name: $seq_name", 1, $FH_HR);
+  }
+
+  return $accn_name;
 }

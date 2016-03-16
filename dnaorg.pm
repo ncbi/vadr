@@ -3917,11 +3917,39 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
   }
   @{$seq_info_HAR->{"seq_name"}} = ();
-  fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR, $FH_HR);
-  addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
-  addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
-
+  if(! opt_Get("--skipfetch", $opt_HHR)) { 
+    printf("calling fetchSeq...\n");
+    fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR, $FH_HR);
+    addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
+    addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
+  }
+  else { # --skipfetch enabled
+    validateFileExistsAndIsNonEmpty($fasta_file, $sub_name, $FH_HR);
+    addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
+  }
+  
+  # open the sequence file using Bio-Easel
   $$sqfile_R = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
+
+  if(opt_Get("--skipfetch", $opt_HHR)) { 
+    # --skipfetch enabled, so we never called 
+    # fetchSequencesUsingEslFetchCds() above.
+    # We need to fill $seq_info_HAR->{"seq_name"} and $seq_info_HAR->{"seq_len"}
+    # get index hash for @{$seq_info_HAR->{"seq_accn"}} array
+    # this simplifies determining sequence index in @{%seq_info_HAR->{}}
+    # arrays for a given accession name.
+    my %accn_name_idx_H = (); # key: $accn_name, value: idx of $accn_name in @{$seq_info_HAR->{"accn_name"}}
+    getIndexHashForArray($seq_info_HAR->{"accn_name"}, \%accn_name_idx_H, $FH_HR);
+    for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $nseq; $sqfile_seq_idx++) { 
+      my ($seq_name, $seq_len) = $$sqfile_R->fetch_seq_name_and_length_given_ssi_number($sqfile_seq_idx);
+      my $accn_name = accn_name_from_seq_name($seq_name, $FH_HR);
+      if(! exists $accn_name_idx_H{$accn_name}) { 
+        DNAORG_FAIL("ERROR in $sub_name, accession $accn_name derived from sqfile seq name: $seq_name does not exist in seq_info_HAR", 1, $ofile_info_HHR->{"FH"});
+      }
+      $seq_info_HAR->{"seq_name"}[$accn_name_idx_H{$accn_name}] = $seq_name;
+      $seq_info_HAR->{"seq_len"}[$accn_name_idx_H{$accn_name}]  = $seq_len;
+    }
+  }
 
   # 2) determine reference information for each feature (strand, length, coordinates, product)
   getReferenceFeatureInfo($cds_tbl_HHAR, $mp_tbl_HHAR, $ftr_info_HAR, $ref_accn, $FH_HR); # $mp_tbl_HHAR may be undefined and that's okay
