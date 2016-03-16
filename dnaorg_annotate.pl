@@ -2841,7 +2841,7 @@ sub mdl_results_finalize {
         my $strand = $mdl_results_HR->{"p_strand"};
         my $tbl_HAR = ($is_matpept) ? $mp_tbl_HHAR->{$accn_name} : $cds_tbl_HHAR->{$accn_name};
         if(defined $tbl_HAR) { # if there was annotation for this sequence 
-          $mdl_results_HR->{"genbank_annot_match"} = compare_to_genbank_annotation($start, $stop, $strand, $accn_len, $tbl_HAR, $opt_HHR, $FH_HR);
+          $mdl_results_HR->{"genbank_annot_match"} = compare_to_genbank_annotation($start, $stop, $strand, $accn_len, $seq_len, $tbl_HAR, $opt_HHR, $FH_HR);
         }
         else { # annotation doesn't exist, so we don't have a match
           $mdl_results_HR->{"genbank_annot_match"} = 0;
@@ -3052,7 +3052,8 @@ sub ftr_results_calculate {
           if(defined ($cds_tbl_HHAR->{$accn_name})) { # if there was annotation for this sequence 
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_annot_match"} = 
                 compare_to_genbank_annotation($cds_out_start, $cds_out_stop, $start_strand,
-                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $cds_tbl_HHAR->{$accn_name}, $opt_HHR, $FH_HR);
+                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}, 
+                                              $cds_tbl_HHAR->{$accn_name}, $opt_HHR, $FH_HR);
           }
           else { # annotation doesn't exist, so we don't have a match
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_annot_match"} = 0;
@@ -3074,10 +3075,11 @@ sub ftr_results_calculate {
 #             Return 1 if it does and 0 if it doesn't.
 #
 # Arguments: 
-#  $pred_start:   predicted start (from our annotation)
-#  $pred_stop:    predicted stop (from our annotation)
+#  $pred_start:   predicted start (from our annotation, in -accn_len..accn_len coord space)
+#  $pred_stop:    predicted stop (from our annotation, in -accn_len..accn_len coord space)
 #  $pred_strand:  predicted strand (from our annotation)
 #  $accn_len:     length of the accession's sequence we're interested in
+#  $seq_len:      length of the sequence in the file we searched in
 #  $tbl_HAR:      REF to hash of arrays for accession we're interested in, PRE-FILLED
 #  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:        REF to hash of file handles
@@ -3090,15 +3092,24 @@ sub ftr_results_calculate {
 ################################################################# 
 sub compare_to_genbank_annotation { 
   my $sub_name = "compare_to_genbank_annotation()";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($pred_start, $pred_stop, $pred_strand, $accn_len, $tbl_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($pred_start, $pred_stop, $pred_strand, $accn_len, $seq_len, $tbl_HAR, $opt_HHR, $FH_HR) = @_;
 
   # printf("in $sub_name, pred: $pred_start..$pred_stop $pred_strand\n");
 
+  # get coordinates into the following format:
+  # start <= stop
+  # coordinate space: -accn_len..accn_len (should already be in this)
+  # check we're in -accn_len..accn_len space
+  if(($pred_start < ($accn_len * -1)) || ($pred_start > $accn_len)) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, predicted start coordinate: $pred_start not in expected -accn_len..accn_len coordinate space (%d..%d)", (-1 * $accn_len), $accn_len), 1, $FH_HR); 
+  }
+  if(($pred_stop < ($accn_len * -1)) || ($pred_stop > $accn_len)) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, predicted stop coordinate: $pred_stop not in expected -accn_len..accn_len coordinate space (%d..%d)", (-1 * $accn_len), $accn_len), 1, $FH_HR); 
+  }
   if($pred_start > $pred_stop) { 
-    # swap them (GenBank doesn't follow same order convention that we do, so we always set start < stop)
     my $tmp     = $pred_start;
     $pred_start = $pred_stop;
     $pred_stop  = $tmp;
@@ -3120,6 +3131,9 @@ sub compare_to_genbank_annotation {
     startsStopsStrandsFromCoordsLength($coords_A[$i], $accn_len, $opt_HHR, \@starts_A, \@stops_A, \@strands_A, \$nsegments, $FH_HR);
     for(my $j = 0; $j < $nsegments; $j++) { 
       # printf("\tcomparing against GB $starts_A[$j]..$stops_A[$j] $strands_A[$j]\n");
+      # get coordinates into the following format:
+      # start <= stop
+      # coordinate space: -accn_len..accn_len
       my $cur_start = $starts_A[$j];
       my $cur_stop  = $stops_A[$j];
       if($cur_start > $cur_stop) { 
@@ -3128,6 +3142,7 @@ sub compare_to_genbank_annotation {
         $cur_start = $cur_stop;
         $cur_stop  = $tmp;
       }
+      ($cur_start, $cur_stop) = create_output_start_and_stop($cur_start, $cur_stop, $accn_len, $seq_len, $FH_HR);
       if(($cur_start == $pred_start) && ($cur_stop eq $pred_stop) && ($strands_A[$j] eq $pred_strand)) { 
         $found_match = 1;
         $j = $nsegments+1; # breaks j loop
@@ -3139,7 +3154,6 @@ sub compare_to_genbank_annotation {
   # printf("returning $found_match\n");
   return $found_match;
 }
-
 
 #################################################################
 # Subroutine:  count_genbank_annotations
@@ -4788,18 +4802,18 @@ sub output_tbl_all_sequences {
     }
 
     # go through each model and collect output tokens and add to @cur_out_A
+    my $start_codon_char   = ""; # set below if for models if $is_first
+    my $stop_codon_char    = ""; # set below if for models if $is_final
+    my $multiple_of_3_char = ""; # set below if for models if $is_final
     for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
       my $ftr_idx  = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
       my $is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx]; # is this the first model for feature $ftr_idx?
       my $is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx]; # is this the final model for feature $ftr_idx?
       my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
       my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-      my $start_codon_char   = ""; # set below if $is_first
-      my $stop_codon_char    = ""; # set below if $is_final
-      my $multiple_of_3_char = ""; # set below if $is_final
-      my $ref_olp_str = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_olp_str"};
+      my $ref_olp_str = $mdl_info_HAR->{"out_olp_str"}[$mdl_idx];
       my $ref_adj_str = combine_ajb_and_aja_strings($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_ajb_str"}, $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_aja_str"});
-      
+
       if(exists $mdl_results_HR->{"p_start"}) { 
         # hit exists
         if($is_first) { # reset variables
@@ -4893,6 +4907,9 @@ sub output_tbl_all_sequences {
           
           # add the ss3 (start/stop/multiple of 3 info) if we're not a mature peptide
           if(! $is_matpept) { 
+            if($start_codon_char eq "") { die "ERROR $seq_idx $mdl_idx start_codon_char is blank\n"; }
+            if($stop_codon_char  eq "") { die "ERROR $seq_idx $mdl_idx stop_codon_char is blank\n"; }
+            if($multiple_of_3_char  eq "") { die "ERROR $seq_idx $mdl_idx multiple_of_3_char is blank\n"; }
             push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
             if(! $do_nostop) { 
               push(@cur_out_A, sprintf(" %3s", $mdl_results_HR->{"out_stop_codon"}));
@@ -4915,7 +4932,7 @@ sub output_tbl_all_sequences {
         if($is_final) { 
           push(@cur_out_A, sprintf(" %6s", "NP")); # length
           if((! $is_matpept) && (! $do_noss3))  { push(@cur_out_A, "  NP"); } # ss3
-            if((! $is_matpept) && (! $do_nostop)) { push(@cur_out_A, sprintf(" %3s", "NP")); } # stop
+          if((! $is_matpept) && (! $do_nostop)) { push(@cur_out_A, sprintf(" %3s", "NP")); } # stop
         }
         $pass_fail_char = "F";
         push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
