@@ -523,7 +523,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #         combine all relevant hits into predicted feature sequences.
 #############################################################################
 $start_secs = outputProgressPrior("Combining predicted exons into CDS", $progress_w, $log_FH, *STDOUT);
-combine_model_hits("predicted", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%ofile_info_HH);
+combine_model_hits("predicted", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # output optional output files
@@ -540,7 +540,7 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
 #         sequences into single sequences.
 #########################################################
 $start_secs = outputProgressPrior("Combining predicted mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
-combine_feature_hits("predicted", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%ofile_info_HH);
+combine_feature_hits("predicted", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
@@ -568,6 +568,8 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
   my $mdl_idx = $ftr_info_HA{"final_mdl"}[$ftr_idx];
   foreach my $seq_name (keys %{$err_ftr_instances_AHH[$ftr_idx]{"ext"}}) { 
     my $seq_idx       = $seq_name_index_H{$seq_name};
+    my $seq_len       = $seq_info_HA{"seq_len"}[$seq_idx];
+    my $accn_len      = $seq_info_HA{"accn_len"}[$seq_idx];
     my $cur_start     = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"};
     my $cur_stop      = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_stop"};
     my $cur_strand    = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_strand"};
@@ -576,23 +578,57 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     # printf("plen: $plen, offset: $offset changing posn_to_start: $posn_to_start to %d\n", $posn_to_start-$offset);
     my $posn_to_start = $cur_stop;
     $posn_to_start   -= $offset; # only want to look for downstream stops in-frame with respect to the START codon, not the predicted STOP
-    if($cur_strand) { $posn_to_start++; }
-    else            { $posn_to_start--; }
+    if($cur_strand eq "+") { $posn_to_start++; }
+    else                   { $posn_to_start--; }
 
-    my $totlen = $seq_info_HA{"accn_len"}[$seq_idx];
-    if($posn_to_start > $totlen) { 
+    # check for a special case, where we are not circularized
+    my $at_end_of_seq = 0; # set to 1 if we're at the end of the sequence
+    if(($cur_strand eq "+") && ($posn_to_start > $accn_len)) { 
       if(opt_Get("-c", \%opt_HH)) { 
-        # genome is circularized, we've duplicated it, it's okay that our possible start is > $totlen at this point, but we want to subtract $totlen here
-        $posn_to_start -= $totlen;
+        # genome is circularized, we've duplicated it, it's okay that our possible start is > $accn_len at this point, but we want to subtract $accn_len here
+        $posn_to_start -= $accn_len;
       }
-      else { 
-        DNAORG_FAIL("ERROR when looking for inframe stop for sequence $seq_name, trying to start search at position $posn_to_start but length of sequence is $totlen", 1, $ofile_info_HH{"FH"}); 
+      elsif(($posn_to_start-1) == $accn_len) { 
+        # a special case
+        $at_end_of_seq = 1;
+      }
+      else {
+        DNAORG_FAIL("ERROR when looking for inframe stop for sequence $seq_name, trying to start search at position $posn_to_start but length of sequence is $accn_len", 1, $ofile_info_HH{"FH"}); 
       }
     }
-    my ($ext_corr_stop, $ext_stop_codon) = check_for_downstream_stop($sqfile, $seq_name, $posn_to_start, $totlen, $cur_strand, $ofile_info_HH{"FH"});
+    if(($cur_strand eq "-") && ($posn_to_start < 0)) { 
+      if(opt_Get("-c", \%opt_HH)) { 
+        # genome is circularized, we've duplicated it, it's okay that our possible start is < 0 at this point, but we want to add $accn_len here
+        $posn_to_start += $accn_len;
+      }
+      elsif(($posn_to_start+1) == 1) { 
+        # a special case
+        $at_end_of_seq = 1;
+      }
+      else { 
+        DNAORG_FAIL("ERROR when looking for inframe stop for sequence $seq_name, trying to start search at position $posn_to_start but length of sequence is $accn_len", 1, $ofile_info_HH{"FH"}); 
+      }
+    }
+    
+    my $ext_corr_stop  = undef;
+    my $ext_stop_codon = undef;
+    if($at_end_of_seq) { 
+      $ext_corr_stop = 0;
+    }
+    else { 
+      ($ext_corr_stop, $ext_stop_codon) = check_for_downstream_stop($sqfile, $seq_name, $posn_to_start, $accn_len, $cur_strand, $ofile_info_HH{"FH"});
+    }
+
     if($ext_corr_stop == 0) { 
       # no stop found: nst error
-      error_instance_update(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "nst", $seq_name, "", $ofile_info_HH{"FH"});
+
+      my $updated_nst_errmsg = "";
+      if($at_end_of_seq) { 
+        my (undef, $out_stop) = create_output_start_and_stop($cur_start, $cur_stop, $accn_len, $seq_len, $ofile_info_HH{"FH"});
+        $updated_nst_errmsg = "inferred stop codon position (3 nt 3' of $out_stop on $cur_strand strand) is off the end of the sequence";
+      }
+      error_instance_update(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "nst", $seq_name, $updated_nst_errmsg, $ofile_info_HH{"FH"});
+
       # remove ext error 'maybe'
       error_instance_remove_maybe(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "ext", $seq_name, $ofile_info_HH{"FH"});
     }
@@ -666,7 +702,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #          combine all relevant hits into corrected feature sequences.
 #############################################################################
 $start_secs = outputProgressPrior("Combining corrected exons into CDS", $progress_w, $log_FH, *STDOUT);
-combine_model_hits("corrected", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%ofile_info_HH);
+combine_model_hits("corrected", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
@@ -675,7 +711,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #          sequences into single sequences.
 #########################################################
 $start_secs = outputProgressPrior("Combining corrected mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
-combine_feature_hits("corrected", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%ofile_info_HH);
+combine_feature_hits("corrected", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
@@ -1458,6 +1494,7 @@ sub fetch_hits_given_results {
 #  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
 #  $mdl_info_HAR:      REF to hash of arrays with information on the models, PRE-FILLED
 #  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
@@ -1467,10 +1504,10 @@ sub fetch_hits_given_results {
 ################################################################# 
 sub combine_model_hits { 
   my $sub_name = "combine_model_hits";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_key, $seq_name_AR, $mdl_info_HAR, $ftr_info_HAR, $ofile_info_HHR) = @_;
+  my ($out_key, $seq_name_AR, $mdl_info_HAR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
   my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nmdl: number of homology models
@@ -1507,7 +1544,7 @@ sub combine_model_hits {
           push(@tmp_hit_fafile_A, $mdl_hit_fafile);
         }
         # combine the sequences into 1 file
-        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $ofile_info_HHR->{"FH"});
+        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"});
 
         my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
         addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
@@ -1543,6 +1580,7 @@ sub combine_model_hits {
 #  $out_key:           key for the output files we'll create here, usually "predicted" or "corrected"
 #  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
 #  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
@@ -1552,10 +1590,10 @@ sub combine_model_hits {
 ################################################################# 
 sub combine_feature_hits { 
   my $sub_name = "combine_feature_hits";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_key, $seq_name_AR, $ftr_info_HAR, $ofile_info_HHR) = @_;
+  my ($out_key, $seq_name_AR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
 
@@ -1587,7 +1625,7 @@ sub combine_feature_hits {
       } # end of 'foreach $cur_ftr_idx'
 
       # combine the sequences into 1 file
-      combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $ofile_info_HHR->{"FH"});
+      combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"}); 
 
       my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
       addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
@@ -1595,6 +1633,140 @@ sub combine_feature_hits {
   }
   return;
 }
+
+#################################################################
+# Subroutine:  old_combine_sequences()
+# Incept:      EPN, Wed Mar  2 16:11:40 2016
+#
+# Purpose:    Helper function for combine_multiple_hits(). Given an array of
+#             fasta files, each with a different subsequence from the
+#             same parent sequences, create a single new fasta file
+#             that has the subsequences concatenated together.  An
+#             example is stitching together exons into a CDS.  Uses
+#             BioEasel's sqfile module.
+#
+# Arguments: 
+#  $indi_file_AR: REF to array of fasta files to combine
+#  $seq_name_AR:  REF to array with order of sequence names
+#  $multi_file:   name of multi file to create
+#  $require_all:  '1' to require sequence be in all files to combine it
+#                 '0' to combine sequence if it's in a set of 
+#                 contiguous files starting with the first (but
+#                 possibly missing from the final N (N<$nfile) files.
+#  $FH_HR:        REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       If we have a problem reading the fasta files
+#
+#################################################################
+sub old_combine_sequences {
+  my $sub_name = "old_combine_sequences";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($indi_file_AR, $seq_name_AR, $multi_file, $require_all, $FH_HR) = @_;
+  
+  my @sqfile_A  = (); # array of open Bio::Easel::SqFile objects, one per indi_file_AR element
+  my @sqname_AA = (); # 2D array of sequence names, read from the indi files
+  my $nfiles = scalar(@{$indi_file_AR});
+  my %rawname_map_HA    = (); # key: sequence name minus coords, value: array [0..$f..$nfiles-1], value: ssi index of accession in file $f
+  my %rawname_ct_H      = (); # key: sequence name minus coords, value: number of files accession exists in
+  my %rawname_coords_H  = (); # key: sequence name minus coords, value: concatenated set of coordinates for this accession
+  my %rawname_exists_HA = (); # key: sequence name minus coords, value is array [0..$f..$nfiles-1], array value is '1' if key exists in file $f
+  
+  for(my $f = 0; $f < $nfiles; $f++) { 
+    if(! -s $indi_file_AR->[$f]) { 
+      DNAORG_FAIL("ERROR in $sub_name, file $indi_file_AR->[$f] does not exist, we need to use it to combine exons into a CDS file", 1, $FH_HR);
+    }
+    $sqfile_A[$f] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$f] });
+    # get names all of sequences in each file
+    for(my $i = 0; $i < $sqfile_A[$f]->nseq_ssi; $i++) { 
+      $sqname_AA[$f][$i] = $sqfile_A[$f]->fetch_seq_name_given_ssi_number($i);
+      my ($seq_name, $coords) = split("/", $sqname_AA[$f][$i]);
+      if(! defined $coords || $coords !~ m/\-/) { 
+        DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$f][$i] into accession and coordinates", 1, $FH_HR);
+      }
+      $rawname_map_HA{$seq_name}[$f] = $i;
+      if(! exists $rawname_ct_H{$seq_name}) { 
+        $rawname_ct_H{$seq_name} = 1;
+        $rawname_coords_H{$seq_name} = $coords;
+      }
+      else { 
+        $rawname_ct_H{$seq_name}++;
+        $rawname_coords_H{$seq_name} .= "," . $coords;
+      }
+      if(! exists $rawname_exists_HA{$seq_name}) { 
+        # initialize
+        @{$rawname_exists_HA{$seq_name}} = ();
+        for(my $f2 = 0; $f2 < $nfiles; $f2++) { 
+          $rawname_exists_HA{$seq_name}[$f2] = 0;
+        }
+        # this sequence exists in file $f
+        $rawname_exists_HA{$seq_name}[$f] = 1;
+      }
+    }
+  }
+    
+  # now for each accession, fetch all exons for that accession
+  # into a new sequence
+    open(OUT, ">", $multi_file) || die "ERROR unable to open $multi_file for writing";
+  foreach my $seq_name (@{$seq_name_AR}) { 
+    if(exists $rawname_ct_H{$seq_name}) { # exists in at least one sequence
+
+      # this nasty block determines if we should fetch this sequence or not
+      my $fetch_this_seq = 0; # set to '1' 
+      if($require_all) { 
+        $fetch_this_seq = ($rawname_ct_H{$seq_name} == $nfiles) ? 1 : 0; 
+        # $require_all is set, so it needs to be in all files
+      }
+      else { 
+        # require_all is 0, we fetch this sequence only if it exists in 
+        # >= 1 contiguous files starting with the first one.
+        if(! $rawname_exists_HA{$seq_name}[0]) { # not in first file
+          $fetch_this_seq = 0;
+        }
+        else { 
+          $fetch_this_seq = 1;
+          my $seen_missing = 0; # set to 1 when we find the first file the seq is missing in
+          for(my $f = 1; $f < $nfiles; $f++) {
+            if($rawname_exists_HA{$seq_name}[$f]) { 
+              if($seen_missing) { 
+                $fetch_this_seq = 0; # not in a contiguous set of files
+              }
+            }
+            else { 
+              $seen_missing = 1; 
+            }
+          }
+        }
+
+        if($fetch_this_seq) { 
+          print OUT ">" . $seq_name . "/" . $rawname_coords_H{$seq_name} . "\n";
+          for(my $f = 0; $f < $nfiles; $f++) { 
+            if($rawname_exists_HA{$seq_name}[$f]) { 
+              my $sqname = $sqname_AA[$f][($rawname_map_HA{$seq_name}[$f])];
+              my $sqonly = $sqfile_A[$f]->fetch_seq_to_fasta_string($sqname);
+              $sqonly =~ s/^\>.+\n//;
+              print OUT $sqonly;
+            }
+          }
+        }
+      }
+    }
+  }
+  close(OUT);
+
+  # clean up: remove all 'ssi' files we just created
+  for(my $f = 0; $f < $nfiles; $f++) { 
+    if(-e $indi_file_AR->[$f] . ".ssi") { 
+      unlink $indi_file_AR->[$f] . ".ssi";
+    }
+  }
+
+  return;
+}
+
 
 #################################################################
 # Subroutine:  combine_sequences()
@@ -1611,6 +1783,7 @@ sub combine_feature_hits {
 #  $indi_file_AR: REF to array of fasta files to combine
 #  $seq_name_AR:  REF to array with order of sequence names
 #  $multi_file:   name of multi file to create
+#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:        REF to hash of file handles
 #
 # Returns:    void
@@ -1620,61 +1793,111 @@ sub combine_feature_hits {
 #################################################################
 sub combine_sequences {
   my $sub_name = "combine_sequences";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($indi_file_AR, $seq_name_AR, $multi_file, $FH_HR) = @_;
+  my ($indi_file_AR, $seq_name_AR, $multi_file, $opt_HHR, $FH_HR) = @_;
   
-  my @sqfile_A  = (); # array of open Bio::Easel::SqFile objects, one per indi_file_AR element
-  my @sqname_AA = (); # 2D array of sequence names, read from the indi files
-  my $nfiles = scalar(@{$indi_file_AR});
-  my %rawname_map_HA   = (); # key: sequence name minus coords, value: array [0..$f..$nfiles-1], value: ssi index of accession in file $f
-  my %rawname_ct_H     = (); # key: sequence name minus coords, value: number of files accession exists in
-  my %rawname_coords_H = (); # key: sequence name minus coords, value: concatenated set of coordinates for this accession
-  for(my $f = 0; $f < $nfiles; $f++) { 
-    if(! -s $indi_file_AR->[$f]) { 
-      DNAORG_FAIL("ERROR in $sub_name, file $indi_file_AR->[$f] does not exist, we need to use it to combine exons into a CDS file", 1, $FH_HR);
+  my @sqfile_A                      = (); # array of open Bio::Easel::SqFile objects, one per indi_file_AR element
+  my @sqfile_sqname_AA              = (); # 2D array of SqFile sequence names, read from the indi files, [0..$nfiles-1][0..$nseq_in_file_f]
+  my $nfiles                        = scalar(@{$indi_file_AR}); # number of input fasta files
+  my @seq_name2sqfile_sqname_map_AA = (); # 2D array, 1st dim: 0..$seq_idx..$nseq-1, 2nd dim 0..$file_idx..$nfiles, value: ssi index of $seq_idx subseq in file $f
+  my @seq_name_exists_AA            = (); # 2D array, 1st dim: 0..$seq_idx..$nseq-1, 2nd dim: 0..$file_idx..$nfiles-1; value '1' if $seq_idx exists in file $f
+  my @seq_name_coords_A             = (); # key: sequence name from @{$seq_name_AR}, value: concatenated set of coordinates of all subseqs in all $nfiles
+  my @seq_name_fetch_me_A           = (); # [0..$nseq_name-1]: '1' if we should fetch this sequence to $multi_file, '0' if not.
+                                          # we fetch each sequence that exists in a contiguous set of files in @sqfile_A starting with the first 1
+                                          # we don't fetch a sequence that doesn't exist in any of the sequences
+                                          # we don't fetch a sequence that exists in at least one file in the middle of @sqfile_A
+  my @sqname_AA                     = (); # 2D array, 1st dim [0..$file_idx..$nfiles-1], 2nd dim: 0 to number of sequences in file $file_idx
+
+  my $seq_idx;  # counter over seq_name values
+  my $file_idx; # counter for files
+
+  # get index hash for @{$seq_name_AR}, this simplifies checking if
+  # a given sequence name exists in @{$seq_name_AR}, and getting the idx
+  # of that name
+  my $nseq_name = scalar(@{$seq_name_AR});
+  my %seq_name_idx_H = (); # key: $seq_name, value: idx of $seq_name in @{$seq_info_HAR->{"seq_name"}}
+  getIndexHashForArray($seq_name_AR, \%seq_name_idx_H, $FH_HR);
+  
+  # initialize arrays
+  for(my $seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
+    $seq_name_coords_A[$seq_idx]   = "";
+    $seq_name_fetch_me_A[$seq_idx] = -1; # set to 0 or 1 in for($f) loop below
+    @{$seq_name2sqfile_sqname_map_AA[$seq_idx]} = ();
+    for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
+      $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = -1; # updated in block below if $seq_idx exists in $file_idx
     }
-    $sqfile_A[$f] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$f] });
-    # get names all of sequences in each file
-    for(my $i = 0; $i < $sqfile_A[$f]->nseq_ssi; $i++) { 
-      $sqname_AA[$f][$i] = $sqfile_A[$f]->fetch_seq_name_given_ssi_number($i);
-      my ($acc, $coords) = split("/", $sqname_AA[$f][$i]);
+  }
+
+  for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
+    validateFileExistsAndIsNonEmpty($seq_file, $indi_file_AR->[$file_idx], $FH_HR);
+
+    # create the Bio::Easel object
+    $sqfile_A[$file_idx] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$file_idx] });
+    @{$sqname_AA[$file_idx]} = ();
+
+    # get the names all of sequences in each file
+    for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $sqfile_A[$file_idx]->nseq_ssi; $sqfile_seq_idx++) { 
+      $sqname_AA[$file_idx][$sqfile_seq_idx] = $sqfile_A[$file_idx]->fetch_seq_name_given_ssi_number($sqfile_seq_idx);
+
+      # break down this name into the $seq_name and $coords
+      my ($seq_name, $coords) = split("/", $sqname_AA[$file_idx][$sqfile_seq_idx]);
       if(! defined $coords || $coords !~ m/\-/) { 
-        DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$f][$i] into accession and coordinates", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$file_idx][$sqfile_seq_idx] into accession and coordinates", 1, $FH_HR);
       }
-      $rawname_map_HA{$acc}[$f] = $i;
-      if(! exists $rawname_ct_H{$acc}) { 
-        $rawname_ct_H{$acc} = 1;
-        $rawname_coords_H{$acc} = $coords;
+      if(! exists $seq_name_idx_H{$seq_name}) { 
+        DNAORG_FAIL("ERROR in $sub_name, parsed sequence name $seq_name from $sqname_AA[$file_idx][$sqfile_seq_idx] does not exist in our seq_name_A array", 1, $FH_HR);
+      }
+
+      $seq_idx = $seq_name_idx_H{$seq_name};
+      $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = $sqfile_seq_idx;
+      if($seq_name_coords_A[$seq_idx] ne "") { 
+        $seq_name_coords_A[$seq_idx] .= ",";
+      }
+      $seq_name_coords_A[$seq_idx] .= $coords;
+      $seq_name_exists_AA[$seq_idx][$file_idx] = 1;
+
+      if($seq_name_fetch_me_A[$seq_idx] == ($file_idx-1)) { 
+        $seq_name_fetch_me_A[$seq_idx]++;
       }
       else { 
-        $rawname_ct_H{$acc}++;
-        $rawname_coords_H{$acc} .= "," . $coords;
+        # if we get here, we went through at least one value for $f 
+        # in which this sequence did not exist
+        $seq_name_fetch_me_A[$seq_idx] = -2; # we'll set this to 0 below
       }
     }
   }
-  
-  # now for each accession that exists in all files, fetch all exons for that accession
-  # into a new sequence
+
+  # update values in @seq_name_fetch_me_A
+  for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
+    $seq_name_fetch_me_A[$seq_idx] = ($seq_name_fetch_me_A[$seq_idx] == -2) ? 0 : 1;
+  } 
+
+  # now for each seq_name that we want to fetch, fetch all subsequences for that 
+  # sequence from all the individual files into a new sequence in a new file ($multi_file)
   open(OUT, ">", $multi_file) || die "ERROR unable to open $multi_file for writing";
-  foreach my $seq_name (@{$seq_name_AR}) { 
-    if(exists $rawname_ct_H{$seq_name} && $rawname_ct_H{$seq_name} == $nfiles) { 
-      print OUT ">" . $seq_name . "/" . $rawname_coords_H{$seq_name} . "\n";
-      for(my $f = 0; $f < $nfiles; $f++) { 
-        my $sqname = $sqname_AA[$f][($rawname_map_HA{$seq_name}[$f])];
-        my $sqonly = $sqfile_A[$f]->fetch_seq_to_fasta_string($sqname);
-        $sqonly =~ s/^\>.+\n//;
-        print OUT $sqonly;
+  for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
+    printf("HEYA in $sub_name creating $multi_file fetch me for sequence %s is %d\n", $seq_name_AR->[$seq_idx], $seq_name_fetch_me_A[$seq_idx]);
+    if($seq_name_fetch_me_A[$seq_idx]) { 
+      my $seq_name = $seq_name_AR->[$seq_idx];
+      print OUT ">" . $seq_name . "/" . $seq_name_coords_A[$seq_idx] . "\n";
+      for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
+        if($seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] != -1) { 
+          my $sqname = $sqname_AA[$file_idx][$seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx]];
+          my $sqonly = $sqfile_A[$file_idx]->fetch_seq_to_fasta_string($sqname);
+          $sqonly =~ s/^\>.+\n//;
+          print OUT $sqonly;
+        }
       }
     }
   }
   close(OUT);
 
   # clean up: remove all 'ssi' files we just created
-  for(my $f = 0; $f < $nfiles; $f++) { 
-    if(-e $indi_file_AR->[$f] . ".ssi") { 
-      unlink $indi_file_AR->[$f] . ".ssi";
+  for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
+    if(-e $indi_file_AR->[$file_idx] . ".ssi") { 
+      removeFileUsingSystemRm($indi_file_AR->[$file_idx] . ".ssi", $sub_name, $opt_HHR, $FH_HR);
     }
   }
 
@@ -1850,8 +2073,10 @@ sub parse_esl_epn_translate_startstop_outfile {
     #HQ693465/1-306 1 1 304
     if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
       my ($seq_name, $coords, $start_is_valid, $stop_is_valid, $first_stop_posn1) = ($1, $2, $3, $4, $5);
-      
-      # printf("seq_name: $seq_name coords: $coords start_is_valid: $start_is_valid, stop_is_valid: $stop_is_valid, first_stop_posn1: $first_stop_posn1\n");
+
+      if(! $is_matpept) { 
+       printf("seq_name: $seq_name coords: $coords start_is_valid: $start_is_valid, stop_is_valid: $stop_is_valid, first_stop_posn1: $first_stop_posn1\n");
+      }
       # determine if we have an early stop
       my $cds_len            = dashCoordsStringCommaDelimitedToLength($coords, $sub_name, $FH_HR);
       my $final_codon_posn1  = $cds_len - 2; # final codon position 1 
@@ -2940,6 +3165,8 @@ sub ftr_results_calculate {
   my $ftr_idx;
   my $seq_idx;
 
+  # TODO: document this function better, when you're sure it's complete
+
   # foreach 'cds-mp' feature type, determine 'out_start', 'out_stop',
   # 'out_len', 'out_start_codon' and 'out_stop_codon'.
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -3035,7 +3262,6 @@ sub ftr_results_calculate {
               if($child_idx == ($nchildren-1)) { 
                 # the final child, determine the stop position/strand
                 $stop_strand = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
-
                 # we should have to append the stop codon
                 # (GenBank annotation of final mature peptides doesn't include the stop codon,
                 #  so it's not covered in our homology model and we have to take special care
@@ -3049,11 +3275,38 @@ sub ftr_results_calculate {
                   $cds_fetch_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"};
                   # and update the cds_len (this is the final child, so this will only happen once)
                   $cds_len += abs($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"} - $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}) + 1; 
+
+                  # handle potential stp errors
+                  if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
+                    if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
+                      DNAORG_FAIL("ERROR in $sub_name, ext error with non-maybe value for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
+                    }
+                    my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, 
+                                                            $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}, 
+                                                            $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
+                    if(validateStopCodon($stp_err_stop_codon)) { 
+                      # it's a valid stop, remove the 'maybe'
+                      error_instance_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
+                    }
+                    else { 
+                      # it is not a valid stop, the error stays and we update the error message
+                      my $updated_stp_errmsg = sprintf("%s ending at position %d on %s strand", $stp_err_stop_codon, 
+                                                       $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}, $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}); 
+                      error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
+                    }
+                  }
                 }
                 else { 
                   # we weren't able to append a stop codon, this means we don't have one
                   # leave $cds_out_stop and $cds_fetch_stop as undef
-                  ; # do nothing
+                  # handle potential stp errors
+                  if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
+                    if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
+                      DNAORG_FAIL("ERROR in $sub_name, ext error with non-maybe value for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
+                    }
+                    # change from "maybe" to "?"
+                    error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "?", $FH_HR);
+                  }
                 }
               }
             }
@@ -3370,7 +3623,7 @@ sub translate_feature_sequences {
   my $in_ftr_info_file_key     = $in_key  . ".hits.fa";
   my $out_ftr_info_file_key    = $out_key . ".hits.fa";
 
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $nucleotide_fafile = $ftr_info_HAR->{$in_ftr_info_file_key}[$ftr_idx];
     my $protein_fafile    = $ftr_info_HAR->{$out_ftr_info_file_key}[$ftr_idx];
 
@@ -3848,7 +4101,7 @@ sub align_protein_sequences {
   my $ftr_info_hmmbuild_file_key = $out_key . ".hmmbuild";
   my $ftr_info_hmmstk_file_key   = $out_key . ".hmmstk";
 
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $fa_file       = $ftr_info_HAR->{$ftr_info_fa_file_key}[$ftr_idx];
     my $stk_file      = $ftr_info_HAR->{$ftr_info_stk_file_key}[$ftr_idx];
     my $hmm_file      = $ftr_info_HAR->{$ftr_info_hmm_file_key}[$ftr_idx];
@@ -5052,7 +5305,7 @@ sub output_tbl_all_sequences {
 
     # output the multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
     # start, stop, length, start_codon, start_codon character
-    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
          ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
         my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
