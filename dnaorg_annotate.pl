@@ -2767,6 +2767,13 @@ sub mdl_results_finalize {
       my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
       my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
       my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
+
+      # determine how many annotations there are in GenBank, if we're a CDS
+      if(! $is_matpept) { 
+        ($seq_info_HAR->{"num_genbank_cds_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_cds_exon_annot"}[$seq_idx]) = 
+            count_genbank_annotations($cds_tbl_HHAR->{$accn_name}, $accn_len, $opt_HHR, $FH_HR);
+      }
+
       if(! exists $mdl_results_HR->{"p_start"}) { 
         # no prediction
         error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nop", $seq_name, "", $FH_HR);
@@ -2825,19 +2832,19 @@ sub mdl_results_finalize {
             $mdl_results_HR->{"out_3boundary"} = $mdl_results_HR->{"p_3hangover"};
           }
         }
-        #########################
-        # set exist_annot_match #
-        #########################
+        ###########################
+        # set genbank_annot_match #
+        ###########################
         # check our final annotation against existing annotation in GenBank 
         my $start  = $mdl_results_HR->{"out_start"};
         my $stop   = $mdl_results_HR->{"out_stop"};
         my $strand = $mdl_results_HR->{"p_strand"};
         my $tbl_HAR = ($is_matpept) ? $mp_tbl_HHAR->{$accn_name} : $cds_tbl_HHAR->{$accn_name};
         if(defined $tbl_HAR) { # if there was annotation for this sequence 
-          $mdl_results_HR->{"exist_annot_match"} = compare_to_actual_annotation($start, $stop, $strand, $accn_len, $tbl_HAR, $opt_HHR, $FH_HR);
+          $mdl_results_HR->{"genbank_annot_match"} = compare_to_genbank_annotation($start, $stop, $strand, $accn_len, $tbl_HAR, $opt_HHR, $FH_HR);
         }
         else { # annotation doesn't exist, so we don't have a match
-          $mdl_results_HR->{"exist_annot_match"} = 0;
+          $mdl_results_HR->{"genbank_annot_match"} = 0;
         }
         ######################
          # set out_stop_codon #
@@ -2905,6 +2912,10 @@ sub ftr_results_calculate {
       for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         my $seq_name   = $seq_info_HAR->{"seq_name"}[$seq_idx];
         my $accn_name  = $seq_info_HAR->{"accn_name"}[$seq_idx];
+        my $accn_len   = $seq_info_HAR->{"accn_len"}[$seq_idx];
+
+        ($seq_info_HAR->{"num_genbank_cds_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_cds_exon_annot"}[$seq_idx]) = 
+            count_genbank_annotations($cds_tbl_HHAR->{$accn_name}, $accn_len, $opt_HHR, $FH_HR);
 
         # set the str_err_flag and stp_err_flags, if nec
         if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
@@ -3039,11 +3050,12 @@ sub ftr_results_calculate {
         # check if existing annotation for this CDS exists in %{$cds_tbl_HHAR}
         if((defined $cds_out_start) && (defined $cds_out_stop)) { 
           if(defined ($cds_tbl_HHAR->{$accn_name})) { # if there was annotation for this sequence 
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"exist_annot_match"} = compare_to_actual_annotation($cds_out_start, $cds_out_stop, $start_strand, 
-                                                                                                        $seq_info_HAR->{"accn_len"}[$seq_idx], $cds_tbl_HHAR->{$accn_name}, $opt_HHR, $FH_HR);
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_annot_match"} = 
+                compare_to_genbank_annotation($cds_out_start, $cds_out_stop, $start_strand,
+                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $cds_tbl_HHAR->{$accn_name}, $opt_HHR, $FH_HR);
           }
           else { # annotation doesn't exist, so we don't have a match
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"exist_annot_match"} = 0;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_annot_match"} = 0;
           }
         }
       } # end of 'for($seq_idx'
@@ -3054,11 +3066,11 @@ sub ftr_results_calculate {
 }       
 
 #################################################################
-# Subroutine:  compare_to_actual_annotation
+# Subroutine:  compare_to_genbank_annotation
 # Incept:      EPN, Mon Mar 14 08:42:00 2016
 #
 # Purpose:    For a given sequence/model pair and start..stop boundaries
-#             check if any annotation in tbl_HHAR matches start..stop.
+#             check if any annotation in %{$tbl_HAR} matches start..stop.
 #             Return 1 if it does and 0 if it doesn't.
 #
 # Arguments: 
@@ -3076,37 +3088,109 @@ sub ftr_results_calculate {
 # Dies: If we have a problem getting information we need from $tbl_HAR
 #
 ################################################################# 
-sub compare_to_actual_annotation { 
-  my $sub_name = "compare_to_actual_annotation()";
+sub compare_to_genbank_annotation { 
+  my $sub_name = "compare_to_genbank_annotation()";
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($pred_start, $pred_stop, $pred_strand, $accn_len, $tbl_HAR, $opt_HHR, $FH_HR) = @_;
-  
+
+  # printf("in $sub_name, pred: $pred_start..$pred_stop $pred_strand\n");
+
+  if($pred_start > $pred_stop) { 
+    # swap them (GenBank doesn't follow same order convention that we do, so we always set start < stop)
+    my $tmp     = $pred_start;
+    $pred_start = $pred_stop;
+    $pred_stop  = $tmp;
+  }
+
   my $found_match = 0; # set to '1' if we find a match
   my @coords_A    = (); # coordinates of each annotated feature
   my @len_A       = (); # lengths of each annotated feature (not used)
   # fill @coords_A and len_A
   getLengthsAndCoords($tbl_HAR, \@len_A, \@coords_A, $FH_HR);
-  
+
   # for each annotated feature, check if we have a match to $pred_start..$pred_stop
   my $nannot = scalar(@len_A);
   for(my $i = 0; $i < $nannot; $i++) { 
-    # startsStopsStrandsFromCoordsLength():    determine start, stop and strands from a coordinate string and length
     my @starts_A  = ();
     my @stops_A   = ();
     my @strands_A = ();
     my $nsegments = 0;
     startsStopsStrandsFromCoordsLength($coords_A[$i], $accn_len, $opt_HHR, \@starts_A, \@stops_A, \@strands_A, \$nsegments, $FH_HR);
     for(my $j = 0; $j < $nsegments; $j++) { 
-      if(($starts_A[$j] == $pred_start) && ($stops_A[$j] eq $pred_stop) && ($strands_A[$j] eq $pred_strand)) { 
+      # printf("\tcomparing against GB $starts_A[$j]..$stops_A[$j] $strands_A[$j]\n");
+      my $cur_start = $starts_A[$j];
+      my $cur_stop  = $stops_A[$j];
+      if($cur_start > $cur_stop) { 
+        # swap them (GenBank doesn't follow same order convention that we do, so we always set start < stop)
+        my $tmp    = $cur_start;
+        $cur_start = $cur_stop;
+        $cur_stop  = $tmp;
+      }
+      if(($cur_start == $pred_start) && ($cur_stop eq $pred_stop) && ($strands_A[$j] eq $pred_strand)) { 
         $found_match = 1;
         $j = $nsegments+1; # breaks j loop
         $i = $nannot+1;    # breaks i loop
       }
     }
   }
+
+  # printf("returning $found_match\n");
   return $found_match;
+}
+
+
+#################################################################
+# Subroutine:  count_genbank_annotations
+# Incept:      EPN, Wed Mar 16 08:40:47 2016
+#
+# Purpose:    Return the number of feature (e.g. CDS) and segment (e.g. exon)
+#             annotations in tbl_HAR.
+#
+# Arguments: 
+#  $tbl_HAR:      REF to hash of arrays for accession we're interested in, PRE-FILLED
+#  $accn_len:     length of the accession's sequence we're interested in
+#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:        REF to hash of file handles
+#
+# Returns:    Two values:
+#             1) number of total feature (e.g. CDS) annotations in $tbl_HAR
+#             2) number of total segment (e.g. exon) annotations in $tbl_HAR
+#
+# Dies: If we have a problem getting information we need from $tbl_HAR
+#
+################################################################# 
+sub count_genbank_annotations { 
+  my $sub_name = "count_genbank_annotations()";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($tbl_HAR, $accn_len, $opt_HHR, $FH_HR) = @_;
+
+  if(! defined $tbl_HAR) { 
+    # no annotations
+    return (0, 0);
+  }
+  
+  my @coords_A    = (); # coordinates of each annotated feature
+  my @len_A       = (); # lengths of each annotated feature (not used)
+
+  # fill @coords_A and len_A
+  getLengthsAndCoords($tbl_HAR, \@len_A, \@coords_A, $FH_HR);
+  
+  my $nannot = scalar(@len_A);
+  my $tot_nsegments = 0;
+  for(my $i = 0; $i < $nannot; $i++) { 
+    my @starts_A  = ();
+    my @stops_A   = ();
+    my @strands_A = ();
+    my $nsegments = 0;
+    startsStopsStrandsFromCoordsLength($coords_A[$i], $accn_len, $opt_HHR, \@starts_A, \@stops_A, \@strands_A, \$nsegments, $FH_HR);
+    $tot_nsegments += $nsegments;
+  }
+
+  return ($nannot, $tot_nsegments);
 }
 
 #################################################################
@@ -4663,8 +4747,7 @@ sub output_tbl_all_sequences {
     my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
     my $cur_nerr  = 0; # FIX ME
     my @cur_out_A = (); # array of current tokens to print
-    my $nexist_match   = 0; # number of matches with existing annotation
-    my $nexist_checked = 0; # number of times we checked for a match with existing annotation
+    my $ngenbank_match = 0; # number of matches with existing annotation
     my $pass_fail_str  = ""; 
 
     # Create the initial portion of the output line, the accession and length
@@ -4741,11 +4824,10 @@ sub output_tbl_all_sequences {
         else { 
           # not special case in which a trc error exists in earlier segment,
           # set annotation we do for all models (regardless of $is_first or $is_final values)
-          my $exist_match = $mdl_results_HR->{"exist_annot_match"}; # 1 if existing GenBank annotation matches our annotation
-          if($exist_match) { $nexist_match++; }
-          $nexist_checked++;
-          push(@cur_out_A, sprintf("  %8s ", ($exist_match ? " " . $mdl_results_HR->{"out_start"} . " " : "[" . $mdl_results_HR->{"out_start"} . "]")));
-          push(@cur_out_A, sprintf("%8s",    ($exist_match ? " " . $mdl_results_HR->{"out_stop"}  . " " : "[" . $mdl_results_HR->{"out_stop"}  . "]")));
+          my $genbank_match = $mdl_results_HR->{"genbank_annot_match"}; # 1 if existing GenBank annotation matches our annotation
+          if($genbank_match) { $ngenbank_match++; }
+          push(@cur_out_A, sprintf("  %8s ", ($genbank_match ? " " . $mdl_results_HR->{"out_start"} . " " : "[" . $mdl_results_HR->{"out_start"} . "]")));
+          push(@cur_out_A, sprintf("%8s",    ($genbank_match ? " " . $mdl_results_HR->{"out_stop"}  . " " : "[" . $mdl_results_HR->{"out_stop"}  . "]")));
           if(! $do_nofid) { push(@cur_out_A, sprintf(" %5.3f", $mdl_results_HR->{"fid2ref"})); } 
           $tot_fid += $mdl_results_HR->{"fid2ref"};
           $n_fid++;
@@ -4893,9 +4975,9 @@ sub output_tbl_all_sequences {
     push(@cur_out_A, sprintf("  %5.3f", ($n_fid > 0) ? ($tot_fid / $n_fid) : 0.));
     # output number of actually annotated features and summed total of exons in those features, if nec
     if(! $do_noexist) { 
-      push(@cur_out_A, sprintf("  %5d", $nftr));
-      push(@cur_out_A, sprintf("  %5d", $nexist_checked));
-      push(@cur_out_A, sprintf("  %5d", $nexist_match));
+      push(@cur_out_A, sprintf("  %5d", $seq_info_HAR->{"num_genbank_cds_annot"}[$seq_idx]));
+      push(@cur_out_A, sprintf("  %5d", $seq_info_HAR->{"num_genbank_cds_exon_annot"}[$seq_idx]));
+      push(@cur_out_A, sprintf("  %5d", $ngenbank_match));
     }
 
     my $accn_failed = ($pass_fail_str =~ m/F/) ? 1 : 0;
