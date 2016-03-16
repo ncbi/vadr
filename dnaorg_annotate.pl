@@ -571,7 +571,6 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     my $cur_start     = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"};
     my $cur_stop      = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_stop"};
     my $cur_strand    = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_strand"};
-    #printf("HEYAV $accn posn_to_start 0: $posn_to_start c: $c final_mdl $final_mdl\n");
     my $plen          = (abs($cur_stop - $cur_start)) + 1;
     my $offset        = ($plen % 3); 
     # printf("plen: $plen, offset: $offset changing posn_to_start: $posn_to_start to %d\n", $posn_to_start-$offset);
@@ -618,7 +617,7 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
 #########################################################
 
 $start_secs = outputProgressPrior("Correcting homology search stop predictions", $progress_w, $log_FH, *STDOUT);
-results_calculate_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@err_ftr_instances_AHH, \%opt_HH, $ofile_info_HH{"FH"});
+results_calculate_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
@@ -1852,6 +1851,7 @@ sub parse_esl_epn_translate_startstop_outfile {
     if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
       my ($seq_name, $coords, $start_is_valid, $stop_is_valid, $first_stop_posn1) = ($1, $2, $3, $4, $5);
       
+      # printf("seq_name: $seq_name coords: $coords start_is_valid: $start_is_valid, stop_is_valid: $stop_is_valid, first_stop_posn1: $first_stop_posn1\n");
       # determine if we have an early stop
       my $cds_len            = dashCoordsStringCommaDelimitedToLength($coords, $sub_name, $FH_HR);
       my $final_codon_posn1  = $cds_len - 2; # final codon position 1 
@@ -1918,14 +1918,22 @@ sub parse_esl_epn_translate_startstop_outfile {
           if(! $stop_is_valid) { 
             if(! $early_inframe_stop) { 
               # possibility 2 (P2): stp error, need to check for ext error later
-              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "",   $FH_HR);
+
+              # add the 3 potential error codes, we'll check again later and possibly remove them
+              # the 'stp' error is only a 'maybe' because (! $stop_is_valid) implies it's not an
+              # *IN-FRAME* valid stop codon, but we only throw 'stp' if the final 3 nt of the prediction
+              # are not a valid stop codon, regardless of frame
+              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
               error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
               error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
               #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
             }
             else { # $early_inframe_stop is 1
               # possibility 3 (P3): stp and trc error
-              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "", $FH_HR);
+
+              # add the 2 potential error codes, we'll check again later and possibly remove them
+              # the 'stp' error is only a 'maybe' because of reason explained above similar case in possibility 2 above
+              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
               error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
               #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 3 (trc and stp)\n");
             }
@@ -2006,7 +2014,7 @@ sub error_instance_add {
   if($err_idx == -1) { 
     DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code", 1, $FH_HR);
   }
-  printf("in $sub_name err_code: $err_code err_idx: $err_idx\n");
+  # printf("in $sub_name err_code: $err_code err_idx: $err_idx\n");
   
   # check if it's the special 'maybe' value, which is only allowed for some error codes 
   if($value eq "maybe") { 
@@ -2394,23 +2402,24 @@ sub find_inframe_stop {
 #             and set it as "c_stop".
 #
 # Arguments: 
-#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, PRE-FILLED
-#  $mdl_results_AAHR:   REF to results AAH, ADDED TO HERE
+#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
+#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
+#  $mdl_results_AAHR:       REF to results AAH, ADDED TO HERE
 #  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:              REF to hash of file handles
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
 #
 # Returns:    void
 #
 ################################################################# 
 sub results_calculate_corrected_stops {
   my $sub_name = "results_calculate_corrected_stops()";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $opt_HHR, $FH_HR) = @_;
+  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
 
   # total counts of things
   my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
@@ -2442,13 +2451,35 @@ sub results_calculate_corrected_stops {
   # stop predictions for all trc and ext errors
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
+      my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
       for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-        
+        ###########################################
+        # block that handles potential stp errors #
+        ###########################################
+        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
+          if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
+            DNAORG_FAIL("ERROR in $sub_name, ext error with non-maybe value for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
+          }
+          $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+          my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, 
+                                                  $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, 
+                                                  $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
+          if(validateStopCodon($stp_err_stop_codon)) { 
+            # it's a valid stop, remove the 'maybe'
+            error_instance_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
+          }
+          else { 
+            # it is not a valid stop, the error stays and we update the error message
+            my $updated_stp_errmsg = sprintf("%s ending at position %d on %s strand", $stp_err_stop_codon, 
+                                             $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}); 
+            error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
+          }
+        }        
         # only one of trc or ext can exist, they're 'incompatible' in err_info_HAR
-        #################################
-        # block that handles trc errors #
-        #################################
+        ###########################################
+        # block that handles potential trc errors #
+        ###########################################
         if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
           $len_corr = $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name};
           if($len_corr >= 0) { 
@@ -2480,10 +2511,28 @@ sub results_calculate_corrected_stops {
                 $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key} - $remaininglen + 1;
               }
               # update "len" and "cumlen" and set $trc_err_key
-              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} -= ($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key} - $remaininglen);
+              my $exon_len_corr = ($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key} - $remaininglen);
+              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} -= $exon_len_corr;
               $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}     = $remaininglen;
               $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$trc_err_key} = 1;
               my $cur_cumlen = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key};
+
+              # update the errmsg in @{$err_ftr_instances_AHHR} based on 
+              # what just figured out about this truncated stop
+              my $updated_trc_errmsg = sprintf("homology search predicted %d..%d", 
+                                           create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
+                                                                        $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
+                                                                        $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
+              if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
+                $updated_trc_errmsg .= sprintf(" %s %d of %d", ($is_matpept) ? "segment" : "exon", $mdl_idx - $first_mdl_idx + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
+              }
+              $updated_trc_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
+                                            create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
+                                                                         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
+                                                                         $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
+                                            $exon_len_corr);
+              error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_trc_errmsg, $FH_HR);
+              
               # now for all remaining models for this feature, set $cumlen_key to $cur_cumlen, 
               # and $prv_trc_key to '1' indicating that that model prediction 
               # doesn't really exist due to an early stop in a previous model
@@ -2529,8 +2578,7 @@ sub results_calculate_corrected_stops {
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} += $len_corr;
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$ext_err_key} = 1;
           # and update the description in the err_ftr_instances_AHH
-
-        } 
+        }
       } # end of loop over $seq_idx
     } # end of if $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model"
   } # end of loop over $ftr_idx
@@ -2630,79 +2678,54 @@ sub results_calculate_overlaps_and_adjacencies {
       $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_ajb_str"} = $out_ajb_str_A[$mdl_idx];
       $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_aja_str"} = $out_aja_str_A[$mdl_idx];
       $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_olp_str"} = $out_olp_str_A[$mdl_idx];
+
+      # construct ajb err message
       if($idx_ajb_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx]) { 
         my @diff_A = ();
-        compareTwoOverlapOrAdjacencyIndexStrings($idx_ajb_str_A[$mdl_idx], 
-                                                 $mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx], 
+        compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx], 
+                                                 $idx_ajb_str_A[$mdl_idx], 
                                                  $nmdl-1,
                                                  \@diff_A, $FH_HR);
-        
-        if($ftr_ajb_err_msg_A[$ftr_idx] ne "") { 
-          $ftr_ajb_err_msg_A[$ftr_idx] .= "; "; 
-        }
-        $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("%s: ", $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
-        my $ndiff = 0;
-        for(my $i = 0; $i < $mdl_idx; $i++) { 
-          if($ndiff > 0) { 
-            $ftr_ajb_err_msg_A[$ftr_idx] .= "";
+        for(my $i = 0; $i < $nmdl; $i++) { 
+          if($diff_A[$i] != 0) { 
+            $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
+                                                    ($ftr_ajb_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
+                                                    ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
+                                                    $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
           }
-          if($diff_A[$i] == -1) { 
-            $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("+%s", $mdl_info_HAR->{"out_tiny"}[$i]);
-          }
-          if($diff_A[$i] == 1) { 
-            $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("-%s", $mdl_info_HAR->{"out_tiny"}[$i]);
-          }
-          $ndiff++;
         }
       }
+      # construct aja err message
       if($idx_aja_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_aja_str"}[$mdl_idx]) { 
         my @diff_A = ();
-        compareTwoOverlapOrAdjacencyIndexStrings($idx_aja_str_A[$mdl_idx], 
-                                                 $mdl_info_HAR->{"idx_aja_str"}[$mdl_idx], 
+        compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_aja_str"}[$mdl_idx], 
+                                                 $idx_aja_str_A[$mdl_idx], 
                                                  $nmdl-1,
                                                  \@diff_A, $FH_HR);
-
-        if($ftr_aja_err_msg_A[$ftr_idx] ne "") { 
-          $ftr_aja_err_msg_A[$ftr_idx] .= "; "; 
-        }
-        $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("%s: ", $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
-        my $ndiff = 0;
-        for(my $i = 0; $i < $mdl_idx; $i++) { 
-          if($ndiff > 0) { 
-            $ftr_aja_err_msg_A[$ftr_idx] .= "";
+        for(my $i = 0; $i < $nmdl; $i++) { 
+          if($diff_A[$i] != 0) { 
+            $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
+                                                    ($ftr_aja_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
+                                                    ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
+                                                    $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
           }
-          if($diff_A[$i] == -1) { 
-            $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("+%s", $mdl_info_HAR->{"out_tiny"}[$i]);
-          }
-          if($diff_A[$i] == 1) { 
-            $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("-%s", $mdl_info_HAR->{"out_tiny"}[$i]);
-          }
-          $ndiff++;
         }
       }
+
+      # construct olp err message
       if($idx_olp_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_olp_str"}[$mdl_idx]) { 
         my @diff_A = ();
-        compareTwoOverlapOrAdjacencyIndexStrings($idx_olp_str_A[$mdl_idx], 
-                                                 $mdl_info_HAR->{"idx_olp_str"}[$mdl_idx], 
+        compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_olp_str"}[$mdl_idx], 
+                                                 $idx_olp_str_A[$mdl_idx], 
                                                  $nmdl-1,
                                                  \@diff_A, $FH_HR);
-
-        if($ftr_olp_err_msg_A[$ftr_idx] ne "") { 
-          $ftr_olp_err_msg_A[$ftr_idx] .= "; "; 
-        }
-        $ftr_olp_err_msg_A[$ftr_idx] .= sprintf("%s: ", $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
-        my $ndiff = 0;
-        for(my $i = 0; $i < $mdl_idx; $i++) { 
-          if($ndiff > 0) { 
-            $ftr_olp_err_msg_A[$ftr_idx] .= "";
+        for(my $i = 0; $i < $nmdl; $i++) { 
+          if($diff_A[$i] != 0) { 
+            $ftr_olp_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
+                                                    ($ftr_olp_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
+                                                    ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
+                                                    $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
           }
-          if($diff_A[$i] == -1) { 
-            $ftr_olp_err_msg_A[$ftr_idx] .= sprintf("+%s", $mdl_info_HAR->{"out_tiny"}[$i]);
-          }
-          if($diff_A[$i] == 1) { 
-            $ftr_olp_err_msg_A[$ftr_idx] .= sprintf("-%s", $mdl_info_HAR->{"out_tiny"}[$i]);
-          }
-          $ndiff++;
         }
       }
     } # end of 'for(mdl_idx'
@@ -2784,6 +2807,7 @@ sub mdl_results_finalize {
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
     my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
+    my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
     my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
     for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
       my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
@@ -2865,7 +2889,7 @@ sub mdl_results_finalize {
           $mdl_results_HR->{"genbank_mdl_annot_match"} = 0;
         }
         ######################
-         # set out_stop_codon #
+        # set out_stop_codon #
         ######################
         $mdl_results_HR->{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name,
                                                              (defined $mdl_results_HR->{"c_stop"}) ? $mdl_results_HR->{"c_stop"} : $mdl_results_HR->{"p_stop"}, 
@@ -2935,7 +2959,7 @@ sub ftr_results_calculate {
         ($seq_info_HAR->{"num_genbank_ftr_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_ftr_exon_annot"}[$seq_idx]) = 
             count_genbank_annotations($cds_tbl_HHAR->{$accn_name}, $accn_len, $opt_HHR, $FH_HR);
 
-        # set the str_err_flag and stp_err_flags, if nec
+        # set the str_err_flag, if nec
         if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"str_err_flag"} = 1;
         }
@@ -3431,7 +3455,12 @@ sub get_esl_epn_translate_altstart_opt {
       }
       $codon_str .= $codon;
     }
-    return "-alstart $codon_str";
+    if($codon_str ne "") { 
+      return "-altstart $codon_str";
+    }
+    else { 
+      return "";
+    }
   }
 }
 
@@ -3921,7 +3950,7 @@ sub output_errors_header {
 
   # print feature list
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $str = sprintf("# Feature \#%d: %s %s\n", $ftr_idx, $ftr_info_HAR->{"out_short"}[$ftr_idx], $ftr_info_HAR->{"out_product"}[$ftr_idx]);
+    my $str = sprintf("# Feature \#%d: %s %s\n", $ftr_idx+1, $ftr_info_HAR->{"out_short"}[$ftr_idx], $ftr_info_HAR->{"out_product"}[$ftr_idx]);
     print $allerr_FH $str;
     print $pererr_FH $str;
   }
@@ -5455,7 +5484,7 @@ sub find_origin_sequences {
     my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
     my $fasta_seq = $sqfile->fetch_seq_to_fasta_string($seq_name, -1);
     my ($header, $seq) = split(/\n/, $fasta_seq);
-    my $nfound = 0; # number of occurences of origin sequence per sequence
+    my $nfound = 0; # number of occurrences of origin sequence per sequence
     chomp $seq;
 
     # now use Perl's index() function to find all occurrences of $qseq
@@ -5487,9 +5516,9 @@ sub find_origin_sequences {
         $qseq_posn = index($seq, $qseq, $qseq_posn);
       }
     }
-    printf("in $sub_name, $seq_name nfound: $nfound\n");
+    # printf("in $sub_name, $seq_name nfound: $nfound\n");
     if($nfound != 1) { 
-      error_instance_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, $nfound . " occurences", $FH_HR);
+      error_instance_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, $nfound . " occurrences", $FH_HR);
     }
   }
   

@@ -3116,7 +3116,7 @@ sub findNonNumericValueInArray {
 #   $value:    the value we're looking for in @{$AR}
 #   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
 # 
-# Returns:     Number of occurences of $value in @{$AR}.
+# Returns:     Number of occurrences of $value in @{$AR}.
 #
 # Dies:        if $value is numeric
 ################################################################# 
@@ -4518,7 +4518,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "bd3", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "olp", "feature",  0,             "feature does not overlap with same set of features as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "str", "feature",  0,             "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "stp", "feature",  0,             "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "stp", "feature",  1,             "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ajb", "feature",  0,             "mature peptide is not adjacent to same set of mature peptides before it as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "aja", "feature",  0,             "mature peptide is not adjacent to same set of mature peptides after it as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "trc", "feature",  0,             "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
@@ -4528,7 +4528,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not translated due to early stop (ntr)", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0,             "there is not exactly 1 occurence of origin sequence", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0,             "there is not exactly 1 occurrence of origin sequence", $FH_HR);
 
   # define the incompatibilities, these are 2 sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,olp,str,stp,ajb,aja,trc,ext,ntr,nst,aji,int,inp", $FH_HR);
