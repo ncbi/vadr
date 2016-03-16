@@ -731,6 +731,9 @@ output_tbl_get_headings(\@out_row_header_A, \@out_header_exp_A, \%mdl_info_HA, \
 # for each sequence, output the tabular annotation
 output_tbl_all_sequences(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
+# output the explanatory text
+output_tbl_explanations(\@out_header_exp_A, \%ofile_info_HH);
+
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###############
@@ -1381,15 +1384,16 @@ sub fetch_hits_given_results {
         my $stop    = (exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"}) ? $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"} : $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"};
         my $strand  = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_strand"};
 
-        # if "prv_trc_flag" is set, this means the sequence should not
-        # be fetched due to an early stop (trc error) in a previous
-        # model for the same feature
+        # only enter following loop if "prv_trc_flag" is *NOT* set, 
+        # if it is then the sequence should not be fetched due to 
+        # an early stop (trc error) in a previous model for the same feature
         if(! $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"prv_trc_flag"}) { 
           my $new_name = $seq_name . "/" . $start . "-" . $stop;
           push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
           
           $nseq2fetch++;
-          
+
+          # append sequence, if nec
           if($append_num > 0) { 
             my $append_start;
             my $append_stop;
@@ -1399,16 +1403,21 @@ sub fetch_hits_given_results {
             }
             else { 
               $append_start = $stop - 1;
-              $append_stop  = $stop + $append_num;
+              $append_stop  = $stop - $append_num;
             }
-            my $append_new_name = $seq_name . "/" . $append_start . "-" . $append_stop;
-            # update mdl_results with 'append_start' and 'append_stop'
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_start"} = $append_start;
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_stop"}  = $append_stop;
-            # printf("added $append_new_name $append_start $append_stop $seq_name to fetch_append_AA\n");
-            push(@fetch_append_AA, [$append_new_name, $append_start, $append_stop, $seq_name]);
-            
-            $nseq2fetch_append++;
+            # only do the appending if the full region $append_start..$append_stop 
+            # exists
+            if(($append_start <= $seq_info_HAR->{"seq_len"}[$seq_idx]) && 
+               ($append_stop  <= $seq_info_HAR->{"seq_len"}[$seq_idx])) { 
+              my $append_new_name = $seq_name . "/" . $append_start . "-" . $append_stop;
+              # update mdl_results with 'append_start' and 'append_stop'
+              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_start"} = $append_start;
+              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_stop"}  = $append_stop;
+              # printf("added $append_new_name $append_start $append_stop $seq_name to fetch_append_AA\n");
+              push(@fetch_append_AA, [$append_new_name, $append_start, $append_stop, $seq_name]);
+              
+              $nseq2fetch_append++;
+            }
           }
         }
       }
@@ -2013,9 +2022,11 @@ sub error_instance_add {
     if(! defined $err_ftr_instances_AHHR) { 
       DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-feature error, but err_ftr_instances_AHHR is undefined", 1, $FH_HR);
     }
-    # this error shouldn't already exist
+    # this error shouldn't already exist, unless it's already set to $value, in which case it's okay
     if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s (maybe you want to use error_instance_update()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      if($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} ne $value) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s (maybe you want to use error_instance_update()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      }
     }
 
     # set the value
@@ -2028,9 +2039,11 @@ sub error_instance_add {
     if($ftr_idx != -1) { 
       DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but passed in ftr_idx is not -1, but $ftr_idx", 1, $FH_HR);
     }
-    # this error shouldn't already exist
+    # this error shouldn't already exist, unless it's already set to $value, in which case it's okay
     if(exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s (maybe you want to use error_instance_update()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      if($err_seq_instances_HHR->{$err_code}{$seq_name} ne $value) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s (maybe you want to use error_instance_update()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      }
     }
 
     # set the value
@@ -2757,6 +2770,16 @@ sub mdl_results_finalize {
   my $mdl_idx;
   my $seq_idx;
 
+  # first, determine how many genbank annotations we have per sequence
+  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    # determine how many annotations CDS or mature peptide annotations there are in GenBank
+    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
+    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
+    ($seq_info_HAR->{"num_genbank_mdl_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_mdl_exon_annot"}[$seq_idx]) = 
+        count_genbank_annotations((opt_IsUsed("--matpept", $opt_HHR)) ? $mp_tbl_HHAR->{$accn_name} : $cds_tbl_HHAR->{$accn_name}, 
+                                   $accn_len, $opt_HHR, $FH_HR);
+  }
+
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
     my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
@@ -2767,12 +2790,6 @@ sub mdl_results_finalize {
       my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
       my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
       my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-
-      # determine how many annotations there are in GenBank, if we're a CDS
-      if(! $is_matpept) { 
-        ($seq_info_HAR->{"num_genbank_cds_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_cds_exon_annot"}[$seq_idx]) = 
-            count_genbank_annotations($cds_tbl_HHAR->{$accn_name}, $accn_len, $opt_HHR, $FH_HR);
-      }
 
       if(! exists $mdl_results_HR->{"p_start"}) { 
         # no prediction
@@ -2832,19 +2849,19 @@ sub mdl_results_finalize {
             $mdl_results_HR->{"out_3boundary"} = $mdl_results_HR->{"p_3hangover"};
           }
         }
-        ###########################
-        # set genbank_annot_match #
-        ###########################
+        ###############################
+        # set genbank_mdl_annot_match #
+        ###############################
         # check our final annotation against existing annotation in GenBank 
         my $start  = $mdl_results_HR->{"out_start"};
         my $stop   = $mdl_results_HR->{"out_stop"};
         my $strand = $mdl_results_HR->{"p_strand"};
         my $tbl_HAR = ($is_matpept) ? $mp_tbl_HHAR->{$accn_name} : $cds_tbl_HHAR->{$accn_name};
         if(defined $tbl_HAR) { # if there was annotation for this sequence 
-          $mdl_results_HR->{"genbank_annot_match"} = compare_to_genbank_annotation($start, $stop, $strand, $accn_len, $seq_len, $tbl_HAR, $opt_HHR, $FH_HR);
+          $mdl_results_HR->{"genbank_mdl_annot_match"} = compare_to_genbank_annotation($start, $stop, $strand, $accn_len, $seq_len, $tbl_HAR, $opt_HHR, $FH_HR);
         }
         else { # annotation doesn't exist, so we don't have a match
-          $mdl_results_HR->{"genbank_annot_match"} = 0;
+          $mdl_results_HR->{"genbank_mdl_annot_match"} = 0;
         }
         ######################
          # set out_stop_codon #
@@ -2914,7 +2931,7 @@ sub ftr_results_calculate {
         my $accn_name  = $seq_info_HAR->{"accn_name"}[$seq_idx];
         my $accn_len   = $seq_info_HAR->{"accn_len"}[$seq_idx];
 
-        ($seq_info_HAR->{"num_genbank_cds_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_cds_exon_annot"}[$seq_idx]) = 
+        ($seq_info_HAR->{"num_genbank_ftr_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_ftr_exon_annot"}[$seq_idx]) = 
             count_genbank_annotations($cds_tbl_HHAR->{$accn_name}, $accn_len, $opt_HHR, $FH_HR);
 
         # set the str_err_flag and stp_err_flags, if nec
@@ -2972,27 +2989,9 @@ sub ftr_results_calculate {
                 $child_idx++;
               }
               # now $child_idx is $nchildren, so this breaks the 'for(child_idx' loop
-            }
+            } # end of 'if trc_err_flag'
             else { 
-              # update $cds_out_stop, when we exit this loop over children, $cds_out_stop will be stop of final model's annotation
-              # if we 'append' sequence to this model (as we do for the final mature peptide to get the stop codon which is
-              # not annotated by GenBank
-              if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}) { 
-                my ($out_append_start, $out_append_stop) = 
-                    create_output_start_and_stop($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}, 
-                                                 $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"},
-                                                 $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-                $cds_out_stop = $out_append_stop;
-                $cds_fetch_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"};
-              }
-              else { 
-                $cds_out_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"};
-                $cds_fetch_stop = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
-                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
-                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
-              }
-              $stop_strand = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
-
+              # we don't have a trc flag
               # check if we're adjacent to the next model
               if($child_idx < ($nchildren-1)) { 
                 my $nxt_child_mdl_idx = $primary_children_idx_A[($child_idx+1)];
@@ -3008,6 +3007,30 @@ sub ftr_results_calculate {
                                          (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown");
                 }        
               } # end of 'if($child_idx < ($nchildren-1))'
+              if($child_idx == ($nchildren-1)) { 
+                # the final child, determine the stop position/strand
+                $stop_strand = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
+
+                # we should have to append the stop codon
+                # (GenBank annotation of final mature peptides doesn't include the stop codon,
+                #  so it's not covered in our homology model and we have to take special care
+                #  to annotate it.
+                if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}) { 
+                  my ($out_append_start, $out_append_stop) = 
+                      create_output_start_and_stop($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}, 
+                                                   $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"},
+                                                   $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                  $cds_out_stop = $out_append_stop;
+                  $cds_fetch_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"};
+                  # and update the cds_len (this is the final child, so this will only happen once)
+                  $cds_len += abs($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"} - $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}) + 1; 
+                }
+                else { 
+                  # we weren't able to append a stop codon, this means we don't have one
+                  # leave $cds_out_stop and $cds_fetch_stop as undef
+                  ; # do nothing
+                }
+              }
             }
           } # end of 'else' entered if we don't have a trc error
         } # end of 'for(my $child_idx..'
@@ -3040,23 +3063,24 @@ sub ftr_results_calculate {
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop"}       = "?";
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop_codon"} = "?";
         }
-        if(($aji_errmsg eq "") && (! $found_not_annotated)) { 
+        if(($aji_errmsg eq "") && (! $found_not_annotated) && (defined $cds_out_start) && (defined $cds_out_stop)) { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"} = $cds_len;
         }
         else { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"} = "?";
         }
 
+      
         # check if existing annotation for this CDS exists in %{$cds_tbl_HHAR}
         if((defined $cds_out_start) && (defined $cds_out_stop)) { 
           if(defined ($cds_tbl_HHAR->{$accn_name})) { # if there was annotation for this sequence 
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_annot_match"} = 
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_ftr_annot_match"} = 
                 compare_to_genbank_annotation($cds_out_start, $cds_out_stop, $start_strand,
-                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}, 
+                                              $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], 
                                               $cds_tbl_HHAR->{$accn_name}, $opt_HHR, $FH_HR);
           }
           else { # annotation doesn't exist, so we don't have a match
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_annot_match"} = 0;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_ftr_annot_match"} = 0;
           }
         }
       } # end of 'for($seq_idx'
@@ -3917,6 +3941,42 @@ sub output_errors_header {
 }
 
 #################################################################
+# Subroutine:  output_tbl_explanations
+# Incept:      EPN, Wed Mar 16 11:19:29 2016
+#
+# Purpose:    Output the explanatory text for the tabular output
+#             files.
+#
+# Arguments: 
+#  $out_header_exp_AR: ref to array of output explanation lines
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+################################################################# 
+sub output_tbl_explanations { 
+  my $sub_name = "output_tbl_explanations()";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_header_exp_AR, $ofile_info_HHR) = @_;
+
+  my $tbl_FH     = $ofile_info_HHR->{"FH"}{"tbl"};
+  my $failtbl_FH = $ofile_info_HHR->{"FH"}{"failtbl"};
+  my $errtbl_FH  = $ofile_info_HHR->{"FH"}{"errtbl"};
+
+  foreach my $FH ($tbl_FH, $failtbl_FH, $errtbl_FH) { 
+    foreach my $line (@{$out_header_exp_AR}) { 
+      print $FH $line;
+    }
+    print $FH "#\n";
+    print $FH "# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n";
+    print $FH "#\n";
+  }
+  return;
+}
+
+#################################################################
 # Subroutine:  output_multifeature_relationships
 # Incept:      EPN, Thu Mar 10 19:15:38 2016
 #
@@ -4540,7 +4600,7 @@ sub output_tbl_get_headings {
 
   if((defined $need_to_define_H{"overlap"}) || (defined $need_to_define_H{"adjacent"})) {
      output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-     push(@{$out_header_exp_AR}, "# Definitions of non-obvious terms above:\n", $FH_HR);
+     push(@{$out_header_exp_AR}, "# Definitions of non-obvious terms above:\n");
      output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
      if(defined $need_to_define_H{"overlap"}) { 
        push(@{$out_header_exp_AR}, "# overlap:  two features i and j overlap if they are on both on the same strand and overlap by >= 1 nt.\n");
@@ -4812,7 +4872,7 @@ sub output_tbl_all_sequences {
       my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
       my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
       my $ref_olp_str = $mdl_info_HAR->{"out_olp_str"}[$mdl_idx];
-      my $ref_adj_str = combine_ajb_and_aja_strings($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_ajb_str"}, $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_aja_str"});
+      my $ref_adj_str = combine_ajb_and_aja_strings($mdl_info_HAR->{"out_ajb_str"}[$mdl_idx], $mdl_info_HAR->{"out_aja_str"}[$mdl_idx]);
 
       if(exists $mdl_results_HR->{"p_start"}) { 
         # hit exists
@@ -4838,7 +4898,7 @@ sub output_tbl_all_sequences {
         else { 
           # not special case in which a trc error exists in earlier segment,
           # set annotation we do for all models (regardless of $is_first or $is_final values)
-          my $genbank_match = $mdl_results_HR->{"genbank_annot_match"}; # 1 if existing GenBank annotation matches our annotation
+          my $genbank_match = $mdl_results_HR->{"genbank_mdl_annot_match"}; # 1 if existing GenBank annotation matches our annotation
           if($genbank_match) { $ngenbank_match++; }
           push(@cur_out_A, sprintf("  %8s ", ($genbank_match ? " " . $mdl_results_HR->{"out_start"} . " " : "[" . $mdl_results_HR->{"out_start"} . "]")));
           push(@cur_out_A, sprintf("%8s",    ($genbank_match ? " " . $mdl_results_HR->{"out_stop"}  . " " : "[" . $mdl_results_HR->{"out_stop"}  . "]")));
@@ -4953,9 +5013,10 @@ sub output_tbl_all_sequences {
         push(@cur_out_A, sprintf("  %6d", 0)); # length
       }            
       else { 
-        push(@cur_out_A, sprintf("  %6d", $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"out_stop"}+1)); # start 
-        push(@cur_out_A, sprintf("  %6d", $accn_len)); # stop 
-        push(@cur_out_A, sprintf("  %6d", ($accn_len - $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"out_stop"})+1)); # length
+        my $utr_start = $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"out_stop"}+1;
+        push(@cur_out_A, sprintf("  %6d", $utr_start));                   # start
+        push(@cur_out_A, sprintf("  %6d", $accn_len));                    # stop 
+        push(@cur_out_A, sprintf("  %6d", ($accn_len - $utr_start) + 1)); # length
       }
     }                
 
@@ -4970,10 +5031,39 @@ sub output_tbl_all_sequences {
         push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_len"}));  
         push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_start_codon"}));
         push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_stop_codon"}));
-        my $start_codon_char   = (exists $ftr_results_HR->{"str_err_flag"}) ? $ss3_no_char : $ss3_yes_char;
-        my $stop_codon_char    = (validateStopCodon($ftr_results_HR->{"out_stop_codon"})) ? $ss3_yes_char : $ss3_no_char;
-        my $multiple_of_3_char = (($ftr_results_HR->{"out_len"} eq "?") || (($ftr_results_HR->{"out_len"} % 3) != 0)) ? $ss3_no_char : $ss3_yes_char;
         
+        my $start_codon_char   = undef;
+        if(($ftr_results_HR->{"out_start"}) eq "?") { 
+          $start_codon_char = "?";
+        }
+        elsif((exists $ftr_results_HR->{"str_err_flag"})) { 
+          $start_codon_char = $ss3_no_char;
+        }
+        else { 
+          $start_codon_char = $ss3_yes_char;
+        }
+
+        my $stop_codon_char    = undef;
+        if(($ftr_results_HR->{"out_stop"}) eq "?") { 
+          $stop_codon_char = "?";
+        }
+        elsif(! validateStopCodon($ftr_results_HR->{"out_stop_codon"})) { 
+          $stop_codon_char = $ss3_no_char;
+        }
+        else { 
+          $stop_codon_char = $ss3_yes_char;
+        }
+
+        my $multiple_of_3_char = undef;
+        if(($ftr_results_HR->{"out_len"}) eq "?") { 
+          $multiple_of_3_char = "?";
+        }
+        elsif(($ftr_results_HR->{"out_len"} % 3) != 0) { 
+          $multiple_of_3_char = $ss3_no_char;
+        }
+        else { 
+          $multiple_of_3_char = $ss3_yes_char;
+        }
         # determine if this CDS passed or failed
         my $cds_pass_fail = "P";
         if(($start_codon_char ne $ss3_yes_char || $stop_codon_char ne $ss3_yes_char || $multiple_of_3_char ne $ss3_yes_char) ||
@@ -4992,8 +5082,8 @@ sub output_tbl_all_sequences {
     push(@cur_out_A, sprintf("  %5.3f", ($n_fid > 0) ? ($tot_fid / $n_fid) : 0.));
     # output number of actually annotated features and summed total of exons in those features, if nec
     if(! $do_noexist) { 
-      push(@cur_out_A, sprintf("  %5d", $seq_info_HAR->{"num_genbank_cds_annot"}[$seq_idx]));
-      push(@cur_out_A, sprintf("  %5d", $seq_info_HAR->{"num_genbank_cds_exon_annot"}[$seq_idx]));
+      push(@cur_out_A, sprintf("  %5d", $seq_info_HAR->{"num_genbank_mdl_annot"}[$seq_idx]));
+      push(@cur_out_A, sprintf("  %5d", $seq_info_HAR->{"num_genbank_mdl_exon_annot"}[$seq_idx]));
       push(@cur_out_A, sprintf("  %5d", $ngenbank_match));
     }
 
