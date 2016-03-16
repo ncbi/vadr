@@ -2006,6 +2006,7 @@ sub error_instance_add {
   if($err_idx == -1) { 
     DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code", 1, $FH_HR);
   }
+  printf("in $sub_name err_code: $err_code err_idx: $err_idx\n");
   
   # check if it's the special 'maybe' value, which is only allowed for some error codes 
   if($value eq "maybe") { 
@@ -5446,7 +5447,6 @@ sub find_origin_sequences {
   # fetch each sequence and look for $qseq in it
   # (could (and probably should) make this more efficient...)
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $nfound = 0; # number of occurences of origin sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     $seq_info_HAR->{"origin_coords_str"}[$seq_idx] = "";
     my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
@@ -5455,6 +5455,7 @@ sub find_origin_sequences {
     my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
     my $fasta_seq = $sqfile->fetch_seq_to_fasta_string($seq_name, -1);
     my ($header, $seq) = split(/\n/, $fasta_seq);
+    my $nfound = 0; # number of occurences of origin sequence per sequence
     chomp $seq;
 
     # now use Perl's index() function to find all occurrences of $qseq
@@ -5486,6 +5487,7 @@ sub find_origin_sequences {
         $qseq_posn = index($seq, $qseq, $qseq_posn);
       }
     }
+    printf("in $sub_name, $seq_name nfound: $nfound\n");
     if($nfound != 1) { 
       error_instance_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, $nfound . " occurences", $FH_HR);
     }

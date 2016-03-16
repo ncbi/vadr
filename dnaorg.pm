@@ -4527,8 +4527,8 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,             "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not translated due to early stop (ntr)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop) ", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0,             "there is not exactly 1 occurence of origin sequence", $FH_HR);
 
   # define the incompatibilities, these are 2 sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,olp,str,stp,ajb,aja,trc,ext,ntr,nst,aji,int,inp", $FH_HR);
