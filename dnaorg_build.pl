@@ -201,7 +201,7 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
 # open the log and command files 
 openAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", 1, "Output printed to screen");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", 1, "List of executed commands");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List of executed commands");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need

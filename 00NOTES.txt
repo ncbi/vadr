@@ -1,23 +1,22 @@
-# EPN, Tue Feb 16 15:27:16 2016
+# EPN, Thu Mar 17 14:30:57 2016
 # pwd: /panfs/pan1/dnaorg/programs/15_0924_dnaorg_annotate_genomes
 # git repository url: https://github.com/nawrockie/dnaorg_annotate_genomes.pl.git
 #
-# Example of using the dnaorg scripts dnaorg_build.pl and
-# dnaorg_annotate_genomes.pl (NOT YET FINISHED) to annotate viral
-# genomes of species S given a single reference GenBank entry for S.
-# In this context, the meaning of "reference" sequence is that it has
-# all the annotations expected and for circular genomes that position
-# 1 is consistent with the accepted convention about where the origin
-# should be. The overarching objectives of *dnaorg*.pl
-# are to compute all information needed to produce annotations and to
-# output that information via tables and FASTA files; 
-# 
-# The dnaorg scripts do not produce an updated GenBank flat file.
+# The dnaorg_build.pl and dnaorg_annotate.pl executable scripts are in
+# this directory. See the 'Prerequisites' section of this file before
+# trying to run them.
 #
-# This 00NOTES.txt file also includes an example of running the 
-# summarize_dnaorg_annotate_genomes.pl (NOT YET FINISHED) to summarize output from
-# dnaorg_annotate_genomes.pl. See the 'Ancillary script: summarize_dnaorg_annotate_genomes.pl'
-# section.
+# This file gives examples of using the dnaorg scripts dnaorg_build.pl and
+# dnaorg_annotate.pl to annotate viral genomes of species S given a
+# single reference GenBank entry for S.  In this context, the meaning
+# of "reference" sequence is that it has all the annotations expected
+# and for circular genomes that position 1 is consistent with the
+# accepted convention about where the origin should be. The
+# overarching objectives of *dnaorg*.pl are to compute all information
+# needed to produce annotations and to output that information via
+# tables and FASTA files;
+#
+# The dnaorg scripts do not produce an updated GenBank flat file.
 #
 ###########
 #
@@ -36,27 +35,30 @@
 # other programs, including those housed/described in the following
 # directories:
 #
-# esl-fetch-cds.pl: /panfs/pan1/dnaorg/programs/15_0324_esl_fetch_cds/
-# 
-# Other executables called by the dnaorg scripst, which (currently) have
+# esl-fetch-cds.pl:      /panfs/pan1/dnaorg/programs/15_0324_esl_fetch_cds/
+# esl-epn-translate.pl:  /panfs/pan1/dnaorg/programs/16_0317_esl_epn_translate/
+#
+# Other executables called by the dnaorg scripts, which (currently) have
 # hard-coded paths in the script:
 # 
-# program        package          url
-# cmalign        Infernal v1.1.1  http://infernal.janelia.org/
-# cmbuild        Infernal v1.1.1  http://infernal.janelia.org/
-# cmfetch        Infernal v1.1.1  http://infernal.janelia.org/
-# cmpress        Infernal v1.1.1  http://infernal.janelia.org/
-# cmscan         Infernal v1.1.1  http://infernal.janelia.org/
-# hmmalign       HMMER v3.1b2     hmmer.org
-# hmmbuild       HMMER v3.1b2     hmmer.org
-# hmmfetch       HMMER v3.1b2     hmmer.org
-# hmmpress       HMMER v3.1b2     hmmer.org
-# nhmmscan       HMMER v3.1b2     hmmer.org
-# esl-epn-translate  Bio-Easel            GitHub: https://github.com/EddyRivasLab/easel.git
-QUESTION: Why is esl-translated still needed since you wrote your own translation module?
-# esl-ssplit     Bio-Easel        SVN:    https://xfamsvn.ebi.ac.uk/svn/code
-QUESTION: Do the two esl programs have version numbers?
-
+# Directories where these scripts are:
+# $INFERNAL_DIR="/usr/local/infernal/1.1.1/bin/";
+# $HMMER_DIR="/usr/local/hmmer/3.1/bin/";
+# $BIOEASEL_DIR="/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/";
+#
+# Infernal (v1.1.1) programs used are:
+# cmalign
+# cmbuild
+# cmfetch
+# cmpress
+# cmscan 
+#
+# HMMER (v3.1) programs used are:
+# hmmbuild
+# hmmalign
+# 
+# Bio-Easel (no version yet!) scripts used are:
+# esl-ssplit.pl
 #
 #
 # The dnaorg scripts are Perl scripts that use the Bio-Easel
@@ -75,12 +77,18 @@ QUESTION: Do the two esl programs have version numbers?
 # /panfs/pan1/dnaorg/programs/15_0529_dnaorg_virus_wrapper/00NOTES.txt.
 #
 # Also, see voluminous notes on development of this script in
-# /home/nawrocke/notebook/15_0810_dnaorg_virus_annotate/00LOG.txt and
+#
+# /home/nawrocke/notebook/15_0810_dnaorg_virus_annotate/00LOG.txt 
 # /home/nawrocke/notebook/16_0201_dnaorg_annotate_genomes_documentation/00LOG.txt
-# and in 
-# /home/nawrocke/notebook/15_0909_dnaorg_virus_dengue_annotate/
+# /home/nawrocke/notebook/15_0909_dnaorg_virus_dengue_annotate/00LOG.txt
+# /panfs/pan1/dnaorg/notebook/15_1113_dnaorg_virus_error_codes/00LOG.txt
+# /home/nawrocke/notebook/16_0201_dnaorg_annotate_genomes_documentation/00LOG.txt
+#
 # for notes on development and testing of these programs and several of 
 # the scripts they call.
+#
+# Also, github has revision history
+# (https://github.com/nawrockie/dnaorg_annotate_genomes.pl.git)
 #
 # The NCBI JIRA tickets VIV-254 and VIV-272 may also be relevant.
 # Both tickets contain (pointers to) sample annotations. VIV-254 is more focused on
@@ -91,123 +99,178 @@ QUESTION: Do the two esl programs have version numbers?
 # suitable as input to other software tools in process of being written
 # by members of J. Rodeny Brister's group in NCBI/IEB.
 # 
+# For more information on the error codes, see the file
+# /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5.documentation.txt 
+#
 #######################
 # Prerequisites
 #######################
 # 
 # Directories that include the BioEasel perl modules must be part of the user's
-# $PERL5LIB environment variable in order for esl-fetch-cds.pl to work.
+# $PERL5LIB environment variable in order the dnaorg scripts to work.
 # 
 # For bash shell users
-source /panfs/pan1/dnaorg/programs/setup-bio-easel.bash.sh
-# For C shell or C shell compatible users
-source /panfs/pan1/dnaorg/programs/setup-bio-easel.csh.sh
+source /panfs/pan1/dnaorg/programs/setup-dnaorg-scripts.bash.sh
 #
-# (THESE PREREQUISITES ARE THE SAME AS THOSE NEEDED FOR 
-#  dnaorg_fetch_dna_wrapper.pl)
+# For C shell or C shell compatible users
+source /panfs/pan1/dnaorg/programs/setup-dnaorg-scripts.csh.sh
 #
 ######################################
 # Usage and options of dnaorg_build.pl
 ######################################
 #
-# The default output is informative about how to use the script:
+# The output of the programs with the '-h' option
+# is informative about how to use the scripts:
 # 
-##dnaorg_build.pl <reference accession>
-QUESTION: Is it required, as suggested by the examples below that the reference accession does not include the version?
-##
-## This script builds homology models for sequence features
-## in a reference sequence with the accession <reference accession>
-##
-## BASIC/COMMON OPTIONS:
-##  -c           : genome is circular
-##  -d <s>       : define output directory as <s>, not <reference accession>
-##  -f           : force; if dir <reference accession> exists, overwrite it
-##  -v           : be verbose; output commands to stdout as they're run
-##  -matpept <f> : read mat_peptide info in addition to CDS info, file <f> explains CDS:mat_peptide relationships
-##  -nomatpept   : ignore mat_peptide information for <reference accession> (do not model it)
-##  -dirty       : do not remove intermediate files, leave them all on disk
-##
-## OPTIONS SPECIFIC TO INFERNAL:
-##  -cslow  : use default cmcalibrate parameters, not parameters optimized for speed
-##  -clocal : run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm
-QUESTION: Are there any issues with the CentOS version transition on the farm?
-##
-#########################################
-# Usage and options of dnaorg_annotate_genomes.pl
-#########################################
-# TODO
-#########################################
-# Usage and options of summarize_dnaorg_annotate_genomes.pl
-#########################################
-# TODO
+# dnaorg_build.pl takes a single argument: the reference 
+# accession:
 #
-
+perl dnaorg_build.pl -h
+## dnaorg_build.pl :: build homology models for features of a reference sequence
+## dnaorg 0.1 (Feb 2016)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Thu Mar 17 14:55:25 2016
+##
+#Usage: dnaorg_build.pl [-options] <reference accession>
+#
+#basic options:
+#  -c            : genome is circular
+#  -d <s>        : specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>
+#  -f            : force; if dir <reference accession> exists, overwrite it
+#  -v            : be verbose; output commands to stdout as they're run
+#  --matpept <s> : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
+#  --nomatpept   : ignore mat_peptide information in reference annotation
+#  --keep        : do not remove intermediate files, keep them all on disk
+#
+#options affecting window/hit definition:
+#  --slow  : use default cmcalibrate parameters, not parameters optimized for speed
+#  --local : run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm
+#
+#optional output files:
+#  --mdlinfo : create file with internal model information
+#  --ftrinfo : create file with internal feature information
+#
+#options for skipping stages and use files from earlier, identical run, primarily useful for debugging:
+#  --skipedirect : skip the edirect steps, use data from an earlier run of the script
+#  --skipfetch   : skip the sequence fetching steps, use files from an earlier run of the script
+#
+######
+#
+# dnaorg_annotate.pl should be run after dnaorg_build.pl is finished
+# and all of the cmcalibrate jobs it has submitted have completed
+# running on the farm (TODO: have dnaorg_build.pl wait for
+# calibrations to finish before exiting.) 
+#
+# dnaorg_annotate.pl is run with a single command line argument,
+# a .ntlist file that contains a list of accessions, one per line.
+# These accessions should be the same species as the reference
+# accession used in dnaorg_build.pl. The reference accession used
+# passed into dnaorg_build.pl should be the first accession listed 
+# in the .ntlist file.
+#
+# See the example runs below for more detailed instructions.
+# 
+perl dnaorg_annotate.pl -h
+## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
+## dnaorg 0.1 (Feb 2016)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Thu Mar 17 14:56:55 2016
+##
+#Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>
+#
+#basic options:
+#  -c              : genome is circular
+#  -d <s>          : specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>
+#  -v              : be verbose; output commands to stdout as they're run
+#  --origin <s>    : identify origin seq <s> in genomes, put "|" at site of origin ("|" must be escaped, i.e. "\|"
+#  --matpept <s>   : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
+#  --nomatpept     : ignore mat_peptide information in reference annotation
+#  --specstart <s> : read specified alternate start codons per CDS from file <s>
+#  --keep          : do not remove intermediate files, keep them all on disk
+#  --model <s>     : use model file <s>
+#  --local         : run cmscan locally instead of on farm
+#  --nseq <n>      : set number of sequences for each cmscan farm job to <n> [5]
+#  --wait <n>      : allow <n> minutes for cmscan jobs on farm to finish [100]
+#
+#options for skipping/adding optional stages:
+#  --noalign : skip the alignment steps
+#
+#optional output files:
+#  --mdlinfo : create file with internal model information
+#  --ftrinfo : create file with internal feature information
+#  --seqinfo : create file with internal sequence information
+#  --errinfo : create file with internal error information
+#
+#options for skipping stages and use files from earlier, identical run, primarily useful for debugging:
+#  --skipedirect   : skip the edirect steps, use data from an earlier run of the script
+#  --skipfetch     : skip the sequence fetching steps, use files from an earlier run of the script
+#  --skipscan      : skip the cmscan step, use results from an earlier run of the script
+#  --skipalign     : skip the alignment steps, use results from an earlier run of the script
+#  --skiptranslate : skip the translation steps, use results from an earlier run of the script
+#
 ##############
 # Example runs
 ##############
 # 
-# There are currently (February 2016) three dnaorg scripts and they are meant to be used
-# in the following order:
+# There are currently (March 2016) two dnaorg scripts and they are
+# meant to be used in the following order:
 # 
 # 1) dnaorg_build.pl: build homology models for a reference accession.
-#    Must be run once per species
+#    Must be run once per species.
 # 
-# 2) dnaorg_annotate_genomes.pl: use models built from dnaorg_build.pl to
+# 2) dnaorg_annotate.pl: use models built from dnaorg_build.pl to
 #    annotate other genomes of the same species as the reference.
 #    Can be run many times for each species provided that
 #    dnaorg_build.pl has been run for that species (and reference).
 # 
-# 3) summarize_dnaorg_annotate_genomes.pl: summarize output from dnaorg_annotate_genomes.pl
-#    to make it easier to understand and digest. Can be run once
-#    per run of dnaorg_annotate_genomes.pl, or on multiple, concatenated 
-#    output files from multiple runs of dnaorg_annotate_genomes.pl.
-# 
 # The discussion below includes example runs of each of the
-# three scripts in turn for two different species. 
+# two scripts in turn for two different species. 
 # 
 # The first run is for the Maize streak virus, which has a circular
 # ssDNA genome with 4 CDS that code for proteins, one of which has 2
 # exons.  The second run is for Dengue (type 1) virus, which has a
-# linear ssRNA genome. Dengue translates a single polyprotein that is cleaved
-# in two stages into 14 smaller peptides, called "mature peptides". The first
-# stage cleaves the polyprotein into 11 adjacent, disjoint peptides. The second stage
-# further cleaves "sub-peptides" from three of the first stage peptides.
-# Together, the two runs on the two
-# different species demonstrate most of the features and versatility
-# of the dnaorg_annotate_genomes.pl script.
+# linear ssRNA genome. Dengue translates a single polyprotein that is
+# cleaved in two stages into 14 smaller peptides, called "mature
+# peptides". The first stage cleaves the polyprotein into 11 adjacent,
+# disjoint peptides. The second stage further cleaves "sub-peptides"
+# from three of the first stage peptides.  Together, the two runs on
+# the two different species demonstrate most of the features and
+# versatility of the dnaorg scripts.
 #
 ####################
 # Example run 1 of 2 
 ####################
 #
-# Here's an example of running the dnaorg_build.pl script for the
-# Maize streak virus (MSV). The RefSeq accession for MSV is NC_001346:
+# Here's an example of running the dnaorg_build.pl and
+# dnaorg_annotate.pl scripts for the Maize streak virus (MSV). 
+# 
+#######################################
+# Step 1. Run dnaorg_build.pl for MSV #
+#######################################
 #
+# The RefSeq accession for MSV is NC_001346, so to run the
+# dnaorg_build.pl script do simply:
+# 
 perl dnaorg_build.pl -c NC_001346
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.1 (February 2016)
-QUESTION: Do you wish to estanblish some convention about version numbers?
+## dnaorg 0.1 (Feb 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## command: dnaorg_build.pl -c  NC_001346
-## date:    Tue Feb 16 15:58:05 2016
-## option:  genome is circular, so features can span stop..start [-c]
+## date:    Thu Mar 17 15:15:28 2016
 ##
-## Gathering information on reference using edirect             ... done. [8.7 seconds]
-## Fetching and processing the reference genome                 ... done. [0.9 seconds]
-## Building models and submitting calibration jobs to the farm  ... done. [32.4 seconds]
+## reference accession:  NC_001346
+## genome is circular:   yes [-c] 
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Gathering information on reference using edirect             ... done. [8.4 seconds]
+## Fetching and processing the reference genome                 ... done. [1.1 seconds]
+## Building models and submitting calibration jobs to the farm  ... done. [34.0 seconds]
 ##
-## When the 5 cmcalibrate jobs on the farm finish, then the user can use dnaorg_annotate_genomes.pl
+## When the 5 cmcalibrate jobs on the farm finish, you can use dnaorg_annotate.pl
 ## to use them to annotate genomes.
 ##
 ##
 ## Output printed to screen saved in:                                  NC_001346.dnaorg_build.log
 ## List of executed commands saved in:                                 NC_001346.dnaorg_build.cmd
-## Feature table obtained via edirect saved in:                        NC_001346.dnaorg_build.ftable
-## Sequence length file saved in:                                      NC_001346.dnaorg_build.length
-## Input file for esl-fetch-cds.pl saved in:                           NC_001346.dnaorg_build.ref.fg.idfetch.in
-## Sequence file with reference genome saved in:                       NC_001346.dnaorg_build.ref.fg.fa
-## Index for reference genome sequence file saved in:                  NC_001346.dnaorg_build.ref.fg.fa.ssi
-## Stockholm alignment file with reference features saved in:          NC_001346.dnaorg_build.ref.all.stk
+## List and description of all output files:                           NC_001346.dnaorg_build.list
 ## CM file #1, CDS#1 (currently calibrating on the farm) saved in:     NC_001346.dnaorg_build.0.cm
 ## CM file #2, CDS#2 (currently calibrating on the farm) saved in:     NC_001346.dnaorg_build.1.cm
 ## CM file #3, CDS#3.1 (currently calibrating on the farm) saved in:   NC_001346.dnaorg_build.2.cm
@@ -216,7 +279,7 @@ QUESTION: Do you wish to estanblish some convention about version numbers?
 ##
 ## All output files created in directory ./NC_001346/.
 ##
-## CPU time:  00:00:42.07
+## CPU time:  00:00:43.53
 ##            hh:mm:ss
 ## 
 ## DNAORG-SUCCESS
@@ -226,15 +289,17 @@ QUESTION: Do you wish to estanblish some convention about version numbers?
 # We use the -c option because MSV is a circular genome, more on this
 # later.
 #
+
 # The output printed to the screen is also saved to the file
-# testing-msv/testing-msv.dnaorg_build.log. It explains the three 
-# main steps the script performs as they are being performed, and 
-# then outputs a list of the output files created by the script.
-# These files have all been created in the subdirectory 'testing-msv'.
-# A particularly important file is the testing-msv.dnaorg_build.cmd
-# file that includes all of the commands executed by the script 
-# during its execution.
-# 
+# NC_001346/NC_001346.dnaorg_build.log. It explains the three main
+# steps the script performs as they are being performed, and then
+# outputs a list of some of the output files created by the script.
+# For a complete list see NC_001346.dnaorg_build.list.
+# All output files have been created in the subdirectory 'NC_001346/'.
+# A particularly important file is the NC_001346.dnaorg_build.cmd
+# file that includes all of the commands executed by the script during
+# its execution.
+
 # The three main steps performed by the script are:
 # 1. 'Gathering information on reference using edirect'. In this step, 
 #    the edirect tools (esearch, efetch, xtract, etc.) are used to
@@ -264,16 +329,241 @@ QUESTION: Do you wish to estanblish some convention about version numbers?
 qstat
 ##job-ID  prior   name       user         state submit/start at     queue                          jclass                         slots ja-task-ID 
 ##------------------------------------------------------------------------------------------------------------------------------------------------
-##6309233 1.50383 c.NC_00134 nawrocke     r     02/16/2016 15:59:25 unified@sge272.be-md.ncbi.nlm.                                    4        
-##6309244 1.50383 c.NC_00134 nawrocke     r     02/16/2016 15:59:25 unified@sge818.be-md.ncbi.nlm.                                    4        
+##1488898 0.83375 c.NC_00134 nawrocke     r     03/17/2016 15:16:00 unified@sge272.be-md.ncbi.nlm.                                    4        
+##1488904 0.83375 c.NC_00134 nawrocke     r     03/17/2016 15:16:00 unified@sge824.be-md.ncbi.nlm.                                    4        
 #
 # Once there are no c.NC_00134* jobs remaining in the qstat output,
 # the jobs have finished and dnaorg_annotate_genomes.pl can be run.
-QUESTION: If jobs fail because of a problem on the farm, how can this be detected?
 #
-# TODO: Example of dnaorg_annotate_genomes.pl
-# TODO: Example of summarize_dnaorg_annotate_genomes.pl
+# If a job fails on the cluster (doesn't complete successfully), the
+# easiest way to find out is by moving onto the dnaorg_annotate.pl
+# step. If one of the calibrations failed, the dnaorg_annotate.pl
+# step will fail as well, and inform you the CM files are faulty.
+# If this happens, it's probably due to a fluke problem with the
+# compute farm, so try to rerun dnaorg_build.pl again.
 #
+##########################################
+# Step 2. Run dnaorg_annotate.pl for MSV #
+##########################################
+#
+# Once the calibrations are finished we can run dnaorg_annotate.pl
+# to annotate other MSV genomes. For this example we'll annotate
+# 5 genomes, one of which is the reference genome. These are listed 
+# in NC_001346.ntlist. Take a look at that file:
+#
+cat NC_001346.ntlist 
+#NC_001346
+#KJ699341
+#KJ437659
+#HQ693446
+#HQ693435
+##
+#
+# It is a requirement that the first accession in the ntlist file that
+# is passed into dnaorg_annotate.pl is the same accession used in 
+# the dnaorg_build.pl call.
+#
+# To run dnaorg_annotate.pl do:
+#
+perl dnaorg_annotate.pl NC_001346.ntlist 
+## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
+## dnaorg 0.1 (Feb 2016)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Thu Mar 17 15:25:36 2016
+##
+## file with list of accessions:  NC_001346.ntlist
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Gathering information on 5 sequences using edirect                     ... done. [9.7 seconds]
+## Fetching all sequences and processing the reference genome             ... done. [1.4 seconds]
+## Creating CM database by concatenating individual CM files              ... done. [0.1 seconds]
+## Preparing the CM database for homology search using cmpress            ... done. [0.2 seconds]
+## Verifying CM database created for current reference NC_001346          ... done. [0.0 seconds]
+## Running cmscan locally                                                 ... done. [25.9 seconds]
+## Parsing cmscan results                                                 ... done. [0.0 seconds]
+## Calculating predicted feature lengths                                  ... done. [0.0 seconds]
+## Fetching cmscan predicted hits into fasta files                        ... done. [0.0 seconds]
+## Combining predicted exons into CDS                                     ... done. [0.0 seconds]
+## Combining predicted mature peptides into CDS                           ... done. [0.0 seconds]
+## Identifying internal starts/stops in coding sequences                  ... done. [3.2 seconds]
+## Correcting homology search stop predictions                            ... done. [0.0 seconds]
+## Identifying overlap and adjacency errors                               ... done. [0.0 seconds]
+## Finalizing annotations and validating error combinations               ... done. [0.0 seconds]
+## Fetching cmscan predicted hits into fasta files                        ... done. [0.0 seconds]
+## Combining corrected exons into CDS                                     ... done. [0.0 seconds]
+## Combining corrected mature peptides into CDS                           ... done. [0.0 seconds]
+## Translating corrected nucleotide features into protein sequences       ... done. [3.1 seconds]
+## Aligning and parsing corrected nucleotide hits                         ... done. [1.6 seconds]
+## Aligning translated protein sequences                                  ... done. [2.1 seconds]
+## Generating tabular annotation output                                   ... done. [0.0 seconds]
+## Generating error code output                                           ... done. [0.0 seconds]
+##
+## Annotated 5 accessions, 0 (0.0000 fraction) had at least one annotation 'failure', see NC_001346.dnaorg_annotate.tbl for all details.
+## Table below includes counts of error codes
+##
+## Explanation of columns:
+## "code"       : the error code
+## "#tot"       : total number of occurences of code , possibly > 1 for some accessions
+## "#accn"      : number of accessions with at least 1 occurence of code
+## "fraction...": fraction of all 5 accessions with at least 1 occurence of code
+##
+## Explanation of final two rows beginning with "total" and "any":
+##   "total":"#tot"   column is total number of error codes reported
+##   "any":"#tot"     column is number of accessions with >= 1 error code
+##   "any":"fraction" column is fraction of accessions with >= 1 error code
+##code   #tot  #accn  fraction-of-all-5-accn
+##----  -----  -----  ------
+#  ori      0      0  0.0000
+#  nop      0      0  0.0000
+#  nm3      0      0  0.0000
+#  bd5      0      0  0.0000
+#  bd3      0      0  0.0000
+#  olp      0      0  0.0000
+#  str      0      0  0.0000
+#  stp      0      0  0.0000
+#  ajb      0      0  0.0000
+#  aja      0      0  0.0000
+#  trc      2      2  0.4000
+#  ext      0      0  0.0000
+#  ntr      0      0  0.0000
+#  nst      0      0  0.0000
+#  aji      0      0  0.0000
+#  int      0      0  0.0000
+#  inp      0      0  0.0000
+##----  -----  -----  ------
+#total      2      -       -
+#  any      2      -  0.4000
+##
+## Output printed to screen saved in:                                                   NC_001346.dnaorg_annotate.log
+## List of executed commands saved in:                                                  NC_001346.dnaorg_annotate.cmd
+## List and description of all output files saved in:                                   NC_001346.dnaorg_annotate.list
+## CM file (a concatenation of individual files created by dnaorg_build.pl) saved in:   NC_001346.dnaorg_annotate.ref.cm
+## All annotations in tabular format saved in:                                          NC_001346.dnaorg_annotate.tbl
+## Annotations for all sequences with >= 1 failure in tabular format saved in:          NC_001346.dnaorg_annotate.fail.tbl
+## Annotations for all sequences with >= 1 error in tabular format saved in:            NC_001346.dnaorg_annotate.error.tbl
+## List of errors, one line per sequence saved in:                                      NC_001346.dnaorg_annotate.peraccn.errors
+## List of errors, one line per error saved in:                                         NC_001346.dnaorg_annotate.all.errors
+## Summary of all errors saved in:                                                      NC_001346.dnaorg_annotate.errors.summary
+##
+## All output files created in directory ./NC_001346/.
+##
+## CPU time:  00:00:47.49
+##            hh:mm:ss
+## 
+## DNAORG-SUCCESS
+##############
+#
+# The dnaorg_annotate.pl output begins with a description of the many
+# steps it performs, with timings of each step.
+#
+###########################
+## CHUNK OF SCRIPT OUTPUT #
+###########################
+## Gathering information on 5 sequences using edirect                     ... done. [9.7 seconds]
+## Fetching all sequences and processing the reference genome             ... done. [1.4 seconds]
+## Creating CM database by concatenating individual CM files              ... done. [0.1 seconds]
+## Preparing the CM database for homology search using cmpress            ... done. [0.2 seconds]
+## Verifying CM database created for current reference NC_001346          ... done. [0.0 seconds]
+## Running cmscan locally                                                 ... done. [25.9 seconds]
+## Parsing cmscan results                                                 ... done. [0.0 seconds]
+## Calculating predicted feature lengths                                  ... done. [0.0 seconds]
+## Fetching cmscan predicted hits into fasta files                        ... done. [0.0 seconds]
+## Combining predicted exons into CDS                                     ... done. [0.0 seconds]
+## Combining predicted mature peptides into CDS                           ... done. [0.0 seconds]
+## Identifying internal starts/stops in coding sequences                  ... done. [3.2 seconds]
+## Correcting homology search stop predictions                            ... done. [0.0 seconds]
+## Identifying overlap and adjacency errors                               ... done. [0.0 seconds]
+## Finalizing annotations and validating error combinations               ... done. [0.0 seconds]
+## Fetching cmscan predicted hits into fasta files                        ... done. [0.0 seconds]
+## Combining corrected exons into CDS                                     ... done. [0.0 seconds]
+## Combining corrected mature peptides into CDS                           ... done. [0.0 seconds]
+## Translating corrected nucleotide features into protein sequences       ... done. [3.1 seconds]
+## Aligning and parsing corrected nucleotide hits                         ... done. [1.6 seconds]
+## Aligning translated protein sequences                                  ... done. [2.1 seconds]
+## Generating tabular annotation output                                   ... done. [0.0 seconds]
+## Generating error code output                                           ... done. [0.0 seconds]
+##################################
+## END OF CHUNK OF SCRIPT OUTPUT #
+##################################
+#
+# The first several steps gather information about the reference
+# accession, the existing annotations of all accessions, and validate
+# the CM file in the NC_001346/ directory that is about to be used for
+# annotation was indeed made for the current reference sequence.
+# 
+# The script then runs the Infernal 'cmscan' progarm to annotate all
+# the 'features' of each of the accessions. In this case 'cmscan' was 
+# run locally (on the current machine). If more than 5 sequences were
+# to be annotated, the annotations would be submitted to the compute
+# farm, with 5 sequences per compute job, and the script would wait
+# for them all to finish before proceeding. (This magic number of '5'
+# can be changed to <n> with the --nseq <n> option.)
+#
+# The cmscan results are then parsed and the predicted hits are
+# fetched into fasta files. These sequence files are then examined for
+# the validity of their start and stop codons and also to identify any
+# early in-frame stop codons. The results of these examinations are
+# used to 'correct' predictions where early in-frame stop codons were
+# found. The 'corrected' sequences are then fetched, aligned,
+# translated, and then those translations are aligned.
+#
+# Finally the script outputs the tabular annotation and lists of
+# errors found, and outputs a summary of the annotations and errors:
+#
+###########################
+## CHUNK OF SCRIPT OUTPUT #
+###########################
+## Annotated 5 accessions, 0 (0.0000 fraction) had at least one annotation 'failure', see NC_001346.dnaorg_annotate.tbl for all details.
+## Table below includes counts of error codes
+##
+## Explanation of columns:
+## "code"       : the error code
+## "#tot"       : total number of occurences of code , possibly > 1 for some accessions
+## "#accn"      : number of accessions with at least 1 occurence of code
+## "fraction...": fraction of all 5 accessions with at least 1 occurence of code
+##
+## Explanation of final two rows beginning with "total" and "any":
+##   "total":"#tot"   column is total number of error codes reported
+##   "any":"#tot"     column is number of accessions with >= 1 error code
+##   "any":"fraction" column is fraction of accessions with >= 1 error code
+##code   #tot  #accn  fraction-of-all-5-accn
+##----  -----  -----  ------
+#  ori      0      0  0.0000
+#  nop      0      0  0.0000
+#  nm3      0      0  0.0000
+#  bd5      0      0  0.0000
+#  bd3      0      0  0.0000
+#  olp      0      0  0.0000
+#  str      0      0  0.0000
+#  stp      0      0  0.0000
+#  ajb      0      0  0.0000
+#  aja      0      0  0.0000
+#  trc      2      2  0.4000
+#  ext      0      0  0.0000
+#  ntr      0      0  0.0000
+#  nst      0      0  0.0000
+#  aji      0      0  0.0000
+#  int      0      0  0.0000
+#  inp      0      0  0.0000
+##----  -----  -----  ------
+#total      2      -       -
+#  any      2      -  0.4000
+#################################
+# END OF CHUNK OF SCRIPT OUTPUT #
+#################################
+#
+# In this case, 5 accessions were annotated, with zero 'failures'. See
+# the NC_001346.dnaorg_annotate.tbl file in the NC_001346/ directory
+# for the detailed annotations.
+#
+# The final table output summarizes the counts of each of the error
+# codes. These error codes are described more in this file:
+# /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5.documentation.txt 
+#
+# In this case there are only 2 trc errors. For all errors see 
+# the NC_001346.dnaorg_annotate.all.errors file (one error per line)
+# and the NC_001346.dnaorg_annotate.peraccn.errors (one accession per
+# line) file in the NC_001346 directory.
+# 
 ####################
 # Example run 2 of 2 
 ####################
@@ -281,44 +571,76 @@ QUESTION: If jobs fail because of a problem on the farm, how can this be detecte
 # In this second example run of the dnaorg scripts, we will repeat the
 # same steps as in the MSV example, but with the Dengue virus, which
 # differs from MSV in some important biological ways. 
+# 
 # Dengue has a single CDS that encodes a polypeptide which is cleaved
 # into (eventually) 14 distinct peptides. These peptides are annotated
-# as 'mat_peptide' features in GenBank. The dnaorg_annotate_genomes.pl
-# script has a -matpept option that can be used for such species.
+# as 'mat_peptide' features in GenBank. The dnaorg_annotate.pl script
+# attempts to annotate each mature peptide independently, and then 
+# combine those annotations to annotate the CDS that encode the 
+# mature peptide sequences. The script needs a special input file
+# to define the relationships between the mature peptides and the
+# CDS for the reference accession. In this example we'll use the
+# 'NC_001477.matpept.in' file as input to dnaorg_annotate.pl.
 #
+# Here is that file:
+cat NC_001477.matpept.in 
+## This file explains how CDS and mat_peptide annotation for NC_001477
+## are related.
+##
+## Format of lines in this file:
+## <CDS-idx> <'primary' OR 'all'> <mat_peptide-1-idx>:<mat_peptide-2-idx>:<mat_peptide-n-idx>
+## 'primary' lines: these define the 'primary' peptides in order, the
+##                  CDS <CDS-idx> is comprised of the peptides listed
+##                  in final token, which are contiguous, start of 
+##                  first mat_peptide to stop of final mat_peptide is
+##                  one contiguous subsequence.
+##
+## 'all' lines:     these define all the peptides that are ultimately
+##                  derived from CDS <CDS-idx>. It will be a superset
+##                  of the primary line for this index but will
+##                  additionally include mat_peptides that are
+##                  secondarily cleaved from the primary mat_peptides.
+##
+#1 primary 1:3:6:7:8:9:10:11:12:13:14
+#1 all     1:2:3:4:5:6:7:8:9:10:11:12:13:14
+##################################
+#
+# To construct one of these files for a new species, it is necessary
+# to look at the annotation of the reference genome and manually
+# determine which mature peptides are encoded by each CDS, and in what
+# order they are encoded. 
+# 
 # Another important difference with the first MSV
 # example is that Dengue is not a circular genome. Therefore,
 # Dengue does not have an origin sequence, so we do not use 
 # the -c option for Dengue.
 #
+##########################################
+# Step 1. Run dnaorg_build.pl for Dengue #
+##########################################
+#
 # Here's an example run of dnaorg_build.pl for Dengue:
 #
-QUESTION: Is the command below what you intended?
-perl dnaorg_build.pl -matpept NC_001477.matpept.in NC_001477
+perl dnaorg_build.pl --matpept NC_001477.matpept.in NC_001477
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.1 (February 2016)
+## dnaorg 0.1 (Feb 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## command: dnaorg_build.pl -matpept NC_001477.matpept.in NC_001477
-## date:    Tue Feb 16 16:12:43 2016
-## option:  using mat_peptide info, CDS:mat_peptide relationships explained in NC_001477.matpept.in [-matpept]
+## date:    Thu Mar 17 15:30:01 2016
 ##
-## Gathering information on reference using edirect             ... done. [8.2 seconds]
-## Fetching and processing the reference genome                 ... done. [1.2 seconds]
-## Building models and submitting calibration jobs to the farm  ... done. [246.5 seconds]
+## reference accession:                   NC_001477                       
+## using pre-specified mat_peptide info:  NC_001477.matpept.in [--matpept]
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Gathering information on reference using edirect             ... done. [8.0 seconds]
+## Fetching and processing the reference genome                 ... done. [1.3 seconds]
+## Building models and submitting calibration jobs to the farm  ... done. [247.8 seconds]
 ##
-## After the 14 cmcalibrate jobs on the farm finish, one can use dnaorg_annotate_genomes.pl
+## When the 14 cmcalibrate jobs on the farm finish, you can use dnaorg_annotate.pl
 ## to use them to annotate genomes.
 ##
 ##
 ## Output printed to screen saved in:                                 NC_001477.dnaorg_build.log
 ## List of executed commands saved in:                                NC_001477.dnaorg_build.cmd
-## Mature peptide information obtained via edirect saved in:          NC_001477.dnaorg_build.mat_peptide
-## Feature table obtained via edirect saved in:                       NC_001477.dnaorg_build.ftable
-## Sequence length file saved in:                                     NC_001477.dnaorg_build.length
-## Input file for esl-fetch-cds.pl saved in:                          NC_001477.dnaorg_build.ref.fg.idfetch.in
-## Sequence file with reference genome saved in:                      NC_001477.dnaorg_build.ref.fg.fa
-## Index for reference genome sequence file saved in:                 NC_001477.dnaorg_build.ref.fg.fa.ssi
-## Stockholm alignment file with reference features saved in:         NC_001477.dnaorg_build.ref.all.stk
+## List of executed commands saved in:                                NC_001477.dnaorg_build.list
 ## CM file #1, MP#1 (currently calibrating on the farm) saved in:     NC_001477.dnaorg_build.0.cm
 ## CM file #2, MP#2 (currently calibrating on the farm) saved in:     NC_001477.dnaorg_build.1.cm
 ## CM file #3, MP#3 (currently calibrating on the farm) saved in:     NC_001477.dnaorg_build.2.cm
@@ -336,248 +658,124 @@ perl dnaorg_build.pl -matpept NC_001477.matpept.in NC_001477
 ##
 ## All output files created in directory ./NC_001477/.
 ##
-## CPU time:  00:04:15.90
+## CPU time:  00:04:17.13
 ##            hh:mm:ss
 ## 
 ## DNAORG-SUCCESS
+#################
 #
-##########################################
-#
-# The three steps performed for the script are they same as they were
-# for MSV except that now, both mature peptide and CDS information is
-# obtained using edirect tools and a file with the .mat_peptide suffix
-# is now created. Also, the models are now built for mature peptides,
-# instead of for CDS as they were in the MSV example. The lone CDS for
-# Dengue will still be annotated by dnaorg_annotate_genomes.pl below, but by
-# using the annotations of the mature peptides that make up the CDS,
-# instead of using a single homology model of the entire CDS.
+# In this case, there were 14 CMs that were built and are calibrating.
 # 
-# As with MSV, we need to wait until all of the calibration jobs on
-# the farm have finished running before proceeding to the
-# dnaorg_annotate_genomes.pl step below.
+#############################################
+# Step 2. Run dnaorg_annotate.pl for Dengue #
+#############################################
 #
-# TODO: Example of dnaorg_annotate_genomes.pl
-# TODO: Example of summarize_dnaorg_annotate_genomes.pl
-#
-###########################################################################
-###########################################################################
-###########################################################################
-###########################################################################
-###########################################################################
-#  TEXT BELOW HERE IS UNMODIFIED FROM ORIGINAL 00NOTES.txt FILE FROM 
-#  BEFORE THE CODE REORGANIZATION OF FEB 2016. THAT 00NOTES.txt FILE
-#  IS SAVED AS 00NOTES-oldasof02162016.txt IN THE GIT REPO).
-#  MOST OF IT IS STILL PROBABLY ACCURATE BUT I NEED TO GO OVER IT 
-#  IN DETAIL WHEN dnaorg_annotate_genomes.pl and summarize_dnaorg_annotate_genomes.pl ARE
-#  COMPLETED.
-###########################################################################
+# When these 14 calibration jobs have finished, we can run
+# dnaorg_annotate.pl. This time we'll run the script on only the 3
+# sequences in NC_001477.ntlist, but we'll force the cmscan jobs to
+# run on the compute farm with the --nseq 1 option. With this option,
+# we will submit 3 cmscan jobs to the farm, one per sequence to
+# annotate.  We again have to use the --matpept option.
+# 
+perl dnaorg_annotate.pl --nseq 1 --matpept NC_001477.matpept.in NC_001477.ntlist 
+## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
+## dnaorg 0.1 (Feb 2016)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Thu Mar 17 16:04:26 2016
+##
+## file with list of accessions:                  NC_001477.ntlist                
+## using pre-specified mat_peptide info:          NC_001477.matpept.in [--matpept]
+## number of sequences for each cmscan farm job:  1 [--nseq]                      
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Gathering information on 3 sequences using edirect                     ... done. [9.2 seconds]
+## Fetching all sequences and processing the reference genome             ... done. [1.8 seconds]
+## Creating CM database by concatenating individual CM files              ... done. [0.7 seconds]
+## Submitting 3 cmscan jobs to the farm                                   ... done. [0.2 seconds]
+## Waiting a maximum of 100 minutes for all farm jobs to finish           ... done. [60.1 seconds]
+## Parsing cmscan results                                                 ... done. [0.0 seconds]
+## Calculating predicted feature lengths                                  ... done. [0.0 seconds]
+## Fetching cmscan predicted hits into fasta files                        ... done. [0.1 seconds]
+## Combining predicted exons into CDS                                     ... done. [0.0 seconds]
+## Combining predicted mature peptides into CDS                           ... done. [0.2 seconds]
+## Identifying internal starts/stops in coding sequences                  ... done. [14.6 seconds]
+## Correcting homology search stop predictions                            ... done. [0.0 seconds]
+## Identifying overlap and adjacency errors                               ... done. [0.0 seconds]
+## Finalizing annotations and validating error combinations               ... done. [0.0 seconds]
+## Fetching cmscan predicted hits into fasta files                        ... done. [0.1 seconds]
+## Combining corrected exons into CDS                                     ... done. [0.0 seconds]
+## Combining corrected mature peptides into CDS                           ... done. [0.2 seconds]
+## Translating corrected nucleotide features into protein sequences       ... done. [15.6 seconds]
+## Aligning and parsing corrected nucleotide hits                         ... done. [7.1 seconds]
+## Aligning translated protein sequences                                  ... done. [14.2 seconds]
+## Generating tabular annotation output                                   ... done. [0.0 seconds]
+## Generating error code output                                           ... done. [0.0 seconds]
+##
+## Annotated 3 accessions, 0 (0.0000 fraction) had at least one annotation 'failure', see NC_001477.dnaorg_annotate.tbl for all details.
+## Table below includes counts of error codes
+##
+## Explanation of columns:
+## "code"       : the error code
+## "#tot"       : total number of occurences of code , possibly > 1 for some accessions
+## "#accn"      : number of accessions with at least 1 occurence of code
+## "fraction...": fraction of all 3 accessions with at least 1 occurence of code
+##
+## Explanation of final two rows beginning with "total" and "any":
+##   "total":"#tot"   column is total number of error codes reported
+##   "any":"#tot"     column is number of accessions with >= 1 error code
+##   "any":"fraction" column is fraction of accessions with >= 1 error code
+##code   #tot  #accn  fraction-of-all-3-accn
+##----  -----  -----  ------
+#  ori      0      0  0.0000
+#  nop      0      0  0.0000
+#  nm3      0      0  0.0000
+#  bd5      0      0  0.0000
+#  bd3      0      0  0.0000
+#  olp      0      0  0.0000
+#  str      0      0  0.0000
+#  stp      0      0  0.0000
+#  ajb      0      0  0.0000
+#  aja      0      0  0.0000
+#  trc      0      0  0.0000
+#  ext      0      0  0.0000
+#  ntr      0      0  0.0000
+#  nst      0      0  0.0000
+#  aji      0      0  0.0000
+#  int      0      0  0.0000
+#  inp      0      0  0.0000
+##----  -----  -----  ------
+#total      0      -       -
+#  any      0      -  0.0000
+##
+## Output printed to screen saved in:                                            NC_001477.dnaorg_annotate.log
+## List of executed commands saved in:                                           NC_001477.dnaorg_annotate.cmd
+## List and description of all output files saved in:                            NC_001477.dnaorg_annotate.list
+## All annotations in tabular format saved in:                                   NC_001477.dnaorg_annotate.tbl
+## Annotations for all sequences with >= 1 failure in tabular format saved in:   NC_001477.dnaorg_annotate.fail.tbl
+## Annotations for all sequences with >= 1 error in tabular format saved in:     NC_001477.dnaorg_annotate.error.tbl
+## List of errors, one line per sequence saved in:                               NC_001477.dnaorg_annotate.peraccn.errors
+## List of errors, one line per error saved in:                                  NC_001477.dnaorg_annotate.all.errors
+## Summary of all errors saved in:                                               NC_001477.dnaorg_annotate.errors.summary
+##
+## All output files created in directory ./NC_001477/.
+##
+## CPU time:  00:02:04.36
+##            hh:mm:ss
+## 
+## DNAORG-SUCCESS
+####################################
+# 
+# The output is very similar to the output for MSV. In this case, no
+# failures or errors were found. See the NC_001477.dnaorg_annotate.tbl
+# for annotations. NC_001477.dnaorg_annotate.all.errors and 
+# NC_001477.dnaorg_annotate.peraccn.errors would contain error
+# information if there had been any errors.
+# 
 ##############
 # Output files
 ##############
 #
-# The script creates a number of output files in the directory
-# specified on the command line. Here, I list the output file
-# created by example run #1 above, which are put in the 
-# NC_001346/ directory.
-#
-# These output files include (I'll use the specific name of the files
-# here, but they will vary if the name of directory specific on the
-# command line changes from 'NC_001346'):
+# TODO: write this section
 # 
-# NC_001346.tblout: cmscan tabular output 
-#
-# NC_001346.stdout: cmscan standard output 
-#
-# NC_001346.predicted.cds.<n>.fa: nucleotide sequences for predicted
-#   CDS number <n>, these pertain to coordinates before the
-#   'correction' step of identifying internal start/stops.
-#
-# NC_001346.predicted.cds.<n>.exon.<o>.fa: nucleotide sequences for
-#   predicted CDS number <n>, exon number <o>. these pertain to
-#   coordinates before the 'correction' step. These will only exist
-#   for multi-exon CDS.
-# 
-# NC_001346.corrected.cds.<n>.fa: nucleotide sequences for corrected
-#   CDS number <n>. For accessions with zero internal starts and stops
-#   in the predicted CDS, the sequence will be the same as in the 
-#   NC_001346.predicted.cds.<n>.fa file.
-#
-# NC_001346.corrected.cds.<n>.exon.<o>.fa: nucleotide sequences for corrected
-#   CDS number <n>, exon number <o>. These will only exist for
-#   multi-exon CDS. For accessions with zero internal starts and stops
-#   in the predicted CDS, the sequence will be the same as in the 
-#   NC_001346.predicted.cds.<n>.fa file.
-#
-# NC_001346.corrected.aa.full.<n>.fa: translated protein sequences for
-#   the CDS in NC_001346.corrected.cds.<n>.fa.
-#
-# NC_001346.corrected.cds.<n>.stk: multiple alignment of the sequences
-#   in NC_001346.corrected.cds.<n>.fa. Created by cmalign by
-#   essentially aligning each individual exon to the reference exon.
-#
-# NC_001346.corrected.cds.<n>.exon.<o>.stk: multiple alignment of the
-#   sequences in NC_001346.corrected.cds.<n>.exon.<o>.fa. Created by
-#   cmalign by essentially aligning each individual exon to the
-#   reference exon.
-#
-# NC_001346.corrected.cds.<n>.exon.<o>.fa: nucleotide sequences for corrected
-#   CDS number <n>, exon number <o>. These will only exist for
-#   multi-exon CDS. For accessions with zero internal starts and stops
-#   in the predicted CDS, the sequence will be the same as in the 
-#   NC_001346.predicted.cds.<n>.fa file.
-# 
-# NC_001346.gap.perseq-all.txt: list of all gaps in all alignments of
-#   the exons. Organized per-sequence (each row is a sequence).
-#
-# NC_001346.gap.perseq-not3.txt: list of all gaps that are not a
-#   multiple of 3 in all alignments of the exons. Organized
-#   per-sequence.
-#
-# NC_001346.gap.perseq-special.txt: list of all gaps that are
-#   'special' in that they can explain why a CDS is not a multiple of
-#   length 3 (see the comments in this file for a more precise
-#   definition). Organized per-sequence.
-#
-# NC_001346.gap.pergap-all.txt: list of counts of all gaps, organized
-#   per gap (each line is a different gap).
-#
-# NC_001346.gap.pergap-not3.txt: list of counts of all gaps that are
-#   not a multiple of 3, organized per gap (each line is a different
-#   gap).
-#
-# NC_001346.gap.pergap-special.txt: list of counts of all 'special'
-#   gaps, organized per gap (each line is a different gap).
-#
-#
-##########################
-# Format of gap info files
-##########################
-# 
-# dnaorg_annotate_genomes.pl generates 6 different gap files:
-# 1. NC_001346.gap.perseq-all.txt
-# 2. NC_001346.gap.perseq-not3.txt
-# 3. NC_001346.gap.perseq-special.txt
-# 4. NC_001346.gap.pergap-all.txt
-# 5. NC_001346.gap.pergap-not3.txt
-# 6. NC_001346.gap.pergap-special.txt
-#
-# The first 3 files include 'perseq' in the name. These are organized
-# as tables with each sequence as a row. Take a look at file  1.
-cat NC_001346/NC_001346.gap.perseq-all.txt 
-### List of all gaps in alignment of each sequence:
-###
-###           CDS#1             CDS#2             CDS#3               CDS#4           
-###           ================  ================  ==================  ================
-###accession  tot  net  string  tot  net  string  tot  net  string    tot  net  string
-###---------  ---  ---  ------  ---  ---  ------  ---  ---  --------  ---  ---  ------
-##NC_001346   0    0    -       0    0    -       0    0    -         0    0    -     
-##KJ699341    0    0    -       0    0    -       0    0    -         0    0    -     
-##KJ437659    0    0    -       0    0    -       0    0    -         0    0    -     
-##HQ693446    0    0    -       0    0    -       15   -15  D1069:15  0    0    -     
-##HQ693435    0    0    -       0    0    -       15   -15  D1069:15  0    0    -     
-###
-### Explanation of the above table:
-### The table includes information on all gaps that exist between all pairwise alignments of
-### the reference CDS and the predicted homologous CDS for each sequence.
-###
-### There are 3 columns under each header "CDS#<n> (all gaps)" named "tot", "net",
-### and "string".
-### The "tot" columns list the total number of gap positions in either sequence in the pairwise alignment.
-### The "net" columns list the net number of the listed gaps in the pairwise alignment; this is the number
-###   of gaps in the reference sequence minus the number of gaps in the current sequence (inserts minus deletes)
-### The "string" columns include a list of <n> tokens, each of which describes a gap of length >= 1 nucleotide.
-###
-### Tokens are in the form: <char><position><length>
-###   <char>     is 'I' for an insertion relative to the reference CDS (gap in reference sequence)
-###              or 'D' for a  deletion  relative to the reference CDS (gap in current sequence)
-###   <position> is the nucleotide position of the gap in reference coordinates.
-###              For insertions this is the reference position after which the insertion occurs.
-###              For deletions  this is the first reference position for this deletion.
-###   <length>   length of the gap in nucleotides.
-###              For insertions this is the number of nucleotides inserted relative to the reference
-###              For deletions  this is the number of reference positions deleted.
-#
-# The text starting 'Explanation of above table' explains the meaning
-# and format of the table. 
-#
-# The other two 'perseq' files are:
-# NC_001346.gap.perseq-not3.txt and
-# NC_001346.gap.perseq-special.txt
-# 
-# These contain slightly different information. The 'not3' file 
-# includes the same information as the NC_001346.gap.perseq-all.txt
-# but only contains information on gaps that have lengths which are
-# NOT multiples of 3.
-# 
-# The 'special' file contains counts of an even more restricted set of
-# gaps. The relevant explanatory comments in that file are:
-#
-### Specifically, these are counts of gaps X in a feature Y (CDS or mat_peptide), such that the following criteria are met:
-###   - length of feature Y is not a multiple of 3
-###   - if one removes only X from list of all gaps, total feature length of Y becomes a multiple of 3
-###       with length difference of D with reference feature
-###    - there are no other gaps Z such that if one removes only Z then length of Y becomes a multiple
-###       of 3 with length difference D2 from reference where D2 < D.
-#
-####################
-# 
-# The 'pergap' files (4-6 in list above) are organized
-# differently. Take a look at file #4:
-#
-cat NC_001346/NC_001346.gap.pergap-all.txt 
-### Counts of all gaps:
-###
-##CDS#3 D1069:15 2
-###
-#
-# This lists all different gaps as a line. Each line has 3
-# space-delimited tokens. Token 1 is the feature the gap is in,
-# 'CDS#3' in this case. Token 2 is a description of the gap, in the
-# format described in the end of the
-# 'NC_001346/NC_001346.gap.perseq-all.txt' file above. From that
-# output:
-#
-### Tokens are in the form: <char><position><length>
-###   <char>     is 'I' for an insertion relative to the reference CDS (gap in reference sequence)
-###              or 'D' for a  deletion  relative to the reference CDS (gap in current sequence)
-###   <position> is the nucleotide position of the gap in reference coordinates.
-###              For insertions this is the reference position after which the insertion occurs.
-###              For deletions  this is the first reference position for this deletion.
-###   <length>   length of the gap in nucleotides.
-###              For insertions this is the number of nucleotides inserted relative to the reference
-###              For deletions  this is the number of reference positions deleted.
-#
-# So this gap 'D1069:15' is a deletion relative to the reference CDS
-# at position 1069 of 15 nucleotides.
-#
-# The third token is the count of these gaps. There are exactly 2
-# accessions with this gap.
-#
-# As with the 'perseq' files, there are two other 'pergap' files, with
-# the names:
-# NC_001346.gap.pergap-not3.txt
-# NC_001346.gap.pergap-special.txt
-#
-# These are analogous to the similarly named 'not3' and 'special'
-# perseq gap files.
-#
-#############################################
-# Parallelizing the cmscan step with -sfarm
-#############################################
-#
-# The -sfarm <n> option allows parallelism of the cmscan step into
-# <n> farm jobs. From the usage above:
-#
-##  -sfarm <n> : split genome file into <n> pieces, submit <n> cmscan jobs and wait 3 minutes
-##                  (changeable with -swait) before concatenating all the output files and continuing
-##  -swait <n>    : with -sfarm, set number of minutes to wait for cmscan jobs to finish to <n> [df: 3]
-# 
-# If -sfarm is used, the script will submit the <n> jobs and wait 
-# up to 3 minutes for all jobs to finish (checking if they are
-# finished every 15 seconds). Once they are finished it will
-# concatenate the results and carry on as usual. The -swait <m> option 
-# can be used to change the maximum wait time to <m> minutes.
-#
 ##############################################################
 ## Reproducibility and order-dependence of list of accessions
 ##############################################################
@@ -623,7 +821,6 @@ QUESTION: Doesn't the next paragraph need to be changed to reflect the current c
 # For example:
 # NC_001346/2527-1886,1793-1353
 # 
-#
 # Protein sequences are similarly named with the coordinates
 # pertaining to nucleotide coordinates the protein was translated
 # from. Additionally, the string "-translated" is appended to the
@@ -634,192 +831,15 @@ QUESTION: Doesn't the next paragraph need to be changed to reflect the current c
 # NC_001346/2527-1886,1793-1353-translated
 # 
 ########################################################
-# Ancillary script: summarize_dnaorg_annotate_genomes.pl
-########################################################
-#
-# The summarize_dnaorg_annotate_genomes.pl can help summarize
-# information output from dnaorg_annotate_genomes.pl. 
-#
-# The script will print the available options if the user
-# runs it without any command line arguments:
-#
-perl summarize_dnaorg_annotate_genomes.pl
-##
-##summarize_dnaorg_annotate_genomes.pl
-##	<output file created by dnaorg_annotate_genomes.pl>
-##
-## This script summarizes an output file created by dnaorg_annotate_genomes.pl
-## by listing counts of each value observed for each category.
-## BASIC OPTIONS:
-##  -passfail    : only print counts of PF and result values
-##  -outkey <s>  : save file with values for each accession for keys matching <s>
-##  -outname <s> : name output file <s>
-##  -avgfid      : only print average fractional identities
-##
-#
-# Currently it will only work on sequences-as-columns output.
-# Let's try it on the output from example 1, using no command line options.
-# The file NC_001346.seqcol.output file contains the output from 
-# example run #1 STEP 3.
-#
-# By default, the script will generate output that displays counts of
-# each value observed in each row. 
-# Here I'll print only the beginning and end of the output because 
-# the output is long, and then I'll briefly describe it below:
-#
-perl summarize_dnaorg_annotate_genomes.pl NC_001346.seqcol.output 
-##
-##accession
-##NC_001346 1
-##KJ699341  1
-##KJ437659  1
-##HQ693446  1
-##HQ693435  1
-##
-##totlen
-##2689 6
-##2690 4
-##
-##origin sequence:#
-##1 5
-##
-##origin sequence:start
-##-7   1
-##2534 2
-##2535 2
-##
-##origin sequence:stop
-##2    1
-##2542 2
-##2543 2
-##
-##origin sequence:offst
-##0   1
-##149 4
-##
-##origin sequence:PF
-##P 5
-##
-##CDS #1 [single exon; +]:movement protein:start1
-##150 1
-##1   4
-##
-##CDS #1 [single exon; +]:movement protein:stop1
-##455 1
-##306 4
-##################################################
-# MIDDLE OF OUTPUT REMOVED FOR BREVITY!
-##################################################
-##result
-##PASS PPPPP 5
-##
-#
-#
-# So, each unique row heading (e.g. accession, or 'origin
-# sequence:start') is listed, followed by <n> lines where <n> is the
-# number of unique values observed in the input table (the table
-# output from dnaorg_annotate_genomes.pl). Each of these <n> lines
-# has two space-delimited tokens. The first token is the value
-# observed, and the second token is the number of times this value
-# was observed. The order of the lines will be the order that the
-# first tokens were observed in the input file. For example:
-##
-##origin sequence:stop
-##2    1
-##2542 2
-##2543 2
-# 
-# The sequence row heading 'origin sequence:stop' occurs 5 times in
-# the input file. The first accession has the value '2' for this
-# heading. Then 2 other accessions have the value '2542' and 2 other
-# (we also know that the second accession has this value because it
-# occurs as the second line), and 2 other accessions have the value
-# '2543'.
-#
-##########
-# There are some useful options to the script:
-# 
-# One can only print the pass/fail and result values with -passfail,
-# for example:
-perl summarize_dnaorg_annotate_genomes.pl -passfail NC_001346.seqcol.output 
-##origin sequence:PF
-##P 5
-##
-##CDS #1 [single exon; +]:movement protein:PF
-##P 5
-##
-##CDS #2 [single exon; +]:capsid protein:PF
-##P 5
-##
-##CDS #3 [2 exons; -]:replication-associated protein:PF
-##P 5
-##
-##CDS #4 [single exon; -]:replication-associated protein A:PF
-##P 5
-##
-##overlaps?
-##P 2 3.1/4.1,3.2/4.1 5
-##
-##result
-##PASS PPPPP 5
-#
-#
-# Also the -outkey <s> and -outname <f> options can be used to save
-# per-accession for row headings matching <s> to a file <f>.
-#
-# For example:
-perl summarize_dnaorg_annotate_genomes.pl -outkey result -outname tmp.result.summary NC_001346.seqcol.output 
-########
-# The final output line will be:
-########
-### Saved accessions and values for headings matching result to file tmp.result.summary.
-#
-# Here's what the tmp.result.summary file looks like:
-cat tmp.result.summary 
-##NC_001346 PASS PPPPP
-##KJ699341 PASS PPPPP
-##KJ437659 PASS PPPPP
-##HQ693446 PASS PPPPP
-##HQ693435 PASS PPPPP
-#
-# This file lists the value of the 'result' row heading for each
-# accession.
-#
-#
-# Finally, the -avgfid option will print average fractional identities
-# for all row headings that are fractional identities. The averages
-# are across all sequences in the output table.
-# For example:
-perl summarize_dnaorg_annotate_genomes.pl -avgfid NC_001346.seqcol.output 
-##0.989 CDS #1 [single exon; +]:movement protein:fid1
-##0.985 CDS #2 [single exon; +]:capsid protein:fid1
-##0.991 CDS #3 [2 exons; -]:replication-associated protein:fid1
-##0.982 CDS #3 [2 exons; -]:replication-associated protein:fid2
-##0.989 CDS #4 [single exon; -]:replication-associated protein A:fid1
-##0.988 avgid
-#
-# The first space-delimited token in each line is the average
-# fractional identity between the predicted feature listed in the row
-# heading (which is given in the remainder of the line) and the
-# reference feature in a pairwise alignment.
-#
------------------------------------
-TODOs:
+# TODOS
 
 - add version to accessions, and check that they are up-to-date somehow
   at beginning of run
 
-- consider renaming -onlybuild to -1, -skipbuild to -2, -skipbuild
-  + -skipscan to -3, and -skipbuild and -skipaln to -4, and then require one 
-  of -1, -2, -3 and -4. If you do this, consider making a separate
-  option to refetch genome sequences with -2, -3 and -4... if that
-  makes sense after considering it more carefully than I am right now.
-
-- add section to this file explaining gap notation!
-
+- add section to this file explaining gap notation and gap info files
 
 #############################################
-# Last updated: EPN, Tue Feb 16 16:18:38 2016
+# Last updated: EPN, Thu Mar 17 15:59:12 2016
 #############################################
 #
 # This directory is under git control. Use

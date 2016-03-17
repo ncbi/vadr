@@ -3983,7 +3983,6 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   }
   @{$seq_info_HAR->{"seq_name"}} = ();
   if(! opt_Get("--skipfetch", $opt_HHR)) { 
-    printf("calling fetchSeq...\n");
     fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR, $FH_HR);
     addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, 0, "Input file for esl-fetch-cds.pl");
     addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file with reference genome");
