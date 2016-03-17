@@ -4531,9 +4531,9 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0,             "there is not exactly 1 occurrence of origin sequence", $FH_HR);
 
   # define the incompatibilities, these are 2 sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
-  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,olp,str,stp,ajb,aja,trc,ext,ntr,nst,aji,int,inp", $FH_HR);
+  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
   setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext", $FH_HR);
-  setIncompatibilityErrorInfoHash($err_info_HAR, "trc", "ext,nst", $FH_HR);
+  setIncompatibilityErrorInfoHash($err_info_HAR, "trc", "ext,nst,aji,inp", $FH_HR);
 
   # define the required combinations, these are 1 sided, error code arg 2 requires error code arg 3, but error code arg 3 does not require err code arg 2
   setRequiredErrorInfoHash($err_info_HAR, "ext", "stp", $FH_HR);
@@ -4705,7 +4705,7 @@ sub setRequiredErrorInfoHash {
     }
 
     # add ',' if necessary
-    if($err_info_HAR->{"requires"}[$idx1] ne "") { $err_info_HAR->{"incompat"}[$idx1] .= ","; }
+    if($err_info_HAR->{"requires"}[$idx1] ne "") { $err_info_HAR->{"requires"}[$idx1] .= ","; }
 
     # this is a uni-directional relationship
     $err_info_HAR->{"requires"}[$idx1] .= $idx2;

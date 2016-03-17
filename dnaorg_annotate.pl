@@ -249,10 +249,6 @@ if(opt_Get("--errinfo", \%opt_HH)) {
 outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
-# now we have the log file open, output the banner there too
-outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
-opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
-
 ########################################
 # parse the optional input files, if nec
 ########################################
@@ -404,7 +400,7 @@ initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
 
 my @err_ftr_instances_AHH = ();
 my %err_seq_instances_HH = ();
-initialize_error_instances_AHH(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
+error_instances_initialize_AHH(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
 
 if(opt_IsUsed("--origin", \%opt_HH)) { 
   find_origin_sequences($sqfile, $origin_seq, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
@@ -621,7 +617,7 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     
     my $ext_corr_stop  = undef;
     my $ext_stop_codon = undef;
-    printf("HEYA seq $seq_name ftr_idx: $ftr_idx posn_to_start $posn_to_start\n");
+
     if($at_end_of_seq) { 
       $ext_corr_stop = 0;
     }
@@ -637,19 +633,19 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
         my (undef, $out_stop) = create_output_start_and_stop($cur_start, $cur_stop, $accn_len, $seq_len, $ofile_info_HH{"FH"});
         $updated_nst_errmsg = "inferred stop codon position (3 nt 3' of $out_stop on $cur_strand strand) is off the end of the sequence";
       }
-      error_instance_update(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "nst", $seq_name, $updated_nst_errmsg, $ofile_info_HH{"FH"});
+      error_instances_update(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "nst", $seq_name, $updated_nst_errmsg, $ofile_info_HH{"FH"});
 
       # remove ext error 'maybe'
-      error_instance_remove_maybe(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "ext", $seq_name, $ofile_info_HH{"FH"});
+      error_instances_remove_maybe(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "ext", $seq_name, $ofile_info_HH{"FH"});
     }
     else { 
       # stop found: ext error
       $ext_corr_stop -= $offset; # account for offset
       $ext_corr_stop++; # ext_corr_stop is w.r.t to the next posn after the predicted stop (either +1 or -1 depending on strand), we want 
                         # it to be w.r.t the actual predicted stop, so we have to add one.
-      error_instance_update(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "ext", $seq_name, $ext_corr_stop, $ofile_info_HH{"FH"});
+      error_instances_update(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "ext", $seq_name, $ext_corr_stop, $ofile_info_HH{"FH"});
       # remove nst error 'maybe'
-      error_instance_remove_maybe(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "nst", $seq_name, $ofile_info_HH{"FH"});
+      error_instances_remove_maybe(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "nst", $seq_name, $ofile_info_HH{"FH"});
     }
   }
 }
@@ -686,12 +682,16 @@ my @ftr_results_AAH = (); # 1st dim: array, 0..$ftr_idx..$nftr-1, one per model
 
 initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
-$start_secs = outputProgressPrior("Finalizing annotations", $progress_w, $log_FH, *STDOUT);
+$start_secs = outputProgressPrior("Finalizing annotations and validating error combinations", $progress_w, $log_FH, *STDOUT);
 mdl_results_finalize($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
                      \%cds_tbl_HHA, ($do_matpept) ? \%mp_tbl_HHA : undef, 
                      \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 ftr_results_calculate($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH,
                       \%cds_tbl_HHA, \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+
+# validate all of our error instances by checking for incompatibilities
+# and enforcing required combinations, this function dies if any problems are found
+error_instances_validate_all(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -1985,7 +1985,7 @@ sub results_calculate_predicted_lengths {
 }
 
 #################################################################
-# Subroutine:  initialize_error_instances_AHH()
+# Subroutine:  error_instances_initialize_AHH()
 # Incept:      EPN, Fri Mar  4 12:26:42 2016
 #
 # Purpose:    Initialize the error instances array of arrays of 
@@ -2007,8 +2007,8 @@ sub results_calculate_predicted_lengths {
 # Dies:       If err_info_HAR is not complete
 #
 #################################################################
-sub initialize_error_instances_AHH { 
-  my $sub_name = "initialize_error_instances_AHH";
+sub error_instances_initialize_AHH { 
+  my $sub_name = "error_instances_initialize_AHH";
   my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -2050,23 +2050,23 @@ sub initialize_error_instances_AHH {
 #             Checks for and adds the following error codes for features
 #             that with a non-matpept features (type ne "mp", e.g. "cds-mp", "cds-notmp"):
 #
-#             str: if predicted start is invalid (detected by esl-epn-translate)
+#             "str": if predicted start is invalid (detected by esl-epn-translate)
 #
-#             stp: 'maybe' added for features for which predicted stop is not a 
+#             "stp": 'maybe' added for features for which predicted stop is not a 
 #                  valid in-frame stop (detected by esl-epn-translate), this is
 #                  either removed, or updated later (because an stp error is only
 #                  when the predicted stop position is not the end of a valid stop
 #                  codon -- valid, out-of-frame stop is okay (not an stp error))
 #
-#             ext: 'maybe' added for features with no in-frame stop, removed or
+#             "ext": 'maybe' added for features with no in-frame stop, removed or
 #                  updated later (not in this function) when we look for an in-frame
 #                  stop downstream of the predicted stop (ext and ntr are exclusive)
 #
-#             nst: 'maybe' added for features with no in-frame stop, removed or
+#             "nst": 'maybe' added for features with no in-frame stop, removed or
 #                  updated later (not in this function) when we look for an in-frame
 #                  stop downstream of the predicted stop (ext and ntr are exclusive)
 #
-#             trc: added here for features with early in-frame stop (detected by 
+#             "trc": added here for features with early in-frame stop (detected by 
 #                  esl-epn-translate) with temporary value, the -1 times the number 
 #                  of nucleotides the in-frame stop is upstream of the predicted stop.
 #                  This value is updated later (not in this function) to a more informative
@@ -2168,7 +2168,7 @@ sub parse_esl_epn_translate_startstop_outfile {
       #
       if(! $is_matpept) { 
         if(! $start_is_valid) { # possibility 1 (P1)
-          error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, "", $FH_HR);
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, "", $FH_HR);
           # printf("in $sub_name, feature index $ftr_idx, seq $seq_name $c possibility 1 (str)\n");
         }
         else { 
@@ -2181,9 +2181,9 @@ sub parse_esl_epn_translate_startstop_outfile {
               # the 'stp' error is only a 'maybe' because (! $stop_is_valid) implies it's not an
               # *IN-FRAME* valid stop codon, but we only throw 'stp' if the final 3 nt of the prediction
               # are not a valid stop codon, regardless of frame
-              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
-              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
-              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
               #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
             }
             else { # $early_inframe_stop is 1
@@ -2191,8 +2191,8 @@ sub parse_esl_epn_translate_startstop_outfile {
 
               # add the 2 potential error codes, we'll check again later and possibly remove them
               # the 'stp' error is only a 'maybe' because of reason explained above similar case in possibility 2 above
-              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
-              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
               #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 3 (trc and stp)\n");
             }
           } # end of 'if(! $stop_is_valid)'
@@ -2204,7 +2204,7 @@ sub parse_esl_epn_translate_startstop_outfile {
             }
             else { 
               # possibility 5 (P5): trc error
-              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
               #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 5 (trc)\n");
             }
           }              
@@ -2218,7 +2218,7 @@ sub parse_esl_epn_translate_startstop_outfile {
         }
         else { # $early_inframe_stop is '1'
           # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
-          error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
         }
       }
     }
@@ -2232,7 +2232,7 @@ sub parse_esl_epn_translate_startstop_outfile {
 }
 
 #################################################################
-# Subroutine:  error_instance_add()
+# Subroutine:  error_instances_add()
 # Incept:      EPN, Tue Mar  8 11:06:18 2016
 #
 # Purpose:    Add an $err_code error to the @{$err_ftr_instances_AHHR} 
@@ -2256,13 +2256,13 @@ sub parse_esl_epn_translate_startstop_outfile {
 #             - If value is "maybe" but maybes are not allowed for $err_code in %err_info_HAR
 #               or a value already exists for that instance
 #             - If we already have a value for this $seq_idx+$err_code pair
-#               (call error_instance_update() to update a value).
+#               (call error_instances_update() to update a value).
 #             - if pertype of $err_code is "feature"  and $err_ftr_instances_AHHR is undef
 #             - if pertype of $err_code is "sequence" and $err_seq_instances_HHR is undef
 #             - if pertype of $err_code is "sequence" and $ftr_idx is not -1
 #################################################################
-sub error_instance_add { 
-  my $sub_name = "error_instance_add()";
+sub error_instances_add { 
+  my $sub_name = "error_instances_add()";
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -2292,10 +2292,9 @@ sub error_instance_add {
     # this error shouldn't already exist, unless it's already set to $value, in which case it's okay
     if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
       if($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} ne $value) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s (maybe you want to use error_instance_update()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s (maybe you want to use error_instances_update()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
       }
     }
-
     # set the value
     $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} = $value;
   }
@@ -2309,7 +2308,7 @@ sub error_instance_add {
     # this error shouldn't already exist, unless it's already set to $value, in which case it's okay
     if(exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
       if($err_seq_instances_HHR->{$err_code}{$seq_name} ne $value) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s (maybe you want to use error_instance_update()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s (maybe you want to use error_instances_update()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
       }
     }
 
@@ -2324,7 +2323,7 @@ sub error_instance_add {
 }
 
 #################################################################
-# Subroutine:  error_instance_update()
+# Subroutine:  error_instances_update()
 # Incept:      EPN, Tue Mar 15 14:26:58 2016
 #
 # Purpose:    Update the value for an already existing $err_code 
@@ -2349,10 +2348,10 @@ sub error_instance_add {
 #             - If value is "maybe" but maybes are not allowed for $err_code in %err_info_HAR
 #               or a value already exists for that instance
 #             - If we do not already have a value for this $seq_idx+$err_code pair
-#               (call error_instance_add() to add a new value).
+#               (call error_instances_add() to add a new value).
 #################################################################
-sub error_instance_update { 
-  my $sub_name = "error_instance_update()";
+sub error_instances_update { 
+  my $sub_name = "error_instances_update()";
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -2364,9 +2363,9 @@ sub error_instance_update {
   }
   
   # check if it's the special 'maybe' value, which we don't allow 
-  # an update to (must be added with error_instance_add())
+  # an update to (must be added with error_instances_add())
   if($value eq "maybe") { 
-    DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, trying to set to maybe (you may wnat to use error_instance_add()?).", 1, $FH_HR);
+    DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, trying to set to maybe (you may wnat to use error_instances_add()?).", 1, $FH_HR);
   }
 
   # determine if we're a per-feature or per-sequence error
@@ -2378,7 +2377,7 @@ sub error_instance_update {
     }
     # this error *should* already exist (we're updating it)
     if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error does not already exist (maybe you want to use error_instance_add()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error does not already exist (maybe you want to use error_instances_add()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
     }
 
     # update the value
@@ -2393,7 +2392,7 @@ sub error_instance_update {
     }
     # this error *should* already exist (we're updating it)
     if(! exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error does not already exist (maybe you want to use error_instance_add()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error does not already exist (maybe you want to use error_instances_add()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
     }
 
     # set the value
@@ -2407,12 +2406,15 @@ sub error_instance_update {
 }
 
 #################################################################
-# Subroutine:  error_instance_remove_maybe()
+# Subroutine:  error_instances_remove_maybe()
 # Incept:      EPN, Tue Mar  8 13:50:22 2016
 #
 # Purpose:    Remove an error $err_code from @{$err_ftr_instances_AHHR} 
 #             for feature index $ftr_idx, sequence name $seq_name,
 #             where the current value is "maybe".
+#
+#             Use error_instances_remove_maybe to remove 'maybe' values
+#             from error codes that allow maybes.
 #
 # Arguments: 
 #  $err_ftr_instances_AHHR: REF to per-feature error instances to add to, ADDED TO HERE (maybe),
@@ -2427,14 +2429,15 @@ sub error_instance_update {
 #
 # Returns:    void
 #
-# Dies:       - If current value does not exist or is "maybe"
+# Dies:       - if current value does not exist or is "maybe"
+#             - if $err_code does not allow maybe values
 #             - if pertype of $err_code is "feature"  and $err_ftr_instances_AHHR is undef
 #             - if pertype of $err_code is "sequence" and $err_seq_instances_HHR is undef
 #             - if pertype of $err_code is "sequence" and $ftr_idx is not -1
 #
 #################################################################
-sub error_instance_remove_maybe { 
-  my $sub_name = "error_instance_remove_maybe()";
+sub error_instances_remove_maybe { 
+  my $sub_name = "error_instances_remove_maybe()";
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -2448,6 +2451,8 @@ sub error_instance_remove_maybe {
     DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, trying to remove maybe but maybes are not allowed for this error code.", 1, $FH_HR);
   }
 
+  # make sure the current value is "maybe" 
+
   # determine if we're a per-feature or per-sequence error
   my $pertype = $err_info_HAR->{"pertype"}[$err_idx];
   if($pertype eq "feature") { 
@@ -2455,7 +2460,7 @@ sub error_instance_remove_maybe {
       DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, no value exists.", 1, $FH_HR);
     }
     if($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} ne "maybe") { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value we are trying to remove is not \"maybe\" but rather %s.", 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value we are trying to remove is not \"maybe\" but rather %s, you may want to use error_instances_remove_not_maybe()", 
                           $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR); 
     } 
     # okay, it exists and is 'maybe', remove it:
@@ -2469,23 +2474,219 @@ sub error_instance_remove_maybe {
       DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but passed in ftr_idx is not -1, but $ftr_idx", 1, $FH_HR);
     }
     if($err_seq_instances_HHR->{$err_code}{$seq_name} ne "maybe") { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, error code $err_code, seq_name $seq_name, value we are trying to remove is not \"maybe\" but rather %s.", 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, error code $err_code, seq_name $seq_name, value we are trying to remove is not \"maybe\" but rather %s, you may want to use error_instances_remove_not_maybe()", 
                           $err_seq_instances_HHR->{$err_code}{$seq_name}), 1, $FH_HR); 
     } 
     # okay, it exists and is 'maybe', remove it:
+    delete $err_seq_instances_HHR->{$err_code}{$seq_name};
+  }
+
+  return
+}
+
+#################################################################
+# Subroutine:  error_instances_remove_not_maybe()
+# Incept:      EPN, Thu Mar 17 09:25:53 2016
+#
+# Purpose:    Remove an error $err_code from @{$err_ftr_instances_AHHR} 
+#             for feature index $ftr_idx, sequence name $seq_name for
+#             which the value is not "maybe". 
+#
+#             Use error_instances_remove_maybe to remove 'maybe' values
+#             from error codes that allow maybes.
+#
+# Arguments: 
+#  $err_ftr_instances_AHHR: REF to per-feature error instances to add to, ADDED TO HERE (maybe),
+#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "sequence".
+#  $err_seq_instances_HHR:  REF to per-sequence error instances to add to, ADDED TO HERE (maybe),
+#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "feature".
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $ftr_idx:                REF to the feature info hash of arrays, PRE-FILLED
+#  $err_code:               error code we're adding an error for
+#  $seq_name:               sequence name
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       - if current value does not exist or is "maybe"
+#             - if $err_code allows maybe values
+#             - if pertype of $err_code is "feature"  and $err_ftr_instances_AHHR is undef
+#             - if pertype of $err_code is "sequence" and $err_seq_instances_HHR is undef
+#             - if pertype of $err_code is "sequence" and $ftr_idx is not -1
+#
+#################################################################
+sub error_instances_remove_not_maybe { 
+  my $sub_name = "error_instances_remove_not_maybe()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $FH_HR) = @_;
+  
+  my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
+  if($err_idx == -1) { 
+    DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code", 1, $FH_HR);
+  }
+  if($err_info_HAR->{"maybe_allowed"}[$err_idx]) { 
+    DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, trying to remove a value for an error code where maybes are allowed, you may want to use error_intance_remove_maybe.", 1, $FH_HR);
+  }
+
+  # determine if we're a per-feature or per-sequence error
+  my $pertype = $err_info_HAR->{"pertype"}[$err_idx];
+  if($pertype eq "feature") { 
+    if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
+      DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, no value exists.", 1, $FH_HR);
+    }
+    if($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "maybe") { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value we are trying to remove is \"maybe\", you may want to use error_instances_remove_maybe().", 
+                          $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR); 
+    } 
+    # okay, it exists and is not 'maybe', remove it:
+    delete $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name};
+  }
+  elsif($pertype eq "sequence") { 
+    if(! exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
+      DNAORG_FAIL("ERROR in $sub_name, error code $err_code, seq_name $seq_name, no value exists.", 1, $FH_HR);
+    }
+    if($ftr_idx != -1) { 
+      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but passed in ftr_idx is not -1, but $ftr_idx", 1, $FH_HR);
+    }
+    if($err_seq_instances_HHR->{$err_code}{$seq_name} eq "maybe") { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, error code $err_code, seq_name $seq_name, value we are trying to remove is \"maybe\", you may want use error_instances_remove_maybe().", 
+                          $err_seq_instances_HHR->{$err_code}{$seq_name}), 1, $FH_HR); 
+    } 
+    # okay, it exists and is not 'maybe' remove it:
     delete $err_seq_instances_HHR->{$err_code}{$seq_name};
   }
   else { 
     DNAORG_FAIL("ERROR in $sub_name, unexpected pertype of $pertype for error $err_code", 1, $FH_HR);
   }
 
-
-
-  
-
   return;
 }
 
+#################################################################
+# Subroutine:  error_instances_validate_all()
+# Incept:      EPN, Thu Mar 17 09:59:00 2016
+#
+# Purpose:    Given all errors in @{$err_ftr_instances_AHHR} and 
+#             %{$err_seq_instances_HHR}, check for any combinations
+#             of incompatible errors and check for any unfulfilled
+#             required combinations of errors and die if any are
+#             found. Also check for any 'maybe' error messages,
+#             and fail if any are found.
+#
+# Arguments: 
+#  $err_ftr_instances_AHHR: REF to per-feature error instances to add to, ADDED TO HERE (maybe),
+#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "sequence".
+#  $err_seq_instances_HHR:  REF to per-sequence error instances to add to, ADDED TO HERE (maybe),
+#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "feature".
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $ftr_info_HAR:           REF to the feature info hash of arrays, PRE-FILLED
+#  $seq_info_HAR:           REF to the sequence info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       - if we find an incompatible combination of errors for the
+#               same sequence/feature pair
+#             - if any errors exist without their required other errors for
+#               the same sequence/feature pair
+#             - if any 'maybe' error messages exist
+#
+#################################################################
+sub error_instances_validate_all { 
+  my $sub_name = "error_instances_validate_all()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  my $dnaorg_fail_errmsg = ""; # filled as we find incompatibilities
+
+  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $nerr = validateErrorInfoHashIsComplete   ($err_info_HAR, undef, $FH_HR); # nerr: number of errors
+  
+  my $ftr_idx;
+  my $err_idx;
+  my $seq_idx;
+  my $seq_name;
+  my $err_code;
+
+  # validate that no 'maybe' values exist
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+      $err_code = $err_info_HAR->{"code"}[$err_idx];
+      for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+        $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+        if((exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) && 
+           ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) eq "maybe") { 
+          if(! $err_info_HAR->{"maybe_allowed"}[$err_idx]) { 
+            $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, value maybe exists for ftr %s seq %s, but maybes not allowed for this error\n", 
+                                           $ftr_info_HAR->{"out_tiny"}, $seq_name);
+          }
+          else { # maybes allowed for this error, but we shouldn't have any at this stage
+            $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, value maybe exists for ftr %s seq %s (no maybes should be left at this stage)\n", 
+                                           $ftr_info_HAR->{"out_tiny"}, $seq_name);
+          }
+        }
+      }
+    }
+  }
+
+  # validate that there are no incompatibilities
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+      for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+        $err_code = $err_info_HAR->{"code"}[$err_idx];
+        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
+          my @incompat_A = split(",", $err_info_HAR->{"incompat"}[$err_idx]);
+          foreach my $incompat_err_idx (@incompat_A) { 
+            my $incompat_err_code = $err_info_HAR->{"code"}[$incompat_err_idx];
+            if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$incompat_err_code}{$seq_name}) { 
+              if($incompat_err_idx <= $err_idx) { 
+                # this way we only print an error once for each incompatibility b/t 'A and B' (not 'A and B' plus 'B and A')
+                $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, incompatible error combination $err_code and $incompat_err_code for ftr %s seq %s\n", 
+                                               $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  # validate that all required combinations are met
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+      for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+        $err_code = $err_info_HAR->{"code"}[$err_idx];
+        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
+          my @requires_A = split(",", $err_info_HAR->{"requires"}[$err_idx]);
+          foreach my $requires_err_idx (@requires_A) { 
+            my $requires_err_code = $err_info_HAR->{"code"}[$requires_err_idx];
+            if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{$requires_err_code}{$seq_name}) { 
+              if($requires_err_idx <= $err_idx) { 
+                # this way we only print an error once for each faield requirement b/t 'A and B' (not 'A and B' plus 'B and A')
+                $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, error $err_code exists without the required code $requires_err_code for ftr %s seq %s\n", 
+                                               $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if($dnaorg_fail_errmsg ne "") { 
+    DNAORG_FAIL($dnaorg_fail_errmsg, 1, $FH_HR);
+  }
+
+  return;
+}
 
 #################################################################
 # Subroutine:  check_for_downstream_stop()
@@ -2662,7 +2863,7 @@ sub find_inframe_stop {
 #             Checks for and updates the following error codes for features
 #             for which "annot_type" eq "model":
 #
-#             stp: either updates or removes existing error instances of stp
+#             "stp": either updates or removes existing error instances of stp
 #                  added in parse_esl_epn_translate_startstop_outfile().
 #                  Checks to see if predicted stop is a valid stop codon,
 #                  if it is, removes the error instance, else it updates it
@@ -2673,13 +2874,13 @@ sub find_inframe_stop {
 #                  when the predicted stop position is not the end of a valid stop
 #                  codon -- valid, out-of-frame stop is okay (not an stp error))
 #
-#             trc: updates all 'trc' errors originally added in 
+#             "trc": updates all 'trc' errors originally added in 
 #                  parse_esl_epn_translate_startstop_outfile() by making their 
 #                  error messages more informative to include information
 #                  on the corrected stop position which is calculated in this
 #                  function.
 #
-#             ext: updates all 'ext' errors originally added in 
+#             "ext": updates all 'ext' errors originally added in 
 #                  parse_esl_epn_translate_startstop_outfile() and then 
 #                  later updated in main() (step 11) by making their error
 #                  messages more informative to include information on
@@ -2752,13 +2953,13 @@ sub results_calculate_corrected_stops {
                                                   $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
           if(validateStopCodon($stp_err_stop_codon)) { 
             # it's a valid stop, remove the 'maybe'
-            error_instance_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
+            error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
           }
           else { 
             # it is not a valid stop, the error stays and we update the error message
             my $updated_stp_errmsg = sprintf("%s ending at position %d on %s strand", $stp_err_stop_codon, 
                                              $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}); 
-            error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
+            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
           }
         }        
         # only one of trc or ext can exist, they're 'incompatible' in err_info_HAR
@@ -2816,7 +3017,7 @@ sub results_calculate_corrected_stops {
                                                                          $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
                                                                          $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
                                             $exon_len_corr);
-              error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_trc_errmsg, $FH_HR);
+              error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_trc_errmsg, $FH_HR);
               
               # now for all remaining models for this feature, set $cumlen_key to $cur_cumlen, 
               # and $prv_trc_key to '1' indicating that that model prediction 
@@ -2857,7 +3058,7 @@ sub results_calculate_corrected_stops {
           else { # negative strand
             $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key} - $len_corr;
           }
-          # update "len", "cumlen", and set "ext_err_flag"
+          # update "len" and "cumlen"
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}    += $len_corr;
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} += $len_corr;
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$ext_err_key} = 1;
@@ -2876,7 +3077,7 @@ sub results_calculate_corrected_stops {
                                                                       $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
                                                                       $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
                                          $len_corr);
-          error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_ext_errmsg, $FH_HR);
+          error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_ext_errmsg, $FH_HR);
         }
       } # end of loop over $seq_idx
     } # end of if $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model"
@@ -2900,9 +3101,9 @@ sub results_calculate_corrected_stops {
 #             Checks for and adds the following error codes for features
 #             with "annot_type" eq "model":
 #
-#             olp: adds with error message depiciting deviation from reference 
-#             ajb: adds with error message depiciting deviation from reference 
-#             aja: adds with error message depiciting deviation from reference 
+#             "olp": adds with error message depiciting deviation from reference 
+#             "ajb": adds with error message depiciting deviation from reference 
+#             "aja": adds with error message depiciting deviation from reference 
 #
 # Arguments: 
 #  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
@@ -3037,13 +3238,13 @@ sub results_calculate_overlaps_and_adjacencies {
     } # end of 'for(mdl_idx'
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       if($ftr_olp_err_msg_A[$ftr_idx] ne "") { 
-        error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "olp", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_olp_err_msg_A[$ftr_idx], $FH_HR);
+        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "olp", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_olp_err_msg_A[$ftr_idx], $FH_HR);
       }
       if($ftr_ajb_err_msg_A[$ftr_idx] ne "") { 
-        error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ajb", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_ajb_err_msg_A[$ftr_idx], $FH_HR);
+        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ajb", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_ajb_err_msg_A[$ftr_idx], $FH_HR);
       }
       if($ftr_aja_err_msg_A[$ftr_idx] ne "") { 
-        error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aja", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_aja_err_msg_A[$ftr_idx], $FH_HR);
+        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aja", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_aja_err_msg_A[$ftr_idx], $FH_HR);
       }
     }
   } # end of 'for(my $seq_idx"
@@ -3069,17 +3270,17 @@ sub results_calculate_overlaps_and_adjacencies {
 #             Checks for and adds or updates the following error 
 #             codes for features with "annot_type" eq "model":
 #             
-#             nop: adds this error, no model prediction
+#             "nop": adds this error, no model prediction
 #             
-#             str: updates this error, originally added in 
+#             "str": updates this error, originally added in 
 #                  parse_esl_epn_translate_startstop_outfile()
 #                  by making the error message more informative
 #                  to include position and codon of predicted start
 #
-#             bd5: adds this error, predicted hit not flush with 
+#             "bd5": adds this error, predicted hit not flush with 
 #                  model on 5' end
 #             
-#             bd3: adds this error, predicted hit not flush with 
+#             "bd3": adds this error, predicted hit not flush with 
 #                  model on 3' end
 #
 #             
@@ -3142,7 +3343,7 @@ sub mdl_results_finalize {
 
       if(! exists $mdl_results_HR->{"p_start"}) { 
         # no prediction
-        error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nop", $seq_name, "", $FH_HR);
+        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nop", $seq_name, "", $FH_HR);
       }        
       else { # $mdl_results_HR->{"p_start"} exists, we have a prediction
         ##############################
@@ -3160,7 +3361,7 @@ sub mdl_results_finalize {
           my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", 
                                            fetchStartCodon($sqfile, $seq_name, $mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_strand"}, $FH_HR), 
                                            $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"p_strand"});
-          error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
+          error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
           $mdl_results_HR->{"str_err_flag"} = 1;
         }
         #######################################
@@ -3174,7 +3375,7 @@ sub mdl_results_finalize {
         }
         else { 
           # bd5 error
-          error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd5", $seq_name, $mdl_results_HR->{"p_5hangover"} . " nt from 5' end", $FH_HR);
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd5", $seq_name, $mdl_results_HR->{"p_5hangover"} . " nt from 5' end", $FH_HR);
           if($mdl_results_HR->{"p_5hangover"} > 9) { 
             $mdl_results_HR->{"out_5boundary"} = "+"; 
           }
@@ -3195,7 +3396,7 @@ sub mdl_results_finalize {
         }
         else { 
           # bd3 error
-          error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd3", $seq_name, $mdl_results_HR->{"p_3hangover"} . " nt from 3' end", $FH_HR);
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd3", $seq_name, $mdl_results_HR->{"p_3hangover"} . " nt from 3' end", $FH_HR);
           if($mdl_results_HR->{"p_3hangover"} > 9) { 
             $mdl_results_HR->{"out_3boundary"} = "+"; 
           }
@@ -3240,12 +3441,12 @@ sub mdl_results_finalize {
 #             "out_stop_codon".
 #
 #             Checks for and adds the following error codes:
-#             nm3: for all features (annot_type eq "model" or "multifeature")
-#             stp: for features with annot_type eq "multifeature" & type eq "cds-mp"
-#             inp: for features with annot_type eq "multifeature" & type eq "cds-mp"
-#             int: for features with annot_type eq "multifeature" & type eq "cds-mp"
-#             aji: for features with annot_type eq "multifeature" & type eq "cds-mp"
-#             ntr: for features that are children of a multifeature/cds-mp feature
+#             "nm3": for all features (annot_type eq "model" or "multifeature")
+#             "stp": for features with annot_type eq "multifeature" & type eq "cds-mp"
+#             "inp": for features with annot_type eq "multifeature" & type eq "cds-mp"
+#             "int": for features with annot_type eq "multifeature" & type eq "cds-mp"
+#             "aji": for features with annot_type eq "multifeature" & type eq "cds-mp"
+#             "ntr": for features that are children of a multifeature/cds-mp feature
 #
 # Arguments: 
 #  $sqfile:             REF to Bio::Easel::SqFile object, open sequence file containing sequences
@@ -3278,6 +3479,7 @@ sub ftr_results_calculate {
   my $mdl_idx;
   my $seq_idx;
   my $seq_name;
+  my $seq_len;
   my $accn_name;
   my $accn_len;
 
@@ -3300,7 +3502,7 @@ sub ftr_results_calculate {
         }
         if(defined $cumlen && (($cumlen % 3) != 0)) { 
           # an nm3 error
-          error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cumlen", $FH_HR);
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cumlen", $FH_HR);
         }
       }
     }
@@ -3320,6 +3522,7 @@ sub ftr_results_calculate {
 
       for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         $seq_name   = $seq_info_HAR->{"seq_name"}[$seq_idx];
+        $seq_len    = $seq_info_HAR->{"seq_len"}[$seq_idx];
         $accn_name  = $seq_info_HAR->{"accn_name"}[$seq_idx];
         $accn_len   = $seq_info_HAR->{"accn_len"}[$seq_idx];
 
@@ -3347,6 +3550,10 @@ sub ftr_results_calculate {
         for(my $child_idx = 0; $child_idx < $nchildren; $child_idx++) { 
           my $child_mdl_idx = $primary_children_idx_A[$child_idx];
           my $child_ftr_idx = $mdl_info_HAR->{"map_ftr"}[$child_mdl_idx];
+          #printf("HEYA ftr: $ftr_idx %s child_idx: $child_idx child_mdl_idx: $child_mdl_idx (%s) child_ftr_idx: $child_ftr_idx (%s)\n", 
+          #$ftr_info_HAR->{"out_short"}[$ftr_idx], 
+          #$mdl_info_HAR->{"out_tiny"}[$child_mdl_idx], 
+          #$ftr_info_HAR->{"out_short"}[$child_ftr_idx]); 
 
           # check to make sure we have a hit annotated for this model
           if(! exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { 
@@ -3367,34 +3574,68 @@ sub ftr_results_calculate {
 
             # check if we have a trc in this model, and deal with it if we do
             if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"trc_err_flag"}) { 
-              $cds_out_stop   = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"}; 
-              $cds_fetch_stop = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
+              $cds_out_stop      = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"}; 
+              $cds_fetch_stop    = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
                   $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
                   $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
               $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
-              # set the trc_err_flag for this feature
-              $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
 
-              # all remaining children get a 'ntr' error,
-              # and the CDS gets an 'int' error, which we need
-              # to build the error message for
-              my $ntr_errmsg = sprintf("early stop in mature peptide %d ending at position %d", $child_ftr_idx+1, $cds_out_stop);
-              if($int_errmsg ne "") { 
-                DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);;
-              }
-              $child_idx++;
-              while($child_idx < $nchildren) {
-                $child_mdl_idx = $primary_children_idx_A[$child_idx];
-                $child_ftr_idx = $mdl_info_HAR->{"map_ftr"}[$child_mdl_idx];
-                error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
+              # if and only if we have all mature peptides up to this point and they 
+              # are all adjacent (that is, we don't have a aji or inp error), 
+              # then this CDS is truncated. We do the following:
+              # - update the trc errmsg for this CDS in @{$err_ftr_instances_AHHR} 
+              #   based on what just figured out about this truncated stop
+              # - set ntr errors for all remaining children 
+              # - set int error for this CDS
+              # - break the loop over all children (we're done with this CDS)
+              if($inp_errmsg eq "" && $aji_errmsg eq "") { 
+                my $cds_pred_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
+                my $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
+                                                 create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $accn_len, $seq_len, $FH_HR),
+                                                 create_output_start_and_stop($cds_out_start,   $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
+                                                 abs($cds_fetch_stop - $cds_pred_stop) + 1, $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
+                error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                # set the trc_err_flag for this feature
+                $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
+
+                # all remaining children get a 'ntr' error,
+                # and the CDS gets an 'int' error, which we need
+                # to build the error message for
+                my $ntr_errmsg = sprintf("early stop in mature peptide %d ending at position %d", $child_ftr_idx+1, $cds_out_stop);
                 if($int_errmsg ne "") { 
-                  $int_errmsg .= ", ";
+                  DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);;
                 }
-                $int_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
                 $child_idx++;
+                my $ntr_err_ct = 0;
+                while($child_idx < $nchildren) {
+                  $child_mdl_idx = $primary_children_idx_A[$child_idx];
+                  $child_ftr_idx = $mdl_info_HAR->{"map_ftr"}[$child_mdl_idx];
+                  error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
+                  $ntr_err_ct++;
+                  if($int_errmsg ne "") { 
+                    $int_errmsg .= ", ";
+                  }
+                  $int_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
+                  $child_idx++;
+                }
+                if($ntr_err_ct > 0) { 
+                  # we set at least one ntr error for mature peptides, set int for this CDS
+                  error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
+                }
+                # now $child_idx is $nchildren, so this breaks the 'for(child_idx' loop
+              } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
+              else { 
+                # we had a trc in one of the children, but it didn't trigger
+                # a trc in the CDS because we already have an adjacency error
+                # and/or an inp error (one of the mature peptides was not predicted)
+                # which means we cannot confidently say the CDS is truncated.
+                # remove the CDS' trc error IF it exists (it may not if 
+                # there wasn't an early stop due to a frameshift or something
+                # before or after the trc in the child mature peptide).
+                if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
+                  error_instances_remove_not_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $FH_HR);
+                }
               }
-              error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
-              # now $child_idx is $nchildren, so this breaks the 'for(child_idx' loop
             } # end of 'if trc_err_flag'
             else { 
               # we don't have a trc flag
@@ -3440,13 +3681,13 @@ sub ftr_results_calculate {
                                                             $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
                     if(validateStopCodon($stp_err_stop_codon)) { 
                       # it's a valid stop, remove the 'maybe'
-                      error_instance_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
+                      error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
                     }
                     else { 
                       # it is not a valid stop, the error stays and we update the error message
                       my $updated_stp_errmsg = sprintf("%s ending at position %d on %s strand", $stp_err_stop_codon, 
                                                        $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}, $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}); 
-                      error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
+                      error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
                     }
                   }
                 }
@@ -3459,7 +3700,7 @@ sub ftr_results_calculate {
                       DNAORG_FAIL("ERROR in $sub_name, ext error with non-maybe value for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
                     }
                     # change from "maybe" to "?"
-                    error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "?", $FH_HR);
+                    error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "?", $FH_HR);
                   }
                 }
               }
@@ -3475,12 +3716,12 @@ sub ftr_results_calculate {
         # add the aji (adjacency) error if necessary
         if($aji_errmsg ne "") { 
           # adjacency error
-          error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aji", $seq_name, $aji_errmsg, $FH_HR);
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aji", $seq_name, $aji_errmsg, $FH_HR);
         }
 
         # add the inp (INterrupted due to no Prediction) if necessary
         if($inp_errmsg ne "") { 
-          error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
         }
 
         # set ftr_results
@@ -3491,7 +3732,7 @@ sub ftr_results_calculate {
           if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
             my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", $start_codon, 
                                              $cds_out_start, $start_strand);
-            error_instance_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
+            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
           }
         }
         else { 
@@ -3509,7 +3750,7 @@ sub ftr_results_calculate {
         if(($aji_errmsg eq "") && ($inp_errmsg eq "") && (defined $cds_out_start) && (defined $cds_out_stop)) { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"} = $cds_len;
           if(($cds_len % 3) != 0) { 
-            error_instance_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cds_len", $FH_HR);
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cds_len", $FH_HR);
           }
         }
         else { 
@@ -3864,8 +4105,8 @@ sub get_esl_epn_translate_altstart_opt {
     my $codon_str = "";
     # determine the CDS index of this feature
     my $cds_idx = 0;
-    for(my $f = 0; $f <= $ftr_idx; $f++) { 
-      if(($ftr_info_HA{"type"}[$ftr_idx] eq "cds-mp") || ($ftr_info_HA{"type"}[$ftr_idx] ne "cds-notmp")) { 
+    for(my $cur_ftr_idx = 0; $cur_ftr_idx <= $ftr_idx; $cur_ftr_idx++) { 
+      if(($ftr_info_HA{"type"}[$cur_ftr_idx] eq "cds-mp") || ($ftr_info_HA{"type"}[$cur_ftr_idx] eq "cds-notmp")) { 
         $cds_idx++; 
       }
     }
@@ -4466,14 +4707,14 @@ sub output_multifeature_relationships {
       # get the array of primary children feature indices for this feature
       my @children_idx_A = (); # feature indices of the primary children of this feature
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@children_idx_A, $FH_HR);
-      printf $FH ("# %s is comprised of the following primary features in order:\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
+      printf $FH ("# %s is comprised of the following primary features in order:\n# ", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
       foreach my $child_ftr_idx (@children_idx_A) { 
         printf $FH "%s ", $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
       }
       print $FH "\n";
       
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@children_idx_A, $FH_HR);
-      printf $FH ("# %s encodes all of the following features in order:\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
+      printf $FH ("# %s encodes all of the following features in order:\n# ", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
       foreach my $child_ftr_idx (@children_idx_A) { 
         printf $FH "%s ", $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
       }
@@ -5864,7 +6105,7 @@ sub validate_origin_seq {
 #             matches in @{$seq_info_HAR->{$key}}. Each sequence
 #             name is in @{$seq_info_HAR->{"seq_name"}}.
 #
-#             Checks for and adds the following error codes: ori.
+#             Checks for and adds the following error codes: "ori".
 #
 # Args:   
 #  $sqfile:                 Bio::Easel::SqFile object, the sequence file to search in
@@ -5939,7 +6180,7 @@ sub find_origin_sequences {
     }
     # printf("in $sub_name, $seq_name nfound: $nfound\n");
     if($nfound != 1) { 
-      error_instance_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, $nfound . " occurrences", $FH_HR);
+      error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, $nfound . " occurrences", $FH_HR);
     }
   }
   
