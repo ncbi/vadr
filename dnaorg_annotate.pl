@@ -33,7 +33,7 @@ my $hmmer_exec_dir    = "/usr/local/hmmer/3.1/bin/";
 my $esl_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
 my $esl_fetch_cds     = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 my $esl_ssplit        = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
-my $esl_epn_translate = "/home/nawrocke/notebook/15_1118_dnaorg_annotate_genomes_translation/git-esl-epn-translate/esl-epn-translate.pl";
+my $esl_epn_translate = "/panfs/pan1/dnaorg/programs/esl-epn-translate.pl";
 
 #########################################################
 # Command line and option processing using epn-options.pm
