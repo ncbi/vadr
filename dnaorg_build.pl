@@ -191,8 +191,9 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "cmd": command file with list of all commands executed
 
 # open the log and command files 
-openAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", "Output printed to screen");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", "List of executed commands");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", 1, "Output printed to screen");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", 1, "List of executed commands");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List of executed commands");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need
@@ -200,10 +201,10 @@ my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 
 # open optional output files
 if(opt_Get("--mdlinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "mdlinfo", $out_root . ".mdlinfo", "Model information (created due to --mdlinfo)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "mdlinfo", $out_root . ".mdlinfo", 1, "Model information (created due to --mdlinfo)");
 }
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", "Feature information (created due to --ftrinfo)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
 }
 
 # now we have the log file open, output the banner there too
@@ -316,13 +317,13 @@ $start_secs = outputProgressPrior($build_str, $progress_w, $log_FH, *STDOUT);
 createCmDb(\%execs_H, $ofile_info_HH{"fullpath"}{"refstk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, $ofile_info_HH{"FH"});
 if(! $do_local) { 
   for(my $i = 0; $i < $nmdl; $i++) { 
-    addClosedFileToOutputInfo(\%ofile_info_HH, "cm$i", "$out_root.$i.cm", 
+    addClosedFileToOutputInfo(\%ofile_info_HH, "cm$i", "$out_root.$i.cm", 1, 
                               sprintf("CM file #%d, %s (currently calibrating on the farm)", $i+1, $mdl_info_HA{"out_tiny"}[$i]));
 
   }
 }
 else { 
-  addClosedFileToOutputInfo(\%ofile_info_HH, "cm", "$out_root.cm", "CM file with all $nmdl models");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "cm", "$out_root.cm", 1, "CM file with all $nmdl models");
 }
 
 outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);

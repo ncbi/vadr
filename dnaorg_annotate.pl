@@ -78,20 +78,25 @@ opt_Add("--local",      "boolean", 0,                        1,    undef, undef,
 opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 100,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> minutes for cmscan jobs on farm to finish", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"2"} = "options for skipping stages, primarily useful for debugging";
-#     option               type       default               group   requires    incompat                  preamble-output                    help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       2,   undef,      "--nseq,--local,--wait",  "skip the edirect steps",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                       2,   undef,      "--nseq,--local,--wait",  "skip the sequence fetching steps", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                       2,   undef,      "--nseq,--local,--wait",  "skip the cmscan step",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipalign",     "boolean", 0,                       2,"--skipscan",  undef,                    "skip the alignment steps",         "skip the alignment steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                       2,"--skipscan",  undef,                    "skip the translation steps",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{"2"} = "options for skipping/adding optional stages";
+#       option               type   default                group  requires incompat        preamble-output                     help-output    
+opt_Add("--noalign",    "boolean", 0,                       2,    undef,   "--skipalign",  "skip the alignment steps",         "skip the alignment steps", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"34"} = "optional output files";
+$opt_group_desc_H{"3"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
 opt_Add("--mdlinfo",    "boolean", 0,                        3,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
 opt_Add("--ftrinfo",    "boolean", 0,                        3,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
 opt_Add("--seqinfo",    "boolean", 0,                        3,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
 opt_Add("--errinfo",    "boolean", 0,                        3,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"4"} = "options for skipping stages and use files from earlier, identical run, primarily useful for debugging";
+#     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
+opt_Add("--skipedirect",   "boolean", 0,                       4,   undef,      "--nseq,--local,--wait",  "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                       4,   undef,      "--nseq,--local,--wait",  "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",      "boolean", 0,                       4,   undef,      "--nseq,--local,--wait",  "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipalign",     "boolean", 0,                       4,"--skipscan",  undef,                    "skip the alignment steps, use existing results",         "skip the alignment steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skiptranslate", "boolean", 0,                       4,"--skipscan",  undef,                    "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -114,17 +119,19 @@ my $options_okay =
                 'local'         => \$GetOptions_H{"--local"}, 
                 'nseq=s'        => \$GetOptions_H{"--nseq"}, 
                 'wait=s'        => \$GetOptions_H{"--wait"},
-# options for skipping stages
-                'skipedirect'   => \$GetOptions_H{"--skipedirect"},
-                'skipfetch'     => \$GetOptions_H{"--skipfetch"},
-                'skipscan'      => \$GetOptions_H{"--skipscan"},
-                'skipalign'     => \$GetOptions_H{"--skipalign"},
-                'skiptranslate' => \$GetOptions_H{"--skiptranslate"},
+# options for skipping stages altogether
+                'noalign'      => \$GetOptions_H{"--noalign"},
 # optional output files
                 'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"}, 
                 'seqinfo'      => \$GetOptions_H{"--seqinfo"}, 
-                'errinfo'      => \$GetOptions_H{"--errinfo"});
+                'errinfo'      => \$GetOptions_H{"--errinfo"},
+# options for skipping stages, using earlier results
+                'skipedirect'   => \$GetOptions_H{"--skipedirect"},
+                'skipfetch'     => \$GetOptions_H{"--skipfetch"},
+                'skipscan'      => \$GetOptions_H{"--skipscan"},
+                'skipalign'     => \$GetOptions_H{"--skipalign"},
+                'skiptranslate' => \$GetOptions_H{"--skiptranslate"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -219,30 +226,31 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "nodirpath": file name, full path minus all directories
                          #  "desc":      short description of the file
                          #  "FH":        file handle to output to for this file, maybe undef
-                         # 2D keys:
-                         #  "log": log file of what's output to stdout
-                         #  "cmd": command file with list of all commands executed
+                         # 2D keys (at least initially)
+                         #  "log":  log file of what's output to stdout
+                         #  "cmd":  command file with list of all commands executed
+                         #  "list": file with list of all output files created
 
 # open the log and command files 
-openAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", "Output printed to screen");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", "List of executed commands");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, "Output printed to screen");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
-my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
 # open optional output files
 if(opt_Get("--mdlinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "mdlinfo", $out_root . ".mdlinfo", "Model information (created due to --mdlinfo)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "mdlinfo", $out_root . ".mdlinfo", 1, "Model information (created due to --mdlinfo)");
 }
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", "Feature information (created due to --ftrinfo)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
 }
 if(opt_Get("--seqinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "seqinfo", $out_root . ".seqinfo", "Sequence information (created due to --seqinfo)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "seqinfo", $out_root . ".seqinfo", 1, "Sequence information (created due to --seqinfo)");
 }
 if(opt_Get("--errinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "errinfo", $out_root . ".errinfo", "Error information (created due to --errinfo)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "errinfo", $out_root . ".errinfo", 1, "Error information (created due to --errinfo)");
 }
 
 # now we have the log file open, output the banner there too
@@ -736,16 +744,18 @@ if(! opt_Get("--skiptranslate", \%opt_HH)) {
 #########################################################
 # Step 17. Create multiple alignments of DNA sequences
 #########################################################
-$step_desc = opt_Get("--skipalign", \%opt_HH) ? "Parsing previously created nucleotide alignments" : "Aligning and parsing corrected nucleotide hits";
-$start_secs = outputProgressPrior($step_desc, $progress_w, $log_FH, *STDOUT);
-align_hits(\%execs_H, $model_file, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH); 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+if(! opt_Get("--noalign", \%opt_HH)) { 
+  $step_desc = opt_Get("--skipalign", \%opt_HH) ? "Parsing previously created nucleotide alignments" : "Aligning and parsing corrected nucleotide hits";
+  $start_secs = outputProgressPrior($step_desc, $progress_w, $log_FH, *STDOUT);
+  align_hits(\%execs_H, $model_file, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH); 
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
 
 #########################################################
 # Step 18. Create multiple alignments of protein sequences
 #########################################################
 # currently, we don't parse the protein alignments, so if --skipalign we completely skip align_protein_sequences()
-if(! opt_Get("--skipalign", \%opt_HH)) { 
+if((! opt_Get("--noalign", \%opt_HH)) && (! opt_Get("--skipalign", \%opt_HH))) { 
   $start_secs = outputProgressPrior("Aligning translated protein sequences", $progress_w, $log_FH, *STDOUT);
   align_protein_sequences(\%execs_H, "corrected.translated", \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -755,11 +765,11 @@ if(! opt_Get("--skipalign", \%opt_HH)) {
 # Step 19. Output annotations
 ########################################################################
 # open files for writing
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",     $out_root . ".tbl",           "All annotations in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl", $out_root . ".fail.tbl",      "Annotations for all sequences with >= 1 failure in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl", $out_root . ".error.tbl",      "Annotations for all sequences with >= 1 error in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr", $out_root . ".peraccn.errors", "List of errors, one line per sequence");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr", $out_root . ".all.errors",     "List of errors, one line per error");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",     $out_root . ".tbl",           1, "All annotations in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl", $out_root . ".fail.tbl",      1, "Annotations for all sequences with >= 1 failure in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl", $out_root . ".error.tbl",      1, "Annotations for all sequences with >= 1 error in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr", $out_root . ".peraccn.errors", 1, "List of errors, one line per sequence");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr", $out_root . ".all.errors",     1, "List of errors, one line per error");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -806,10 +816,9 @@ if(exists $ofile_info_HH{"FH"}{"errinfo"}) {
   dumpInfoHashOfArrays("Error information (%err_info_HA)", 0, \%err_info_HA, $ofile_info_HH{"FH"}{"errinfo"});
 }
 
-########################################################################
-##########
-# Conclude
-##########
+############
+# Conclude #
+############
 # output optional output files
 if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
   dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
@@ -879,7 +888,7 @@ sub concatenate_individual_cm_files {
   }
   $cat_cmd .= " > $model_file";
   runCommand($cat_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedFileToOutputInfo($ofile_info_HHR, "cm", $model_file, "CM file (a concatenation of individual files created by dnaorg_build.pl)");
+  addClosedFileToOutputInfo($ofile_info_HHR, "cm", $model_file, 1, "CM file (a concatenation of individual files created by dnaorg_build.pl)");
 
   # remove the binary index files if they exist, possibly from an earlier cmbuild/cmpress:
   for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
@@ -929,10 +938,10 @@ sub press_cm_database {
 
   my $cmpress_cmd = "$cmpress $model_file > /dev/null"; # output is irrelevant
   runCommand($cmpress_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1m", $model_file.".i1m", "index file for the CM, created by cmpress");
-  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1i", $model_file.".i1i", "index file for the CM, created by cmpress");
-  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1f", $model_file.".i1f", "index file for the CM, created by cmpress");
-  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1p", $model_file.".i1p", "index file for the CM, created by cmpress");
+  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1m", $model_file.".i1m", 0, "index file for the CM, created by cmpress");
+  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1i", $model_file.".i1i", 0, "index file for the CM, created by cmpress");
+  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1f", $model_file.".i1f", 0, "index file for the CM, created by cmpress");
+  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1p", $model_file.".i1p", 0, "index file for the CM, created by cmpress");
 
   return;
 }
@@ -991,7 +1000,7 @@ sub validate_cms_built_from_reference {
     unlink $cksum_file;
   }
   else { 
-    addClosedFileToOutputInfo($ofile_info_HHR, "cmchecksum", $cksum_file, "Checksum lines from the CM file");
+    addClosedFileToOutputInfo($ofile_info_HHR, "cmchecksum", $cksum_file, 0, "Checksum lines from the CM file");
   }
   return;
 }
@@ -1476,11 +1485,11 @@ sub fetch_hits_given_results {
     if($nseq2fetch > 0) { 
       $sqfile->fetch_subseqs(\@fetch_AA, undef, $fa_file);
       # save information on this to the output file info hash
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $fa_file, "fasta file with $out_key hits for model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $fa_file, 0, "fasta file with $out_key hits for model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
 
       if($nseq2fetch_append > 0) { 
         $sqfile->fetch_subseqs(\@fetch_append_AA, undef, $fa_append_file);
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_append_key, $fa_append_file, "fasta file with $out_key appended hits for model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_append_key, $fa_append_file, 0, "fasta file with $out_key appended hits for model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
       }
     }
   }
@@ -1557,7 +1566,7 @@ sub combine_model_hits {
         combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"});
 
         my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
       }
 
       # check if there's a file to append
@@ -1638,7 +1647,7 @@ sub combine_feature_hits {
       combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"}); 
 
       my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
     }
   }
   return;
@@ -2618,17 +2627,16 @@ sub error_instances_validate_all {
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
       $err_code = $err_info_HAR->{"code"}[$err_idx];
-      for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-        $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+      foreach $seq_name (keys %{$err_ftr_instances_AHHR->[$ftr_idx]{$err_code}}) { 
         if((exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) && 
            ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) eq "maybe") { 
           if(! $err_info_HAR->{"maybe_allowed"}[$err_idx]) { 
-            $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, value maybe exists for ftr %s seq %s, but maybes not allowed for this error\n", 
-                                           $ftr_info_HAR->{"out_tiny"}, $seq_name);
+            $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, value maybe exists for ftr %s seq %s error $err_code, but maybes not allowed for this error\n", 
+                                           $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
           }
           else { # maybes allowed for this error, but we shouldn't have any at this stage
-            $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, value maybe exists for ftr %s seq %s (no maybes should be left at this stage)\n", 
-                                           $ftr_info_HAR->{"out_tiny"}, $seq_name);
+            $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, value maybe exists for ftr %s seq %s error $err_code (no maybes should be left at this stage)\n", 
+                                           $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
           }
         }
       }
@@ -2637,20 +2645,18 @@ sub error_instances_validate_all {
 
   # validate that there are no incompatibilities
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-      for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-        $err_code = $err_info_HAR->{"code"}[$err_idx];
-        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-          my @incompat_A = split(",", $err_info_HAR->{"incompat"}[$err_idx]);
-          foreach my $incompat_err_idx (@incompat_A) { 
-            my $incompat_err_code = $err_info_HAR->{"code"}[$incompat_err_idx];
-            if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$incompat_err_code}{$seq_name}) { 
-              if($incompat_err_idx <= $err_idx) { 
-                # this way we only print an error once for each incompatibility b/t 'A and B' (not 'A and B' plus 'B and A')
-                $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, incompatible error combination $err_code and $incompat_err_code for ftr %s seq %s\n", 
-                                               $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
-              }
+    for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+      $err_code = $err_info_HAR->{"code"}[$err_idx];
+      my @incompat_A = split(",", $err_info_HAR->{"incompat"}[$err_idx]);
+      foreach my $incompat_err_idx (@incompat_A) { 
+        my $incompat_err_code = $err_info_HAR->{"code"}[$incompat_err_idx];
+        foreach $seq_name (keys %{$err_ftr_instances_AHHR->[$ftr_idx]{$err_code}}) { 
+          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$incompat_err_code}{$seq_name}) { 
+            if($incompat_err_idx <= $err_idx) { 
+              # this way we only print an error once for each incompatibility b/t 'A and B' (not 'A and B' plus 'B and A')
+              $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, incompatible error combination $err_code and $incompat_err_code for ftr %s seq %s\n", 
+                                             $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
+              
             }
           }
         }
@@ -2660,20 +2666,17 @@ sub error_instances_validate_all {
 
   # validate that all required combinations are met
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-      for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-        $err_code = $err_info_HAR->{"code"}[$err_idx];
-        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-          my @requires_A = split(",", $err_info_HAR->{"requires"}[$err_idx]);
-          foreach my $requires_err_idx (@requires_A) { 
-            my $requires_err_code = $err_info_HAR->{"code"}[$requires_err_idx];
-            if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{$requires_err_code}{$seq_name}) { 
-              if($requires_err_idx <= $err_idx) { 
-                # this way we only print an error once for each faield requirement b/t 'A and B' (not 'A and B' plus 'B and A')
-                $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, error $err_code exists without the required code $requires_err_code for ftr %s seq %s\n", 
-                                               $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
-              }
+    for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+      $err_code = $err_info_HAR->{"code"}[$err_idx];
+      my @requires_A = split(",", $err_info_HAR->{"requires"}[$err_idx]);
+      foreach my $requires_err_idx (@requires_A) { 
+        my $requires_err_code = $err_info_HAR->{"code"}[$requires_err_idx];
+        foreach $seq_name (keys %{$err_ftr_instances_AHHR->[$ftr_idx]{$err_code}}) { 
+          if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{$requires_err_code}{$seq_name}) { 
+            if($requires_err_idx <= $err_idx) { 
+              # this way we only print an error once for each faield requirement b/t 'A and B' (not 'A and B' plus 'B and A')
+              $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, error $err_code exists without the required code $requires_err_code for ftr %s seq %s\n", 
+                                             $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
             }
           }
         }
@@ -2945,7 +2948,9 @@ sub results_calculate_corrected_stops {
         ###########################################
         if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
           if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
-            DNAORG_FAIL("ERROR in $sub_name, ext error with non-maybe value for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
+            DNAORG_FAIL(sprintf("ERROR in $sub_name, stp error with non-maybe value %s for ftr %s seq_name: $seq_name", 
+                                $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}, $ftr_info_HAR->{"out_short"}[$ftr_idx]),
+                        1, $FH_HR);
           }
           $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
           my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, 
@@ -3546,14 +3551,12 @@ sub ftr_results_calculate {
         my $start_strand        = undef; # strand start codon is on
         my $stop_strand         = undef; # strand stop codon is on
         my $cds_len             = 0;     # length to output for this CDS
+        my $child_had_trc       = 0;     # if we find a child with a trc error, set this to 1
 
+        # step through all children of this feature
         for(my $child_idx = 0; $child_idx < $nchildren; $child_idx++) { 
           my $child_mdl_idx = $primary_children_idx_A[$child_idx];
           my $child_ftr_idx = $mdl_info_HAR->{"map_ftr"}[$child_mdl_idx];
-          #printf("HEYA ftr: $ftr_idx %s child_idx: $child_idx child_mdl_idx: $child_mdl_idx (%s) child_ftr_idx: $child_ftr_idx (%s)\n", 
-          #$ftr_info_HAR->{"out_short"}[$ftr_idx], 
-          #$mdl_info_HAR->{"out_tiny"}[$child_mdl_idx], 
-          #$ftr_info_HAR->{"out_short"}[$child_ftr_idx]); 
 
           # check to make sure we have a hit annotated for this model
           if(! exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { 
@@ -3572,22 +3575,32 @@ sub ftr_results_calculate {
               $set_start = 1;
             }
 
-            # check if we have a trc in this model, and deal with it if we do
+            # check if we have a trc in this child model, and deal with it if we do
             if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"trc_err_flag"}) { 
+              $child_had_trc = 1;
+              ####################################################
+              # We have a trc in this child model $child_mdl_idx #
+              # 
+              # Determine the cds stop position to print ($cds_out_stop)
+              # and position in the sequence to fetch the stop ($cds_fetch_stop).
+              # 
+              # If and only if we have all mature peptides up to this point and they 
+              # are all adjacent (that is, we don't have a aji or inp error), 
+              # then this CDS is truncated. We do the following:
+              #
+              # - update the trc errmsg for this CDS in @{$err_ftr_instances_AHHR} 
+              #   based on what just figured out about this truncated stop
+              # - set ntr errors for all remaining children 
+              # - set int error for this CDS
+              # - break the loop over all children (we're done with this CDS)
+              ####################################################
+
               $cds_out_stop      = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"}; 
               $cds_fetch_stop    = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
                   $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
                   $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
               $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
 
-              # if and only if we have all mature peptides up to this point and they 
-              # are all adjacent (that is, we don't have a aji or inp error), 
-              # then this CDS is truncated. We do the following:
-              # - update the trc errmsg for this CDS in @{$err_ftr_instances_AHHR} 
-              #   based on what just figured out about this truncated stop
-              # - set ntr errors for all remaining children 
-              # - set int error for this CDS
-              # - break the loop over all children (we're done with this CDS)
               if($inp_errmsg eq "" && $aji_errmsg eq "") { 
                 my $cds_pred_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
                 my $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
@@ -3607,6 +3620,7 @@ sub ftr_results_calculate {
                 }
                 $child_idx++;
                 my $ntr_err_ct = 0;
+                # for all remaining children: throw 'ntr' and append to 'int' err message
                 while($child_idx < $nchildren) {
                   $child_mdl_idx = $primary_children_idx_A[$child_idx];
                   $child_ftr_idx = $mdl_info_HAR->{"map_ftr"}[$child_mdl_idx];
@@ -3636,9 +3650,13 @@ sub ftr_results_calculate {
                   error_instances_remove_not_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $FH_HR);
                 }
               }
+              # deal with a potential stp error, if we have one
+
             } # end of 'if trc_err_flag'
             else { 
-              # we don't have a trc flag
+              ###########################################################
+              # we do not have a trc in this child model $child_mdl_idx #
+              ###########################################################
               # check if we're adjacent to the next model
               if($child_idx < ($nchildren-1)) { 
                 my $nxt_child_mdl_idx = $primary_children_idx_A[($child_idx+1)];
@@ -3670,47 +3688,49 @@ sub ftr_results_calculate {
                   $cds_fetch_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"};
                   # and update the cds_len (this is the final child, so this will only happen once)
                   $cds_len += abs($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"} - $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}) + 1; 
-
-                  # handle potential stp errors
-                  if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
-                    if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
-                      DNAORG_FAIL("ERROR in $sub_name, ext error with non-maybe value for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
-                    }
-                    my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, 
-                                                            $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}, 
-                                                            $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
-                    if(validateStopCodon($stp_err_stop_codon)) { 
-                      # it's a valid stop, remove the 'maybe'
-                      error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
-                    }
-                    else { 
-                      # it is not a valid stop, the error stays and we update the error message
-                      my $updated_stp_errmsg = sprintf("%s ending at position %d on %s strand", $stp_err_stop_codon, 
-                                                       $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}, $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}); 
-                      error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
-                    }
-                  }
-                }
-                else { 
-                  # we weren't able to append a stop codon, this means we don't have one
-                  # leave $cds_out_stop and $cds_fetch_stop as undef
-                  # handle potential stp errors
-                  if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
-                    if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
-                      DNAORG_FAIL("ERROR in $sub_name, ext error with non-maybe value for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
-                    }
-                    # change from "maybe" to "?"
-                    error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "?", $FH_HR);
-                  }
                 }
               }
             }
           } # end of 'else' entered if we don't have a trc error
         } # end of 'for(my $child_idx..'
         
+        # deal with a potential stp error, if we have one
+        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
+          # value should be 'maybe' 
+          if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
+            DNAORG_FAIL("ERROR in $sub_name, ext error with non-maybe value for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
+          }
+          if((defined $cds_fetch_stop) && (defined $cds_out_stop)) { 
+            my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, $cds_fetch_stop, $stop_strand, $FH_HR);
+            if(validateStopCodon($stp_err_stop_codon)) { 
+              # it's a valid stop, remove the 'maybe'
+              error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
+            }
+            else { 
+              # invalid stop, update the error message
+              my $updated_stp_errmsg = sprintf("%s ending at position %d on %s strand", $stp_err_stop_codon, $cds_out_stop, $stop_strand); 
+              error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
+            }
+          }
+          else { 
+            # we can't define the stop position, so this is also a stp error with only a "?" error message
+            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "?", $FH_HR);
+          }
+        }
+
         # sanity check
         if((defined $start_strand) && (defined $stop_strand) && ($start_strand ne $stop_strand)) { 
           DNAORG_FAIL(sprintf("ERROR in $sub_name, feature $ftr_idx %s for sequence $seq_name has start and stop on different strands", $ftr_info_HAR->{"out_short"}[$ftr_idx]), 1, $FH_HR);
+        }
+
+        # if we did not find a child with a trc, and we have 
+        # a trc error for this CDS, it must be invalid and caused
+        # by an aji error or an nm3 error or something like it,
+        # so we remove it
+        if(! $child_had_trc) { 
+          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
+            error_instances_remove_not_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $FH_HR);
+          }
         }
 
         # add the aji (adjacency) error if necessary
@@ -3724,7 +3744,8 @@ sub ftr_results_calculate {
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
         }
 
-        # set ftr_results
+        # set ftr_results, we can set start if $cds_out_start is defined, 
+        
         if(defined $cds_out_start) { 
           my $start_codon = fetchStartCodon($sqfile, $seq_name, $cds_fetch_start, $start_strand, $FH_HR);
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start"}       = $cds_out_start;
@@ -3739,22 +3760,27 @@ sub ftr_results_calculate {
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start"}       = "?";
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start_codon"} = "?";
         }
-        if(defined $cds_out_stop) { 
+        
+        # for the stop and length attributes to be anything but "?" 
+        # we require the following: 
+        # - no aji error
+        # - no inp error
+        # - $cds_out_start defined
+        # - $cds_out_stop defined
+        # 
+        if(($aji_errmsg eq "") && ($inp_errmsg eq "") && (defined $cds_out_start) && (defined $cds_out_stop)) { 
+          # an aji or inp error means we can't really say where the stop is
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop"}       = $cds_out_stop;
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name, $cds_fetch_stop, $stop_strand, $FH_HR);
-        }
-        else { 
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop"}       = "?";
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop_codon"} = "?";
-        }
-        if(($aji_errmsg eq "") && ($inp_errmsg eq "") && (defined $cds_out_start) && (defined $cds_out_stop)) { 
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"} = $cds_len;
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"}       = $cds_len;
           if(($cds_len % 3) != 0) { 
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cds_len", $FH_HR);
           }
         }
         else { 
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"} = "?";
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop"}       = "?";
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop_codon"} = "?";
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"}        = "?";
         }
       
         # check if existing annotation for this CDS exists in %{$cds_tbl_HHAR}
@@ -4060,7 +4086,7 @@ sub translate_feature_sequences {
     } 
 
     my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $out_ftr_info_file_key, $ofile_info_HHR->{"FH"});
-    addClosedFileToOutputInfo(\%ofile_info_HH, $ofile_info_key, $protein_fafile, sprintf("fasta file with translations of corrected hits for feature " . $ftr_info_HA{"out_tiny"}[$ftr_idx] . " composed of %d segments", $nsegments));
+    addClosedFileToOutputInfo(\%ofile_info_HH, $ofile_info_key, $protein_fafile, 0, sprintf("fasta file with translations of corrected hits for feature " . $ftr_info_HA{"out_tiny"}[$ftr_idx] . " composed of %d segments", $nsegments));
   }
   
   return;
@@ -4181,7 +4207,7 @@ sub align_hits {
       runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HHR->{"FH"});
       # save this file to %{$ofile_info_HHR}
       my $ofile_key = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_stk_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, sprintf("Stockholm alignment of hits for model #%d: %s", $mdl_idx+1, $mdl_info_HAR->{"out_tiny"}[$mdl_idx]));
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, 0, sprintf("Stockholm alignment of hits for model #%d: %s", $mdl_idx+1, $mdl_info_HAR->{"out_tiny"}[$mdl_idx]));
     }
     else { # --skipalign used, verify we have the alignment
       validateFileExistsAndIsNonEmpty($stk_file, $sub_name, $ofile_info_HHR->{"FH"});
@@ -4468,7 +4494,7 @@ sub wrapper_esl_epn_translate_startstop {
     }
     elsif(! opt_Get("--skiptranslate", $opt_HHR)) { 
       my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_out_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $esl_epn_translate_outfile, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $esl_epn_translate_outfile, 0, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
     }
   }
   return;
@@ -4534,7 +4560,7 @@ sub align_protein_sequences {
 
     # store the files we just created
     my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmm_file_key, $ofile_info_HHR->{"FH"});
-    addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmm_file, sprintf("HMM built from the reference protein sequence for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+    addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmm_file, 0, sprintf("HMM built from the reference protein sequence for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
 
     # remove the hmmbuild and hmmbuild alignment files, unless --keep
     if(! opt_Get("--keep", $opt_HHR)) { 
@@ -4543,9 +4569,9 @@ sub align_protein_sequences {
     }
     else { 
       $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmmstk_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmstk_file, sprintf("Stockholm alignment of reference protein for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmstk_file, 0, sprintf("Stockholm alignment of reference protein for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
       $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmmbuild_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmbuild_file, sprintf("hmmbuild output file for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmbuild_file, 0, sprintf("hmmbuild output file for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
     }
 
     # align all sequences to this HMM
@@ -4554,7 +4580,7 @@ sub align_protein_sequences {
 
     # store the file in ofile_info_HH
     $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_stk_file_key, $ofile_info_HHR->{"FH"});
-    addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, sprintf("alignment of all protein sequences to reference for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+    addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, 0, sprintf("alignment of all protein sequences to reference for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
     
     # remove the .ssi files, always
     if(-e $fa_file . ".ssi") { 
@@ -4696,6 +4722,7 @@ sub output_multifeature_relationships {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features annotated by models
       if($nprinted == 0) { 
+        print $FH ("#\n");
         print $FH ("# CDS:MAT_PEPTIDE relationships:\n");
         print $FH ("#\n");
       }
@@ -4707,22 +4734,21 @@ sub output_multifeature_relationships {
       # get the array of primary children feature indices for this feature
       my @children_idx_A = (); # feature indices of the primary children of this feature
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@children_idx_A, $FH_HR);
-      printf $FH ("# %s is comprised of the following primary features in order:\n# ", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
+      printf $FH ("# %s is comprised of the following primary features in order:\n#   ", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
       foreach my $child_ftr_idx (@children_idx_A) { 
         printf $FH "%s ", $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
       }
-      print $FH "\n";
+      print $FH "\n#\n";
       
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@children_idx_A, $FH_HR);
-      printf $FH ("# %s encodes all of the following features in order:\n# ", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
+      printf $FH ("# %s encodes all of the following features in order:\n#   ", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
       foreach my $child_ftr_idx (@children_idx_A) { 
         printf $FH "%s ", $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
       }
-      print $FH "\n";
+      print $FH "\n#\n";
       $nprinted++;
     }
   }
-  print $FH "#\n";
   my $div_line = "# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n";
   print $FH $div_line;
 
@@ -4770,7 +4796,8 @@ sub output_tbl_get_headings {
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
 
   # determine optional modes
-  my $do_nofid    = 0; # '1' to skip fid output
+  my $do_nofid    = (opt_Get("--noalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
+  my $do_noavgfid = (opt_Get("--noalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
   my $do_noss3    = 0; # '1' to skip ss3 output
   my $do_nostop   = 0; # '1' to skip stop output
   my $do_nomdlb   = 0; # '1' to skip model boundary output
@@ -5243,15 +5270,17 @@ sub output_tbl_get_headings {
   output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef);
   output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "total length (nt) for accession (repeated for convenience)", $FH_HR);
 
-  # "avgid"
-  $tok1 = sprintf("  %5s", "");
-  $tok2 = sprintf("  %5s", "");
-  $tok3 = sprintf("  %5s", "");
-  $tok4 = sprintf("  %5s", "avgid");
-  $tok5 = sprintf("  %5s", "-----");
-  output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef);
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "average fractional identity of all pairwise alignments for this accession", $FH_HR);
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+  if(! $do_noavgfid) { 
+    # "avgid"
+    $tok1 = sprintf("  %5s", "");
+    $tok2 = sprintf("  %5s", "");
+    $tok3 = sprintf("  %5s", "");
+    $tok4 = sprintf("  %5s", "avgid");
+    $tok5 = sprintf("  %5s", "-----");
+    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "average fractional identity of all pairwise alignments for this accession", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+  }
 
   # existing GenBank annotation
   if(! $do_noexist) { 
@@ -5481,7 +5510,8 @@ sub output_tbl_all_sequences {
                             # when this hits $nseqcol, we dump the output
   my $nerr_pages = 0;       # number of error pages output
   
-  my $do_nofid    = 0; # '1' to skip fid output
+  my $do_nofid    = (opt_Get("--noalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
+  my $do_noavgfid = (opt_Get("--noalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
   my $do_noss3    = 0; # '1' to skip ss3 output
   my $do_nostop   = 0; # '1' to skip stop output
   my $do_nomdlb   = 0; # '1' to skip model boundary output
@@ -5594,8 +5624,10 @@ sub output_tbl_all_sequences {
           push(@cur_out_A, sprintf("  %8s ", ($genbank_match ? " " . $mdl_results_HR->{"out_start"} . " " : "[" . $mdl_results_HR->{"out_start"} . "]")));
           push(@cur_out_A, sprintf("%8s",    ($genbank_match ? " " . $mdl_results_HR->{"out_stop"}  . " " : "[" . $mdl_results_HR->{"out_stop"}  . "]")));
           if(! $do_nofid) { push(@cur_out_A, sprintf(" %5.3f", $mdl_results_HR->{"fid2ref"})); } 
-          $tot_fid += $mdl_results_HR->{"fid2ref"};
-          $n_fid++;
+          if(! $do_noavgfid) { 
+            $tot_fid += $mdl_results_HR->{"fid2ref"};
+            $n_fid++;
+          }
           if(! $do_nomdlb) { 
             push(@cur_out_A, "  " . $mdl_results_HR->{"out_5boundary"} . $mdl_results_HR->{"out_3boundary"}); 
             if(($mdl_results_HR->{"out_5boundary"} ne ".") || 
@@ -5770,7 +5802,9 @@ sub output_tbl_all_sequences {
     # total length
     push(@cur_out_A, sprintf("  %6d", $accn_len));
     # average fid
-    push(@cur_out_A, sprintf("  %5.3f", ($n_fid > 0) ? ($tot_fid / $n_fid) : 0.));
+    if(! $do_noavgfid) { 
+      push(@cur_out_A, sprintf("  %5.3f", ($n_fid > 0) ? ($tot_fid / $n_fid) : 0.));
+    }
     # output number of actually annotated features and summed total of exons in those features, if nec
     if(! $do_noexist) { 
       push(@cur_out_A, sprintf("  %5d", $seq_info_HAR->{"num_genbank_mdl_annot"}[$seq_idx]));
@@ -6308,6 +6342,7 @@ sub output_errors_all_sequences {
     ######################
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       my $out_tiny = $ftr_info_HAR->{"out_tiny"}[$ftr_idx];
+      $nerr_perftr = 0;
       for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
         if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
           my $err_code = $err_info_HAR->{"code"}[$err_idx];

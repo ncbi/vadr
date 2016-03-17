@@ -3000,7 +3000,7 @@ sub validateOutputFileInfoHashOfHashes {
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  my @same_keys1d_A = ("order", "fullpath", "nodirpath", "desc"); # all of these 2nd dim hashes should have same set of keys
+  my @same_keys1d_A = ("order", "fullpath", "nodirpath", "mainout", "desc"); # all of these 2nd dim hashes should have same set of keys
   my @all_keys1d_A   = (@same_keys1d_A, "FH");             # all 1d keys
   my $i;     # a counter
   my $key1d; # a 1st dim key
@@ -3173,19 +3173,32 @@ sub outputConclusionAndCloseFiles {
 
   validateOutputFileInfoHashOfHashes($ofile_info_HHR);
 
-  my $log_FH = $ofile_info_HHR->{"FH"}{"log"};
-  my $cmd_FH = $ofile_info_HHR->{"FH"}{"cmd"};
+  my $log_FH  = $ofile_info_HHR->{"FH"}{"log"};
+  my $cmd_FH  = $ofile_info_HHR->{"FH"}{"cmd"};
+  my $list_FH = $ofile_info_HHR->{"FH"}{"list"};
 
   my $key2d; # a key in the 2nd dimension of $ofile_info_HHR
 
+  # output the list of files that we created for which the 'mainout' variable 
+  # is 1 to the $log file and stdout, we already printed the descriptions
+  # to the list file in helperAddFileToOutputInfo().
   if(defined $log_FH) { 
     outputString($log_FH, 1, sprintf("#\n"));
-    my $width_desc = length("# ") + maxLengthScalarValueInHash($ofile_info_HHR->{"desc"}) + length(" saved in:");
+    # create a temporary array with description of files with 'outmain' set to 1 (we'll only print these)
+    # so we get pretty formatting
+    my @tmp_A = ();
+    foreach $key2d (keys (%{$ofile_info_HHR->{"desc"}})) { 
+      if($ofile_info_HHR->{"mainout"}{$key2d}) { 
+        push(@tmp_A, $ofile_info_HHR->{"desc"}{$key2d});
+      }
+    }
+    my $width_desc = length("# ") + maxLengthScalarValueInArray(\@tmp_A) + length(" saved in:");
     my $cur_idx = 1;
     my $num_ofile = validateOutputFileInfoHashOfHashes($ofile_info_HHR); # this function validates we have exactly 1 of each "order" value of 1..$num_ofile
     for(my $i = 1; $i <= $num_ofile; $i++) { 
       foreach $key2d (keys (%{$ofile_info_HHR->{"order"}})) { 
-        if($ofile_info_HHR->{"order"}{$key2d} == $i) { 
+        if(($ofile_info_HHR->{"order"}{$key2d} == $i) && 
+           ($ofile_info_HHR->{"mainout"}{$key2d})) { 
           outputString($log_FH, 1, sprintf("# %-*s %s\n", $width_desc, $ofile_info_HHR->{"desc"}{$key2d} . " saved in:", $ofile_info_HHR->{"nodirpath"}{$key2d}));
         }
       }
@@ -3322,7 +3335,7 @@ sub formatTimeString {
 #              in a hash.
 #
 # Arguments: 
-#   $HR: reference to the array
+#   $HR: reference to the hash
 # 
 # Returns:     The length of the maximum length scalar.
 #
@@ -3337,6 +3350,34 @@ sub maxLengthScalarValueInHash {
   my $len = 0;
   foreach my $key (keys (%{$HR})) { 
     $len = length($HR->{$key});
+    if($len > $max) { $max = $len; }
+  }
+  return $max;
+}
+
+#################################################################
+# Subroutine : maxLengthScalarValueInArray()
+# Incept:      EPN, Thu Mar 17 12:38:53 2016
+# 
+# Purpose:     Return the maximum length of a scalar value
+#              in an array.
+#
+# Arguments: 
+#   $AR: reference to the array
+# 
+# Returns:     The length of the maximum length scalar.
+#
+################################################################# 
+sub maxLengthScalarValueInArray { 
+  my $nargs_expected = 1;
+  my $sub_name = "maxLengthScalarValueInArray()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR) = $_[0];
+
+  my $max = 0;
+  my $len = 0;
+  foreach my $el (@{$AR}) { 
+    $len = length($el);
     if($len > $max) { $max = $len; }
   }
   return $max;
@@ -3409,6 +3450,8 @@ sub getReferenceFeatureInfo {
 #   $ofile_info_HHR:        REF to the 2D hash of output file information, ADDED TO HERE 
 #   $key2d:                 2D key for the file we're adding and opening, e.g. "log"
 #   $fullpath:              full path to the file we're adding and opening
+#   $mainout:               '1' to always output description of this file to 'main' when script ends
+#                           '0' to only output a description of this file to the "list" file
 #   $desc:                  description of the file we're adding and opening
 #
 # Returns:    void
@@ -3418,13 +3461,13 @@ sub getReferenceFeatureInfo {
 #################################################################
 sub openAndAddFileToOutputInfo { 
   my $sub_name = "openAndAddFileToOutputInfo";
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($ofile_info_HHR, $key2d, $fullpath, $desc) = @_;
+  my ($ofile_info_HHR, $key2d, $fullpath, $mainout, $desc) = @_;
 
   # this helper function does everything but open the file handle
-  helperAddFileToOutputInfo($ofile_info_HHR, $key2d, $fullpath, $desc);
+  helperAddFileToOutputInfo($ofile_info_HHR, $key2d, $fullpath, $mainout, $desc);
 
   # and open the file handle
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
@@ -3448,6 +3491,8 @@ sub openAndAddFileToOutputInfo {
 #                           for 1D key $key
 #   $key2d:                 2D key for the file we're adding and opening, e.g. "fasta"
 #   $fullpath:              full path to the closed file we're adding
+#   $mainout:               '1' to always output description of this file to 'main' when script ends
+#                           '0' to only output a description of this file to the "list" file
 #   $desc:                  description of the closed file we're adding 
 #
 # Returns:    void
@@ -3457,13 +3502,13 @@ sub openAndAddFileToOutputInfo {
 #################################################################
 sub addClosedFileToOutputInfo { 
   my $sub_name = "addClosedFileToOutputInfo()";
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($ofile_info_HHR, $key2d, $fullpath, $desc) = @_;
+  my ($ofile_info_HHR, $key2d, $fullpath, $mainout, $desc) = @_;
 
   # this helper function does everything but set the file handle ("FH") value
-  helperAddFileToOutputInfo($ofile_info_HHR, $key2d, $fullpath, $desc);
+  helperAddFileToOutputInfo($ofile_info_HHR, $key2d, $fullpath, $mainout, $desc);
 
   # set FH value to undef
   $ofile_info_HHR->{"FH"}{$key2d} = undef;
@@ -3478,12 +3523,16 @@ sub addClosedFileToOutputInfo {
 # Purpose:    Add information about a output file to the output info
 #             data structures. Helper function that's called by both 
 #             openAndAddFileToOutputInfo() and addClosedFileToOutputInfo().
+#             Also, if $ofile_info_HHR->{"FH"}{"list"} is defined, 
+#             output the description of this file to the list file.
 #
 # Arguments:
 #   $ofile_info_HHR:        REF to the 2D hash of output file information, ADDED TO HERE 
 #                           for 1D key $key
 #   $key2d:                 2D key for the file we're adding and opening, e.g. "log"
 #   $fullpath:              full path to the file we're adding and opening
+#   $mainout:               '1' to always output description of this file to 'main' when script ends
+#                           '0' to only output a description of this file to the "list" file
 #   $desc:                  description of the file we're adding and opening
 #
 # Returns:    void
@@ -3493,13 +3542,18 @@ sub addClosedFileToOutputInfo {
 #################################################################
 sub helperAddFileToOutputInfo { 
   my $sub_name = "helperAddFileToOutputInfo";
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($ofile_info_HHR, $key2d, $fullpath, $desc) = @_;
+  my ($ofile_info_HHR, $key2d, $fullpath, $mainout, $desc) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  # make sure $mainout value is 0 or 1
+  if(($mainout ne "0") && ($mainout ne "1")) { 
+    DNAORG_FAIL("ERROR in $sub_name, entered with invalid 'mainout' value of $mainout (should be 0 or 1)", 1, $FH_HR);
+  }
 
   # make sure we don't already have any information for this 2nd dim key $key2d:
   foreach my $key1d (keys (%{$ofile_info_HHR})) { 
@@ -3515,8 +3569,19 @@ sub helperAddFileToOutputInfo {
   $ofile_info_HHR->{"fullpath"}{$key2d}  = $fullpath;
   $ofile_info_HHR->{"nodirpath"}{$key2d} = $nodirpath;
   $ofile_info_HHR->{"desc"}{$key2d}      = $desc;
+  $ofile_info_HHR->{"mainout"}{$key2d}   = $mainout;
 
-  # validate that we've correctly updatd the output info 2D hash
+  # output the description of this file to the list file
+  my $list_FH = ((defined $ofile_info_HHR) && (defined $ofile_info_HHR->{"FH"}) && (exists $ofile_info_HHR->{"FH"}{"list"})) ? 
+      $ofile_info_HHR->{"FH"}{"list"} : undef;
+
+  if(defined $list_FH) { 
+    my $width_desc = length("# ") + maxLengthScalarValueInHash($ofile_info_HHR->{"desc"}) + length(" saved in:");
+    if($width_desc < 80) { $width_desc = 80; }
+    outputString($list_FH, 0, sprintf("# %-*s %s\n", $width_desc, $ofile_info_HHR->{"desc"}{$key2d} . " saved in:", $ofile_info_HHR->{"nodirpath"}{$key2d}));
+  }
+
+  # validate that we've correctly updated the output info 2D hash
   validateOutputFileInfoHashOfHashes($ofile_info_HHR);
 
   return;
@@ -3753,7 +3818,7 @@ sub wrapperGetInfoUsingEdirect {
       if(! -s  $mp_file) { 
         DNAORG_FAIL("ERROR, in $sub_name, --matpept enabled but no mature peptide information exists.", 1, $FH_HR);
       }
-      addClosedFileToOutputInfo($ofile_info_HHR, "mp", $mp_file, "Mature peptide information obtained via edirect");
+      addClosedFileToOutputInfo($ofile_info_HHR, "mp", $mp_file, 0, "Mature peptide information obtained via edirect");
     }
     else { # ! $do_matpept
       if(-s $mp_file) { 
@@ -3778,7 +3843,7 @@ sub wrapperGetInfoUsingEdirect {
     }
     $cmd .= " | efetch -format ft > $ft_file";
     runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-    addClosedFileToOutputInfo($ofile_info_HHR, "ft", $ft_file, "Feature table obtained via edirect");
+    addClosedFileToOutputInfo($ofile_info_HHR, "ft", $ft_file, 0, "Feature table obtained via edirect");
   }
 
   # 3) create the length file
@@ -3793,7 +3858,7 @@ sub wrapperGetInfoUsingEdirect {
     }
     $cmd .= " | efetch -format gpc | xtract -insd INSDSeq_length | grep . | sort > $len_file";
     runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-    addClosedFileToOutputInfo($ofile_info_HHR, "len", $len_file, "Sequence length file");
+    addClosedFileToOutputInfo($ofile_info_HHR, "len", $len_file, 0, "Sequence length file");
   }
   if(! -s $len_file) { 
     if($do_skip) { 
@@ -3920,12 +3985,12 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   if(! opt_Get("--skipfetch", $opt_HHR)) { 
     printf("calling fetchSeq...\n");
     fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR, $FH_HR);
-    addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, "Input file for esl-fetch-cds.pl");
-    addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
+    addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, 0, "Input file for esl-fetch-cds.pl");
+    addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file with reference genome");
   }
   else { # --skipfetch enabled
     validateFileExistsAndIsNonEmpty($fasta_file, $sub_name, $FH_HR);
-    addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, "Sequence file with reference genome");
+    addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file with reference genome");
   }
   
   # open the sequence file using Bio-Easel
@@ -3967,7 +4032,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
                                                      # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
                                                      # separate alignments, one per feature
   fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
-  addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, "Stockholm alignment file with reference features");
+  addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, 0, "Stockholm alignment file with reference features");
 
   # 5) look for special cases, where we want to append the 3 nt 3' of the final mature peptide in a cds-mp feature type
   annotateAppendFeatures($ftr_info_HAR, $mdl_info_HAR, $FH_HR);
@@ -4532,12 +4597,21 @@ sub initializeHardCodedErrorInfoHash {
 
   # define the incompatibilities, these are 2 sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
+
   setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext", $FH_HR);
   setIncompatibilityErrorInfoHash($err_info_HAR, "trc", "ext,nst,aji,inp", $FH_HR);
 
   # define the required combinations, these are 1 sided, error code arg 2 requires error code arg 3, but error code arg 3 does not require err code arg 2
-  setRequiredErrorInfoHash($err_info_HAR, "ext", "stp", $FH_HR);
-  setRequiredErrorInfoHash($err_info_HAR, "nst", "stp", $FH_HR);
+  #
+  # Previously these were set: 
+  # setRequiredErrorInfoHash($err_info_HAR, "ext", "stp", $FH_HR); this 
+  # setRequiredErrorInfoHash($err_info_HAR, "nst", "stp", $FH_HR);
+  #
+  # But 'stp' error is only thrown if predicted final 3 nts of a CDS are not a valid stop codon
+  # regardless of the frame they are in. 'ext' errors occur if no valid *in-frame* stop codon
+  # exists between predicted start and stop, and 'nst' error occurs if no valid *in-frame* stop
+  # codon exists 3' of predicted start. So you can have cases of 'ext' and not 'stp', and you
+  # can have cases of 'nst' and not 'stp'.
 
   return;
 }
