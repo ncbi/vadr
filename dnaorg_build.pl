@@ -77,14 +77,15 @@ $opt_group_desc_H{"2"} = "options affecting window/hit definition";
 opt_Add("--slow",   "boolean", 0,                     2,    undef, undef,   "running cmcalibrate in slow mode",               "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
 opt_Add("--local",  "boolean", 0,                     2,    undef, undef,   "running cmcalibrate on local machine",           "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"3"} = "options for skipping stages and use files from earlier, identical run, primarily useful for debugging";
-#     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
-opt_Add("--skipfetch",     "boolean", 0,                       3,   undef,      "--nseq,--local,--wait",  "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{"4"} = "optional output files";
+$opt_group_desc_H{"3"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                        4,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
-opt_Add("--ftrinfo",    "boolean", 0,                        4,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--mdlinfo",    "boolean", 0,                        3,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--ftrinfo",    "boolean", 0,                        3,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"4"} = "options for skipping stages and use files from earlier, identical run, primarily useful for debugging";
+#     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
+opt_Add("--skipedirect",   "boolean", 0,                       4,   undef,      undef,                    "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                       4,   undef,      undef,                    "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -104,6 +105,9 @@ my $options_okay =
 # calibration related options
                 'slow'         => \$GetOptions_H{"--slow"},
                 'local'        => \$GetOptions_H{"--local"},
+# options for skipping stages, using earlier results
+                'skipedirect'   => \$GetOptions_H{"--skipedirect"},
+                'skipfetch'     => \$GetOptions_H{"--skipfetch"},
 # optional output files
                 'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});
