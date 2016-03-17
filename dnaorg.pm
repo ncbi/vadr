@@ -4577,6 +4577,7 @@ sub initializeHardCodedErrorInfoHash {
   # add each error code, this function will die if we try to add the same code twice, or if the 3rd argument is 
   # neither "sequence" nor "feature"
                                    #code    pertype   maybe_allowed?  msg (description)
+  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0,             "there is not exactly 1 occurrence of origin sequence", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "nop", "feature",  0,             "unable to identify homologous feature", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "nm3", "feature",  0,             "length of nucleotide feature is not a multiple of 3", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "bd5", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
@@ -4593,7 +4594,6 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not translated due to early stop (ntr)", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0,             "there is not exactly 1 occurrence of origin sequence", $FH_HR);
 
   # define the incompatibilities, these are 2 sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop

@@ -770,6 +770,7 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl", $out_root . ".fail.tbl", 
 openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl", $out_root . ".error.tbl",      1, "Annotations for all sequences with >= 1 error in tabular format");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr", $out_root . ".peraccn.errors", 1, "List of errors, one line per sequence");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr", $out_root . ".all.errors",     1, "List of errors, one line per error");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum", $out_root . ".errors.summary", 1, "Summary of all errors");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -784,7 +785,7 @@ $start_secs = outputProgressPrior("Generating tabular annotation output", $progr
 output_tbl_get_headings(\@out_row_header_A, \@out_header_exp_A, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 
 # for each sequence, output the tabular annotation
-output_tbl_all_sequences(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
+my $nfail = output_tbl_all_sequences(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
 # output the explanatory text
 output_tbl_explanations(\@out_header_exp_A, \%ofile_info_HH);
@@ -796,30 +797,23 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ###############
 $start_secs = outputProgressPrior("Generating error code output", $progress_w, $log_FH, *STDOUT);
 
-# output the error files
 output_errors_header(\%ftr_info_HA, \%ofile_info_HH);
-output_errors_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, \%ofile_info_HH);
+output_errors_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+###########################################
+# brief summary of annotations and errors #
+###########################################
+outputString($log_FH, 1, sprintf("#\n# Annotated %d accessions, %d (%6.4f fraction) had at least one annotation 'failure', see %s for all details.\n", 
+                                 $nseq, $nfail, ($nfail/$nseq), $ofile_info_HH{"nodirpath"}{"tbl"}));
+
+output_errors_summary($ofile_info_HH{"FH"}{"errsum"}, \@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, 1, \%opt_HH, \%ofile_info_HH); # 1: output to stdout
 
 ################################
 # output optional output files #
 ################################
 # 
-if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
-  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
-}
-if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
-  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
-}
-if(exists $ofile_info_HH{"FH"}{"errinfo"}) { 
-  dumpInfoHashOfArrays("Error information (%err_info_HA)", 0, \%err_info_HA, $ofile_info_HH{"FH"}{"errinfo"});
-}
-
-############
-# Conclude #
-############
-# output optional output files
 if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
   dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
 }
@@ -833,10 +827,12 @@ if(exists $ofile_info_HH{"FH"}{"errinfo"}) {
   dumpInfoHashOfArrays("Error information (%err_info_HA)", 0, \%err_info_HA, $ofile_info_HH{"FH"}{"errinfo"});
 }
 
+############
+# Conclude #
+############
+
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
-
-
 
 ###############
 # SUBROUTINES #
@@ -2031,7 +2027,7 @@ sub error_instances_initialize_AHH {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     %{$err_ftr_instances_AHHR->[$ftr_idx]} = (); 
     for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-      if($err_info_HAR->{"pertype"} eq "feature") { 
+      if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
         %{$err_ftr_instances_AHHR->[$ftr_idx]{$err_info_HAR->{"code"}[$err_idx]}} = ();
       }
     }
@@ -2040,7 +2036,7 @@ sub error_instances_initialize_AHH {
   # the per-sequence errors
   %{$err_seq_instances_HHR} = ();
   for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-    if($err_info_HAR->{"pertype"} eq "sequence") { 
+    if($err_info_HAR->{"pertype"}[$err_idx] eq "sequence") { 
       %{$err_seq_instances_HHR->{$err_info_HAR->{"code"}[$err_idx]}} = ();
     }
   }
@@ -3590,6 +3586,7 @@ sub ftr_results_calculate {
               #
               # - update the trc errmsg for this CDS in @{$err_ftr_instances_AHHR} 
               #   based on what just figured out about this truncated stop
+              #   (if we don't have a str error for this CDS)
               # - set ntr errors for all remaining children 
               # - set int error for this CDS
               # - break the loop over all children (we're done with this CDS)
@@ -3602,15 +3599,28 @@ sub ftr_results_calculate {
               $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
 
               if($inp_errmsg eq "" && $aji_errmsg eq "") { 
-                my $cds_pred_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
-                my $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
-                                                 create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $accn_len, $seq_len, $FH_HR),
-                                                 create_output_start_and_stop($cds_out_start,   $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
-                                                 abs($cds_fetch_stop - $cds_pred_stop) + 1, $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
-                error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
-                # set the trc_err_flag for this feature
-                $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
-
+                if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
+                  # if we don't have a str error, update the trc error message
+                  # use the final childs stop prediction as the predicted stop, if it exists
+                  my $final_child_mdl_idx = $primary_children_idx_A[$nchildren-1];
+                  my $updated_trc_errmsg  = "";
+                  if(exists $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"}) { 
+                    my $cds_pred_stop = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
+                    $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
+                                                  create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $accn_len, $seq_len, $FH_HR),
+                                                  create_output_start_and_stop($cds_fetch_start, $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
+                                                  abs($cds_fetch_stop - $cds_pred_stop) + 1, $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
+                  }
+                  else { 
+                    $updated_trc_errmsg = sprintf("homology search predicted %d..? revised to %d..%d (due to early stop in %s)", 
+                                                  $cds_out_start, 
+                                                  create_output_start_and_stop($cds_out_start,   $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
+                                                  $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
+                  }
+                  error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                  # set the trc_err_flag for this feature
+                  $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
+                }
                 # all remaining children get a 'ntr' error,
                 # and the CDS gets an 'int' error, which we need
                 # to build the error message for
@@ -5470,7 +5480,7 @@ sub output_tbl_get_headings_explanation_helper {
 #  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:   REF to the 2D hash of output file information
 #             
-# Returns:  void
+# Returns:  Number of accessions with >= 1 failure.
 # 
 # Dies:     never
 #
@@ -5529,6 +5539,7 @@ sub output_tbl_all_sequences {
   my $at_least_one_fail = undef; # set to 1 if we see a failure, separately for each sequence
   my $pass_fail_char    = undef; # for each possible pass/fail, the 'P' or 'F'
   my $pass_fail_str     = undef; # string of pass/fail characters
+  my $tot_nfail         = 0;     # total number of accessions with at least 1 failure
 
   my $origin_offset = undef;
   if(opt_IsUsed("--origin", $opt_HHR)) { 
@@ -5828,6 +5839,7 @@ sub output_tbl_all_sequences {
       if($accn_failed) { 
         push(@fail_page_out_AA, [@cur_out_A]);
         $cur_fail_pagesize++;
+        $tot_nfail++;
       }        
       if($cur_nerr > 0) { 
         push(@err_page_out_AA, [@cur_out_A]);
@@ -5869,7 +5881,7 @@ sub output_tbl_all_sequences {
     output_tbl_page_of_sequences($FH_HR->{"errtbl"}, \@out_row_header_A, \@err_page_out_AA, \@ref_out_A, $nerr_pages, $FH_HR);
   }
 
-  return;
+  return $tot_nfail;
 }
 
 #################################################################
@@ -6289,9 +6301,9 @@ sub get_origin_output_for_sequence {
 # Arguments:
 #  $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
 #  $err_seq_instances_HHR:  REF to 2D hash with per-sequence errors, PRE-FILLED
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
 #  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
 #  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:         REF to the 2D hash of output file information
 #             
@@ -6305,7 +6317,7 @@ sub output_errors_all_sequences {
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $ftr_info_HAR, $seq_info_HAR, $err_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
   my $all_FH = $FH_HR->{"allerr"}; # for convenience
@@ -6368,6 +6380,110 @@ sub output_errors_all_sequences {
       print $per_FH $per_line . "\n";
     }
   } # end of 'for($seq_idx = 0'...
+  return;
+}
+
+#################################################################
+# Subroutine: output_errors_summary()
+# Incept:     EPN, Thu Mar 17 12:55:55 2016
+#
+# Purpose:   Summarize the errors. Create this in a new file
+#            and also (optionally) to stdout, if $do_stdout.
+#
+# Arguments:
+#  $FH:                     file handle to print to
+#  $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
+#  $err_seq_instances_HHR:  REF to 2D hash with per-sequence errors, PRE-FILLED
+#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $do_stdout:              '1' to output to stdout as well as $FH file handle
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:         REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub output_errors_summary { 
+  my $sub_name = "output_errors_summary()";
+  my $nargs_exp = 9;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($FH, $err_ftr_instances_AHHR, $err_seq_instances_HHR, $ftr_info_HAR, $seq_info_HAR, $err_info_HAR, $do_stdout, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
+  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); 
+
+  # output header, with explanations
+  outputString($FH, $do_stdout, sprintf("# Table below includes counts of error codes\n"));
+  outputString($FH, $do_stdout, sprintf("#\n"));
+  outputString($FH, $do_stdout, sprintf("# Explanation of columns:\n"));
+  outputString($FH, $do_stdout, sprintf("# \"code\"       : the error code\n"));
+  outputString($FH, $do_stdout, sprintf("# \"#tot\"       : total number of occurences of code , possibly > 1 for some accessions\n"));
+  outputString($FH, $do_stdout, sprintf("# \"#accn\"      : number of accessions with at least 1 occurence of code\n"));
+  outputString($FH, $do_stdout, sprintf("# \"fraction...\": fraction of all $nseq accessions with at least 1 occurence of code\n"));
+  outputString($FH, $do_stdout, sprintf("#\n"));
+
+  outputString($FH, $do_stdout, sprintf("# Explanation of final two rows beginning with \"total\" and \"any\":\n"));
+  outputString($FH, $do_stdout, sprintf("#   \"total\":\"#tot\"   column is total number of error codes reported\n"));
+  outputString($FH, $do_stdout, sprintf("#   \"any\":\"#tot\"     column is number of accessions with >= 1 error code\n"));
+  outputString($FH, $do_stdout, sprintf("#   \"any\":\"fraction\" column is fraction of accessions with >= 1 error code\n"));
+  outputString($FH, $do_stdout, sprintf("#code   #tot  #accn  fraction-of-all-$nseq-accn\n"));
+  outputString($FH, $do_stdout, sprintf("#----  -----  -----  ------\n"));
+
+  # for each error code, gather counts
+  my $ntot_all  = 0; # total number of errors
+  my $naccn_all = 0; # number of accessions with >= 1 error 
+  my %seq_counted_all_err_H = (); # for all errors, we add each sequence to this hash if it has >= 1 error
+  
+  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+    my $ntot_err  = 0;
+    my $naccn_err = 0;
+    my $err_code = $err_info_HAR->{"code"}[$err_idx];
+    my %seq_counted_this_err_H = (); # for per-feature errors, we add each sequence to this hash 
+                                     # as we see it, so we can more efficiently count the errors
+
+    if($err_info_HAR->{"pertype"}[$err_idx] eq "sequence") { 
+      foreach my $seq_name (keys %{$err_seq_instances_HHR->{$err_code}}) { 
+        $naccn_err++;
+        if(! exists $seq_counted_all_err_H{$seq_name}) { 
+          $naccn_all++;
+          $seq_counted_all_err_H{$seq_name} = 1;
+        }
+      }
+      $ntot_err  = $naccn_err; # only 1 error per sequence for these guys
+      $ntot_all += $naccn_err; # only 1 error per sequence for these guys
+    }
+    elsif($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
+      for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        foreach my $seq_name (keys %{$err_ftr_instances_AHHR->[$ftr_idx]{$err_code}}) { 
+          $ntot_err++;
+          $ntot_all++;
+          if(! exists $seq_counted_this_err_H{$seq_name}) { 
+            $naccn_err++;
+            $seq_counted_this_err_H{$seq_name} = 1;
+          }
+          if(! exists $seq_counted_all_err_H{$seq_name}) { 
+            $naccn_all++;
+            $seq_counted_all_err_H{$seq_name} = 1;
+          }
+        }
+      }
+    }
+
+    # output stats for this error 
+    outputString($FH, $do_stdout, sprintf("%5s  %5d  %5d  %6.4f\n", $err_code, $ntot_err, $naccn_err, ($naccn_err / $nseq)));
+  }
+
+  # the 'total' and 'any' lines
+  outputString($FH, $do_stdout, sprintf("#----  -----  -----  ------\n"));
+  outputString($FH, $do_stdout, sprintf("%5s  %5d  %5s  %6s\n",  "total", $ntot_all,  "-", "-"));
+  outputString($FH, $do_stdout, sprintf("%5s  %5d  %5s  %6.4f\n", "any",  $naccn_all, "-", ($naccn_all / $nseq)));
+
   return;
 }
 
