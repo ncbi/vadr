@@ -776,6 +776,16 @@ my @out_row_header_A  = (); # ref to array of output tokens for column or row he
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
                             # explanations of each header
 
+###############
+# error files #
+###############
+$start_secs = outputProgressPrior("Generating error code output", $progress_w, $log_FH, *STDOUT);
+
+output_errors_header(\%ftr_info_HA, \%ofile_info_HH);
+output_errors_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
+
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 ############################
 # tabular annotation files #
 ############################
@@ -789,16 +799,6 @@ my $nfail = output_tbl_all_sequences(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA
 
 # output the explanatory text
 output_tbl_explanations(\@out_header_exp_A, \%ofile_info_HH);
-
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-###############
-# error files #
-###############
-$start_secs = outputProgressPrior("Generating error code output", $progress_w, $log_FH, *STDOUT);
-
-output_errors_header(\%ftr_info_HA, \%ofile_info_HH);
-output_errors_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -5551,7 +5551,6 @@ sub output_tbl_all_sequences {
     my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
     my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-    my $cur_nerr  = 0; # FIX ME
     my @cur_out_A = (); # array of current tokens to print
     my $ngenbank_match = 0; # number of matches with existing annotation
     my $pass_fail_str  = ""; 
@@ -5841,7 +5840,7 @@ sub output_tbl_all_sequences {
         $cur_fail_pagesize++;
         $tot_nfail++;
       }        
-      if($cur_nerr > 0) { 
+      if($seq_info_HAR->{"nerrors"}[$seq_idx] > 0) { 
         push(@err_page_out_AA, [@cur_out_A]);
         $cur_err_pagesize++;
       }        
@@ -5859,7 +5858,7 @@ sub output_tbl_all_sequences {
       @fail_page_out_AA = ();
       $cur_fail_pagesize = 0;
     }
-    if(($cur_nerr > 0) && 
+    if(($seq_info_HAR->{"nerrors"}[$seq_idx] > 0) && 
        (($cur_err_pagesize+1) == $nseqcol)) { 
       $nerr_pages++;
       output_tbl_page_of_sequences($FH_HR->{"errtbl"}, \@out_row_header_A, \@err_page_out_AA, \@ref_out_A, $nerr_pages, $FH_HR);
@@ -6302,7 +6301,7 @@ sub get_origin_output_for_sequence {
 #  $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
 #  $err_seq_instances_HHR:  REF to 2D hash with per-sequence errors, PRE-FILLED
 #  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED, we add "nerrors" values here
 #  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
 #  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:         REF to the 2D hash of output file information
@@ -6379,6 +6378,7 @@ sub output_errors_all_sequences {
     if($nerr_perseq + $nerr_perftr > 0) { 
       print $per_FH $per_line . "\n";
     }
+    $seq_info_HAR->{"nerrors"}[$seq_idx] = $nerr_perseq + $nerr_perftr;
   } # end of 'for($seq_idx = 0'...
   return;
 }
