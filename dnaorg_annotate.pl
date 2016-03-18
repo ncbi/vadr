@@ -6332,7 +6332,7 @@ sub output_errors_all_sequences {
     my $nerr_perftr = 0; # number of per-feature errors for this sequence
     my $seq_name    = $seq_info_HAR->{"seq_name"}[$seq_idx];
     my $accn_name   = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $per_line = $accn_name . " "; # the line for this sequence to print to $per_FH
+    my $per_line    = $accn_name . " "; # the line for this sequence to print to $per_FH
     #######################
     # per-sequence errors #
     #######################
@@ -6353,7 +6353,6 @@ sub output_errors_all_sequences {
     ######################
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       my $out_tiny = $ftr_info_HAR->{"out_tiny"}[$ftr_idx];
-      $nerr_perftr = 0;
       for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
         if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
           my $err_code = $err_info_HAR->{"code"}[$err_idx];
