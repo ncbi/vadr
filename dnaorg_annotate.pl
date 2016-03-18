@@ -6328,8 +6328,8 @@ sub output_errors_all_sequences {
 
   my ($seq_idx, $ftr_idx, $err_idx); # counters
   for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $nerr_perseq = 0; # number of per-sequence errors for this sequence
-    my $nerr_perftr = 0; # number of per-feature errors for this sequence
+    my $seq_nseqerr = 0; # number of per-sequence errors for this sequence
+    my $seq_nftrerr = 0; # number of per-feature errors for this sequence
     my $seq_name    = $seq_info_HAR->{"seq_name"}[$seq_idx];
     my $accn_name   = $seq_info_HAR->{"accn_name"}[$seq_idx];
     my $per_line    = $accn_name . " "; # the line for this sequence to print to $per_FH
@@ -6343,7 +6343,7 @@ sub output_errors_all_sequences {
           # an error exists, output it
           printf $all_FH ("%-10s  %3s  %-5s  %4s  %s%s\n", $accn_name, "N/A", "N/A", $err_code, $err_info_HAR->{"msg"}[$err_idx], 
                           " [" . $err_seq_instances_HHR->{$err_code}{$seq_name} . "]"); 
-          $nerr_perseq++;
+          $seq_nseqerr++;
           $per_line .= " " . $err_code;
         }
       }  
@@ -6353,6 +6353,7 @@ sub output_errors_all_sequences {
     ######################
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       my $out_tiny = $ftr_info_HAR->{"out_tiny"}[$ftr_idx];
+      my $ftr_seq_nftrerr = 0; # number of errors we've seen for this sequence and feature
       for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
         if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
           my $err_code = $err_info_HAR->{"code"}[$err_idx];
@@ -6360,7 +6361,7 @@ sub output_errors_all_sequences {
             # an error exists, output it
             printf $all_FH ("%-10s  %3s  %-5s  %4s  %s%s\n", $accn_name, ($ftr_idx+1), $out_tiny, $err_code, $err_info_HAR->{"msg"}[$err_idx], 
                             " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]"); 
-            if($nerr_perftr == 0) { 
+            if($ftr_seq_nftrerr == 0) { 
               $per_line .= (" " . ($ftr_idx+1) . ":" . $err_code);
             }
             else { 
@@ -6369,15 +6370,16 @@ sub output_errors_all_sequences {
             if($err_code eq "olp") { # special case, add the extra string
               $per_line .= ":" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name};
             }
-            $nerr_perftr++;
+            $ftr_seq_nftrerr++;
+            $seq_nftrerr++;
           }
         }
       }
     }
-    if($nerr_perseq + $nerr_perftr > 0) { 
+    if($seq_nseqerr + $seq_nftrerr > 0) { 
       print $per_FH $per_line . "\n";
     }
-    $seq_info_HAR->{"nerrors"}[$seq_idx] = $nerr_perseq + $nerr_perftr;
+    $seq_info_HAR->{"nerrors"}[$seq_idx] = $seq_nseqerr + $seq_nftrerr;
   } # end of 'for($seq_idx = 0'...
   return;
 }
