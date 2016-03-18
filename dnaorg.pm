@@ -4338,11 +4338,12 @@ sub annotateOverlapsAndAdjacencies {
   @{$mdl_info_HAR->{"out_olp_str"}} = ();
 
   my $len = (opt_Get("-c", $opt_HHR)) ? $seq_info_HAR->{"seq_len"}[0] : -1;
-  overlapsAndAdjacenciesHelper($mdl_info_HAR,
-                               $mdl_info_HAR->{"ref_start"}, $mdl_info_HAR->{"ref_stop"}, $mdl_info_HAR->{"ref_strand"}, $len, 
+  overlapsAndAdjacenciesHelper($mdl_info_HAR, 
+                               $mdl_info_HAR->{"ref_start"}, $mdl_info_HAR->{"ref_stop"}, $mdl_info_HAR->{"ref_strand"}, 
+                               $seq_info_HAR->{"seq_len"}[0], $seq_info_HAR->{"accn_len"}[0], 
                                $mdl_info_HAR->{"idx_ajb_str"}, $mdl_info_HAR->{"idx_aja_str"}, $mdl_info_HAR->{"idx_olp_str"}, 
                                $mdl_info_HAR->{"out_ajb_str"}, $mdl_info_HAR->{"out_aja_str"}, $mdl_info_HAR->{"out_olp_str"}, 
-                               $FH_HR);
+                               $opt_HHR, $FH_HR);
 
   return;
 }
@@ -4362,18 +4363,21 @@ sub annotateOverlapsAndAdjacencies {
 #              
 # Arguments: 
 #   $mdl_info_HAR:   REF to hash of arrays with information on the models, ADDED TO HERE
+#   $accn_len:       length of the 'accession' start,stop values may exceed this if -c option used
 #   $start_AR:       REF to array with start positions 
 #   $stop_AR:        REF to array with stop positions 
 #   $strand_AR:      REF to array with strands
-#   $len:            total length of the sequence, so we can 
-#                    check if we're adjacent $len..1, if -1
-#                    don't check for this special case
+#   $seq_len:        total length of the sequence, so we can 
+#                    check if we're adjacent $len..1 if -c enabled
+#   $accn_len:       length of the accession, so we make a special check for overlaps
+#                    if -c enabled
 #   $idx_ajb_str_AR: REF to array to fill with strings of 'before' adjacency model indices
 #   $idx_aja_str_AR: REF to array to fill with strings of 'after' adjacency model indices
 #   $idx_olp_str_AR: REF to array to fill with strings of overlaps model indices
 #   $out_ajb_str_AR: REF to array to fill with strings of 'before' adjacency model descriptions
 #   $out_aja_str_AR: REF to array to fill with strings of 'after' adjacency model descriptions
 #   $out_olp_str_AR: REF to array to fill with strings of overlaps
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
 #   $FH_HR:          REF to hash of file handles
 # 
 # Returns:     Nothing.
@@ -4381,12 +4385,12 @@ sub annotateOverlapsAndAdjacencies {
 # Dies: 
 ################################################################# 
 sub overlapsAndAdjacenciesHelper() { 
-  my $nargs_expected = 12;
+  my $nargs_expected = 14;
   my $sub_name = "overlapsAndAdjacenciesHelper()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($mdl_info_HAR, $start_AR, $stop_AR, $strand_AR, $len, $idx_ajb_str_AR, $idx_aja_str_AR, $idx_olp_str_AR, 
-      $out_ajb_str_AR, $out_aja_str_AR, $out_olp_str_AR, $FH_HR) = @_;
+  my ($mdl_info_HAR, $start_AR, $stop_AR, $strand_AR, $seq_len, $accn_len, $idx_ajb_str_AR, $idx_aja_str_AR, $idx_olp_str_AR, 
+      $out_ajb_str_AR, $out_aja_str_AR, $out_olp_str_AR, $opt_HHR, $FH_HR) = @_;
 
   my $nmdl = scalar(@{$start_AR});
   my @adj_AA = (); # [0..$i..$nmdl-1][0..$j..$nmdl-1], value is '1' if $i and $j are adjacent
@@ -4425,20 +4429,71 @@ sub overlapsAndAdjacenciesHelper() {
               $adj_AA[$mdl_idx1][$mdl_idx2] = 1;
               #printf("HEYAA $mdl_idx1 and $mdl_idx2 are adjacent\n");
             }
-            if(($len != -1) && 
-               ((($strand1 eq "+") && ($stop1 == $len) && ($start2 == 1)) || 
-                (($strand1 eq "-") && ($stop1 == 1)    && ($start2 == $len)) || 
-                (($strand1 eq "+") && ($stop2 == $len) && ($start1 == 1)) || 
-                (($strand1 eq "-") && ($stop2 == 1)    && ($start1 == $len)))) { 
+            if((opt_Get("-c", $opt_HHR)) && 
+               ((($strand1 eq "+") && ($stop1 == $seq_len) && ($start2 == 1)) || 
+                (($strand1 eq "-") && ($stop1 == 1)        && ($start2 == $seq_len)) || 
+                (($strand1 eq "+") && ($stop2 == $seq_len) && ($start1 == 1)) || 
+                (($strand1 eq "-") && ($stop2 == 1)        && ($start1 == $seq_len)))) { 
               # $mdl_idx1 and $mdl_idx2 are adjacent, one ends the seq, the other begins it
               $adj_AA[$mdl_idx1][$mdl_idx2] = 1;
-              printf("HEYAA $mdl_idx1 and $mdl_idx2 are adjacent\n");
             }            
-            if(getOverlap(($start1 < $stop1) ? $start1 : $stop1,
-                          ($start1 < $stop1) ? $stop1  : $start1,
-                          ($start2 < $stop2) ? $start2 : $stop2,
-                          ($start2 < $stop2) ? $stop2  : $start2, $FH_HR) > 0) { 
+            # determine if we have an overlap
+            # if -c enabled we have to do potentially 2 calls
+            my $nres_overlap1 = 0;
+            my $nres_overlap2 = 0;
+            $nres_overlap1 = 
+                getOverlap(($start1 < $stop1) ? $start1 : $stop1,
+                           ($start1 < $stop1) ? $stop1  : $start1,
+                           ($start2 < $stop2) ? $start2 : $stop2,
+                           ($start2 < $stop2) ? $stop2  : $start2, $FH_HR);
+            if((opt_Get("-c", $opt_HHR)) && $nres_overlap1 == 0) { 
+              # do a second call iff only one of either start1..stop1
+              # or start2..stop2 straddles $accn_len
+              # example of why we need to do this is HBV ref NC_003977, CDS1 and CDS4:
+              # search results are CDS1: 2309..4807, CDS4: 157..837
+              # accn_len is 3182
+              my $straddles1 = (($start1 < $accn_len && $stop1 > $accn_len) || 
+                                ($start1 > $accn_len && $stop1 < $accn_len)) ? 1 : 0;
+              my $straddles2 = (($start2 < $accn_len && $stop2 > $accn_len) || 
+                                ($start2 > $accn_len && $stop2 < $accn_len)) ? 1 : 0;
+              if($straddles1 && (! $straddles2)) { # start1..stop1 straddles $accn_len, but not start2..stop2
+                my $adj_start2 = $start2;
+                my $adj_stop2  = $stop2;
+                if($start2 < $accn_len) { # this means $stop2 < $accn_len also
+                  $adj_start2 += $accn_len;
+                  $adj_stop2  += $accn_len;
+                }
+                else { # start2 and stop2 are > accn_len
+                  $adj_start2 -= $accn_len;
+                  $adj_stop2  -= $accn_len;
+                }
+                $nres_overlap2 = 
+                    getOverlap(($start1 < $stop1) ? $start1 : $stop1,
+                               ($start1 < $stop1) ? $stop1  : $start1,
+                               ($adj_start2 < $adj_stop2) ? $adj_start2 : $adj_stop2,
+                               ($adj_start2 < $adj_stop2) ? $adj_stop2  : $adj_start2, $FH_HR);
+              }
+              elsif((! $straddles1) && $straddles2) { # start1..stop1 straddles $accn_len, but not start2..stop2
+                my $adj_start1 = $start1;
+                my $adj_stop1  = $stop1;
+                if($start1 < $accn_len) { # this means $stop1 < $accn_len also
+                  $adj_start1 += $accn_len;
+                  $adj_stop1  += $accn_len;
+                }
+                else { 
+                  $adj_start1 -= $accn_len;
+                  $adj_stop1  -= $accn_len;
+                }
+                $nres_overlap2 = 
+                    getOverlap(($adj_start1 < $adj_stop1) ? $adj_start1 : $adj_stop1,
+                               ($adj_start1 < $adj_stop1) ? $adj_stop1  : $adj_start1,
+                               ($start2 < $stop2) ? $start2 : $stop2,
+                               ($start2 < $stop2) ? $stop2  : $start2, $FH_HR);
+              }
+            } # end of if statement entered if -c enabled and nres_overlap1 == 0
+            if(($nres_overlap1 > 0) || ($nres_overlap2 > 0)) { 
               $olp_AA[$mdl_idx1][$mdl_idx2] = 1;
+              #printf("HEYAA $mdl_idx1 and $mdl_idx2 overlap\n");
             }
           }
         }
@@ -5318,7 +5373,7 @@ sub getOverlap {
 
   my ($start1, $end1, $start2, $end2, $FH_HR) = @_; 
 
-  #printf("in $sub_name $start1..$end1 $start2..$end2\n");
+  # printf("in $sub_name $start1..$end1 $start2..$end2\n");
 
   if($start1 > $end1) { DNAORG_FAIL("ERROR in $sub_name start1 > end1 ($start1 > $end1)", 1, $FH_HR); }
   if($start2 > $end2) { DNAORG_FAIL("ERROR in $sub_name start2 > end2 ($start2 > $end2)", 1, $FH_HR); }

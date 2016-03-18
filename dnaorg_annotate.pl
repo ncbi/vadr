@@ -3156,18 +3156,22 @@ sub results_calculate_overlaps_and_adjacencies {
         push(@strand_A, "");
       }
     }
-    my $len = opt_Get("-c", $opt_HHR) ? $seq_info_HAR->{"seq_len"}[$seq_idx] : -1;
     my @idx_ajb_str_A = (); # [0..$nmdl-1] string of mdl indices describing 'before' adjacencies for each model
     my @idx_aja_str_A = (); # [0..$nmdl-1] string of mdl indices describing 'after'  adjacencies for each model
     my @idx_olp_str_A = (); # [0..$nmdl-1] string of mdl indices describing overlaps for each model
     my @out_ajb_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing 'before' adjacencies for each model
     my @out_aja_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing 'after'  adjacencies for each model
     my @out_olp_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing overlaps for each model
-    overlapsAndAdjacenciesHelper($mdl_info_HAR, \@start_A, \@stop_A, \@strand_A, $len, 
+    overlapsAndAdjacenciesHelper($mdl_info_HAR, \@start_A, \@stop_A, \@strand_A, 
+                                 $seq_info_HAR->{"seq_len"}[$seq_idx], $seq_info_HAR->{"accn_len"}[$seq_idx], 
                                  \@idx_ajb_str_A, \@idx_aja_str_A, \@idx_olp_str_A, 
                                  \@out_ajb_str_A, \@out_aja_str_A, \@out_olp_str_A, 
-                                 $FH_HR);
+                                 $opt_HHR, $FH_HR);
     
+    #for(my $i = 0; $i < $nmdl; $i++) { 
+    #printf("HEYA seq_idx: $seq_idx mdl: %d olp_str $out_olp_str_A[$i]\n", $i+1);
+  #}
+
     # populate @mdl_results_AAHR, and keep track of per-feature error messages
     my @ftr_olp_err_msg_A = ();
     my @ftr_ajb_err_msg_A = ();
