@@ -80,7 +80,7 @@ opt_Add("--wait",       "integer", 500,                      1,    undef,"--loca
 
 $opt_group_desc_H{"2"} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat        preamble-output                     help-output    
-opt_Add("--noalign",    "boolean", 0,                       2,    undef,   "--skipalign",  "skip the alignment steps",         "skip the alignment steps", \%opt_HH, \@opt_order_A);
+opt_Add("--doalign",    "boolean", 0,                       2,    undef,   undef,          "create DNA and protein alignments",        "create DNA and protein alignments", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"3"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
@@ -119,8 +119,8 @@ my $options_okay =
                 'local'         => \$GetOptions_H{"--local"}, 
                 'nseq=s'        => \$GetOptions_H{"--nseq"}, 
                 'wait=s'        => \$GetOptions_H{"--wait"},
-# options for skipping stages altogether
-                'noalign'      => \$GetOptions_H{"--noalign"},
+# options for skipping/adding optional stages
+                'doalign'      => \$GetOptions_H{"--doalign"},
 # optional output files
                 'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"}, 
@@ -711,7 +711,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #########################################################
 # Step 13. Refetch corrected hits into new files.
 #########################################################
-$start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta files", $progress_w, $log_FH, *STDOUT);
+$start_secs = outputProgressPrior("Fetching corrected hits into fasta files", $progress_w, $log_FH, *STDOUT);
 fetch_hits_given_results($sqfile, "corrected", \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -744,8 +744,8 @@ if(! opt_Get("--skiptranslate", \%opt_HH)) {
 #########################################################
 # Step 17. Create multiple alignments of DNA sequences
 #########################################################
-if(! opt_Get("--noalign", \%opt_HH)) { 
-  $step_desc = opt_Get("--skipalign", \%opt_HH) ? "Parsing previously created nucleotide alignments" : "Aligning and parsing corrected nucleotide hits";
+if(opt_Get("--doalign", \%opt_HH)) { 
+  $step_desc = "Aligning and parsing corrected nucleotide hits";
   $start_secs = outputProgressPrior($step_desc, $progress_w, $log_FH, *STDOUT);
   align_hits(\%execs_H, $model_file, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH); 
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -754,8 +754,7 @@ if(! opt_Get("--noalign", \%opt_HH)) {
 #########################################################
 # Step 18. Create multiple alignments of protein sequences
 #########################################################
-# currently, we don't parse the protein alignments, so if --skipalign we completely skip align_protein_sequences()
-if((! opt_Get("--noalign", \%opt_HH)) && (! opt_Get("--skipalign", \%opt_HH))) { 
+if(opt_Get("--doalign", \%opt_HH)) { 
   $start_secs = outputProgressPrior("Aligning translated protein sequences", $progress_w, $log_FH, *STDOUT);
   align_protein_sequences(\%execs_H, "corrected.translated", \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -1440,7 +1439,6 @@ sub fetch_hits_given_results {
         if(! $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"prv_trc_flag"}) { 
           my $new_name = $seq_name . "/" . $start . "-" . $stop;
           push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
-          
           $nseq2fetch++;
 
           # append sequence, if nec
@@ -3621,7 +3619,22 @@ sub ftr_results_calculate {
                                                   create_output_start_and_stop($cds_out_start,   $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
                                                   $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
                   }
-                  error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+
+                  if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
+                    # update it
+                    error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                  }
+                  else { 
+                    # it doesn't yet exist, so add the trc error (this
+                    # is rare, but we may have no trc error for this
+                    # CDS yet, if the predicted child mature peptide
+                    # sequences didn't all exist, then we won't have
+                    # combined those predictions into a predicted CDS,
+                    # and thus we didn't check that predicted CDS for
+                    # trc errors in
+                    # parse_esl_epn_translate_startstop_outfile().
+                    error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                  }
                   # set the trc_err_flag for this feature
                   $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
                 }
@@ -3638,12 +3651,20 @@ sub ftr_results_calculate {
                 while($child_idx < $nchildren) {
                   $child_mdl_idx = $primary_children_idx_A[$child_idx];
                   $child_ftr_idx = $mdl_info_HAR->{"map_ftr"}[$child_mdl_idx];
-                  error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
-                  $ntr_err_ct++;
-                  if($int_errmsg ne "") { 
-                    $int_errmsg .= ", ";
+                  if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { 
+                    error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
+                    $ntr_err_ct++;
+                    if($int_errmsg ne "") { 
+                      $int_errmsg .= ", ";
+                    }
+                    $int_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
                   }
-                  $int_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
+                  else { # nop for this mdl
+                    if($int_errmsg ne "") { 
+                      $int_errmsg .= ", ";
+                    }
+                    $int_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx] . "(nop)";
+                  }
                   $child_idx++;
                 }
                 if($ntr_err_ct > 0) { 
@@ -4810,8 +4831,8 @@ sub output_tbl_get_headings {
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
 
   # determine optional modes
-  my $do_nofid    = (opt_Get("--noalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
-  my $do_noavgfid = (opt_Get("--noalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
+  my $do_fid      = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to do fid output
+  my $do_avgfid   = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to do fid output
   my $do_noss3    = 0; # '1' to skip ss3 output
   my $do_nostop   = 0; # '1' to skip stop output
   my $do_nomdlb   = 0; # '1' to skip model boundary output
@@ -4985,7 +5006,7 @@ sub output_tbl_get_headings {
     my $ftr_out_product = $ftr_info_HAR->{"out_product"}[$ftr_idx];
     my $mdl_exon_idx    = $mdl_info_HAR->{"map_exon"}[$mdl_idx];
     my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
-    if(! $do_nofid)  { $width += 6;  }
+    if($do_fid)      { $width += 6;  }
     if(! $do_nomdlb) { $width += 4;  }
     if(! $do_noolap) { $width += 11; }
     if($is_matpept)  { $width += 11; }
@@ -5029,7 +5050,7 @@ sub output_tbl_get_headings {
       output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation", $FH_HR);
     }
     
-    if(! $do_nofid) { 
+    if($do_fid) { 
       $tok4 = sprintf(" %5s", sprintf("%s%s", "fid", $mdl_exon_idx+1));
       $exp_tok4 = "fid<j>";
       $tok5 = sprintf(" %5s", "-----");
@@ -5284,7 +5305,7 @@ sub output_tbl_get_headings {
   output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef);
   output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "total length (nt) for accession (repeated for convenience)", $FH_HR);
 
-  if(! $do_noavgfid) { 
+  if($do_avgfid) { 
     # "avgid"
     $tok1 = sprintf("  %5s", "");
     $tok2 = sprintf("  %5s", "");
@@ -5524,8 +5545,8 @@ sub output_tbl_all_sequences {
                             # when this hits $nseqcol, we dump the output
   my $nerr_pages = 0;       # number of error pages output
   
-  my $do_nofid    = (opt_Get("--noalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
-  my $do_noavgfid = (opt_Get("--noalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
+  my $do_fid      = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
+  my $do_avgfid   = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
   my $do_noss3    = 0; # '1' to skip ss3 output
   my $do_nostop   = 0; # '1' to skip stop output
   my $do_nomdlb   = 0; # '1' to skip model boundary output
@@ -5625,7 +5646,7 @@ sub output_tbl_all_sequences {
           }
           push(@cur_out_A, sprintf("  %8s ", "-"));                      # start 
           push(@cur_out_A, sprintf("%8s", "-"));                         # stop
-          if(! $do_nofid)  { push(@cur_out_A, sprintf(" %5s", "-")); }   # fid
+          if($do_fid)      { push(@cur_out_A, sprintf(" %5s", "-")); }   # fid
           if(! $do_nomdlb) { push(@cur_out_A, "  " . "--"); }            # mdlb
           if(! $do_noolap) { push(@cur_out_A, sprintf(" %10s", "-")); }  # olap
           if($is_matpept)  { push(@cur_out_A, sprintf(" %10s", "-")); } # adj
@@ -5637,8 +5658,8 @@ sub output_tbl_all_sequences {
           if($genbank_match) { $ngenbank_match++; }
           push(@cur_out_A, sprintf("  %8s ", ($genbank_match ? " " . $mdl_results_HR->{"out_start"} . " " : "[" . $mdl_results_HR->{"out_start"} . "]")));
           push(@cur_out_A, sprintf("%8s",    ($genbank_match ? " " . $mdl_results_HR->{"out_stop"}  . " " : "[" . $mdl_results_HR->{"out_stop"}  . "]")));
-          if(! $do_nofid) { push(@cur_out_A, sprintf(" %5.3f", $mdl_results_HR->{"fid2ref"})); } 
-          if(! $do_noavgfid) { 
+          if($do_fid) { push(@cur_out_A, sprintf(" %5.3f", $mdl_results_HR->{"fid2ref"})); } 
+          if($do_avgfid) { 
             $tot_fid += $mdl_results_HR->{"fid2ref"};
             $n_fid++;
           }
@@ -5722,7 +5743,7 @@ sub output_tbl_all_sequences {
         $at_least_one_fail = 1;
         push(@cur_out_A, sprintf("  %8s ", "NP")); # start position
         push(@cur_out_A, sprintf("%8s",  "NP"));   # stop position
-        if(! $do_nofid)  { push(@cur_out_A, sprintf(" %5s", "NP")); } # fid 
+        if($do_fid)      { push(@cur_out_A, sprintf(" %5s", "NP")); } # fid 
         if(! $do_nomdlb) { push(@cur_out_A, "  NP"); } # model boundaries
         if(! $do_noolap) { push(@cur_out_A, "  NP"); } # overlaps
         if($is_matpept)  { push(@cur_out_A, "  NP"); } # adjacencies
@@ -5816,7 +5837,7 @@ sub output_tbl_all_sequences {
     # total length
     push(@cur_out_A, sprintf("  %6d", $accn_len));
     # average fid
-    if(! $do_noavgfid) { 
+    if($do_avgfid) { 
       push(@cur_out_A, sprintf("  %5.3f", ($n_fid > 0) ? ($tot_fid / $n_fid) : 0.));
     }
     # output number of actually annotated features and summed total of exons in those features, if nec
