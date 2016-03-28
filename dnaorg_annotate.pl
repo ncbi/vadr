@@ -764,12 +764,13 @@ if(opt_Get("--doalign", \%opt_HH)) {
 # Step 19. Output annotations
 ########################################################################
 # open files for writing
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",     $out_root . ".tbl",           1, "All annotations in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl", $out_root . ".fail.tbl",      1, "Annotations for all sequences with >= 1 failure in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl", $out_root . ".error.tbl",      1, "Annotations for all sequences with >= 1 error in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr", $out_root . ".peraccn.errors", 1, "List of errors, one line per sequence");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr", $out_root . ".all.errors",     1, "List of errors, one line per error");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum", $out_root . ".errors.summary", 1, "Summary of all errors");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",     $out_root . ".tbl",            1, "All annotations in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tblsum",  $out_root . ".tbl.summary",    1, "Summary of all annotations");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl", $out_root . ".fail.tbl",       1, "Annotations for all sequences with >= 1 failure in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",  $out_root . ".error.tbl",      1, "Annotations for all sequences with >= 1 error in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",  $out_root . ".peraccn.errors", 1, "List of errors, one line per sequence");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",  $out_root . ".all.errors",     1, "List of errors, one line per error");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",  $out_root . ".errors.summary", 1, "Summary of all errors");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -5545,6 +5546,7 @@ sub output_tbl_all_sequences {
   my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+  my $tblsum_FH = $FH_HR->{"tblsum"};
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
   my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
@@ -5878,6 +5880,15 @@ sub output_tbl_all_sequences {
     my $result_str = ($accn_failed) ? "FAIL" : "PASS";
     $result_str .= " " . $pass_fail_str;
     push(@cur_out_A, sprintf("  %s", $result_str));
+
+    # make a version of $pass_fail_str with spaces for the $tblsum_FH file
+    my @pass_fail_A = split("", $pass_fail_str);
+    my $pass_fail_str_with_spaces = ($accn_failed) ? "FAIL" : "PASS";
+    my $pass_fail_str_with_spaces .= " " . $pass_fail_A[0];
+    for(my $pf = 1; $pf < scalar(@pass_fail_A); $pf++) { 
+      $pass_fail_str_with_spaces .= " " . $pass_fail_A[$pf];
+    }    
+    print $tblsum_FH ("$accn_name $pass_fail_str_with_spaces\n");
 
     # actually output the information to the relevant file handles
     if($seq_idx == 0) { 
