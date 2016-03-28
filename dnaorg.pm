@@ -4635,7 +4635,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "nop", "feature",  0,             "unable to identify homologous feature", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "nm3", "feature",  0,             "length of nucleotide feature is not a multiple of 3", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "bd5", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "bd3", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "bd3", "feature",  0,             "alignment to reference does not extend to 3' boundary of reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "olp", "feature",  0,             "feature does not overlap with same set of features as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "str", "feature",  0,             "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "stp", "feature",  1,             "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)", $FH_HR);
