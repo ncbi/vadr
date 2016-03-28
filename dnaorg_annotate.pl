@@ -5282,7 +5282,7 @@ sub output_tbl_all_sequences {
     # make a version of $pass_fail_str with spaces for the $tblsum_FH file
     my @pass_fail_A = split("", $pass_fail_str);
     my $pass_fail_str_with_spaces = ($accn_failed) ? "FAIL" : "PASS";
-    my $pass_fail_str_with_spaces .= " " . $pass_fail_A[0];
+    $pass_fail_str_with_spaces .= " " . $pass_fail_A[0];
     for(my $pf = 1; $pf < scalar(@pass_fail_A); $pf++) { 
       $pass_fail_str_with_spaces .= " " . $pass_fail_A[$pf];
     }    
