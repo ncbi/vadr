@@ -1967,15 +1967,15 @@ sub createCmDb {
 # Subroutine: matpeptValidateCdsRelationships()
 # Incept:     EPN, Fri Feb 12 09:15:58 2016
 #
-# Purpose:    Validate the CDS:mat_peptide relationships 
+# Purpose:    Validate the CDS:primary-mat_peptide relationships 
 #             in @{$cds2pmatpept_AAR}, which were probably 
-#             ready from a file in parsed in pasreMatPeptSpecFile().
-#             A CDS:mat_peptide relationship is valid if
-#             the the mat_peptides that comprise the CDS
+#             ready from a file in parsed in parseMatPeptSpecFile().
+#             These 'primary' relationships are valid if
+#             the mat_peptides that comprise the CDS
 #             do in fact completely comprise it (when 
 #             concatenated the mat_peptide coordinates completely
 #             cover the CDS coordinates, in order, with no
-#             overlaps. For example a CDS that spans 1..300
+#             overlaps). For example a CDS that spans 1..300
 #             is comprised by three mature peptides with 
 #             coordinates 1..150, 151..223, and 224..300.
 #
@@ -2009,7 +2009,7 @@ sub matpeptValidateCdsRelationships {
   my @ref_mp_coords_A = ();
   getLengthsAndCoords($ref_mp_tbl_HAR, \@ref_mp_len_A, \@ref_mp_coords_A, $FH_HR);
   
-  # validate
+  # validate cds2pmatpept_AA
   my $ref_ncds = scalar(@ref_cds_len_A);
   my $ref_nmp  = scalar(@ref_mp_len_A);
   my $ncds2check = scalar(@{$cds2pmatpept_AAR});
@@ -2039,7 +2039,7 @@ sub matpeptValidateCdsRelationships {
           DNAORG_FAIL("ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
         }
       }
-      else { 
+      else { # negative strand
         if(($cds_stops_A[0] - $cds_starts_A[1] - 1) > 0) { 
           DNAORG_FAIL("ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
         }
@@ -2077,6 +2077,7 @@ sub matpeptValidateCdsRelationships {
       # printf("checked mp $mp_idx %d..%d\n", $mp_starts_A[0], $mp_stops_A[($mp_nexons-1)]);
     }
   }
+
   return;
 }
 
@@ -4645,9 +4646,9 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "ext", "feature",  1,             "first in-frame stop codon exists 3' of stop position predicted by homology to reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,             "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,             "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 mat_peptides", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not translated due to early stop (ntr)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one mat_peptide is not identified (nop)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between primary 2 mat_peptides", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (ntr)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", $FH_HR);
 
   # define the incompatibilities, these are 2 sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
