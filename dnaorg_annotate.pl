@@ -15,6 +15,19 @@ require "epn-options.pm";
 #######################################################################################
 # What this script does: 
 #
+# Given a set of homology models built for a reference accession
+# created by a previous run of dnaorg_build.pl, this script uses those
+# homology models to annotate the features (CDS and mature peptides)
+# in other accessions, provided as a list as the lone command line
+# argument. This script outputs tabular annotations and a list of
+# errors found. 
+#
+# A list of subroutines can be found after the main script before
+# the subroutines, on or about line 1000.
+# 
+# Immediately below are a list of the steps performed by this
+# script. Each has a corresponding code block in the main script.
+#
 # Preliminaries: 
 #   - process options
 #   - output program banner and open output files
@@ -69,6 +82,83 @@ require "epn-options.pm";
 # Step 21. (OPTIONAL) Create multiple alignments of protein sequences, if --doalign
 # Step 22. Output annotations and errors
 #
+#######################################################################################
+#
+# Error identification:
+#
+# This script identifies and outputs a list of all errors in each of
+# the accessions it annotates. Each type of error has an associated
+# three letter error 'code'. The list of error codes is in the
+# dnaorg.pm perl module file. It can also be found here:
+#
+#  /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5.documentation.txt
+#
+# The most complicated code in this script is related to identifying
+# and storing these errors. Ideally, there would be one or a small set
+# of functions that identified the errors. However, the current
+# implementation has the identification of errors spread across 7
+# functions. This is partly due to a imperfect design of the code, but
+# also due to the requirement of identifying different types of errors
+# at different stages of the analysis.
+#
+# For example, it is necessary to identify in-frame stops in the
+# predicted hits (potential trc errors) before we can finalize our
+# annotations (since the homology search software (Infernal) is not
+# looking for start and stop codons). This means we need to identify
+# potential trc errors early, and the identification of these errors
+# will affect later errors, for example 'nm3' errors rely on the final
+# annotation lengths and so cannot be computed until after all the
+# 'trc' errors have been found.
+#
+# Another example is that CDS features that are comprised of mature
+# peptides (type: cds-mp) cannot be examined for errors until all of
+# the mature peptide annotations that comprise them are finalized.
+# 
+# The following table shows which errors are identified in which
+# functions. There are two annotation types (annot_type) of features,
+# which is why there are two columns under 'annot_type', namely the
+# 'model' features which are annotated based on homology model
+# predictions (type: 'mp' and 'cds-notmp') and 'multifeature' features
+# which are based on the annotations of multiple other features (type:
+# 'cds-mp'). The identification of errors for these two feature
+# annotation types is done differently, and is often done in different
+# functions.
+# 
+# The sequence column is only relevant for errors that are
+# per-sequence, instead of per-feature. Currently the only
+# per-sequence error is the ori error.
+#
+# List of functions: 
+# 1. parse_esl_epn_translate_startstop_outfile()
+# 2. results_calculate_corrected_stops()
+# 3. results_calculate_overlaps_and_adjacencies() 
+# 4. mdl_results_finalize
+# 5. ftr_results_calculate
+# 6. find_origin_sequences
+# 7. MAIN (not a function but rather the main body of the script):
+#
+#              annot_type
+#          -------------------
+# errcode  model  multifeature sequence
+# -------  -----  ------------ --------
+# nop      4      N/A          N/A
+# nm3      5      5            N/A
+# bd5      4      N/A          N/A
+# bd3      4      N/A          N/A
+# olp      3      N/A          N/A
+# str      1,4    1,5          N/A
+# stp      1,2    1,5          N/A
+# ajb      3      N/A          N/A
+# aja      3      N/A          N/A                           
+# trc      1,2    1,2          N/A
+# ext      1,7,2  1,7,2        N/A
+# ntr      5      N/A          N/A
+# nst      1,7    1,7          N/A
+# aji      N/A    5            N/A
+# int      N/A    5            N/A
+# inp      N/A    5            N/A
+# ori      N/A    N/A          6
+# 
 #######################################################################################
 
 # hard-coded-paths:
@@ -873,12 +963,16 @@ outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 ###############
 # SUBROUTINES #
 ################################################################
-# naming convention: words separated by underscores
-# (e.g. 'get_value_from_array()') for subroutines in *this* file as
+# List of subroutines in this file, divided into categories. 
+#
+# The names of the subroutines are meant to be descriptive. The
+# convention for subroutine names is to use underscores to separate
+# words (e.g. 'get_value_from_array()') for subroutines in *this* file as
 # opposed to a Perl module where they're named in camel caps
 # (e.g. getValueFromArray()).
 #
-# List of all subroutines in this file:
+# Subroutines which I consider overly-complicated that are
+# future targets for refactoring are labelled with "***":
 #
 #  Subroutines related to preparing CM files for searches:
 #    concatenate_individual_cm_files()
@@ -899,7 +993,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 #
 #  Subroutines related to the esl-epn-translate.pl script:
 #    parse_esl_epn_translate_startstop_outfile()
-#    get_esl_epn_translate_altstart_opt
+#    get_esl_epn_translate_altstart_opt()
 #    wrapper_esl_epn_translate_startstop()
 #
 #  Subroutines related to determining and storing annotations/results:
@@ -909,8 +1003,8 @@ outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_finalize
-#    ftr_results_calculate
+#    mdl_results_finalize() 
+#    ftr_results_calculate() ***
 #    dump_results()
 #
 #  Subroutines related to origin sequences:
@@ -1069,7 +1163,8 @@ sub press_cm_database {
 # Incept:      EPN, Mon Feb 29 11:21:11 2016
 #
 # Purpose:     Validate the CMs in a model file were built from
-#              the current reference, with information in $mdl_info_HAR->{"cksum"}.
+#              the current reference, using information in 
+#              $mdl_info_HAR->{"cksum"}.
 #
 # Arguments: 
 #  $model_file:      the full path to the concatenated model file to create
@@ -1401,7 +1496,7 @@ sub parse_cmscan_tblout {
 #             for models in which $mdl_info_HAR->{"append_num"}[$mdl_idx]
 #             is non-zero. This will go to a separate file,
 #             and we'll append it to sequence hits from other 
-#             models in combine_feature_hits.
+#             models in combine_feature_hits().
 # Arguments: 
 #  $sqfile:            REF to Bio::Easel::SqFile object, open sequence file containing sequences,
 #                      usually $out_root . ".predicted", or $out_root . ".corrected"
@@ -1413,6 +1508,8 @@ sub parse_cmscan_tblout {
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
+# 
+# Dies: If something is wrong with data in $mdl_info_HAR.
 #################################################################
 sub fetch_hits_given_results { 
   my $sub_name = "fetch_hits_given_results";
@@ -2254,7 +2351,9 @@ sub initialize_ftr_results {
 #  $FH_HR:            REF to hash of file handles
 #
 # Returns:    void
-#
+# Dies:       if any "c_stop" results values already exist,
+#             indicating that results_calculate_corrected_stops()
+#             was already called (which it should *not* have been)
 ################################################################# 
 sub results_calculate_predicted_lengths {
   my $sub_name = "results_calculate_predicted_lengths()";
@@ -2692,9 +2791,6 @@ sub results_calculate_overlaps_and_adjacencies {
                                  \@out_ajb_str_A, \@out_aja_str_A, \@out_olp_str_A, 
                                  $opt_HHR, $FH_HR);
     
-    #for(my $i = 0; $i < $nmdl; $i++) { 
-    #printf("HEYA seq_idx: $seq_idx mdl: %d olp_str $out_olp_str_A[$i]\n", $i+1);
-  #}
 
     # populate @mdl_results_AAHR, and keep track of per-feature error messages
     my @ftr_olp_err_msg_A = ();
@@ -3013,8 +3109,6 @@ sub ftr_results_calculate {
   my $accn_len;
   my $ntr_errmsg = undef;
 
-  # TODO: document this function better, when you're sure it's complete
-
   # foreach annot_type:'model' feature, look for 
   # 'nm3' errors
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -3157,7 +3251,7 @@ sub ftr_results_calculate {
                     error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
                   }
                   else { 
-                    # it doesn't yet exist, so add the trc error (this
+                    # it doesn't yet exist, so add the trc error. This
                     # is rare, but we may have no trc error for this
                     # CDS yet, if the predicted child mature peptide
                     # sequences didn't all exist, then we won't have
@@ -4838,7 +4932,6 @@ sub output_tbl_get_headings_helper {
 }
 
 #################################################################
-#
 # Subroutine: output_tbl_get_headings_explanation_helper()
 # Incept:     EPN, Thu Mar 10 21:05:36 2016
 #
