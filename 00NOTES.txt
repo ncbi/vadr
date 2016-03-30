@@ -1,6 +1,6 @@
 # EPN, Thu Mar 17 14:30:57 2016
 # pwd: /panfs/pan1/dnaorg/programs/15_0924_dnaorg_annotate_genomes
-# git repository url: https://github.com/nawrockie/dnaorg_annotate_genomes.pl.git
+# git repository url: https://github.com/nawrockie/dnaorg_scripts.git
 #
 # The dnaorg_build.pl and dnaorg_annotate.pl executable scripts are in
 # this directory. See the 'Prerequisites' section of this file before
