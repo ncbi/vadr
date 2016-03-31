@@ -3155,10 +3155,12 @@ sub mdl_results_add_str_nop_bd5_bd3_errors {
         # update str err message #
         ##########################
         if($is_first && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name})) { 
-          my $start_codon = 
+          my $out_start = undef;
+          ($out_start, undef) = create_output_start_and_stop($mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_stop"}, 
+                                                             $accn_len, $seq_len, $FH_HR);
           my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", 
                                            fetchStartCodon($sqfile, $seq_name, $mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_strand"}, $FH_HR), 
-                                           $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"p_strand"});
+                                           $out_start, $mdl_results_HR->{"p_strand"});
           error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
           $mdl_results_HR->{"str_err_flag"} = 1;
         }
@@ -3495,7 +3497,7 @@ sub ftr_results_calculate {
                 # - break the loop over all children (we're done with this CDS)
                 ####################################################
                 
-                $cds_out_stop      = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"};
+                $cds_out_stop      = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"};
                 $cds_fetch_stop    = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
                     $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
                     $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
@@ -5553,7 +5555,8 @@ sub output_tbl_all_sequences {
     # 5' UTR, if nec
     if($do_matpept) { 
       # TODO, update this to work for positive or negative strand
-      if($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} ne "+") { 
+      if((exists $mdl_results_AAHR->[0][$seq_idx]{"p_strand"}) && 
+         ($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} ne "+")) { 
         DNAORG_FAIL("ERROR in $sub_name, prediction is on negative strand and trying to compute 5' UTR, need to add code for this case.", 1, $FH_HR);
       }
       if(! exists $mdl_results_AAHR->[0][$seq_idx]{"p_start"}) { 
@@ -5780,7 +5783,8 @@ sub output_tbl_all_sequences {
     # 3' UTR, if nec
     if($do_matpept) { 
       # TODO, update this to work for positive or negative strand
-      if($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} ne "+") { 
+      if((exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"}) && 
+         ($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} ne "+")) { 
         DNAORG_FAIL("ERROR in $sub_name, prediction is on negative strand and trying to compute 3' UTR, need to add code for this case.", 1, $FH_HR);
       }
       if(! exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}) { 
@@ -6044,7 +6048,7 @@ sub output_errors_header {
   output_multifeature_relationships($pererr_FH, $ftr_info_HAR, $ofile_info_HH{"FH"});
   output_multifeature_relationships($allerr_FH, $ftr_info_HAR, $ofile_info_HH{"FH"});
 
-  printf $allerr_FH ("%-10s  %3s  %-5s  %4s  error-message\n", "#accn", "idx", "desc", "code");
+  printf $allerr_FH ("%-10s  %3s  %-9s  %4s  error-message\n", "#accn", "idx", "desc", "code");
   printf $pererr_FH ("#\n");
 
   return;
@@ -6100,7 +6104,7 @@ sub output_errors_all_sequences {
         my $err_code = $err_info_HAR->{"code"}[$err_idx];
         if(exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
           # an error exists, output it
-          printf $all_FH ("%-10s  %3s  %-5s  %4s  %s%s\n", $accn_name, "N/A", "N/A", $err_code, $err_info_HAR->{"msg"}[$err_idx], 
+          printf $all_FH ("%-10s  %3s  %-9s  %4s  %s%s\n", $accn_name, "N/A", "N/A", $err_code, $err_info_HAR->{"msg"}[$err_idx], 
                           " [" . $err_seq_instances_HHR->{$err_code}{$seq_name} . "]"); 
           $seq_nseqerr++;
           $per_line .= " " . $err_code;
@@ -6118,7 +6122,7 @@ sub output_errors_all_sequences {
           my $err_code = $err_info_HAR->{"code"}[$err_idx];
           if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
             # an error exists, output it
-            printf $all_FH ("%-10s  %3s  %-5s  %4s  %s%s\n", $accn_name, ($ftr_idx+1), $out_tiny, $err_code, $err_info_HAR->{"msg"}[$err_idx], 
+            printf $all_FH ("%-10s  %3s  %-9s  %4s  %s%s\n", $accn_name, ($ftr_idx+1), $out_tiny, $err_code, $err_info_HAR->{"msg"}[$err_idx], 
                             " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]"); 
             if($ftr_seq_nftrerr == 0) { 
               $per_line .= (" " . ($ftr_idx+1) . ":" . $err_code);
