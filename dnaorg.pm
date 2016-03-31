@@ -716,7 +716,16 @@ sub fetchReferenceFeatureSequences {
     } # end of 'if($do_model)'
                          
     # store information on this feature's name for output purposes
-    my $short = ($cds_or_mp eq "mp") ? sprintf("MP #%d", $ftr_type_idx) : sprintf("CDS #%d", $ftr_type_idx);
+    my $short = "";
+    if($ftr_type eq "mp") { 
+      $short = sprintf("MP #%d", $ftr_type_idx);
+    }
+    elsif($ftr_type eq "cds-mp") { 
+      $short = sprintf("CDS(MP) #%d", $ftr_type_idx);
+    }
+    else { 
+      $short = sprintf("CDS #%d", $ftr_type_idx);
+    }
     my $tiny  = $short;
     $tiny =~ s/\s+//g; # remove whitespace
     if($ftr_info_HAR->{"annot_type"}[$i] eq "model") { 

@@ -132,7 +132,7 @@ require "epn-options.pm";
 # 1. parse_esl_epn_translate_startstop_outfile()
 # 2. results_calculate_corrected_stops()
 # 3. results_calculate_overlaps_and_adjacencies() 
-# 4. mdl_results_finalize
+# 4. mdl_results_add_stp_nop_bd5_bd3_errors()
 # 5. ftr_results_calculate
 # 6. find_origin_sequences
 # 7. MAIN (not a function but rather the main body of the script):
@@ -816,11 +816,24 @@ my @ftr_results_AAH = (); # 1st dim: array, 0..$ftr_idx..$nftr-1, one per model
 initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 $start_secs = outputProgressPrior("Finalizing annotations and validating error combinations", $progress_w, $log_FH, *STDOUT);
-mdl_results_finalize($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                     \%cds_tbl_HHA, ($do_matpept) ? \%mp_tbl_HHA : undef, 
-                     \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+# report str, nop, bd5, bd3 errors, we need to know these before we call ftr_results_calculate()
+mdl_results_add_str_nop_bd5_bd3_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                                       \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+
+# calculate out_start, out_stop and out_stop_codon values, we need to know some of these before we call ftr_results_calculate()
+mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, $ofile_info_HH{"FH"});
+
+# set most of the multi-feature (e.g. cds-mp) errors
 ftr_results_calculate($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH,
                       \%cds_tbl_HHA, \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+
+# recalculate out_start and out_stop and out_stop_codon values, they may have changed for final mature peptides in each CDS
+mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, $ofile_info_HH{"FH"});
+
+# compare our final annotations to GenBank
+mdl_results_compare_to_genbank_annotations(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                                           \%cds_tbl_HHA, ($do_matpept) ? \%mp_tbl_HHA : undef, 
+                                           \%opt_HH, $ofile_info_HH{"FH"});
 
 # validate all of our error instances by checking for incompatibilities
 # and enforcing required combinations, this function dies if any problems are found
@@ -1579,6 +1592,14 @@ sub fetch_hits_given_results {
               push(@fetch_append_AA, [$append_new_name, $append_start, $append_stop, $seq_name]);
               
               $nseq2fetch_append++;
+            }
+            else { 
+              if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_start"}) { 
+                delete $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_start"};
+              }
+              if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_stop"}) { 
+                delete $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_stop"};
+              }
             }
           }
         }
@@ -3055,7 +3076,281 @@ sub mdl_results_finalize {
     } # end of 'for($seq_idx' loop
   } # end of 'for($mdl_idx' loop
   return;
-}       
+}      
+
+#################################################################
+# Subroutine:  mdl_results_add_str_nop_bd5_bd3_errors
+# Incept:      EPN, Thu Mar 31 13:43:58 2016
+#
+# Purpose:    Report 'str', 'nop', 'bd5' and 'bd3' errors
+#             and fill in the following keysin $mdl_results_AAHR:
+#             "out_5boundary" and "out_3boundary".
+#
+#             Checks for and adds or updates the following error 
+#             codes for features with "annot_type" eq "model":
+#             
+#             "nop": adds this error, no model prediction
+#             
+#             "str": updates this error, originally added in 
+#                  parse_esl_epn_translate_startstop_outfile()
+#                  by making the error message more informative
+#                  to include position and codon of predicted start
+#
+#             "bd5": adds this error, predicted hit not flush with 
+#                  model on 5' end
+#             
+#             "bd3": adds this error, predicted hit not flush with 
+#                  model on 3' end
+#
+#             
+#
+# Arguments: 
+#  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
+#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
+#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
+#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies: If we have predicted start and stop coordinates that don't make sense
+#       given the lengths of the accession and the sequence we searched.
+#
+################################################################# 
+sub mdl_results_add_str_nop_bd5_bd3_errors { 
+  my $sub_name = "mdl_results_add_str_nop_bd5_bd3_errors()";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # total counts of things
+  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $mdl_idx;
+  my $seq_idx;
+
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
+    my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
+    my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
+    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
+      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
+      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
+      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
+      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
+
+      if(! exists $mdl_results_HR->{"p_start"}) { 
+        ############################
+        # nop error (no prediction)
+        ############################
+        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nop", $seq_name, "", $FH_HR);
+      }        
+      else { # $mdl_results_HR->{"p_start"} exists, we have a prediction
+        ##########################
+        # update str err message #
+        ##########################
+        if($is_first && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name})) { 
+          my $start_codon = 
+          my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", 
+                                           fetchStartCodon($sqfile, $seq_name, $mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_strand"}, $FH_HR), 
+                                           $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"p_strand"});
+          error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
+          $mdl_results_HR->{"str_err_flag"} = 1;
+        }
+        #######################################
+        # set out_5boundary and out_3boundary #
+        #######################################
+        # update p_5hangover and p_3hangover
+        # at this point, $mdl_results_HR->{"p_5hangover"} and $results->{"p_3hangover"} are both integers >= 0
+        # bd5 block
+        if($mdl_results_HR->{"p_5hangover"} == 0) { 
+          $mdl_results_HR->{"out_5boundary"} = ".";
+        }
+        else { 
+          # bd5 error
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd5", $seq_name, $mdl_results_HR->{"p_5hangover"} . " nt from 5' end", $FH_HR);
+          if($mdl_results_HR->{"p_5hangover"} > 9) { 
+            $mdl_results_HR->{"out_5boundary"} = "+"; 
+          }
+          else { 
+            $mdl_results_HR->{"out_5boundary"} = $mdl_results_HR->{"p_5hangover"};
+          }
+        }
+        # bd3 block
+        # check for 2 special cases, a trc or ext error, which invalidate the bd3 value
+        if(exists $mdl_results_HR->{"trc_err_flag"}) { 
+          $mdl_results_HR->{"out_3boundary"} = "t";
+        }
+        elsif(exists $mdl_results_HR->{"ext_err_flag"}) { 
+          $mdl_results_HR->{"out_3boundary"} = "e";
+        }
+        elsif($mdl_results_HR->{"p_3hangover"} == 0) { 
+          $mdl_results_HR->{"out_3boundary"} = ".";
+        }
+        else { 
+          # bd3 error
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd3", $seq_name, $mdl_results_HR->{"p_3hangover"} . " nt from 3' end", $FH_HR);
+          if($mdl_results_HR->{"p_3hangover"} > 9) { 
+            $mdl_results_HR->{"out_3boundary"} = "+"; 
+          }
+          else { 
+            $mdl_results_HR->{"out_3boundary"} = $mdl_results_HR->{"p_3hangover"};
+          }
+        }
+      } # end of 'else' entered if we have a prediction
+    } # end of 'for($seq_idx' loop
+  } # end of 'for($mdl_idx' loop
+  return;
+}      
+
+
+#################################################################
+# Subroutine:  mdl_results_calculate_out_starts_and_stops
+# Incept:      EPN, Thu Mar 31 13:43:51 2016
+#
+# Purpose:    Compute the 'out_start', 'out_stop', and 'out_stop_codon'
+#             values for all model results. These are the nucleotide
+#             positions that will be output as annotations.  They may
+#             differ from the predicted and corrected (p_start/p_stop
+#             or c_start/c_stop) model result values which are in
+#             internal coordinate space.  If -c is used, for example,
+#             the genome is circular, and the internal coordinate
+#             space ranges 1..seqlen*2 but our output coordinate space
+#             will be -seqlen..seqlen.
+#
+# Arguments: 
+#  $sqfile:             REF to Bio::Easel::SqFile object, open sequence file containing sequences
+#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
+#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, ADDED TO HERE
+#  $mdl_results_AAHR:   REF to model results AAH, ADDED TO HERE
+#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:              REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies: If we have predicted start and stop coordinates that don't make sense
+#       given the lengths of the accession and the sequence we searched.
+#
+################################################################# 
+sub mdl_results_calculate_out_starts_and_stops { 
+  my $sub_name = "mdl_results_calculate_out_starts_and_stops";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $opt_HHR, $FH_HR) = @_;
+  
+  # total counts of things
+  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $ftr_idx;
+  my $mdl_idx;
+  my $seq_idx;
+
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
+      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
+      my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
+      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
+
+      if(exists $mdl_results_HR->{"p_start"}) { 
+        ($mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}) = 
+            create_output_start_and_stop($mdl_results_HR->{"p_start"},
+                                         exists($mdl_results_HR->{"c_stop"}) ? $mdl_results_HR->{"c_stop"} : $mdl_results_HR->{"p_stop"}, 
+                                         $accn_len, $seq_len, $FH_HR);
+        $mdl_results_HR->{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name,
+                                                             (defined $mdl_results_HR->{"c_stop"}) ? $mdl_results_HR->{"c_stop"} : $mdl_results_HR->{"p_stop"}, 
+                                                             $mdl_results_HR->{"p_strand"}, $FH_HR);
+
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  mdl_results_compare_to_genbank_annotations
+# Incept:      EPN, Thu Mar 31 13:52:15 2016
+#
+# Purpose:    Compute the 'num_genbank_mdl_annot' values for 
+#             the %{$seq_info_HAR} and the 'genbank_mdl_annot_match' 
+#             for the %{$mdl_results_AAHR}. These are the number
+#             annotated features in Genbank, and whether or not
+#             one of our annotated features matches an annotation
+#             in GenBank, respectively.
+#
+# Arguments: 
+#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
+#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
+#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, ADDED TO HERE
+#  $mdl_results_AAHR:   REF to model results AAH, ADDED TO HERE
+#  $cds_tbl_HHAR:       REF to CDS hash of hash of arrays, PRE-FILLED
+#  $mp_tbl_HHAR:        REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
+#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:              REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies: never
+#
+################################################################# 
+sub mdl_results_compare_to_genbank_annotations { 
+  my $sub_name = "mdl_results_compare_to_genbank_annotations()";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $cds_tbl_HHAR, $mp_tbl_HHAR, $opt_HHR, $FH_HR) = @_;
+  
+  # total counts of things
+  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $mdl_idx;
+  my $seq_idx;
+
+  # first, determine how many genbank annotations we have per sequence
+  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    # determine how many annotations CDS or mature peptide annotations there are in GenBank
+    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
+    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
+    ($seq_info_HAR->{"num_genbank_mdl_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_mdl_exon_annot"}[$seq_idx]) = 
+        count_genbank_annotations((opt_IsUsed("--matpept", $opt_HHR)) ? $mp_tbl_HHAR->{$accn_name} : $cds_tbl_HHAR->{$accn_name}, 
+                                  $accn_len, $opt_HHR, $FH_HR);
+  }
+
+  # now check each of our annotations against the GenBank annotations
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
+    my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
+    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
+      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
+      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
+      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
+
+      if(exists $mdl_results_HR->{"p_start"}) { 
+        # check our final annotation against existing annotation in GenBank 
+        my $start  = $mdl_results_HR->{"out_start"};
+        my $stop   = $mdl_results_HR->{"out_stop"};
+        my $strand = $mdl_results_HR->{"p_strand"};
+        my $tbl_HAR = ($is_matpept) ? $mp_tbl_HHAR->{$accn_name} : $cds_tbl_HHAR->{$accn_name};
+        if(defined $tbl_HAR) { # if there was annotation for this sequence 
+          $mdl_results_HR->{"genbank_mdl_annot_match"} = compare_to_genbank_annotation($start, $stop, $strand, $accn_len, $seq_len, $tbl_HAR, $opt_HHR, $FH_HR);
+        }
+        else { # annotation doesn't exist, so we don't have a match
+          $mdl_results_HR->{"genbank_mdl_annot_match"} = 0;
+        }
+      } # end of 'else' entered if we have a prediction
+    } # end of 'for($seq_idx' loop
+  } # end of 'for($mdl_idx' loop
+
+  return;
+}      
 
 #################################################################
 # Subroutine:  ftr_results_calculate
@@ -3200,7 +3495,7 @@ sub ftr_results_calculate {
                 # - break the loop over all children (we're done with this CDS)
                 ####################################################
                 
-                $cds_out_stop      = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"}; 
+                $cds_out_stop      = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"};
                 $cds_fetch_stop    = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
                     $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
                     $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
@@ -3317,7 +3612,7 @@ sub ftr_results_calculate {
                   }        
                 } # end of 'if($child_idx < ($np_children-1))'
 
-                # if we are the final model of the final child feature, determine the stop position/strand, and deal with ext error if we have one
+                # if we are the final model of the final child feature, determine the stop position/strand
                 if(($child_idx == ($np_children-1)) && 
                    ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx])) { 
                   # the final child, determine the stop position/strand, and deal with ext error if we have one
@@ -3398,16 +3693,21 @@ sub ftr_results_calculate {
             DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{append_stop} does not exist, but it should.", 1, $FH_HR); 
           }
           if($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_strand"} eq "+") { 
-            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"} + $len_corr;
+            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"} + ($len_corr - $append_len);
+            $cds_fetch_stop = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} + $append_len;
           }
           else { # negative strand
-            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"} - $len_corr;
+            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"} - ($len_corr - $append_len);
+            $cds_fetch_stop = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} - $append_len;
           }
+          ($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"out_start"}, $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"out_stop"}) = 
+              create_output_start_and_stop($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_start"}, 
+                                           $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"}, 
+                                           $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
           # only the final model is affected by an ext error
-          $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"len"}    += $len_corr;
-          $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"cumlen"} += $len_corr;
-          $cds_len += $len_corr;
-          $cds_len -= $append_len;
+          $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"len"}    += ($len_corr - $append_len);
+          $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"cumlen"} += ($len_corr - $append_len);
+          $cds_len += ($len_corr - $append_len);
           
           # get first part of cds error message using current $cds_out_stop
           my $updated_cds_ext_errmsg = sprintf("homology search predicted %d..%d", 
@@ -3419,21 +3719,18 @@ sub ftr_results_calculate {
                                                                    $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"},
                                                                    $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
           # now recompute $cds_out_stop
+
           (undef, $cds_out_stop) = 
               create_output_start_and_stop($cds_fetch_start, # this is irrelevant due to first undef arg
-                                           $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"},
+                                           $cds_fetch_stop,
                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-          $cds_fetch_stop = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"};
 
           # get second part of CDS error message
-          $updated_cds_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
-                                         create_output_start_and_stop($cds_fetch_start, $cds_fetch_stop,
-                                                                      $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
-                                         $len_corr-$append_len);
+          $updated_cds_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", $cds_out_start, $cds_out_stop, $len_corr-$append_len);
           # get second part of MP error message
           $mp_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
                                     create_output_start_and_stop($mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"p_start"}, 
-                                                                 $cds_fetch_stop-3, # account for stop codon
+                                                                 $mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"c_stop"}, 
                                                                  $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
                                     $len_corr-$append_len);
           error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_cds_ext_errmsg, $FH_HR);
@@ -4451,16 +4748,17 @@ sub output_tbl_get_headings {
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
 
   # determine optional modes
-  my $do_fid      = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to do fid output
-  my $do_avgfid   = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to do fid output
-  my $do_noss3    = 0; # '1' to skip ss3 output
-  my $do_nostop   = 0; # '1' to skip stop output
-  my $do_nomdlb   = 0; # '1' to skip model boundary output
-  my $do_noolap   = 0; # '1' to skip overlap output
-  my $do_noexist  = 0; # '1' to skip comparison to existing GenBank annotation
-  my $do_fullolap = 0; # '1' to output full overlap strings
-  my $do_fulladj  = 0; # '1' to output full adjacency strings
-  my $do_matpept  = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
+  my $do_fid       = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to do fid output
+  my $do_avgfid    = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to do fid output
+  my $do_noss3     = 0; # '1' to skip ss3 output
+  my $do_nostop    = 0; # '1' to skip stop output
+  my $do_nomdlb    = 0; # '1' to skip model boundary output
+  my $do_noolap    = 0; # '1' to skip overlap output
+  my $do_noexist   = 0; # '1' to skip comparison to existing GenBank annotation
+  my $do_fullolap  = 0; # '1' to output full overlap strings
+  my $do_fulladj   = 0; # '1' to output full adjacency strings
+  my $do_matpept   = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
+  my $do_cds_notmp = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "cds-notmp", $FH_HR) > 0) ? 1 : 0;
 
   # miscellaneous variables
   my $width_result = 5 + $nmdl + 2; # an important width 
@@ -4616,194 +4914,316 @@ sub output_tbl_get_headings {
     output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR); # adds a blank line
   }
 
-  # create columns for main features (CDS/mat_peptide)
+  # create rows for each feature 
   $width = 0;
-  my $do_explanation = 1;
-  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    $width += 18;
-    my $ftr_idx = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
+  my $do_multi_explanation = 1;
+  my $do_model_explanation = 1;
+  my $nmultifeature = numNonNumericValueInArray($ftr_info_HAR->{"annot_type"}, "multifeature", $FH_HR);
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ftr_out_short   = $ftr_info_HAR->{"out_short"}[$ftr_idx];
     my $ftr_out_product = $ftr_info_HAR->{"out_product"}[$ftr_idx];
-    my $mdl_exon_idx    = $mdl_info_HAR->{"map_exon"}[$mdl_idx];
-    my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
-    if($do_fid)      { $width += 6;  }
-    if(! $do_nomdlb) { $width += 4;  }
-    if(! $do_noolap) { $width += 11; }
-    if($is_matpept)  { $width += 11; }
-    if($mdl_info_HAR->{"is_final"}[$mdl_idx]) { 
-      $width += 9;
-      if(! $do_noss3)  { $width += 4; }
-      if(! $do_nostop) { $width += 4; }
-      $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(($width-length($ftr_out_short))/2, " "));
-      $exp_tok1 = ($is_matpept) ? "MP #<i>" : "CDS #<i>";
-      $tok2 = sprintf("  %s", $ftr_out_product); 
-      $tok3 = sprintf("  %s", getMonocharacterString($width, "-"));
-      $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mdl_exon_idx+1));
-      $exp_tok4 = "start<j>";
-      $tok5 = sprintf("  %8s", "--------");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      $width = 0; # reset width, this is impt
-    }
-    else { # not the final exon, still need start coordinate
-      $width += 1;
-      $tok1 = sprintf("    %s", $ftr_out_short);   # used only for output_tbl_get_headings_helper
-      $tok2 = sprintf("    %s", $ftr_out_product); # used only for output_tbl_get_headings_helper
-      $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mdl_exon_idx+1));
-      $exp_tok4 = "start<j>";
-      $tok5 = sprintf("  %8s", "--------");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-    }
-    my $exp_substr = ($is_matpept) ? "coding sequence part <j> of mat_peptide" : "exon #<j> of CDS #<i>";
-    if($do_explanation) { 
-      output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "start position of $exp_substr (\"NP\" if no prediction)", $FH_HR);
-      output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation", $FH_HR);
-    }
-    
-    # stop, fid, and md rows take place for all exons
-    # only token 4 changes
-    $tok4 = sprintf(" %8s", sprintf("%s%s", "stop", $mdl_exon_idx+1));
-    $exp_tok4 = "stop<j>";
-    $tok5 = sprintf(" %8s", "--------");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-    if($do_explanation) { 
-      output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "stop  position of $exp_substr (\"NP\" if no prediction)", $FH_HR);
-      output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation", $FH_HR);
-    }
-    
-    if($do_fid) { 
-      $tok4 = sprintf(" %5s", sprintf("%s%s", "fid", $mdl_exon_idx+1));
-      $exp_tok4 = "fid<j>";
-      $tok5 = sprintf(" %5s", "-----");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "fractional identity between $exp_substr and reference genome (\"NP\" if no prediction)", $FH_HR);
-      }
-    }
+    #####################################################################################
+    # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
+    #####################################################################################
+    if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
+       ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
+      if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
+        $width = 6 + 1 + 6 + 1 + 6; #20
+#        $tok1     = sprintf("  %*s", $width, "");
+#        $tok2     = sprintf("  %*s", $width, $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . getMonocharacterString(($width-length($ftr_info_HAR->{"out_tiny"}[$ftr#_idx])), " "));
+#        my $exp_tok2 = "CDS #<i>";
+#        $tok3 = sprintf("  %s", getMonocharacterString($width, "-"));
+#        $tok4 = sprintf("  %6s", "start");
+#        $tok5 = sprintf("  ------");
 
-    $exp_substr = $is_matpept ? "mat_peptide coding sequence" : "exon coding sequence";
-    if(! $do_nomdlb) { 
-      $tok4 = sprintf(" %3s", sprintf("%s%s", "md", $mdl_exon_idx+1));
-      $exp_tok4 = "md<j>";
-      $tok5 = sprintf(" %3s", "---");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "annotation indicating if alignment to reference extends to 5' and 3' end of reference $exp_substr.", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "first character pertains to 5' end and second character pertains to 3' end.", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "possible values for each of the two characters:", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \".\":   alignment extends to boundary of reference", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"t\":   position has been corrected based on predicted, truncated protein sequence", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop (5' of predicted stop)", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"e\":   position has been corrected based on predicted, extended protein sequence", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop (3' of predicted stop)", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"-\":   exon/segment is not predicted due to stop codon in earlier exon/segment", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"NP\":  (spanning both characters) no prediction", $FH_HR);
-      }
-    }
-    
-    if(! $do_noolap) { 
-      $tok4 = sprintf(" %10s", sprintf("%s%s", "overlaps", $mdl_exon_idx+1));
-      $exp_tok4 = "overlaps<j>";
-      $tok5 = sprintf(" %10s", "----------");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s overlaps with", ($is_matpept) ? "mat_peptide" : "exon", ($is_matpept) ? "mat_peptide" : "exon"), $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);
-        $need_to_define_H{"overlap"} = 1;
-      }
-    }
+        $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(($width-length($ftr_out_short))/2, " "));
+        $exp_tok1 = "CDS(MP) #<i>";
+        $tok2 = sprintf("  %s", $ftr_out_product); 
+        $tok3 = sprintf("  %s", getMonocharacterString($width, "-"));
+        $tok4 = sprintf("  %8s", sprintf("%s", "start"));
+        $tok5 = sprintf("  %8s", "--------");
 
-    if($is_matpept) { 
-      $tok4 = sprintf(" %10s", sprintf("%s%s", "adjcnces", $mdl_exon_idx+1));
-      $exp_tok4 = "adjcnces<j>";
-      $tok5 = sprintf(" %10s", "----------");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s is adjacent with", ($is_matpept) ? "mat_peptide" : "exon", ($is_matpept) ? "mat_peptide" : "exon"), $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);      
-      }
-      $need_to_define_H{"adjacent"} = 1;
-    }
-
-    $exp_substr = $is_matpept ? "mat_peptide coding sequence" : "CDS";
-    if($mdl_info_HAR->{"is_final"}[$mdl_idx]) { 
-      $tok4 = sprintf(" %6s", "length");
-      $tok5 = sprintf(" %6s", "------");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); 
-      if($do_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, sprintf("length of $exp_substr #<i> (all %s summed)", $is_matpept ? "segments" : "exons"), $FH_HR);
-      }      
-
-      if((! $is_matpept) && (! $do_noss3)) { # skip this in matpept mode, we don't check start/stop of mat_peptides, only CDS, later
-        $tok4 = sprintf(" %3s", "ss3");
-        $tok5 = sprintf(" %3s", "---");
         output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, else '!'", $FH_HR);          
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, else '!'", $FH_HR);      
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);
+        if($do_multi_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
         }
-      }
-      if((! $is_matpept) && (! $do_nostop)) { # skip this in matpept mode, we only check stop of final mat_peptide, later
-        $tok4 = sprintf(" %3s", "stp");
-        $tok5 = sprintf(" %3s", "---");
+        
+        $tok4 = sprintf(" %8s", "stop");
+        $tok5 = sprintf(" %8s", "------");
         output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "the predicted stop codon for this CDS (\"NP\" if no prediction)", $FH_HR);
+        if($do_multi_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop  position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
         }
-      }
-      
-      $tok4 = sprintf(" %2s", "PF");
-      $tok5 = sprintf(" %2s", "--");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_explanation) { 
-        if($is_matpept) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this mat_peptide PASSED ('P') or FAILED ('F')", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a mat_peptide coding sequence PASSES ('P') if and only if", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon or homologous reference mat_peptide", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      does not", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after its predicted", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      end or reference mat_peptide does not", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) has a pairwise alignment to the homologous reference met_peptide that", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      extends to the 5' and 3' boundary of the reference annotation", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) overlaps with exact same set of other mat_peptides as the homologous", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference mat_peptide", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (6) is adjacent to the exact same set of other mat_peptides as the", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference mat_peptide", $FH_HR);
-          push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d mature peptides, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
-          $pf_idx += $nftr;
-          $need_to_define_H{"adjacent"} = 1;
+        
+        $tok4 = sprintf(" %6s", "length");
+        $tok5 = sprintf(" %6s", "------");
+        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+        if($do_multi_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "length of CDS(MP) #<i> (\"?\" if any of the mat_peptides that comprise this CDS are not predicted)", $FH_HR);
         }
-        else { 
+
+        $tok4 = sprintf(" %6s", "startc");
+        $tok5 = sprintf(" %6s", "------");
+        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+        if($do_multi_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start codon of CDS(MP) #<i> (\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
+        }
+        
+        $tok4 = sprintf(" %6s", "stopc");
+        $tok5 = sprintf(" %6s", "------");
+        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+        if($do_multi_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop codon of CDS(MP) #<i> (\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
+        }
+        
+        if(! $do_noss3) { 
+          $tok4 = sprintf(" %3s", "ss3");
+          $tok5 = sprintf(" %3s", "---");
+          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+          if($do_multi_explanation) { 
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, '!' if not,", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  and '?' if first mat_peptide for this CDS is not predicted", $FH_HR);          
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, '!' if not,", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                      and '?' if final mat_peptide for this CDS is not predicted", $FH_HR);      
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, '!' if it is not a", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  multiple of 3, and '?' if any of the mat_peptides that comprise it are not predicted.", $FH_HR);
+          }
+        }
+        
+        $tok4 = sprintf(" %6s", "PF");
+        $tok5 = sprintf(" %6s", "---");
+        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+        if($do_multi_explanation) { 
           output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
           output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
           output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first exon", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon at end of its final exon", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first mat_peptide", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after the end of its final mat_peptide", $FH_HR);
           output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of its exons have a pairwise alignment to the homologous", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference exon that extends to the 5' and 3' boundary of the", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference annotation.", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) all of its exons overlap with exact same set of other exons as the", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference CDS", $FH_HR);
-          push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
-          $pf_idx += $nftr;
-          $need_to_define_H{"overlap"} = 1;
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of the mat_peptides that comprise it are adjacent", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+          if($nmultifeature == 1) { 
+            push(@pf_text_A, sprintf("P/F character %d pertains to the lone CDS.", $pf_idx));
+          }
+          else {
+            push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nmultifeature-1, $nmultifeature));
+          }
+          $pf_idx += $nmultifeature;
         }
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+        $do_multi_explanation = 0;
       }
-    }
-    $do_explanation = 0; # once we see the final exon of the first CDS, we don't need to print CDS explanations anymore
-  } # end of 'if($mdl_is_final_AR->[$mdl_idx])'
+    } # end of 'if' entered if feature is a multifeature cds-mp feature
+  
+    #############################################
+    # block that handles 'annot_type' eq "model"
+    # features, these are cds-notmp and mp types
+    #############################################
+    else { 
+      for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
+        $width += 18;
+        my $mdl_exon_idx    = $mdl_info_HAR->{"map_exon"}[$mdl_idx];
+        my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
+        if($do_fid)      { $width += 6;  }
+        if(! $do_nomdlb) { $width += 4;  }
+        if(! $do_noolap) { $width += 11; }
+        if($is_matpept)  { $width += 11; }
+        if($mdl_info_HAR->{"is_final"}[$mdl_idx]) { 
+          $width += 9;
+          if(! $do_noss3)  { $width += 4; }
+          if(! $do_nostop) { $width += 4; }
+          $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(($width-length($ftr_out_short))/2, " "));
+          $exp_tok1 = "";
+          if($do_matpept && $do_cds_notmp) { 
+            $exp_tok1 = "{MP,CDS} #<i>";
+          }
+          elsif($do_matpept && (! $do_cds_notmp)) { 
+            $exp_tok1 = "MP #<i>";
+          }
+          else { # $do_matpept is false
+            $exp_tok1 =  "CDS #<i>";
+          }
+          $tok2 = sprintf("  %s", $ftr_out_product); 
+          $tok3 = sprintf("  %s", getMonocharacterString($width, "-"));
+          $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mdl_exon_idx+1));
+          $exp_tok4 = "start<j>";
+          $tok5 = sprintf("  %8s", "--------");
+          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+          $width = 0; # reset width, this is impt
+        }
+        else { # not the final exon, still need start coordinate
+          $width += 1;
+          $tok1 = sprintf("    %s", $ftr_out_short);   # used only for output_tbl_get_headings_helper
+          $tok2 = sprintf("    %s", $ftr_out_product); # used only for output_tbl_get_headings_helper
+          $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mdl_exon_idx+1));
+          $exp_tok4 = "start<j>";
+          $tok5 = sprintf("  %8s", "--------");
+          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+        }
+        my $exp_substr = "";
+        if($do_matpept && $do_cds_notmp) { 
+          $exp_substr = "coding sequence part (or exon) <j> of mat_peptide (or CDS)";
+        }
+        elsif($do_matpept && (! $do_cds_notmp)) { 
+          $exp_substr = "coding sequence part <j> of mat_peptide";
+        }
+        else { # $do_matpept is false
+          $exp_substr = "exon <j> of CDS";
+        }
+        if($do_model_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "start position of $exp_substr (\"NP\" if no prediction)", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation", $FH_HR);
+        }
+        
+        # stop, fid, and md rows take place for all exons
+        # only token 4 changes
+        $tok4 = sprintf(" %8s", sprintf("%s%s", "stop", $mdl_exon_idx+1));
+        $exp_tok4 = "stop<j>";
+        $tok5 = sprintf(" %8s", "--------");
+        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+        if($do_model_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "stop  position of $exp_substr (\"NP\" if no prediction)", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation", $FH_HR);
+        }
+        
+        if($do_fid) { 
+          $tok4 = sprintf(" %5s", sprintf("%s%s", "fid", $mdl_exon_idx+1));
+          $exp_tok4 = "fid<j>";
+          $tok5 = sprintf(" %5s", "-----");
+          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+          if($do_model_explanation) { 
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "fractional identity between $exp_substr and reference genome (\"NP\" if no prediction)", $FH_HR);
+          }
+        }
 
+        $exp_substr = $is_matpept ? "mat_peptide coding sequence" : "exon coding sequence";
+        if(! $do_nomdlb) { 
+          $tok4 = sprintf(" %3s", sprintf("%s%s", "md", $mdl_exon_idx+1));
+          $exp_tok4 = "md<j>";
+          $tok5 = sprintf(" %3s", "---");
+          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+          if($do_model_explanation) { 
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "annotation indicating if alignment to reference extends to 5' and 3' end of reference $exp_substr.", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "first character pertains to 5' end and second character pertains to 3' end.", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "possible values for each of the two characters:", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \".\":   alignment extends to boundary of reference", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"t\":   position has been corrected based on predicted, truncated protein sequence", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop (5' of predicted stop)", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"e\":   position has been corrected based on predicted, extended protein sequence", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop (3' of predicted stop)", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"-\":   exon/segment is not predicted due to stop codon in earlier exon/segment", $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"NP\":  (spanning both characters) no prediction", $FH_HR);
+          }
+        }
+        
+        if(! $do_noolap) { 
+          $tok4 = sprintf(" %10s", sprintf("%s%s", "overlaps", $mdl_exon_idx+1));
+          $exp_tok4 = "overlaps<j>";
+          $tok5 = sprintf(" %10s", "----------");
+          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+          if($do_model_explanation) { 
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s overlaps with", ($is_matpept) ? "mat_peptide" : "exon", ($is_matpept) ? "mat_peptide" : "exon"), $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);
+            $need_to_define_H{"overlap"} = 1;
+          }
+        }
+
+        if($is_matpept) { 
+          $tok4 = sprintf(" %10s", sprintf("%s%s", "adjcnces", $mdl_exon_idx+1));
+          $exp_tok4 = "adjcnces<j>";
+          $tok5 = sprintf(" %10s", "----------");
+          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+          if($do_model_explanation) { 
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s is adjacent with", ($is_matpept) ? "mat_peptide" : "exon", ($is_matpept) ? "mat_peptide" : "exon"), $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);      
+          }
+          $need_to_define_H{"adjacent"} = 1;
+        }
+
+        $exp_substr = $is_matpept ? "mat_peptide coding sequence" : "CDS";
+        if($mdl_info_HAR->{"is_final"}[$mdl_idx]) { 
+          $tok4 = sprintf(" %6s", "length");
+          $tok5 = sprintf(" %6s", "------");
+          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); 
+          if($do_model_explanation) { 
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, sprintf("length of $exp_substr #<i> (all %s summed)", $is_matpept ? "segments" : "exons"), $FH_HR);
+          }      
+
+          if((! $is_matpept) && (! $do_noss3)) { # skip this in matpept mode, we don't check start/stop of mat_peptides, only CDS, later
+            $tok4 = sprintf(" %3s", "ss3");
+            $tok5 = sprintf(" %3s", "---");
+            output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+            if($do_model_explanation) { 
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, else '!'", $FH_HR);          
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, else '!'", $FH_HR);      
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);
+            }
+          }
+          if((! $is_matpept) && (! $do_nostop)) { # skip this in matpept mode, we only check stop of final mat_peptide, later
+            $tok4 = sprintf(" %3s", "stp");
+            $tok5 = sprintf(" %3s", "---");
+            output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+            if($do_model_explanation) { 
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "the predicted stop codon for this CDS (\"NP\" if no prediction)", $FH_HR);
+            }
+          }
+          
+          $tok4 = sprintf(" %2s", "PF");
+          $tok5 = sprintf(" %2s", "--");
+          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+          if($do_model_explanation) { 
+            if($is_matpept) { 
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this mat_peptide PASSED ('P') or FAILED ('F')", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a mat_peptide coding sequence PASSES ('P') if and only if", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon or homologous reference mat_peptide", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      does not", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after its predicted", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      end or reference mat_peptide does not", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) has a pairwise alignment to the homologous reference met_peptide that", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      extends to the 5' and 3' boundary of the reference annotation", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) overlaps with exact same set of other mat_peptides as the homologous", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference mat_peptide", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (6) is adjacent to the exact same set of other mat_peptides as the", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference mat_peptide", $FH_HR);
+              push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d mature peptides, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
+              $pf_idx += $nftr;
+              $need_to_define_H{"adjacent"} = 1;
+            }
+            else { 
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first exon", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon at end of its final exon", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of its exons have a pairwise alignment to the homologous", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference exon that extends to the 5' and 3' boundary of the", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference annotation.", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) all of its exons overlap with exact same set of other exons as the", $FH_HR);
+              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference CDS", $FH_HR);
+              push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
+              $pf_idx += $nftr;
+              $need_to_define_H{"overlap"} = 1;
+            }
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+          }
+        } # end of 'if($mdl_is_final_AR->[$mdl_idx])'
+        $do_model_explanation = 0; # once we see the final exon of the first CDS, we don't need to print CDS explanations anymore
+      } # end of 'for(my $mdl_idx)'
+    } # end of 'else' entered if we're not a multifeature cds-mp feature
+  } # end of 'for(my $ftr_idx)'
+  
   # create columns for 3'UTR, if $do_matpept:
   if($do_matpept) { 
     $width = 6 + 1 + 6 + 1 + 6; #20
@@ -4826,94 +5246,6 @@ sub output_tbl_get_headings {
     output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "length of 3' UTR (inferred from other predictions, \"?\" if final mat_peptide is not predicted)", $FH_HR);
 
     output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-  }
-
-  # create columns for CDS annotation in mat_peptide mode, if nec
-  if($do_matpept) { 
-    $do_explanation = 1;
-    my $nmultifeature = numNonNumericValueInArray($ftr_info_HAR->{"annot_type"}, "multifeature", $FH_HR);
-    foreach (my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
-        $width = 6 + 1 + 6 + 1 + 6; #20
-        $tok1     = sprintf("  %*s", $width, "");
-        $tok2     = sprintf("  %*s", $width, $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . getMonocharacterString(($width-length($ftr_info_HAR->{"out_tiny"}[$ftr_idx])), " "));
-        my $exp_tok2 = "CDS #<i>";
-        $tok3 = sprintf("  %s", getMonocharacterString($width, "-"));
-        $tok4 = sprintf("  %6s", "start");
-        $tok5 = sprintf("  ------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-        if($do_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "start position of CDS #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        $tok4 = sprintf(" %6s", "stop");
-        $tok5 = sprintf(" %6s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-        if($do_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "stop  position of CDS #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        $tok4 = sprintf(" %6s", "length");
-        $tok5 = sprintf(" %6s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-        if($do_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "length of CDS #<i> (\"?\" if any of the mat_peptides that comprise this CDS are not predicted)", $FH_HR);
-        }
-
-        $tok4 = sprintf(" %6s", "startc");
-        $tok5 = sprintf(" %6s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-        if($do_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "start codon of CDS #<i> (\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        $tok4 = sprintf(" %6s", "stopc");
-        $tok5 = sprintf(" %6s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-        if($do_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "stop codon of CDS #<i> (\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        if(! $do_noss3) { 
-          $tok4 = sprintf(" %3s", "ss3");
-          $tok5 = sprintf(" %3s", "---");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-          if($do_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, '!' if not,", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  and '?' if first mat_peptide for this CDS is not predicted", $FH_HR);          
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, '!' if not,", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                      and '?' if final mat_peptide for this CDS is not predicted", $FH_HR);      
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, '!' if it is not a", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  multiple of 3, and '?' if any of the mat_peptides that comprise it are not predicted.", $FH_HR);
-          }
-        }
-        
-        $tok4 = sprintf(" %6s", "PF");
-        $tok5 = sprintf(" %6s", "---");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-        if($do_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok2, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first mat_peptide", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after the end of its final mat_peptide", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of the mat_peptides that comprise it are adjacent", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-          if($nmultifeature == 1) { 
-            push(@pf_text_A, sprintf("P/F character %d pertains to the lone CDS.", $pf_idx));
-          }
-          else {
-            push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nmultifeature-1, $nmultifeature));
-          }
-          $pf_idx += $nmultifeature;
-        }
-        $do_explanation = 0;
-      }
-    }
   }
 
   # "totlen"
@@ -5220,6 +5552,10 @@ sub output_tbl_all_sequences {
 
     # 5' UTR, if nec
     if($do_matpept) { 
+      # TODO, update this to work for positive or negative strand
+      if($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} ne "+") { 
+        DNAORG_FAIL("ERROR in $sub_name, prediction is on negative strand and trying to compute 5' UTR, need to add code for this case.", 1, $FH_HR);
+      }
       if(! exists $mdl_results_AAHR->[0][$seq_idx]{"p_start"}) { 
         push(@cur_out_A, sprintf("  %6s", "?")); # start
         push(@cur_out_A, sprintf(" %6s", "?"));  # stop
@@ -5237,175 +5573,20 @@ sub output_tbl_all_sequences {
       }
     }
 
-    # go through each model and collect output tokens and add to @cur_out_A
+    # go through each feature and collect output tokens and add to @cur_out_A
     my $start_codon_char   = ""; # set below if for models if $is_first
     my $stop_codon_char    = ""; # set below if for models if $is_final
     my $multiple_of_3_char = ""; # set below if for models if $is_final
-    for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-      my $ftr_idx  = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-      my $is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx]; # is this the first model for feature $ftr_idx?
-      my $is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx]; # is this the final model for feature $ftr_idx?
-      my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
-      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-      my $ref_olp_str = $mdl_info_HAR->{"out_olp_str"}[$mdl_idx];
-      my $ref_adj_str = combine_ajb_and_aja_strings($mdl_info_HAR->{"out_ajb_str"}[$mdl_idx], $mdl_info_HAR->{"out_aja_str"}[$mdl_idx]);
-
-      if(exists $mdl_results_HR->{"p_start"}) { 
-        # hit exists
-        if($is_first) { # reset variables
-          $at_least_one_fail  = 0; 
-          $start_codon_char   = "";
-          $stop_codon_char    = "";
-          $multiple_of_3_char = "";
-        }
-        
-        # check for special case when we had a trc in a previous segment for the same feature
-        if((exists $mdl_results_HR->{"prv_trc_flag"}) && ($mdl_results_HR->{"prv_trc_flag"} == 1)) { # flag for a trc error in previous exon
-          if($is_first) { 
-            DNAORG_FAIL(sprintf("ERROR in $sub_name, found flag for trc error in earlier segment/exon but this is the first segment, $accn_name model: %s", $mdl_info_HAR->{"out_tiny"}[$mdl_idx]), 1, $FH_HR);
-          }
-          push(@cur_out_A, sprintf("  %8s ", "-"));                      # start 
-          push(@cur_out_A, sprintf("%8s", "-"));                         # stop
-          if($do_fid)      { push(@cur_out_A, sprintf(" %5s", "-")); }   # fid
-          if(! $do_nomdlb) { push(@cur_out_A, "  " . "--"); }            # mdlb
-          if(! $do_noolap) { push(@cur_out_A, sprintf(" %10s", "-")); }  # olap
-          if($is_matpept)  { push(@cur_out_A, sprintf(" %10s", "-")); } # adj
-        }
-        else { 
-          # not special case in which a trc error exists in earlier segment,
-          # set annotation we do for all models (regardless of $is_first or $is_final values)
-          my $genbank_match = $mdl_results_HR->{"genbank_mdl_annot_match"}; # 1 if existing GenBank annotation matches our annotation
-          if($genbank_match) { $ngenbank_match++; }
-          push(@cur_out_A, sprintf("  %8s ", ($genbank_match ? " " . $mdl_results_HR->{"out_start"} . " " : "[" . $mdl_results_HR->{"out_start"} . "]")));
-          push(@cur_out_A, sprintf("%8s",    ($genbank_match ? " " . $mdl_results_HR->{"out_stop"}  . " " : "[" . $mdl_results_HR->{"out_stop"}  . "]")));
-          if($do_fid) { push(@cur_out_A, sprintf(" %5.3f", $mdl_results_HR->{"fid2ref"})); } 
-          if($do_avgfid) { 
-            $tot_fid += $mdl_results_HR->{"fid2ref"};
-            $n_fid++;
-          }
-          if(! $do_nomdlb) { 
-            push(@cur_out_A, "  " . $mdl_results_HR->{"out_5boundary"} . $mdl_results_HR->{"out_3boundary"}); 
-            if(($mdl_results_HR->{"out_5boundary"} ne ".") || 
-               (($mdl_results_HR->{"out_3boundary"} ne ".") && 
-                ($mdl_results_HR->{"out_3boundary"} ne "t") && 
-                ($mdl_results_HR->{"out_3boundary"} ne "e"))) { 
-              $at_least_one_fail = 1;
-            }
-          }
-          if(! $do_noolap) { 
-            my $out_olp_str = ($mdl_results_HR->{"out_olp_str"} eq "") ? "NONE" : $mdl_results_HR->{"out_olp_str"};
-            if($mdl_results_HR->{"out_olp_str"} ne $ref_olp_str) { 
-              $at_least_one_fail = 1; 
-              push(@cur_out_A, sprintf(" %10s", "F:" . $out_olp_str));
-            }
-            else { 
-              push(@cur_out_A, sprintf(" %10s", "P:" . $out_olp_str));
-            }
-          }
-          
-          if($is_matpept) { 
-            my $adj_str = combine_ajb_and_aja_strings($mdl_results_HR->{"out_ajb_str"}, $mdl_results_HR->{"out_aja_str"});
-            my $out_adj_str = ($adj_str eq "") ? "NONE" : $adj_str;
-            if($adj_str ne $ref_adj_str) { 
-              $at_least_one_fail = 1; 
-              push(@cur_out_A, sprintf(" %10s", "F:" . $out_adj_str));
-            }
-            else { 
-              push(@cur_out_A, sprintf(" %10s", "P:" . $out_adj_str));
-            }
-          }
-          if($is_first) { 
-            if($mdl_results_HR->{"str_err_flag"}) { 
-              $at_least_one_fail = 1; 
-            }
-            $start_codon_char = $mdl_results_HR->{"str_err_flag"} ? $ss3_no_char : $ss3_yes_char;
-          }
-        } # end of 'else' entered if prv_trc_flag is *not* raised
-        
-        # now add annotation we only do for the final model of each feature, we do this
-        # even if prv_trc_flag is raised
-        if($is_final) { 
-          if(! $is_matpept) { 
-            if(validateStopCodon($mdl_results_HR->{"out_stop_codon"})) { 
-              $stop_codon_char = $ss3_yes_char;
-            }
-            else { 
-              $stop_codon_char   = $ss3_no_char;
-              $at_least_one_fail = 1;
-            }
-          } # end of 'if(! $is_matpept)'
-          if(($mdl_results_HR->{"cumlen"} % 3) == 0) { 
-            $multiple_of_3_char = $ss3_yes_char;
-          }
-          else { 
-            $multiple_of_3_char = $ss3_yes_char;
-            $at_least_one_fail = 1;
-          }
-          push(@cur_out_A, sprintf(" %6d", $mdl_results_HR->{"cumlen"})); 
-          
-          # add the ss3 (start/stop/multiple of 3 info) if we're not a mature peptide
-          if(! $is_matpept) { 
-            if($start_codon_char eq "") { die "ERROR $seq_idx $mdl_idx start_codon_char is blank\n"; }
-            if($stop_codon_char  eq "") { die "ERROR $seq_idx $mdl_idx stop_codon_char is blank\n"; }
-            if($multiple_of_3_char  eq "") { die "ERROR $seq_idx $mdl_idx multiple_of_3_char is blank\n"; }
-            push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
-            if(! $do_nostop) { 
-              push(@cur_out_A, sprintf(" %3s", $mdl_results_HR->{"out_stop_codon"}));
-            }
-          }
-          $pass_fail_char = ($at_least_one_fail) ? "F" : "P";
-          push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
-          $pass_fail_str .= $pass_fail_char;
-        } # end of 'if($is_final)'
-      } # end of 'if(exists $mdl_results_HR->{"p_start"}'
-      else { 
-        # no prediction exists
-        $at_least_one_fail = 1;
-        push(@cur_out_A, sprintf("  %8s ", "NP")); # start position
-        push(@cur_out_A, sprintf("%8s",  "NP"));   # stop position
-        if($do_fid)      { push(@cur_out_A, sprintf(" %5s", "NP")); } # fid 
-        if(! $do_nomdlb) { push(@cur_out_A, "  NP"); } # model boundaries
-        if(! $do_noolap) { push(@cur_out_A, "  NP"); } # overlaps
-        if($is_matpept)  { push(@cur_out_A, "  NP"); } # adjacencies
-        if($is_final) { 
-          push(@cur_out_A, sprintf(" %6s", "NP")); # length
-          if((! $is_matpept) && (! $do_noss3))  { push(@cur_out_A, "  NP"); } # ss3
-          if((! $is_matpept) && (! $do_nostop)) { push(@cur_out_A, sprintf(" %3s", "NP")); } # stop
-        }
-        $pass_fail_char = "F";
-        push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
-          $pass_fail_str .= $pass_fail_char;
-      }
-    } # end of 'for(my $mdl_idx'
-
-    # 3' UTR, if nec
-    if($do_matpept) { 
-      if(! exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}) { 
-        push(@cur_out_A, sprintf("  %6s", "?")); # start
-        push(@cur_out_A, sprintf(" %6s", "?"));  # stop
-        push(@cur_out_A, sprintf(" %6s", "?"));  # length
-      }
-      elsif($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"out_stop"} == $accn_len) { # final model prediction stops at final nt
-        push(@cur_out_A, sprintf("  %6d", 0)); # start 
-        push(@cur_out_A, sprintf("  %6d", 0)); # stop 
-        push(@cur_out_A, sprintf("  %6d", 0)); # length
-      }            
-      else { 
-        my $utr_start = $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"out_stop"}+1;
-        push(@cur_out_A, sprintf("  %6d", $utr_start));                   # start
-        push(@cur_out_A, sprintf("  %6d", $accn_len));                    # stop 
-        push(@cur_out_A, sprintf("  %6d", ($accn_len - $utr_start) + 1)); # length
-      }
-    }                
-
-    # output the multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
-    # start, stop, length, start_codon, start_codon character
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      #####################################################################################
+      # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
+      #####################################################################################
       if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
          ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-        my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
-        push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_start"}));
-        push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_stop"})); 
+        # start, stop, length, start_codon, start_codon character
+          my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
+          push(@cur_out_A, sprintf("  %8s", $ftr_results_HR->{"out_start"}));
+        push(@cur_out_A, sprintf("  %8s", $ftr_results_HR->{"out_stop"})); 
         push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_len"}));  
         push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_start_codon"}));
         push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_stop_codon"}));
@@ -5451,8 +5632,191 @@ sub output_tbl_all_sequences {
         push(@cur_out_A, sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char)); #start,stop,mult_of_3
         push(@cur_out_A, sprintf("  %3s", $cds_pass_fail)); # cds_pass_fail
         $pass_fail_str .= $cds_pass_fail;
+      }         
+
+      #############################################
+      # block that handles 'annot_type' eq "model"
+      # features, these are cds-notmp and mp types
+      #############################################
+      else { # not a multifeature cds-mp 
+        for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
+          my $is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx]; # is this the first model for feature $ftr_idx?
+          my $is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx]; # is this the final model for feature $ftr_idx?
+          my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
+          my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
+          my $ref_olp_str = $mdl_info_HAR->{"out_olp_str"}[$mdl_idx];
+          my $ref_adj_str = combine_ajb_and_aja_strings($mdl_info_HAR->{"out_ajb_str"}[$mdl_idx], $mdl_info_HAR->{"out_aja_str"}[$mdl_idx]);
+          
+          if(exists $mdl_results_HR->{"p_start"}) { 
+            # hit exists
+            if($is_first) { # reset variables
+              $at_least_one_fail  = 0; 
+              $start_codon_char   = "";
+              $stop_codon_char    = "";
+              $multiple_of_3_char = "";
+            }
+            
+            # check for special case when we had a trc in a previous segment for the same feature
+            if((exists $mdl_results_HR->{"prv_trc_flag"}) && ($mdl_results_HR->{"prv_trc_flag"} == 1)) { # flag for a trc error in previous exon
+              if($is_first) { 
+                DNAORG_FAIL(sprintf("ERROR in $sub_name, found flag for trc error in earlier segment/exon but this is the first segment, $accn_name model: %s", $mdl_info_HAR->{"out_tiny"}[$mdl_idx]), 1, $FH_HR);
+              }
+              push(@cur_out_A, sprintf("  %8s ", "-"));                      # start 
+              push(@cur_out_A, sprintf("%8s", "-"));                         # stop
+              if($do_fid)      { push(@cur_out_A, sprintf(" %5s", "-")); }   # fid
+              if(! $do_nomdlb) { push(@cur_out_A, "  " . "--"); }            # mdlb
+              if(! $do_noolap) { push(@cur_out_A, sprintf(" %10s", "-")); }  # olap
+              if($is_matpept)  { push(@cur_out_A, sprintf(" %10s", "-")); } # adj
+            }
+            else { 
+              # not special case in which a trc error exists in earlier segment,
+              # set annotation we do for all models (regardless of $is_first or $is_final values)
+              my $genbank_match = $mdl_results_HR->{"genbank_mdl_annot_match"}; # 1 if existing GenBank annotation matches our annotation
+              if($genbank_match) { $ngenbank_match++; }
+              push(@cur_out_A, sprintf("  %8s ", ($genbank_match ? " " . $mdl_results_HR->{"out_start"} . " " : "[" . $mdl_results_HR->{"out_start"} . "]")));
+              push(@cur_out_A, sprintf("%8s",    ($genbank_match ? " " . $mdl_results_HR->{"out_stop"}  . " " : "[" . $mdl_results_HR->{"out_stop"}  . "]")));
+              if($do_fid) { push(@cur_out_A, sprintf(" %5.3f", $mdl_results_HR->{"fid2ref"})); } 
+              if($do_avgfid) { 
+                $tot_fid += $mdl_results_HR->{"fid2ref"};
+                $n_fid++;
+              }
+              if(! $do_nomdlb) { 
+                push(@cur_out_A, "  " . $mdl_results_HR->{"out_5boundary"} . $mdl_results_HR->{"out_3boundary"}); 
+                if(($mdl_results_HR->{"out_5boundary"} ne ".") || 
+                   (($mdl_results_HR->{"out_3boundary"} ne ".") && 
+                    ($mdl_results_HR->{"out_3boundary"} ne "t") && 
+                    ($mdl_results_HR->{"out_3boundary"} ne "e"))) { 
+                  $at_least_one_fail = 1;
+                }
+              }
+              if(! $do_noolap) { 
+                my $out_olp_str = ($mdl_results_HR->{"out_olp_str"} eq "") ? "NONE" : $mdl_results_HR->{"out_olp_str"};
+                if($mdl_results_HR->{"out_olp_str"} ne $ref_olp_str) { 
+                  $at_least_one_fail = 1; 
+                  push(@cur_out_A, sprintf(" %10s", "F:" . $out_olp_str));
+                }
+                else { 
+                  push(@cur_out_A, sprintf(" %10s", "P:" . $out_olp_str));
+                }
+              }
+              
+              if($is_matpept) { 
+                my $adj_str = combine_ajb_and_aja_strings($mdl_results_HR->{"out_ajb_str"}, $mdl_results_HR->{"out_aja_str"});
+                my $out_adj_str = ($adj_str eq "") ? "NONE" : $adj_str;
+                if($adj_str ne $ref_adj_str) { 
+                  $at_least_one_fail = 1; 
+                  push(@cur_out_A, sprintf(" %10s", "F:" . $out_adj_str));
+                }
+                else { 
+                  push(@cur_out_A, sprintf(" %10s", "P:" . $out_adj_str));
+                }
+              }
+              if($is_first) { 
+                if($mdl_results_HR->{"str_err_flag"}) { 
+                  $at_least_one_fail = 1; 
+                }
+                $start_codon_char = $mdl_results_HR->{"str_err_flag"} ? $ss3_no_char : $ss3_yes_char;
+              }
+            } # end of 'else' entered if prv_trc_flag is *not* raised
+            
+            # now add annotation we only do for the final model of each feature, we do this
+            # even if prv_trc_flag is raised
+            if($is_final) { 
+              if(! $is_matpept) { 
+                if(validateStopCodon($mdl_results_HR->{"out_stop_codon"})) { 
+                  $stop_codon_char = $ss3_yes_char;
+                }
+                else { 
+                  $stop_codon_char   = $ss3_no_char;
+                  $at_least_one_fail = 1;
+                }
+              } # end of 'if(! $is_matpept)'
+              if(($mdl_results_HR->{"cumlen"} % 3) == 0) { 
+                $multiple_of_3_char = $ss3_yes_char;
+              }
+              else { 
+                $multiple_of_3_char = $ss3_yes_char;
+                $at_least_one_fail = 1;
+              }
+              push(@cur_out_A, sprintf(" %6d", $mdl_results_HR->{"cumlen"})); 
+              
+              # add the ss3 (start/stop/multiple of 3 info) if we're not a mature peptide
+              if(! $is_matpept) { 
+                if($start_codon_char eq "") { die "ERROR $seq_idx $mdl_idx start_codon_char is blank\n"; }
+                if($stop_codon_char  eq "") { die "ERROR $seq_idx $mdl_idx stop_codon_char is blank\n"; }
+                if($multiple_of_3_char  eq "") { die "ERROR $seq_idx $mdl_idx multiple_of_3_char is blank\n"; }
+                push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
+                if(! $do_nostop) { 
+                  push(@cur_out_A, sprintf(" %3s", $mdl_results_HR->{"out_stop_codon"}));
+                }
+              }
+              $pass_fail_char = ($at_least_one_fail) ? "F" : "P";
+              push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
+              $pass_fail_str .= $pass_fail_char;
+            } # end of 'if($is_final)'
+          } # end of 'if(exists $mdl_results_HR->{"p_start"}'
+          else { 
+            # no prediction exists
+            $at_least_one_fail = 1;
+            push(@cur_out_A, sprintf("  %8s ", "NP")); # start position
+            push(@cur_out_A, sprintf("%8s",  "NP"));   # stop position
+            if($do_fid)      { push(@cur_out_A, sprintf(" %5s", "NP")); } # fid 
+            if(! $do_nomdlb) { push(@cur_out_A, "  NP"); } # model boundaries
+            if(! $do_noolap) { push(@cur_out_A, "  NP"); } # overlaps
+            if($is_matpept)  { push(@cur_out_A, "  NP"); } # adjacencies
+            if($is_final) { 
+              push(@cur_out_A, sprintf(" %6s", "NP")); # length
+              if((! $is_matpept) && (! $do_noss3))  { push(@cur_out_A, "  NP"); } # ss3
+              if((! $is_matpept) && (! $do_nostop)) { push(@cur_out_A, sprintf(" %3s", "NP")); } # stop
+            }
+            $pass_fail_char = "F";
+            push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
+            $pass_fail_str .= $pass_fail_char;
+          }
+        } # end of 'for(my $mdl_idx'
+      } # end of 'else' entered if feature is not a multifeature cds-mp
+    } # end of 'for(my $ftr_idx'      
+
+    # 3' UTR, if nec
+    if($do_matpept) { 
+      # TODO, update this to work for positive or negative strand
+      if($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} ne "+") { 
+        DNAORG_FAIL("ERROR in $sub_name, prediction is on negative strand and trying to compute 3' UTR, need to add code for this case.", 1, $FH_HR);
       }
-    }
+      if(! exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}) { 
+        push(@cur_out_A, sprintf("  %6s", "?")); # start
+        push(@cur_out_A, sprintf(" %6s", "?"));  # stop
+        push(@cur_out_A, sprintf(" %6s", "?"));  # length
+      }
+      elsif($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"out_stop"} == $accn_len) { # final model prediction stops at final nt
+        push(@cur_out_A, sprintf("  %6d", 0)); # start 
+        push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+        push(@cur_out_A, sprintf("  %6d", 0)); # length
+      }            
+      else { 
+        my $utr_start = undef;
+        my $tmp_stop = undef; # final stop position
+        if(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"}) { 
+          (undef, $tmp_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_start"}, 
+                                                            $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"},
+                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+        }
+        elsif(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"}) { 
+          (undef, $tmp_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"},  # irrelevant due to the first undef arg
+                                                            $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"},
+                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+        }
+        else { 
+          (undef, $tmp_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
+                                                            $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_stop"}, 
+                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+        }
+        $utr_start = $tmp_stop + 1;
+        push(@cur_out_A, sprintf("  %6d", $utr_start));                   # start
+        push(@cur_out_A, sprintf("  %6d", $accn_len));                    # stop 
+        push(@cur_out_A, sprintf("  %6d", ($accn_len - $utr_start) + 1)); # length
+      }
+    }                
 
     # total length
     push(@cur_out_A, sprintf("  %6d", $accn_len));
