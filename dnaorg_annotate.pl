@@ -1016,7 +1016,9 @@ outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_finalize() 
+#    mdl_results_add_str_nop_bd5_bd3_errors()
+#    mdl_results_calculate_out_starts_and_stops()
+#    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate() ***
 #    dump_results()
 #
@@ -2249,7 +2251,9 @@ sub wrapper_esl_epn_translate_startstop {
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_finalize
+#    mdl_results_add_str_nop_bd5_bd3_errors()
+#    mdl_results_calculate_out_starts_and_stops()
+#    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate
 #    dump_results()
 #
@@ -2898,185 +2902,6 @@ sub results_calculate_overlaps_and_adjacencies {
   } # end of 'for(my $seq_idx"
   return;
 }
-
-#################################################################
-# Subroutine:  mdl_results_finalize
-# Incept:      EPN, Mon Mar 14 08:11:12 2016
-#
-# Purpose:    Finalize the model results in @{$mdl_results_AAHR}, 
-#             by filling the following 3rd keys: "out_start", 
-#             "out_stop", "out_5boundary", "out_3boundary", 
-#             "exist_annot_match", and throwing errors for "bd5" 
-#             and "bd3" if necessary.
-#
-#             Begin to fill (and finalize) the feature results in
-#             @{$ftr_results_AAHR}, by filling the following 3rd
-#             dim keys for 'cds-mp' feature types: 
-#             "out_start", "out_stop", "out_len", "out_start_codon", 
-#             "out_stop_codon".
-#
-#             Checks for and adds or updates the following error 
-#             codes for features with "annot_type" eq "model":
-#             
-#             "nop": adds this error, no model prediction
-#             
-#             "str": updates this error, originally added in 
-#                  parse_esl_epn_translate_startstop_outfile()
-#                  by making the error message more informative
-#                  to include position and codon of predicted start
-#
-#             "bd5": adds this error, predicted hit not flush with 
-#                  model on 5' end
-#             
-#             "bd3": adds this error, predicted hit not flush with 
-#                  model on 3' end
-#
-#             
-#
-# Arguments: 
-#  $sqfile:             REF to Bio::Easel::SqFile object, open sequence file containing sequences
-#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:   REF to model results AAH, ADDED TO HERE
-#  $cds_tbl_HHAR:       REF to CDS hash of hash of arrays, PRE-FILLED
-#  $mp_tbl_HHAR:        REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
-#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $err_info_HAR:       REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:              REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: If we have predicted start and stop coordinates that don't make sense
-#       given the lengths of the accession and the sequence we searched.
-#
-################################################################# 
-sub mdl_results_finalize { 
-  my $sub_name = "mdl_results_finalize()";
-  my $nargs_exp = 11;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $cds_tbl_HHAR, $mp_tbl_HHAR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $ftr_idx;
-  my $mdl_idx;
-  my $seq_idx;
-
-  # first, determine how many genbank annotations we have per sequence
-  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    # determine how many annotations CDS or mature peptide annotations there are in GenBank
-    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-    ($seq_info_HAR->{"num_genbank_mdl_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_mdl_exon_annot"}[$seq_idx]) = 
-        count_genbank_annotations((opt_IsUsed("--matpept", $opt_HHR)) ? $mp_tbl_HHAR->{$accn_name} : $cds_tbl_HHAR->{$accn_name}, 
-                                   $accn_len, $opt_HHR, $FH_HR);
-  }
-
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-    my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
-    my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
-    my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
-    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
-      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-
-      if(! exists $mdl_results_HR->{"p_start"}) { 
-        # no prediction
-        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nop", $seq_name, "", $FH_HR);
-      }        
-      else { # $mdl_results_HR->{"p_start"} exists, we have a prediction
-        ##############################
-        # set out_start and out_stop #
-        ##############################
-        ($mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}) = 
-            create_output_start_and_stop($mdl_results_HR->{"p_start"},
-                                         exists($mdl_results_HR->{"c_stop"}) ? $mdl_results_HR->{"c_stop"} : $mdl_results_HR->{"p_stop"}, 
-                                         $accn_len, $seq_len, $FH_HR);
-        ##########################
-        # update str err message #
-        ##########################
-        if($is_first && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name})) { 
-          my $start_codon = 
-          my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", 
-                                           fetchStartCodon($sqfile, $seq_name, $mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_strand"}, $FH_HR), 
-                                           $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"p_strand"});
-          error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
-          $mdl_results_HR->{"str_err_flag"} = 1;
-        }
-        #######################################
-        # set out_5boundary and out_3boundary #
-        #######################################
-        # update p_5hangover and p_3hangover
-        # at this point, $mdl_results_HR->{"p_5hangover"} and $results->{"p_3hangover"} are both integers >= 0
-        # bd5 block
-        if($mdl_results_HR->{"p_5hangover"} == 0) { 
-          $mdl_results_HR->{"out_5boundary"} = ".";
-        }
-        else { 
-          # bd5 error
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd5", $seq_name, $mdl_results_HR->{"p_5hangover"} . " nt from 5' end", $FH_HR);
-          if($mdl_results_HR->{"p_5hangover"} > 9) { 
-            $mdl_results_HR->{"out_5boundary"} = "+"; 
-          }
-          else { 
-            $mdl_results_HR->{"out_5boundary"} = $mdl_results_HR->{"p_5hangover"};
-          }
-        }
-        # bd3 block
-        # check for 2 special cases, a trc or ext error, which invalidate the bd3 value
-        if(exists $mdl_results_HR->{"trc_err_flag"}) { 
-          $mdl_results_HR->{"out_3boundary"} = "t";
-        }
-        elsif(exists $mdl_results_HR->{"ext_err_flag"}) { 
-          $mdl_results_HR->{"out_3boundary"} = "e";
-        }
-        elsif($mdl_results_HR->{"p_3hangover"} == 0) { 
-          $mdl_results_HR->{"out_3boundary"} = ".";
-        }
-        else { 
-          # bd3 error
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd3", $seq_name, $mdl_results_HR->{"p_3hangover"} . " nt from 3' end", $FH_HR);
-          if($mdl_results_HR->{"p_3hangover"} > 9) { 
-            $mdl_results_HR->{"out_3boundary"} = "+"; 
-          }
-          else { 
-            $mdl_results_HR->{"out_3boundary"} = $mdl_results_HR->{"p_3hangover"};
-          }
-        }
-        ###############################
-        # set genbank_mdl_annot_match #
-        ###############################
-        # check our final annotation against existing annotation in GenBank 
-        my $start  = $mdl_results_HR->{"out_start"};
-        my $stop   = $mdl_results_HR->{"out_stop"};
-        my $strand = $mdl_results_HR->{"p_strand"};
-        my $tbl_HAR = ($is_matpept) ? $mp_tbl_HHAR->{$accn_name} : $cds_tbl_HHAR->{$accn_name};
-        if(defined $tbl_HAR) { # if there was annotation for this sequence 
-          $mdl_results_HR->{"genbank_mdl_annot_match"} = compare_to_genbank_annotation($start, $stop, $strand, $accn_len, $seq_len, $tbl_HAR, $opt_HHR, $FH_HR);
-        }
-        else { # annotation doesn't exist, so we don't have a match
-          $mdl_results_HR->{"genbank_mdl_annot_match"} = 0;
-        }
-        ######################
-        # set out_stop_codon #
-        ######################
-        $mdl_results_HR->{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name,
-                                                             (defined $mdl_results_HR->{"c_stop"}) ? $mdl_results_HR->{"c_stop"} : $mdl_results_HR->{"p_stop"}, 
-                                                             $mdl_results_HR->{"p_strand"}, $FH_HR);
-      } # end of 'else' entered if we have a prediction
-    } # end of 'for($seq_idx' loop
-  } # end of 'for($mdl_idx' loop
-  return;
-}      
 
 #################################################################
 # Subroutine:  mdl_results_add_str_nop_bd5_bd3_errors
