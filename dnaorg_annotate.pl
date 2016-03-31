@@ -2559,6 +2559,8 @@ sub results_calculate_corrected_stops {
   # stop predictions for all trc and ext errors
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
+      # we only deal with features for which annot_type is "model" here, we
+      # deal with features with annot_type eq "multifeature" in ftr_results_calculate()
       my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
       for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
@@ -2677,10 +2679,10 @@ sub results_calculate_corrected_stops {
             DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
           }
           if($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key} + $len_corr;
+            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} + $len_corr;
           }
           else { # negative strand
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key} - $len_corr;
+            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} - $len_corr;
           }
           # update "len" and "cumlen"
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}    += $len_corr;
@@ -3932,6 +3934,8 @@ sub error_instances_update {
 
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $value, $FH_HR) = @_;
   
+  # printf("in $sub_name, ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n");
+
   my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
   if($err_idx == -1) { 
     DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code", 1, $FH_HR);
