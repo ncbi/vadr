@@ -11,8 +11,12 @@
 # single reference GenBank entry for S.  In this context, the meaning
 # of "reference" sequence is that it has all the annotations expected
 # and for circular genomes that position 1 is consistent with the
-# accepted convention about where the origin should be. The
-# overarching objectives of *dnaorg*.pl are to compute all information
+# accepted convention about where the origin should be. If there are
+# multiple reference sequences for S, one runs dnaorg_build.pl and
+# dnaorg_annotate.pl separately for each reference sequence. In some places,
+# the technical term "RefSeq" is used instead of the less formal
+# "reference sequence. 
+# The overarching objectives of *dnaorg*.pl are to compute all information
 # needed to produce annotations and to output that information via
 # tables and FASTA files;
 #
@@ -20,7 +24,7 @@
 #
 ###########
 #
-# Regarding line prefixes in this file:
+# The meaning of line prefixes in this file is:
 # '#':    a comment line (text written just for this file).
 # "##":   line output from a command
 # "###":  line output from a command, with a '#' as the first char of
@@ -39,7 +43,7 @@
 # esl-epn-translate.pl:  /panfs/pan1/dnaorg/programs/16_0317_esl_epn_translate/
 #
 # Other executables called by the dnaorg scripts, which (currently) have
-# hard-coded paths in the script:
+# hard-coded paths in the script come from the packages Infernal, HMMER, and Bio-Easel.
 # 
 # Directories where these scripts are:
 # $INFERNAL_DIR="/usr/local/infernal/1.1.1/bin/";
@@ -62,7 +66,7 @@
 #
 #
 # The dnaorg scripts are Perl scripts that use the Bio-Easel
-# library which uses Inline C to interact and call functions from the
+# library, which in turn uses Inline C to interact and call functions from the
 # Easel sequence analysis library from Sean Eddy's group.
 #
 #######################
@@ -70,22 +74,19 @@
 #######################
 #
 # For more information, see the 00NOTES.* files in the above listed
-# 'dnaorg/programs/' directories, where available.
+# '/panfs/pan1/dnaorg/programs/' directories, where available.
 #
 # For more information on the .ntlist files used as input to this script 
 # see the bottom of the file:
 # /panfs/pan1/dnaorg/programs/15_0529_dnaorg_virus_wrapper/00NOTES.txt.
 #
-# Also, see voluminous notes on development of this script in
+# Also, see voluminous notes on development and testing of the *dnaorg* scripts in
 #
 # /home/nawrocke/notebook/15_0810_dnaorg_virus_annotate/00LOG.txt 
 # /home/nawrocke/notebook/16_0201_dnaorg_annotate_genomes_documentation/00LOG.txt
 # /home/nawrocke/notebook/15_0909_dnaorg_virus_dengue_annotate/00LOG.txt
 # /panfs/pan1/dnaorg/notebook/15_1113_dnaorg_virus_error_codes/00LOG.txt
 # /home/nawrocke/notebook/16_0201_dnaorg_annotate_genomes_documentation/00LOG.txt
-#
-# for notes on development and testing of these programs and several of 
-# the scripts they call.
 #
 # Also, github has revision history
 # (https://github.com/nawrockie/dnaorg_annotate_genomes.pl.git)
@@ -97,7 +98,7 @@
 # complete. VIV-272 is about engineering the output of
 # dnaorg_annotate_genomes.pl, so that this output is unambiguously
 # suitable as input to other software tools in process of being written
-# by members of J. Rodeny Brister's group in NCBI/IEB.
+# by members of J. Rodney Brister's group in NCBI/IEB.
 # 
 # For more information on the error codes, see the file
 # /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5.documentation.txt 
@@ -119,8 +120,8 @@ source /panfs/pan1/dnaorg/programs/setup-dnaorg-scripts.csh.sh
 # Usage and options of dnaorg_build.pl
 ######################################
 #
-# The output of the programs with the '-h' option
-# is informative about how to use the scripts:
+# The output of each program run with the '-h' option
+# is informative about how to use that script:
 # 
 # dnaorg_build.pl takes a single argument: the reference 
 # accession:
@@ -216,7 +217,7 @@ perl dnaorg_annotate.pl -h
 # meant to be used in the following order:
 # 
 # 1) dnaorg_build.pl: build homology models for a reference accession.
-#    Must be run once per species.
+#    Must be run once per reference accession.
 # 
 # 2) dnaorg_annotate.pl: use models built from dnaorg_build.pl to
 #    annotate other genomes of the same species as the reference.
@@ -224,7 +225,19 @@ perl dnaorg_annotate.pl -h
 #    dnaorg_build.pl has been run for that species (and reference).
 # 
 # The discussion below includes example runs of each of the
-# two scripts in turn for two different species. 
+# two scripts in turn for two different species.
+#
+# When a species has multiple reference sequences, one may wish to
+# partition the genomes, so that each genome is assigned to a single
+# reference and hence annotated with respect to that reference. We
+# have done this partitioning experimentally for Dengue virus, West
+# Nile virus, and Norovirus. However, this partitioning is not
+# required; it is permissible to annotate the same genome with respect
+# to multiple reference sequences. This document (as of March 2016)
+# does not discuss the partitioning further.  It is assumed that each
+# reference sequence has associated with it a list of genomes to be
+# annotated with respect to the reference sequence.  A genome may
+# appear in the "to-be-annotated" lists for multiple references.
 # 
 # The first run is for the Maize streak virus, which has a circular
 # ssDNA genome with 4 CDS that code for proteins, one of which has 2
@@ -241,7 +254,7 @@ perl dnaorg_annotate.pl -h
 # Example run 1 of 2 
 ####################
 #
-# Here's an example of running the dnaorg_build.pl and
+# Here is an example of running the dnaorg_build.pl and
 # dnaorg_annotate.pl scripts for the Maize streak virus (MSV). 
 # 
 #######################################
@@ -249,7 +262,7 @@ perl dnaorg_annotate.pl -h
 #######################################
 #
 # The RefSeq accession for MSV is NC_001346, so to run the
-# dnaorg_build.pl script do simply:
+# dnaorg_build.pl script one should run:
 # 
 perl dnaorg_build.pl -c NC_001346
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
@@ -264,7 +277,7 @@ perl dnaorg_build.pl -c NC_001346
 ## Fetching and processing the reference genome                 ... done. [1.1 seconds]
 ## Building models and submitting calibration jobs to the farm  ... done. [34.0 seconds]
 ##
-## When the 5 cmcalibrate jobs on the farm finish, you can use dnaorg_annotate.pl
+## When the 5 cmcalibrate jobs on the farm finish, the user can use dnaorg_annotate.pl
 ## to use them to annotate genomes.
 ##
 ##
@@ -286,8 +299,8 @@ perl dnaorg_build.pl -c NC_001346
 # 
 ################################
 # 
-# We use the -c option because MSV is a circular genome, more on this
-# later.
+# We use the -c option because MSV is a circular genome; more information on 
+# the annotation of circular genomes is given below.
 #
 
 # The output printed to the screen is also saved to the file
@@ -335,19 +348,19 @@ qstat
 # Once there are no c.NC_00134* jobs remaining in the qstat output,
 # the jobs have finished and dnaorg_annotate_genomes.pl can be run.
 #
-# If a job fails on the cluster (doesn't complete successfully), the
-# easiest way to find out is by moving onto the dnaorg_annotate.pl
-# step. If one of the calibrations failed, the dnaorg_annotate.pl
-# step will fail as well, and inform you the CM files are faulty.
-# If this happens, it's probably due to a fluke problem with the
-# compute farm, so try to rerun dnaorg_build.pl again.
+# If a job fails on the cluster (does not complete successfully), the
+# easiest way to find out is by attempting the dnaorg_annotate.pl
+# step. If one of the calibrations failed, then the dnaorg_annotate.pl
+# step will fail as well, and inform the user that the CM files are faulty.
+# If this happens, it is probably due to a transient problem with the
+# compute farm. One should therefore, try to run dnaorg_build.pl again.
 #
 ##########################################
 # Step 2. Run dnaorg_annotate.pl for MSV #
 ##########################################
 #
-# Once the calibrations are finished we can run dnaorg_annotate.pl
-# to annotate other MSV genomes. For this example we'll annotate
+# Once the calibrations are finished, we can run dnaorg_annotate.pl
+# to annotate other MSV genomes. For this example, we will annotate
 # 5 genomes, one of which is the reference genome. These are listed 
 # in NC_001346.ntlist. Take a look at that file:
 #
@@ -361,17 +374,23 @@ cat NC_001346.ntlist
 #
 # It is a requirement that the first accession in the ntlist file that
 # is passed into dnaorg_annotate.pl is the same accession used in 
-# the dnaorg_build.pl call.
+# the dnaorg_build.pl call. In the .ntlist files, the accessions should
+# be listed without versions (e.g., .1, .2). The order of accessions
+# after the first row is unimportant. Each accession may only appear 
+# once in the file. If an accession appears more than once
+# dnaorg_annotate.pl will exit in error and inform the user which
+# accession appears more than once.
 #
 # To run dnaorg_annotate.pl do:
 #
-perl dnaorg_annotate.pl NC_001346.ntlist 
+perl dnaorg_annotate.pl -c NC_001346.ntlist 
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
 ## dnaorg 0.1 (Feb 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Thu Mar 17 15:25:36 2016
 ##
 ## file with list of accessions:  NC_001346.ntlist
+## genome is circular:            yes [-c]        
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## Gathering information on 5 sequences using edirect                     ... done. [9.7 seconds]
 ## Fetching all sequences and processing the reference genome             ... done. [1.4 seconds]
@@ -572,15 +591,16 @@ perl dnaorg_annotate.pl NC_001346.ntlist
 # same steps as in the MSV example, but with the Dengue virus, which
 # differs from MSV in some important biological ways. 
 # 
-# Dengue has a single CDS that encodes a polypeptide which is cleaved
-# into (eventually) 14 distinct peptides. These peptides are annotated
-# as 'mat_peptide' features in GenBank. The dnaorg_annotate.pl script
-# attempts to annotate each mature peptide independently, and then 
-# combine those annotations to annotate the CDS that encode the 
-# mature peptide sequences. The script needs a special input file
-# to define the relationships between the mature peptides and the
-# CDS for the reference accession. In this example we'll use the
-# 'NC_001477.matpept.in' file as input to dnaorg_annotate.pl.
+# Dengue has a single CDS that encodes a polypeptide, which is cleaved
+# in two stages into 14 distinct peptides. These peptides are
+# annotated as 'mat_peptide' features in GenBank; "mat" is short for
+# "mature". The dnaorg_annotate.pl script attempts to annotate each
+# mature peptide independently, and then combine those annotations to
+# annotate the CDS that encode the mature peptide sequences. The
+# script needs a special input file to define the relationships
+# between the mature peptides and the CDS for the reference
+# accession. In this example, we will use the 'NC_001477.matpept.in'
+# file as input to dnaorg_annotate.pl.
 #
 # Here is that file:
 cat NC_001477.matpept.in 
@@ -619,7 +639,7 @@ cat NC_001477.matpept.in
 # Step 1. Run dnaorg_build.pl for Dengue #
 ##########################################
 #
-# Here's an example run of dnaorg_build.pl for Dengue:
+# Here is an example run of dnaorg_build.pl for Dengue:
 #
 perl dnaorg_build.pl --matpept NC_001477.matpept.in NC_001477
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
@@ -634,7 +654,7 @@ perl dnaorg_build.pl --matpept NC_001477.matpept.in NC_001477
 ## Fetching and processing the reference genome                 ... done. [1.3 seconds]
 ## Building models and submitting calibration jobs to the farm  ... done. [247.8 seconds]
 ##
-## When the 14 cmcalibrate jobs on the farm finish, you can use dnaorg_annotate.pl
+## When the 14 cmcalibrate jobs on the farm finish, one can use dnaorg_annotate.pl
 ## to use them to annotate genomes.
 ##
 ##
@@ -671,8 +691,8 @@ perl dnaorg_build.pl --matpept NC_001477.matpept.in NC_001477
 #############################################
 #
 # When these 14 calibration jobs have finished, we can run
-# dnaorg_annotate.pl. This time we'll run the script on only the 3
-# sequences in NC_001477.ntlist, but we'll force the cmscan jobs to
+# dnaorg_annotate.pl. This time we will run the script on only the 3
+# sequences in NC_001477.ntlist, but we will force the cmscan jobs to
 # run on the compute farm with the --nseq 1 option. With this option,
 # we will submit 3 cmscan jobs to the farm, one per sequence to
 # annotate.  We again have to use the --matpept option.
@@ -787,20 +807,13 @@ perl dnaorg_annotate.pl --nseq 1 --matpept NC_001477.matpept.in NC_001477.ntlist
 # 2) none of the accessions have changed annotation, i.e. no versions
 #    have changed for any of the accessions.
 # 
-# I realize (2) is a limitation and a TODO below is to have the
+# Restriction (2) is a limitation and a TODO below is to have the
 # script record not just accessions but versions as well, so the user
 # will know when a version has changed.
 #
-QUESTION: Doesn't the next paragraph need to be changed to reflect the current code structure?
-# Note that it is the preliminary step of dnaorg_virus_wrapper.pl
-# (STEP 0 in the example run above) that collects data from the NCBI
-# database. If versions of accessions change it will be the output of
-# that step that will change, and subsequently affect the results of
-# dnaorg_annotate_genomes.pl step. 
-#
-# The calibration step includes a simulation that does use randome
+# The calibration step includes a simulation that does use random
 # numbers, but this does not threaten reproducibility because in the
-# present usage, there is a single seed to the randome number
+# present usage, there is a single seed to the random number
 # generator and the seed is assigned deterministically.
 # 
 #################################################
