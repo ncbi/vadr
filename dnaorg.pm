@@ -59,7 +59,6 @@
 #                  can be printed to file <f> by dnaorg_build.pl or dnaorg_annotate.pl with the
 #                  --ftrinfo <f> command line option.
 #                   
-
 # - $mdl_info_HAR: similar to ${ftr,seq,err}_info_HAR, except contains information pertaining 
 #                  to each model, >= 1 of which will model a single feature (1 model for single
 #                  exon CDS, 2 models for dual exon CDS, etc.). See 
@@ -453,7 +452,7 @@ sub determineFeatureTypes {
 #
 # Returns:    number of features for which the has_models array values are 1
 #
-# Dies:       if $ftr_info_HAR is not valid up on entering.
+# Dies:       if $ftr_info_HAR is not valid upon entering.
 #################################################################
 sub getNumFeaturesAnnotatedByModels { 
   my $sub_name  = "getNumFeaturesAnnotatedByModels()";
@@ -494,7 +493,7 @@ sub getNumFeaturesAnnotatedByModels {
 #
 # Returns:    void
 # 
-# Dies:       Never.
+# Dies:       Never
 #
 #################################################################
 sub getReferenceFeatureInfo { 
@@ -846,6 +845,7 @@ sub annotateOverlapsAndAdjacencies {
   @{$mdl_info_HAR->{"out_olp_str"}} = ();
 
   my $len = (opt_Get("-c", $opt_HHR)) ? $seq_info_HAR->{"seq_len"}[0] : -1;
+#QUESTION: Where is $len used?
   overlapsAndAdjacenciesHelper($mdl_info_HAR, 
                                $mdl_info_HAR->{"ref_start"}, $mdl_info_HAR->{"ref_stop"}, $mdl_info_HAR->{"ref_strand"}, 
                                $seq_info_HAR->{"seq_len"}[0], $seq_info_HAR->{"accn_len"}[0], 
@@ -867,9 +867,9 @@ sub annotateOverlapsAndAdjacencies {
 # Subroutine: openAndAddFileToOutputInfo()
 # Incept:     EPN, Fri Feb 26 11:11:09 2016
 # 
-# Purpose:    Add information about a output file to the
+# Purpose:    Add information about an output file to the
 #             %{$ofile_info_HHR} and open that output file. Eventually
-#             we'll output information on this file with
+#             we'll output information about this file with
 #             outputConclusionAndCloseFiles().
 #
 #             Most of the work is done by helperAddFileToOutputInfo().
@@ -950,7 +950,7 @@ sub addClosedFileToOutputInfo {
 # Subroutine: helperAddFileToOutputInfo()
 # Incept:     EPN, Fri Feb 26 14:35:36 2016
 # 
-# Purpose:    Add information about a output file to the %{$ofile_info_HHR}
+# Purpose:    Add information about an output file to the %{$ofile_info_HHR}
 #             data structure. Helper function that's called by both 
 #             openAndAddFileToOutputInfo() and addClosedFileToOutputInfo().
 #             Also, if $ofile_info_HHR->{"FH"}{"list"} is defined, 
@@ -1030,7 +1030,7 @@ sub helperAddFileToOutputInfo {
 # Subroutine: initializeHardCodedErrorInfoHash()
 # Incept:     EPN, Fri Mar  4 12:56:43 2016
 #
-# Purpose:    Set the values in a error info hash,
+# Purpose:    Set the initial values in an error info hash,
 #             using the hardcoded information in this
 #             function.
 #
@@ -1075,22 +1075,22 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (ntr)", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", $FH_HR);
 
-  # define the incompatibilities, these are 2 sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
+  # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
   setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext", $FH_HR);
   setIncompatibilityErrorInfoHash($err_info_HAR, "trc", "ext,nst,aji,inp", $FH_HR);
 
-  # define the required combinations, these are 1 sided, error code arg 2 requires error code arg 3, but error code arg 3 does not require err code arg 2
+  # define the required combinations, these are one-sided, error code arg 2 requires error code arg 3, but error code arg 3 does not require err code arg 2
   #
   # Previously these were set: 
-  # setRequiredErrorInfoHash($err_info_HAR, "ext", "stp", $FH_HR); this 
+  # setRequiredErrorInfoHash($err_info_HAR, "ext", "stp", $FH_HR); 
   # setRequiredErrorInfoHash($err_info_HAR, "nst", "stp", $FH_HR);
   #
-  # But 'stp' error is only thrown if predicted final 3 nts of a CDS are not a valid stop codon
+  # But 'stp' error is reported only if predicted final 3 nts of a CDS are not a valid stop codon,
   # regardless of the frame they are in. 'ext' errors occur if no valid *in-frame* stop codon
   # exists between predicted start and stop, and 'nst' error occurs if no valid *in-frame* stop
-  # codon exists 3' of predicted start. So you can have cases of 'ext' and not 'stp', and you
-  # can have cases of 'nst' and not 'stp'.
+  # codon exists 3' of predicted start. So there can be instances of 'ext' and not 'stp', and there
+  # can be instances of 'nst' and not 'stp'.
   
   return;
 }
@@ -1124,22 +1124,25 @@ sub addToErrorInfoHash {
  
   my ($err_info_HAR, $code, $pertype, $maybe_allowed, $msg, $FH_HR) = (@_);
 
+  # make sure $pertype is valid
+  if(($pertype ne "feature") && ($pertype ne "sequence")) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\".", 1, $FH_HR); 
+  }
+
+  # make sure $maybe_allowed is valid
+  if(($maybe_allowed ne "1") && ($maybe_allowed ne "0")) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with invalid maybe_allowed value of $maybe_allowed", 1, $FH_HR);
+  }
+
   # check if $code already exists
   if(exists $err_info_HAR->{"code"}) { 
     my $nerr = validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); # this validates all arrays are the same size
     for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
       my $other_code = $err_info_HAR->{"code"}[$err_idx]; 
       if($code eq $other_code) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to add code $code, but it already exists as element in the error info hash", $err_idx+1), 1, $FH_HR);
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to add code $code, but it already exists as element %d in the error info hash", $err_idx+1), 1, $FH_HR);
       }
     }
-  }
-
-  if(($pertype ne "feature") && ($pertype ne "sequence")) { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\".", 1, $FH_HR); 
-  }
-  if(($maybe_allowed ne "1") && ($maybe_allowed ne "0")) { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with invalid maybe_allowed value of $maybe_allowed", 1, $FH_HR);
   }
 
   # initialize, if necessary
@@ -1172,7 +1175,7 @@ sub addToErrorInfoHash {
 # Arguments:
 #   $err_info_HAR:  REF to hash of arrays of error information, FILLED HERE
 #   $code1:         the code of the element we are adding incompatibility for
-#   $code2str:      the codes $code1 is incompatible with, separated by a comma
+#   $code2str:      the codes $code1 is incompatible with, separated by commas
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: void
@@ -1221,8 +1224,8 @@ sub setIncompatibilityErrorInfoHash {
 #
 # Purpose:    Add to the required value for an error code $code1 given
 #             a string of other error codes $code2. Required values
-#             are uni-directional, so we add only a requirement between
-#             $code1 and $code2, but not between $code2 and $code1.
+#             are uni-directional, so we add only a requirement that
+#             $code1 needs $code2, but not that $code2 needs $code1.
 #
 # Arguments:
 #   $err_info_HAR:  REF to hash of arrays of error information, FILLED HERE
@@ -1294,14 +1297,13 @@ sub setRequiredErrorInfoHash {
 # Arguments: 
 #   $mdl_info_HAR:   REF to hash of arrays with information on the models, PRE-FILLED
 #                    used only to get "out_idx" values to use for $out_*_str_AR values.
-#   $accn_len:       length of the 'accession' start,stop values may exceed this if -c option used
 #   $start_AR:       REF to array with start positions 
 #   $stop_AR:        REF to array with stop positions 
 #   $strand_AR:      REF to array with strands
-#   $seq_len:        total length of the sequence, so we can 
+#   $seq_len:        total length of the sequence in our fetched sequence file, so we can 
 #                    check if we're adjacent $len..1 if -c enabled
-#   $accn_len:       length of the accession, so we make a special check for overlaps
-#                    if -c enabled
+#   $accn_len:       length of the accession in GenBank (maybe half of $seq_len if -c used),
+#                    we need this so we make a special check for overlaps if -c enabled
 #   $idx_ajb_str_AR: REF to array to fill with strings of 'before' adjacency model indices
 #   $idx_aja_str_AR: REF to array to fill with strings of 'after' adjacency model indices
 #   $idx_olp_str_AR: REF to array to fill with strings of overlaps model indices
@@ -1324,8 +1326,13 @@ sub overlapsAndAdjacenciesHelper() {
       $out_ajb_str_AR, $out_aja_str_AR, $out_olp_str_AR, $opt_HHR, $FH_HR) = @_;
 
   my $nmdl = scalar(@{$start_AR});
-  my @adj_AA = (); # [0..$i..$nmdl-1][0..$j..$nmdl-1], value is '1' if $i and $j are adjacent
-  my @olp_AA = (); # [0..$i..$nmdl-1][0..$j..$nmdl-1], value is '1' if $i and $j overlap
+
+  # the 2D arrays that hold info on which models overlap with each other and are adjacent to each other
+  my @adj_AA = (); # [0..$i..$nmdl-1][0..$j..$nmdl-1], value is '1' if $i and $j are adjacent, else 0 (also, 0 if $i==$j)
+  my @olp_AA = (); # [0..$i..$nmdl-1][0..$j..$nmdl-1], value is '1' if $i and $j overlap, else 0 (also, 0 if $i==$j)
+  # diagonal values ($i == $j) for @adj_AA and @olp_AA are initialized to '0' and are 
+  # skipped in main loop below which fills the matrices for all other values
+
   my $mdl_idx1; # counter over models
   my $mdl_idx2; # counter over models
 
@@ -1347,8 +1354,9 @@ sub overlapsAndAdjacenciesHelper() {
         my $start2  = $start_AR->[$mdl_idx2];
         my $stop2   = $stop_AR->[$mdl_idx2];
         my $strand2 = $strand_AR->[$mdl_idx2];
-        #printf("HEYA mdl_idx1 $start1..$stop1 $strand1  mdl_idx2 $start2..$stop2 $strand2\n");
+        #printf("mdl_idx1 $start1..$stop1 $strand1  mdl_idx2 $start2..$stop2 $strand2\n");
         if($start2 != -1 && ($mdl_idx1 != $mdl_idx2)) { 
+          # we'll skip this if $mdl_idx1 == $mdl_idx2
           # $start2 == -1 is a flag that we don't have a start..stop, strand for this model
           if($strand1 eq $strand2) { 
             # strands match
@@ -1431,14 +1439,14 @@ sub overlapsAndAdjacenciesHelper() {
       }
     }
   }
-  # make sure the matrices are symmetrical
+  # make sure the matrices are symmetric
   for($mdl_idx1 = 0; $mdl_idx1 < $nmdl; $mdl_idx1++) { 
     for($mdl_idx2 = 0; $mdl_idx2 < $nmdl; $mdl_idx2++) { 
       if($adj_AA[$mdl_idx1][$mdl_idx2] != $adj_AA[$mdl_idx2][$mdl_idx1]) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem filling adjacency matrix, it is not symmetrical [$mdl_idx1][$mdl_idx2] ($adj_AA[$mdl_idx1][$mdl_idx2]) != [$mdl_idx2][$mdl_idx1] ($adj_AA[$mdl_idx2][$mdl_idx1]", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, problem filling adjacency matrix, it is not symmetric [$mdl_idx1][$mdl_idx2] ($adj_AA[$mdl_idx1][$mdl_idx2]) != [$mdl_idx2][$mdl_idx1] ($adj_AA[$mdl_idx2][$mdl_idx1]", 1, $FH_HR);
       }
       if($olp_AA[$mdl_idx1][$mdl_idx2] != $olp_AA[$mdl_idx2][$mdl_idx1]) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem filling adjacency matrix, it is not symmetrical [$mdl_idx1][$mdl_idx2] ($adj_AA[$mdl_idx1][$mdl_idx2]) != [$mdl_idx2][$mdl_idx1] ($adj_AA[$mdl_idx2][$mdl_idx1]", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, problem filling overlap matrix, it is not symmetric [$mdl_idx1][$mdl_idx2] ($olp_AA[$mdl_idx1][$mdl_idx2]) != [$mdl_idx2][$mdl_idx1] ($olp_AA[$mdl_idx2][$mdl_idx1]", 1, $FH_HR);
       }
     }
   }
@@ -1851,6 +1859,18 @@ sub wrapperGetInfoUsingEdirect {
 #              - $out_root . ".ft.idfetch.in": input file for esl-fetch-cds.pl
 #              - $out_root . ".fg.fa":         sequence file with reference genome 
 #              - $out_root . ".ref.all.stk":   Stockholm alignment file with reference features
+#
+#              The $out_root. ".ref.all.stk" will be used by the caller differently 
+#              depending on if the caller is dnaorg_build.pl or dnaorg_annotate.pl:
+#
+#              dnaorg_build.pl:    .stk file will be used to create homology models (CMs)
+#              
+#              dnaorg_annotate.pl: .stk file will be used to verify the CM model we are about
+#                                  to use (from a prior dnaorg_build.pl run) was built from the
+#                                  current reference sequences. That is, that the homology models
+#                                  are still current with respect to the GenBank reference annotation.
+#                                  This check is done using a checksum value stored in the CM file
+#                                  derived from the .stk file used to create the CMs.
 #              
 # Arguments: 
 #   $execs_HR:              REF to hash with executables, the key "esl_fetch_cds"
@@ -2635,7 +2655,7 @@ sub parseEdirectFtableFile {
   my $qval_sep = $sep_HR->{"qval"};
   my $line_ctr        = 0;       # count of number of lines read in ftable
   my $accn_ctr        = 0;       # count of number of accessions read
-  my %column_HH       = ();      # existence 2D hash, used to aide construction of %column_HA
+  my %column_HH       = ();      # existence 2D hash, used to aid construction of %column_HA
                                  # key 1: feature, e.g. "CDS"
                                  # key 2: qualifier
                                  # value: '1' (always)
@@ -2888,7 +2908,7 @@ sub parseEdirectMatPeptideFile {
   my $fac       = undef;   # full accession and coords, accession and each segment coords separated by $fac_sep
   my $coords    = undef;   # coordinates
   my $faccn2    = undef;   # another full accession
-  my %column_HH = ();      # existence 2D hash, used to aide construction of %column_HA
+  my %column_HH = ();      # existence 2D hash, used to aid construction of %column_HA
                            # key 1: feature, e.g. "CDS"
                            # key 2: qualifier
                            # value: '1' (always)
@@ -2991,7 +3011,8 @@ sub parseEdirectMatPeptideFile {
 #
 # Returns:     void, fills @{$line_AR}
 #
-# Dies:        if $listfile does not exist or is not readable
+# Dies:        if $listfile does not exist or is not readable, or
+#              if $listfile exists as a directory.
 #              if $do_accn is 1 and the same line exists more than
 #              once in $listfile
 ################################################################# 
@@ -3069,7 +3090,8 @@ sub parseSpecStartFile {
       ## <CDS-idx> <alternate start codon 1>:<alternate start codon 2>:<alternate start codon n>
       #3 GGC
       #####################
-      # NOTE: in the input file CDS and matpept indices are in coordinate space 1..N, but we store them in 0..N-1
+      # NOTE: in the input file CDS and matpept indices are in the coordinate range 1..N, but we 
+      # store them in the coordinate range 0..N-1
       chomp $line;
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) != 2) { 
@@ -3489,7 +3511,10 @@ sub dashCoordsToLength {
 
   my $len = undef;
 
-  if($start_stop =~ m/^\-\d+\-\-\d+$/) { 
+  # make sure that we $start_stop is not valid except for the fact that
+  # $start or $stop is a negative position (we do not allow negative positions
+  # in this function)
+  if($start_stop =~ m/^\-+\d+\-\-\d+$/) { 
     DNAORG_FAIL(sprintf("ERROR in $sub_name, %sstart and stop positions are negative in coords string $start_stop", 
                         (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
   }
@@ -3502,10 +3527,14 @@ sub dashCoordsToLength {
                         (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
   }
 
+  # if we get here, $start_stop is either valid, or invalid for a reason other
+  # than having a negative position
   if($start_stop =~ m/^(\d+)\-(\d+)$/) { 
+    # $start_stop is valid
     $len = (abs($1 - $2) + 1);
   }
   else { 
+    # $start_stop is not valid, for some reason other than just having a negative position
     DNAORG_FAIL("ERROR in $sub_name, called by $caller_sub_name, unable to parse start-stop string: $start_stop", 1, $FH_HR); 
   }
 
@@ -4457,14 +4486,18 @@ sub getConsistentSizeOfInfoHashOfArrays {
   my $nel = -1;
   my $nkey = scalar(keys %{$HAR});
   my $nel_key = undef;
+  my $nel_key_values = ""; # the element values for $HAR->{$nel_key}, only used if we encounter an error
   foreach my $key (sort keys %{$HAR}) { 
     if($nel == -1) { 
       $nel = scalar(@{$HAR->{$key}});
       $nel_key = $key;
+      foreach $el (@{$HAR->{$key}}) { 
+        $nel_key_values .= "$el ";
+      }
     }
     else { 
       if($nel != scalar(@{$HAR->{$key}})) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, expected number of elements in array for key $key is $nel (from key $nel_key) but %d exist for key $key!", scalar(@{$HAR->{$key}})), 1, $FH_HR);
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, expected number of elements in array for key $key is $nel (from key $nel_key) but %d exist for key $key!\nElement alues from key $nel_key are: %s", scalar(@{$HAR->{$key}}), $nel_key_values), 1, $FH_HR);
       }
     }
     # check that all values are defined
@@ -4586,10 +4619,18 @@ sub fetchCodon {
 
   my $codon_start = $start;
   my $codon_stop  = ($strand eq "-") ? $start - 2 : $start + 2; 
-
   my $newname = $seqname . "/" . $codon_start . "-" . $codon_stop;
 
   my @fetch_AA = ();
+  # if $seqname does not exist in $sqfile, the following line
+  # will cause the script to fail, ungracefully
+  my $seqlen = $sqfile->fetch_seq_length_given_name($seqname);
+  if(($codon_start < 1)       || ($codon_stop < 1) || 
+     ($codon_start > $seqlen) || ($codon_stop > $seqlen)) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to fetch codon with coordinates %d..%d for sequence $seqname, valid coordinates are %d..%d\n", 
+                        $codon_start, $codon_stop, 1, $seqlen), 1, $FH_HR);
+  }
+
   push(@fetch_AA, [$newname, $codon_start, $codon_stop, $seqname]);
 
   my $faseq = $sqfile->fetch_subseqs(\@fetch_AA, -1);
@@ -4955,7 +4996,7 @@ sub DNAORG_FAIL {
 # Subroutine : fileOpenFailure()
 # Incept:      EPN, Wed Nov 11 05:39:56 2009 (rnavore)
 #
-# Purpose:     Called if a open() call fails on a file.
+# Purpose:     Called if an open() call fails on a file.
 #              Print an informative error message
 #              to $FH_HR->{"cmd"} and $FH_HR->{"log"}
 #              and to STDERR, then exit with <$status>.
@@ -5140,19 +5181,27 @@ sub removeFileUsingSystemRm {
 # Arguments:
 #   $len:   desired length of the string to return
 #   $char:  desired character
+#   $FH_HR: REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:  A string of $char repeated $len times.
 # 
-# Dies:     Never.
+# Dies:     if $len is not a positive integer
 #
 #################################################################
 sub getMonocharacterString {
   my $sub_name = "getMonocharacterString";
-  my $nargs_expected = 2;
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($len, $char) = @_;
+  my ($len, $char, $FH_HR) = @_;
 
+  if(! verify_integer($len)) { 
+    DNAORG_FAIL("ERROR in $sub_name, passed in length ($len) is not a non-negative integer", 1, $FH_HR);
+  }
+  if($len < 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, passed in length ($len) is a negative integer", 1, $FH_HR);
+  }
+    
   my $ret_str = "";
   for(my $i = 0; $i < $len; $i++) { 
     $ret_str .= $char;
@@ -5174,7 +5223,7 @@ sub getMonocharacterString {
 # 
 # Returns:     Nothing.
 # 
-# Dies:        If $filename does not exist.
+# Dies:        If $filename does not exist or cannot be opened for reading.
 #
 ################################################################# 
 sub countLinesInFile { 
@@ -5642,6 +5691,7 @@ sub matpeptValidateCdsRelationships {
 
 #################################################################
 # Subroutine: checkForSpanningSequenceSegments()
+# Incept:     EPN, Mon Apr 11 14:36:45 2016
 #
 # Synopsis:   Check if two sequence segments (e.g. exons) are really 
 #             just one that spans the stop/start boundary in a circular 
@@ -5670,6 +5720,10 @@ sub checkForSpanningSequenceSegments {
   my ($starts_AR, $stops_AR, $nexons_R, $do_update, $strand, $totlen) = @_;
 
   my $found_spanning_exons = 0;
+
+  # if $$nexons_R is not '2', we skip this block and return '0'.
+  # 'spanning' exons can only occur if there are exactly 2 exons that
+  # we are checking. 
   if($$nexons_R == 2) { 
     # if we're in a circular genome, we need to check for a special case, where 
     # what looks like a 2-exon CDS is really a single exon that spans the stop..start boundary.
@@ -5759,7 +5813,10 @@ sub getIndexHashForArray {
 
   for(my $i = 0; $i < scalar(@{$AR}); $i++) { 
     my $el = $AR->[$i];
-    # verify it's not a number
+    # verify it's not a number, we don't want numbers because
+    # then we can't be sure that $index_HR->{$num} will be 
+    # testable using 'eq' due to precision issues with storing
+    # numbers. 
     if(verify_real($el)) { 
       DNAORG_FAIL("ERROR in $sub_name(), value $el is numeric"); 
     }
