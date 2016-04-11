@@ -3003,6 +3003,10 @@ sub parseListFile {
 
   my %line_exists_H = ();
 
+  if(-d $infile) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to read list file $infile, but a directory of the same name exists.", 1, $FH_HR);
+  }
+
   open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
 
   while(my $line = <IN>) { 
