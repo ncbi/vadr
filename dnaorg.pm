@@ -4182,6 +4182,7 @@ sub validateSequenceInfoHashIsComplete {
   my $nseq = validateInfoHashOfArraysIsComplete($seq_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
   # above call will die if we are invalid
 
+  # make sure seq_len is either 2X accn_len (if -c) or equal to accn_len (if ! -c)
   if(opt_Get("-c", $opt_HHR)) { 
     # -c option on, seq_len should be 2X accn_len
     for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
@@ -4201,6 +4202,22 @@ sub validateSequenceInfoHashIsComplete {
                     1, $FH_HR);
       }
     }
+  }
+
+  # make sure we do not have any duplicate accessions/names
+  my %name_H = ();
+  my %accn_H = ();
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
+    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
+    if(exists $name_H{$seq_name}) { 
+      DNAORG_FAIL("ERROR in $sub_name, sequence name $seq_name exists twice", 1, $FH_HR);
+    }
+    if(exists $accn_H{$accn_name}) { 
+      DNAORG_FAIL("ERROR in $sub_name, accession $accn_name exists twice", 1, $FH_HR);
+    }
+    $name_H{$seq_name} = 1;
+    $accn_H{$accn_name} = 1;
   }
 
   return $nseq;
