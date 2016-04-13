@@ -492,7 +492,7 @@ wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_ro
 my $nftr = validateFeatureInfoHashIsComplete  (\%ftr_info_HA, undef, $ofile_info_HH{"FH"}); # nftr: number of features
 my $nmdl = validateModelInfoHashIsComplete    (\%mdl_info_HA, undef, $ofile_info_HH{"FH"}); # nmdl: number of homology models
 if($nseq != validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"})) { 
-  DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $listfile (%d)" $nseq, validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"})), 1, $FH_HR);
+  DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $listfile (%d)", $nseq, validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"})), 1, $ofile_info_HH{"FH"});
 }
 # $seq_info_HA won't have any duplicate accessions because it was initially filled by parseListFile()
 # which dies if any duplicates are found. However, if somehow there were duplicates in %seq_info_HA,
@@ -1257,7 +1257,8 @@ sub validate_cms_built_from_reference {
 
   while(my $cksum = <CKSUM>) { 
     if($i >= $nmodel_cksum) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, different number of models (%d) and reference features (%d). $common_errmsg", $i, $nmodel_cksum), 1, $FH_HR);    }
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, different number of models (%d) and reference features (%d). $common_errmsg", $i, $nmodel_cksum), 1, $FH_HR);    
+    }
     chomp $cksum;
     if($cksum != $mdl_info_HAR->{"checksum"}[$i]) { 
       if($mismatch_errmsg ne "") { $mismatch_errmsg . ", "; }
@@ -1268,7 +1269,7 @@ sub validate_cms_built_from_reference {
   close(CKSUM);
 
   if($mismatch_errmsg ne "") { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, checksum mismatch(es): ($mismatch_errmsg). $common_errmsg", $i+1, $cksum, $mdl_info_HAR->{"checksum"}[$i]), 1, $FH_HR);
+    DNAORG_FAIL("ERROR in $sub_name, checksum mismatch(es): ($mismatch_errmsg). $common_errmsg", 1, $FH_HR);
   }
 
   # make sure we checked all the models
@@ -1388,7 +1389,7 @@ sub wait_for_farm_jobs_to_finish {
   my ($outfile_AR, $finished_str, $nmin) = @_;
 
   my $njobs = scalar(@{$outfile_AR});
-  my @is_finished_A  = ()   # $is_finished_A[$i] is 1 if job $i is finished, else 0
+  my @is_finished_A  = ();  # $is_finished_A[$i] is 1 if job $i is finished, else 0
   my $nfinished      = 0;   # number of jobs finished
   my $cur_sleep_secs = 15;  # number of seconds to wait between checks, we'll double this until we reach $max_sleep, every $doubling_secs seconds
   my $doubling_secs  = 120; # number of seconds to wait before doublign $cur_sleep
@@ -1396,7 +1397,7 @@ sub wait_for_farm_jobs_to_finish {
   my $secs_waited    = 0;   # number of total seconds we've waited thus far
 
   # initialize @is_finished_A to all '0's
-  for($i = 0; $i < $njobs; $i++) { 
+  for(my $i = 0; $i < $njobs; $i++) { 
     $is_finished_A[$i] = 0;
   }
 
@@ -5646,8 +5647,7 @@ sub output_tbl_all_sequences {
                 # reference) we need to determine what the minimum
                 # length is, as well as infer how many identities we
                 # had.
-                my $min_len = ($mdl_results_HR->{"len"} < $mdl_info_HAR->{"length"}[$mdl_idx]) ? $mdl_results_HR->{"len"} : $mdl_info_HAR->{"length"}[$mdl_
-idx];
+                my $min_len = ($mdl_results_HR->{"len"} < $mdl_info_HAR->{"length"}[$mdl_idx]) ? $mdl_results_HR->{"len"} : $mdl_info_HAR->{"length"}[$mdl_idx];
                 $tot_nid += ($mdl_results_HR->{"fid2ref"} * $min_len);
                 $tot_id_min_len += $min_len;
               }
