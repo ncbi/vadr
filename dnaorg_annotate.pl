@@ -1261,7 +1261,7 @@ sub validate_cms_built_from_reference {
     }
     chomp $cksum;
     if($cksum != $mdl_info_HAR->{"checksum"}[$i]) { 
-      if($mismatch_errmsg ne "") { $mismatch_errmsg . ", "; }
+      if($mismatch_errmsg ne "") { $mismatch_errmsg .= ", "; }
       $mismatch_errmsg .= "CM #%d checksum %d != alignment checksum: %d";
     }
     $i++;
@@ -4845,7 +4845,7 @@ sub output_tbl_get_headings {
     $width = 6 + 1 + 6 + 1 + 6; #20
     $tok1 = sprintf("  %*s", $width, "");
     $tok2 = sprintf("         %*s", $width, "5' UTR");
-    $tok3 = sprintf("  %*s", $width, getMonocharacterString($width, "-"));
+    $tok3 = sprintf("  %*s", $width, getMonocharacterString($width, "-", $FH_HR));
     $tok4 = sprintf("  %6s", "start");
     $tok5 = sprintf("  ------");
     output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
@@ -4878,10 +4878,10 @@ sub output_tbl_get_headings {
        ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
       if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
         $width = 6 + 1 + 6 + 1 + 6; #20
-        $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(($width-length($ftr_out_short))/2, " "));
+        $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(($width-length($ftr_out_short))/2, " ", $FH_HR));
         $exp_tok1 = "CDS(MP) #<i>";
         $tok2 = sprintf("  %s", $ftr_out_product); 
-        $tok3 = sprintf("  %s", getMonocharacterString($width, "-"));
+        $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
         $tok4 = sprintf("  %8s", sprintf("%s", "start"));
         $tok5 = sprintf("  %8s", "--------");
 
@@ -4976,7 +4976,7 @@ sub output_tbl_get_headings {
           $width += 9;
           if($do_ss3)  { $width += 4; }
           if($do_stop) { $width += 4; }
-          $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(($width-length($ftr_out_short))/2, " "));
+          $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(($width-length($ftr_out_short))/2, " ", $FH_HR));
           $exp_tok1 = "";
           if($do_matpept && $do_cds_notmp) { 
             $exp_tok1 = "{MP,CDS} #<i>";
@@ -4988,7 +4988,7 @@ sub output_tbl_get_headings {
             $exp_tok1 =  "CDS #<i>";
           }
           $tok2 = sprintf("  %s", $ftr_out_product); 
-          $tok3 = sprintf("  %s", getMonocharacterString($width, "-"));
+          $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
           $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mdl_exon_idx+1));
           $exp_tok4 = "start<j>";
           $tok5 = sprintf("  %8s", "--------");
@@ -5170,7 +5170,7 @@ sub output_tbl_get_headings {
     $width = 6 + 1 + 6 + 1 + 6; #20
     $tok1 = sprintf("  %*s", $width, "");
     $tok2 = sprintf("         %*s", $width, "3' UTR");
-    $tok3 = sprintf("  %*s", $width, getMonocharacterString($width, "-"));
+    $tok3 = sprintf("  %*s", $width, getMonocharacterString($width, "-", $FH_HR));
     $tok4 = sprintf("  %6s", "start");
     $tok5 = sprintf("  ------");
     output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
@@ -5235,7 +5235,7 @@ sub output_tbl_get_headings {
   $tok2 = sprintf("  %*s",  $width_result, "");
   $tok3 = sprintf("  %*s",  $width_result, "");
   $tok4 = sprintf("  %-*s", $width_result, "result");
-  $tok5 = sprintf("  %-*s", $width_result, getMonocharacterString($width_result, "-"));
+  $tok5 = sprintf("  %-*s", $width_result, getMonocharacterString($width_result, "-", $FH_HR));
   output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef);
 
   output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "\"PASS\" or \"FAIL\". \"PASS\" if and only if all tests for this accession PASSED ('P')", $FH_HR);
