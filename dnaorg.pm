@@ -149,6 +149,7 @@
 #   outputTiming()
 #   outputString()
 #   outputBanner()
+#   outputDividingLine()
 # 
 # Subroutines for dumping data structures, usually for debugging:
 #   dumpInfoHashOfArrays()
@@ -192,6 +193,7 @@
 #   getMonocharacterString()
 #   countLinesInFile()
 #   validateFileExistsAndIsNonEmpty()
+#   printDividingLine()
 #
 # Miscellaneous subroutines that don't fall into one of the above
 # categories:
@@ -4508,7 +4510,7 @@ sub getConsistentSizeOfInfoHashOfArrays {
     if($nel == -1) { 
       $nel = scalar(@{$HAR->{$key}});
       $nel_key = $key;
-      foreach $el (@{$HAR->{$key}}) { 
+      foreach my $el (@{$HAR->{$key}}) { 
         $nel_key_values .= "$el ";
       }
     }
@@ -4574,7 +4576,7 @@ sub fetchStopCodon {
   }
   # printf("in $sub_name, seqname $seqname, stop $stop\n");
 
-  return fetchCodon($sqfile, $seq_name, $stop_codon_posn, $strand);
+  return fetchCodon($sqfile, $seq_name, $stop_codon_posn, $strand, $FH_HR);
 }
 
 #################################################################
@@ -4606,7 +4608,7 @@ sub fetchStartCodon {
     DNAORG_FAIL("ERROR in $sub_name(), trying to fetch start codon for $seq_name at position $start on strand $strand, but we expect positive positions", 1, $FH_HR);
   }
 
-  return fetchCodon($sqfile, $seq_name, $start, $strand);
+  return fetchCodon($sqfile, $seq_name, $start, $strand, $FH_HR);
 }
 
 #################################################################
@@ -4623,16 +4625,17 @@ sub fetchStartCodon {
 #             $seq_name: name of sequence to fetch part of
 #             $start:    start position of the codon
 #             $strand:   strand we want ("+" or "-")
+#             $FH_HR:    REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    The codon as a string
 #
 #################################################################
 sub fetchCodon {
   my $sub_name = "fetchCodon";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $seqname, $start, $strand) = @_;
+  my ($sqfile, $seqname, $start, $strand, $FH_HR) = @_;
 
   my $codon_start = $start;
   my $codon_stop  = ($strand eq "-") ? $start - 2 : $start + 2; 
@@ -5289,6 +5292,44 @@ sub validateFileExistsAndIsNonEmpty {
   elsif(! -s $filename) { 
     DNAORG_FAIL(sprintf("ERROR in $sub_name, %sfile $filename exists but is empty.", (defined $caller_sub_name ? "called by $caller_sub_name," : "")), 1, $FH_HR);
   }
+  
+  return;
+}
+
+#################################################################
+# Subroutine : outputDividingLine()
+# Incept:      EPN, Tue Apr 12 14:40:13 2016
+#
+# Purpose:     Print a line of dashes followed by single spaces
+#              with $ndash dashes to file handle $FH.
+#              if $ndash is undefined, set it to 66.
+#
+# Arguments: 
+#   $ndashes:  number of dashes in output dividing line
+#   $FH:       file handle to print to
+# 
+# Returns:     Nothing.
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub outputDividingLine { 
+  my $nargs_expected = 2;
+  my $sub_name = "outputDividingLine()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ndashes, $FH) = @_;
+
+  if(! defined $ndashes) { 
+    $ndashes = 66;
+  }
+
+  my $div_line = "#";
+  for(my $i = 0; $i < $ndashes; $i++) { 
+    $div_line .= " -";
+  }
+  $div_line .= "\n";
+
+  print $FH $div_line;
   
   return;
 }
