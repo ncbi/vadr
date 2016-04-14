@@ -429,7 +429,7 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 # Step 1. Gather and process information on reference genome using Edirect.
 ###########################################################################
 my $cmd;             # a command to run with runCommand()
-my $progress_w = 70; # the width of the left hand column in our progress output, hard-coded
+my $progress_w = 85; # the width of the left hand column in our progress output, hard-coded
 my $progress_str = (opt_Get("--skipedirect", \%opt_HH)) ? 
     sprintf("Processing information on %d sequences fetched earlier using edirect", $nseq) : 
     sprintf("Gathering information on %d sequences using edirect", $nseq);
@@ -4878,7 +4878,7 @@ sub output_tbl_get_headings {
        ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
       if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
         $width = 6 + 1 + 6 + 1 + 6; #20
-        $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(($width-length($ftr_out_short))/2, " ", $FH_HR));
+        $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int($width-length($ftr_out_short)/2), " ", $FH_HR));
         $exp_tok1 = "CDS(MP) #<i>";
         $tok2 = sprintf("  %s", $ftr_out_product); 
         $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
@@ -4976,7 +4976,7 @@ sub output_tbl_get_headings {
           $width += 9;
           if($do_ss3)  { $width += 4; }
           if($do_stop) { $width += 4; }
-          $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(($width-length($ftr_out_short))/2, " ", $FH_HR));
+          $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int(($width-length($ftr_out_short))/2), " ", $FH_HR));
           $exp_tok1 = "";
           if($do_matpept && $do_cds_notmp) { 
             $exp_tok1 = "{MP,CDS} #<i>";
