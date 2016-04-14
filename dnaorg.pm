@@ -3027,7 +3027,7 @@ sub parseListFile {
 
   # a hash that keeps track of counts of accessions, only used if $do_accn = 1
   my %accn_ct_H    = (); # key: an accession, value: number of times accession occurs (possibly with different versions)
-  my %accn_order_A = (); # the accessions read in the input file, in order
+  my @accn_order_A = (); # the accessions read in the input file, in order
 
   if(-d $infile) { 
     DNAORG_FAIL("ERROR in $sub_name, trying to read list file $infile, but a directory of the same name exists.", 1, $FH_HR);
@@ -3055,7 +3055,7 @@ sub parseListFile {
   if($do_accn) { 
     my $errmsg = ""; # we may fill this below
     foreach my $accn (@accn_order_A) { 
-      if($accn_ct_H{$accnversion} > 1) { 
+      if($accn_ct_H{$accn} > 1) { 
         $errmsg .= "$accn\n";
       }
     }
