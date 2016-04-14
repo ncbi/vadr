@@ -377,9 +377,9 @@ cat NC_001346.ntlist
 # the dnaorg_build.pl call. In the .ntlist files, the accessions should
 # be listed without versions (e.g., .1, .2). The order of accessions
 # after the first row is unimportant. Each accession may only appear 
-# once in the file. If an accession appears more than once
-# dnaorg_annotate.pl will exit in error and inform the user which
-# accession appears more than once.
+# once in the file. If at least one accession appears more than once,
+# dnaorg_annotate.pl will exit in error and inform the user of all
+# accessions that appear more than once.
 #
 # To run dnaorg_annotate.pl do:
 #

@@ -5205,7 +5205,7 @@ sub output_tbl_get_headings {
     $tok4 = sprintf("  %5s", "totfid");
     $tok5 = sprintf("  %5s", "-----");
     output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "fractional identity of all concatenated pairwise alignments for this accession", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "fractional identity of all concatenated pairwise nucleotide alignments for this accession", $FH_HR);
     output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
   }
 
@@ -6867,7 +6867,7 @@ sub define_model_and_feature_output_file_names {
 #               becomes part of the key returned by this function
 #  $FH_HR:      REF to hash of file handles, used only if 
 #               we need to die (so that open file handles get
-#               close before we exit and error gets printed to the
+#               closed before we exit and error gets printed to the
 #               log file)
 #
 # Returns:    the key for %ofile_info_HH

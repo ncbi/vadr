@@ -846,8 +846,6 @@ sub annotateOverlapsAndAdjacencies {
   @{$mdl_info_HAR->{"out_aja_str"}} = ();
   @{$mdl_info_HAR->{"out_olp_str"}} = ();
 
-  my $len = (opt_Get("-c", $opt_HHR)) ? $seq_info_HAR->{"seq_len"}[0] : -1;
-#QUESTION: Where is $len used?
   overlapsAndAdjacenciesHelper($mdl_info_HAR, 
                                $mdl_info_HAR->{"ref_start"}, $mdl_info_HAR->{"ref_stop"}, $mdl_info_HAR->{"ref_strand"}, 
                                $seq_info_HAR->{"seq_len"}[0], $seq_info_HAR->{"accn_len"}[0], 
@@ -3004,9 +3002,12 @@ sub parseEdirectMatPeptideFile {
 #
 # Arguments: 
 #   $listfile: name of list file to parse
-#   $do_accn:  '1' if lines are accessions, we should die if any line exists 
-#              more than once in $listfile, and we should strip the version
-#              from each accession. 
+#   $do_accn:  '1' if lines are accessions, else '0'.
+#              If '1', this changes behavior 
+#              of the function in two ways: 
+#              1) we should strip version from each accession
+#              2) if any accessions are duplicated in the list
+#                 file, we should print all duplicates and die
 #   $line_AR:  REF to array to fill, each element will be a line 
 #              of $listfile with newline removed. FILLED HERE
 #   $FH_HR:    REF to hash of file handles, including "log" and "cmd", can be undef
@@ -3015,8 +3016,8 @@ sub parseEdirectMatPeptideFile {
 #
 # Dies:        if $listfile does not exist or is not readable, or
 #              if $listfile exists as a directory.
-#              if $do_accn is 1 and the same line exists more than
-#              once in $listfile
+#              if $do_accn is 1 and >=1 accession occurs more 
+#              than once in $listfile
 ################################################################# 
 sub parseListFile {
   my $nargs_expected = 4;
@@ -3024,7 +3025,9 @@ sub parseListFile {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($infile, $do_accn, $line_AR, $FH_HR) = @_;
 
-  my %line_exists_H = ();
+  # a hash that keeps track of counts of accessions, only used if $do_accn = 1
+  my %accn_ct_H    = (); # key: an accession, value: number of times accession occurs (possibly with different versions)
+  my %accn_order_A = (); # the accessions read in the input file, in order
 
   if(-d $infile) { 
     DNAORG_FAIL("ERROR in $sub_name, trying to read list file $infile, but a directory of the same name exists.", 1, $FH_HR);
@@ -3036,15 +3039,31 @@ sub parseListFile {
     if($line =~ m/\w/) {  # skip blank lines
       chomp $line;
       if($do_accn) { 
-        stripVersion(\$line); # remove version
-        if(exists $line_exists_H{$line}) { 
-          DNAORG_FAIL("ERROR in $sub_name, the line $line appears twice in the input list file $infile", 1, $FH_HR); 
+        my $accn = $line;
+        stripVersion(\$accn); # remove version from $accn
+        $accn_ct_H{$accn}++; 
+        if($accn_ct_H{$accn} == 1) { 
+          push(@accn_order_A, $accn);
         }
-        $line_exists_H{$line} = 1;
       }
       push(@{$line_AR}, $line);
     }
   }
+
+  # check if we need to exit because we read >= 1 accessions 
+  # more than once
+  if($do_accn) { 
+    my $errmsg = ""; # we may fill this below
+    foreach my $accn (@accn_order_A) { 
+      if($accn_ct_H{$accnversion} > 1) { 
+        $errmsg .= "$accn\n";
+      }
+    }
+    if($errmsg ne "") { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, the following accessions occur on multiple lines, possibly with different versions:\n%s", $errmsg), 1, $FH_HR);
+    }
+  }
+    
   close(IN); 
 
   return;
