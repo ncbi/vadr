@@ -172,7 +172,6 @@ my $esl_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
 my $esl_fetch_cds     = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
 my $esl_ssplit        = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
 my $esl_epn_translate = "/panfs/pan1/dnaorg/programs/esl-epn-translate.pl";
-#COMMENT: In anticipation that the code will be used by others, perhaps you should ask unix.systems to install esl in a subdirectory of /usr/local
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -216,7 +215,6 @@ opt_Add("--model",      "string",  undef,                    1,    undef, undef,
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",        "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
 opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
-#QUESTION: Is my understanding that the --wait time measures wall-clock time correct?
 
 $opt_group_desc_H{"2"} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
@@ -4022,7 +4020,8 @@ sub find_origin_sequences {
 #          $oseq_offset:   offset position of origin seq if $oseq_ct == 1, else '-'
 #          $oseq_passfail: 'P' if $oseq_ct is 1, else 'F'
 #
-#COMMENT: The Dies clause seems to be missing here
+# Dies: if $seq_info_HAR->{"origin_coords_str"}[$seq_idx] does not exist.
+# 
 #################################################################
 sub get_origin_output_for_sequence { 
   my $sub_name = "get_origin_output_for_sequence";
@@ -6721,7 +6720,6 @@ sub align_hits {
             if(! $i_am_rfpos_A[$apos]) { # gap in the RF sequence
               # insertion in sequence relative to the reference sequence
               update_gap_array(\@tmp_refins_A, $rfpos, 0); # 0 informs the subroutine that this is an insert array
-#COMMENT: I corrected the comment in the previous line, but not sure the correction is accurate; please check
             }
           }
         }
