@@ -111,10 +111,10 @@
 # $PERL5LIB environment variable in order the dnaorg scripts to work.
 # 
 # For bash shell users
-source /panfs/pan1/dnaorg/programs/setup-dnaorg-scripts.bash.sh
+source /panfs/pan1/dnaorg/virseqannot/code/setup-environment.bash.sh
 #
 # For C shell or C shell compatible users
-source /panfs/pan1/dnaorg/programs/setup-dnaorg-scripts.csh.sh
+source /panfs/pan1/dnaorg/virseqannot/code/setup-environment.csh.sh
 #
 ######################################
 # Usage and options of dnaorg_build.pl
@@ -126,7 +126,7 @@ source /panfs/pan1/dnaorg/programs/setup-dnaorg-scripts.csh.sh
 # dnaorg_build.pl takes a single argument: the reference 
 # accession:
 #
-perl dnaorg_build.pl -h
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
 ## dnaorg 0.1 (Feb 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -171,7 +171,7 @@ perl dnaorg_build.pl -h
 #
 # See the example runs below for more detailed instructions.
 # 
-perl dnaorg_annotate.pl -h
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
 ## dnaorg 0.1 (Feb 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -264,7 +264,7 @@ perl dnaorg_annotate.pl -h
 # The RefSeq accession for MSV is NC_001346, so to run the
 # dnaorg_build.pl script one should run:
 # 
-perl dnaorg_build.pl -c NC_001346
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -c NC_001346
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
 ## dnaorg 0.1 (Feb 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -383,7 +383,7 @@ cat NC_001346.ntlist
 #
 # To run dnaorg_annotate.pl do:
 #
-perl dnaorg_annotate.pl -c NC_001346.ntlist 
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -c /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001346.ntlist 
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
 ## dnaorg 0.1 (Feb 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -641,7 +641,7 @@ cat NC_001477.matpept.in
 #
 # Here is an example run of dnaorg_build.pl for Dengue:
 #
-perl dnaorg_build.pl --matpept NC_001477.matpept.in NC_001477
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl --matpept /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in NC_001477
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
 ## dnaorg 0.1 (Feb 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -697,7 +697,7 @@ perl dnaorg_build.pl --matpept NC_001477.matpept.in NC_001477
 # we will submit 3 cmscan jobs to the farm, one per sequence to
 # annotate.  We again have to use the --matpept option.
 # 
-perl dnaorg_annotate.pl --nseq 1 --matpept NC_001477.matpept.in NC_001477.ntlist 
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nseq 1 --matpept /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.ntlist 
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
 ## dnaorg 0.1 (Feb 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

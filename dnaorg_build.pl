@@ -32,7 +32,9 @@ require "epn-options.pm";
 # hard-coded-paths:
 my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
 my $esl_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
-my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
+#my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
+my $script_rootdir    = "/panfs/pan1/dnaorg/virseqannot/code";
+my $esl_fetch_cds     = $script_rootdir . "/esl-fetch-cds/esl-fetch-cds.pl";
 
 #########################################################
 # Command line and option processing using epn-options.pm

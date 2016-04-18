@@ -169,9 +169,13 @@ require "epn-options.pm";
 my $inf_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
 my $hmmer_exec_dir    = "/usr/local/hmmer/3.1/bin/";
 my $esl_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
-my $esl_fetch_cds     = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
-my $esl_ssplit        = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
-my $esl_epn_translate = "/panfs/pan1/dnaorg/programs/esl-epn-translate.pl";
+#my $esl_fetch_cds     = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
+#my $esl_ssplit        = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
+#my $esl_epn_translate = "/panfs/pan1/dnaorg/programs/esl-epn-translate.pl";
+my $script_rootdir    = "/panfs/pan1/dnaorg/virseqannot/code";
+my $esl_fetch_cds     = $script_rootdir . "/esl-fetch-cds/esl-fetch-cds.pl";
+my $esl_epn_translate = $script_rootdir . "/esl-epn-translate/esl-epn-translate.pl";
+my $esl_ssplit        = $script_rootdir . "/Bio-Easel/scripts/esl-ssplit.pl";
 
 #########################################################
 # Command line and option processing using epn-options.pm
