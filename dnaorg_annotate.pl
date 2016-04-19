@@ -1091,7 +1091,6 @@ outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 #    combine_ajb_and_aja_strings()
 #    compare_to_genbank_annotation
 #    count_genbank_annotations
-#    create_output_start_and_stop
 #    translate_feature_sequences
 #    align_hits()
 #    update_gap_array()
@@ -1099,7 +1098,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 #    get_mdl_or_ftr_ofile_info_key()
 #    align_protein_sequences
 #    check_for_downstream_stop()
-#    create_output_start_and_stop
+#    create_output_start_and_stop()
 #    seq_name_from_msa_seq_name()
 #    accn_name_from_seq_name()
 #
@@ -3640,10 +3639,10 @@ sub ftr_results_calculate {
           $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"cumlen"} += ($len_corr - $append_len);
           $cds_len += ($len_corr - $append_len);
           
-          # get first part of cds error message using current $cds_out_stop
+          # get first part of cds error message using current $cds_out_stop, if it exists
           my $updated_cds_ext_errmsg = sprintf("homology search predicted %d..%d", 
-                                           create_output_start_and_stop($cds_out_start, $cds_out_stop,
-                                                                        $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
+                                               create_output_start_and_stop($cds_out_start, $cds_out_stop,
+                                                                           $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
           # get first part of mp error message 
           my $mp_ext_errmsg = sprintf("homology search predicted %d..%d", 
                                       create_output_start_and_stop($mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"p_start"},
@@ -3661,7 +3660,7 @@ sub ftr_results_calculate {
           # get second part of MP error message
           $mp_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
                                     create_output_start_and_stop($mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"p_start"}, 
-                                                                 $mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"c_stop"}, 
+                                                                 $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"}, 
                                                                  $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
                                     $len_corr-$append_len);
           error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_cds_ext_errmsg, $FH_HR);
@@ -6294,7 +6293,6 @@ sub output_multifeature_relationships {
 #    combine_ajb_and_aja_strings()
 #    compare_to_genbank_annotation()
 #    count_genbank_annotations()
-#    create_output_start_and_stop()
 #    translate_feature_sequences()
 #    align_hits()
 #    update_gap_array()
