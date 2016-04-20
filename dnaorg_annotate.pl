@@ -3442,7 +3442,7 @@ sub ftr_results_calculate {
                       $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
                                                     create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $accn_len, $seq_len, $FH_HR),
                                                     create_output_start_and_stop($cds_fetch_start, $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
-                                                    abs($cds_fetch_stop - $cds_pred_stop) + 1, $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
+                                                    abs($cds_fetch_stop - $cds_pred_stop), $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
                     }
                     else { 
                       $updated_trc_errmsg = sprintf("homology search predicted %d..? revised to %d..%d (due to early stop in %s)", 
@@ -3480,21 +3480,20 @@ sub ftr_results_calculate {
                   my $ntr_err_ct = 0;
                   # for all remaining children: throw 'ntr' and append to 'int' err message
                   while($child_idx < $np_children) {
-                    $child_mdl_idx = $primary_children_idx_A[$child_idx];
-                    $child_ftr_idx = $mdl_info_HAR->{"map_ftr"}[$child_mdl_idx];
+                    $child_ftr_idx = $primary_children_idx_A[$child_idx];
                     if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { 
                       error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
                       $ntr_err_ct++;
                       if($int_errmsg ne "") { 
                         $int_errmsg .= ", ";
                       }
-                      $int_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
+                      $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
                     }
-                    else { # nop for this mdl
+                    else { # nop for at least one mdl for this feature
                       if($int_errmsg ne "") { 
                         $int_errmsg .= ", ";
                       }
-                      $int_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx] . "(nop)";
+                      $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx] . "(nop)";
                     }
                     $child_idx++;
                   }
@@ -3753,12 +3752,12 @@ sub ftr_results_calculate {
         # non-primary peptides.
         if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
-            my $child_mdl_idx = $all_children_idx_A[$child_idx];
-            my $child_ftr_idx = $mdl_info_HAR->{"map_ftr"}[$child_mdl_idx];
-            if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { # there is a prediction for this model
-              my $cur_stop = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
-                  $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
-                  $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
+            my $child_ftr_idx = $all_children_idx_A[$child_idx];
+            if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { # there is a prediction for all models for this feature
+              my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$primary_children_idx_A[$np_children-1]];
+              my $cur_stop = (defined $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"c_stop"}) ? 
+                  $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"c_stop"} :
+                  $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
               if(($stop_strand eq "+") && ($cds_fetch_stop < $cur_stop) && (! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"ntr"}{$seq_name})) { 
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
               }
