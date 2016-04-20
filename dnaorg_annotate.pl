@@ -3756,7 +3756,7 @@ sub ftr_results_calculate {
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
             if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { # there is a prediction for all models for this feature
-              my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$primary_children_idx_A[$np_children-1]];
+              my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx];
               my $cur_stop = (defined $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"c_stop"}) ? 
                   $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"c_stop"} :
                   $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
