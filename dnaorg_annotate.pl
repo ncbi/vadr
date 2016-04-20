@@ -3387,184 +3387,186 @@ sub ftr_results_calculate {
           my $child_ftr_idx = $primary_children_idx_A[$child_idx];
 
           for(my $child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $child_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $child_mdl_idx++) { 
-            # check to make sure we have a hit annotated for this model
-            if(! exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { 
-              if($inp_errmsg ne "") { 
-                $inp_errmsg .= ", ";
+            if(! $child_had_trc) { # if $child_had_trc is true, then we dealt with this feature completely below
+              # check to make sure we have a hit annotated for this model
+              if(! exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { 
+                if($inp_errmsg ne "") { 
+                  $inp_errmsg .= ", ";
+                }
+                $inp_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
               }
-              $inp_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
-            }
-            else { # we do have a hit for $child_mdl_idx in $seq_idx
-              $cds_len += $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"len"};
-              
-              if(! $set_start) { # first model, set cds_out_start
-                $cds_out_start   = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"};
-                $cds_fetch_start = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"};
-                $start_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"};
-                $set_start = 1;
-              }
-              
-              # check if we have a trc in this child model, and deal with it if we do
-              if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"trc_err_flag"}) { 
-                $child_had_trc = 1;
-                ####################################################
-                # We have a trc in this child model $child_mdl_idx 
-                # 
-                # Determine the cds stop position to print ($cds_out_stop)
-                # and position in the sequence to fetch the stop ($cds_fetch_stop).
-                # 
-                # If and only if we have all mature peptides up to this point and they 
-                # are all adjacent (that is, we don't have a aji or inp error), 
-                # then this CDS is truncated. We do the following:
-                #
-                # - update the trc errmsg for this CDS in @{$err_ftr_instances_AHHR} 
-                #   based on what just figured out about this truncated stop
-                #   (if we don't have a str error for this CDS)
-                # - set ntr errors for all remaining children 
-                # - set int error for this CDS
-                # - break the loop over all children (we're done with this CDS)
-                ####################################################
+              else { # we do have a hit for $child_mdl_idx in $seq_idx
+                $cds_len += $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"len"};
                 
-                $cds_out_stop      = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"};
-                $cds_fetch_stop    = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
-                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
-                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
-                $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
+                if(! $set_start) { # first model, set cds_out_start
+                  $cds_out_start   = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"};
+                  $cds_fetch_start = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"};
+                  $start_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"};
+                  $set_start = 1;
+                }
                 
-                if($inp_errmsg eq "" && $aji_errmsg eq "") { 
-                  if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
-                    # if we don't have a str error, update the trc error message
-                    # use the final childs stop prediction as the predicted stop, if it exists
-                    my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$primary_children_idx_A[$np_children-1]];
-                    my $updated_trc_errmsg  = "";
-                    if(exists $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"}) { 
-                      my $cds_pred_stop = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
-                      $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
-                                                    create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $accn_len, $seq_len, $FH_HR),
-                                                    create_output_start_and_stop($cds_fetch_start, $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
-                                                    abs($cds_fetch_stop - $cds_pred_stop), $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
-                    }
-                    else { 
-                      $updated_trc_errmsg = sprintf("homology search predicted %d..? revised to %d..%d (due to early stop in %s)", 
-                                                    $cds_out_start, 
-                                                    create_output_start_and_stop($cds_out_start,   $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
-                                                    $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
-                    }
-                    
-                    if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
-                      # update it
-                      error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
-                    }
-                    else { 
-                      # it doesn't yet exist, so add the trc error. This
-                      # is rare, but we may have no trc error for this
-                      # CDS yet, if the predicted child mature peptide
-                      # sequences didn't all exist, then we won't have
-                      # combined those predictions into a predicted CDS,
-                      # and thus we didn't check that predicted CDS for
-                      # trc errors in
-                      # parse_esl_epn_translate_startstop_outfile().
-                      error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
-                    }
-                    # set the trc_err_flag for this feature
-                    $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
-                  }
-                  # all remaining children get a 'ntr' error,
-                  # and the CDS gets an 'int' error, which we need
-                  # to build the error message for
-                  $ntr_errmsg = sprintf("early stop in mature peptide %d ending at position %d", $child_ftr_idx+1, $cds_out_stop);
-                  if($int_errmsg ne "") { 
-                    DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);;
-                  }
-                  $child_idx++;
-                  my $ntr_err_ct = 0;
-                  # for all remaining children: throw 'ntr' and append to 'int' err message
-                  while($child_idx < $np_children) {
-                    $child_ftr_idx = $primary_children_idx_A[$child_idx];
-                    if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { 
-                      error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
-                      $ntr_err_ct++;
-                      if($int_errmsg ne "") { 
-                        $int_errmsg .= ", ";
+                # check if we have a trc in this child model, and deal with it if we do
+                if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"trc_err_flag"}) { 
+                  $child_had_trc = 1;
+                  ####################################################
+                  # We have a trc in this child model $child_mdl_idx 
+                  # 
+                  # Determine the cds stop position to print ($cds_out_stop)
+                  # and position in the sequence to fetch the stop ($cds_fetch_stop).
+                  # 
+                  # If and only if we have all mature peptides up to this point and they 
+                  # are all adjacent (that is, we don't have a aji or inp error), 
+                  # then this CDS is truncated. We do the following:
+                  #
+                  # - update the trc errmsg for this CDS in @{$err_ftr_instances_AHHR} 
+                  #   based on what just figured out about this truncated stop
+                  #   (if we don't have a str error for this CDS)
+                  # - set ntr errors for all remaining children 
+                  # - set int error for this CDS
+                  # - break the loop over all children (we're done with this CDS)
+                  ####################################################
+                  
+                  $cds_out_stop      = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"};
+                  $cds_fetch_stop    = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
+                      $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
+                      $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
+                  $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
+                  
+                  if($inp_errmsg eq "" && $aji_errmsg eq "") { 
+                    if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
+                      # if we don't have a str error, update the trc error message
+                      # use the final childs stop prediction as the predicted stop, if it exists
+                      my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$primary_children_idx_A[$np_children-1]];
+                      my $updated_trc_errmsg  = "";
+                      if(exists $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"}) { 
+                        my $cds_pred_stop = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
+                        $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
+                                                      create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $accn_len, $seq_len, $FH_HR),
+                                                      create_output_start_and_stop($cds_fetch_start, $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
+                                                      abs($cds_fetch_stop - $cds_pred_stop), $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
                       }
-                      $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
-                    }
-                    else { # nop for at least one mdl for this feature
-                      if($int_errmsg ne "") { 
-                        $int_errmsg .= ", ";
+                      else { 
+                        $updated_trc_errmsg = sprintf("homology search predicted %d..? revised to %d..%d (due to early stop in %s)", 
+                                                      $cds_out_start, 
+                                                      create_output_start_and_stop($cds_out_start,   $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
+                                                      $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
                       }
-                      $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx] . "(nop)";
+                      
+                      if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
+                        # update it
+                        error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                      }
+                      else { 
+                        # it doesn't yet exist, so add the trc error. This
+                        # is rare, but we may have no trc error for this
+                        # CDS yet, if the predicted child mature peptide
+                        # sequences didn't all exist, then we won't have
+                        # combined those predictions into a predicted CDS,
+                        # and thus we didn't check that predicted CDS for
+                        # trc errors in
+                        # parse_esl_epn_translate_startstop_outfile().
+                        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                      }
+                      # set the trc_err_flag for this feature
+                      $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
+                    }
+                    # all remaining children get a 'ntr' error,
+                    # and the CDS gets an 'int' error, which we need
+                    # to build the error message for
+                    $ntr_errmsg = sprintf("early stop in mature peptide %d ending at position %d", $child_ftr_idx+1, $cds_out_stop);
+                    if($int_errmsg ne "") { 
+                      DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);;
                     }
                     $child_idx++;
+                    my $ntr_err_ct = 0;
+                    # for all remaining children: throw 'ntr' and append to 'int' err message
+                    while($child_idx < $np_children) {
+                      $child_ftr_idx = $primary_children_idx_A[$child_idx];
+                      if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { 
+                        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
+                        $ntr_err_ct++;
+                        if($int_errmsg ne "") { 
+                          $int_errmsg .= ", ";
+                        }
+                        $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
+                      }
+                      else { # nop for at least one mdl for this feature
+                        if($int_errmsg ne "") { 
+                          $int_errmsg .= ", ";
+                        }
+                        $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx] . "(nop)";
+                      }
+                      $child_idx++;
+                    }
+                    if($ntr_err_ct > 0) { 
+                      # we set at least one ntr error for mature peptides, set int for this CDS
+                      error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
+                    }
+                    # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
+                  } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
+                  else { 
+                    # we had a trc in one of the children, but it didn't trigger
+                    # a trc in the CDS because we already have an adjacency error
+                    # and/or an inp error (one of the mature peptides was not predicted)
+                    # which means we cannot confidently say the CDS is truncated.
+                    # remove the CDS' trc error IF it exists (it may not if 
+                    # there wasn't an early stop due to a frameshift or something
+                    # before or after the trc in the child mature peptide).
+                    if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
+                      error_instances_remove_not_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $FH_HR);
+                    }
                   }
-                  if($ntr_err_ct > 0) { 
-                    # we set at least one ntr error for mature peptides, set int for this CDS
-                    error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
-                  }
-                  # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
-                } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
+                  # deal with a potential stp error, if we have one
+                  
+                } # end of 'if trc_err_flag'
                 else { 
-                  # we had a trc in one of the children, but it didn't trigger
-                  # a trc in the CDS because we already have an adjacency error
-                  # and/or an inp error (one of the mature peptides was not predicted)
-                  # which means we cannot confidently say the CDS is truncated.
-                  # remove the CDS' trc error IF it exists (it may not if 
-                  # there wasn't an early stop due to a frameshift or something
-                  # before or after the trc in the child mature peptide).
-                  if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
-                    error_instances_remove_not_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $FH_HR);
-                  }
-                }
-                # deal with a potential stp error, if we have one
-                
-              } # end of 'if trc_err_flag'
-              else { 
-                ###########################################################
-                # we do not have a trc in this child model $child_mdl_idx #
-                ###########################################################
-                # check if we're adjacent to the next feature, we only need to 
-                # do this if we're the final model for the current feature and
-                # we're not the final child feature
-                if(($child_idx < ($np_children-1)) && 
-                   ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx])) { 
-                  my $nxt_child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$primary_children_idx_A[($child_idx+1)]];
-                  # check if they are adjacent 
-                  if(! checkForIndexInOverlapOrAdjacencyIndexString($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"idx_aja_str"}, $nxt_child_mdl_idx, $FH_HR)) { 
-                    if($aji_errmsg ne "") { $aji_errmsg .= ", "; }
-                    $aji_errmsg .= sprintf("%s (%s..%s) not adjacent to %s (%s..%s)", 
-                                           $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx], 
-                                           (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
-                                           (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown", 
-                                           $mdl_info_HAR->{"out_tiny"}[$nxt_child_mdl_idx], 
-                                           (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
-                                           (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown");
-                  }        
-                } # end of 'if($child_idx < ($np_children-1))'
+                  ###########################################################
+                  # we do not have a trc in this child model $child_mdl_idx #
+                  ###########################################################
+                  # check if we're adjacent to the next feature, we only need to 
+                  # do this if we're the final model for the current feature and
+                  # we're not the final child feature
+                  if(($child_idx < ($np_children-1)) && 
+                     ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx])) { 
+                    my $nxt_child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$primary_children_idx_A[($child_idx+1)]];
+                    # check if they are adjacent 
+                    if(! checkForIndexInOverlapOrAdjacencyIndexString($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"idx_aja_str"}, $nxt_child_mdl_idx, $FH_HR)) { 
+                      if($aji_errmsg ne "") { $aji_errmsg .= ", "; }
+                      $aji_errmsg .= sprintf("%s (%s..%s) not adjacent to %s (%s..%s)", 
+                                             $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx], 
+                                             (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
+                                             (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown", 
+                                             $mdl_info_HAR->{"out_tiny"}[$nxt_child_mdl_idx], 
+                                             (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
+                                             (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown");
+                    }        
+                  } # end of 'if($child_idx < ($np_children-1))'
 
-                # if we are the final model of the final child feature, determine the stop position/strand
-                if(($child_idx == ($np_children-1)) && 
-                   ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx])) { 
-                  # the final child, determine the stop position/strand, and deal with ext error if we have one
-                  $stop_strand = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
-                  # we should have to append the stop codon
-                  # (GenBank annotation of final mature peptides doesn't include the stop codon,
-                  #  so it's not covered in our homology model and we have to take special care
-                  #  to annotate it.
-                  $append_len = 0; 
-                  if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}) { 
-                    my ($out_append_start, $out_append_stop) = 
-                        create_output_start_and_stop($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}, 
-                                                     $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"},
-                                                     $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-                    $cds_out_stop = $out_append_stop;
-                    $cds_fetch_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"};
-                    # and update the cds_len (this is the final child, so this will only happen once)
-                    $append_len = abs($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"} - $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}) + 1; 
-                    $cds_len += $append_len;
+                  # if we are the final model of the final child feature, determine the stop position/strand
+                  if(($child_idx == ($np_children-1)) && 
+                     ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx])) { 
+                    # the final child, determine the stop position/strand, and deal with ext error if we have one
+                    $stop_strand = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
+                    # we should have to append the stop codon
+                    # (GenBank annotation of final mature peptides doesn't include the stop codon,
+                    #  so it's not covered in our homology model and we have to take special care
+                    #  to annotate it.
+                    $append_len = 0; 
+                    if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}) { 
+                      my ($out_append_start, $out_append_stop) = 
+                          create_output_start_and_stop($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}, 
+                                                       $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"},
+                                                       $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                      $cds_out_stop = $out_append_stop;
+                      $cds_fetch_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"};
+                      # and update the cds_len (this is the final child, so this will only happen once)
+                      $append_len = abs($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"} - $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}) + 1; 
+                      $cds_len += $append_len;
+                    }
                   }
                 }
-              }
-            } # end of 'else' entered if we don't have a trc error
+              } # end of 'else' entered if we don't have a trc error
+            } # end of 'if(! $child_had_trc'
           } # end of 'for(my $child_mdl_idx..'
         }  # end of 'for(my $child_idx..'
 
