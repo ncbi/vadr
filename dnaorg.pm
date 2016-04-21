@@ -5501,6 +5501,7 @@ sub addNameAndBlankSsToStockholmAlignment {
   # open and validate file
   my $msa = Bio::Easel::MSA->new({
     fileLocation => $in_file,
+    isDna => 1
                                  });  
   $msa->set_name($name);
   if($do_blank_ss) { 
