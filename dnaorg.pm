@@ -5637,7 +5637,7 @@ sub createCmDb {
       my $jobname     = "c." . $out_tail . $i;
       my $errfile     = $out_root . "." . $i . ".err";
       $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.$i.cm > $out_root.$i.cmcalibrate";
-      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . "\" > /dev/null\n";
+      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=16G,mem_free=16G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . "\" > /dev/null\n";
       runCommand($farm_cmd, 0, $FH_HR);
     }
     # final step, remove the master CM file if it exists, so we can create a new one after we're done calibrating
