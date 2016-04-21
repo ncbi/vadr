@@ -342,7 +342,12 @@ if(! defined $dir) {
 
 # make sure that $dir exists
 if(! -d $dir) {
-  DNAORG_FAIL(sprintf("ERROR, directory $dir %s does not exist", $dir_set_as_ref_accn ? "(first accession read from $listfile)" : "(specified with -d)"), 1, undef);
+  if($dir_set_as_ref_accn) { 
+    DNAORG_FAIL("ERROR, directory $dir (first accession read from $listfile) does not exist.\nDid you run \'dnaorg_build.pl $dir\' yet? If not, you need to do that first.", 1, undef);
+  }
+  else { 
+    DNAORG_FAIL("ERROR, directory $dir (specified with -d) does not exist.\nDid you run \'dnaorg_build.pl\' yet? If not, you need to do that first.", 1, undef);
+  }
 }
 
 my $dir_tail = $dir;
