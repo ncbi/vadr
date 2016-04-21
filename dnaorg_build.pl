@@ -88,6 +88,8 @@ $opt_group_desc_H{"4"} = "options for skipping stages and use files from earlier
 #     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
 opt_Add("--skipedirect",   "boolean", 0,                       4,   undef,      undef,                    "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipfetch",     "boolean", 0,                       4,   undef,      undef,                    "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipbuild",     "boolean", 0,                       4,   undef,      undef,                    "skip the build/calibrate steps",                         "skip the model building/calibrating, requires --mdlinfo and/or --ftrinfo", \%opt_HH, \@opt_order_A);
+
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -110,6 +112,7 @@ my $options_okay =
 # options for skipping stages, using earlier results
                 'skipedirect'   => \$GetOptions_H{"--skipedirect"},
                 'skipfetch'     => \$GetOptions_H{"--skipfetch"},
+                'skipbuild'     => \$GetOptions_H{"--skipbuild"},
 # optional output files
                 'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});
@@ -118,7 +121,7 @@ my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can jus
 my $executable    = $0;
 my $date          = scalar localtime();
 my $version       = "0.1";
-my $releasedate   = "Feb 2016";
+my $releasedate   = "Apr 2016";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -142,6 +145,12 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
+
+# do checks that are too sophisticated for epn-options.pm
+if((opt_Get("--skipbuild", \%opt_HH)) && 
+   (! (opt_Get("--mdlinfo", \%opt_HH) || opt_Get("--ftrinfo", \%opt_HH)))) { 
+  die "ERROR, --skipbuild requires one or both of --mdlinfo or --ftrinfo"; 
+}
 
 my $dir        = opt_Get("-d", \%opt_HH);          # this will be undefined unless -d set on cmdline
 my $do_matpept = opt_IsOn("--matpept", \%opt_HH);
@@ -322,21 +331,23 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 3. Build and calibrate models 
 ####################################
 my $do_local = opt_Get("--local", \%opt_HH); # are we running calibration locally
-my $build_str = $do_local ? "Building and calibrating models" : "Building models and submitting calibration jobs to the farm";
-$start_secs = outputProgressPrior($build_str, $progress_w, $log_FH, *STDOUT);
-createCmDb(\%execs_H, $ofile_info_HH{"fullpath"}{"refstk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, $ofile_info_HH{"FH"});
-if(! $do_local) { 
-  for(my $i = 0; $i < $nmdl; $i++) { 
-    addClosedFileToOutputInfo(\%ofile_info_HH, "cm$i", "$out_root.$i.cm", 1, 
-                              sprintf("CM file #%d, %s (currently calibrating on the farm)", $i+1, $mdl_info_HA{"out_tiny"}[$i]));
-
+if(! opt_Get("--skipbuild", \%opt_HH)) { 
+  my $build_str = $do_local ? "Building and calibrating models" : "Building models and submitting calibration jobs to the farm";
+  $start_secs = outputProgressPrior($build_str, $progress_w, $log_FH, *STDOUT);
+  createCmDb(\%execs_H, $ofile_info_HH{"fullpath"}{"refstk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, $ofile_info_HH{"FH"});
+  if(! $do_local) { 
+    for(my $i = 0; $i < $nmdl; $i++) { 
+      addClosedFileToOutputInfo(\%ofile_info_HH, "cm$i", "$out_root.$i.cm", 1, 
+                                sprintf("CM file #%d, %s (currently calibrating on the farm)", $i+1, $mdl_info_HA{"out_tiny"}[$i]));
+      
+    }
   }
+  else { 
+    addClosedFileToOutputInfo(\%ofile_info_HH, "cm", "$out_root.cm", 1, "CM file with all $nmdl models");
+  }
+  
+  outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 }
-else { 
-  addClosedFileToOutputInfo(\%ofile_info_HH, "cm", "$out_root.cm", 1, "CM file with all $nmdl models");
-}
-
-outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
 ##########
 # Conclude
@@ -350,16 +361,18 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
 }
 
 # a quick note to the user about what to do next
-outputString($log_FH, 1, sprintf("#\n"));
-if(! $do_local) { 
-  outputString($log_FH, 1, "# When the $nmdl cmcalibrate jobs on the farm finish, you can use dnaorg_annotate.pl\n");
-  outputString($log_FH, 1, "# to use them to annotate genomes.\n");
+if(! opt_Get("--skipbuild", \%opt_HH)) { 
+  outputString($log_FH, 1, sprintf("#\n"));
+  if(! $do_local) { 
+    outputString($log_FH, 1, "# When the $nmdl cmcalibrate jobs on the farm finish, you can use dnaorg_annotate.pl\n");
+    outputString($log_FH, 1, "# to use them to annotate genomes.\n");
+  }
+  else { 
+    outputString($log_FH, 1, "# You can now use dnaorg_annotate.pl to annotate genomes with the models\n");
+    outputString($log_FH, 1, "# you've created here.\n");
+  }
+  outputString($log_FH, 1, sprintf("#\n"));
 }
-else { 
-  outputString($log_FH, 1, "# You can now use dnaorg_annotate.pl to annotate genomes with the models\n");
-  outputString($log_FH, 1, "# you've created here.\n");
-}
-outputString($log_FH, 1, sprintf("#\n"));
 
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
