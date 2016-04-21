@@ -533,7 +533,7 @@ for my $suffix ("i1m", "i1i", "i1f", "i1p") {
 if($do_press) { 
   # run cmpress to create the CM binary index files
   $start_secs = outputProgressPrior("Preparing the CM database for homology search using cmpress", $progress_w, $log_FH, *STDOUT);
-  press_cm_database($model_file, $execs_H{"cmpress"}, \%opt_HH, \%ofile_info_HH);
+  press_cm_database($model_file, $execs_H{"cmpress"}, 1, \%opt_HH, \%ofile_info_HH); # 1: do add info on files we create to %ofile_info_HH
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
@@ -570,50 +570,60 @@ if(opt_IsUsed("--origin", \%opt_HH)) {
 my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
 validateFileExistsAndIsNonEmpty($seq_file, "dnaorg_annotate.pl:main", $ofile_info_HH{"FH"});
 
-# cmscan output files
-#my $stdout_file = (opt_Get("--keep", \%opt_HH)) ? $out_root . ".stdout" : "/dev/null"; # only save the stdout if --keep used at cmdline
-my $stdout_file = "/dev/null";
-my $tblout_file = $out_root . ".tblout";
-
-# determine how many jobs we need to run to satisfy <n> per job (where n is from --nseq <n>),
-# if more than 1 and --local not used, we split up the sequence file and submit jobs to farm,
-# if only 1 or --local used, we just run it locally
-my $nfarmjobs = int($nseq / opt_Get("--nseq", \%opt_HH)); 
+# determine how many sequence files we need to split $seq_file into to satisfy <n> sequences
+# per job (where n is from --nseq <n>). If more than 1 and --local not used, we split up 
+# the sequence file and submit jobs to farm, if only 1 or --local used, we just run it locally
+my $nseqfiles = int($nseq / opt_Get("--nseq", \%opt_HH)); 
 # int() takes the floor, so there can be a nonzero remainder. We don't add 1 though, 
 # because split_fasta_file() will return the actual number of sequence files created
 # and we'll use that as the number of jobs subsequently. $nfarmjobs is currently only
 # the 'target' number of sequence files that we pass into split_fasta_file().
-if($nfarmjobs == 0) { $nfarmjobs = 1; }
+if($nseqfiles == 0) { $nseqfiles = 1; }
+
+# concatenated tblout file, created by concatenating all of the @tmp_tblout_file_A files
+my $tblout_file = $out_root . ".tblout";
+
+# split up the CM file into individual CM files:
+my $ncmfiles          = split_cm_file($execs_H{"cmfetch"}, $execs_H{"cmpress"}, $model_file, \%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
+my @tmp_tblout_file_A = (); # the array of tblout files, we'll remove after we're done, unless --keep
+my @tmp_seq_file_A = ();    # the array of sequence files we'll remove after we're done, unless --keep (empty if we run locally)
+my @tmp_err_file_A = ();    # the array of error files we'll remove after we're done, unless --keep (empty if we run locally)
 
 if(! opt_Get("--skipscan", \%opt_HH)) { 
-  if(($nfarmjobs == 1) || (opt_Get("--local", \%opt_HH))) { 
+  if(($nseqfiles == 1) || (opt_Get("--local", \%opt_HH))) { 
     # run jobs locally
     $start_secs = outputProgressPrior("Running cmscan locally", $progress_w, $log_FH, *STDOUT);
-    run_cmscan($execs_H{"cmscan"}, 1, $model_file, $seq_file, $stdout_file, $tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
-    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+    # run a different cmscan run for each file
+    for(my $m = 0; $m < $ncmfiles; $m++) { 
+      my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
+      my $tmp_stdout_file = "/dev/null";
+      my $do_max = ($mdl_info_HA{"length"}[$m] <= 20) ? 1 : 0; # do not filter for very short models
+      run_cmscan($execs_H{"cmscan"}, 1, $do_max, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
+      push(@tmp_tblout_file_A, $tmp_tblout_file);
+    }
   }
   else { 
-    # we need to split up the sequence file, and submit a separate cmscan job for each
-    my @tmp_tblout_file_A = (); # the array of tblout files, we'll remove after we're done, unless --keep
-    my @tmp_seq_file_A = ();    # the array of sequence files, we'll remove after we're done, unless --keep
-    my @tmp_err_file_A = ();    # the array of error files, we'll remove after we're done, unless --keep
-    my $nfasta_created = split_fasta_file($execs_H{"esl_ssplit"}, $seq_file, $nfarmjobs, \%opt_HH, \%ofile_info_HH);
-    my $nfarmjobs = $nfasta_created;
-    # we may redefine $nfarmjobs here, split_fasta_file will return the actual number of fasta files created, 
-    # which can differ from the requested amount (which is $nfarmjobs) that we pass in. It will put $nseq/$nfarmjobs
-    # in each file, which often means we have to make $nfarmjobs+1 files.
+    # we need to split up the sequence file, and submit a separate set of cmscan jobs (one per model) for each
+    my $nfasta_created = split_fasta_file($execs_H{"esl_ssplit"}, $seq_file, $nseqfiles, \%opt_HH, \%ofile_info_HH);
+    # split_fasta_file will return the actual number of fasta files created, 
+    # which can differ from the requested amount (which is $nseqfiles) that we pass in. It will put $nseq/$nseqfiles
+    # in each file, which often means we have to make $nseqfiles+1 files.
 
+    my $nfarmjobs = $nfasta_created * $ncmfiles;
     # now submit a job for each
-    $start_secs = outputProgressPrior("Submitting $nfasta_created cmscan jobs to the farm", $progress_w, $log_FH, *STDOUT);
-    for(my $z = 1; $z <= $nfarmjobs; $z++) { 
-      run_cmscan($execs_H{"cmscan"}, 0, $model_file,  # 0: do not run locally
-                 $seq_file . "." . $z, 
-                 ($stdout_file eq "/dev/null") ? "/dev/null" : $stdout_file . "." . $z,
-                 $tblout_file . "." . $z, 
-                 \%opt_HH, \%ofile_info_HH);
-      push(@tmp_seq_file_A,    $seq_file    . "." . $z);
-      push(@tmp_tblout_file_A, $tblout_file . "." . $z);
-      push(@tmp_err_file_A,    $tblout_file . "." . $z . ".err"); # this will be the name of the error output file, set in run_cmscan
+    $start_secs = outputProgressPrior("Submitting $nfarmjobs cmscan jobs to the farm", $progress_w, $log_FH, *STDOUT);
+    for(my $s = 1; $s <= $nfasta_created; $s++) { 
+      my $tmp_seq_file = $seq_file . "." . $s;
+      push(@tmp_seq_file_A,    $tmp_seq_file);
+      for(my $m = 0; $m < $ncmfiles; $m++) { 
+        my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".s" . $s . ".tblout";
+        my $tmp_stdout_file = "/dev/null";
+        my $do_max = ($mdl_info_HA{"length"}[$m] <= 20) ? 1 : 0; # do not filter for very short models
+        run_cmscan($execs_H{"cmscan"}, 0, $do_max, $mdl_info_HA{"cmfile"}[$m],  # 0: do not run locally
+                   $tmp_seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH);
+        push(@tmp_tblout_file_A, $tmp_tblout_file);
+        push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
+      }
     }
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
     
@@ -621,29 +631,28 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", \%opt_HH)), 
                                       $progress_w, $log_FH, *STDOUT);
     my $njobs_finished = wait_for_farm_jobs_to_finish(\@tmp_tblout_file_A, "# [ok]", opt_Get("--wait", \%opt_HH));
-    if($njobs_finished != $nfasta_created){ 
-      DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfasta_created are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
+    if($njobs_finished != $nfarmjobs) { 
+      DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
     }
-    
-    # concatenate all the results files into one 
-    my $cat_cmd = "cat ";
-    foreach my $tmp_file (@tmp_tblout_file_A) { 
-      $cat_cmd .= $tmp_file . " ";
-    }
-    $cat_cmd .= "> $tblout_file";
-    runCommand($cat_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-    
-    # remove temporary files, unless --keep
-    if(! opt_Get("--keep", \%opt_HH)) { 
-      my $rm_cmd = "rm ";
-      foreach my $tmp_file (@tmp_seq_file_A, @tmp_tblout_file_A, @tmp_err_file_A) { 
-        $rm_cmd .= $tmp_file . " ";
-      }
-      runCommand($rm_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-    }
-    
-    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   } # end of 'else' entered if($nfarmjobs > 1 && ! --local)
+    
+  # concatenate all the results files into one 
+  my $cat_cmd = "cat ";
+  foreach my $tmp_file (@tmp_tblout_file_A) { 
+    $cat_cmd .= $tmp_file . " ";
+  }
+  $cat_cmd .= "> $tblout_file";
+  runCommand($cat_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  
+  # remove temporary files, unless --keep
+  if(! opt_Get("--keep", \%opt_HH)) { 
+    my $rm_cmd = "rm ";
+    foreach my $tmp_file (@tmp_seq_file_A, @tmp_tblout_file_A, @tmp_err_file_A) { 
+      $rm_cmd .= $tmp_file . " ";
+    }
+    runCommand($rm_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  }
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 } # end of if(! opt_Get(--skipscan", \%opt_HH))
 
 ####################################################################
@@ -1035,6 +1044,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 #    run_cmscan()
 #    wait_for_farm_jobs_to_finish()
 #    split_fasta_file()
+#    split_cm_file()
 #    parse_cmscan_tblout()
 #
 #  Subroutines related to creating fasta files of predicted hits/features: 
@@ -1173,10 +1183,11 @@ sub concatenate_individual_cm_files {
 # Purpose:     Run cmpress on a CM database file.
 #
 # Arguments: 
-#   $model_file:     the full path to the concatenated model file to create
-#   $cmpress:        path to cmpress executable
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
-#   $ofile_info_HHR: REF to the 2D hash of output file information
+#   $model_file:            the full path to the concatenated model file to create
+#   $cmpress:               path to cmpress executable
+#   $do_add_to_output_info: '1' to add file info to output info, '0' not to
+#   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
+#   $ofile_info_HHR:        REF to the 2D hash of output file information
 # 
 # Returns:     void
 # 
@@ -1185,10 +1196,10 @@ sub concatenate_individual_cm_files {
 ################################################################# 
 sub press_cm_database {
   my $sub_name = "press_cm_database()";
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($model_file, $cmpress, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($model_file, $cmpress, $do_add_to_output_info, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
@@ -1203,11 +1214,12 @@ sub press_cm_database {
 
   my $cmpress_cmd = "$cmpress $model_file > /dev/null"; # output is irrelevant
   runCommand($cmpress_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1m", $model_file.".i1m", 0, "index file for the CM, created by cmpress");
-  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1i", $model_file.".i1i", 0, "index file for the CM, created by cmpress");
-  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1f", $model_file.".i1f", 0, "index file for the CM, created by cmpress");
-  addClosedFileToOutputInfo($ofile_info_HHR, "cmi1p", $model_file.".i1p", 0, "index file for the CM, created by cmpress");
-
+  if($do_add_to_output_info) { 
+    addClosedFileToOutputInfo($ofile_info_HHR, "cmi1m", $model_file.".i1m", 0, "index file for the CM, created by cmpress");
+    addClosedFileToOutputInfo($ofile_info_HHR, "cmi1i", $model_file.".i1i", 0, "index file for the CM, created by cmpress");
+    addClosedFileToOutputInfo($ofile_info_HHR, "cmi1f", $model_file.".i1f", 0, "index file for the CM, created by cmpress");
+    addClosedFileToOutputInfo($ofile_info_HHR, "cmi1p", $model_file.".i1p", 0, "index file for the CM, created by cmpress");
+  }
   return;
 }
 
@@ -1295,6 +1307,7 @@ sub validate_cms_built_from_reference {
 #    run_cmscan()
 #    wait_for_farm_jobs_to_finish()
 #    split_fasta_file()
+#    split_cm_file()
 #    parse_cmscan_tblout()
 #
 #################################################################
@@ -1307,6 +1320,9 @@ sub validate_cms_built_from_reference {
 # Arguments: 
 #  $cmscan:          path to the cmscan executable file
 #  $do_local:        '1' to run locally, '0' to submit job to farm
+#  $do_max:          '1' to run with --max option, '0' to run with default options
+#                    '1' is usually used only when $model_file contains a single 
+#                    very short model
 #  $model_file:      path to the CM file
 #  $seq_file:        path to the sequence file
 #  $stdout_file:     path to the stdout file to create, can be "/dev/null", or undef 
@@ -1321,10 +1337,10 @@ sub validate_cms_built_from_reference {
 ################################################################# 
 sub run_cmscan { 
   my $sub_name = "run_cmscan()";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($cmscan, $do_local, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($cmscan, $do_local, $do_max, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
@@ -1332,8 +1348,14 @@ sub run_cmscan {
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
-  # where I got these filter threshold options from: F1, F2, F2b, F3 and F3b from nhmmer, F4, F4b, F5, and F6 from --rfam
-  my $opts .= " --noali --cpu 0 --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 --tblout $tblout_file --verbose --nohmmonly ";
+  my $opts = " --noali --cpu 0 --tblout $tblout_file --verbose --nohmmonly ";
+  if($do_max) { # no filtering
+    $opts .= "--max ";
+  }
+  else { # default filtering 
+    # where I got these filter threshold options from: F1, F2, F2b, F3 and F3b from nhmmer, F4, F4b, F5, and F6 from --rfam
+    $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
+  }
 
   my $cmd = "$cmscan $opts $model_file $seq_file > $stdout_file";
 
@@ -1477,6 +1499,52 @@ sub split_fasta_file {
   }
 
   return $nfiles_created;
+}
+
+#################################################################
+# Subroutine : split_cm_file()
+# Incept:      EPN, Thu Apr 21 08:56:08 2016
+#
+# Purpose: Split up a CM database file into <n> smaller files by calling
+#          cmfetch for each model within. Then press each individual
+#          file in preparation for cmscan.
+#
+#          Set mdl_info_HAR->{"cmfile"}[$i] for each model.
+#
+# Arguments: 
+#  $cmfetch:         path to the cmfetch executable to use
+#  $cmpress:         path to the cmpress executable to use
+#  $model_file:      the CM library file
+#  $mdl_info_HAR:    REF to hash of arrays with information on the models, ADDED TO HERE
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+# 
+# Returns:    Number of CM files created.
+#
+# Dies:       if cmfetch or cmpress commands fail
+#
+################################################################# 
+sub split_cm_file { 
+  my $sub_name = "split_cm_file()";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($cmfetch, $cmpress, $model_file, $mdl_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $nmdl = validateModelInfoHashIsComplete(\%mdl_info_HA, undef, $FH_HR); # nmdl: number of homology models
+
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $cmfile = $model_file . "." . $mdl_idx;
+    my $cmd    = "$cmfetch $model_file " . $mdl_info_HAR->{"cmname"}[$mdl_idx] . " > $cmfile";
+    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+    $mdl_info_HAR->{"cmfile"}[$mdl_idx] = $cmfile;
+    press_cm_database($cmfile, $cmpress, 0, $opt_HHR, $ofile_info_HHR); # 0: do not add info on the files we create to %ofile_info_HHR
+  }
+
+  return $nmdl;
 }
 
 #################################################################
