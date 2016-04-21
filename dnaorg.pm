@@ -5577,6 +5577,7 @@ sub getQualifierValues {
 # Returns:    void
 #
 # Dies:       if $stk_file does not exist or is empty
+#             if we can't determine consensus length from the model file
 #################################################################
 sub createCmDb { 
   my $sub_name = "createCmDb()";
@@ -5636,8 +5637,24 @@ sub createCmDb {
       $out_tail       =~ s/^.+\///;
       my $jobname     = "c." . $out_tail . $i;
       my $errfile     = $out_root . "." . $i . ".err";
-      $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.$i.cm > $out_root.$i.cmcalibrate";
-      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=16G,mem_free=16G -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . "\" > /dev/null\n";
+
+      # determine length of the model, if >= 3000, use --tailp, and require double memory (16Gb for 4 threads instead of 8Gb)
+      my $cur_cmcalibrate_opts = $cmcalibrate_opts;
+      my $clen = `grep ^CLEN $out_root.$i.cm`;
+      my $time_and_mem_req = "-l h_rt=288000,h_vmem=8G,mem_free=8G"; # default, we increase this below if model is big
+      chomp $clen;
+      if($clen =~ /^CLEN\s+(\d+)/) { 
+        $clen = $1;
+        if($clen >= 3000) { 
+          $cur_cmcalibrate_opts = " --cpu 4 -L 0.08 --gtailn 125 --ltailn 375 "; # we need to search a larger sequence so we get enough hits to fit a gumbel to
+          $time_and_mem_req = "-l h_rt=576000,h_vmem=16G,mem_free=16G"; # twice the default
+        }
+      }
+      else { 
+        DNAORG_FAIL("ERROR in $sub_name, couldn't determine consensus length in CM file $out_root.$i.cm, got $clen", 1, $FH_HR);
+      }
+      $cmcalibrate_cmd  = "$cmcalibrate $cur_cmcalibrate_opts $out_root.$i.cm > $out_root.$i.cmcalibrate";
+      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $time_and_mem_req -pe multicore 4 -R y " . "\"" . $cmcalibrate_cmd . "\" > /dev/null\n";
       runCommand($farm_cmd, 0, $FH_HR);
     }
     # final step, remove the master CM file if it exists, so we can create a new one after we're done calibrating
