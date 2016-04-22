@@ -602,8 +602,9 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     for(my $m = 0; $m < $ncmfiles; $m++) { 
       my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
       my $tmp_stdout_file = "/dev/null";
-      my $do_max = ($mdl_info_HA{"length"}[$m] <= 20) ? 1 : 0; # do not filter for very short models
-      run_cmscan($execs_H{"cmscan"}, 1, $do_max, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
+      my $do_max = ($mdl_info_HA{"length"}[$m] <= 20)   ? 1 : 0; # do not filter for very short models
+      my $do_big = ($mdl_info_HA{"length"}[$m] >= 3000) ? 1 : 0; # use bigger max matrix size for big models
+      run_cmscan($execs_H{"cmscan"}, 1, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
       push(@tmp_tblout_file_A, $tmp_tblout_file);
     }
   }
@@ -1328,6 +1329,7 @@ sub validate_cms_built_from_reference {
 #  $do_max:          '1' to run with --max option, '0' to run with default options
 #                    '1' is usually used only when $model_file contains a single 
 #                    very short model
+#  $do_big:          '1' to run with --mxsize 6144 option, '0' to run with default options
 #  $model_file:      path to the CM file
 #  $seq_file:        path to the sequence file
 #  $stdout_file:     path to the stdout file to create, can be "/dev/null", or undef 
@@ -1338,24 +1340,30 @@ sub validate_cms_built_from_reference {
 # Returns:     void
 # 
 # Dies: If at least one CM was not built from the current reference.
-#
+#       If $do_max and $do_big are both true.
 ################################################################# 
 sub run_cmscan { 
   my $sub_name = "run_cmscan()";
-  my $nargs_expected = 9;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($cmscan, $do_local, $do_max, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($cmscan, $do_local, $do_max, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
+  if($do_big && $do_max) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_big and do_max are both true, only one should be.", 1 $FH_HR);
+  }
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
   my $opts = " --noali --cpu 0 --tblout $tblout_file --verbose --nohmmonly ";
   if($do_max) { # no filtering
     $opts .= "--max ";
+  }
+  elsif($do_big) { # no filtering
+    $opts .= "--mxsize 6144 ";
   }
   else { # default filtering 
     # where I got these filter threshold options from: F1, F2, F2b, F3 and F3b from nhmmer, F4, F4b, F5, and F6 from --rfam
