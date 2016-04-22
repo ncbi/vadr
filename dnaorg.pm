@@ -5597,9 +5597,12 @@ sub createCmDb {
   my $do_calib_slow  = opt_Get("--slow", $opt_HHR);  # should we run in 'slow' mode (instead of fast mode)?
   my $do_calib_local = opt_Get("--local", $opt_HHR); # should we run locally (instead of on farm)?
 
-  my ($cmbuild_opts,     $cmbuild_cmd);        # options and command for cmbuild
-  my ($cmcalibrate_opts, $cmcalibrate_cmd);    # options and command for cmcalibrate
-  my ($cmpress_opts,     $cmpress_cmd);        # options and command for cmpress
+  my ($cmbuild_opts,         $cmbuild_cmd);           # options and command for cmbuild
+  my ($df_cmcalibrate_opts,  $df_cmcalibrate_cmd);    # options and command for default cmcalibrate
+  my ($big_cmcalibrate_opts, $big_cmcalibrate_cmd);   # options and command for big-model cmcalibrate
+  my ($cmpress_opts,         $cmpress_cmd);           # options and command for cmpress
+  my $df_qsub_opts;  # default   options for qsub for cmcalibrate job
+  my $big_qsub_opts; # big-model options for qsub for cmcalibrate job
 
   my $cmbuild     = $execs_HR->{"cmbuild"};
   my $cmcalibrate = $execs_HR->{"cmcalibrate"};
@@ -5615,13 +5618,26 @@ sub createCmDb {
   my $secs_elapsed = runCommand($cmbuild_cmd, 0, $FH_HR);
 
   # calibration step:
-  $cmcalibrate_opts = " --cpu 4 ";
-  if(! $do_calib_slow) { $cmcalibrate_opts .= " -L 0.04 "; }
-  $cmcalibrate_cmd  = "$cmcalibrate $cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
+  # set up cmcalibrate options for two scenarios: default and 'big' model
+  my $df_ncpu  = 8;
+  my $big_ncpu = opt_Get("--bigncpu", $opt_HHR);
+  my $df_gb_per_core  = 8;
+  my $big_gb_per_core = opt_Get("--bigram", $opt_HHR);
+  my $big_thresh = opt_Get("--bigthresh", $opt_HHR);
+
+  $df_cmcalibrate_opts  = " --cpu $df_ncpu ";
+  $big_cmcalibrate_opts = " --cpu $big_ncpu ";
+  if(! $do_calib_slow) { 
+    $df_cmcalibrate_opts  .= " -L 0.04 ";
+  }
+  $big_cmcalibrate_opts .= " -L " . opt_Get("--biglen", $opt_HHR) . " --tailp " . opt_Get("--bigtailp", $opt_HHR) . " ";
+
+  $df_cmcalibrate_cmd   = "$cmcalibrate $df_cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
+  $big_cmcalibrate_cmd  = "$cmcalibrate $big_cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
   
   if($do_calib_local) { 
     # calibrate the model locally
-    $secs_elapsed = runCommand($cmcalibrate_cmd, 0, $FH_HR);
+    $secs_elapsed = runCommand($df_cmcalibrate_cmd, 0, $FH_HR);
 
     # press the model
     $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
@@ -5638,25 +5654,25 @@ sub createCmDb {
       my $jobname     = "c." . $out_tail . $i;
       my $errfile     = $out_root . "." . $i . ".err";
 
-      # determine length of the model, if >= 3000, use --tailp, and require double memory (16Gb for 4 threads instead of 8Gb)
-      my $cur_cmcalibrate_opts = $cmcalibrate_opts;
+      # determine length of the model, if >= opt_HHR->bigthresh, use --tailp, and require double memory (16Gb for 4 threads instead of 8Gb)
+      my $is_big = 0;
       my $clen = `grep ^CLEN $out_root.$i.cm`;
-      my $time_and_mem_req = "-l h_rt=288000,h_vmem=8G,mem_free=8G"; # default, we increase this below if model is big
-      my $pe_req = "-pe multicore 4";
       chomp $clen;
       if($clen =~ /^CLEN\s+(\d+)/) { 
         $clen = $1;
-        if($clen >= 3000) { 
-          $cur_cmcalibrate_opts = " --cpu 16 -L 0.32 --tailp 0.3 "; # we need to search a larger sequence so we get enough hits to fit a gumbel to
-          $time_and_mem_req = "-l h_rt=576000,h_vmem=64G,mem_free=64G"; # twice the default
-          $pe_req = "-pe multicore 16";
-        }
+        if($clen >= $big_thresh) { $is_big = 1; }
       }
       else { 
         DNAORG_FAIL("ERROR in $sub_name, couldn't determine consensus length in CM file $out_root.$i.cm, got $clen", 1, $FH_HR);
       }
-      $cmcalibrate_cmd  = "$cmcalibrate $cur_cmcalibrate_opts $out_root.$i.cm > $out_root.$i.cmcalibrate";
-      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $time_and_mem_req $pe_req -R y " . "\"" . $cmcalibrate_cmd . "\" > /dev/null\n";
+
+      # set qsub time and mem requirements
+      my $time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%.1fG,mem_free=%.1fG,reserve_mem=%dG", $df_gb_per_core * $df_ncpu, $df_gb_per_core * $df_ncpu, $df_gb_per_core);
+      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $time_and_mem_req -pe multicore $df_ncpu -R y " . "\"" . $df_cmcalibrate_cmd . "\" > /dev/null\n";
+      if($is_big) { # rewrite it
+        $time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%.1fG,mem_free=%.1fG,reserve_mem=%dG", $big_gb_per_core * $big_ncpu, $big_gb_per_core * $big_ncpu, $big_gb_per_core);
+        $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $time_and_mem_req -pe multicore $big_ncpu -R y " . "\"" . $big_cmcalibrate_cmd . "\" > /dev/null\n";
+      }
       runCommand($farm_cmd, 0, $FH_HR);
     }
     # final step, remove the master CM file if it exists, so we can create a new one after we're done calibrating

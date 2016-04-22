@@ -74,10 +74,15 @@ opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",         "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",    "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"2"} = "options affecting window/hit definition";
+$opt_group_desc_H{"2"} = "options affecting calibration of models";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
 opt_Add("--slow",   "boolean", 0,                     2,    undef, undef,   "running cmcalibrate in slow mode",               "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
 opt_Add("--local",  "boolean", 0,                     2,    undef, undef,   "running cmcalibrate on local machine",           "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("--bigthresh", "integer", "3000",              2,    undef, undef,   "set minimum length for a big model to <n>",      "set minimum length for a big model to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--bigram",    "integer", "8",                2,    undef, undef,   "for big models, set Gb RAM per core for calibration to <n>", "for big models, set Gb RAM per core for calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--biglen",  "real",     "0.16",              2,    undef, undef,   "for big models, set length to search in Mb as <x>", "for big models, set cmcalibrate length to search in Mb as <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--bigncpu",  "integer", "8",                 2,    undef, undef,   "for big models, set number of CPUs for calibration to <n>", "for big models, set number of CPUs for calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--bigtailp",  "real",   "0.30",              2,    undef, undef,   "for big models, set --tailp cmcalibrate parameter as <x>", "for big models, set --tailp cmcalibrate parameter as <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"3"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
@@ -109,10 +114,15 @@ my $options_okay =
 # calibration related options
                 'slow'         => \$GetOptions_H{"--slow"},
                 'local'        => \$GetOptions_H{"--local"},
+                'bigthresh=s'   => \$GetOptions_H{"--bigthresh"},
+                'bigram=s'      => \$GetOptions_H{"--bigram"},
+                'biglen=s'      => \$GetOptions_H{"--biglen"},
+                'bigncpu=s'     => \$GetOptions_H{"--bigncpu"},
+                'bigtailp=s'    => \$GetOptions_H{"--bigtailp"},
 # options for skipping stages, using earlier results
-                'skipedirect'   => \$GetOptions_H{"--skipedirect"},
-                'skipfetch'     => \$GetOptions_H{"--skipfetch"},
-                'skipbuild'     => \$GetOptions_H{"--skipbuild"},
+                'skipedirect'  => \$GetOptions_H{"--skipedirect"},
+                'skipfetch'    => \$GetOptions_H{"--skipfetch"},
+                'skipbuild'    => \$GetOptions_H{"--skipbuild"},
 # optional output files
                 'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});

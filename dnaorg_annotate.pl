@@ -1353,7 +1353,7 @@ sub run_cmscan {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   if($do_big && $do_max) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_big and do_max are both true, only one should be.", 1 $FH_HR);
+    DNAORG_FAIL("ERROR in $sub_name, do_big and do_max are both true, only one should be.", 1, $FH_HR);
   }
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
@@ -1387,7 +1387,7 @@ sub run_cmscan {
     my $jobname = removeDirPath($seq_file);
     my $errfile = $tblout_file . ".err";
     if(-e $errfile) { removeFileUsingSystemRm($errfile, $sub_name, $opt_HHR, $ofile_info_HHR); }
-    my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G " . "\"" . $cmd . "\" > /dev/null\n";
+    my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G,reserve_mem=8G " . "\"" . $cmd . "\" > /dev/null\n";
     runCommand($farm_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
   }
 
