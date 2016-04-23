@@ -1359,12 +1359,12 @@ sub run_cmscan {
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
-  my $opts = " --noali --cpu 0 --tblout $tblout_file --verbose --nohmmonly ";
+  my $opts = " --noali --cpu 0 --tblout $tblout_file --verbose ";
   if($do_max) { # no filtering
     $opts .= "--max ";
   }
-  elsif($do_big) { # no filtering
-    $opts .= "--mxsize 6144 ";
+  if(! $do_big) { # do not use hmm unless model is big
+    $opts .= " --nohmmonly ";
   }
   else { # default filtering 
     # where I got these filter threshold options from: F1, F2, F2b, F3 and F3b from nhmmer, F4, F4b, F5, and F6 from --rfam
