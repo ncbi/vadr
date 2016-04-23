@@ -1363,12 +1363,12 @@ sub run_cmscan {
   if($do_max) { # no filtering
     $opts .= "--max ";
   }
+  else { 
+    $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
+  }
+  # finally add --nohmmonly if we're not a big model
   if(! $do_big) { # do not use hmm unless model is big
     $opts .= " --nohmmonly ";
-  }
-  else { # default filtering 
-    # where I got these filter threshold options from: F1, F2, F2b, F3 and F3b from nhmmer, F4, F4b, F5, and F6 from --rfam
-    $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
   }
 
   my $cmd = "$cmscan $opts $model_file $seq_file > $stdout_file";
