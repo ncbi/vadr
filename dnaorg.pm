@@ -5619,11 +5619,17 @@ sub createCmDb {
 
   # calibration step:
   # set up cmcalibrate options for two scenarios: default and 'big' model
-  my $df_ncpu  = 8;
-  my $big_ncpu = opt_Get("--bigncpu", $opt_HHR);
+  my $df_ncpu         = 4;
   my $df_gb_per_core  = 8;
+  my $df_gb_tot       = opt_Get("--rammult", $opt_HHR) ? $df_gb_per_core * $df_ncpu : $df_gb_per_core;
+  my $df_time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%sG,mem_free=%sG,reserve_mem=%sG", $df_gb_tot, $df_gb_tot, $df_gb_per_core);
+
+  my $big_ncpu        = opt_Get("--bigncpu", $opt_HHR);
   my $big_gb_per_core = opt_Get("--bigram", $opt_HHR);
-  my $big_thresh = opt_Get("--bigthresh", $opt_HHR);
+  my $big_gb_tot      = opt_Get("--rammult", $opt_HHR) ? $big_gb_per_core * $big_ncpu : $big_gb_per_core;
+
+  my $big_thresh      = opt_Get("--bigthresh", $opt_HHR);
+  my $big_time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%sG,mem_free=%sG,reserve_mem=%sG", $big_gb_tot, $big_gb_tot, $big_gb_per_core);
 
   $df_cmcalibrate_opts  = " --cpu $df_ncpu ";
   $big_cmcalibrate_opts = " --cpu $big_ncpu ";
@@ -5632,12 +5638,12 @@ sub createCmDb {
   }
   $big_cmcalibrate_opts .= " -L " . opt_Get("--biglen", $opt_HHR) . " --tailp " . opt_Get("--bigtailp", $opt_HHR) . " ";
 
-  $df_cmcalibrate_cmd   = "$cmcalibrate $df_cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
-  $big_cmcalibrate_cmd  = "$cmcalibrate $big_cmcalibrate_opts $out_root.cm > $out_root.cmcalibrate";
+  my $df_cmcalibrate_cmd_root   = "$cmcalibrate $df_cmcalibrate_opts";
+  my $big_cmcalibrate_cmd_root  = "$cmcalibrate $big_cmcalibrate_opts";
   
   if($do_calib_local) { 
     # calibrate the model locally
-    $secs_elapsed = runCommand($df_cmcalibrate_cmd, 0, $FH_HR);
+    $secs_elapsed = runCommand("$df_cmcalibrate_cmd_root $out_root.cm > $out_root.cmcalibrate", 0, $FH_HR);
 
     # press the model
     $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
@@ -5666,12 +5672,9 @@ sub createCmDb {
         DNAORG_FAIL("ERROR in $sub_name, couldn't determine consensus length in CM file $out_root.$i.cm, got $clen", 1, $FH_HR);
       }
 
-      # set qsub time and mem requirements
-      my $time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%.1fG,mem_free=%.1fG,reserve_mem=%dG", $df_gb_per_core * $df_ncpu, $df_gb_per_core * $df_ncpu, $df_gb_per_core);
-      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $time_and_mem_req -pe multicore $df_ncpu -R y " . "\"" . $df_cmcalibrate_cmd . "\" > /dev/null\n";
+      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $df_time_and_mem_req -pe multicore $df_ncpu -R y " . "\"" . $df_cmcalibrate_cmd_root . " $out_root.$i.cm > $out_root.$i.cmcalibrate\" > /dev/null\n";
       if($is_big) { # rewrite it
-        $time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%.1fG,mem_free=%.1fG,reserve_mem=%dG", $big_gb_per_core * $big_ncpu, $big_gb_per_core * $big_ncpu, $big_gb_per_core);
-        $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $time_and_mem_req -pe multicore $big_ncpu -R y " . "\"" . $big_cmcalibrate_cmd . "\" > /dev/null\n";
+        $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $big_time_and_mem_req -pe multicore $big_ncpu -R y " . "\"" . $big_cmcalibrate_cmd_root . "$out_root.$i.cm > $out_root.$i.cmcalibrate\" > /dev/null\n";
       }
       runCommand($farm_cmd, 0, $FH_HR);
     }
