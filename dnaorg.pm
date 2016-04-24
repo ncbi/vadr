@@ -193,7 +193,7 @@
 #   getMonocharacterString()
 #   countLinesInFile()
 #   validateFileExistsAndIsNonEmpty()
-#   printDividingLine()
+#   concatenateListOfFiles()
 #
 # Miscellaneous subroutines that don't fall into one of the above
 # categories:
@@ -3856,6 +3856,44 @@ sub outputBanner {
 }
 
 #################################################################
+# Subroutine : outputDividingLine()
+# Incept:      EPN, Tue Apr 12 14:40:13 2016
+#
+# Purpose:     Print a line of dashes followed by single spaces
+#              with $ndash dashes to file handle $FH.
+#              if $ndash is undefined, set it to 66.
+#
+# Arguments: 
+#   $ndashes:  number of dashes in output dividing line
+#   $FH:       file handle to print to
+# 
+# Returns:     Nothing.
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub outputDividingLine { 
+  my $nargs_expected = 2;
+  my $sub_name = "outputDividingLine()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ndashes, $FH) = @_;
+
+  if(! defined $ndashes) { 
+    $ndashes = 66;
+  }
+
+  my $div_line = "#";
+  for(my $i = 0; $i < $ndashes; $i++) { 
+    $div_line .= " -";
+  }
+  $div_line .= "\n";
+
+  print $FH $div_line;
+  
+  return;
+}
+
+#################################################################
 #################################################################
 #
 # Subroutines for dumping data structures, usually for debugging:
@@ -4981,6 +5019,7 @@ sub findValueInArray {
 #   getMonocharacterString()
 #   countLinesInFile()
 #   validateFileExistsAndIsNonEmpty()
+#   concatenateListOfFiles()
 #
 #################################################################
 # Subroutine : DNAORG_FAIL()
@@ -5316,42 +5355,116 @@ sub validateFileExistsAndIsNonEmpty {
 }
 
 #################################################################
-# Subroutine : outputDividingLine()
-# Incept:      EPN, Tue Apr 12 14:40:13 2016
+# Subroutine : concatenateListOfFiles()
+# Incept:      EPN, Sun Apr 24 08:08:15 2016
 #
-# Purpose:     Print a line of dashes followed by single spaces
-#              with $ndash dashes to file handle $FH.
-#              if $ndash is undefined, set it to 66.
+# Purpose:     Concatenate a list of files into one file.
+#              If the list has more than 500 files, split
+#              up job into concatenating 500 at a time.
+# 
+#              We remove all files that we concatenate unless
+#              --keep option is on in %{$opt_HHR}.
 #
 # Arguments: 
-#   $ndashes:  number of dashes in output dividing line
-#   $FH:       file handle to print to
+#   $file_AR:          REF to array of all files to concatenate
+#   $outfile:          name of output file to create by concatenating
+#                      all files in @{$file_AR}.
+#   $caller_sub_name:  name of calling subroutine (can be undef)
+#   $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:            ref to hash of file handles
 # 
 # Returns:     Nothing.
 # 
-# Dies:        Never.
-#
+# Dies:        If one of the cat commands fails.
+#              If $outfile is in @{$file_AR}
+#              If @{$file_AR} contains more than 800*800 files
+#              (640K) if so, we may need to call this function
+#              recursively twice (that is, recursive call will
+#              also call itself recursively) and we don't have 
+#              a sophisticated enough temporary file naming
+#              strategy to handle that robustly.
 ################################################################# 
-sub outputDividingLine { 
-  my $nargs_expected = 2;
-  my $sub_name = "outputDividingLine()";
+sub concatenateListOfFiles { 
+  my $nargs_expected = 5;
+  my $sub_name = "concatenateListOfFiles()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ndashes, $FH) = @_;
+  my ($file_AR, $outfile, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
 
-  if(! defined $ndashes) { 
-    $ndashes = 66;
+  if(findNonNumericValueInArray($file_AR, $outfile, $FH_HR) != -1) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name%s, output file name $outfile exists in list of files to concatenate", 
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), 1, $FH_HR);
   }
 
-  my $div_line = "#";
-  for(my $i = 0; $i < $ndashes; $i++) { 
-    $div_line .= " -";
-  }
-  $div_line .= "\n";
+  # first, convert @{$file_AR} array into a 2D array of file names, each of which has 
+  # a max of 800 elements, we'll concatenate each of these lists separately
+  my $max_nfiles = 800;
+  my $nfiles = scalar(@{$file_AR});
 
-  print $FH $div_line;
+  if($nfiles > ($max_nfiles * $max_nfiles)) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name%s, trying to concatenate %d files, our limit is %d", 
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : "", $nfiles, $max_nfiles * $max_nfiles), 
+                1, $FH_HR);
+  }
+    
+  my ($idx1, $idx2); # indices in @{$file_AR}, and of secondary files
+  my @file_AA = ();
+  $idx2 = -1; # get's incremented to 0 in first loop iteration
+  for($idx1 = 0; $idx1 < $nfiles; $idx1++) { 
+    if(($idx1 % $max_nfiles) == 0) { 
+      $idx2++; 
+      @{$file_AA[$idx2]} = (); # initialize
+    }
+    push(@{$file_AA[$idx2]}, $file_AR->[$idx1]);
+  }
   
+  my $nconcat = scalar(@file_AA);
+  my @tmp_outfile_A = (); # fill this with names of temporary files we create
+  my $tmp_outfile; # name of an output file we'll create
+  for($idx2 = 0; $idx2 < $nconcat; $idx2++) { 
+    if($nconcat == 1) { # special case, we don't need to create any temporary files
+      $tmp_outfile = $outfile;
+    }
+    else { 
+      $tmp_outfile = $outfile . ".tmp" . ($idx2+1); 
+      # make sure this file does not exist in @{$file_AA[$idx2]} to avoid klobbering
+      # if it does, continue to append .tmp($idx2+1) until it doesn't
+      while(findNonNumericValueInArray($file_AA[$idx2], $tmp_outfile, $FH_HR) != -1) { 
+        $tmp_outfile .= ".tmp" . ($idx2+1); 
+      }
+    }
+    # create the concatenate command
+    my $cat_cmd = "cat ";
+    foreach my $tmp_file (@{$file_AA[$idx2]}) {
+      $cat_cmd .= $tmp_file . " ";
+    }
+    $cat_cmd .= "> $tmp_outfile";
+
+    # execute the command
+    runCommand($cat_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+
+    # add it to the array of temporary files
+    push(@tmp_outfile_A, $tmp_outfile); 
+  }
+
+  if(scalar(@tmp_outfile_A) > 1) { 
+    # we created more than one temporary output file, concatenate them
+    # by calling this function again
+    concatenateListOfFiles(\@tmp_outfile_A, $outfile, (defined $caller_sub_name) ? $caller_sub_name . ":" . $sub_name : $sub_name, $opt_HHR, $FH_HR);
+  }
+
+  if(! opt_Get("--keep", $opt_HHR)) { 
+    # remove all of the original files, be careful to not remove @tmp_outfile_A
+    # because the recursive call will handle that
+    foreach my $file_to_remove (@{$file_AR}) { 
+      removeFileUsingSystemRm($file_to_remove, 
+                              (defined $caller_sub_name) ? $caller_sub_name . ":" . $sub_name : $sub_name, 
+                              $opt_HHR, $FH_HR);
+    }
+  }
+
   return;
 }
+
 
 #################################################################
 #

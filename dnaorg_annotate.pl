@@ -643,22 +643,9 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     }
   } # end of 'else' entered if($nfarmjobs > 1 && ! --local)
     
-  # concatenate all the results files into one 
-  my $cat_cmd = "cat ";
-  foreach my $tmp_file (@tmp_tblout_file_A) { 
-    $cat_cmd .= $tmp_file . " ";
-  }
-  $cat_cmd .= "> $tblout_file";
-  runCommand($cat_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-  
-  # remove temporary files, unless --keep
-  if(! opt_Get("--keep", \%opt_HH)) { 
-    my $rm_cmd = "rm ";
-    foreach my $tmp_file (@tmp_seq_file_A, @tmp_tblout_file_A, @tmp_err_file_A) { 
-      $rm_cmd .= $tmp_file . " ";
-    }
-    runCommand($rm_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-  }
+  # concatenate all the tblout files into one 
+  concatenateListOfFiles(\@tmp_tblout_file_A, $tblout_file, "dnaorg_annotate.pl", \%opt_HH, $ofile_info_HH{"FH"});
+
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 } # end of if(! opt_Get(--skipscan", \%opt_HH))
 
