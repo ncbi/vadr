@@ -5765,6 +5765,10 @@ sub createCmDb {
   else { 
     # run cmcalibrate on farm, one job for each CM file
     # split up model file into individual CM files, then submit a job to calibrate each one, and exit. 
+    # the qsub commands will be submitted by executing a shell script with all of them
+    # unless --nosubmit option is enabled, in which case we'll just create the file
+    my $farm_cmd_file = $out_root . ".cm.qsub";
+    open(FARMOUT, ">", $farm_cmd_file) || fileOpenFailure($farm_cmd_file, $sub_name, $!, "writing", $FH_HR);
     for(my $i = 0; $i < $nmodel; $i++) { 
       my $cmfetch_cmd = "$cmfetch $out_root.cm $indi_name_AR->[$i] > $out_root.$i.cm";
       runCommand($cmfetch_cmd, 0, $FH_HR);
@@ -5789,8 +5793,15 @@ sub createCmDb {
       if($is_big) { # rewrite it
         $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $big_time_and_mem_req -pe multicore $big_ncpu -R y " . "\"" . $big_cmcalibrate_cmd_root . "$out_root.$i.cm > $out_root.$i.cmcalibrate\" > /dev/null\n";
       }
-      runCommand($farm_cmd, 0, $FH_HR);
-    }
+      print FARMOUT $farm_cmd;
+    } # end of 'for(my $i = 0; $i < $nmodel; $i++)' 
+    close(FARMOUT);
+
+    # and run the qsub commands unless --nosubmit
+    if(! opt_Get("--nosubmit", $opt_HHR)) { 
+      runCommand("source $farm_cmd_file");
+    }      
+      
     # final step, remove the master CM file if it exists, so we can create a new one after we're done calibrating
     if(-e "$out_root.cm") { 
       runCommand("rm $out_root.cm", 0, $FH_HR);

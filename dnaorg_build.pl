@@ -78,6 +78,7 @@ $opt_group_desc_H{"2"} = "options affecting calibration of models";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
 opt_Add("--slow",   "boolean", 0,                     2,    undef, undef,   "running cmcalibrate in slow mode",               "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
 opt_Add("--local",  "boolean", 0,                     2,    undef, undef,   "running cmcalibrate on local machine",           "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("--nosubmit",  "boolean", 0,                  2,    undef, "--local","do not submit cmcalibrate jobs to farm, run later", "do not submit cmcalibrate jobs to farm, run later with qsub script", \%opt_HH, \@opt_order_A);
 opt_Add("--rammult",   "boolean",   0,                2,    undef, undef,   "for all models, multiply RAM Gb by ncpu for mem_free", "for all models, multiply RAM Gb by ncpu for mem_free", \%opt_HH, \@opt_order_A);
 opt_Add("--bigthresh", "integer", "3000",              2,    undef, undef,   "set minimum length for a big model to <n>",      "set minimum length for a big model to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--bigram",    "integer", "8",                2,    undef, undef,   "for big models, set Gb RAM per core for calibration to <n>", "for big models, set Gb RAM per core for calibration to <n>", \%opt_HH, \@opt_order_A);
@@ -115,12 +116,13 @@ my $options_okay =
 # calibration related options
                 'slow'         => \$GetOptions_H{"--slow"},
                 'local'        => \$GetOptions_H{"--local"},
-                'rammult'       => \$GetOptions_H{"--rammult"},
-                'bigthresh=s'   => \$GetOptions_H{"--bigthresh"},
-                'bigram=s'      => \$GetOptions_H{"--bigram"},
-                'biglen=s'      => \$GetOptions_H{"--biglen"},
-                'bigncpu=s'     => \$GetOptions_H{"--bigncpu"},
-                'bigtailp=s'    => \$GetOptions_H{"--bigtailp"},
+                'nosubmit'     => \$GetOptions_H{"--nosubmit"},
+                'rammult'      => \$GetOptions_H{"--rammult"},
+                'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
+                'bigram=s'     => \$GetOptions_H{"--bigram"},
+                'biglen=s'     => \$GetOptions_H{"--biglen"},
+                'bigncpu=s'    => \$GetOptions_H{"--bigncpu"},
+                'bigtailp=s'   => \$GetOptions_H{"--bigtailp"},
 # options for skipping stages, using earlier results
                 'skipedirect'  => \$GetOptions_H{"--skipedirect"},
                 'skipfetch'    => \$GetOptions_H{"--skipfetch"},
@@ -344,19 +346,29 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ####################################
 my $do_local = opt_Get("--local", \%opt_HH); # are we running calibration locally
 if(! opt_Get("--skipbuild", \%opt_HH)) { 
-  my $build_str = $do_local ? "Building and calibrating models" : "Building models and submitting calibration jobs to the farm";
+  my $build_str = "";
+  if($do_local) { 
+    $build_str = "Building and calibrating models";
+  }
+  elsif(opt_Get("--nosubmit", \%opt_HH)) { 
+    $build_str = "Building models and creating shell script for calibration to run later";
+  }
+  else { 
+    $build_str = "Building models and submitting calibration jobs to the farm";
+  }
   $start_secs = outputProgressPrior($build_str, $progress_w, $log_FH, *STDOUT);
   createCmDb(\%execs_H, $ofile_info_HH{"fullpath"}{"refstk"}, $out_root . ".ref", \@{$mdl_info_HA{"cmname"}}, \%opt_HH, $ofile_info_HH{"FH"});
   if(! $do_local) { 
     for(my $i = 0; $i < $nmdl; $i++) { 
       addClosedFileToOutputInfo(\%ofile_info_HH, "cm$i", "$out_root.$i.cm", 1, 
-                                sprintf("CM file #%d, %s (currently calibrating on the farm)", $i+1, $mdl_info_HA{"out_tiny"}[$i]));
-      
+                                sprintf("CM file #%d, %s%s", $i+1, $mdl_info_HA{"out_tiny"}[$i], 
+                                        (opt_Get("--nosubmit", \%opt_HH)) ? " (needs to be calibrated later by running \"source $out_root.cm.qsub\")" : "(currently calibrating on the farm)"));
     }
   }
   else { 
     addClosedFileToOutputInfo(\%ofile_info_HH, "cm", "$out_root.cm", 1, "CM file with all $nmdl models");
   }
+  addClosedFileToOutputInfo(\%ofile_info_HH, "cm", "$out_root.cm.qsub", 1, sprintf("Shell script to submit cmcalibrate commands with%s", (opt_Get("--nosubmit", \%opt_HH)) ? " (not executed yet, due to --nosubmit, execute it later)" : " (already executed, jobs submitted to farm)"));
   
   outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 }
