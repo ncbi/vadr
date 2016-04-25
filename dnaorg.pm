@@ -1755,7 +1755,9 @@ sub wrapperGetInfoUsingEdirect {
     }
     else { # ! $do_matpept
       if(-s $mp_file) { 
-        DNAORG_FAIL("ERROR, in $sub_name, --matpept not enabled but mature peptide information exists, use --nomatpept to ignore it.", 1, $FH_HR); 
+        # determine all the accessions in the mat_peptide file
+        my $accn_list = `grep . $mp_file | awk \'{ print \$1 }\' | sort | uniq`; 
+        DNAORG_FAIL("ERROR, in $sub_name, --matpept not enabled but mature peptide information exists for the accessions printed below.\nUse --nomatpept to ignore it.\nAccessions with at least 1 mat_peptide annotation:\n$accn_list", 1, $FH_HR); 
       }
       else { 
         # remove the empty file we just created
