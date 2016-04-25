@@ -5735,7 +5735,7 @@ sub createCmDb {
   # build step:
   $cmbuild_opts = "-F";
   $cmbuild_cmd  = "$cmbuild $cmbuild_opts $out_root.cm $stk_file > $out_root.cmbuild";
-  my $secs_elapsed = runCommand($cmbuild_cmd, 0, $FH_HR);
+  my $secs_elapsed = runCommand($cmbuild_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
 
   # calibration step:
   # set up cmcalibrate options for two scenarios: default and 'big' model
@@ -5763,11 +5763,11 @@ sub createCmDb {
   
   if($do_calib_local) { 
     # calibrate the model locally
-    $secs_elapsed = runCommand("$df_cmcalibrate_cmd_root $out_root.cm > $out_root.cmcalibrate", 0, $FH_HR);
+    $secs_elapsed = runCommand("$df_cmcalibrate_cmd_root $out_root.cm > $out_root.cmcalibrate", opt_Get("-v", $opt_HHR), $FH_HR);
 
     # press the model
     $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
-    $secs_elapsed = runCommand($cmpress_cmd, 0, $FH_HR);
+    $secs_elapsed = runCommand($cmpress_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
   } # end of 'else' entered if $do_calib_farm is false
   else { 
     # run cmcalibrate on farm, one job for each CM file
@@ -5778,7 +5778,7 @@ sub createCmDb {
     open(FARMOUT, ">", $farm_cmd_file) || fileOpenFailure($farm_cmd_file, $sub_name, $!, "writing", $FH_HR);
     for(my $i = 0; $i < $nmodel; $i++) { 
       my $cmfetch_cmd = "$cmfetch $out_root.cm $indi_name_AR->[$i] > $out_root.$i.cm";
-      runCommand($cmfetch_cmd, 0, $FH_HR);
+      runCommand($cmfetch_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
       my $out_tail    = $out_root;
       $out_tail       =~ s/^.+\///;
       my $jobname     = "c." . $out_tail . $i;
@@ -5806,12 +5806,12 @@ sub createCmDb {
 
     # and run the qsub commands unless --nosubmit
     if(! opt_Get("--nosubmit", $opt_HHR)) { 
-      runCommand("source $farm_cmd_file");
+      runCommand("sh $farm_cmd_file", opt_Get("-v", $opt_HHR), $FH_HR);
     }      
       
     # final step, remove the master CM file if it exists, so we can create a new one after we're done calibrating
     if(-e "$out_root.cm") { 
-      runCommand("rm $out_root.cm", 0, $FH_HR);
+      runCommand("rm $out_root.cm", opt_Get("-v", $opt_HHR), $FH_HR);
     }
   }
 
