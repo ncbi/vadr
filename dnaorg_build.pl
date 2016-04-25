@@ -362,7 +362,7 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
     for(my $i = 0; $i < $nmdl; $i++) { 
       addClosedFileToOutputInfo(\%ofile_info_HH, "cm$i", "$out_root.$i.cm", 1, 
                                 sprintf("CM file #%d, %s%s", $i+1, $mdl_info_HA{"out_tiny"}[$i], 
-                                        (opt_Get("--nosubmit", \%opt_HH)) ? " (needs to be calibrated later by running \"source $out_root.cm.qsub\")" : "(currently calibrating on the farm)"));
+                                        (opt_Get("--nosubmit", \%opt_HH)) ? " (needs to be calibrated later by running \"sh $out_root.cm.qsub\")" : "(currently calibrating on the farm)"));
     }
   }
   else { 
