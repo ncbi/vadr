@@ -208,6 +208,7 @@
 #
 use strict;
 use warnings;
+use Cwd;
 
 #################################################################
 #################################################################
@@ -5708,6 +5709,8 @@ sub createCmDb {
 
   if(! -s $stk_file)  { DNAORG_FAIL("ERROR in $sub_name, $stk_file file does not exist or is empty", 1, $FH_HR); }
 
+  my $abs_out_root = getcwd() . "/" . $out_root;
+
   # remove the binary files for the CM from an earlier cmbuild/cmpress, if they exist:
   for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
     my $file = $out_root . ".cm." . $suffix;
@@ -5774,7 +5777,7 @@ sub createCmDb {
     # split up model file into individual CM files, then submit a job to calibrate each one, and exit. 
     # the qsub commands will be submitted by executing a shell script with all of them
     # unless --nosubmit option is enabled, in which case we'll just create the file
-    my $farm_cmd_file = $out_root . ".cm.qsub";
+    my $farm_cmd_file = $out_root . "ref.cm.qsub";
     open(FARMOUT, ">", $farm_cmd_file) || fileOpenFailure($farm_cmd_file, $sub_name, $!, "writing", $FH_HR);
     for(my $i = 0; $i < $nmodel; $i++) { 
       my $cmfetch_cmd = "$cmfetch $out_root.cm $indi_name_AR->[$i] > $out_root.$i.cm";
@@ -5782,7 +5785,7 @@ sub createCmDb {
       my $out_tail    = $out_root;
       $out_tail       =~ s/^.+\///;
       my $jobname     = "c." . $out_tail . $i;
-      my $errfile     = $out_root . "." . $i . ".err";
+      my $errfile     = $abs_out_root . "." . $i . ".err";
 
       # determine length of the model, if >= opt_HHR->bigthresh, use --tailp, and require double memory (16Gb for 4 threads instead of 8Gb)
       my $is_big = 0;
@@ -5796,9 +5799,9 @@ sub createCmDb {
         DNAORG_FAIL("ERROR in $sub_name, couldn't determine consensus length in CM file $out_root.$i.cm, got $clen", 1, $FH_HR);
       }
 
-      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $df_time_and_mem_req -pe multicore $df_ncpu -R y " . "\"" . $df_cmcalibrate_cmd_root . " $out_root.$i.cm > $out_root.$i.cmcalibrate\" > /dev/null\n";
+      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $df_time_and_mem_req -pe multicore $df_ncpu -R y " . "\"" . $df_cmcalibrate_cmd_root . " $abs_out_root.$i.cm > $abs_out_root.$i.cmcalibrate\" > /dev/null\n";
       if($is_big) { # rewrite it
-        $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $big_time_and_mem_req -pe multicore $big_ncpu -R y " . "\"" . $big_cmcalibrate_cmd_root . "$out_root.$i.cm > $out_root.$i.cmcalibrate\" > /dev/null\n";
+        $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $big_time_and_mem_req -pe multicore $big_ncpu -R y " . "\"" . $big_cmcalibrate_cmd_root . "$abs_out_root.$i.cm > $abs_out_root.$i.cmcalibrate\" > /dev/null\n";
       }
       print FARMOUT $farm_cmd;
     } # end of 'for(my $i = 0; $i < $nmodel; $i++)' 
