@@ -343,10 +343,10 @@ if(! defined $dir) {
 # make sure that $dir exists
 if(! -d $dir) {
   if($dir_set_as_ref_accn) { 
-    DNAORG_FAIL("ERROR, directory $dir (first accession read from $listfile) does not exist.\nDid you run \'dnaorg_build.pl $dir\' yet? If not, you need to do that first.", 1, undef);
+    DNAORG_FAIL("ERROR, directory $dir (first accession read from $listfile) does not exist.\nDid you run \"dnaorg_build.pl $dir\" yet? If not, you need to do that first.", 1, undef);
   }
   else { 
-    DNAORG_FAIL("ERROR, directory $dir (specified with -d) does not exist.\nDid you run \'dnaorg_build.pl\' yet? If not, you need to do that first.", 1, undef);
+    DNAORG_FAIL("ERROR, directory $dir (specified with -d) does not exist.\nDid you run \"dnaorg_build.pl\" yet? If not, you need to do that first.", 1, undef);
   }
 }
 
@@ -1267,6 +1267,7 @@ sub validate_cms_built_from_reference {
       DNAORG_FAIL(sprintf("ERROR in $sub_name, different number of models (%d) and reference features (%d). $common_errmsg", $i, $nmodel_cksum), 1, $FH_HR);    
     }
     chomp $cksum;
+    if($cksum =~ m/\r$/) { chop $cksum; } # remove ^M if it exists
     if($cksum != $mdl_info_HAR->{"checksum"}[$i]) { 
       if($mismatch_errmsg ne "") { $mismatch_errmsg .= ", "; }
       $mismatch_errmsg .= "CM #%d checksum %d != alignment checksum: %d";
@@ -1441,6 +1442,7 @@ sub wait_for_farm_jobs_to_finish {
         if(-s $outfile_AR->[$i]) { 
           my $final_line = `tail -n 1 $outfile_AR->[$i]`;
           chomp $final_line;
+          if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
           if($final_line eq $finished_str) { 
             $is_finished_A[$i] = 1;
             $nfinished++;
@@ -1596,6 +1598,7 @@ sub parse_cmscan_tblout {
     }
     elsif($line !~ m/^\#/) { 
       chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
       # example line:
       #Maize-streak_r23.NC_001346.ref.mft.4        -         NC_001346:genome-duplicated:NC_001346:1:2689:+:NC_001346:1:2689:+: -          cm        1      819     2527     1709      -    no    1 0.44   0.2  892.0         0 !   -
       my @elA = split(/\s+/, $line);
@@ -4033,6 +4036,7 @@ sub find_origin_sequences {
     my ($header, $seq) = split(/\n/, $fasta_seq);
     my $nfound = 0; # number of occurrences of origin sequence per sequence
     chomp $seq;
+    if($seq =~ m/\r$/) { chop $seq; } # remove ^M if it exists
 
     # now use Perl's index() function to find all occurrences of $qseq
     my $qseq_posn = index($seq, $qseq);

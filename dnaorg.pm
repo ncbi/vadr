@@ -2433,6 +2433,7 @@ sub parseMatPeptSpecFile {
       # 
       # we need to have one 'primary' and one 'all' line for each  
       chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) != 3) { 
         DNAORG_FAIL("ERROR in $sub_name, unable to parse matpept input file line: $line\nline should have three tokens separated by whitespace", 1, $FH_HR); 
@@ -2556,6 +2557,7 @@ sub parseLengthFile {
     #HM448898.1	2751
 
     chomp $line;
+    if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
     my ($orig_accn, $length) = split(/\s+/, $line);
     if($length !~ m/^\d+$/) { 
       DNAORG_FAIL("ERROR in $sub_name, couldn't parse length file line: $line", 1, $FH_HR); 
@@ -2667,6 +2669,7 @@ sub parseEdirectFtableFile {
   while(my $line = <IN>) { 
     $line_ctr++;
     chomp $line;
+    if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
     if($line =~ m/\w/) { 
       # parse each of the 4 line types differently
       # -------------------------------------------------------
@@ -3038,6 +3041,7 @@ sub parseListFile {
   while(my $line = <IN>) { 
     if($line =~ m/\w/) {  # skip blank lines
       chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
       if($do_accn) { 
         my $accn = $line;
         stripVersion(\$accn); # remove version from $accn
@@ -3114,6 +3118,7 @@ sub parseSpecStartFile {
       # NOTE: in the input file CDS and matpept indices are in the coordinate range 1..N, but we 
       # store them in the coordinate range 0..N-1
       chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) != 2) { 
         DNAORG_FAIL("ERROR in $sub_name, unable to parse specstart input file line: $line", 1, $FH_HR); 
