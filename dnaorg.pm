@@ -1066,8 +1066,8 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "olp", "feature",  0,             "feature does not overlap with same set of features as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "str", "feature",  0,             "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "stp", "feature",  1,             "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ajb", "feature",  0,             "mature peptide is not adjacent to same set of mature peptides before it as in reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "aja", "feature",  0,             "mature peptide is not adjacent to same set of mature peptides after it as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ajb", "feature",  0,             "feature (MP or CDS) is not adjacent to same set of features before it as in reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "aja", "feature",  0,             "feature (MP or CDS) is not adjacent to same set of features after it as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "trc", "feature",  0,             "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ext", "feature",  1,             "first in-frame stop codon exists 3' of stop position predicted by homology to reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,             "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
