@@ -2597,8 +2597,8 @@ sub results_calculate_predicted_lengths {
             $cumlen += $len;
             $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}     = $len;
             $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}  = $cumlen;
-          }     
-        }         
+          }        
+        }
       }
     }
   }
@@ -2811,6 +2811,21 @@ sub results_calculate_corrected_stops {
           # determine the new length of the prediction, this is the old length plus the correction (which is negative)
           $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
           $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+          # first_mdl_idx should be the first model for which we have a prediction
+          while(! exists $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]{"p_start"}) { 
+            $first_mdl_idx++; 
+            if($first_mdl_idx > $final_mdl_idx) { 
+              DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine first model for feature $ftr_idx (%s) for sequence $seq_name. trc error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
+            }
+          }
+          # final_mdl_idx should be the final model for which we have a prediction
+          while(! exists $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_start"}) { 
+            $final_mdl_idx--; 
+            if($final_mdl_idx < $first_mdl_idx) { 
+              DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine final model for feature $ftr_idx (%s) for sequence $seq_name. trc error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
+            }
+          }
+
           $newlen = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{$cumlen_key} + $len_corr;
           # careful: the length correction is with respect to the full feature (potentially multiple models (e.g. exons))
           # so it can be as high as the cumulative length of all model predictions, so we need to adjust the length 
@@ -3723,7 +3738,7 @@ sub ftr_results_calculate {
             DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{len} does not exist, but it should.", 1, $FH_HR); 
           }
           if(! exists $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"cumlen"}) { 
-            DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{cum_len} does not exist, but it should.", 1, $FH_HR); 
+            DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{cumlen} does not exist, but it should.", 1, $FH_HR); 
           }
           if(! exists $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"append_stop"}) { 
             DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{append_stop} does not exist, but it should.", 1, $FH_HR); 

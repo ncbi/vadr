@@ -1077,7 +1077,12 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", $FH_HR);
 
   # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
-  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
+# nop incompatibilities were set as in following line up until 05/16/16, when I realized that
+# a nop in one exon or segment of a multi-model segment (e.g. one exon of a 2-exon feature) 
+# could have a nop and the other could have the other errors. May want to revisit this
+# at some point.
+#  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
+  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "aji,int,inp", $FH_HR); 
   setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext", $FH_HR);
   setIncompatibilityErrorInfoHash($err_info_HAR, "trc", "ext,nst,aji,inp", $FH_HR);
 
