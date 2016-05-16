@@ -724,19 +724,45 @@ getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_H
 
 my $ftr_idx;  # counter over features
 for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-  my $mdl_idx = undef;  # index of final model corresponding to the current feature
-  if($ftr_info_HA{"annot_type"}[$ftr_idx] eq "model") { 
-    $mdl_idx = $ftr_info_HA{"final_mdl"}[$ftr_idx];
-  }
-  elsif($ftr_info_HA{"annot_type"}[$ftr_idx] eq "multifeature") { 
-    my @primary_children_idx_A = ();
-    getPrimaryOrAllChildrenFromFeatureInfo(\%ftr_info_HA, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HH{"FH"});
-    $mdl_idx = $ftr_info_HA{"final_mdl"}[$primary_children_idx_A[(scalar(@primary_children_idx_A)-1)]];
-  }
   foreach my $seq_name (keys %{$err_ftr_instances_AHH[$ftr_idx]{"ext"}}) { 
-    my $seq_idx       = $seq_name_index_H{$seq_name};
+    my $seq_idx = $seq_name_index_H{$seq_name};
     my $seq_len       = $seq_info_HA{"seq_len"}[$seq_idx];   # differs from accn_len when the sequence is circular and dulicated
     my $accn_len      = $seq_info_HA{"accn_len"}[$seq_idx];  # original length of the sequence without any duplication
+
+    # determine the model nearest to the end of the current feature, for which we have a prediction
+    my $mdl_idx = undef;  
+    if($ftr_info_HA{"annot_type"}[$ftr_idx] eq "model") { 
+      $mdl_idx = $ftr_info_HA{"final_mdl"}[$ftr_idx];
+      while(! exists $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"}) { 
+        $mdl_idx--;
+        if($mdl_idx < $ftr_info_HA{"first_mdl"}[$ftr_idx]) { 
+          DNAORG_FAIL(sprintf("ERROR ext error exists for $seq_name ftr: %s, but unable to find a model for this feature for which we have a prediction...", 
+                              $ftr_info_HA{"out_tiny"}[$ftr_idx]), 1, $ofile_info_HH{"FH"});
+        }
+      }
+    }
+    elsif($ftr_info_HA{"annot_type"}[$ftr_idx] eq "multifeature") { 
+      my @primary_children_idx_A = ();
+      getPrimaryOrAllChildrenFromFeatureInfo(\%ftr_info_HA, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HH{"FH"});
+      my $child_idx     = scalar(@primary_children_idx_A)-1;
+      my $child_ftr_idx = $primary_children_idx_A[$child_idx];
+      $mdl_idx = $ftr_info_HA{"final_mdl"}[$child_ftr_idx];
+      while(! exists $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"}) { 
+        $mdl_idx--;
+        if($mdl_idx < $ftr_info_HA{"first_mdl"}[$child_ftr_idx]) { 
+          # out of models for this child, decrement child_idx and redefine $child_ftr_idx and $mdl_idx
+          $child_idx--;
+          if($child_idx < 0) { 
+            DNAORG_FAIL(sprintf("ERROR ext error exists for $seq_name ftr: %s, but unable to find a model for this feature for which we have a prediction...", 
+                                $ftr_info_HA{"out_tiny"}[$ftr_idx]), 1, $ofile_info_HH{"FH"});
+          }
+          $child_ftr_idx = $primary_children_idx_A[$child_idx];
+          $mdl_idx = $ftr_info_HA{"final_mdl"}[$child_ftr_idx];
+        }
+      }
+    }
+    # printf("ext error for $seq_name ftr_idx: $ftr_idx %s mdl_idx: $mdl_idx\n", $ftr_info_HA{"out_tiny"}[$ftr_idx]);
+
     my $cur_start     = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"};
     my $cur_stop      = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_stop"};
     my $cur_strand    = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_strand"};
@@ -1885,6 +1911,7 @@ sub combine_feature_hits {
   my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
+
   my ($out_key, $seq_name_AR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
@@ -1892,6 +1919,8 @@ sub combine_feature_hits {
   my $ftr_info_file_key        = $out_key . ".hits.fa";
   my $ftr_info_append_file_key = $out_key . ".hits.append.fa";
   my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
+
+  # printf("in $sub_name, out_key: $out_key, ftr_info_file_key: $ftr_info_file_key\n");
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features annotated by models
@@ -1988,7 +2017,7 @@ sub combine_sequences {
   # initialize arrays
   for(my $seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
     $seq_name_coords_A[$seq_idx]   = "";
-    $seq_name_fetch_me_A[$seq_idx] = -1; # set to 0 or 1 in for($f) loop below
+    $seq_name_fetch_me_A[$seq_idx] = -1; # set to 0 or 1 in for($file_idx) loop below
     @{$seq_name2sqfile_sqname_map_AA[$seq_idx]} = ();
     for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
       $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = -1; # updated in block below if $seq_idx exists in $file_idx
@@ -2040,7 +2069,11 @@ sub combine_sequences {
 
   # update values in @seq_name_fetch_me_A
   for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
-    $seq_name_fetch_me_A[$seq_idx] = ($seq_name_fetch_me_A[$seq_idx] == -2) ? 0 : 1;
+    # 3 possibilities: 
+    #   $seq_name_fetch_me_A[$seq_idx] >=  0: if $seq_idx existed in >= 1 files, and did exist in a contiguous subset starting at file_idx 0
+    #   $seq_name_fetch_me_A[$seq_idx] == -2: if $seq_idx existed in >= 1 files, but not in a contiguous subset of files starting at file_idx 0
+    #   $seq_name_fetch_me_A[$seq_idx] == -1: if $seq_idx existed in    0 files
+    $seq_name_fetch_me_A[$seq_idx] = ($seq_name_fetch_me_A[$seq_idx] >= 0) ? 1 : 0;
   } 
 
   # now for each seq_name that we want to fetch, fetch all subsequences for that 
@@ -5815,10 +5848,10 @@ sub output_tbl_all_sequences {
               push(@cur_out_A, sprintf(" %6s", "NP")); # length
               if((! $is_matpept) && ($do_ss3))  { push(@cur_out_A, "  NP"); } # ss3
               if((! $is_matpept) && ($do_stop)) { push(@cur_out_A, sprintf(" %3s", "NP")); } # stop
+              $pass_fail_char = "F";
+              push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
+              $pass_fail_str .= $pass_fail_char;
             }
-            $pass_fail_char = "F";
-            push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
-            $pass_fail_str .= $pass_fail_char;
           }
         } # end of 'for(my $mdl_idx'
       } # end of 'else' entered if feature is not a multifeature cds-mp

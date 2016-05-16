@@ -1829,7 +1829,7 @@ sub wrapperGetInfoUsingEdirect {
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
     if(! exists $accn_len_H{$accn_name}) { 
-      DNAORG_FAIL("ERROR in $sub_name, problem fetching length of reference accession $ref_accn", 1, $FH_HR); 
+      DNAORG_FAIL("ERROR in $sub_name, problem fetching length of accession $accn_name", 1, $FH_HR); 
     }
     $seq_info_HAR->{"accn_len"}[$seq_idx] = $accn_len_H{$accn_name};
   }
