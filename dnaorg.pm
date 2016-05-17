@@ -1930,11 +1930,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   my $ref_accn      = $seq_info_HAR->{"accn_name"}[0]; # the reference accession
   my $fetch_file    = sprintf($out_root . "%s.fg.idfetch.in", ($have_only_ref) ? ".ref" : "");  # the esl_fetch_cds.pl input file we are about to create
   my $fasta_file    = sprintf($out_root . "%s.fg.fa",         ($have_only_ref) ? ".ref" : "");  # the fasta file we are about to create
-  # remove the .ssi files if they exist
-  my $ssi_file = $fasta_file . ".ssi";
-  if(-e $ssi_file) { 
-    runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
-  }
+
   @{$seq_info_HAR->{"seq_name"}} = ();
   if(! opt_Get("--skipfetch", $opt_HHR)) { 
     fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR, $FH_HR);
@@ -1947,6 +1943,11 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   }
   
   # open the sequence file using Bio-Easel
+  # remove the .ssi file first, if it exists
+  my $ssi_file = $fasta_file . ".ssi";
+  if(-e $ssi_file) { 
+    runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
+  }
   $$sqfile_R = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
 
   if(opt_Get("--skipfetch", $opt_HHR)) { 

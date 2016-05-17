@@ -2028,6 +2028,11 @@ sub combine_sequences {
     validateFileExistsAndIsNonEmpty($seq_file, $indi_file_AR->[$file_idx], $FH_HR);
 
     # create the Bio::Easel object
+    # first remove any old .ssi files that may exist
+    my $ssi_file = $indi_file_AR->[$file_idx] . ".ssi";
+    if(-e $ssi_file) { 
+      removeFileUsingSystemRm($ssi_file, $sub_name, $opt_HHR, $FH_HR);
+    }
     $sqfile_A[$file_idx] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$file_idx] });
     @{$sqname_AA[$file_idx]} = ();
 
@@ -7063,6 +7068,11 @@ sub align_protein_sequences {
     my $hmmstk_file   = $ftr_info_HAR->{$ftr_info_hmmstk_file_key}[$ftr_idx];
 
     # fetch the reference sequence only 
+    # first remove any old .ssi files that may exist
+    my $ssi_file = $fa_file . ".ssi";
+    if(-e $ssi_file) { 
+      removeFileUsingSystemRm($ssi_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+    }
     my $prot_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $fa_file });
     my $ref_prot_str = $prot_sqfile->fetch_consecutive_seqs(1, "", -1, undef); # the reference protein sequence string
     my ($ref_prot_name, $ref_prot_seq) = split(/\n/, $ref_prot_str);
