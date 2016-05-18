@@ -576,7 +576,8 @@ sub getReferenceFeatureInfo {
 #  $sqfile:            Bio::Easel::SqFile object, the sequence file we'll fetch from, already opened by caller
 #  $ref_seq_accn:      sequence accession of reference
 #  $ref_totlen:        length of reference 
-#  $out_root:          root of output name files
+#  $out_root:          root of output file names
+#  $build_root:        root of file names created by dnaorg_build.pl
 #  $mdl_info_HAR:      ref to hash of arrays with information on the models, FILLED HERE
 #  $ftr_info_HAR:      ref to hash of arrays with information on the features, ADDED TO HERE
 #  $all_stk_file:      name of output file we will write the stockholm single sequence 
@@ -590,10 +591,10 @@ sub getReferenceFeatureInfo {
 #################################################################
 sub fetchReferenceFeatureSequences {
   my $sub_name = "fetchReferenceFeatureSequences()";
-  my $nargs_expected = 10;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $sqfile, $ref_seq_accn, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR) = @_;
+  my ($execs_HR, $sqfile, $ref_seq_accn, $ref_totlen, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR) = @_;
 
   # contract check
 
@@ -610,9 +611,13 @@ sub fetchReferenceFeatureSequences {
   my $do_circular = opt_Get("-c", $opt_HHR); # are we allowing circular genomes?
   my $esl_reformat = $execs_HR->{"esl-reformat"};
 
-  my $cur_out_root;
-  my $cur_name_root;
-  my $dir_tail = removeScriptNameFromString(removeDirPath($out_root)); # remove the directory path and any 'script-specific name', e.g. 'dnaorg_build'
+  my $cur_out_root;        # output root plus the name of a current file 
+  my $cur_out_name_root;   # same as $cur_out_root minus the directory path
+  my $out_dir_tail = removeScriptNameFromString(removeDirPath($out_root)); # remove the directory path and any 'script-specific name', e.g. 'dnaorg_build'
+
+  my $cur_build_root;      # build root plus the name of a current file 
+  my $cur_build_name_root; # same as $cur_build_root minus the directory path
+  my $build_dir_tail = removeScriptNameFromString(removeDirPath($build_root)); # remove the directory path and any 'script-specific name', e.g. 'dnaorg_build'
   my $fetch_input;
   my $fetch_output;
   my $nmdl = 0;               # number of HMMs (and alignments used to build those HMMs)
@@ -652,12 +657,16 @@ sub fetchReferenceFeatureSequences {
 
       for(my $e = 0; $e < $nexons; $e++) { 
         if($nexons > 1) { 
-          $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . $ftr_type_idx . ".exon." . ($e+1);
-          $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . $ftr_type_idx . ".exon." . ($e+1);
+          $cur_out_root        = $out_root .       ".ref." . $cds_or_mp . "." . $ftr_type_idx . ".exon." . ($e+1);
+          $cur_out_name_root   = $out_dir_tail .   ".ref." . $cds_or_mp . "." . $ftr_type_idx . ".exon." . ($e+1);
+          $cur_build_root      = $build_root .     ".ref." . $cds_or_mp . "." . $ftr_type_idx . ".exon." . ($e+1);
+          $cur_build_name_root = $build_dir_tail . ".ref." . $cds_or_mp . "." . $ftr_type_idx . ".exon." . ($e+1);
         }
         else { 
-          $cur_out_root  = $out_root . ".ref." . $cds_or_mp . "." . $ftr_type_idx;
-          $cur_name_root = $dir_tail . ".ref." . $cds_or_mp . "." . $ftr_type_idx;
+          $cur_out_root        = $out_root .       ".ref." . $cds_or_mp . "." . $ftr_type_idx;
+          $cur_out_name_root   = $out_dir_tail .   ".ref." . $cds_or_mp . "." . $ftr_type_idx;
+          $cur_build_root      = $build_root .     ".ref." . $cds_or_mp . "." . $ftr_type_idx;
+          $cur_build_name_root = $build_dir_tail . ".ref." . $cds_or_mp . "." . $ftr_type_idx;
         }
     
         # determine start and stop of the region we are going to fetch
@@ -679,7 +688,7 @@ sub fetchReferenceFeatureSequences {
         }
         else { 
           # $do_infasta is false, fetch the sequence
-          push(@fetch_AA, [$cur_name_root, $start, $stop, $ref_seq_accn]);
+          push(@fetch_AA, [$cur_out_name_root, $start, $stop, $ref_seq_accn]);
 
           # fetch the sequence
           my $cur_fafile = $cur_out_root . ".fa";
@@ -694,7 +703,7 @@ sub fetchReferenceFeatureSequences {
     
           # annotate the stockholm file with a blank SS and with a name
           my $cur_named_stkfile = $cur_out_root . ".named.stk";
-          ($mdllen, $cksum) = addNameAndBlankSsToStockholmAlignment($cur_name_root, 1, $cur_stkfile, $cur_named_stkfile, $FH_HR); # 1: add blank SS_cons line
+          ($mdllen, $cksum) = addNameAndBlankSsToStockholmAlignment($cur_out_name_root, 1, $cur_stkfile, $cur_named_stkfile, $FH_HR); # 1: add blank SS_cons line
           if(! $do_keep) { push(@files2rm_A, $cur_named_stkfile); }
           
           # now append the named alignment to the growing stockholm alignment database $all_stk_file
@@ -704,7 +713,7 @@ sub fetchReferenceFeatureSequences {
           runCommand($cmd, 0, $FH_HR);
         }
 
-        $mdl_info_HAR->{"cmname"}[$nmdl]     = $cur_name_root;
+        $mdl_info_HAR->{"cmname"}[$nmdl]     = $cur_build_name_root;
         $mdl_info_HAR->{"checksum"}[$nmdl]   = $cksum;
         $mdl_info_HAR->{"length"}[$nmdl]     = $mdllen;
         $mdl_info_HAR->{"ref_start"}[$nmdl]  = $start;
@@ -1912,6 +1921,7 @@ sub wrapperGetInfoUsingEdirect {
 #                           esl_fetch_cds Perl script, PRE-FILLED
 #   $sqfile_R:              REF to a Bio::Easel::SqFile object, CREATED HERE
 #   $out_root:              string that is the 'root' for naming output files
+#   $build_root:            string that is the 'root' for files possibly already created with dnaorg_build.pl (may be same as $out_root)
 #   $ref_accn:              reference accession
 #   $infasta_file:          name of input fasta file, should be undef unless --infasta enabled
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
@@ -1937,10 +1947,10 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAllSequencesAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAllSequencesAndProcessReferenceSequence()";
-  my $nargs_expected = 14;
+  my $nargs_expected = 15;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $sqfile_R, $out_root, $ref_accn, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $sqfile_R, $out_root, $build_root, $ref_accn, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
   
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -1983,6 +1993,9 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
 
   if($do_infasta) { 
     $fasta_file = $infasta_file;
+    # this may not actually be the input fasta file provided on the dnaorg_annotate.pl command line,
+    # if -c was enabled then the process_input_fasta_file() function will have created a new file
+    # that includes the duplicate of all the sequences in that user provided file
   }
   else { # $do_infasta is false 
     $fetch_file = sprintf($out_root . "%s.fg.idfetch.in", ($have_only_ref) ? ".ref" : "");  # the esl_fetch_cds.pl input file we are about to create
@@ -2001,7 +2014,12 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
       addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (fetched on previous run (--skipfetch))");
     }
     else { # $do_infasta is true
-      addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (supplied with --infasta)");
+      if(opt_Get("-c", $opt_HHR)) { 
+        addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (supplied with --infasta)");
+      }
+      else { 
+        addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (same sequences as supplied with --infasta, but all seqs are duplicated)");
+      }
     }
   }  
 
@@ -2025,7 +2043,10 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $nseq; $sqfile_seq_idx++) { 
       my ($seq_name, $seq_len) = $$sqfile_R->fetch_seq_name_and_length_given_ssi_number($sqfile_seq_idx);
       my $accn_name = undef;
-      if($do_infasta) { 
+      if($do_infasta && (! opt_Get("-c", $opt_HHR))) { 
+        # if --infasta and -c, then we are fetching directly from the --infasta file, else 
+        # we created the file we care fetching from, and so we need to determine the
+        # accession from the sequence name using accn_name_from_seq_name().
         $accn_name = $seq_name;
         stripVersion(\$accn_name);
       }
@@ -2055,7 +2076,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   my $all_stk_file = $out_root . ".ref.all.stk";     # name of output alignment file we are about to create, each single reference feature 
                                                      # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
                                                      # separate alignments, one per feature
-  fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
+  fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_totlen, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
   if(! $do_infasta) { 
     addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, 0, "Stockholm alignment file with reference features");
   }

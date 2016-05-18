@@ -536,10 +536,15 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
 #  5) parses the edirect .ftable file
 #  6) parses the length file
 
+my $orig_infasta_file = $infasta_file;
+my $outfasta_file     = (opt_Get("-c", \%opt_HH)) ? $out_root . ".fg.fa" : undef;
 if(defined $infasta_file) { 
   wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH,
                              \%opt_HH, $ofile_info_HH{"FH"}); 
-  $nseq = process_input_fasta_file($infasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
+  $nseq = process_input_fasta_file($infasta_file, $outfasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
+  if(defined $outfasta_file) { # this will be true if -c
+    $infasta_file = $outfasta_file; 
+  }
 }
 else { # --infasta not used (default)
   wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH,
@@ -571,7 +576,7 @@ my $sqfile = undef;    # pointer to the Bio::Easel::SqFile object we'll open in 
 #   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $ref_accn,
+wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $build_root, $ref_accn,
                                                     $infasta_file, # will be undef unless --infasta used
                                                     \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
@@ -592,7 +597,7 @@ if($nseq != validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $
     # validateSequenceInfoHashComplete() will die in error.
   }
   else { # --infasta enabled 
-    DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $infasta_file (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), 1, $ofile_info_HH{"FH"});
+    DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $orig_infasta_file (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), 1, $ofile_info_HH{"FH"});
   }
 }    
 
@@ -605,8 +610,7 @@ my $model_file = opt_Get("--model", \%opt_HH);     # this will be undefined unle
 if(! defined $model_file) { 
   # -model not used, make sure we already have the CM DB file from
   # an earlier dnaorg_build.pl run. 
-  $model_file = $out_root . ".ref.cm";
-  $model_file =~ s/\dnaorg\_annotate/dnaorg\_build/; # we name this file dnaorg_build, not dnaorg_annotate
+  $model_file = $build_root . ".ref.cm";
   if(! -s $model_file) { 
     # the model file does not (yet) exist. This is probably the first
     # time we've run dnaorg_annotate.pl and we have several individual
@@ -614,7 +618,7 @@ if(! defined $model_file) {
     # farm. In this case, we concatenate the individual files to
     # create one CM database.
     $start_secs = outputProgressPrior("Creating CM database by concatenating individual CM files", $progress_w, $log_FH, *STDOUT);
-    concatenate_individual_cm_files($model_file, $out_root, \%opt_HH, \%ofile_info_HH);
+    concatenate_individual_cm_files($model_file, $build_root, \%opt_HH, \%ofile_info_HH);
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
 }
@@ -1269,9 +1273,8 @@ sub concatenate_individual_cm_files {
 
   # concatenate the files into a CM DB
   my $cat_cmd = "cat";
-  my $out_root_no_dnaorg_annotate = removeScriptNameFromString($out_root); # this removes 'dnaorg_annotate' from $out_root
   for(my $i = 0; $i < $nmdl; $i++) { 
-    my $indi_model = $out_root_no_dnaorg_annotate . ".dnaorg_build.ref.$i.cm"; # dnaorg_build created the CMs
+    my $indi_model = $out_root . ".ref.$i.cm"; # dnaorg_build created the CMs
     if(! -s ($indi_model)) { 
       DNAORG_FAIL("ERROR, model database file $combined_model_file does not exist, nor does individual model file $indi_model.\nDid you run 'dnaorg_build.pl $ref_accn' -- it doesn't seem like you have.", 1, $FH_HR);
     }
@@ -1406,8 +1409,8 @@ sub validate_cms_built_from_reference {
     DNAORG_FAIL(sprintf("ERROR in $sub_name, different number of models (%d) and reference features (%d). $common_errmsg", $i, $nmodel_cksum), 1, $FH_HR); 
   }
 
-  # delete the checksum file, unless -d used (in which case we don't remove intermediate files) 
-  if(! opt_Get("-d", $opt_HHR)) { 
+  # delete the checksum file, unless --keep used (in which case we don't remove intermediate files) 
+  if(! opt_Get("--keep", $opt_HHR)) { 
     unlink $cksum_file;
   }
   else { 
@@ -7488,13 +7491,27 @@ sub accn_name_from_seq_name {
 #            $seq_info_HAR->{"accn_len"}[$i]
 #            for sequences $i=1..N.
 #
+#            If -c is enabled, then we also create a 
+#            new fasta file, that includes all of the
+#            sequences in $infasta_file, duplicated.
+#            (That is, if a sequence is:
+#             >seq1
+#             AGC
+#             then it will become
+#             >seq1-duplicated
+#             AGCAGC
+#             in the new file).
+#
 # Arguments:
 #  $infasta_file:  name of the input fasta file
+#  $outfasta_file: name of the output fasta file to create with duplicates of seqs from $infasta_file,
+#                  undef if we don't want to do this (if -c *not* enabled)
+#  $out_root:      root for naming output files
 #  $seq_info_HAR:  REF to hash of arrays of sequence information, added to here
 #  $opt_HHR:       REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:         REF to hash of file handles
 #  
-# Returns:  Number of sequences in $infasta_file.
+# Returns:  Number of sequences read in $infasta_file.
 # 
 # Dies: If $seq_info_HAR->{"accn_len"} and $seq_info_HAR->{"accn_name"} 
 #       are not both arrays of exactly length 1 (with information on 
@@ -7503,16 +7520,32 @@ sub accn_name_from_seq_name {
 #       If the same sequence exists more than once in the input sequence
 #       file.
 #
+#       If $outfasta_file is defined and -c is not enabled.
+#
+#       If -c is enabled and $outfasta_file is not defined.
+#
 #################################################################
 sub process_input_fasta_file { 
   my $sub_name = "process_input_fasta_file";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($infasta_file, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($infasta_file, $outfasta_file, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
 
   my %accn_exists_H = ();  # keeps track of which accessions have been read from the sequence file
   my $err_flag = 0;        # changed to '1' if an accession exists more than once in the input fasta file
+
+  my $do_out = (defined $outfasta_file) ? 1 : 0;
+  if($do_out && (! opt_Get("-c", $opt_HHR))) { 
+    DNAORG_FAIL("ERROR in $sub_name, outfasta_file is defined, but -c not enabled", 1, $FH_HR);
+  }
+  if((! $do_out) && (opt_Get("-c", $opt_HHR))) { 
+    DNAORG_FAIL("ERROR in $sub_name, outfasta_file is not defined, but -c is enabled", 1, $FH_HR);
+  }
+    
+  if($do_out) { 
+    open(OUT, ">", $outfasta_file) || fileOpenFailure($outfasta_file, $sub_name, $!, "writing", $FH_HR);
+  }
 
   my $ssi_file = $infasta_file . ".ssi";
   if(-e $ssi_file) { 
@@ -7531,6 +7564,15 @@ sub process_input_fasta_file {
       push(@{$seq_info_HAR->{"accn_name"}}, $accn);
       push(@{$seq_info_HAR->{"accn_len"}}, $len);
 
+      if($do_out) { 
+        # output the sequence if necessary
+        my $outaccn = $accn . ":genome-duplicated:$accn:1:$len:+:$accn:1:$len:+"; # this mimics esl-fetch-cds.pl
+        print OUT ">" . $outaccn . "\n";
+        # print out sequence in 100-nt-per-line chunks
+        print OUT $seq . "\n";
+        print OUT $seq . "\n";
+      }
+
       if(exists $accn_exists_H{$accn}) {
         $accn_exists_H{$accn}++;
         $err_flag = 1;
@@ -7542,6 +7584,10 @@ sub process_input_fasta_file {
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unable to parse fasta sequence string $next_fasta_str", 1, $FH_HR);
     }
+  }
+
+  if($do_out) { 
+    close OUT;
   }
 
   # fail if we found an accession more than once in $infasta_file
