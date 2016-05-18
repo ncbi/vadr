@@ -226,23 +226,28 @@ $opt_group_desc_H{"2"} = "options for alternative modes";
 opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--skipedirect,--skipfetch",   "<listfile> is a fasta file of sequences, not a list of accessions", "<listfile> is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
 opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"3"} = "options for skipping/adding optional stages";
+$opt_group_desc_H{"3"} = "options that modify the tabular output file";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
-opt_Add("--doalign",    "boolean", 0,                       3,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
+opt_Add("--tblfirst",    "boolean", 0,                      3,    undef,   undef,   "put first accession first on each .tbl page", "include annotation for first accession on each page of .tbl output file", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"4"} = "optional output files";
-#       option       type       default                group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                        4,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
-opt_Add("--ftrinfo",    "boolean", 0,                        4,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--seqinfo",    "boolean", 0,                        4,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
-opt_Add("--errinfo",    "boolean", 0,                        4,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{"4"} = "options for skipping/adding optional stages";
+#       option               type   default                group  requires incompat preamble-output                             help-output    
+opt_Add("--doalign",    "boolean", 0,                       4,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"5"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
+
+$opt_group_desc_H{"5"} = "optional output files";
+#       option       type       default                  group  requires incompat  preamble-output                          help-output    
+opt_Add("--mdlinfo",    "boolean", 0,                        5,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--ftrinfo",    "boolean", 0,                        5,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--seqinfo",    "boolean", 0,                        5,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
+opt_Add("--errinfo",    "boolean", 0,                        5,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"6"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
 #     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       5,   undef,      "--nseq,--local,--wait",  "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                       5,   undef,      "--nseq,--local,--wait",  "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                       5,   undef,      "--nseq,--local,--wait",  "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                       5,"--skipscan",  undef,                    "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipedirect",   "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",      "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skiptranslate", "boolean", 0,                       6,"--skipscan",  undef,                    "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
@@ -270,6 +275,8 @@ my $options_okay =
 # options for alternative modes
                 'infasta'      => \$GetOptions_H{"--infasta"},
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
+# options that affect tabular output file
+                'tblfirst'     => \$GetOptions_H{"--tblfirst"},
 # options for skipping/adding optional stages
                 'doalign'      => \$GetOptions_H{"--doalign"},
 # optional output files
@@ -5688,7 +5695,10 @@ sub output_tbl_all_sequences {
   my $do_exist    = 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
   my $do_matpept  = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
 
-  my $nseqcol     = 10; # number of sequences we print per page
+#  my $nseqcol     = 10; # number of sequences we print per page
+  my $nseqcol     = 3; # number of sequences we print per page
+  my $do_tblfirst = (opt_Get("--tblfirst", $opt_HHR)) ? 1 : 0; 
+  my $act_nseqcol = $do_tblfirst ? $nseqcol-1 : $nseqcol;
 
   # the possible values for the ss3 output (start/stop/multiple-of-3)
   my $ss3_yes_char    = "."; 
@@ -6045,7 +6055,7 @@ sub output_tbl_all_sequences {
     print $tblsum_FH ("$accn_name $pass_fail_str_with_spaces\n");
 
     # actually output the information to the relevant file handles
-    if($seq_idx == 0) { 
+    if(($seq_idx == 0) && $do_tblfirst) { 
       # copy reference info if this is the reference
       @ref_out_A = @cur_out_A; 
     } 
@@ -6062,23 +6072,23 @@ sub output_tbl_all_sequences {
         $cur_err_pagesize++;
       }        
     }
-    if(($cur_pagesize+1) == $nseqcol) { 
+    if($cur_pagesize == $act_nseqcol) { 
       $npages++;
-      output_tbl_page_of_sequences($FH_HR->{"tbl"}, \@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages, $FH_HR);
+      output_tbl_page_of_sequences($FH_HR->{"tbl"}, \@out_row_header_A, \@page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $npages, $FH_HR);
       @page_out_AA = ();
       $cur_pagesize = 0;
     }
     if($accn_failed && 
-       (($cur_fail_pagesize+1) == $nseqcol)) { 
+       ($cur_fail_pagesize == $act_nseqcol)) { 
       $nfail_pages++;
-      output_tbl_page_of_sequences($FH_HR->{"failtbl"}, \@out_row_header_A, \@fail_page_out_AA, \@ref_out_A, $nfail_pages, $FH_HR);
+      output_tbl_page_of_sequences($FH_HR->{"failtbl"}, \@out_row_header_A, \@fail_page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $nfail_pages, $FH_HR);
       @fail_page_out_AA = ();
       $cur_fail_pagesize = 0;
     }
     if(($seq_info_HAR->{"nerrors"}[$seq_idx] > 0) && 
-       (($cur_err_pagesize+1) == $nseqcol)) { 
+       ($cur_err_pagesize == $act_nseqcol)) { 
       $nerr_pages++;
-      output_tbl_page_of_sequences($FH_HR->{"errtbl"}, \@out_row_header_A, \@err_page_out_AA, \@ref_out_A, $nerr_pages, $FH_HR);
+      output_tbl_page_of_sequences($FH_HR->{"errtbl"}, \@out_row_header_A, \@err_page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $nerr_pages, $FH_HR);
       @err_page_out_AA = ();
       $cur_err_pagesize = 0;
     }
@@ -6086,15 +6096,15 @@ sub output_tbl_all_sequences {
   # print final page (if non-empty)
   if($cur_pagesize > 0) { 
     $npages++;
-    output_tbl_page_of_sequences($FH_HR->{"tbl"}, \@out_row_header_A, \@page_out_AA, \@ref_out_A, $npages, $FH_HR);
+    output_tbl_page_of_sequences($FH_HR->{"tbl"}, \@out_row_header_A, \@page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $npages, $FH_HR);
   }
   if($cur_fail_pagesize > 0) { 
     $nfail_pages++;
-    output_tbl_page_of_sequences($FH_HR->{"failtbl"}, \@out_row_header_A, \@fail_page_out_AA, \@ref_out_A, $nfail_pages, $FH_HR);
+    output_tbl_page_of_sequences($FH_HR->{"failtbl"}, \@out_row_header_A, \@fail_page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $nfail_pages, $FH_HR);
   }
   if($cur_err_pagesize > 0) { 
     $nerr_pages++;
-    output_tbl_page_of_sequences($FH_HR->{"errtbl"}, \@out_row_header_A, \@err_page_out_AA, \@ref_out_A, $nerr_pages, $FH_HR);
+    output_tbl_page_of_sequences($FH_HR->{"errtbl"}, \@out_row_header_A, \@err_page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $nerr_pages, $FH_HR);
   }
 
   return $tot_nfail;
@@ -6111,7 +6121,8 @@ sub output_tbl_all_sequences {
 #  $header_AR:     reference to array of row headers
 #  $out_AAR:       reference to the 2D array of output tokens for
 #                  current sequences for the page
-#  $ref_out_AR:    reference to array of output tokens for reference
+#  $ref_out_AR:    reference to array of output tokens for 1st column 
+#                  (e.g. the reference), undef to skip
 #  $page_idx:      page number
 #  $FH_HR:         REF to hash of file handles
 #
@@ -6128,6 +6139,7 @@ sub output_tbl_page_of_sequences {
   my ($FH, $header_AR, $out_AAR, $ref_out_AR, $page_idx, $FH_HR) = @_;
 
   my $nseq = scalar(@{$out_AAR});
+  if(defined $ref_out_AR) { $nseq++; }
   my $AR; # reference to current array we are printing
 
   my @cwidth_A = (); # max width of each column (max width of all tokens for each sequence) 
@@ -6136,9 +6148,10 @@ sub output_tbl_page_of_sequences {
 
   # first, make sure all sequences have same number of output tokens as we have row headers,
   # and determine maximum width of all tokens for each sequence
-  for(my $i = 0; $i <= $nseq; $i++) { 
-    # first column is reference, then come the other seqs
-    $AR = ($i == 0) ? $ref_out_AR : \@{$out_AAR->[$i-1]}; 
+  for(my $i = 0; $i < $nseq; $i++) { 
+    # if $ref_out_AR is defined: first column is reference, then come the other seqs
+    my $ip = (defined $ref_out_AR) ? $i-1 : $i;
+    $AR = ((defined $ref_out_AR) && ($i == 0)) ? $ref_out_AR : \@{$out_AAR->[$ip]}; 
     $cwidth_A[$i] = 0;
     $ntok = scalar(@{$AR});
     if($ntok != $nrow) { 
@@ -6155,7 +6168,7 @@ sub output_tbl_page_of_sequences {
       }
     }
   }
-  for(my $i = 0; $i <= $nseq; $i++) { 
+  for(my $i = 0; $i < $nseq; $i++) { 
     $cwidth_A[$i] += 2; # add 2 spaces for in-between sequence columns (the two spaces to the right of each column)
   }
 
@@ -6170,9 +6183,10 @@ sub output_tbl_page_of_sequences {
 
   for(my $r = 0; $r < $nrow; $r++) { 
     printf $FH ("%-*s", $hwidth, $header_AR->[$r]);
-    for(my $i = 0; $i <= $nseq; $i++) { 
-      # first column is reference, then come the other seqs
-      $AR = ($i == 0) ? $ref_out_AR : \@{$out_AAR->[$i-1]}; 
+    for(my $i = 0; $i < $nseq; $i++) { 
+      # if $ref_out_AR is defined: first column is reference, then come the other seqs
+      my $ip = (defined $ref_out_AR) ? $i-1 : $i;
+      $AR = ((defined $ref_out_AR) && ($i == 0)) ? $ref_out_AR : \@{$out_AAR->[$ip]}; 
       $el = $AR->[$r];
       $el =~ s/\s+//g;
       printf $FH ("%*s", $cwidth_A[$i], $AR->[$r]);
