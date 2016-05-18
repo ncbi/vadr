@@ -369,7 +369,6 @@ else { # --infasta used
     $ref_accn = opt_Get("--refaccn", \%opt_HH);
     stripVersion(\$ref_accn);
     # initialize the sequence info hash of arrays
-    @{$seq_info_HA{"accn_name"}} = ($ref_accn);
   }
 }
 
@@ -540,14 +539,7 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
 if(defined $infasta_file) { 
   wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH,
                              \%opt_HH, $ofile_info_HH{"FH"}); 
-  process_input_fasta_file($infasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
-  if(exists $ofile_info_HH{"FH"}{"seqinfo"}) { 
-    dumpInfoHashOfArrays("Sequence information (%seq_info_HA)", 0, \%seq_info_HA, $ofile_info_HH{"FH"}{"seqinfo"});
-  }
-  else { 
-    die "use --seqinfo";
-  }
-  exit 0;
+  $nseq = process_input_fasta_file($infasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
 }
 else { # --infasta not used (default)
   wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH,
@@ -579,26 +571,30 @@ my $sqfile = undef;    # pointer to the Bio::Easel::SqFile object we'll open in 
 #   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, \%cds_tbl_HHA,
+wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $ref_accn,
+                                                    $infasta_file, # will be undef unless --infasta used
+                                                    \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
                                                     ($do_matpept) ? \@cds2amatpept_AA : undef, 
                                                     \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, 
                                                     \%opt_HH, \%ofile_info_HH);
-if(defined $infasta_file) { 
-; # HERE HERE HERE fetch_sequences_from_fasta_file($infasta_sqfile, \%seq_info_HA, $ofile_info_HH{"FH"}); 
-}
 
 # verify our model, feature, and sequence info hashes are complete, 
 # if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
 my $nftr = validateFeatureInfoHashIsComplete  (\%ftr_info_HA, undef, $ofile_info_HH{"FH"}); # nftr: number of features
 my $nmdl = validateModelInfoHashIsComplete    (\%mdl_info_HA, undef, $ofile_info_HH{"FH"}); # nmdl: number of homology models
 if($nseq != validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"})) { 
-  DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $listfile (%d)", $nseq, validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"})), 1, $ofile_info_HH{"FH"});
-}
-# $seq_info_HA won't have any duplicate accessions because it was initially filled by parseListFile()
-# which dies if any duplicates are found. However, if somehow there were duplicates in %seq_info_HA,
-# validateSequenceInfoHashComplete() will die in error.
+  if(defined $listfile) { 
+    DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $listfile (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), $ofile_info_HH{"FH"});
+    # $seq_info_HA won't have any duplicate accessions because it was initially filled by parseListFile()
+    # which dies if any duplicates are found. However, if somehow there were duplicates in %seq_info_HA,
+    # validateSequenceInfoHashComplete() will die in error.
+  }
+  else { # --infasta enabled 
+    DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $infasta_file (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), 1, $ofile_info_HH{"FH"});
+  }
+}    
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -645,8 +641,13 @@ if($do_press) {
 # a non-RefSeq sequence got promoted to become a RefSeq; in that
 # RefSeq promotion case, the accession name will change and the script
 # has to be rerun
-$start_secs = outputProgressPrior("Verifying CM database created for current reference $ref_accn", $progress_w, $log_FH, *STDOUT);
-validate_cms_built_from_reference($model_file, \%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
+if(defined $infasta_file) { 
+  $start_secs = outputProgressPrior("Skipping verification that CMs created for current reference $ref_accn (--infasta)", $progress_w, $log_FH, *STDOUT);
+}
+else { 
+  $start_secs = outputProgressPrior("Verifying CM database created for current reference $ref_accn", $progress_w, $log_FH, *STDOUT);
+  validate_cms_built_from_reference($model_file, \%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
+}
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###################################################################
@@ -1381,7 +1382,7 @@ sub validate_cms_built_from_reference {
   my $i = 0;
   my $nmodel_cksum    = scalar(@{$mdl_info_HAR->{"checksum"}});
   my $mismatch_errmsg = ""; # we'll fill this with error messages about any checksum mismatches we find
-  my $common_errmsg   = "This may mean that the GenBank annotation for the reference sequence changed since dnaorg_build.pl was run to create the CMs. Rerun dnaorg_build.pl";
+  my $common_errmsg   = "This may mean that the GenBank annotation for the reference sequence changed since dnaorg_build.pl was run to create the CMs. Rerun dnaorg_build.pl.";
 
   while(my $cksum = <CKSUM>) { 
     if($i >= $nmodel_cksum) { 
@@ -1390,15 +1391,14 @@ sub validate_cms_built_from_reference {
     chomp $cksum;
     if($cksum =~ m/\r$/) { chop $cksum; } # remove ^M if it exists
     if($cksum != $mdl_info_HAR->{"checksum"}[$i]) { 
-      if($mismatch_errmsg ne "") { $mismatch_errmsg .= ", "; }
-      $mismatch_errmsg .= "CM #%d checksum %d != alignment checksum: %d";
+      $mismatch_errmsg .= sprintf("CM #%d checksum %d != alignment checksum: %d\n", $i+1, $cksum, $mdl_info_HAR->{"checksum"}[$i]);
     }
     $i++;
   }
   close(CKSUM);
-
+  
   if($mismatch_errmsg ne "") { 
-    DNAORG_FAIL("ERROR in $sub_name, checksum mismatch(es): ($mismatch_errmsg). $common_errmsg", 1, $FH_HR);
+    DNAORG_FAIL("ERROR in $sub_name, checksum mismatch(es):\n$mismatch_errmsg\n$common_errmsg", 1, $FH_HR);
   }
 
   # make sure we checked all the models
@@ -7494,7 +7494,7 @@ sub accn_name_from_seq_name {
 #  $opt_HHR:       REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:         REF to hash of file handles
 #  
-# Returns:  void
+# Returns:  Number of sequences in $infasta_file.
 # 
 # Dies: If $seq_info_HAR->{"accn_len"} and $seq_info_HAR->{"accn_name"} 
 #       are not both arrays of exactly length 1 (with information on 
@@ -7514,23 +7514,12 @@ sub process_input_fasta_file {
   my %accn_exists_H = ();  # keeps track of which accessions have been read from the sequence file
   my $err_flag = 0;        # changed to '1' if an accession exists more than once in the input fasta file
 
-  if((! @{$seq_info_HAR->{"accn_len"}}) || 
-     (scalar(@{$seq_info_HAR->{"accn_len"}}) != 1)) { 
-    DNAORG_FAIL("ERROR in $sub_name, seq_info_HAR does not have exactly 1 value for the accn_len array.", 1, $FH_HR);
-  }
-  if((! @{$seq_info_HAR->{"accn_name"}}) || 
-     (scalar(@{$seq_info_HAR->{"accn_name"}}) != 1)) { 
-    DNAORG_FAIL("ERROR in $sub_name, seq_info_HAR does not have exactly 1 value for the accn_name array.", 1, $FH_HR);
-  }
-    
   my $ssi_file = $infasta_file . ".ssi";
   if(-e $ssi_file) { 
     runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
   }
   my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infasta_file }); # the sequence file object
   my $nseq = $sqfile->nseq_ssi;
-
-  printf("nseq: $nseq\n");
 
   for(my $i = 0; $i < $nseq; $i++) { 
     my $next_fasta_str = $sqfile->fetch_consecutive_seqs(1, "", -1);
@@ -7569,6 +7558,6 @@ sub process_input_fasta_file {
     DNAORG_FAIL($errmsg, 1, $FH_HR);
   }
 
-  return;
+  return $nseq;
 }
 

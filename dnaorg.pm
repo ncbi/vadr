@@ -540,13 +540,18 @@ sub getReferenceFeatureInfo {
 #           from and populate data structures with information on
 #           features and models.
 #
+#           As a special case, if --infasta enabled, we don't actually
+#           fetch any of the reference sequences, but we do populate
+#           the data structures with information on the features
+#           and models.
+#
 #           The following values are filled in the %{$mdl_info_HAR}:
-#                "checksum":    checksum of the 'alignment' (single sequence) file the model was built from
-#                "cmname":      name of the model, used in infernal output 
-#                "length":      length, in nucleotides, of the model
-#                "ref_start":   start position of modelled region in the reference genome
-#                "ref_stop":    stop position of modelled region in the reference genome
-#                "ref_strand":  strand of modelled region in the reference genome
+#                "checksum":      checksum of the 'alignment' (single sequence) file the model was built from
+#                "cmname":        name of the model, used in infernal output 
+#                "length":        length, in nucleotides, of the model
+#                "ref_start":     start position of modelled region in the reference genome
+#                "ref_stop":      stop position of modelled region in the reference genome
+#                "ref_strand":    strand of modelled region in the reference genome
 #                "filename_root": 'root' string for output file names related to this model: 
 #                "out_tiny":      output value: very short name for this model (e.g. "CDS#4.2")
 #                "map_ftr":       the feature index (array index in ftr_info_HAR) this model models
@@ -591,10 +596,15 @@ sub fetchReferenceFeatureSequences {
   my ($execs_HR, $sqfile, $ref_seq_accn, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR) = @_;
 
   # contract check
+
   # ftr_info_HAR should have array data for keys "ref_coords", "ref_strand"
   my @reqd_ftr_info_A  = ("ref_coords", "ref_strand", "annot_type");
   my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
   my $nftr_with_models = getNumFeaturesAnnotatedByModels($ftr_info_HAR, $FH_HR);
+
+  # determine if we read the sequences from a provided fasta file
+  # if this is true, we won't fetch the reference sequences
+  my $do_infasta   = (opt_Exists("--infasta",   $opt_HHR) && opt_Get("--infasta",   $opt_HHR)) ? 1 : 0;
 
   my $do_keep     = opt_Get("--keep", $opt_HHR); # should we leave intermediates files on disk, instead of removing them?
   my $do_circular = opt_Get("-c", $opt_HHR); # are we allowing circular genomes?
@@ -658,25 +668,41 @@ sub fetchReferenceFeatureSequences {
           $start = $stop;
           $stop  = $tmp;
         }
-        my @fetch_AA = ();
-    
-        push(@fetch_AA, [$cur_name_root, $start, $stop, $ref_seq_accn]);
-    
-        # fetch the sequence
-        my $cur_fafile = $cur_out_root . ".fa";
-        $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
-        if(! $do_keep) { push(@files2rm_A, $cur_fafile); }
 
-        # reformat to stockholm
-        my $cur_stkfile = $cur_out_root . ".stk";
-        my $cmd = "$esl_reformat --informat afa stockholm $cur_fafile > $cur_stkfile";
-        runCommand($cmd, 0, $FH_HR);
-        if(! $do_keep) { push(@files2rm_A, $cur_stkfile); }
+        my @fetch_AA = ();
+        my $cksum  = undef;
+        my $mdllen = undef;
+        if($do_infasta) { 
+          # do not actually fetch any sequence
+          $cksum  = -1; 
+          $mdllen = abs($stop-$start)+1;
+        }
+        else { 
+          # $do_infasta is false, fetch the sequence
+          push(@fetch_AA, [$cur_name_root, $start, $stop, $ref_seq_accn]);
+
+          # fetch the sequence
+          my $cur_fafile = $cur_out_root . ".fa";
+          $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
+          if(! $do_keep) { push(@files2rm_A, $cur_fafile); }
+          
+          # reformat to stockholm
+          my $cur_stkfile = $cur_out_root . ".stk";
+          my $cmd = "$esl_reformat --informat afa stockholm $cur_fafile > $cur_stkfile";
+          runCommand($cmd, 0, $FH_HR);
+          if(! $do_keep) { push(@files2rm_A, $cur_stkfile); }
     
-        # annotate the stockholm file with a blank SS and with a name
-        my $cur_named_stkfile = $cur_out_root . ".named.stk";
-        my ($mdllen, $cksum) = addNameAndBlankSsToStockholmAlignment($cur_name_root, 1, $cur_stkfile, $cur_named_stkfile, $FH_HR); # 1: add blank SS_cons line
-        if(! $do_keep) { push(@files2rm_A, $cur_named_stkfile); }
+          # annotate the stockholm file with a blank SS and with a name
+          my $cur_named_stkfile = $cur_out_root . ".named.stk";
+          ($mdllen, $cksum) = addNameAndBlankSsToStockholmAlignment($cur_name_root, 1, $cur_stkfile, $cur_named_stkfile, $FH_HR); # 1: add blank SS_cons line
+          if(! $do_keep) { push(@files2rm_A, $cur_named_stkfile); }
+          
+          # now append the named alignment to the growing stockholm alignment database $all_stk_file
+          $cmd = "cat $cur_named_stkfile";
+          if($nmdl == 0) { $cmd .= " >  $all_stk_file"; }
+          else           { $cmd .= " >> $all_stk_file"; }
+          runCommand($cmd, 0, $FH_HR);
+        }
 
         $mdl_info_HAR->{"cmname"}[$nmdl]     = $cur_name_root;
         $mdl_info_HAR->{"checksum"}[$nmdl]   = $cksum;
@@ -692,11 +718,6 @@ sub fetchReferenceFeatureSequences {
                                                      (($cds_or_mp eq "mp") ? "MP" : "CDS"), 
                                                      ($nexons == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
         
-        # now append the named alignment to the growing stockholm alignment database $all_stk_file
-        $cmd = "cat $cur_named_stkfile";
-        if($nmdl == 0) { $cmd .= " >  $all_stk_file"; }
-        else           { $cmd .= " >> $all_stk_file"; }
-        runCommand($cmd, 0, $FH_HR);
 
         $mdl_info_HAR->{"map_ftr"}[$nmdl]    = $i;
         $mdl_info_HAR->{"is_first"}[$nmdl]   = ($e == 0)           ? 1 : 0;
@@ -1725,13 +1746,9 @@ sub wrapperGetInfoUsingEdirect {
 
   # should we skip the edirect calls?
   # Yes, if either --skipedirect or --infasta options have been used.
-  my $do_skip = 0;
-  if(opt_Exists("--skipedirect", $opt_HHR) && opt_Get("--skipedirect", $opt_HHR)) { 
-    $do_skip = 1;
-  }
-  if(opt_Exists("--infasta", $opt_HHR) && opt_Get("--infasta", $opt_HHR)) { 
-    $do_skip = 1;
-  }
+  my $do_skipedirect = (opt_Exists("--skipedirect", $opt_HHR) && opt_Get("--skipedirect", $opt_HHR)) ? 1 : 0;
+  my $do_infasta     = (opt_Exists("--infasta", $opt_HHR)     && opt_Get("--infasta", $opt_HHR))     ? 1 : 0;
+  my $do_skip = ($do_skipedirect || $do_infasta) ? 1 : 0;
 
   my $have_listfile = (defined $listfile) ? 1 : 0;
   if(defined $listfile) { 
@@ -1831,20 +1848,21 @@ sub wrapperGetInfoUsingEdirect {
     DNAORG_FAIL("ERROR in $sub_name, no CDS information stored for reference accession", 1, $FH_HR); 
   }
 
-  # 6) parse the length file, and store accession lengths in $seq_info_HAR
-  my %accn_len_H = ();
-
-  parseLengthFile($len_file, \%accn_len_H, $FH_HR);
-  my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
-  if($nseq == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, no accessions in seq_info_HAR", 1, $FH_HR); 
-  }
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    if(! exists $accn_len_H{$accn_name}) { 
-      DNAORG_FAIL("ERROR in $sub_name, problem fetching length of accession $accn_name", 1, $FH_HR); 
+  # 6) parse the length file, and store accession lengths in $seq_info_HAR, unless --infasta was enabled
+  if(! $do_infasta){ 
+    my %accn_len_H = ();
+    parseLengthFile($len_file, \%accn_len_H, $FH_HR);
+    my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
+    if($nseq == 0) { 
+      DNAORG_FAIL("ERROR in $sub_name, no accessions in seq_info_HAR", 1, $FH_HR); 
     }
-    $seq_info_HAR->{"accn_len"}[$seq_idx] = $accn_len_H{$accn_name};
+    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
+      if(! exists $accn_len_H{$accn_name}) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem fetching length of accession $accn_name", 1, $FH_HR); 
+      }
+      $seq_info_HAR->{"accn_len"}[$seq_idx] = $accn_len_H{$accn_name};
+    }
   }
 
   return 0;
@@ -1894,6 +1912,8 @@ sub wrapperGetInfoUsingEdirect {
 #                           esl_fetch_cds Perl script, PRE-FILLED
 #   $sqfile_R:              REF to a Bio::Easel::SqFile object, CREATED HERE
 #   $out_root:              string that is the 'root' for naming output files
+#   $ref_accn:              reference accession
+#   $infasta_file:          name of input fasta file, should be undef unless --infasta enabled
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
 #   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
 #   $cds2pmatpept_AAR:      REF to 2D array, 1st dim: cds index (-1, off-by-one), 
@@ -1917,10 +1937,10 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAllSequencesAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAllSequencesAndProcessReferenceSequence()";
-  my $nargs_expected = 12;
+  my $nargs_expected = 14;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $sqfile_R, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $sqfile_R, $out_root, $ref_accn, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
   
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -1932,24 +1952,59 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     DNAORG_FAIL("ERROR in $sub_name, contract violation, mp_tbl_HHAR variable is not defined but cds2pmatpept_AAR variable is", 1, $FH_HR);
   }
 
+  # determine which one of the three possible modes we are in:
+  # (1) default:     fetching sequences using esl-fetch-cds.pl (which calls idfetch)
+  # (2) --skipfetch: not fetching, instead using sequences fetched in a previous run 
+  # (3) --infasta:   not fetching, instead using sequences in $infasta_file
+
+  my $do_skipfetch = (opt_Exists("--skipfetch", $opt_HHR) && opt_Get("--skipfetch", $opt_HHR)) ? 1 : 0;
+  my $do_infasta   = (opt_Exists("--infasta",   $opt_HHR) && opt_Get("--infasta",   $opt_HHR)) ? 1 : 0;
+
+  # make sure that at most one of --skipfetch and --infasta are enabled
+  if($do_skipfetch && $do_infasta) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract violation, both --skipfetch and --infasta options are enabled, only one should be", 1, $FH_HR);
+  }
+
+  # if $do_infasta, make sure $infasta_file is defined, if (! $do_infasta), make sure that it is not defined
+  if($do_infasta) { 
+    if(! defined $infasta_file) { 
+      DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option enabled but <infasta_file> is not defined", 1, $FH_HR);
+    }
+  }
+  elsif(defined $infasta_file) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option NOT enabled but <infasta_file> is defined", 1, $FH_HR);
+  }
+
   # 1) fetch the sequences into a fasta file and index that fasta file
   my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
-  my $have_only_ref = ($nseq == 1) ? 1 : 0;            # '1' if we only have the reference
-  my $ref_accn      = $seq_info_HAR->{"accn_name"}[0]; # the reference accession
-  my $fetch_file    = sprintf($out_root . "%s.fg.idfetch.in", ($have_only_ref) ? ".ref" : "");  # the esl_fetch_cds.pl input file we are about to create
-  my $fasta_file    = sprintf($out_root . "%s.fg.fa",         ($have_only_ref) ? ".ref" : "");  # the fasta file we are about to create
+  my $have_only_ref = ($nseq == 1) ? 1 : 0; # '1' if we only have the reference
+  my $fetch_file    = undef;
+  my $fasta_file    = undef;
+
+  if($do_infasta) { 
+    $fasta_file = $infasta_file;
+  }
+  else { # $do_infasta is false 
+    $fetch_file = sprintf($out_root . "%s.fg.idfetch.in", ($have_only_ref) ? ".ref" : "");  # the esl_fetch_cds.pl input file we are about to create
+    $fasta_file = sprintf($out_root . "%s.fg.fa",         ($have_only_ref) ? ".ref" : "");  # the fasta file we are about to create
+  }
 
   @{$seq_info_HAR->{"seq_name"}} = ();
-  if(! opt_Get("--skipfetch", $opt_HHR)) { 
+  if((! $do_skipfetch) && (! $do_infasta)) { 
     fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR, $FH_HR);
     addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, 0, "Input file for esl-fetch-cds.pl");
-    addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file with reference genome");
+    addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (fetched with esl-fetch-cds.pl)");
   }
-  else { # --skipfetch enabled
+  else { 
     validateFileExistsAndIsNonEmpty($fasta_file, $sub_name, $FH_HR);
-    addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file with reference genome");
-  }
-  
+    if($do_skipfetch) { 
+      addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (fetched on previous run (--skipfetch))");
+    }
+    else { # $do_infasta is true
+      addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (supplied with --infasta)");
+    }
+  }  
+
   # open the sequence file using Bio-Easel
   # remove the .ssi file first, if it exists
   my $ssi_file = $fasta_file . ".ssi";
@@ -1958,8 +2013,8 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   }
   $$sqfile_R = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
 
-  if(opt_Get("--skipfetch", $opt_HHR)) { 
-    # --skipfetch enabled, so we never called 
+  if($do_skipfetch || $do_infasta) { 
+    # --skipfetch or --infasta enabled, so we never called 
     # fetchSequencesUsingEslFetchCds() above.
     # We need to fill $seq_info_HAR->{"seq_name"} and $seq_info_HAR->{"seq_len"}
     # get index hash for @{$seq_info_HAR->{"seq_accn"}} array
@@ -1969,7 +2024,14 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     getIndexHashForArray($seq_info_HAR->{"accn_name"}, \%accn_name_idx_H, $FH_HR);
     for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $nseq; $sqfile_seq_idx++) { 
       my ($seq_name, $seq_len) = $$sqfile_R->fetch_seq_name_and_length_given_ssi_number($sqfile_seq_idx);
-      my $accn_name = accn_name_from_seq_name($seq_name, $FH_HR);
+      my $accn_name = undef;
+      if($do_infasta) { 
+        $accn_name = $seq_name;
+        stripVersion(\$accn_name);
+      }
+      else { 
+        $accn_name = accn_name_from_seq_name($seq_name, $FH_HR);
+      }
       if(! exists $accn_name_idx_H{$accn_name}) { 
         DNAORG_FAIL("ERROR in $sub_name, accession $accn_name derived from sqfile seq name: $seq_name does not exist in seq_info_HAR", 1, $ofile_info_HHR->{"FH"});
       }
@@ -1994,7 +2056,9 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
                                                      # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
                                                      # separate alignments, one per feature
   fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_totlen, $out_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
-  addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, 0, "Stockholm alignment file with reference features");
+  if(! $do_infasta) { 
+    addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, 0, "Stockholm alignment file with reference features");
+  }
 
   # 5) look for special cases, where we want to append the 3 nt 3' of the final mature peptide in a cds-mp feature type
   annotateAppendFeatures($ftr_info_HAR, $mdl_info_HAR, $FH_HR);
