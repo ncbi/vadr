@@ -208,8 +208,9 @@ $opt_group_desc_H{"1"} = "basic options";
 #     option            type       default               group   requires incompat    preamble-output                                 help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                          "display this help",                                  \%opt_HH, \@opt_order_A);
 opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is closed (a.k.a. circular)",           "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
-opt_Add("-d",           "string",  undef,                    1,    undef, undef,      "directory specified as",                       "specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                   "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as",                "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirbuild",   "string",  undef,                    1,"--dirout",undef,      "output directory used for dnaorg_build.pl",    "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,      "identify origin seq <s> in genomes",           "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",         "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
@@ -220,23 +221,28 @@ opt_Add("--local",      "boolean", 0,                        1,    undef, undef,
 opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"2"} = "options for skipping/adding optional stages";
+$opt_group_desc_H{"2"} = "options for alternative modes";
+#       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
+opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--skipedirect,--skipfetch",   "<listfile> is a fasta file of sequences, not a list of accessions", "<listfile> is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
+opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"3"} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
-opt_Add("--doalign",    "boolean", 0,                       2,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
+opt_Add("--doalign",    "boolean", 0,                       3,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"3"} = "optional output files";
+$opt_group_desc_H{"4"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                        3,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
-opt_Add("--ftrinfo",    "boolean", 0,                        3,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--seqinfo",    "boolean", 0,                        3,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
-opt_Add("--errinfo",    "boolean", 0,                        3,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
+opt_Add("--mdlinfo",    "boolean", 0,                        4,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--ftrinfo",    "boolean", 0,                        4,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--seqinfo",    "boolean", 0,                        4,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
+opt_Add("--errinfo",    "boolean", 0,                        4,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"4"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
+$opt_group_desc_H{"5"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
 #     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       4,   undef,      "--nseq,--local,--wait",  "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                       4,   undef,      "--nseq,--local,--wait",  "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                       4,   undef,      "--nseq,--local,--wait",  "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                       4,"--skipscan",  undef,                    "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipedirect",   "boolean", 0,                       5,   undef,      "--nseq,--local,--wait",  "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                       5,   undef,      "--nseq,--local,--wait",  "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",      "boolean", 0,                       5,   undef,      "--nseq,--local,--wait",  "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skiptranslate", "boolean", 0,                       5,"--skipscan",  undef,                    "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
@@ -245,21 +251,25 @@ my $usage    = "Usage: dnaorg_annotate.pl [-options] <file with list of accessio
 my $synopsis = "dnaorg_annotate.pl :: annotate sequences based on a reference annotation";
 
 my $options_okay = 
-    &GetOptions('h'             => \$GetOptions_H{"-h"}, 
+    &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
-                'c'             => \$GetOptions_H{"-c"},
-                'd=s'           => \$GetOptions_H{"-d"},
-                'f'             => \$GetOptions_H{"-f"},
-                'v'             => \$GetOptions_H{"-v"},
-                'origin=s'      => \$GetOptions_H{"--origin"},
-                'matpept=s'     => \$GetOptions_H{"--matpept"},
-                'nomatpept'     => \$GetOptions_H{"--nomatpept"},
-                'specstart=s'   => \$GetOptions_H{"--specstart"},
-                'keep'          => \$GetOptions_H{"--keep"},
-                'model=s'       => \$GetOptions_H{"--model"}, 
-                'local'         => \$GetOptions_H{"--local"}, 
-                'nseq=s'        => \$GetOptions_H{"--nseq"}, 
-                'wait=s'        => \$GetOptions_H{"--wait"},
+                'c'            => \$GetOptions_H{"-c"},
+                'f'            => \$GetOptions_H{"-f"},
+                'v'            => \$GetOptions_H{"-v"},
+                'dirout=s'     => \$GetOptions_H{"--dirout"},
+                'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
+                'origin=s'     => \$GetOptions_H{"--origin"},
+                'matpept=s'    => \$GetOptions_H{"--matpept"},
+                'nomatpept'    => \$GetOptions_H{"--nomatpept"},
+                'specstart=s'  => \$GetOptions_H{"--specstart"},
+                'keep'         => \$GetOptions_H{"--keep"},
+                'model=s'      => \$GetOptions_H{"--model"}, 
+                'local'        => \$GetOptions_H{"--local"}, 
+                'nseq=s'       => \$GetOptions_H{"--nseq"}, 
+                'wait=s'       => \$GetOptions_H{"--wait"},
+# options for alternative modes
+                'infasta'      => \$GetOptions_H{"--infasta"},
+                'refaccn=s'    => \$GetOptions_H{"--refaccn"},
 # options for skipping/adding optional stages
                 'doalign'      => \$GetOptions_H{"--doalign"},
 # optional output files
@@ -279,7 +289,7 @@ my $date          = scalar localtime();
 my $version       = "0.1";
 my $releasedate   = "Apr 2016";
 
-# make *STDOUT file handle 'hot' so it automatically flushes whenever
+# make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
 select *STDOUT;
 $| = 1;
@@ -317,8 +327,16 @@ if(opt_IsUsed("--origin", \%opt_HH)) {
   $origin_seq =~ s/\|//; # remove the single "|"
 }
 
-my $dir        = opt_Get("-d", \%opt_HH);          # this will be undefined unless -d set on cmdline
+my $dir_build  = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
+my $dir_out    = opt_Get("--dirout",   \%opt_HH);  # this will be undefined unless --dirout set on cmdline
 my $do_matpept = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --matpept set on cmdline 
+
+# if --infasta used, $listfile is actually a fasta file
+my $infasta_file = undef;
+if(opt_Get("--infasta", \%opt_HH)) { 
+  $infasta_file = $listfile;
+  $listfile = undef;
+}
 
 ###############
 # Preliminaries
@@ -326,40 +344,90 @@ my $do_matpept = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --m
 # first, parse the list file, we need to do this first because we need
 # to know what the reference accession <refaccn> is to check if the
 # directory <refaccn> exists
+my $cmd;               # a command to run with runCommand()
+my @early_cmd_A = ();  # array of commands we run before our log file is opened
 my %seq_info_HA = ();  # hash of arrays, values are arrays with index range [0..$nseq-1];
                        # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
                        # $seq_info_HA{"accn_name"}[0] is our reference accession
 @{$seq_info_HA{"accn_name"}} = ();
-parseListFile($listfile, 1, $seq_info_HA{"accn_name"}, undef); # 1 
-my $nseq = scalar(@{$seq_info_HA{"accn_name"}});
-my $ref_accn = $seq_info_HA{"accn_name"}[0];
 
-my $dir_set_as_ref_accn = 0;
-if(! defined $dir) { 
-  $dir = $ref_accn;
-  $dir_set_as_ref_accn = 1;
+my $nseq = 0;
+my $ref_accn = undef;
+if(! defined $infasta_file) { # default mode
+  parseListFile($listfile, 1, $seq_info_HA{"accn_name"}, undef); # 1 
+  $nseq = scalar(@{$seq_info_HA{"accn_name"}});
+  $ref_accn = $seq_info_HA{"accn_name"}[0];
 }
-
-# make sure that $dir exists
-if(! -d $dir) {
-  if($dir_set_as_ref_accn) { 
-    DNAORG_FAIL("ERROR, directory $dir (first accession read from $listfile) does not exist.\nDid you run \"dnaorg_build.pl $dir\" yet? If not, you need to do that first.", 1, undef);
+else { # --infasta used
+  if(! (opt_Get("--refaccn", \%opt_HH))) { 
+    # we should never get here, because epn-options.pm should have enforced that
+    # --refaccn and --infasta were both used if one was, but we do a second check
+    # here just to make sure
+    DNAORG_FAIL("ERROR, --infasta requires --refaccn", 1, undef);
   }
   else { 
-    DNAORG_FAIL("ERROR, directory $dir (specified with -d) does not exist.\nDid you run \"dnaorg_build.pl\" yet? If not, you need to do that first.", 1, undef);
+    $ref_accn = opt_Get("--refaccn", \%opt_HH);
+    stripVersion(\$ref_accn);
+    # initialize the sequence info hash of arrays
+    @{$seq_info_HA{"accn_name"}} = ($ref_accn);
   }
 }
 
-my $dir_tail = $dir;
-$dir_tail =~ s/^.+\///; # remove all but last dir
-my $out_root = $dir . "/" . $dir_tail . ".dnaorg_annotate";
+# determine the directory in which dnaorg_build files are in ($dir_build)
+# it will already be defined if --dirbuild was used
+if(! defined $dir_build) { 
+  $dir_build = $ref_accn;
+  if(! -d $dir_build) {
+    DNAORG_FAIL(sprintf("ERROR, directory $dir_build (%s) does not exist.\nDid you run \"dnaorg_build.pl $dir_build\" yet? If not, you need to do that first.", opt_IsUsed("--refaccn", \%opt_HH) ? "specified with --refaccn" : "first accession from in $listfile"), 1, undef);
+  }
+}
+else { # --dirbuild was used on the command line
+  # currently --dirbuild requires --dirout (enforced by epn-options.pm) but we double
+  # check that if --dirbuild is on, then --dirout must be too here (just to be safe)
+  if(! defined $dir_out) { 
+    DNAORG_FAIL("ERROR the --dirbuild option requires the --dirout option be used also", 1, undef);
+  }
+  if(! -d $dir_build) {
+    DNAORG_FAIL("ERROR, directory $dir_build (specified with --dirbuild) does not exist.\nDid you run \"dnaorg_build.pl --dirout $dir_build\" yet? If not, you need to do that first.", 1, undef);
+  }
+}
+
+# determine the directory we'll put output files in,
+# it will already be defined if --dirout was used
+if(! defined $dir_out) { 
+  $dir_out = $ref_accn;
+}
+# if $dir_out does not exist, create it
+if(! -d $dir_out) {
+  runCommand("mkdir $dir_out", opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd);
+}
+
+my $dir_out_tail   = $dir_out;
+my $dir_build_tail = $dir_build;
+$dir_out_tail   =~ s/^.+\///; # remove all but last dir
+$dir_build_tail =~ s/^.+\///; # remove all but last dir
+my $out_root   = $dir_out .   "/" . $dir_out_tail   . ".dnaorg_annotate";
+my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_build";
 
 #############################################
 # output program banner and open output files
 #############################################
 # output preamble
-my @arg_desc_A = ("file with list of accessions");
-my @arg_A      = ($listfile);
+my @arg_desc_A = ();
+my @arg_A      = ();
+
+if(defined $listfile) { 
+  push(@arg_desc_A, "file with list of accessions");
+  push(@arg_A, $listfile);
+}
+elsif(defined $infasta_file) { 
+  push(@arg_desc_A, "fasta file with sequences to annotate (--infasta)");
+  push(@arg_A, $infasta_file);
+}
+else { 
+  DNAORG_FAIL("ERROR, both listfile and infasta_file are undefined...", 1, undef);
+}
+
 outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -381,6 +449,7 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, "Out
 openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
+my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
@@ -401,6 +470,11 @@ if(opt_Get("--errinfo", \%opt_HH)) {
 # now we have the log file open, output the banner there too
 outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
+
+# output any commands we already executed to $log_FH
+foreach $cmd (@early_cmd_A) { 
+  print $cmd_FH $cmd . "\n";
+}
 
 ##############################################
 # parse the optional input files, if necessary
@@ -435,11 +509,14 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 ###########################################################################
 # Step 1. Gather and process information on reference genome using Edirect.
 ###########################################################################
-my $cmd;             # a command to run with runCommand()
 my $progress_w = 85; # the width of the left hand column in our progress output, hard-coded
-my $progress_str = (opt_Get("--skipedirect", \%opt_HH)) ? 
-    sprintf("Processing information on %d sequences fetched earlier using edirect", $nseq) : 
-    sprintf("Gathering information on %d sequences using edirect", $nseq);
+my $progress_str = sprintf("Gathering information on %d sequences using edirect", $nseq);
+if(opt_Get("--skipedirect", \%opt_HH)) { 
+  $progress_str = sprintf("Processing information on %d sequences fetched earlier using edirect", $nseq);
+}
+elsif(opt_Get("--infasta", \%opt_HH)) { 
+  $progress_str = "Processing input fasta file";
+}
 my $start_secs = outputProgressPrior($progress_str, $progress_w, $log_FH, *STDOUT);
 
 my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
@@ -459,8 +536,23 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
 #  4) parses the edirect .mat_peptide file, if necessary
 #  5) parses the edirect .ftable file
 #  6) parses the length file
-wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH,
-                           \%opt_HH, $ofile_info_HH{"FH"}); 
+
+if(defined $infasta_file) { 
+  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH,
+                             \%opt_HH, $ofile_info_HH{"FH"}); 
+  process_input_fasta_file($infasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
+  if(exists $ofile_info_HH{"FH"}{"seqinfo"}) { 
+    dumpInfoHashOfArrays("Sequence information (%seq_info_HA)", 0, \%seq_info_HA, $ofile_info_HH{"FH"}{"seqinfo"});
+  }
+  else { 
+    die "use --seqinfo";
+  }
+  exit 0;
+}
+else { # --infasta not used (default)
+  wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH,
+                             \%opt_HH, $ofile_info_HH{"FH"}); 
+}
 
 if($do_matpept) {  
   # validate the CDS:mat_peptide relationships that we read from the $matpept input file
@@ -493,6 +585,9 @@ wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_ro
                                                     ($do_matpept) ? \@cds2amatpept_AA : undef, 
                                                     \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, 
                                                     \%opt_HH, \%ofile_info_HH);
+if(defined $infasta_file) { 
+; # HERE HERE HERE fetch_sequences_from_fasta_file($infasta_sqfile, \%seq_info_HA, $ofile_info_HH{"FH"}); 
+}
 
 # verify our model, feature, and sequence info hashes are complete, 
 # if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
@@ -1039,7 +1134,7 @@ if(exists $ofile_info_HH{"FH"}{"errinfo"}) {
 ############
 
 $total_seconds += secondsSinceEpoch();
-outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
+outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 
 ###############
 # SUBROUTINES #
@@ -7379,5 +7474,101 @@ sub accn_name_from_seq_name {
   }
 
   return $accn_name;
+}
+
+#################################################################
+# Subroutine: process_input_fasta_file()
+# Incept:     EPN, Wed May 18 10:01:02 2016
+#
+# Purpose:   Given the name of the input fasta file
+#            (specified with --infasta), open the 
+#            file, and determine the lengths of all
+#            the N sequences in it. Fill 
+#            $seq_info_HAR->{"accn_name"}[$i] and
+#            $seq_info_HAR->{"accn_len"}[$i]
+#            for sequences $i=1..N.
+#
+# Arguments:
+#  $infasta_file:  name of the input fasta file
+#  $seq_info_HAR:  REF to hash of arrays of sequence information, added to here
+#  $opt_HHR:       REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:         REF to hash of file handles
+#  
+# Returns:  void
+# 
+# Dies: If $seq_info_HAR->{"accn_len"} and $seq_info_HAR->{"accn_name"} 
+#       are not both arrays of exactly length 1 (with information on 
+#       *only* the reference accession.)
+#       
+#       If the same sequence exists more than once in the input sequence
+#       file.
+#
+#################################################################
+sub process_input_fasta_file { 
+  my $sub_name = "process_input_fasta_file";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($infasta_file, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
+
+  my %accn_exists_H = ();  # keeps track of which accessions have been read from the sequence file
+  my $err_flag = 0;        # changed to '1' if an accession exists more than once in the input fasta file
+
+  if((! @{$seq_info_HAR->{"accn_len"}}) || 
+     (scalar(@{$seq_info_HAR->{"accn_len"}}) != 1)) { 
+    DNAORG_FAIL("ERROR in $sub_name, seq_info_HAR does not have exactly 1 value for the accn_len array.", 1, $FH_HR);
+  }
+  if((! @{$seq_info_HAR->{"accn_name"}}) || 
+     (scalar(@{$seq_info_HAR->{"accn_name"}}) != 1)) { 
+    DNAORG_FAIL("ERROR in $sub_name, seq_info_HAR does not have exactly 1 value for the accn_name array.", 1, $FH_HR);
+  }
+    
+  my $ssi_file = $infasta_file . ".ssi";
+  if(-e $ssi_file) { 
+    runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
+  }
+  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infasta_file }); # the sequence file object
+  my $nseq = $sqfile->nseq_ssi;
+
+  printf("nseq: $nseq\n");
+
+  for(my $i = 0; $i < $nseq; $i++) { 
+    my $next_fasta_str = $sqfile->fetch_consecutive_seqs(1, "", -1);
+    # get name and length of the sequence
+    if($next_fasta_str =~ /^\>(\S+).+\n(\S+)\n+$/) { 
+      my ($accn, $seq) = ($1, $2);
+      my $len = length($seq);
+      stripVersion(\$accn);
+      push(@{$seq_info_HAR->{"accn_name"}}, $accn);
+      push(@{$seq_info_HAR->{"accn_len"}}, $len);
+
+      if(exists $accn_exists_H{$accn}) {
+        $accn_exists_H{$accn}++;
+        $err_flag = 1;
+      }
+      else { 
+        $accn_exists_H{$accn} = 1;
+      }
+    }
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, unable to parse fasta sequence string $next_fasta_str", 1, $FH_HR);
+    }
+  }
+
+  # fail if we found an accession more than once in $infasta_file
+  my $errmsg = "";
+  if($err_flag) { 
+    $errmsg = "ERROR in $sub_name, the following accessions exist more than once in $infasta_file\nEach accession should exist only once.\n";
+    for(my $i = 0; $i < scalar(@{$seq_info_HAR->{"accn_name"}}); $i++) { 
+      my $accn = $seq_info_HAR->{"accn_name"}[$i];
+      if((exists $accn_exists_H{$accn}) && ($accn_exists_H{$accn} > 1)) { 
+        $errmsg .= "\t$accn ($accn_exists_H{$accn} occurrences)\n";
+        delete $accn_exists_H{$accn};
+      }
+    }
+    DNAORG_FAIL($errmsg, 1, $FH_HR);
+  }
+
+  return;
 }
 

@@ -1724,12 +1724,19 @@ sub wrapperGetInfoUsingEdirect {
   my $do_matpept = opt_IsOn("--matpept", $opt_HHR);
 
   # should we skip the edirect calls?
-  my $do_skip = (opt_Exists("--skipedirect", $opt_HHR) && opt_Get("--skipedirect", $opt_HHR)) ? 1 : 0;
+  # Yes, if either --skipedirect or --infasta options have been used.
+  my $do_skip = 0;
+  if(opt_Exists("--skipedirect", $opt_HHR) && opt_Get("--skipedirect", $opt_HHR)) { 
+    $do_skip = 1;
+  }
+  if(opt_Exists("--infasta", $opt_HHR) && opt_Get("--infasta", $opt_HHR)) { 
+    $do_skip = 1;
+  }
 
   my $have_listfile = (defined $listfile) ? 1 : 0;
   if(defined $listfile) { 
-    if(! -e $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile does not exist"); }
-    if(! -s $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile exists but is empty"); }
+    if(! -e $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile does not exist", 1, $FH_HR); }
+    if(! -s $listfile) { DNAORG_FAIL("ERROR in $sub_name, $listfile exists but is empty", 1, $FH_HR); }
   }
 
   # We create the .mat_peptide file first because we will die with an
@@ -1826,6 +1833,7 @@ sub wrapperGetInfoUsingEdirect {
 
   # 6) parse the length file, and store accession lengths in $seq_info_HAR
   my %accn_len_H = ();
+
   parseLengthFile($len_file, \%accn_len_H, $FH_HR);
   my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
   if($nseq == 0) { 
@@ -4228,7 +4236,7 @@ sub validateModelInfoHashIsComplete {
 #             in that array need not be in %{$seq_info_HAR}.
 #
 # Arguments:
-#   $seq_info_HAR:  REF to hash of arrays of model information
+#   $seq_info_HAR:  REF to hash of arrays of sequence information
 #   $exceptions_AR: REF to array of keys that may be excluded from the hash
 #   $opts_HHR:      REF to the 2D hash of command line options
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
