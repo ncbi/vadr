@@ -128,24 +128,30 @@ source /panfs/pan1/dnaorg/virseqannot/code/setup-environment.csh.sh
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.1 (Feb 2016)
+## dnaorg 0.1 (Apr 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Thu Mar 17 14:55:25 2016
+## date:    Fri May 20 11:12:49 2016
 ##
 #Usage: dnaorg_build.pl [-options] <reference accession>
-#
 #basic options:
 #  -c            : genome is circular
-#  -d <s>        : specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>
 #  -f            : force; if dir <reference accession> exists, overwrite it
 #  -v            : be verbose; output commands to stdout as they're run
+#  --dirout <s>  : specify output directory as <s>, not <ref accession>
 #  --matpept <s> : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
 #  --nomatpept   : ignore mat_peptide information in reference annotation
 #  --keep        : do not remove intermediate files, keep them all on disk
 #
-#options affecting window/hit definition:
-#  --slow  : use default cmcalibrate parameters, not parameters optimized for speed
-#  --local : run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm
+#options affecting calibration of models:
+#  --slow          : use default cmcalibrate parameters, not parameters optimized for speed
+#  --local         : run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm
+#  --nosubmit      : do not submit cmcalibrate jobs to farm, run later with qsub script
+#  --rammult       : for all models, multiply RAM Gb by ncpu for mem_free
+#  --bigthresh <n> : set minimum length for a big model to <n> [3000]
+#  --bigram <n>    : for big models, set Gb RAM per core for calibration to <n> [8]
+#  --biglen <x>    : for big models, set cmcalibrate length to search in Mb as <x> [0.16]
+#  --bigncpu <n>   : for big models, set number of CPUs for calibration to <n> [8]
+#  --bigtailp <x>  : for big models, set --tailp cmcalibrate parameter as <x> [0.30]
 #
 #optional output files:
 #  --mdlinfo : create file with internal model information
@@ -154,7 +160,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 #options for skipping stages and use files from earlier, identical run, primarily useful for debugging:
 #  --skipedirect : skip the edirect steps, use data from an earlier run of the script
 #  --skipfetch   : skip the sequence fetching steps, use files from an earlier run of the script
-#
+#  --skipbuild   : skip the model building/calibrating, requires --mdlinfo and/or --ftrinfo
 ######
 #
 # dnaorg_annotate.pl should be run after dnaorg_build.pl is finished
@@ -169,20 +175,30 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 # passed into dnaorg_build.pl should be the first accession listed 
 # in the .ntlist file.
 #
-# See the example runs below for more detailed instructions.
+# See the example runs #1 and #2 below for more detailed instructions.
+#
+# Optionally, with the --infasta option, the user can provide a 
+# fasta file of sequences to annotate instead of a list of
+# accessions as the .ntlist file. This may be desirable because in 
+# this mode, none of the NCBI databases are accessed (for sequence
+# fetching, etc.). See 'example run #3' below for an example of 
+# running dnaorg_annotate.pl in this mode.
+#
 # 
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.1 (Feb 2016)
+## dnaorg 0.1 (Apr 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Thu Mar 17 14:56:55 2016
+## date:    Fri May 20 11:16:20 2016
 ##
 #Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>
 #
 #basic options:
-#  -c              : genome is circular
-#  -d <s>          : specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>
+#  -c              : genome is closed (a.k.a circular)
+#  -f              : force; if dir from --dirout exists, overwrite it
 #  -v              : be verbose; output commands to stdout as they're run
+#  --dirout <s>    : specify output directory as <s>, not <ref accession>
+#  --dirbuild <s>  : specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>
 #  --origin <s>    : identify origin seq <s> in genomes, put "|" at site of origin ("|" must be escaped, i.e. "\|"
 #  --matpept <s>   : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
 #  --nomatpept     : ignore mat_peptide information in reference annotation
@@ -191,10 +207,18 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 #  --model <s>     : use model file <s>
 #  --local         : run cmscan locally instead of on farm
 #  --nseq <n>      : set number of sequences for each cmscan farm job to <n> [5]
-#  --wait <n>      : allow <n> minutes for cmscan jobs on farm to finish [100]
+#  --wait <n>      : allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time [500]
+#
+#options for alternative modes:
+#  --infasta     : <listfile> is a fasta file of sequences, not a list of accessions
+#  --refaccn <s> : specify reference accession is <s> (must be used in combination with --infasta)
+#
+#options that modify the tabular output file:
+#  --tblfirst  : include annotation for first accession on each page of .tbl output file
+#  --tblnocomp : do not include information comparing predicted annotations to existing GenBank annotations
 #
 #options for skipping/adding optional stages:
-#  --noalign : skip the alignment steps
+#  --doalign : create nucleotide and protein alignments
 #
 #optional output files:
 #  --mdlinfo : create file with internal model information
@@ -202,18 +226,17 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 #  --seqinfo : create file with internal sequence information
 #  --errinfo : create file with internal error information
 #
-#options for skipping stages and use files from earlier, identical run, primarily useful for debugging:
+#options for skipping stages and using files from earlier, identical runs, primarily useful for debugging:
 #  --skipedirect   : skip the edirect steps, use data from an earlier run of the script
 #  --skipfetch     : skip the sequence fetching steps, use files from an earlier run of the script
 #  --skipscan      : skip the cmscan step, use results from an earlier run of the script
-#  --skipalign     : skip the alignment steps, use results from an earlier run of the script
 #  --skiptranslate : skip the translation steps, use results from an earlier run of the script
-#
+
 ##############
 # Example runs
 ##############
 # 
-# There are currently (March 2016) two dnaorg scripts and they are
+# There are currently (May 2016) two dnaorg scripts and they are
 # meant to be used in the following order:
 # 
 # 1) dnaorg_build.pl: build homology models for a reference accession.
@@ -224,8 +247,16 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 #    Can be run many times for each species provided that
 #    dnaorg_build.pl has been run for that species (and reference).
 # 
-# The discussion below includes example runs of each of the
-# two scripts in turn for two different species.
+# The discussion below includes example runs of each of the two
+# scripts in turn for two different species (Maize streak virus and
+# Dengue virus). 
+#
+# A third example run of dnaorg_annotate.pl for Maize streak virus
+# demonstrates how to run the dnaorg_annotate.pl script using an input
+# fasta file instead of a list of accessions, and running the homology
+# searches locally instead of on the compute farm. In this
+# 'fasta-input' mode, dnaorg_annotate.pl does not need to access any
+# NCBI databases.
 #
 # When a species has multiple reference sequences, one may wish to
 # partition the genomes, so that each genome is assigned to a single
@@ -251,7 +282,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 # versatility of the dnaorg scripts.
 #
 ####################
-# Example run 1 of 2 
+# Example run 1 of 3
 ####################
 #
 # Here is an example of running the dnaorg_build.pl and
@@ -584,7 +615,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -c /p
 # line) file in the NC_001346 directory.
 # 
 ####################
-# Example run 2 of 2 
+# Example run 2 of 3
 ####################
 # 
 # In this second example run of the dnaorg scripts, we will repeat the
@@ -790,6 +821,38 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nse
 # NC_001477.dnaorg_annotate.peraccn.errors would contain error
 # information if there had been any errors.
 # 
+#
+####################
+# Example run 3 of 3
+####################
+#
+# For this example run, we will repeat the dnaorg_annotate.pl 
+# steps for example run #1 but using special command line options 
+# that change the behavior of dnaorg_build.pl
+#
+# - Due to the --infasta option: 
+#   NCBI databases (e.g. id) and edirect tools are not accessed.
+#   Instead, sequences to annotate are read from an input fasta
+#   file.
+#
+# - Due to the --dirout <s> option: 
+#   The output files will be placed in a directory specified
+#   by the user, instead of putting output files in the directory
+#   named <ref_accession> (for Maize streak this is 'NC_001346').
+#
+# - Due to the --local option:
+#   The homology search steps by the cmscan program will not
+#   be submitted to the compute farm, instead they will be
+#   run locally on the current machine that is running 
+#   dnaorg_annotate.pl (due to the --local option).
+#
+# To run dnaorg_annotate.pl in this special mode, we will use the
+# dnaorg_build output files already created in step #1 of example
+# run #1 above. If you haven't already done this, do it now.
+#
+
+# different 
+#
 ##############
 # Output files
 ##############

@@ -208,9 +208,10 @@ $opt_group_desc_H{"1"} = "basic options";
 #     option            type       default               group   requires incompat    preamble-output                                 help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                          "display this help",                                  \%opt_HH, \@opt_order_A);
 opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is closed (a.k.a. circular)",           "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                        1,"--dirout",undef,      "forcing directory overwrite (with --dirout)",  "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                   "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as",                "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--dirbuild",   "string",  undef,                    1,"--dirout",undef,      "output directory used for dnaorg_build.pl",    "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,   "output directory specified as",                "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirbuild",   "string",  undef,                    1,"--dirout",   undef,   "output directory used for dnaorg_build.pl",    "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,      "identify origin seq <s> in genomes",           "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",         "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
@@ -227,8 +228,9 @@ opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--s
 opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"3"} = "options that modify the tabular output file";
-#       option               type   default                group  requires incompat preamble-output                             help-output    
-opt_Add("--tblfirst",    "boolean", 0,                      3,    undef,   undef,   "put first accession first on each .tbl page", "include annotation for first accession on each page of .tbl output file", \%opt_HH, \@opt_order_A);
+#       option               type   default                group  requires incompat preamble-output                                               help-output    
+opt_Add("--tblfirst",    "boolean", 0,                      3,    undef,   undef,   "put first accession first on each .tbl page",               "include annotation for first accession on each page of .tbl output file", \%opt_HH, \@opt_order_A);
+opt_Add("--tblnocomp",   "boolean", 0,                      3,    undef,   undef,   "do not compare annotations to existing GenBank annotation", "do not include information comparing predicted annotations to existing GenBank annotations", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"4"} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
@@ -277,6 +279,7 @@ my $options_okay =
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
 # options that affect tabular output file
                 'tblfirst'     => \$GetOptions_H{"--tblfirst"},
+                'tblnocomp'    => \$GetOptions_H{"--tblnocomp"},
 # options for skipping/adding optional stages
                 'doalign'      => \$GetOptions_H{"--doalign"},
 # optional output files
@@ -338,11 +341,20 @@ my $dir_build  = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unle
 my $dir_out    = opt_Get("--dirout",   \%opt_HH);  # this will be undefined unless --dirout set on cmdline
 my $do_matpept = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --matpept set on cmdline 
 
+if(defined $dir_out) { 
+  $dir_out =~ s/\/$//; # remove final '/' if there is one
+}
+if(defined $dir_build) { 
+  $dir_build =~ s/\/$//; # remove final '/' if there is one
+}
+
 # if --infasta used, $listfile is actually a fasta file
 my $infasta_file = undef;
+my $do_infasta = 0;
 if(opt_Get("--infasta", \%opt_HH)) { 
   $infasta_file = $listfile;
   $listfile = undef;
+  $do_infasta = 1;
 }
 
 ###############
@@ -357,6 +369,16 @@ my %seq_info_HA = ();  # hash of arrays, values are arrays with index range [0..
                        # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
                        # $seq_info_HA{"accn_name"}[0] is our reference accession
 @{$seq_info_HA{"accn_name"}} = ();
+
+my %infasta_ref_seq_info_HA = ();  # hash of arrays, for reference sequence information. 
+                                   # only used if --infasta used. Actually only stores information
+                                   # on 1 sequence, so could be just a hash, but it is a hash of 
+                                   # single element arrays so that it is the same type of data
+                                   # structure as %seq_info_HA so we can pass it into 
+                                   # functions (namely wrapperGetInfoUsingEdirect) in place
+                                   # of %seq_info_HA.
+                                   # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
+                                   # $infasta_ref_seq_info_HA{"accn_name"}[0] is our reference accession
 
 my $nseq = 0;
 my $ref_accn = undef;
@@ -403,9 +425,27 @@ else { # --dirbuild was used on the command line
 if(! defined $dir_out) { 
   $dir_out = $ref_accn;
 }
+else { 
+  # --dirout was used to specify $dir_out
+  # if it already exists (and it's not $ref_accn and it's not $dir_build) 
+  # remove it only if -f also used
+  if(($dir_out ne $ref_accn) && ($dir_out ne $dir_build)) { 
+    if(-d $dir_out) { 
+      $cmd = "rm -rf $dir_out";
+      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+      else                        { die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
+    }
+    if(-e $dir_out) { 
+      $cmd = "rm $dir_out";
+      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+      else                        { die "ERROR a file named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
+    }
+  }
+}
 # if $dir_out does not exist, create it
 if(! -d $dir_out) {
-  runCommand("mkdir $dir_out", opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd);
+  $cmd = "mkdir $dir_out";
+  runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd);
 }
 
 my $dir_out_tail   = $dir_out;
@@ -546,7 +586,10 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
 my $orig_infasta_file = $infasta_file;
 my $outfasta_file     = (opt_Get("-c", \%opt_HH)) ? $out_root . ".fg.fa" : undef;
 if(defined $infasta_file) { 
-  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH,
+  # note that we pass in a reference to %ref_seq_info_HA to wrapperGetInfoUsingEdirect()
+  # and *not* a reference to %seq_info_HA. We will use %infasta_ref_seq_info_HA to 
+  # store information on the reference sequence only.
+  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
                              \%opt_HH, $ofile_info_HH{"FH"}); 
   $nseq = process_input_fasta_file($infasta_file, $outfasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
   if(defined $outfasta_file) { # this will be true if -c
@@ -583,8 +626,10 @@ my $sqfile = undef;    # pointer to the Bio::Easel::SqFile object we'll open in 
 #   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $build_root, $ref_accn,
-                                                    $infasta_file, # will be undef unless --infasta used
+wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $build_root, 
+                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"accn_name"}[0] : undef,
+                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"accn_len"}[0]  : undef,
+                                                    ($do_infasta) ? $infasta_file                            : undef,
                                                     \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
@@ -695,7 +740,7 @@ if($nseqfiles == 0) { $nseqfiles = 1; }
 # concatenated tblout file, created by concatenating all of the @tmp_tblout_file_A files
 my $tblout_file = $out_root . ".tblout";
 
-# split up the CM file into individual CM files:
+# split up the CM file into individual CM files (if necessary)
 my $ncmfiles          = split_cm_file($execs_H{"cmfetch"}, $execs_H{"cmpress"}, $model_file, \%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
 my @tmp_tblout_file_A = (); # the array of tblout files, we'll remove after we're done, unless --keep
 my @tmp_seq_file_A = ();    # the array of sequence files we'll remove after we're done, unless --keep (empty if we run locally)
@@ -1504,7 +1549,7 @@ sub run_cmscan {
   }
   else { 
     # submit job to farm and return
-    my $jobname = removeDirPath($seq_file);
+    my $jobname = "s" . removeDirPath($seq_file);
     my $errfile = $tblout_file . ".err";
     if(-e $errfile) { removeFileUsingSystemRm($errfile, $sub_name, $opt_HHR, $ofile_info_HHR); }
     my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G,reserve_mem=8G " . "\"" . $cmd . "\" > /dev/null\n";
@@ -1670,12 +1715,30 @@ sub split_cm_file {
 
   my $nmdl = validateModelInfoHashIsComplete(\%mdl_info_HA, undef, $FH_HR); # nmdl: number of homology models
 
+  # only fetch models that we need to fetch:
+
   for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     my $cmfile = $model_file . "." . $mdl_idx;
-    my $cmd    = "$cmfetch $model_file " . $mdl_info_HAR->{"cmname"}[$mdl_idx] . " > $cmfile";
-    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
     $mdl_info_HAR->{"cmfile"}[$mdl_idx] = $cmfile;
-    press_cm_database($cmfile, $cmpress, 0, $opt_HHR, $ofile_info_HHR); # 0: do not add info on the files we create to %ofile_info_HHR
+
+    my $do_press = 0;
+    if(! -s $cmfile) { 
+      # CM file does not exist, fetch it
+      my $cmd    = "$cmfetch $model_file " . $mdl_info_HAR->{"cmname"}[$mdl_idx] . " > $cmfile";
+      runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+      $do_press = 1;
+    }
+    else { # CM file does exist, but we may need to press it
+      # check if we need to press it
+      for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
+        my $file = $cmfile . "." . $suffix;
+        if(! -s $file) { $do_press = 1; }
+      }
+    }
+    if($do_press) { 
+      # if we just created the file and/or it hasn't yet been pressed, press it
+      press_cm_database($cmfile, $cmpress, 0, $opt_HHR, $ofile_info_HHR); # 0: do not add info on the files we create to %ofile_info_HHR
+    }
   }
 
   return $nmdl;
@@ -4937,7 +5000,7 @@ sub output_tbl_get_headings {
   my $do_stop      = 1; # '1' to do stop output, '0' to skip it
   my $do_mdlb      = 1; # '1' to do model boundary output, '0' to skip it
   my $do_olap      = 1; # '1' to do overlap output, '0' to skip it
-  my $do_exist     = 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
+  my $do_exist     = (opt_Get("--infasta", $opt_HHR) || opt_Get("--tblnocomp", $opt_HHR)) ? 0 : 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
   my $do_fullolap  = 0; # '1' to output full overlap strings
   my $do_fulladj   = 0; # '1' to output full adjacency strings
   my $do_matpept   = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
@@ -5692,11 +5755,10 @@ sub output_tbl_all_sequences {
   my $do_stop     = 1; # '1' to do stop output, '0' to skip it
   my $do_mdlb     = 1; # '1' to do model boundary output, '0' to skip it
   my $do_olap     = 1; # '1' to do overlap output, '0' to skip it 
-  my $do_exist    = 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
+  my $do_exist    = (opt_Get("--infasta", $opt_HHR) || opt_Get("--tblnocomp", $opt_HHR)) ? 0 : 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
   my $do_matpept  = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
 
-#  my $nseqcol     = 10; # number of sequences we print per page
-  my $nseqcol     = 3; # number of sequences we print per page
+  my $nseqcol     = 10; # number of sequences we print per page
   my $do_tblfirst = (opt_Get("--tblfirst", $opt_HHR)) ? 1 : 0; 
   my $act_nseqcol = $do_tblfirst ? $nseqcol-1 : $nseqcol;
 
@@ -5870,8 +5932,8 @@ sub output_tbl_all_sequences {
               # set annotation we do for all models (regardless of $is_first or $is_final values)
               my $genbank_match = $mdl_results_HR->{"genbank_mdl_annot_match"}; # 1 if existing GenBank annotation matches our annotation
               if($genbank_match) { $ngenbank_match++; }
-              push(@cur_out_A, sprintf("  %8s ", ($genbank_match ? " " . $mdl_results_HR->{"out_start"} . " " : "[" . $mdl_results_HR->{"out_start"} . "]")));
-              push(@cur_out_A, sprintf("%8s",    ($genbank_match ? " " . $mdl_results_HR->{"out_stop"}  . " " : "[" . $mdl_results_HR->{"out_stop"}  . "]")));
+              push(@cur_out_A, sprintf("  %8s ", (($genbank_match || (! $do_exist)) ? " " . $mdl_results_HR->{"out_start"} . " " : "[" . $mdl_results_HR->{"out_start"} . "]")));
+              push(@cur_out_A, sprintf("%8s",    (($genbank_match || (! $do_exist)) ? " " . $mdl_results_HR->{"out_stop"}  . " " : "[" . $mdl_results_HR->{"out_stop"}  . "]")));
               if($do_fid) { push(@cur_out_A, sprintf(" %5.3f", $mdl_results_HR->{"fid2ref"})); } 
               if($do_totfid) { 
                 # mdl_results_HR->{"fid2ref"} was computed as the
@@ -7483,7 +7545,7 @@ sub accn_name_from_seq_name {
   my ($seq_name, $FH_HR) = @_;
 
   my $accn_name = undef;
-  if($seq_name =~ /^(\S+)\:genome.+$/) { 
+  if($seq_name =~ /^(\S+)\:dnaorg.+$/) { 
     $accn_name = $1;
   }
   else { 
@@ -7538,6 +7600,13 @@ sub accn_name_from_seq_name {
 #
 #       If -c is enabled and $outfasta_file is not defined.
 #
+#       If the names of any sequences in $infasta_file include the
+#       string 'dnaorg', this will cause problems later on because
+#       we add this to sequence names sometimes and then parse
+#       based on its location, if the original sequence name already
+#       has 'dnaorg', we can't guarantee that we'll be able to 
+#       parse the modified sequence name correctly.
+#
 #################################################################
 sub process_input_fasta_file { 
   my $sub_name = "process_input_fasta_file";
@@ -7571,16 +7640,20 @@ sub process_input_fasta_file {
   for(my $i = 0; $i < $nseq; $i++) { 
     my $next_fasta_str = $sqfile->fetch_consecutive_seqs(1, "", -1);
     # get name and length of the sequence
-    if($next_fasta_str =~ /^\>(\S+).+\n(\S+)\n+$/) { 
+    if($next_fasta_str =~ /^\>(\S+).*\n(\S+)\n+$/) { 
       my ($accn, $seq) = ($1, $2);
       my $len = length($seq);
-      stripVersion(\$accn);
+      if($accn =~ m/dnaorg/) { 
+        DNAORG_FAIL("ERROR in $sub_name, sequence $accn read from $infasta_file includes the string \"dnaorg\", this is not allowed", 1, $FH_HR);
+      }
       push(@{$seq_info_HAR->{"accn_name"}}, $accn);
       push(@{$seq_info_HAR->{"accn_len"}}, $len);
 
       if($do_out) { 
         # output the sequence if necessary
-        my $outaccn = $accn . ":genome-duplicated:$accn:1:$len:+:$accn:1:$len:+"; # this mimics esl-fetch-cds.pl
+        my $outaccn = $accn . ":dnaorg-duplicated:$accn:1:$len:+:$accn:1:$len:+"; 
+        # this mimics how dnaorg.pm:fetchSequencesUsingEslFetchCds names sequences, if that 
+        # changes, this should be changed to match
         print OUT ">" . $outaccn . "\n";
         # print out sequence in 100-nt-per-line chunks
         print OUT $seq . "\n";

@@ -67,9 +67,9 @@ $opt_group_desc_H{"1"} = "basic options";
 #     option            type       default               group   requires incompat    preamble-output                          help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
 opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is circular",                    "genome is circular",                                 \%opt_HH, \@opt_order_A);
-opt_Add("-d",           "string",  undef,                    1,    undef, undef,      "directory specified as",                "specify output directory is <s1> (created with dnaorg_build.pl -d <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",           "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as <s>",     "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",  "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",         "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",    "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
@@ -107,9 +107,9 @@ my $options_okay =
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
                 'c'            => \$GetOptions_H{"-c"},
-                'd=s'          => \$GetOptions_H{"-d"},
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
+                'dirout=s'     => \$GetOptions_H{"--dirout"},
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
                 'nomatpept'    => \$GetOptions_H{"--nomatpept"},
                 'keep'         => \$GetOptions_H{"--keep"},
@@ -166,7 +166,7 @@ if((opt_Get("--skipbuild", \%opt_HH)) &&
   die "ERROR, --skipbuild requires one or both of --mdlinfo or --ftrinfo"; 
 }
 
-my $dir        = opt_Get("-d", \%opt_HH);          # this will be undefined unless -d set on cmdline
+my $dir        = opt_Get("--dirout", \%opt_HH);          # this will be undefined unless -d set on cmdline
 my $do_matpept = opt_IsOn("--matpept", \%opt_HH);
 
 #############################
@@ -325,8 +325,9 @@ my $sqfile = undef;            # pointer to the Bio::Easel::SqFile object we'll 
 #   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $out_root, $ref_accn, # yes, $out_root is passed in twice, on purpose
-                                                    undef, \%cds_tbl_HHA,
+wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $out_root, # yes, $out_root is passed in twice, on purpose
+                                                    undef, undef, undef,  # 3 variables used only if --infasta enabled in dnaorg_annotate.pl (irrelevant here)
+                                                    \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
                                                     ($do_matpept) ? \@cds2amatpept_AA : undef, 

@@ -1857,11 +1857,16 @@ sub wrapperGetInfoUsingEdirect {
     DNAORG_FAIL("ERROR in $sub_name, no CDS information stored for reference accession", 1, $FH_HR); 
   }
 
-  # 6) parse the length file, and store accession lengths in $seq_info_HAR, unless --infasta was enabled
-  if(! $do_infasta){ 
-    my %accn_len_H = ();
-    parseLengthFile($len_file, \%accn_len_H, $FH_HR);
-    my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
+  # 6) parse the length file, and store accession lengths in $seq_info_HAR
+  #    if --infasta was enabled, caller will likely have passed in a special $seq_info_HAR
+  #    here (something like $ref_seq_info_HAR) which will only hold information on 
+  #    the reference sequence, which will be read from the dnaorg_build length file.
+  my %accn_len_H = ();
+  parseLengthFile($len_file, \%accn_len_H, $FH_HR);
+  my $nseq = 0;
+  if(! $do_infasta) {  
+    # we will have already stored all sequences in $seq_info_HAR->{"accn_name"}
+    $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
     if($nseq == 0) { 
       DNAORG_FAIL("ERROR in $sub_name, no accessions in seq_info_HAR", 1, $FH_HR); 
     }
@@ -1872,6 +1877,16 @@ sub wrapperGetInfoUsingEdirect {
       }
       $seq_info_HAR->{"accn_len"}[$seq_idx] = $accn_len_H{$accn_name};
     }
+  }
+  else { # $do_infasta is true, $seq_info_HAR->{"accn_name"} is empty, but we should have
+         # read exactly 1 length in parseLengthFile
+    $nseq = scalar(keys %accn_len_H);
+    if($nseq != 1) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, not exactly 1 accession read from length file $len_file (%d lengths read)", scalar(keys %accn_len_H)), 1, $FH_HR); 
+    }
+    my ($ref_accn) = (keys %accn_len_H);
+    $seq_info_HAR->{"accn_name"}[0] = $ref_accn;
+    $seq_info_HAR->{"accn_len"}[0]  = $accn_len_H{$ref_accn};
   }
 
   return 0;
@@ -1922,7 +1937,8 @@ sub wrapperGetInfoUsingEdirect {
 #   $sqfile_R:              REF to a Bio::Easel::SqFile object, CREATED HERE
 #   $out_root:              string that is the 'root' for naming output files
 #   $build_root:            string that is the 'root' for files possibly already created with dnaorg_build.pl (may be same as $out_root)
-#   $ref_accn:              reference accession
+#   $in_ref_accn:           reference accession, undef unless --infasta enabled
+#   $in_ref_totlen:         length of the reference accession, undef unless --infasta enabled
 #   $infasta_file:          name of input fasta file, should be undef unless --infasta enabled
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
 #   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
@@ -1947,10 +1963,10 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAllSequencesAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAllSequencesAndProcessReferenceSequence()";
-  my $nargs_expected = 15;
+  my $nargs_expected = 16;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $sqfile_R, $out_root, $build_root, $ref_accn, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $sqfile_R, $out_root, $build_root, $in_ref_accn, $in_ref_totlen, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
   
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -1985,9 +2001,20 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option NOT enabled but <infasta_file> is defined", 1, $FH_HR);
   }
 
+  # $in_ref_accn and $in_ref_totlen must be defined if $do_infasta, and must not be defined if ! $do_infasta
+  if($do_infasta && ((! defined $in_ref_accn) || (! defined $in_ref_totlen))) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option enabled but in_ref_accn and/or in_ref_totlen variable is not defined", 1, $FH_HR);
+  }
+  elsif((! $do_infasta) && ((defined $in_ref_accn || defined $in_ref_totlen))) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option NOT enabled but in_ref_accn and/or in_ref_totlen variable is defined", 1, $FH_HR);
+  }
+    
+
   # 1) fetch the sequences into a fasta file and index that fasta file
   my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
   my $have_only_ref = ($nseq == 1) ? 1 : 0; # '1' if we only have the reference
+  my $ref_accn      = ($do_infasta) ? $in_ref_accn   : $seq_info_HAR->{"accn_name"}[0]; # the reference accession
+  my $ref_totlen    = ($do_infasta) ? $in_ref_totlen : $seq_info_HAR->{"accn_len"}[0]; # length of the accession
   my $fetch_file    = undef;
   my $fasta_file    = undef;
 
@@ -2004,21 +2031,22 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
 
   @{$seq_info_HAR->{"seq_name"}} = ();
   if((! $do_skipfetch) && (! $do_infasta)) { 
+    # fetch the sequences into a fasta file
     fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR, $FH_HR);
     addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, 0, "Input file for esl-fetch-cds.pl");
     addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (fetched with esl-fetch-cds.pl)");
   }
-  else { 
+  else { # we should already have the fasta file that we need 
     validateFileExistsAndIsNonEmpty($fasta_file, $sub_name, $FH_HR);
     if($do_skipfetch) { 
       addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (fetched on previous run (--skipfetch))");
     }
     else { # $do_infasta is true
       if(opt_Get("-c", $opt_HHR)) { 
-        addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (supplied with --infasta)");
+        addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (same sequences as supplied with --infasta, but all seqs are duplicated)");
       }
       else { 
-        addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (same sequences as supplied with --infasta, but all seqs are duplicated)");
+        addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (supplied with --infasta), NOT CREATED BY THE SCRIPT");
       }
     }
   }  
@@ -2071,8 +2099,8 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   determineFeatureTypes($nmp, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR); # $cds2pmatpept_AAR may be undef and that's okay
 
   # 4) fetch the reference feature sequences and populate information on the models and features
-  my $ref_totlen   = $seq_info_HAR->{"accn_len"}[0]; # wrapperGetInfoUsingEdirect() verified that $totlen_H{$ref_accn} exists
-  my $ref_seqname  = $seq_info_HAR->{"seq_name"}[0]; # the reference sequence name the fetched sequence file $fasta_file
+  #    we won't actually fetch the referecne sequence if --infasta is used (which is why $ref_seqname is undef if --infasta)
+  my $ref_seqname  = ($do_infasta) ? undef          : $seq_info_HAR->{"seq_name"}[0]; # the reference sequence name the fetched sequence file $fasta_file
   my $all_stk_file = $out_root . ".ref.all.stk";     # name of output alignment file we are about to create, each single reference feature 
                                                      # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
                                                      # separate alignments, one per feature
@@ -5663,14 +5691,14 @@ sub fetchSequencesUsingEslFetchCds {
 
     if($do_circular) { 
       $fetch_string = "join(" . $accn_name . ":1.." . $accn_len . "," . $accn_name . ":1.." . $accn_len . ")\n";
-      print OUT $accn_name . ":" . "genome-duplicated" . "\t" . $fetch_string;
-      $seq_name = $accn_name . ":genome-duplicated:" . $accn_name . ":1:" . $accn_len . ":+:" . $accn_name . ":1:" . $accn_len . ":+:";
+      print OUT $accn_name . ":" . "dnaorg-duplicated" . "\t" . $fetch_string;
+      $seq_name = $accn_name . ":dnaorg-duplicated:" . $accn_name . ":1:" . $accn_len . ":+:" . $accn_name . ":1:" . $accn_len . ":+:";
       $seq_len  = 2 * $accn_len;
     }
     else { # $do_circular is FALSE
       $fetch_string = $accn_name . ":1.." . $accn_len . "\n";
-      print OUT $accn_name . ":" . "genome" . "\t" . $fetch_string;
-      $seq_name = $accn_name . ":genome:" . $accn_name . ":1:" . $accn_len . ":+:";
+      print OUT $accn_name . ":" . "dnaorg" . "\t" . $fetch_string;
+      $seq_name = $accn_name . ":dnaorg:" . $accn_name . ":1:" . $accn_len . ":+:";
       $seq_len  = $accn_len;
     }
     push(@{$seq_info_HAR->{"seq_name"}}, $seq_name);
