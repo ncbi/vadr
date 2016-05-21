@@ -181,7 +181,8 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 # fasta file of sequences to annotate instead of a list of
 # accessions as the .ntlist file. This may be desirable because in 
 # this mode, none of the NCBI databases are accessed (for sequence
-# fetching, etc.). See 'example run #3' below for an example of 
+
+# fetching, etc.). See 'example run 3 of 3' below for an example of 
 # running dnaorg_annotate.pl in this mode.
 #
 # 
