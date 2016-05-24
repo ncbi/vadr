@@ -108,14 +108,42 @@
 #######################
 # 
 # Directories that include the BioEasel perl modules must be part of the user's
-# $PERL5LIB environment variable in order the dnaorg scripts to work.
+# $PERL5LIB environment variable in order the dnaorg scripts to work. 
+# Also, the $DNAORGDIR environment variable must be set prior to 
+# running dnaorg_build.pl and dnaorg_annotate.pl.
+#
+# For bash shell users, add the following two lines to your ~/.bashrc
+# file:
+export DNAORGDIR="/panfs/pan1/dnaorg/virseqannot/code"
+export PERL5LIB="$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio-Easel/blib/lib:$DNAORGDIR/Bio-Easel/blib/arch:$PERL5LIB"
+#
+# Then execute:
+source ~/.bashrc
+#
+# For C shell or C shell compatible users, add the following two lines
+# to your ~/.cshrc file: 
+setenv DNAORGDIR "/panfs/pan1/dnaorg/virseqannot/code"
+setenv PERL5LIB "$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio-Easel/blib/lib:$DNAORGDIR/Bio-Easel/blib/arch:$PERL5LIB"
+#
+# Then execute: 
+source ~/.cshrc
+#
+###################################################
+# Installation of dnaorg scripts and dependencies
+# into a new directory.
+###################################################
+#
+# There is a shell script that will install all of the dnaorg code
+# necessary to run dnaorg_annotate.pl and dnaorg_build.pl into 
+# a directory of your choosing. To  obtain that file execute the 
+# following command:
 # 
-# For bash shell users
-source /panfs/pan1/dnaorg/virseqannot/code/setup-environment.bash.sh
+# git clone https://github.com/nawrockie/dnaorg_install_script.git
 #
-# For C shell or C shell compatible users
-source /panfs/pan1/dnaorg/virseqannot/code/setup-environment.csh.sh
-#
+# That will create a directory called dnaorg_install_script/.
+# Read and follow the instructions for installation in the 
+# 00README file in that directory.
+# 
 ######################################
 # Usage and options of dnaorg_build.pl
 ######################################
