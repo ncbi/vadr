@@ -30,11 +30,12 @@ require "epn-options.pm";
 #######################################################################################
 
 # first, determine the paths to all modules, scripts and executables that we'll need
+# we currently use hard-coded-paths for Infernal, HMMER and easel executables:
+my $inf_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
+my $hmmer_exec_dir    = "/usr/local/hmmer/3.1/bin/";
+my $esl_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
 
-# hard-coded-paths:
-my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
-my $esl_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
-
+# make sure the DNAORGDIR environment variable is set
 my $dnaorgdir = $ENV{'DNAORGDIR'};
 if(! exists($ENV{'DNAORGDIR'})) { 
     printf STDERR ("\nERROR, the environment variable DNAORGDIR is not set, please set it to the directory where you installed the dnaorg scripts and their dependencies.\n"); 
@@ -45,24 +46,8 @@ if(! (-d $dnaorgdir)) {
     exit(1); 
 }    
  
-# Make sure the DNAORGDIR/dnaorg_scripts/ has the dnaorg.pm file
-my $dnaorg_pm_file = $dnaorgdir . "/dnaorg_scripts/dnaorg.pm";
-if(! (-s $dnaorg_pm_file)) { 
-  printf STDERR ("\nERROR, the required perl module dnaorg.pm is not in the directory specified by your DNAORGDIR environment variable ($dnaorg_pm_file).\n"); 
-  exit(1); 
-}
-
-# Make sure the DNAORGDIR/epn-options/ has the epn-options.pm file
-my $options_pm_file = $dnaorgdir . "/epn-options/epn-options.pm";
-if(! (-s $options_pm_file)) { 
-  printf STDERR ("\nERROR, the required perl module epn-options.pm is not in the directory specified by your DNAORGDIR environment variable ($options_pm_file).\n"); 
-  exit(1); 
-}
-
-require $dnaorg_pm_file;
-require $options_pm_file;
-my $script_rootdir    = "/panfs/pan1/dnaorg/virseqannot/code";
-my $esl_fetch_cds     = $script_rootdir . "/esl-fetch-cds/esl-fetch-cds.pl";
+# determine other required paths to executables relative to $dnaorgdir
+my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
 
 #########################################################
 # Command line and option processing using epn-options.pm

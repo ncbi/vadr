@@ -165,17 +165,27 @@ require "epn-options.pm";
 # 
 #######################################################################################
 
-# hard-coded-paths:
+# first, determine the paths to all modules, scripts and executables that we'll need
+# we currently use hard-coded-paths for Infernal, HMMER and easel executables:
 my $inf_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
 my $hmmer_exec_dir    = "/usr/local/hmmer/3.1/bin/";
 my $esl_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
-#my $esl_fetch_cds     = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
-#my $esl_ssplit        = "/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/esl-ssplit.pl";
-#my $esl_epn_translate = "/panfs/pan1/dnaorg/programs/esl-epn-translate.pl";
-my $script_rootdir    = "/panfs/pan1/dnaorg/virseqannot/code";
-my $esl_fetch_cds     = $script_rootdir . "/esl-fetch-cds/esl-fetch-cds.pl";
-my $esl_epn_translate = $script_rootdir . "/esl-epn-translate/esl-epn-translate.pl";
-my $esl_ssplit        = $script_rootdir . "/Bio-Easel/scripts/esl-ssplit.pl";
+
+# make sure the DNAORGDIR environment variable is set
+my $dnaorgdir = $ENV{'DNAORGDIR'};
+if(! exists($ENV{'DNAORGDIR'})) { 
+    printf STDERR ("\nERROR, the environment variable DNAORGDIR is not set, please set it to the directory where you installed the dnaorg scripts and their dependencies.\n"); 
+    exit(1); 
+}
+if(! (-d $dnaorgdir)) { 
+    printf STDERR ("\nERROR, the dnaorg directory specified by your environment variable DNAORGDIR does not exist.\n"); 
+    exit(1); 
+}    
+ 
+# determine other required paths to executables relative to $dnaorgdir
+my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
+my $esl_epn_translate = $dnaorgdir . "/esl-epn-translate/esl-epn-translate.pl";
+my $esl_ssplit        = $dnaorgdir . "/Bio-Easel/scripts/esl-ssplit.pl";
 
 #########################################################
 # Command line and option processing using epn-options.pm
