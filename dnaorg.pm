@@ -194,6 +194,8 @@
 #   countLinesInFile()
 #   validateFileExistsAndIsNonEmpty()
 #   concatenateListOfFiles()
+#   concatenateListOfFiles()
+#   md5ChecksumOfFile()
 #
 # Miscellaneous subroutines that don't fall into one of the above
 # categories:
@@ -5159,6 +5161,7 @@ sub findValueInArray {
 #   countLinesInFile()
 #   validateFileExistsAndIsNonEmpty()
 #   concatenateListOfFiles()
+#   md5ChecksumOfFile()
 #
 #################################################################
 # Subroutine : DNAORG_FAIL()
@@ -5602,6 +5605,57 @@ sub concatenateListOfFiles {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine : md5ChecksumOfFile()
+# Incept:      EPN, Fri May 27 14:02:30 2016
+#
+# Purpose:     Use md5sum to get a checksum of a file, return
+#              the checksum. Not efficient. Creates a temporary
+#              file and then deletes it.
+# 
+# Arguments: 
+#   $file:             REF to array of all files to concatenate
+#   $caller_sub_name:  name of calling subroutine (can be undef)
+#   $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:            ref to hash of file handles
+# 
+# Returns:     md5sum of the file.
+# 
+# Dies:        If the file doesn't exist or the command fails.
+#
+################################################################# 
+sub md5ChecksumOfFile { 
+  my $nargs_expected = 4;
+  my $sub_name = "concatenateListOfFiles()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($file, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
+
+  if(! -s $file) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name%s, file to get md5 checksum of ($file) does no exist or is empty", 
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), 1, $FH_HR);
+  }
+
+  my $out_file = removeDirPath($file . ".md5sum");
+  runCommand("md5sum $file > $out_file", opt_Get("-v", $opt_HHR), $FH_HR);
+
+  open(MD5, $out_file) || fileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
+  #194625f7c3e2a5129f9880c7e29f63de  wnv.lin2.matpept.in
+  my $md5sum = <MD5>;
+  chomp $md5sum;
+  if($md5sum =~ /^(\S+)\s+(\S+)$/) { 
+    $md5sum = $1;
+  }
+  else { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name%s, unable to parse md5sum output: $md5sum", 
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), 1, $FH_HR);
+  }
+  close(MD5);
+
+  removeFileUsingSystemRm($out_file, $caller_sub_name, $opt_HHR, $FH_HR);
+
+  return $md5sum;
 }
 
 

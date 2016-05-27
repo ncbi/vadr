@@ -563,9 +563,17 @@ $execs_H{"esl_ssplit"}    = $esl_ssplit;
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################
-# Step 1. Gather and process information on reference genome using Edirect.
+# Step 0. Read the dnaorg_build.pl consopts file and make sure that it
+#         agrees with the options set here.
 ###########################################################################
 my $progress_w = 85; # the width of the left hand column in our progress output, hard-coded
+my $start_secs = outputProgressPrior("Verifying options are consistent with options used for dnaorg_build.pl", $progress_w, $log_FH, *STDOUT);
+validate_options_are_consistent_with_dnaorg_build($build_root . ".consopts", \%opt_HH, $ofile_info_HH{"FH"});
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+###########################################################################
+# Step 1. Gather and process information on reference genome using Edirect.
+###########################################################################
 my $progress_str = sprintf("Gathering information on %d sequences using edirect", $nseq);
 if(opt_Get("--skipedirect", \%opt_HH)) { 
   $progress_str = sprintf("Processing information on %d sequences fetched earlier using edirect", $nseq);
@@ -573,7 +581,7 @@ if(opt_Get("--skipedirect", \%opt_HH)) {
 elsif(opt_Get("--infasta", \%opt_HH)) { 
   $progress_str = "Processing input fasta file";
 }
-my $start_secs = outputProgressPrior($progress_str, $progress_w, $log_FH, *STDOUT);
+$start_secs = outputProgressPrior($progress_str, $progress_w, $log_FH, *STDOUT);
 
 my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
                         # 1D: key: accession
@@ -7703,5 +7711,107 @@ sub process_input_fasta_file {
   }
 
   return $nseq;
+}
+
+#################################################################
+# Subroutine: validate_options_are_consistent_with_dnaorg_build()
+# Incept:     EPN, Fri May 27 12:59:19 2016
+#
+# Purpose:   Given the name of the log file and checksum
+#            file created by dnaorg_build.pl, read it and check 
+#            that all options that need to be consistent 
+#            between dnaorg_build.pl and dnaorg_annotate.pl
+#            are consistent, and any files that need to have
+#            the same checksums actually do.
+#
+# Arguments:
+#  $consopts_file:     name of the dnaorg_build consopts file
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:             REF to hash of file handles
+# 
+# Returns:  void
+# 
+# Dies: If $consopts_file doesn't exist, or we can't parse it.
+#
+#       If an option enabled in dnaorg_build.pl that needs to 
+#       be consistently used in dnaorg_annotate.pl is not, or
+#       vice versa.
+#
+#       If an option enabled in dnaorg_build.pl that takes a file
+#       as input has a different checksum for that file than 
+#       
+#################################################################
+sub validate_options_are_consistent_with_dnaorg_build { 
+  my $sub_name = "validate_options_are_consistent_with_dnaorg_build";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($consopts_file, $opt_HHR, $FH_HR) = @_;
+
+  # read the consopts file
+  if(! -e $consopts_file) { 
+    DNAORG_FAIL("ERROR in $sub_name, consopts file $consopts_file does not exist. This file should have been created by dnaorg_build.pl.", 1, $FH_HR);
+  }
+  open(IN, $consopts_file) || fileOpenFailure($consopts_file, $sub_name, $!, "reading", $FH_HR);
+  my $line_ct = 0;
+  my $no_build_c_opt         = 1; # changed to 0 below if -c was used by dnaorg_build.pl
+  my $no_build_nomatpept_opt = 1; # changed to 0 below if --nomatpept was used by dnaorg_build.pl
+  my $no_build_matpept_opt   = 1; # changed to 0 below if --matpept was used by dnaorg_build.pl
+
+  while(my $line = <IN>) { 
+    chomp $line;
+    $line_ct++;
+    if(($line eq "none") && ($line_ct == 1)) { 
+      ; # this is fine, none of the options that need to be consistent were set by dnaorg_build.pl
+    }
+    elsif($line =~ /^\-c$/) { 
+      $no_build_c_opt = 0;
+      if((! defined (opt_Get("-c", $opt_HHR))) || (opt_Get("-c", $opt_HHR) != 1)) { 
+        DNAORG_FAIL("ERROR, the -c option was used when dnaorg_build.pl was run (according to file $consopts_file) you must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
+      }
+    }
+    elsif($line =~ /^\-\-nomatpept$/) { # first string is file name, second is md5 checksum (obtained with 'md5sum' executable)
+      $no_build_nomatpept_opt = 0;
+      if((! defined (opt_Get("--nomatpept", $opt_HHR))) || (opt_Get("--nomatpept", $opt_HHR) != 1)) { 
+        DNAORG_FAIL("ERROR, the --nomatpept option was used when dnaorg_build.pl was run (according to file $consopts_file) you must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
+      }
+    }
+    elsif($line =~ /^\-\-matpept\s+\S+\s+(\S+)$/) { # first string is file name, second is md5 checksum (obtained with 'md5sum' executable)
+      my $build_matpept_cksum = $1;
+      $no_build_matpept_opt = 0;
+      if(! opt_IsUsed("--matpept", $opt_HHR)) { 
+        DNAORG_FAIL("ERROR, the --matpept option was used when dnaorg_build.pl was run (according to file $consopts_file) you must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
+      }
+      else { # make sure checksum matches
+        my $annotate_matpept_file = opt_Get("--matpept", $opt_HHR);
+        if(! -s $annotate_matpept_file) { 
+          DNAORG_FAIL("ERROR, the file $annotate_matpept_file specified with the --matpept option does not exist.", 1, $FH_HR);
+        }          
+        my $annotate_matpept_cksum = md5ChecksumOfFile($annotate_matpept_file, $sub_name, $opt_HHR, $FH_HR);
+        if($build_matpept_cksum ne $annotate_matpept_cksum) { 
+          DNAORG_FAIL("ERROR, the file $annotate_matpept_file specified with the --matpept file does not appear to be identical to the file used\nwith dnaorg_build.pl. The md5 checksums of the two files differ: dnaorg_build.pl: $build_matpept_cksum, dnaorg_annotate.pl: $annotate_matpept_cksum", 1, $FH_HR);
+        }
+      }
+    }        
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, unable to parse line from consopts file $consopts_file:\n$line\n", 1, $FH_HR);
+    }
+  }
+  close(IN);
+
+  # now for any options that were not read from $consopts_file, make sure they are also
+  # not enabled here for dnaorg_annotate.pl
+  if($no_build_c_opt && (opt_Get("-c", $opt_HHR))) { 
+    DNAORG_FAIL("ERROR, the -c option was not used when dnaorg_build.pl was run (according to file $consopts_file) you must also not use it with dnaorg_annotate.pl.", 1, $FH_HR);
+  }    
+  if($no_build_nomatpept_opt && (opt_Get("-c", $opt_HHR))) { 
+    DNAORG_FAIL("ERROR, the --nomatpept option was not used when dnaorg_build.pl was run (according to file $consopts_file) you must also not use it with dnaorg_annotate.pl.", 1, $FH_HR);
+  }    
+  if($no_build_matpept_opt && (opt_IsUsed("-c", $opt_HHR))) {  
+    DNAORG_FAIL("ERROR, the --matpept option was not used when dnaorg_build.pl was run (according to file $consopts_file) you must also not use it with dnaorg_annotate.pl.", 1, $FH_HR);
+  }    
+
+  # if we get here, all options are consistent
+  return;
 }
 

@@ -285,10 +285,19 @@ $execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################
+# Step 0. Output the consopts file that dnaorg_annotate.pl will use to 
+#         make sure options used are consistent between dnaorg_build.pl and 
+#         dnaorg_annotate.pl 
+###########################################################################
+my $progress_w = 80; # the width of the left hand column in our progress output, hard-coded
+my $start_secs = outputProgressPrior("Outputting information on options used for future use with dnaorg_annotate.pl", $progress_w, $log_FH, *STDOUT);
+output_consopts_file($out_root . ".consopts", \%opt_HH, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+###########################################################################
 # Step 1. Gather and process information on reference genome using Edirect.
 ###########################################################################
-my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
-my $start_secs = outputProgressPrior("Gathering information on reference using edirect", $progress_w, $log_FH, *STDOUT);
+$start_secs = outputProgressPrior("Gathering information on reference using edirect", $progress_w, $log_FH, *STDOUT);
 
 my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
                         # 1D: key: accession
@@ -417,4 +426,66 @@ $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
+
+#################################################################
+# Subroutine: output_consopts_file()
+# Incept:     EPN, Fri May 27 14:20:28 2016
+#
+# Purpose:   Output a simple .consopts file that includes 
+#            information on options that must be kept consistent
+#            between dnaorg_build.pl and dnaorg_annotate.pl.
+#            Currently this is only "--matpept", "--nomatpept",
+#            and "-c".
+#
+# Arguments:
+#  $consopts_file:     name of the file to create
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:    REF to output file hash
+# 
+# Returns:  void
+# 
+# Dies: If $consopts_file doesn't exist, or we can't parse it.
+#
+#       If an option enabled in dnaorg_build.pl that needs to 
+#       be consistently used in dnaorg_annotate.pl is not, or
+#       vice versa.
+#
+#       If an option enabled in dnaorg_build.pl that takes a file
+#       as input has a different checksum for that file than 
+#       
+#################################################################
+sub output_consopts_file { 
+  my $sub_name = "output_consopts_files";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($consopts_file, $opt_HHR, $ofile_info_HHR) = @_;
+
+  open(OUT, ">", $consopts_file) || fileOpenFailure($consopts_file, $sub_name, $!, "writing", $ofile_info_HHR->{"FH"});
+
+  my $printed_any_options = 0;
+  if(opt_Get("-c", $opt_HHR)) { 
+    print OUT ("-c\n");
+    $printed_any_options = 1;
+  }
+  if(opt_Get("--nomatpept", $opt_HHR)) { 
+    print OUT ("--nomatpept\n");
+    $printed_any_options = 1;
+  }
+  if(opt_IsUsed("--matpept", $opt_HHR)) { 
+    my $matpept_file = opt_Get("--matpept", $opt_HHR);
+    printf OUT ("--matpept %s %s\n", 
+                $matpept_file, 
+                md5ChecksumOfFile($matpept_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}));
+    $printed_any_options = 1;
+  }
+  
+  if(! $printed_any_options) { 
+    print OUT "none\n";
+  }
+  close(OUT);
+  
+  addClosedFileToOutputInfo($ofile_info_HHR, "consopts", "$consopts_file", 1, "File with list of options that must be kept consistent between dnaorg_build.pl and dnaorg_annotate.pl runs");
+  return;
+}
 
