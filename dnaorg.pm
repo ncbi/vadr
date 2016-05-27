@@ -854,8 +854,9 @@ sub annotateAppendFeatures {
 #              "out_olp_str":   string of short model descriptions that overlap by >= 1 nt on
 #                               same strand with this model index
 # Arguments: 
+#   $ref_accnlen:  length of the reference accession 
+#   $ref_seqlen:   length of the reference sequence (possibly 2*$ref_accnlen)
 #   $mdl_info_HAR: REF to hash of arrays with information on the models, ADDED TO HERE
-#   $seq_info_HAR: REF to hash of arrays with sequence information, PRE-FILLED
 #   $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
 #   $FH_HR:        REF to hash of file handles
 # 
@@ -864,10 +865,10 @@ sub annotateAppendFeatures {
 # Dies: 
 ################################################################# 
 sub annotateOverlapsAndAdjacencies { 
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   my $sub_name = "annotateOverlapsAndAdjacencies()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($mdl_info_HAR, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($ref_accnlen, $ref_seqlen, $mdl_info_HAR, $opt_HHR, $FH_HR) = @_;
 
   # initialize
   @{$mdl_info_HAR->{"idx_ajb_str"}} = ();
@@ -879,7 +880,7 @@ sub annotateOverlapsAndAdjacencies {
 
   overlapsAndAdjacenciesHelper($mdl_info_HAR, 
                                $mdl_info_HAR->{"ref_start"}, $mdl_info_HAR->{"ref_stop"}, $mdl_info_HAR->{"ref_strand"}, 
-                               $seq_info_HAR->{"seq_len"}[0], $seq_info_HAR->{"accn_len"}[0], 
+                               $ref_seqlen, $ref_accnlen,
                                $mdl_info_HAR->{"idx_ajb_str"}, $mdl_info_HAR->{"idx_aja_str"}, $mdl_info_HAR->{"idx_olp_str"}, 
                                $mdl_info_HAR->{"out_ajb_str"}, $mdl_info_HAR->{"out_aja_str"}, $mdl_info_HAR->{"out_olp_str"}, 
                                $opt_HHR, $FH_HR);
@@ -1887,6 +1888,7 @@ sub wrapperGetInfoUsingEdirect {
     my ($ref_accn) = (keys %accn_len_H);
     $seq_info_HAR->{"accn_name"}[0] = $ref_accn;
     $seq_info_HAR->{"accn_len"}[0]  = $accn_len_H{$ref_accn};
+    $seq_info_HAR->{"seq_len"}[0]   = (opt_Exists("-c", $opt_HHR) && opt_Get("-c", $opt_HHR)) ? 2 * $accn_len_H{$ref_accn} : $accn_len_H{$ref_accn};
   }
 
   return 0;
@@ -1938,7 +1940,8 @@ sub wrapperGetInfoUsingEdirect {
 #   $out_root:              string that is the 'root' for naming output files
 #   $build_root:            string that is the 'root' for files possibly already created with dnaorg_build.pl (may be same as $out_root)
 #   $in_ref_accn:           reference accession, undef unless --infasta enabled
-#   $in_ref_totlen:         length of the reference accession, undef unless --infasta enabled
+#   $in_ref_accnlen:        length of the reference accession, undef unless --infasta enabled
+#   $in_ref_seqlen:         length of the reference sequence (possibly double $in_ref_accnlen), undef unless --infasta enabled
 #   $infasta_file:          name of input fasta file, should be undef unless --infasta enabled
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
 #   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
@@ -1963,10 +1966,10 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAllSequencesAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAllSequencesAndProcessReferenceSequence()";
-  my $nargs_expected = 16;
+  my $nargs_expected = 17;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $sqfile_R, $out_root, $build_root, $in_ref_accn, $in_ref_totlen, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $sqfile_R, $out_root, $build_root, $in_ref_accn, $in_ref_accnlen, $in_ref_seqlen, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
   
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -2001,20 +2004,20 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option NOT enabled but <infasta_file> is defined", 1, $FH_HR);
   }
 
-  # $in_ref_accn and $in_ref_totlen must be defined if $do_infasta, and must not be defined if ! $do_infasta
-  if($do_infasta && ((! defined $in_ref_accn) || (! defined $in_ref_totlen))) { 
-    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option enabled but in_ref_accn and/or in_ref_totlen variable is not defined", 1, $FH_HR);
+  # $in_ref_accn, $in_ref_accnlen and $in_ref_seqlen must be defined if $do_infasta, and must not be defined if ! $do_infasta
+  if($do_infasta && ((! defined $in_ref_accn) || (! defined $in_ref_accnlen) || (! defined $in_ref_seqlen))) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option enabled but in_ref_accn and/or in_ref_accnlen and/or in_ref_seqlen variables are not defined", 1, $FH_HR);
   }
-  elsif((! $do_infasta) && ((defined $in_ref_accn || defined $in_ref_totlen))) { 
-    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option NOT enabled but in_ref_accn and/or in_ref_totlen variable is defined", 1, $FH_HR);
+  elsif((! $do_infasta) && ((defined $in_ref_accn || defined $in_ref_accnlen || defined $in_ref_seqlen))) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option NOT enabled but in_ref_accn and/or in_ref_accnlen and/or in_ref_seqlen variables are defined", 1, $FH_HR);
   }
     
 
   # 1) fetch the sequences into a fasta file and index that fasta file
   my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
   my $have_only_ref = ($nseq == 1) ? 1 : 0; # '1' if we only have the reference
-  my $ref_accn      = ($do_infasta) ? $in_ref_accn   : $seq_info_HAR->{"accn_name"}[0]; # the reference accession
-  my $ref_totlen    = ($do_infasta) ? $in_ref_totlen : $seq_info_HAR->{"accn_len"}[0]; # length of the accession
+  my $ref_accn      = ($do_infasta) ? $in_ref_accn    : $seq_info_HAR->{"accn_name"}[0]; # the reference accession
+  my $ref_accnlen   = ($do_infasta) ? $in_ref_accnlen : $seq_info_HAR->{"accn_len"}[0]; # length of the accession
   my $fetch_file    = undef;
   my $fasta_file    = undef;
 
@@ -2104,7 +2107,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   my $all_stk_file = $out_root . ".ref.all.stk";     # name of output alignment file we are about to create, each single reference feature 
                                                      # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
                                                      # separate alignments, one per feature
-  fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_totlen, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
+  fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_accnlen, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
   if(! $do_infasta) { 
     addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, 0, "Stockholm alignment file with reference features");
   }
@@ -2113,7 +2116,8 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   annotateAppendFeatures($ftr_info_HAR, $mdl_info_HAR, $FH_HR);
 
   # 6) add information on the overlaps and adjacencies
-  annotateOverlapsAndAdjacencies($mdl_info_HAR, $seq_info_HAR, $opt_HHR, $FH_HR);
+  my $ref_seqlen = ($do_infasta) ? $in_ref_seqlen : $seq_info_HAR->{"seq_len"}[0]; # length of the sequence
+  annotateOverlapsAndAdjacencies($ref_accnlen, $ref_seqlen, $mdl_info_HAR, $opt_HHR, $FH_HR);
 
   return 0;
 }

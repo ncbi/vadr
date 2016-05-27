@@ -639,6 +639,7 @@ my $sqfile = undef;    # pointer to the Bio::Easel::SqFile object we'll open in 
 wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $build_root, 
                                                     ($do_infasta) ? $infasta_ref_seq_info_HA{"accn_name"}[0] : undef,
                                                     ($do_infasta) ? $infasta_ref_seq_info_HA{"accn_len"}[0]  : undef,
+                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"seq_len"}[0]   : undef,
                                                     ($do_infasta) ? $infasta_file                            : undef,
                                                     \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
