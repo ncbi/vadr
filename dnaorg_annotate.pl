@@ -1890,7 +1890,7 @@ sub fetch_hits_given_results {
 
     for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
       my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-      if($seq_idx == 0 && (! %{$mdl_results_AAHR->[$mdl_idx][$seq_idx]})) { 
+      if($seq_idx == 0 && (! opt_Get("--infasta", $opt_HHR)) && (! %{$mdl_results_AAHR->[$mdl_idx][$seq_idx]})) { 
         DNAORG_FAIL("ERROR in $sub_name(), no hit from model $mdl_name to the reference sequence $seq_name", 1, $ofile_info_HHR->{"FH"}); 
       }
       if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
