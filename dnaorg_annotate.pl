@@ -7767,20 +7767,20 @@ sub validate_options_are_consistent_with_dnaorg_build {
     elsif($line =~ /^\-c$/) { 
       $no_build_c_opt = 0;
       if((! defined (opt_Get("-c", $opt_HHR))) || (opt_Get("-c", $opt_HHR) != 1)) { 
-        DNAORG_FAIL("ERROR, the -c option was used when dnaorg_build.pl was run (according to file $consopts_file) you must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
+        DNAORG_FAIL("ERROR, the -c option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
       }
     }
     elsif($line =~ /^\-\-nomatpept$/) { # first string is file name, second is md5 checksum (obtained with 'md5sum' executable)
       $no_build_nomatpept_opt = 0;
       if((! defined (opt_Get("--nomatpept", $opt_HHR))) || (opt_Get("--nomatpept", $opt_HHR) != 1)) { 
-        DNAORG_FAIL("ERROR, the --nomatpept option was used when dnaorg_build.pl was run (according to file $consopts_file) you must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
+        DNAORG_FAIL("ERROR, the --nomatpept option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
       }
     }
     elsif($line =~ /^\-\-matpept\s+\S+\s+(\S+)$/) { # first string is file name, second is md5 checksum (obtained with 'md5sum' executable)
       my $build_matpept_cksum = $1;
       $no_build_matpept_opt = 0;
       if(! opt_IsUsed("--matpept", $opt_HHR)) { 
-        DNAORG_FAIL("ERROR, the --matpept option was used when dnaorg_build.pl was run (according to file $consopts_file) you must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
+        DNAORG_FAIL("ERROR, the --matpept option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
       }
       else { # make sure checksum matches
         my $annotate_matpept_file = opt_Get("--matpept", $opt_HHR);
@@ -7802,16 +7802,15 @@ sub validate_options_are_consistent_with_dnaorg_build {
   # now for any options that were not read from $consopts_file, make sure they are also
   # not enabled here for dnaorg_annotate.pl
   if($no_build_c_opt && (opt_Get("-c", $opt_HHR))) { 
-    DNAORG_FAIL("ERROR, the -c option was not used when dnaorg_build.pl was run (according to file $consopts_file) you must also not use it with dnaorg_annotate.pl.", 1, $FH_HR);
+    DNAORG_FAIL("ERROR, the -c option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with -c.", 1, $FH_HR);
   }    
-  if($no_build_nomatpept_opt && (opt_Get("-c", $opt_HHR))) { 
-    DNAORG_FAIL("ERROR, the --nomatpept option was not used when dnaorg_build.pl was run (according to file $consopts_file) you must also not use it with dnaorg_annotate.pl.", 1, $FH_HR);
+  if($no_build_nomatpept_opt && (opt_Get("--nomatpept", $opt_HHR))) { 
+    DNAORG_FAIL("ERROR, the --nomatpept option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with --nomatpept.", 1, $FH_HR);
   }    
-  if($no_build_matpept_opt && (opt_IsUsed("-c", $opt_HHR))) {  
-    DNAORG_FAIL("ERROR, the --matpept option was not used when dnaorg_build.pl was run (according to file $consopts_file) you must also not use it with dnaorg_annotate.pl.", 1, $FH_HR);
+  if($no_build_matpept_opt && (opt_IsUsed("--matpept", $opt_HHR))) {  
+    DNAORG_FAIL("ERROR, the --matpept option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with --matpept.", 1, $FH_HR);
   }    
 
   # if we get here, all options are consistent
   return;
 }
-
