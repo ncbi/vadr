@@ -7750,7 +7750,7 @@ sub validate_options_are_consistent_with_dnaorg_build {
 
   # read the consopts file
   if(! -e $consopts_file) { 
-    DNAORG_FAIL("ERROR in $sub_name, consopts file $consopts_file does not exist. This file should have been created by dnaorg_build.pl.", 1, $FH_HR);
+    DNAORG_FAIL("ERROR in $sub_name, consopts file $consopts_file does not exist.\nThis file should have been created by dnaorg_build.pl.\nYou probably need to rerun dnaorg_build.pl if it was run before May 31, 2016.", 1, $FH_HR);
   }
   open(IN, $consopts_file) || fileOpenFailure($consopts_file, $sub_name, $!, "reading", $FH_HR);
   my $line_ct = 0;
