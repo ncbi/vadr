@@ -234,7 +234,7 @@ opt_Add("--wait",       "integer", 500,                      1,    undef,"--loca
 
 $opt_group_desc_H{"2"} = "options for alternative modes";
 #       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
-opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--skipedirect,--skipfetch",   "<listfile> is a fasta file of sequences, not a list of accessions", "<listfile> is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
+opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--skipedirect,--skipfetch",   "single cmdline argument is a fasta file of sequences, not a list of accessions", "single cmdline argument is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
 opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"3"} = "options that modify the tabular output file";
@@ -265,8 +265,11 @@ opt_Add("--skiptranslate", "boolean", 0,                       6,"--skipscan",  
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
 my $usage    = "Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>\n";
+$usage      .= "\n";
+$usage      .= "       OR\n";
+$usage      .= "\n";
+$usage      .= "       dnaorg_annotate.pl [-options] --refaccn <reference accession> --infasta <fasta sequence file with sequences to annotate>\n";
 my $synopsis = "dnaorg_annotate.pl :: annotate sequences based on a reference annotation";
-
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options

@@ -15,7 +15,8 @@
 # multiple reference sequences for S, one runs dnaorg_build.pl and
 # dnaorg_annotate.pl separately for each reference sequence. In some places,
 # the technical term "RefSeq" is used instead of the less formal
-# "reference sequence. 
+# "reference sequence". 
+#
 # The overarching objectives of *dnaorg*.pl are to compute all information
 # needed to produce annotations and to output that information via
 # tables and FASTA files;
@@ -43,12 +44,13 @@
 # esl-epn-translate.pl:  /panfs/pan1/dnaorg/programs/16_0317_esl_epn_translate/
 #
 # Other executables called by the dnaorg scripts, which (currently) have
-# hard-coded paths in the script come from the packages Infernal, HMMER, and Bio-Easel.
+# hard-coded paths in the script come from the packages Infernal,
+# HMMER, and Bio-Easel.
 # 
-# Directories where these scripts are:
-# $INFERNAL_DIR="/usr/local/infernal/1.1.1/bin/";
-# $HMMER_DIR="/usr/local/hmmer/3.1/bin/";
-# $BIOEASEL_DIR="/panfs/pan1/dnaorg/programs/Bio-Easel/scripts/";
+# Those hard coded paths are: 
+# Infernal:   /usr/local/infernal/1.1.1/bin/
+# HMMER:      /usr/local/hmmer/3.1/bin/
+# Bio-Easel:  /panfs/pan1/dnaorg/programs/Bio-Easel/scripts/
 #
 # Infernal (v1.1.1) programs used are:
 # cmalign
@@ -89,16 +91,16 @@
 # /home/nawrocke/notebook/16_0201_dnaorg_annotate_genomes_documentation/00LOG.txt
 #
 # Also, github has revision history
-# (https://github.com/nawrockie/dnaorg_annotate_genomes.pl.git)
+# (https://github.com/nawrockie/dnaorg_scripts.git)
 #
 # The NCBI JIRA tickets VIV-254 and VIV-272 may also be relevant.
-# Both tickets contain (pointers to) sample annotations. VIV-254 is more focused on
-# what bioinformatics problems to solve, the genomics of specific
-# viruses, and discussion of what makes an annotation correct and
-# complete. VIV-272 is about engineering the output of
-# dnaorg_annotate_genomes.pl, so that this output is unambiguously
-# suitable as input to other software tools in process of being written
-# by members of J. Rodney Brister's group in NCBI/IEB.
+# Both tickets contain (pointers to) sample annotations. VIV-254 is
+# more focused on what bioinformatics problems to solve, the genomics
+# of specific viruses, and discussion of what makes an annotation
+# correct and complete. VIV-272 is about engineering the output of
+# dnaorg_annotate.pl, so that this output is unambiguously suitable as
+# input to other software tools in process of being written by members
+# of J. Rodney Brister's group in NCBI/IEB.
 # 
 # For more information on the error codes, see the file
 # /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5.documentation.txt 
@@ -107,13 +109,14 @@
 # Prerequisites
 #######################
 # 
-# Directories that include the BioEasel perl modules must be part of the user's
-# $PERL5LIB environment variable in order the dnaorg scripts to work. 
-# Also, the $DNAORGDIR environment variable must be set prior to 
-# running dnaorg_build.pl and dnaorg_annotate.pl.
+# Directories that include the BioEasel perl modules must be part of
+# the user's $PERL5LIB environment variable in order for the dnaorg
+# scripts to work. Also, the $DNAORGDIR environment variable must be
+# set prior to running dnaorg_build.pl and dnaorg_annotate.pl.
 #
 # For bash shell users, add the following two lines to your ~/.bashrc
-# file:
+# file (after any other lines that modify your $PERL5LIB environment
+# variable):
 export DNAORGDIR="/panfs/pan1/dnaorg/virseqannot/code"
 export PERL5LIB="$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio-Easel/blib/lib:$DNAORGDIR/Bio-Easel/blib/arch:$PERL5LIB"
 #
@@ -121,7 +124,8 @@ export PERL5LIB="$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio
 source ~/.bashrc
 #
 # For C shell or C shell compatible users, add the following two lines
-# to your ~/.cshrc file: 
+# to your ~/.cshrc file (after any other lines that modify your
+# $PERL5LIB environment variable):
 setenv DNAORGDIR "/panfs/pan1/dnaorg/virseqannot/code"
 setenv PERL5LIB "$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio-Easel/blib/lib:$DNAORGDIR/Bio-Easel/blib/arch:$PERL5LIB"
 #
@@ -135,7 +139,7 @@ source ~/.cshrc
 #
 # There is a shell script that will install all of the dnaorg code
 # necessary to run dnaorg_annotate.pl and dnaorg_build.pl into 
-# a directory of your choosing. To  obtain that file execute the 
+# a directory of your choosing. To obtain that file execute the 
 # following command:
 # 
 # git clone https://github.com/nawrockie/dnaorg_install_script.git
@@ -185,7 +189,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 #  --mdlinfo : create file with internal model information
 #  --ftrinfo : create file with internal feature information
 #
-#options for skipping stages and use files from earlier, identical run, primarily useful for debugging:
+#options for skipping stages and using files from an earlier, identical run, primarily useful for debugging:
 #  --skipedirect : skip the edirect steps, use data from an earlier run of the script
 #  --skipfetch   : skip the sequence fetching steps, use files from an earlier run of the script
 #  --skipbuild   : skip the model building/calibrating, requires --mdlinfo and/or --ftrinfo
@@ -193,27 +197,26 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 #
 # dnaorg_annotate.pl should be run after dnaorg_build.pl is finished
 # and all of the cmcalibrate jobs it has submitted have completed
-# running on the farm (TODO: have dnaorg_build.pl wait for
-# calibrations to finish before exiting.) 
+# running on the farm.
 #
-# dnaorg_annotate.pl is run with a single command line argument,
-# a .ntlist file that contains a list of accessions, one per line.
-# These accessions should be the same species as the reference
-# accession used in dnaorg_build.pl. The reference accession used
-# passed into dnaorg_build.pl should be the first accession listed 
-# in the .ntlist file.
+# dnaorg_annotate.pl is typically run with a single command line
+# argument, a .ntlist file that contains a list of accessions, one per
+# line.  These accessions should be the same species as the reference
+# aaccession used in dnaorg_build.pl. The reference accession used
+# passed into dnaorg_build.pl should be the first accession listed in
+# the .ntlist file.
 #
 # See the example runs #1 and #2 below for more detailed instructions.
 #
-# Optionally, with the --infasta option, the user can provide a 
-# fasta file of sequences to annotate instead of a list of
-# accessions as the .ntlist file. This may be desirable because in 
-# this mode, none of the NCBI databases are accessed (for sequence
-
-# fetching, etc.). See 'example run 3 of 3' below for an example of 
-# running dnaorg_annotate.pl in this mode.
+# Alternatively, with the --infasta option, the user can provide a
+# fasta file of sequences to annotate instead of a list of accessions
+# as the .ntlist file. This may be desirable because in this mode,
+# none of the NCBI databases are accessed (for sequence fetching,
+# etc.). In particular, the --infasta option makes it feasible to
+# annotate newly arriving sequences that are not in GenBank. See
+# 'example run 3 of 3' below for an example of running
+# dnaorg_annotate.pl in this mode.
 #
-# 
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
 ## dnaorg 0.1 (Apr 2016)
@@ -221,6 +224,10 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 ## date:    Fri May 20 11:16:20 2016
 ##
 #Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>
+#
+#       OR
+#
+#       dnaorg_annotate.pl [-options] --refaccn <reference accession> --infasta <fasta sequence file with sequences to annotate>
 #
 #basic options:
 #  -c              : genome is closed (a.k.a circular)
@@ -239,7 +246,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 #  --wait <n>      : allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time [500]
 #
 #options for alternative modes:
-#  --infasta     : <listfile> is a fasta file of sequences, not a list of accessions
+#  --infasta     : single cmdline argument is a fasta file of sequences, not a list of accessions
 #  --refaccn <s> : specify reference accession is <s> (must be used in combination with --infasta)
 #
 #options that modify the tabular output file:
@@ -272,7 +279,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 #    Must be run once per reference accession.
 # 
 # 2) dnaorg_annotate.pl: use models built from dnaorg_build.pl to
-#    annotate other genomes of the same species as the reference.
+#    annotate other sequences of the same species as the reference.
 #    Can be run many times for each species provided that
 #    dnaorg_build.pl has been run for that species (and reference).
 # 
@@ -293,11 +300,11 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 # have done this partitioning experimentally for Dengue virus, West
 # Nile virus, and Norovirus. However, this partitioning is not
 # required; it is permissible to annotate the same genome with respect
-# to multiple reference sequences. This document (as of March 2016)
+# to multiple reference sequences. This document (as of June 2016)
 # does not discuss the partitioning further.  It is assumed that each
-# reference sequence has associated with it a list of genomes to be
-# annotated with respect to the reference sequence.  A genome may
-# appear in the "to-be-annotated" lists for multiple references.
+# reference sequence has associated with it a list of sequences to be
+# annotated with respect to the reference sequence.  A target sequence
+# may appear in the "to-be-annotated" lists for multiple references.
 # 
 # The first run is for the Maize streak virus, which has a circular
 # ssDNA genome with 4 CDS that code for proteins, one of which has 2
@@ -395,9 +402,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -c NC_00
 #    are not done locally, but rather in parallel on the compute farm.
 #
 # Importantly, the user must wait until the calibrations are finished
-# before running dnaorg_annotate_genomes.pl, as explained below.
-# The 'qstat' program can be used to check on the status of the
-# calibration jobs. For example:
+# before running dnaorg_annotate.pl, as explained below.  The 'qstat'
+# program can be used to check on the status of the calibration
+# jobs. For example:
 #
 qstat
 ##job-ID  prior   name       user         state submit/start at     queue                          jclass                         slots ja-task-ID 
@@ -407,7 +414,7 @@ qstat
 ## 187694 1.50472 c.NC_00134 nawrocke     r     05/20/2016 11:59:34 unified@sge109.be-md.ncbi.nlm.                                    4        
 #
 # Once there are no c.NC_00134* jobs remaining in the qstat output,
-# the jobs have finished and dnaorg_annotate_genomes.pl can be run.
+# the jobs have finished and dnaorg_annotate.pl can be run.
 #
 # If a job fails on the cluster (does not complete successfully), the
 # easiest way to find out is by attempting the dnaorg_annotate.pl
@@ -418,7 +425,7 @@ qstat
 # Or, optionally, you can use the
 # NC_001346/NC_001346.dnaorg_build.cm.qsub
 # file to resubmit all or a subset of the calibration jobs to the 
-# cluster again, if you're comfortable doing that.
+# cluster again.
 #
 ##########################################
 # Step 2. Run dnaorg_annotate.pl for MSV #
@@ -437,11 +444,11 @@ cat NC_001346.ntlist
 #HQ693435
 ##
 #
-# It is a requirement that the first accession in the ntlist file that
+# It is a requirement that the first accession in the .ntlist file that
 # is passed into dnaorg_annotate.pl is the same accession used in 
 # the dnaorg_build.pl call. In the .ntlist files, the accessions should
 # be listed without versions (e.g., .1, .2). The order of accessions
-# after the first row is unimportant. Each accession may only appear 
+# after the first row is unimportant. Each accession may appear only
 # once in the file. If at least one accession appears more than once,
 # dnaorg_annotate.pl will exit in error and inform the user of all
 # accessions that appear more than once.
@@ -573,8 +580,8 @@ total      2      -       -
 # the CM file in the NC_001346/ directory that is about to be used for
 # annotation was indeed made for the current reference sequence.
 # 
-# The script then runs the Infernal 'cmscan' progarm to annotate all
-# the 'features' of each of the accessions. In this case 'cmscan' was 
+# The script then runs the Infernal 'cmscan' program to annotate all
+# the 'features' of each of the accessions. In this case, 'cmscan' was
 # run locally (on the current machine). If more than 5 sequences were
 # to be annotated, the annotations would be submitted to the compute
 # farm, with 5 sequences per compute job, and the script would wait
@@ -642,9 +649,9 @@ total      2      -       -
 # codes. These error codes are described more in this file:
 # /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5.documentation.txt 
 #
-# In this case there are only 2 trc errors. For all errors see 
-# the NC_001346.dnaorg_annotate.all.errors file (one error per line)
-# and the NC_001346.dnaorg_annotate.peraccn.errors (one accession per
+# In this case, there were only 2 trc errors. For all errors, see the
+# NC_001346.dnaorg_annotate.all.errors file (one error per line) and
+# the NC_001346.dnaorg_annotate.peraccn.errors (one accession per
 # line) file in the NC_001346 directory.
 # 
 ####################
@@ -860,9 +867,10 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nse
 # Example run 3 of 3
 ####################
 #
-# For this example run, we will repeat the dnaorg_annotate.pl 
-# steps for example run #1 but using special command line options 
-# that change the behavior of dnaorg_build.pl
+# For this example run, we will repeat the dnaorg_annotate.pl step for
+# example run #1 (dnaorg_build.pl does not need to be rerun), but
+# using special command line options that change the behavior of
+# dnaorg_annotate.pl, as follows:
 #
 # - Due to the --infasta option: 
 #   NCBI databases (e.g. id) and edirect tools are not accessed.
@@ -882,7 +890,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nse
 #
 # To run dnaorg_annotate.pl in this special mode, we will use the
 # dnaorg_build output files already created in step #1 of example
-# run #1 above. If you haven't already done this, do it now.
+# run #1 above. If you haven't already attempted to reproduce
+# example 1, you must do that first before you can execute
+# the command below.
 #
 # Here is the command for executing dnaorg_annotate.pl in this
 # special mode:
@@ -1018,12 +1028,6 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --inf
 # That check is normally performed each time dnaorg_annotate.pl is
 # run without the --infasta option.
 #
-##############
-# Output files
-##############
-#
-# TODO: write this section
-# 
 ##############################################################
 ## Reproducibility and order-dependence of list of accessions
 ##############################################################
@@ -1077,7 +1081,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --inf
 - add version to accessions, and check that they are up-to-date somehow
   at beginning of run
 
-- add section to this file explaining gap notation and gap info files
+- add section to this file explaining output files
 
 #############################################
 # Last updated: EPN, Fri May 20 12:35:13 2016
