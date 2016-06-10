@@ -104,7 +104,7 @@ $opt_group_desc_H{"3"} = "optional output files";
 opt_Add("--mdlinfo",    "boolean", 0,                        3,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
 opt_Add("--ftrinfo",    "boolean", 0,                        3,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"4"} = "options for skipping stages and use files from earlier, identical run, primarily useful for debugging";
+$opt_group_desc_H{"4"} = "options for skipping stages and using files from an earlier, identical run, primarily useful for debugging";
 #     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
 opt_Add("--skipedirect",   "boolean", 0,                       4,   undef,      undef,                    "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipfetch",     "boolean", 0,                       4,   undef,      undef,                    "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
@@ -148,7 +148,7 @@ my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can jus
 my $executable    = $0;
 my $date          = scalar localtime();
 my $version       = "0.1";
-my $releasedate   = "Apr 2016";
+my $releasedate   = "Jun 2016";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 

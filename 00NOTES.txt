@@ -2,8 +2,24 @@
 # pwd: /panfs/pan1/dnaorg/programs/15_0924_dnaorg_annotate_genomes
 # git repository url: https://github.com/nawrockie/dnaorg_scripts.git
 #
+# This file is organized into the following sections: 
+# -----------
+# INTRODUCTION
+# GETTING MORE INFORMATION
+# PREREQUISITES
+# INSTALLATION OF DNAORG SCRIPTS AND DEPENDENCIES INTO A NEW DIRECTORY
+# USAGE AND OPTIONS OF dnaorg_build.pl
+# EXAMPLE RUNS
+# OPTIONS THAT MUST BE USED CONSISTENTLY IN BOTH dnaorg_build.pl AND dnaorg_annotate.pl
+# REPRODUCIBILITY AND ORDER-DEPENDENCE OF LIST OF ACCESSIONS
+# NAMING CONVENTION FOR SEQUENCES IN FASTA FILES
+# -----------
+#
+####################
+### INTRODUCTION ###
+####################
 # The dnaorg_build.pl and dnaorg_annotate.pl executable scripts are in
-# this directory. See the 'Prerequisites' section of this file before
+# this directory. See the 'PREQUISITES' section of this file before
 # trying to run them.
 #
 # This file gives examples of using the dnaorg scripts dnaorg_build.pl and
@@ -71,9 +87,9 @@
 # library, which in turn uses Inline C to interact and call functions from the
 # Easel sequence analysis library from Sean Eddy's group.
 #
-#######################
-# More information
-#######################
+################################
+### GETTING MORE INFORMATION ###
+################################
 #
 # For more information, see the 00NOTES.* files in the above listed
 # '/panfs/pan1/dnaorg/programs/' directories, where available.
@@ -105,9 +121,9 @@
 # For more information on the error codes, see the file
 # /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5.documentation.txt 
 #
-#######################
-# Prerequisites
-#######################
+#####################
+### PREREQUISITES ###
+#####################
 # 
 # Directories that include the BioEasel perl modules must be part of
 # the user's $PERL5LIB environment variable in order for the dnaorg
@@ -132,10 +148,10 @@ setenv PERL5LIB "$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio
 # Then execute: 
 source ~/.cshrc
 #
-###################################################
-# Installation of dnaorg scripts and dependencies
-# into a new directory.
-###################################################
+##################################################################
+### INSTALLATION OF DNAORG SCRIPTS AND DEPENDENCIES INTO A NEW ###
+### DIRECTORY                                                  ###
+##################################################################
 #
 # There is a shell script that will install all of the dnaorg code
 # necessary to run dnaorg_annotate.pl and dnaorg_build.pl into 
@@ -148,9 +164,9 @@ source ~/.cshrc
 # Read and follow the instructions for installation in the 
 # 00README file in that directory.
 # 
-######################################
-# Usage and options of dnaorg_build.pl
-######################################
+############################################
+### USAGE AND OPTIONS OF dnaorg_build.pl ###
+############################################
 #
 # The output of each program run with the '-h' option
 # is informative about how to use that script:
@@ -160,11 +176,12 @@ source ~/.cshrc
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.1 (Apr 2016)
+## dnaorg 0.1 (Jun 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Fri May 20 11:12:49 2016
+## date:    Fri Jun 10 08:30:32 2016
 ##
 #Usage: dnaorg_build.pl [-options] <reference accession>
+#
 #basic options:
 #  -c            : genome is circular
 #  -f            : force; if dir <reference accession> exists, overwrite it
@@ -219,9 +236,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.1 (Apr 2016)
+## dnaorg 0.1 (Jun 2016)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Fri May 20 11:16:20 2016
+## date:    Fri Jun 10 08:48:33 2016
 ##
 #Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>
 #
@@ -268,9 +285,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 #  --skipscan      : skip the cmscan step, use results from an earlier run of the script
 #  --skiptranslate : skip the translation steps, use results from an earlier run of the script
 
-##############
-# Example runs
-##############
+####################
+### EXAMPLE RUNS ###
+####################
 # 
 # There are currently (May 2016) two dnaorg scripts and they are
 # meant to be used in the following order:
@@ -546,7 +563,7 @@ total      2      -       -
 # steps it performs, with timings of each step.
 #
 ###########################
-## CHUNK OF SCRIPT OUTPUT #
+## chunk of script output #
 ###########################
 ## Gathering information on 5 sequences using edirect                     ... done. [9.7 seconds]
 ## Fetching all sequences and processing the reference genome             ... done. [1.4 seconds]
@@ -572,7 +589,7 @@ total      2      -       -
 ## Generating tabular annotation output                                   ... done. [0.0 seconds]
 ## Generating error code output                                           ... done. [0.0 seconds]
 ##################################
-## END OF CHUNK OF SCRIPT OUTPUT #
+## end of chunk of script output #
 ##################################
 #
 # The first several steps gather information about the reference
@@ -600,7 +617,7 @@ total      2      -       -
 # errors found, and outputs a summary of the annotations and errors:
 #
 ###########################
-## CHUNK OF SCRIPT OUTPUT #
+## chunk of script output #
 ###########################
 ## Annotated 5 accessions, 0 (0.0000 fraction) had at least one annotation 'failure', see NC_001346.dnaorg_annotate.tbl for all details.
 ## Table below includes counts of error codes
@@ -638,7 +655,7 @@ total      2      -       -
 #total      2      -       -
 #  any      2      -  0.4000
 #################################
-# END OF CHUNK OF SCRIPT OUTPUT #
+# end of chunk of script output #
 #################################
 #
 # In this case, 5 accessions were annotated, with zero 'failures'. See
@@ -1028,9 +1045,44 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --inf
 # That check is normally performed each time dnaorg_annotate.pl is
 # run without the --infasta option.
 #
-##############################################################
-## Reproducibility and order-dependence of list of accessions
-##############################################################
+##########################################################################
+### OPTIONS THAT MUST BE USED CONSISTENTLY IN BOTH dnaorg_build.pl AND ###
+### dnaorg_annotate.pl                                                 ###
+##########################################################################
+# 
+# Some options exist for both dnaorg_build.pl and dnaorg_annotate.pl
+# and must be used consistently with both programs. These options are:
+#
+#  -c             : genome is closed (a.k.a circular)
+#  --matpept <s>  : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
+#  --nomatpept    : ignore mat_peptide information in reference annotation
+#
+# If you use either -c, --matpept <s>, or --nomatpept with
+# dnaorg_build.pl for reference sequence x, then you must also use it
+# when you run dnaorg_annotate.pl to annotate sequences according
+# to reference sequence x. Further with --matpept <s>, the file
+# supplied as <s> must be the same exact file for both dnaorg_build.pl
+# and dnaorg_annotate.pl.
+# 
+# The dnaorg_annotate.pl script enforces that these options are used
+# consistently. dnaorg_annotate.pl will fail with an informative error
+# message if they are not used consistently. For example, if you run
+# dnaorg_build.pl like this (the command from example run 1, above):
+#
+# 'perl dnaorg_build.pl -c NC_001346'
+# 
+# and subsequently run dnaorg_annotate.pl without -c, like this:
+#
+# 'perl dnaorg_annotate.pl NC_001346.ntlist'
+#
+# The program will quickly exit with the following output explaining
+# the problem:
+#ERROR, the -c option was used when dnaorg_build.pl was run (according to file NC_001346/NC_001346.dnaorg_build.consopts).
+#You must also use it with dnaorg_annotate.pl.
+#
+##################################################################
+### REPRODUCIBILITY AND ORDER-DEPENDENCE OF LIST OF ACCESSIONS ###
+##################################################################
 # 
 # The results of the script are completely reproducible if the
 # following two criteria are met:
@@ -1048,9 +1100,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --inf
 # present usage, there is a single seed to the random number
 # generator and the seed is assigned deterministically.
 # 
-#################################################
-# Naming convention for sequences in fasta files
-#################################################
+######################################################
+### NAMING CONVENTION FOR SEQUENCES IN FASTA FILES ###
+######################################################
 #
 # Single exon nucleotide sequences are named <s>/<d1>-<d2>: 
 # Where <s> is the sequence accession, <d1> is the coordinate of the
@@ -1075,19 +1127,21 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --inf
 # NC_001346/150-455-translated
 # NC_001346/2527-1886,1793-1353-translated
 # 
-########################################################
-# TODOS
-
-- add version to accessions, and check that they are up-to-date somehow
-  at beginning of run
-
-- add section to this file explaining output files
-
+#############
+### TODOS ###
+#############
+#
+# - add version to accessions, and check that they are up-to-date somehow
+#   at beginning of run
+# 
+# - add section to this file explaining output files
+# 
 #############################################
-# Last updated: EPN, Fri May 20 12:35:13 2016
+# Last updated: EPN, Fri Jun 10 09:30:08 2016
 #############################################
 #
 # This directory is under git control. Use
 # git commands to see revision history.
+# https://github.com/nawrockie/dnaorg_scripts.git
 #
 ############################################

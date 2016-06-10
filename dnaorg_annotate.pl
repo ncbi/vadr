@@ -310,7 +310,7 @@ my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can jus
 my $executable    = $0;
 my $date          = scalar localtime();
 my $version       = "0.1";
-my $releasedate   = "Apr 2016";
+my $releasedate   = "Jun 2016";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
