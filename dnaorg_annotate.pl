@@ -5780,7 +5780,7 @@ sub output_tbl_all_sequences {
   my $do_exist    = (opt_Get("--infasta", $opt_HHR) || opt_Get("--tblnocomp", $opt_HHR)) ? 0 : 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
   my $do_matpept  = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
 
-  my $nseqcol     = 10; # number of sequences we print per page
+  my $nseqcol     = 5; # number of sequences we print per page
   my $do_tblfirst = (opt_Get("--tblfirst", $opt_HHR)) ? 1 : 0; 
   my $act_nseqcol = $do_tblfirst ? $nseqcol-1 : $nseqcol;
 
@@ -6146,12 +6146,12 @@ sub output_tbl_all_sequences {
     else { 
       push(@page_out_AA, [@cur_out_A]);
       $cur_pagesize++;
-      if($accn_failed) { 
+      if(($accn_failed) || (($seq_idx == 0) && (! opt_IsUsed("--infasta", $opt_HHR)))) { # print ref if --infasta not used
         push(@fail_page_out_AA, [@cur_out_A]);
         $cur_fail_pagesize++;
         $tot_nfail++;
       }        
-      if($seq_info_HAR->{"nerrors"}[$seq_idx] > 0) { 
+      if(($seq_info_HAR->{"nerrors"}[$seq_idx] > 0) || (($seq_idx == 0) && (! opt_IsUsed("--infasta", $opt_HHR)))) { # print ref if --infasta not used { 
         push(@err_page_out_AA, [@cur_out_A]);
         $cur_err_pagesize++;
       }        
