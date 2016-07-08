@@ -590,14 +590,8 @@ sub process_origin_input_alignment {
     $useme2_A[$i] = 1;
   }
 
-  # HERE HERE HERE
-  # to do: Put Bio-Easel under git flow
-  # in new branch, modify column_subset_rename_nse, so that it takes an optional argument $do_append,
-  # which will add start-end coordinates to the ends of names, as opposed to updating them if they exist
-  # this way, we'll always add start-end coords to the names, even if they don't already have them.
-
-  $msa1->column_subset_rename_nse(\@useme1_A);
-  $msa2->column_subset_rename_nse(\@useme2_A);
+  $msa1->column_subset_rename_nse(\@useme1_A, 0);
+  $msa2->column_subset_rename_nse(\@useme2_A, 0);
 
   my $name1 = removeDirPath($out_root);
   my $name2 = removeDirPath($out_root);
