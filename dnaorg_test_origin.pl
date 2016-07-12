@@ -103,13 +103,13 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
 }
 
 # check that number of command line args is correct
-if(scalar(@ARGV) != 3) {   
+if(scalar(@ARGV) != 4) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
   print "\nTo see more help on available options, do dnaorg_build.pl -h\n\n";
   exit(1);
 }
-my ($model_file, $fasta_file, $dir_out) = (@ARGV);
+my ($model_file, $fasta_file, $dir_out, $cons_seq) = (@ARGV);
 
 if(defined $dir_out) { 
   $dir_out =~ s/\/$//; # remove final '/' if there is one
@@ -134,8 +134,8 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 # output program banner and open output files
 #############################################
 # output preamble
-my @arg_desc_A = ("model file with 5 prime origin model and 3 prime origin model", "fasta file", "output file root");
-my @arg_A      = ($model_file, $fasta_file, $dir_out);
+my @arg_desc_A = ("model file with 5 prime origin model and 3 prime origin model", "fasta file", "output file root", "consensus origin sequence");
+my @arg_A      = ($model_file, $fasta_file, $dir_out, $cons_seq);
 outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -160,6 +160,8 @@ my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
+my $cons_len = length($cons_seq);
+my @cons_seq_A = split("", $cons_seq);
 ###################################################
 # make sure the required executables are executable
 ###################################################
@@ -237,16 +239,23 @@ foreach my $seqname (@seq_order_A) {
     
     my $nres_overlap = getOverlap($start_5p, $stop_5p, $start_3p, $stop_3p, $ofile_info_HH{"FH"});
     my $origin_coords = "?";
+    my $origin_seq = "?";
+    my $nmismatch  = $cons_len;
     if($nres_overlap > 0) { 
       if($nres_overlap != ($stop_5p - $start_3p + 1)) { 
         die "ERROR overlap nres doesn't match assumption.";
       }
       $origin_coords = sprintf("%d..%d", $start_3p, $stop_5p);
+      my $origin_fasta_seq = $sqfile->fetch_subseq_to_fasta_string($seqname, $start_3p, $stop_5p, -1, 0);
+      $origin_seq = $origin_fasta_seq;
+      $origin_seq =~ s/^\>.+\n//;
+      chomp $origin_seq;
+      $nmismatch = compare_to_consensus($origin_seq, \@cons_seq_A);
     } 
-    printf("$seqname  %10s  %2d\n", $origin_coords, $nres_overlap);
+    printf("$seqname  %10s  %2d  %10s  %2d\n", $origin_coords, $nres_overlap, $origin_seq, $nmismatch);
   }
   else { 
-    printf("$seqname  %10s  %2s\n", "?", "?");
+    printf("$seqname  %10s  %2s  %10s  %2d\n", "?", "?", "?", $cons_len);
   }
 }
 ##########
@@ -353,4 +362,40 @@ sub parse_cmscan_tblout {
   }
 }
 
+#################################################################
+# Subroutine : compare_to_consensus()
+# Incept:      EPN, Tue Jul 12 14:33:02 2016
+#
+# Purpose:    Given a predicted origin sequence, compare the
+#             it to the consensus sequence, and report number
+#             of mismatches.
+#
+# Arguments: 
+#  $pred_seq:    predicted consensus sequence
+#  $cons_seq_AR: REF to an array that is the consensus sequence, each element is an array element
+#
+# Returns:    void
+#
+#################################################################
+sub compare_to_consensus { 
+  my $sub_name = "compare_to_consensus()";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($pred_seq, $cons_seq_AR) = @_;
 
+  my @pred_A = split("", $pred_seq);
+  my $cons_len = scalar(@{$cons_seq_AR});
+  my $pred_len = scalar(@pred_A);
+
+  my $nmatch = 0;
+  my $min_len = ($cons_len < $pred_len) ? $cons_len : $pred_len;
+
+  for(my $i = 0; $i < $min_len; $i++) { 
+    if(uc($cons_seq_AR->[$i]) eq uc($pred_A[$i])) { 
+      $nmatch++; 
+    }
+  }
+  
+  return $cons_len - $nmatch;
+}  
