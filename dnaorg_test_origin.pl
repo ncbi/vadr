@@ -167,6 +167,18 @@ my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmscan"}       = $inf_exec_dir . "cmscan";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
+#####################################################
+# Determine length of all sequences in the fasta file
+#####################################################
+my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
+my $nseq = $sqfile->nseq_ssi;
+my %seqlen_H = ();
+
+for(my $i = 0; $i < $nseq; $i++) { 
+  my ($seqname, $seqlen) = $sqfile->fetch_seq_name_and_length_given_ssi_number($i);
+  $seqlen_H{$seqname} = $seqlen;
+}
+
 ###############################
 # Run cmscan on all sequences
 ###############################
@@ -179,6 +191,64 @@ runCommand($cmd, 0, $ofile_info_HH{"FH"});
 addClosedFileToOutputInfo(\%ofile_info_HH, "tblout", "$tblout_file", 1, "cmscan tabular output");
 addClosedFileToOutputInfo(\%ofile_info_HH, "stdout", "$stdout_file", 1, "cmscan standard output");
 
+################################################
+# Parse cmscan tabular output and output results
+################################################
+
+my @seq_order_A = ();
+my %hit1_HH     = (); # 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
+my %hit2_HH     = (); # 2D hash of rank 2 hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
+my $start_5p; 
+my $stop_5p; 
+my $start_3p; 
+my $stop_3p; 
+parse_cmscan_tblout($tblout_file, \%seqlen_H, \%hit1_HH, \%hit2_HH, \@seq_order_A, $ofile_info_HH{"FH"});
+
+foreach my $seqname (@seq_order_A) { 
+  my $has_hit1 = (defined $hit1_HH{$seqname}) ? 1 : 0;
+  my $has_hit2 = (defined $hit2_HH{$seqname}) ? 1 : 0;
+  my $has_5p_and_3p = 0;
+  if((exists $hit1_HH{$seqname}{"5p"}) && 
+     (exists $hit2_HH{$seqname}{"3p"})) { 
+    $has_5p_and_3p = 1;
+  }
+  if((exists $hit1_HH{$seqname}{"3p"}) && 
+     (exists $hit2_HH{$seqname}{"5p"})) { 
+    $has_5p_and_3p = 1;
+  }
+  if($has_5p_and_3p) { 
+    if($hit1_HH{$seqname}{"5p"}) { 
+#      printf("$seqname 1 is 5p, 2 is 3p\n");
+      $start_5p = $hit1_HH{$seqname}{"start"};
+      $stop_5p  = $hit1_HH{$seqname}{"stop"};
+      $start_3p = $hit2_HH{$seqname}{"start"};
+      $stop_3p  = $hit2_HH{$seqname}{"stop"};
+    }
+    elsif($hit2_HH{$seqname}{"5p"}) { 
+#      printf("$seqname 1 is 3p, 2 is 5p\n");
+      $start_5p = $hit2_HH{$seqname}{"start"};
+      $stop_5p  = $hit2_HH{$seqname}{"stop"};
+      $start_3p = $hit1_HH{$seqname}{"start"};
+      $stop_3p  = $hit1_HH{$seqname}{"stop"};
+    }
+    if($start_5p >= $stop_5p)  { die "ERROR 5p_start ($start_5p) >= 5p_stop ($stop_5p)"; }
+    if($start_3p >= $stop_3p)  { die "ERROR 3p_start ($start_5p) >= 3p_stop ($stop_5p)"; }
+    if($start_5p >= $start_3p) { die "ERROR 5p_start ($start_5p) >= 3p_start($start_3p)"; }
+    
+    my $nres_overlap = getOverlap($start_5p, $stop_5p, $start_3p, $stop_3p, $ofile_info_HH{"FH"});
+    my $origin_coords = "?";
+    if($nres_overlap > 0) { 
+      if($nres_overlap != ($stop_5p - $start_3p + 1)) { 
+        die "ERROR overlap nres doesn't match assumption.";
+      }
+      $origin_coords = sprintf("%d..%d", $start_3p, $stop_5p);
+    } 
+    printf("$seqname  %10s  %2d\n", $origin_coords, $nres_overlap);
+  }
+  else { 
+    printf("$seqname  %10s  %2s\n", "?", "?");
+  }
+}
 ##########
 # Conclude
 ##########
@@ -186,4 +256,101 @@ addClosedFileToOutputInfo(\%ofile_info_HH, "stdout", "$stdout_file", 1, "cmscan 
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 exit 0;
+
+
+#################################################################
+# Subroutine : parse_cmscan_tblout()
+# Incept:      EPN, Tue Jul 12 08:54:07 2016
+#
+# Purpose:    Parse Infernal 1.1 cmscan --tblout output and store
+#             results in $mdl_results_AAH.
+#
+# Arguments: 
+#  $tblout_file: tblout file to parse
+#  $seqlen_HR:    REF to hash, key is sequence name, value is length
+#  $hit1_HHR:     REF to 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
+#  $hit2_HHR:     REF to 2D hash of rank 2 hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
+#  $seq_order_AR: REF to array of sequences in order they appear in tblout file
+#  $FH_HR:        REF to hash of file handles
+#
+# Returns:    void
+#
+#################################################################
+sub parse_cmscan_tblout { 
+  my $sub_name = "parse_cmscan_tblout()";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($tblout_file, $seqlen_HR, $hit1_HHR, $hit2_HHR, $seq_order_AR, $FH_HR) = @_;
+  
+  open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
+
+  my %seq_exists_H = ();
+  my $did_field_check = 0; # set to '1' below after we check the fields of the file
+  my $line_ctr = 0;  # counts lines in tblout_file
+  my $HHR = undef; # pointer to either $hit1_HHR or $hit2_HHR
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    if(($line =~ m/^\#/) && (! $did_field_check)) { 
+      # sanity check, make sure the fields are what we expect
+      if($line !~ m/#target name\s+accession\s+query name\s+accession\s+mdl\s+mdl\s+from\s+mdl to\s+seq from\s+seq to\s+strand\s+trunc\s+pass\s+gc\s+bias\s+score\s+E-value inc description of target/) { 
+        DNAORG_FAIL("ERROR in $sub_name, unexpected field names in $tblout_file\n$line\n", 1, $FH_HR);
+      }
+      $did_field_check = 1;
+    }
+    elsif($line !~ m/^\#/) { 
+      chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+      # example line:
+      # NC_001346.dnaorg_build.origin.5p -         KJ699341             -         hmm        1       59     2484     2542      +     -    6 0.59   0.1   78.5     2e-24 !   -
+      my @elA = split(/\s+/, $line);
+      my ($mdlname, $seqname, $mod, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $score, $evalue) = 
+          ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
+
+      my $seqlen = $seqlen_HR->{$seqname};
+
+      if(! exists $seq_exists_H{$seqname}) { 
+        push(@{$seq_order_AR}, $seqname); 
+        $seq_exists_H{$seqname} = 1;
+      }
+
+      # only consider hits where either the start or end are less than the total length
+      # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
+      # rule for deciding which of duplicate hits we'll store 
+      if(($seqfrom <= $seqlen) || ($seqto <= $seqlen)) { 
+        $HHR = $hit1_HHR;
+#        printf("\n$seqname HHR is hit1\n");
+        if(exists $hit1_HHR->{$seqname}) { 
+          $HHR = $hit2_HHR;
+#          printf("$seqname HHR is hit2\n");
+          if(exists $hit2_HHR->{$seqname}) { 
+            $HHR = undef; # 2 hits already exist for this hit, don't store it
+#            printf("$seqname HHR is undef\n");
+          }
+        }
+        if(defined $HHR) {
+          %{$HHR->{$seqname}} = ();
+          $HHR->{$seqname}{"start"}  = $seqfrom;
+          $HHR->{$seqname}{"stop"}   = $seqto;
+          $HHR->{$seqname}{"score"}  = $score;
+          $HHR->{$seqname}{"evalue"} = $evalue;
+          if($mdlname =~ m/5p$/) { 
+#            printf("\t5p\n");
+            $HHR->{$seqname}{"5p"} = 1;
+            $HHR->{$seqname}{"3p"} = 0;
+          }
+          elsif($mdlname =~ m/3p$/) { 
+#            printf("\t3p\n");
+            $HHR->{$seqname}{"5p"} = 0;
+            $HHR->{$seqname}{"3p"} = 1;
+          }
+          else { 
+            die "ERROR can't parse model name $mdlname"; 
+          }
+        } 
+      }
+    }
+  }
+}
+
 
