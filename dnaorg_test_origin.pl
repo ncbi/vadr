@@ -79,6 +79,7 @@ my %opt_group_desc_H = ();
 $opt_group_desc_H{"1"} = "basic options";
 #     option            type       default               group   requires incompat    preamble-output                          help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("--hmmonly",    "boolean", 0,                        1,    undef, undef,      "search with HMMs not CMs",              "search with HMMs not CMs",                           \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -86,7 +87,8 @@ my $usage    = "Usage: dnaorg_test_origin.pl [-options] <CM file with 5p and 3p 
 my $synopsis = "dnaorg_test_origin.pl :: search for origin sequences [TEST SCRIPT]";
 
 my $options_okay = 
-    &GetOptions('h'            => \$GetOptions_H{"-h"});
+    &GetOptions('h'            => \$GetOptions_H{"-h"}, 
+                'hmmonly'      => \$GetOptions_H{"--hmmonly"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -178,7 +180,7 @@ my %seqlen_H = ();
 
 for(my $i = 0; $i < $nseq; $i++) { 
   my ($seqname, $seqlen) = $sqfile->fetch_seq_name_and_length_given_ssi_number($i);
-  $seqlen_H{$seqname} = $seqlen;
+  $seqlen_H{$seqname} = $seqlen / 2;
 }
 
 ###############################
@@ -186,7 +188,12 @@ for(my $i = 0; $i < $nseq; $i++) {
 ###############################
 my $tblout_file = $out_root . ".tbl";
 my $stdout_file = $out_root . ".cmscan";
-$cmd = $execs_H{"cmscan"} . " --noali --cpu 0 --tblout $tblout_file --verbose $model_file $fasta_file > $stdout_file";
+my $opts = " --noali --cpu 0 --tblout $tblout_file --verbose ";
+if(! opt_Get("--hmmonly", \%opt_HH)) { 
+  $opts .= " --nohmmonly --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
+}
+
+$cmd = $execs_H{"cmscan"} . " " . $opts . " $model_file $fasta_file > $stdout_file";
 
 runCommand($cmd, 0, $ofile_info_HH{"FH"});
 
@@ -207,6 +214,7 @@ my $stop_3p;
 parse_cmscan_tblout($tblout_file, \%seqlen_H, \%hit1_HH, \%hit2_HH, \@seq_order_A, $ofile_info_HH{"FH"});
 
 foreach my $seqname (@seq_order_A) { 
+  my $seqlen = $seqlen_H{$seqname};
   my $has_hit1 = (defined $hit1_HH{$seqname}) ? 1 : 0;
   my $has_hit2 = (defined $hit2_HH{$seqname}) ? 1 : 0;
   my $has_5p_and_3p = 0;
@@ -233,10 +241,21 @@ foreach my $seqname (@seq_order_A) {
       $start_3p = $hit1_HH{$seqname}{"start"};
       $stop_3p  = $hit1_HH{$seqname}{"stop"};
     }
-    if($start_5p >= $stop_5p)  { die "ERROR 5p_start ($start_5p) >= 5p_stop ($stop_5p)"; }
-    if($start_3p >= $stop_3p)  { die "ERROR 3p_start ($start_5p) >= 3p_stop ($stop_5p)"; }
-    if($start_5p >= $start_3p) { die "ERROR 5p_start ($start_5p) >= 3p_start($start_3p)"; }
-    
+    if($start_5p >= $stop_5p)  { die "ERROR 5p_start ($start_5p) >= 5p_stop ($stop_5p) $seqname"; }
+    if($start_3p >= $stop_3p)  { die "ERROR 3p_start ($start_5p) >= 3p_stop ($stop_5p) $seqname"; }
+    if($start_5p >= $start_3p) { 
+      # special case, example is: 
+      #NC_001346.dnaorg_build.origin.5p -         FJ882131:dnaorg-duplicated:FJ882131:1:2690:+:FJ882131:1:2690:+: -         hmm        1       59     2641     2699      +     -    6 0.56   0.0   75.0   4.8e-23 !   -
+      #NC_001346.dnaorg_build.origin.3p -         FJ882131:dnaorg-duplicated:FJ882131:1:2690:+:FJ882131:1:2690:+: -         hmm        1       59        1       59      +     -    6 0.54   0.0   72.9   1.8e-22 !   -
+      if($start_3p <= $seqlen && $stop_3p <= $seqlen) { 
+        $start_3p += $seqlen;
+        $stop_3p += $seqlen;
+      }
+      if($start_5p >= $start_3p) { 
+        die "ERROR 5p_start ($start_5p) >= 3p_start($start_3p) after testing for special case $seqname"; 
+      }
+    }
+
     my $nres_overlap = getOverlap($start_5p, $stop_5p, $start_3p, $stop_3p, $ofile_info_HH{"FH"});
     my $origin_coords = "?";
     my $origin_seq = "?";
@@ -252,10 +271,10 @@ foreach my $seqname (@seq_order_A) {
       chomp $origin_seq;
       $nmismatch = compare_to_consensus($origin_seq, \@cons_seq_A);
     } 
-    printf("$seqname  %10s  %2d  %10s  %2d\n", $origin_coords, $nres_overlap, $origin_seq, $nmismatch);
+    outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  %s\n", $seqname, $origin_coords, $nres_overlap, $origin_seq, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
   }
   else { 
-    printf("$seqname  %10s  %2s  %10s  %2d\n", "?", "?", "?", $cons_len);
+    outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2s  %10s  %2d  FAIL\n", $seqname, "?", "?", "?", $cons_len));
   }
 }
 ##########
