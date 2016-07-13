@@ -83,7 +83,7 @@ opt_Add("--hmmonly",    "boolean", 0,                        1,    undef, undef,
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: dnaorg_test_origin.pl [-options] <CM file with 5p and 3p origin models> <fasta file> <output directory>\n";
+my $usage    = "Usage: dnaorg_test_origin.pl [-options] <CM file with 5p and 3p origin models> <fasta file> <output directory> <consensus sequence>\n";
 my $synopsis = "dnaorg_test_origin.pl :: search for origin sequences [TEST SCRIPT]";
 
 my $options_okay = 
@@ -174,13 +174,17 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 #####################################################
 # Determine length of all sequences in the fasta file
 #####################################################
+if(-e $fasta_file . ".ssi") { 
+  unlink $fasta_file . ".ssi";
+}
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
 my $nseq = $sqfile->nseq_ssi;
 my %seqlen_H = ();
-
+my @seq_order_A = ();
 for(my $i = 0; $i < $nseq; $i++) { 
   my ($seqname, $seqlen) = $sqfile->fetch_seq_name_and_length_given_ssi_number($i);
   $seqlen_H{$seqname} = $seqlen / 2;
+  push(@seq_order_A, $seqname);
 }
 
 ###############################
@@ -204,14 +208,13 @@ addClosedFileToOutputInfo(\%ofile_info_HH, "stdout", "$stdout_file", 1, "cmscan 
 # Parse cmscan tabular output and output results
 ################################################
 
-my @seq_order_A = ();
 my %hit1_HH     = (); # 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
 my %hit2_HH     = (); # 2D hash of rank 2 hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
 my $start_5p; 
 my $stop_5p; 
 my $start_3p; 
 my $stop_3p; 
-parse_cmscan_tblout($tblout_file, \%seqlen_H, \%hit1_HH, \%hit2_HH, \@seq_order_A, $ofile_info_HH{"FH"});
+parse_cmscan_tblout($tblout_file, \%seqlen_H, \%hit1_HH, \%hit2_HH, $ofile_info_HH{"FH"});
 
 foreach my $seqname (@seq_order_A) { 
   my $seqlen = $seqlen_H{$seqname};
@@ -228,54 +231,81 @@ foreach my $seqname (@seq_order_A) {
   }
   if($has_5p_and_3p) { 
     if($hit1_HH{$seqname}{"5p"}) { 
-#      printf("$seqname 1 is 5p, 2 is 3p\n");
+      #printf("$seqname 1 is 5p, 2 is 3p\n");
       $start_5p = $hit1_HH{$seqname}{"start"};
       $stop_5p  = $hit1_HH{$seqname}{"stop"};
       $start_3p = $hit2_HH{$seqname}{"start"};
       $stop_3p  = $hit2_HH{$seqname}{"stop"};
     }
     elsif($hit2_HH{$seqname}{"5p"}) { 
-#      printf("$seqname 1 is 3p, 2 is 5p\n");
+      #printf("$seqname 1 is 3p, 2 is 5p\n");
       $start_5p = $hit2_HH{$seqname}{"start"};
       $stop_5p  = $hit2_HH{$seqname}{"stop"};
       $start_3p = $hit1_HH{$seqname}{"start"};
       $stop_3p  = $hit1_HH{$seqname}{"stop"};
     }
-    if($start_5p >= $stop_5p)  { die "ERROR 5p_start ($start_5p) >= 5p_stop ($stop_5p) $seqname"; }
-    if($start_3p >= $stop_3p)  { die "ERROR 3p_start ($start_5p) >= 3p_stop ($stop_5p) $seqname"; }
-    if($start_5p >= $start_3p) { 
-      # special case, example is: 
-      #NC_001346.dnaorg_build.origin.5p -         FJ882131:dnaorg-duplicated:FJ882131:1:2690:+:FJ882131:1:2690:+: -         hmm        1       59     2641     2699      +     -    6 0.56   0.0   75.0   4.8e-23 !   -
-      #NC_001346.dnaorg_build.origin.3p -         FJ882131:dnaorg-duplicated:FJ882131:1:2690:+:FJ882131:1:2690:+: -         hmm        1       59        1       59      +     -    6 0.54   0.0   72.9   1.8e-22 !   -
-      if($start_3p <= $seqlen && $stop_3p <= $seqlen) { 
-        $start_3p += $seqlen;
-        $stop_3p += $seqlen;
-      }
+    # determine strand 
+    if($start_5p < $stop_5p) { 
+      # positive strand
+      if($start_3p >= $stop_3p)  { die "ERROR positive strand but 3p_start ($start_5p) >= 3p_stop ($stop_5p) $seqname"; }
       if($start_5p >= $start_3p) { 
-        die "ERROR 5p_start ($start_5p) >= 3p_start($start_3p) after testing for special case $seqname"; 
+        # special case, example is: 
+        #NC_001346.dnaorg_build.origin.5p -         FJ882131:dnaorg-duplicated:FJ882131:1:2690:+:FJ882131:1:2690:+: -         hmm        1       59     2641     2699      +     -    6 0.56   0.0   75.0   4.8e-23 !   -
+        #NC_001346.dnaorg_build.origin.3p -         FJ882131:dnaorg-duplicated:FJ882131:1:2690:+:FJ882131:1:2690:+: -         hmm        1       59        1       59      +     -    6 0.54   0.0   72.9   1.8e-22 !   -
+        if($start_3p <= $seqlen && $stop_3p <= $seqlen) { 
+          $start_3p += $seqlen;
+          $stop_3p += $seqlen;
+        }
+        if($start_5p >= $start_3p) { 
+          die "ERROR 5p_start ($start_5p) >= 3p_start($start_3p) after testing for special case $seqname"; 
+        }
       }
-    }
-
-    my $nres_overlap = getOverlap($start_5p, $stop_5p, $start_3p, $stop_3p, $ofile_info_HH{"FH"});
-    my $origin_coords = "?";
-    my $origin_seq = "?";
-    my $nmismatch  = $cons_len;
-    if($nres_overlap > 0) { 
-      if($nres_overlap != ($stop_5p - $start_3p + 1)) { 
-        die "ERROR overlap nres doesn't match assumption.";
+      
+      my $nres_overlap = getOverlap($start_5p, $stop_5p, $start_3p, $stop_3p, $ofile_info_HH{"FH"});
+      my $origin_coords = "?";
+      my $origin_seq = "?";
+      my $nmismatch  = $cons_len;
+      if($nres_overlap > 0) { 
+        if($nres_overlap != ($stop_5p - $start_3p + 1)) { 
+          die "ERROR overlap nres doesn't match assumption.";
+        }
+        $origin_coords = sprintf("%d..%d", $start_3p, $stop_5p);
+        my $origin_fasta_seq = $sqfile->fetch_subseq_to_fasta_string($seqname, $start_3p, $stop_5p, -1, 0);
+        $origin_seq = $origin_fasta_seq;
+        $origin_seq =~ s/^\>.+\n//;
+        chomp $origin_seq;
+        $nmismatch = compare_to_consensus($origin_seq, \@cons_seq_A);
+      } 
+      outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  + %s\n", $seqname, $origin_coords, $nres_overlap, $origin_seq, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
+    } # end of 'if($start_5p < $stop_5p)'
+    else { 
+      # negative strand
+      if($start_3p <= $stop_3p)  { die "ERROR positive strand but 3p_start ($start_5p) >= 3p_stop ($stop_5p) $seqname"; }
+      if($start_5p <= $start_3p) { 
+        die "That special case you thought might happen, just happened.";
+        # see analogous special case for positive strand, above
       }
-      $origin_coords = sprintf("%d..%d", $start_3p, $stop_5p);
-      my $origin_fasta_seq = $sqfile->fetch_subseq_to_fasta_string($seqname, $start_3p, $stop_5p, -1, 0);
-      $origin_seq = $origin_fasta_seq;
-      $origin_seq =~ s/^\>.+\n//;
-      chomp $origin_seq;
-      $nmismatch = compare_to_consensus($origin_seq, \@cons_seq_A);
-    } 
-    outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  %s\n", $seqname, $origin_coords, $nres_overlap, $origin_seq, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
+      my $nres_overlap = getOverlap($stop_5p, $start_5p, $stop_3p, $start_3p, $ofile_info_HH{"FH"});
+      my $origin_coords = "?";
+      my $origin_seq = "?";
+      my $nmismatch  = $cons_len;
+      if($nres_overlap > 0) { 
+        if($nres_overlap != ($start_3p - $stop_5p + 1)) { 
+          die "ERROR overlap nres doesn't match assumption.";
+        }
+        $origin_coords = sprintf("%d..%d", $start_3p, $stop_5p);
+        my $origin_fasta_seq = $sqfile->fetch_subseq_to_fasta_string($seqname, $start_3p, $stop_5p, -1, 0);
+        $origin_seq = $origin_fasta_seq;
+        $origin_seq =~ s/^\>.+\n//;
+        chomp $origin_seq;
+        $nmismatch = compare_to_consensus($origin_seq, \@cons_seq_A);
+      } 
+      outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  - %s\n", $seqname, $origin_coords, $nres_overlap, $origin_seq, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
+    } # end of 'else' entered if(! ($start_5p < $stop_5p))'
   }
   else { 
-    outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2s  %10s  %2d  FAIL\n", $seqname, "?", "?", "?", $cons_len));
-  }
+    outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2s  %10s  %2d  ? FAIL\n", $seqname, "?", "?", "?", $cons_len));
+  } 
 }
 ##########
 # Conclude
@@ -298,7 +328,6 @@ exit 0;
 #  $seqlen_HR:    REF to hash, key is sequence name, value is length
 #  $hit1_HHR:     REF to 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
 #  $hit2_HHR:     REF to 2D hash of rank 2 hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
-#  $seq_order_AR: REF to array of sequences in order they appear in tblout file
 #  $FH_HR:        REF to hash of file handles
 #
 # Returns:    void
@@ -306,14 +335,13 @@ exit 0;
 #################################################################
 sub parse_cmscan_tblout { 
   my $sub_name = "parse_cmscan_tblout()";
-  my $nargs_exp = 6;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $seqlen_HR, $hit1_HHR, $hit2_HHR, $seq_order_AR, $FH_HR) = @_;
+  my ($tblout_file, $seqlen_HR, $hit1_HHR, $hit2_HHR, $FH_HR) = @_;
   
   open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
 
-  my %seq_exists_H = ();
   my $did_field_check = 0; # set to '1' below after we check the fields of the file
   my $line_ctr = 0;  # counts lines in tblout_file
   my $HHR = undef; # pointer to either $hit1_HHR or $hit2_HHR
@@ -337,23 +365,18 @@ sub parse_cmscan_tblout {
 
       my $seqlen = $seqlen_HR->{$seqname};
 
-      if(! exists $seq_exists_H{$seqname}) { 
-        push(@{$seq_order_AR}, $seqname); 
-        $seq_exists_H{$seqname} = 1;
-      }
-
       # only consider hits where either the start or end are less than the total length
       # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
       # rule for deciding which of duplicate hits we'll store 
       if(($seqfrom <= $seqlen) || ($seqto <= $seqlen)) { 
         $HHR = $hit1_HHR;
-#        printf("\n$seqname HHR is hit1\n");
+        #printf("\n$seqname HHR is hit1\n");
         if(exists $hit1_HHR->{$seqname}) { 
           $HHR = $hit2_HHR;
-#          printf("$seqname HHR is hit2\n");
+          #printf("$seqname HHR is hit2\n");
           if(exists $hit2_HHR->{$seqname}) { 
             $HHR = undef; # 2 hits already exist for this hit, don't store it
-#            printf("$seqname HHR is undef\n");
+            #printf("$seqname HHR is undef\n");
           }
         }
         if(defined $HHR) {
@@ -363,12 +386,12 @@ sub parse_cmscan_tblout {
           $HHR->{$seqname}{"score"}  = $score;
           $HHR->{$seqname}{"evalue"} = $evalue;
           if($mdlname =~ m/5p$/) { 
-#            printf("\t5p\n");
+            #printf("\t5p\n");
             $HHR->{$seqname}{"5p"} = 1;
             $HHR->{$seqname}{"3p"} = 0;
           }
           elsif($mdlname =~ m/3p$/) { 
-#            printf("\t3p\n");
+            #printf("\t3p\n");
             $HHR->{$seqname}{"5p"} = 0;
             $HHR->{$seqname}{"3p"} = 1;
           }
