@@ -31,9 +31,9 @@ require "epn-options.pm";
 
 # first, determine the paths to all modules, scripts and executables that we'll need
 # we currently use hard-coded-paths for Infernal, HMMER and easel executables:
-my $inf_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
+my $inf_exec_dir      = "/usr/local/infernal/1.1.2/bin/";
 my $hmmer_exec_dir    = "/usr/local/hmmer/3.1/bin/";
-my $esl_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
+my $esl_exec_dir      = "/usr/local/infernal/1.1.2/bin/";
 
 # make sure the DNAORGDIR environment variable is set
 my $dnaorgdir = $ENV{'DNAORGDIR'};
@@ -176,6 +176,9 @@ my @cons_seq_A = split("", $cons_seq);
 ###################################################
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmscan"}       = $inf_exec_dir . "cmscan";
+$execs_H{"cmalign"}      = $inf_exec_dir . "cmalign";
+$execs_H{"esl-alimask"}  = $esl_exec_dir . "esl-alimask";
+$execs_H{"esl-reformat"} = $esl_exec_dir . "esl-reformat";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 #####################################################
@@ -226,13 +229,35 @@ foreach my $seqname (@seq_order_A) {
   if(exists $hit_HH{$seqname}) { 
     my $newname = $seqname . "/" . $hit_HH{$seqname}{"start"} . "-" . $hit_HH{$seqname}{"stop"};
     push(@fetch_AA, [ $newname, $hit_HH{$seqname}{"start"}, $hit_HH{$seqname}{"stop"}, $seqname ]);
-    printf("pushed $newname\n");
+    #printf("pushed $newname\n");
   }
 }
 my $out_fasta_file = $out_root . ".cmscan.fa";
 $sqfile->fetch_subseqs(\@fetch_AA, undef, $out_fasta_file);
 addClosedFileToOutputInfo(\%ofile_info_HH, "outfasta", "$out_fasta_file", 1, "cmscan hits in fasta format");
     
+#############################
+# Align all hits with cmalign
+#############################
+
+my $out_stk_file     = $out_root . ".cmalign.stk";
+my $out_cmalign_file = $out_root . ".cmalign";
+$cmd = $execs_H{"cmalign"} . " -o $out_stk_file $model_file $out_fasta_file > $out_cmalign_file";
+
+runCommand($cmd, 0, $ofile_info_HH{"FH"});
+addClosedFileToOutputInfo(\%ofile_info_HH, "outstk",     "$out_stk_file",     1, "alignment of cmscan hits");
+addClosedFileToOutputInfo(\%ofile_info_HH, "outcmalign", "$out_cmalign_file", 1, "cmalign output");
+
+#########################################
+# Pull out the predicted origin sequences
+#########################################
+my $out_origin_fa_file = $out_root . ".origin.fa";
+my $origin_coords = $start_pos . ".." . ($start_pos + $cons_len - 1);
+$cmd = $execs_H{"esl-alimask"} . " --t-rf -t $out_stk_file $origin_coords | " . $execs_H{"esl-reformat"} . " -d --informat stockholm fasta - > $out_origin_fa_file";
+
+runCommand($cmd, 0, $ofile_info_HH{"FH"});
+addClosedFileToOutputInfo(\%ofile_info_HH, "originfasta",     "$out_origin_fa_file",     1, "fasta file of all predicted origin sequences");
+
 ##########
 # Conclude
 ##########
