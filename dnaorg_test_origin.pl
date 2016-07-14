@@ -162,6 +162,10 @@ my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
+# now we have the log file open, output the banner there too
+outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
+opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
+
 my $cons_len = length($cons_seq);
 my @cons_seq_A = split("", $cons_seq);
 ###################################################
@@ -221,14 +225,15 @@ foreach my $seqname (@seq_order_A) {
   my $has_hit1 = (defined $hit1_HH{$seqname}) ? 1 : 0;
   my $has_hit2 = (defined $hit2_HH{$seqname}) ? 1 : 0;
   my $has_5p_and_3p = 0;
-  if((exists $hit1_HH{$seqname}{"5p"}) && 
-     (exists $hit2_HH{$seqname}{"3p"})) { 
+  if((exists $hit1_HH{$seqname}{"5p"} && ($hit1_HH{$seqname}{"5p"} == 1)) && 
+     (exists $hit2_HH{$seqname}{"3p"} && ($hit2_HH{$seqname}{"3p"} == 1))) { 
     $has_5p_and_3p = 1;
   }
-  if((exists $hit1_HH{$seqname}{"3p"}) && 
-     (exists $hit2_HH{$seqname}{"5p"})) { 
+  if((exists $hit1_HH{$seqname}{"3p"} && ($hit1_HH{$seqname}{"3p"} == 1)) && 
+     (exists $hit2_HH{$seqname}{"5p"} && ($hit2_HH{$seqname}{"5p"} == 1))) { 
     $has_5p_and_3p = 1;
   }
+  #printf("seqname: $seqname has_5p_and_3p: $has_5p_and_3p\n");
   if($has_5p_and_3p) { 
     if($hit1_HH{$seqname}{"5p"}) { 
       #printf("$seqname 1 is 5p, 2 is 3p\n");
