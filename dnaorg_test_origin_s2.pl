@@ -258,6 +258,79 @@ $cmd = $execs_H{"esl-alimask"} . " --t-rf -t $out_stk_file $origin_coords | " . 
 runCommand($cmd, 0, $ofile_info_HH{"FH"});
 addClosedFileToOutputInfo(\%ofile_info_HH, "originfasta",     "$out_origin_fa_file",     1, "fasta file of all predicted origin sequences");
 
+################
+# Output results
+################
+my $ori_sqfile = Bio::Easel::SqFile->new({ fileLocation => $out_origin_fa_file }); 
+
+#foreach my $seqname (@seq_order_A) { 
+#  my $seqlen = $seqlen_H{$seqname};
+#  my $has_hit = (defined $hit_HH{$seqname}) ? 1 : 0;
+#  if($has_hit) { 
+#    my $start = $hit_HH{$seqname}{"start"};
+#    my $stop  = $hit_HH{$seqname}{"stop"};
+#    # determine strand 
+#    if($start <= $stop) { 
+#      # positive strand
+#      my $origin_coords = "?";
+#      my $origin_seq = "?";
+#      my $nmismatch  = $cons_len;
+#    }
+#     if($nres_overlap > 0) { 
+#        if($nres_overlap != ($stop_5p - $start_3p + 1)) { 
+#          die "ERROR overlap nres doesn't match assumption.";
+#        }
+#        $origin_coords = sprintf("%d..%d", $start_3p, $stop_5p);
+#        my $origin_fasta_seq = $sqfile->fetch_subseq_to_fasta_string($seqname, $start_3p, $stop_5p, -1, 0);
+#        $origin_seq = $origin_fasta_seq;
+#        $origin_seq =~ s/^\>.+\n//;
+#        chomp $origin_seq;
+#        $nmismatch = compare_to_consensus($origin_seq, \@cons_seq_A);
+#      } 
+#      outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  + %s\n", $seqname, $origin_coords, $nres_overlap, $origin_seq, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
+#      $nmismatch_H{$nmismatch}++;
+#      $npred++;
+#    } # end of 'if($start_5p < $stop_5p)'
+#    else { 
+#      # negative strand
+#      if($start_3p <= $stop_3p)  { die "ERROR positive strand but 3p_start ($start_5p) >= 3p_stop ($stop_5p) $seqname"; }
+#      if($start_5p <= $start_3p) { 
+#        die "That special case you thought might happen, just happened.";
+#        # see analogous special case for positive strand, above
+#      }
+#      my $nres_overlap = getOverlap($stop_5p, $start_5p, $stop_3p, $start_3p, $ofile_info_HH{"FH"});
+#      my $origin_coords = "?";
+#      my $origin_seq = "?";
+#      my $nmismatch  = $cons_len;
+#      if($nres_overlap > 0) { 
+#        if($nres_overlap != ($start_3p - $stop_5p + 1)) { 
+#          die "ERROR overlap nres doesn't match assumption.";
+#        }
+#        $origin_coords = sprintf("%d..%d", $start_3p, $stop_5p);
+#        my $origin_fasta_seq = $sqfile->fetch_subseq_to_fasta_string($seqname, $start_3p, $stop_5p, -1, 0);
+#        $origin_seq = $origin_fasta_seq;
+#        $origin_seq =~ s/^\>.+\n//;
+#        chomp $origin_seq;
+#        $nmismatch = compare_to_consensus($origin_seq, \@cons_seq_A);
+#      } 
+#      outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  - %s\n", $seqname, $origin_coords, $nres_overlap, $origin_seq, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
+#      $nmismatch_H{$nmismatch}++;
+#      $npred++;
+#    } # end of 'else' entered if(! ($start_5p < $stop_5p))'
+#  }
+#  else { 
+#    outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2s  %10s  %2d  ? FAIL\n", $seqname, "?", "?", "?", $cons_len));
+#    $nnop++;
+#  } 
+#}
+
+# test aligned_to_unaligned_pos
+my $msa = Bio::Easel::MSA->new({ fileLocation => "se.sto" });
+
+my ($uapos, $ret_apos) = tmp_aligned_to_unaligned_pos($msa, 0, 4, 0);
+printf("HEYA seqidx: 0, uapos: $uapos ret_apos: $ret_apos\n");
+
+
 ##########
 # Conclude
 ##########
@@ -374,3 +447,68 @@ sub compare_to_consensus {
   
   return $cons_len - $nmatch;
 }  
+
+sub tmp_aligned_to_unaligned_pos
+{
+  my ($msa, $sqidx, $apos, $do_after) = @_;
+
+  if(! defined $do_after) { $do_after = 0; }
+
+  $msa->_check_msa();
+  $msa->_check_sqidx($sqidx);
+  $msa->_check_ax_apos($apos);
+
+  my $sqstring = $msa->get_sqstring_aligned($sqidx);
+
+  printf("sqstring: $sqstring $sqidx: $sqidx apos: $apos\n");
+  
+  # is alignment position $apos a gap in $sqidx?
+  my $apos_char = substr($sqstring, $apos, 1);
+  printf("apos_char: $apos_char\n");
+  my $is_gap = ($apos_char =~ m/[a-zA-Z]/) ? 0 : 1;
+  print("is_gap: $is_gap\n");
+
+  # remove all non-alphabetic characters, to get unaligned length
+  my $substr = substr($sqstring, 1, $apos);
+  $substr    =~ s/[^a-zA-Z]//g;
+  print("substr: $substr\n");
+  my $uapos  = length($substr);
+  my $ret_apos = undef;
+
+  if(! $is_gap) { 
+    $ret_apos = $apos; # apos is unchanged from what was passed in
+    printf("uapos: $uapos, ret_apos: $ret_apos\n");
+  }
+  else { 
+    # $apos is a gap for $sqidx:
+    # determine last  position before $apos that is not a gap, if any (if ! $do_after)
+    #        or first position after  $apos that is not a gap, if any (if $do_after)
+    if(! $do_after) { 
+      # $do_after is '0': determine last  position before $apos that is not a gap, if any (if ! $do_after)
+      if ($substr =~ /[a-zA-Z]/) {
+        $substr   = $`;
+        $ret_apos = length($substr);
+        $substr   =~ s/[^a-zA-Z]//g; # remove all gaps from substr
+        $uapos    = length($substr); # length of substr gives us uapos
+      }
+      else { # no alphabetic characters in the string
+        $uapos    = -1;
+        $ret_apos = -1;
+      }
+    }
+    else { 
+      # $do_after is '1': determine first position after  $apos that is not a gap, if any 
+      $substr = substr($sqstring, $apos); # we want to examine from $apos to $alen]
+      if ($substr  =~ /[a-zA-Z]/) {
+        $substr    =  $`;
+        $ret_apos +=  $apos + length($substr);
+        $substr    =  substr($sqstring, 1, $ret_apos); # now we want from 1 to $ret_apos so we can determine uapos
+        $substr    =~ s/[^a-zA-Z]//g; # remove all gaps from substr
+        $uapos     = length($substr); # length of substr gives us uapos
+      }
+    }
+    return ($uapos, $ret_apos);
+  }    
+
+  return;
+}
