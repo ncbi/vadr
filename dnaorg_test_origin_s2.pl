@@ -497,14 +497,11 @@ sub tmp_aligned_to_unaligned_pos
       my $sqstring_to_apos = substr($sqstring, 0, $apos);
       if ($sqstring_to_apos =~ /[a-zA-Z]/) {
         # we have at least 1 non-gap
-        my $sqstring_to_apos_no_trailing_gaps = $sqstring_to_apos;
+        (my $sqstring_to_apos_no_trailing_gaps = $sqstring_to_apos) =~ s/[^a-zA-Z]*$//;
         #printf("before sqstring_to_apos_no_trailing_gaps1: $sqstring_to_apos_no_trailing_gaps\n");
-        $sqstring_to_apos_no_trailing_gaps =~ s/[^a-zA-Z]*$//;
-        #printf("before sqstring_to_apos_no_trailing_gaps2: $sqstring_to_apos_no_trailing_gaps\n");
         $ret_apos = length($sqstring_to_apos_no_trailing_gaps);
         #printf("ret_apos: $ret_apos\n");
-        my $sqstring_to_apos_no_gaps = $sqstring_to_apos_no_trailing_gaps;
-        $sqstring_to_apos_no_gaps =~ s/[^a-zA-Z]//g; # remove all gaps from sqstring_no_gaps
+        (my $sqstring_to_apos_no_gaps = $sqstring_to_apos_no_trailing_gaps) =~ s/[^a-zA-Z]//g; # remove all gaps from sqstring_no_gaps
         $uapos = length($sqstring_to_apos_no_gaps); # length of substr_no_gaps gives us uapos
         #printf("uapos: $uapos\n");
       }
@@ -518,16 +515,12 @@ sub tmp_aligned_to_unaligned_pos
       my $sqstring_apos_to_alen = substr($sqstring, $apos-1); # we want to examine from $apos to $alen (remember apos is 1..alen, not 0..alen-1)
       if ($sqstring_apos_to_alen  =~ /[a-zA-Z]/) {
         # we have at least 1 non-gap
-        my $sqstring_apos_to_alen_no_leading_gaps = $sqstring_apos_to_alen;
+        (my $sqstring_apos_to_alen_no_leading_gaps = $sqstring_apos_to_alen) =~ s/^[^a-zA-Z]*//;
         #printf("after sqstring_apos_to_alen_no_leading_gaps1: $sqstring_apos_to_alen_no_leading_gaps\n");
-        $sqstring_apos_to_alen_no_leading_gaps =~ s/^[^a-zA-Z]*//;
-        #printf("after sqstring_apos_to_alen_no_leading_gaps2: $sqstring_apos_to_alen_no_leading_gaps\n");
         $ret_apos  = $msa->alen - length($sqstring_apos_to_alen_no_leading_gaps) + 1; # the +1 is to account for the fact that we didn't remove the first nt
         #printf("ret_apos: $ret_apos\n");
-        my $sqstring_apos_to_alen_no_gaps = $sqstring_apos_to_alen_no_leading_gaps;
-        $sqstring_apos_to_alen_no_gaps =~ s/[^a-zA-Z]//g; # remove all gaps from sqstring_apos_to_alen_no_gaps
-        my $sqstring_no_gaps = $sqstring;
-        $sqstring_no_gaps =~ s/[^a-zA-Z]//g;
+        (my $sqstring_apos_to_alen_no_gaps = $sqstring_apos_to_alen_no_leading_gaps) =~ s/[^a-zA-Z]//g; # remove all gaps from sqstring_apos_to_alen_no_gaps
+        (my $sqstring_no_gaps = $sqstring) =~ s/[^a-zA-Z]//g;
         $uapos = length($sqstring_no_gaps) - length($sqstring_apos_to_alen_no_gaps) + 1; # again, +1 b/c we didn't remove the first nt;
         #printf("uapos: $uapos\n");
       }
