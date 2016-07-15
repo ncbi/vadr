@@ -326,10 +326,18 @@ my $ori_sqfile = Bio::Easel::SqFile->new({ fileLocation => $out_origin_fa_file }
 
 # test aligned_to_unaligned_pos
 my $msa = Bio::Easel::MSA->new({ fileLocation => "se.sto" });
+my ($uapos_before, $ret_apos_before);
+my ($uapos_after, $ret_apos_after);
 
-my ($uapos, $ret_apos) = tmp_aligned_to_unaligned_pos($msa, 0, 4, 0);
-printf("HEYA seqidx: 0, uapos: $uapos ret_apos: $ret_apos\n");
-
+for(my $seqidx = 1; $seqidx < $msa->nseq; $seqidx++) { 
+  printf("seqidx: $seqidx\n");
+  for(my $apos = 1; $apos <= $msa->alen; $apos++) { 
+#  for(my $apos = 1; $apos <= 1; $apos++) { 
+    ($uapos_before, $ret_apos_before) = tmp_aligned_to_unaligned_pos($msa, $seqidx, $apos, 0);
+    ($uapos_after,  $ret_apos_after)  = tmp_aligned_to_unaligned_pos($msa, $seqidx, $apos, 1);
+    printf("\tapos: %2d  BEFORE: apos: %2d uapos: %2d\tAFTER: apos: %2d  uapos: %2d\n", $apos, $ret_apos_before, $uapos_before, $ret_apos_after, $uapos_after);
+  }
+}
 
 ##########
 # Conclude
@@ -459,25 +467,24 @@ sub tmp_aligned_to_unaligned_pos
   $msa->_check_ax_apos($apos);
 
   my $sqstring = $msa->get_sqstring_aligned($sqidx);
+  my $ret_apos; # return apos
+  my $uapos;    # return value, the unaligned position corresponding to $ret_apos
 
-  printf("sqstring: $sqstring $sqidx: $sqidx apos: $apos\n");
+  #printf("sqstring: $sqstring sqidx: $sqidx apos: $apos\n");
   
   # is alignment position $apos a gap in $sqidx?
-  my $apos_char = substr($sqstring, $apos, 1);
-  printf("apos_char: $apos_char\n");
+  my $apos_char = substr($sqstring, $apos-1, 1);
+  #printf("apos_char: $apos_char\n");
   my $is_gap = ($apos_char =~ m/[a-zA-Z]/) ? 0 : 1;
-  print("is_gap: $is_gap\n");
-
-  # remove all non-alphabetic characters, to get unaligned length
-  my $substr = substr($sqstring, 1, $apos);
-  $substr    =~ s/[^a-zA-Z]//g;
-  print("substr: $substr\n");
-  my $uapos  = length($substr);
-  my $ret_apos = undef;
+  #print("is_gap: $is_gap\n");
 
   if(! $is_gap) { 
-    $ret_apos = $apos; # apos is unchanged from what was passed in
-    printf("uapos: $uapos, ret_apos: $ret_apos\n");
+    # easy case
+    # remove all non-alphabetic characters, to get unaligned length
+    my $sqstring_to_apos_no_gaps = substr($sqstring, 0, $apos);
+    $sqstring_to_apos_no_gaps =~ s/[^a-zA-Z]//g;
+    $uapos = length($sqstring_to_apos_no_gaps);
+    return ($uapos, $apos);
   }
   else { 
     # $apos is a gap for $sqidx:
@@ -485,30 +492,50 @@ sub tmp_aligned_to_unaligned_pos
     #        or first position after  $apos that is not a gap, if any (if $do_after)
     if(! $do_after) { 
       # $do_after is '0': determine last  position before $apos that is not a gap, if any (if ! $do_after)
-      if ($substr =~ /[a-zA-Z]/) {
-        $substr   = $`;
-        $ret_apos = length($substr);
-        $substr   =~ s/[^a-zA-Z]//g; # remove all gaps from substr
-        $uapos    = length($substr); # length of substr gives us uapos
+      # first check if there are any characters that are not gaps:
+      # remove all characters after apos, we don't care about them
+      my $sqstring_to_apos = substr($sqstring, 0, $apos);
+      if ($sqstring_to_apos =~ /[a-zA-Z]/) {
+        # we have at least 1 non-gap
+        my $sqstring_to_apos_no_trailing_gaps = $sqstring_to_apos;
+        #printf("before sqstring_to_apos_no_trailing_gaps1: $sqstring_to_apos_no_trailing_gaps\n");
+        $sqstring_to_apos_no_trailing_gaps =~ s/[^a-zA-Z]*$//;
+        #printf("before sqstring_to_apos_no_trailing_gaps2: $sqstring_to_apos_no_trailing_gaps\n");
+        $ret_apos = length($sqstring_to_apos_no_trailing_gaps);
+        #printf("ret_apos: $ret_apos\n");
+        my $sqstring_to_apos_no_gaps = $sqstring_to_apos_no_trailing_gaps;
+        $sqstring_to_apos_no_gaps =~ s/[^a-zA-Z]//g; # remove all gaps from sqstring_no_gaps
+        $uapos = length($sqstring_to_apos_no_gaps); # length of substr_no_gaps gives us uapos
+        #printf("uapos: $uapos\n");
       }
       else { # no alphabetic characters in the string
-        $uapos    = -1;
         $ret_apos = -1;
+        $uapos    = -1;
       }
     }
     else { 
       # $do_after is '1': determine first position after  $apos that is not a gap, if any 
-      $substr = substr($sqstring, $apos); # we want to examine from $apos to $alen]
-      if ($substr  =~ /[a-zA-Z]/) {
-        $substr    =  $`;
-        $ret_apos +=  $apos + length($substr);
-        $substr    =  substr($sqstring, 1, $ret_apos); # now we want from 1 to $ret_apos so we can determine uapos
-        $substr    =~ s/[^a-zA-Z]//g; # remove all gaps from substr
-        $uapos     = length($substr); # length of substr gives us uapos
+      my $sqstring_apos_to_alen = substr($sqstring, $apos-1); # we want to examine from $apos to $alen (remember apos is 1..alen, not 0..alen-1)
+      if ($sqstring_apos_to_alen  =~ /[a-zA-Z]/) {
+        # we have at least 1 non-gap
+        my $sqstring_apos_to_alen_no_leading_gaps = $sqstring_apos_to_alen;
+        #printf("after sqstring_apos_to_alen_no_leading_gaps1: $sqstring_apos_to_alen_no_leading_gaps\n");
+        $sqstring_apos_to_alen_no_leading_gaps =~ s/^[^a-zA-Z]*//;
+        #printf("after sqstring_apos_to_alen_no_leading_gaps2: $sqstring_apos_to_alen_no_leading_gaps\n");
+        $ret_apos  = $msa->alen - length($sqstring_apos_to_alen_no_leading_gaps) + 1; # the +1 is to account for the fact that we didn't remove the first nt
+        #printf("ret_apos: $ret_apos\n");
+        my $sqstring_apos_to_alen_no_gaps = $sqstring_apos_to_alen_no_leading_gaps;
+        $sqstring_apos_to_alen_no_gaps =~ s/[^a-zA-Z]//g; # remove all gaps from sqstring_apos_to_alen_no_gaps
+        my $sqstring_no_gaps = $sqstring;
+        $sqstring_no_gaps =~ s/[^a-zA-Z]//g;
+        $uapos = length($sqstring_no_gaps) - length($sqstring_apos_to_alen_no_gaps) + 1; # again, +1 b/c we didn't remove the first nt;
+        #printf("uapos: $uapos\n");
       }
-    }
+      else { # no alphabetic characters in the string
+        $ret_apos = -1;
+        $uapos    = -1;
+      }
+    }    
     return ($uapos, $ret_apos);
-  }    
-
-  return;
+  }
 }
