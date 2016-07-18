@@ -114,7 +114,7 @@ if(scalar(@ARGV) != 5) {
   print "\nTo see more help on available options, do dnaorg_build.pl -h\n\n";
   exit(1);
 }
-my ($model_file, $start_pos, $fasta_file, $dir_out, $cons_seq) = (@ARGV);
+my ($model_file, $ori_start_pos, $fasta_file, $dir_out, $cons_seq) = (@ARGV);
 
 if(defined $dir_out) { 
   $dir_out =~ s/\/$//; # remove final '/' if there is one
@@ -140,7 +140,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 #############################################
 # output preamble
 my @arg_desc_A = ("model file with origin model", "origin start position", "fasta file", "output file root", "consensus origin sequence");
-my @arg_A      = ($model_file, $start_pos, $fasta_file, $dir_out, $cons_seq);
+my @arg_A      = ($model_file, $ori_start_pos, $fasta_file, $dir_out, $cons_seq);
 outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -252,8 +252,9 @@ addClosedFileToOutputInfo(\%ofile_info_HH, "outcmalign", "$out_cmalign_file", 1,
 # Pull out the predicted origin sequences
 #########################################
 my $out_origin_fa_file = $out_root . ".origin.fa";
-my $origin_coords = $start_pos . ".." . ($start_pos + $cons_len - 1);
-$cmd = $execs_H{"esl-alimask"} . " --t-rf -t $out_stk_file $origin_coords | " . $execs_H{"esl-reformat"} . " -d --informat stockholm fasta - > $out_origin_fa_file";
+my $ori_stop_pos = ($ori_start_pos + $cons_len - 1);
+my $ori_coords = $ori_start_pos . ".." . $ori_stop_pos;
+$cmd = $execs_H{"esl-alimask"} . " --t-rf -t $out_stk_file $ori_coords | " . $execs_H{"esl-reformat"} . " -d --informat stockholm fasta - > $out_origin_fa_file";
 
 runCommand($cmd, 0, $ofile_info_HH{"FH"});
 addClosedFileToOutputInfo(\%ofile_info_HH, "originfasta",     "$out_origin_fa_file",     1, "fasta file of all predicted origin sequences");
@@ -262,96 +263,78 @@ addClosedFileToOutputInfo(\%ofile_info_HH, "originfasta",     "$out_origin_fa_fi
 # Output results
 ################
 my $ori_sqfile = Bio::Easel::SqFile->new({ fileLocation => $out_origin_fa_file }); 
+my $ori_msa    = Bio::Easel::MSA->new   ({ fileLocation => $out_stk_file });
 
-#foreach my $seqname (@seq_order_A) { 
-#  my $seqlen = $seqlen_H{$seqname};
-#  my $has_hit = (defined $hit_HH{$seqname}) ? 1 : 0;
-#  if($has_hit) { 
-#    my $start = $hit_HH{$seqname}{"start"};
-#    my $stop  = $hit_HH{$seqname}{"stop"};
-#    # determine strand 
-#    if($start <= $stop) { 
-#      # positive strand
-#      my $origin_coords = "?";
-#      my $origin_seq = "?";
-#      my $nmismatch  = $cons_len;
-#    }
-#     if($nres_overlap > 0) { 
-#        if($nres_overlap != ($stop_5p - $start_3p + 1)) { 
-#          die "ERROR overlap nres doesn't match assumption.";
-#        }
-#        $origin_coords = sprintf("%d..%d", $start_3p, $stop_5p);
-#        my $origin_fasta_seq = $sqfile->fetch_subseq_to_fasta_string($seqname, $start_3p, $stop_5p, -1, 0);
-#        $origin_seq = $origin_fasta_seq;
-#        $origin_seq =~ s/^\>.+\n//;
-#        chomp $origin_seq;
-#        $nmismatch = compare_to_consensus($origin_seq, \@cons_seq_A);
-#      } 
-#      outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  + %s\n", $seqname, $origin_coords, $nres_overlap, $origin_seq, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
-#      $nmismatch_H{$nmismatch}++;
-#      $npred++;
-#    } # end of 'if($start_5p < $stop_5p)'
-#    else { 
-#      # negative strand
-#      if($start_3p <= $stop_3p)  { die "ERROR positive strand but 3p_start ($start_5p) >= 3p_stop ($stop_5p) $seqname"; }
-#      if($start_5p <= $start_3p) { 
-#        die "That special case you thought might happen, just happened.";
-#        # see analogous special case for positive strand, above
-#      }
-#      my $nres_overlap = getOverlap($stop_5p, $start_5p, $stop_3p, $start_3p, $ofile_info_HH{"FH"});
-#      my $origin_coords = "?";
-#      my $origin_seq = "?";
-#      my $nmismatch  = $cons_len;
-#      if($nres_overlap > 0) { 
-#        if($nres_overlap != ($start_3p - $stop_5p + 1)) { 
-#          die "ERROR overlap nres doesn't match assumption.";
-#        }
-#        $origin_coords = sprintf("%d..%d", $start_3p, $stop_5p);
-#        my $origin_fasta_seq = $sqfile->fetch_subseq_to_fasta_string($seqname, $start_3p, $stop_5p, -1, 0);
-#        $origin_seq = $origin_fasta_seq;
-#        $origin_seq =~ s/^\>.+\n//;
-#        chomp $origin_seq;
-#        $nmismatch = compare_to_consensus($origin_seq, \@cons_seq_A);
-#      } 
-#      outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  - %s\n", $seqname, $origin_coords, $nres_overlap, $origin_seq, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
-#      $nmismatch_H{$nmismatch}++;
-#      $npred++;
-#    } # end of 'else' entered if(! ($start_5p < $stop_5p))'
-#  }
-#  else { 
-#    outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2s  %10s  %2d  ? FAIL\n", $seqname, "?", "?", "?", $cons_len));
-#    $nnop++;
-#  } 
-#}
+foreach my $seqname (@seq_order_A) { 
+  my $seqlen = $seqlen_H{$seqname};
+  my $has_hit = (defined $hit_HH{$seqname}) ? 1 : 0;
 
-# test aligned_to_unaligned_pos
-my $msa = Bio::Easel::MSA->new({ fileLocation => "se.sto" });
-my ($uapos_before, $ret_apos_before);
-my ($uapos_after, $ret_apos_after);
+  if($has_hit) { 
+    my $start = $hit_HH{$seqname}{"start"};
+    my $stop  = $hit_HH{$seqname}{"stop"};
+    my $msa_seqname = $seqname . "/" . $start . "-" . $stop;
+    my $msa_sqidx = $ori_msa->get_sqidx($msa_seqname);
+    if($msa_sqidx == -1) { 
+      DNAORG_FAIL("ERROR, unable to find $msa_seqname in $out_stk_file", 1, $ofile_info_HH{"FH"});
+    }
 
-for(my $seqidx = 1; $seqidx < $msa->nseq; $seqidx++) { 
-  printf("seqidx: $seqidx\n");
-  for(my $apos = 1; $apos <= $msa->alen; $apos++) { 
-#  for(my $apos = 1; $apos <= 1; $apos++) { 
-    ($uapos_before, $ret_apos_before) = tmp_aligned_to_unaligned_pos($msa, $seqidx, $apos, 0);
-    ($uapos_after,  $ret_apos_after)  = tmp_aligned_to_unaligned_pos($msa, $seqidx, $apos, 1);
-    printf("\tapos: %2d  BEFORE: apos: %2d uapos: %2d\tAFTER: apos: %2d  uapos: %2d\n", $apos, $ret_apos_before, $uapos_before, $ret_apos_after, $uapos_after);
+    # determine the unaligned positions the origin spans in the alignment file $out_stk_file
+    my ($cur_ori_start_uapos, $cur_ori_start_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_start_pos, 1); # '1': if ori_start_pos is a gap, return position of 1st non-gap nucleotide after it 
+    my ($cur_ori_stop_uapos,  $cur_ori_stop_apos)  = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_stop_pos,  0); # '0': if ori_start_pos is a gap, return position of 1st non-gap nucleotide before it 
+
+    # do we have at least 1 nucleotide predicted in the origin positions?
+    if(($cur_ori_start_apos < $ori_stop_pos) && ($cur_ori_stop_apos > $ori_start_pos))  { 
+      # yes, we do:
+      my $cur_ori_len = $cur_ori_stop_apos - $cur_ori_start_apos + 1;
+      # determine strand 
+      if($start <= $stop) { 
+        # positive strand
+        my $cur_ori_coords = ($cur_ori_start_uapos + $start - 1) . ".." . ($cur_ori_stop_uapos + $start - 1);
+        # fetch origin sequence, and make sure it matches what we fetched in $out_origin_fa_file
+        my $ori_fasta_seq1 = $sqfile->fetch_subseq_to_fasta_string    ($seqname, $cur_ori_start_uapos + $start - 1, $cur_ori_stop_uapos + $start -1, -1, 0);
+        my $ori_fasta_seq2 = $ori_sqfile->fetch_subseq_to_fasta_string($msa_seqname, 1, $cur_ori_len, -1, 0);
+        (my $cur_ori_seq1 = $ori_fasta_seq1) =~ s/^\>.+\n//;
+        (my $cur_ori_seq2 = $ori_fasta_seq2) =~ s/^\>.+\n//;
+        if($cur_ori_seq1 ne $cur_ori_seq2) { 
+          DNAORG_FAIL("ERROR, fetched origin check failed:\n$cur_ori_seq1\nne\n$cur_ori_seq2\n", 1, $ofile_info_HH{"FH"});
+        }
+        chomp $cur_ori_seq1;
+        my $nmismatch = compare_to_consensus($cur_ori_seq1, \@cons_seq_A);
+
+        outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  + %s\n", $seqname, $cur_ori_coords, $cur_ori_len, $cur_ori_seq1, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
+        $nmismatch_H{$nmismatch}++;
+        $npred++;
+      } # end of 'if($start < $stop)'
+      else { 
+        # negative strand
+        die "ERROR negative strand hit";
+      }
+    }
+    else { 
+      outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2s  %10s  %2d  ? FAIL\n", $seqname, "?", "?", "?", $cons_len));
+      $nnop++;
+    }
+  } 
+  else { 
+    outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2s  %10s  %2d  ? FAIL\n", $seqname, "?", "?", "?", $cons_len));
+    $nnop++;
   }
 }
+
 
 ##########
 # Conclude
 ##########
 
 # print summary
-#outputString($ofile_info_HH{"FH"}{"log"}, 1, "#\n# Summary:\n#\n");
-#outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of sequences:                       %4d\n", $nseq));
-#outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of no predictions:                  %4d (%.3f)\n", $nnop, $nnop / $nseq));
-#outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions:                     %4d (%.3f)\n", $npred, $npred / $nseq));
-#for(my $z = 0; $z <= $cons_len; $z++) { 
-#  my $cur_nmismatch = (exists $nmismatch_H{$z}) ? $nmismatch_H{$z} : 0;
-#  outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions with %2d mismatches:  %4d (%.3f)\n", $z, $cur_nmismatch, $cur_nmismatch / $#npred));
-#}
+outputString($ofile_info_HH{"FH"}{"log"}, 1, "#\n# Summary:\n#\n");
+outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of sequences:                       %4d\n", $nseq));
+outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of no predictions:                  %4d (%.3f)\n", $nnop, $nnop / $nseq));
+outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions:                     %4d (%.3f)\n", $npred, $npred / $nseq));
+for(my $z = 0; $z <= $cons_len; $z++) { 
+  my $cur_nmismatch = (exists $nmismatch_H{$z}) ? $nmismatch_H{$z} : 0;
+  outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions with %2d mismatches:  %4d (%.3f)\n", $z, $cur_nmismatch, $cur_nmismatch / $npred));
+}
 
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
