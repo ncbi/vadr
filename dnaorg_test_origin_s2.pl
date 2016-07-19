@@ -289,17 +289,19 @@ foreach my $seqname (@seq_order_A) {
     # do we have at least 1 nucleotide predicted in the origin positions?
     if(($cur_ori_start_apos < $ori_stop_apos) && ($cur_ori_stop_apos > $ori_start_apos))  { 
       # yes, we do:
-      my $cur_ori_len = $cur_ori_stop_apos - $cur_ori_start_apos + 1;
+      my $cur_ori_len = $cur_ori_stop_uapos - $cur_ori_start_uapos + 1;
       # determine strand 
       if($start <= $stop) { 
         # positive strand
         my $cur_ori_coords = ($cur_ori_start_uapos + $start - 1) . ".." . ($cur_ori_stop_uapos + $start - 1);
         # fetch origin sequence, and make sure it matches what we fetched in $out_origin_fa_file
         #printf("seqname $seqname start: %d (%d+%d-1) stop: %d (%d+%d-1)\n", $cur_ori_start_uapos + $start - 1, $cur_ori_start_uapos, $start, $cur_ori_stop_uapos + $start - 1, $cur_ori_stop_uapos, $start);
-        my $ori_fasta_seq1 = $sqfile->fetch_subseq_to_fasta_string    ($seqname, $cur_ori_start_uapos + $start - 1, $cur_ori_stop_uapos + $start -1, -1, 0);
-        my $ori_fasta_seq2 = $ori_sqfile->fetch_subseq_to_fasta_string($msa_seqname, 1, $cur_ori_len, -1, 0);
+        my $ori_fasta_seq1 = $sqfile->fetch_subseq_to_fasta_string($seqname, $cur_ori_start_uapos + $start - 1, $cur_ori_stop_uapos + $start -1, -1, 0);
+        my $ori_fasta_seq2 = $ori_sqfile->fetch_seq_to_fasta_string($msa_seqname, -1);
         (my $cur_ori_seq1 = $ori_fasta_seq1) =~ s/^\>.+\n//;
         (my $cur_ori_seq2 = $ori_fasta_seq2) =~ s/^\>.+\n//;
+        $cur_ori_seq1 =~ tr/a-z/A-Z/;
+        $cur_ori_seq2 =~ tr/a-z/A-Z/;
         if($cur_ori_seq1 ne $cur_ori_seq2) { 
           DNAORG_FAIL("ERROR, seqname: $seqname fetched origin check failed:\n$cur_ori_seq1\nne\n$cur_ori_seq2\n", 1, $ofile_info_HH{"FH"});
         }
@@ -312,7 +314,25 @@ foreach my $seqname (@seq_order_A) {
       } # end of 'if($start < $stop)'
       else { 
         # negative strand
-        die "ERROR negative strand hit";
+        my $cur_ori_coords = ($start - $cur_ori_start_uapos + 1) . ".." . ($start - $cur_ori_stop_uapos + 1);
+        # fetch origin sequence, and make sure it matches what we fetched in $out_origin_fa_file
+        #printf("seqname $seqname start: %d (%d+%d-1) stop: %d (%d+%d-1)\n", $cur_ori_start_uapos + $start - 1, $cur_ori_start_uapos, $start, $cur_ori_stop_uapos + $start - 1, $cur_ori_stop_uapos, $start);
+        my $ori_fasta_seq1 = $sqfile->fetch_subseq_to_fasta_string($seqname, ($start - $cur_ori_start_uapos + 1), ($start - $cur_ori_stop_uapos + 1), -1, 0);
+        my $ori_fasta_seq2 = $ori_sqfile->fetch_seq_to_fasta_string($msa_seqname, -1);
+        (my $cur_ori_seq1 = $ori_fasta_seq1) =~ s/^\>.+\n//;
+        (my $cur_ori_seq2 = $ori_fasta_seq2) =~ s/^\>.+\n//;
+        $cur_ori_seq1 =~ tr/a-z/A-Z/;
+        $cur_ori_seq2 =~ tr/a-z/A-Z/;
+        if($cur_ori_seq1 ne $cur_ori_seq2) { 
+          DNAORG_FAIL("ERROR, seqname: $seqname fetched origin check failed:\n$cur_ori_seq1\nne\n$cur_ori_seq2\n", 1, $ofile_info_HH{"FH"});
+        }
+        chomp $cur_ori_seq1;
+        my $nmismatch = compare_to_consensus($cur_ori_seq1, \@cons_seq_A);
+
+        outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  - %s\n", $seqname, $cur_ori_coords, $cur_ori_len, $cur_ori_seq1, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
+        $nmismatch_H{$nmismatch}++;
+        $npred++;
+
       }
     }
     else { 
