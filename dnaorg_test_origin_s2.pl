@@ -50,6 +50,7 @@ if(! (-d $dnaorgdir)) {
 my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
 my $nnop  = 0; # number of sequences for which an origin is not predicted
 my $npred = 0; # number of sequences for which an origin is predicted
+my $npred_len = 0; # number of sequences for which an origin is predicted of expected len
 my %nmismatch_H = ();
 
 #########################################################
@@ -83,6 +84,7 @@ $opt_group_desc_H{"1"} = "basic options";
 #     option            type       default               group   requires incompat    preamble-output                          help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
 opt_Add("--hmmonly",    "boolean", 0,                        1,    undef, undef,      "search with HMMs not CMs",              "search with HMMs not CMs",                           \%opt_HH, \@opt_order_A);
+
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -309,8 +311,11 @@ foreach my $seqname (@seq_order_A) {
         my $nmismatch = compare_to_consensus($cur_ori_seq1, \@cons_seq_A);
 
         outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  + %s\n", $seqname, $cur_ori_coords, $cur_ori_len, $cur_ori_seq1, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
-        $nmismatch_H{$nmismatch}++;
         $npred++;
+        if($cur_ori_len == $cons_len) { 
+          $npred_len++;
+          $nmismatch_H{$nmismatch}++;
+        }
       } # end of 'if($start < $stop)'
       else { 
         # negative strand
@@ -330,9 +335,11 @@ foreach my $seqname (@seq_order_A) {
         my $nmismatch = compare_to_consensus($cur_ori_seq1, \@cons_seq_A);
 
         outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  - %s\n", $seqname, $cur_ori_coords, $cur_ori_len, $cur_ori_seq1, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
-        $nmismatch_H{$nmismatch}++;
         $npred++;
-
+        if($cur_ori_len == $cons_len) { 
+          $npred_len++;
+          $nmismatch_H{$nmismatch}++;
+        }
       }
     }
     else { 
@@ -355,10 +362,11 @@ foreach my $seqname (@seq_order_A) {
 outputString($ofile_info_HH{"FH"}{"log"}, 1, "#\n# Summary:\n#\n");
 outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of sequences:                       %4d\n", $nseq));
 outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of no predictions:                  %4d (%.3f)\n", $nnop, $nnop / $nseq));
-outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions:                     %4d (%.3f)\n", $npred, $npred / $nseq));
+outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions of unexpected len:   %4d (%.3f)\n", ($npred-$npred_len), ($npred-$npred_len) / $nseq));
+outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions of expected len:     %4d (%.3f)\n", $npred_len, $npred_len / $nseq));
 for(my $z = 0; $z <= $cons_len; $z++) { 
   my $cur_nmismatch = (exists $nmismatch_H{$z}) ? $nmismatch_H{$z} : 0;
-  outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions with %2d mismatches:  %4d (%.3f)\n", $z, $cur_nmismatch, $cur_nmismatch / $npred));
+  outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions with %2d mismatches:  %4d (%.3f)\n", $z, $cur_nmismatch, $cur_nmismatch / $npred_len));
 }
 
 $total_seconds += secondsSinceEpoch();

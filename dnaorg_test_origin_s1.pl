@@ -50,6 +50,7 @@ if(! (-d $dnaorgdir)) {
 my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
 my $nnop  = 0; # number of sequences for which an origin is not predicted
 my $npred = 0; # number of sequences for which an origin is predicted
+my $npred_len = 0; # number of sequences for which an origin is predicted that is the correct length
 my %nmismatch_H = ();
 
 #########################################################
@@ -285,8 +286,11 @@ foreach my $seqname (@seq_order_A) {
         $nmismatch = compare_to_consensus($origin_seq, \@cons_seq_A);
       } 
       outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  + %s\n", $seqname, $origin_coords, $nres_overlap, $origin_seq, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
-      $nmismatch_H{$nmismatch}++;
       $npred++;
+      if($nres_overlap == $cons_len) { 
+        $nmismatch_H{$nmismatch}++;
+        $npred_len++;
+      }
     } # end of 'if($start_5p < $stop_5p)'
     else { 
       # negative strand
@@ -313,6 +317,10 @@ foreach my $seqname (@seq_order_A) {
       outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("%-80s  %10s  %2d  %10s  %2d  - %s\n", $seqname, $origin_coords, $nres_overlap, $origin_seq, $nmismatch, ($nmismatch == 0) ? "PASS" : "FAIL"));
       $nmismatch_H{$nmismatch}++;
       $npred++;
+      if($nres_overlap == $cons_len) { 
+        $nmismatch_H{$nmismatch}++;
+        $npred_len++;
+      }
     } # end of 'else' entered if(! ($start_5p < $stop_5p))'
   }
   else { 
@@ -328,10 +336,11 @@ foreach my $seqname (@seq_order_A) {
 outputString($ofile_info_HH{"FH"}{"log"}, 1, "#\n# Summary:\n#\n");
 outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of sequences:                       %4d\n", $nseq));
 outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of no predictions:                  %4d (%.3f)\n", $nnop, $nnop / $nseq));
-outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions:                     %4d (%.3f)\n", $npred, $npred / $nseq));
+outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions of unexpected len:   %4d (%.3f)\n", ($npred-$npred_len), ($npred-$npred_len) / $nseq));
+outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions of expected len:     %4d (%.3f)\n", $npred_len, $npred_len / $nseq));
 for(my $z = 0; $z <= $cons_len; $z++) { 
   my $cur_nmismatch = (exists $nmismatch_H{$z}) ? $nmismatch_H{$z} : 0;
-  outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions with %2d mismatches:  %4d (%.3f)\n", $z, $cur_nmismatch, $cur_nmismatch / $npred));
+  outputString($ofile_info_HH{"FH"}{"log"}, 1, sprintf("# Number of predictions with %2d mismatches:  %4d (%.3f)\n", $z, $cur_nmismatch, $cur_nmismatch / $npred_len));
 }
 
 $total_seconds += secondsSinceEpoch();
