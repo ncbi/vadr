@@ -86,8 +86,8 @@ opt_Add("--hmmonly",    "boolean", 0,                        1,    undef, undef,
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: dnaorg_test_origin.pl [-options] <CM file with 5p and 3p origin models> <fasta file> <output directory> <consensus sequence>\n";
-my $synopsis = "dnaorg_test_origin.pl :: search for origin sequences [TEST SCRIPT]";
+my $usage    = "Usage: dnaorg_test_origin_s1.pl [-options] <CM file with 5p and 3p origin models> <fasta file> <output directory> <consensus sequence>\n";
+my $synopsis = "dnaorg_test_origin_s1.pl :: search for origin sequences [TEST SCRIPT]";
 
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
@@ -121,7 +121,7 @@ if(defined $dir_out) {
 }
 my $dir_out_tail   = $dir_out;
 $dir_out_tail   =~ s/^.+\///; # remove all but last dir
-my $out_root   = $dir_out .   "/" . $dir_out_tail   . ".dnaorg_test_origin";
+my $out_root   = $dir_out .   "/" . $dir_out_tail   . ".dnaorg_test_origin_s1";
 
 my $cmd;
 if(! -d $dir_out) {

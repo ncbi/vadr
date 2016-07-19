@@ -114,7 +114,7 @@ if(scalar(@ARGV) != 5) {
   print "\nTo see more help on available options, do dnaorg_build.pl -h\n\n";
   exit(1);
 }
-my ($model_file, $ori_start_pos, $fasta_file, $dir_out, $cons_seq) = (@ARGV);
+my ($model_file, $ori_start_rfpos, $fasta_file, $dir_out, $cons_seq) = (@ARGV);
 
 if(defined $dir_out) { 
   $dir_out =~ s/\/$//; # remove final '/' if there is one
@@ -140,7 +140,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 #############################################
 # output preamble
 my @arg_desc_A = ("model file with origin model", "origin start position", "fasta file", "output file root", "consensus origin sequence");
-my @arg_A      = ($model_file, $ori_start_pos, $fasta_file, $dir_out, $cons_seq);
+my @arg_A      = ($model_file, $ori_start_rfpos, $fasta_file, $dir_out, $cons_seq);
 outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -187,6 +187,7 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 if(-e $fasta_file . ".ssi") { 
   unlink $fasta_file . ".ssi";
 }
+if(-e $fasta_file.".ssi") { unlink $fasta_file.".ssi"; }
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fasta_file }); # the sequence file object
 my $nseq = $sqfile->nseq_ssi;
 my %seqlen_H = ();
@@ -252,8 +253,8 @@ addClosedFileToOutputInfo(\%ofile_info_HH, "outcmalign", "$out_cmalign_file", 1,
 # Pull out the predicted origin sequences
 #########################################
 my $out_origin_fa_file = $out_root . ".origin.fa";
-my $ori_stop_pos = ($ori_start_pos + $cons_len - 1);
-my $ori_coords = $ori_start_pos . ".." . $ori_stop_pos;
+my $ori_stop_rfpos = ($ori_start_rfpos + $cons_len - 1);
+my $ori_coords = $ori_start_rfpos . ".." . $ori_stop_rfpos;
 $cmd = $execs_H{"esl-alimask"} . " --t-rf -t $out_stk_file $ori_coords | " . $execs_H{"esl-reformat"} . " -d --informat stockholm fasta - > $out_origin_fa_file";
 
 runCommand($cmd, 0, $ofile_info_HH{"FH"});
@@ -262,8 +263,11 @@ addClosedFileToOutputInfo(\%ofile_info_HH, "originfasta",     "$out_origin_fa_fi
 ################
 # Output results
 ################
+if(-e $out_origin_fa_file.".ssi") { unlink $out_origin_fa_file.".ssi"; }
 my $ori_sqfile = Bio::Easel::SqFile->new({ fileLocation => $out_origin_fa_file }); 
 my $ori_msa    = Bio::Easel::MSA->new   ({ fileLocation => $out_stk_file });
+my $ori_start_apos = $ori_msa->rfpos_to_aligned_pos($ori_start_rfpos);
+my $ori_stop_apos  = $ori_msa->rfpos_to_aligned_pos($ori_stop_rfpos);
 
 foreach my $seqname (@seq_order_A) { 
   my $seqlen = $seqlen_H{$seqname};
@@ -279,11 +283,11 @@ foreach my $seqname (@seq_order_A) {
     }
 
     # determine the unaligned positions the origin spans in the alignment file $out_stk_file
-    my ($cur_ori_start_uapos, $cur_ori_start_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_start_pos, 1); # '1': if ori_start_pos is a gap, return position of 1st non-gap nucleotide after it 
-    my ($cur_ori_stop_uapos,  $cur_ori_stop_apos)  = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_stop_pos,  0); # '0': if ori_start_pos is a gap, return position of 1st non-gap nucleotide before it 
+    my ($cur_ori_start_uapos, $cur_ori_start_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_start_apos, 1); # '1': if ori_start_apos is a gap, return position of 1st non-gap nucleotide after it 
+    my ($cur_ori_stop_uapos,  $cur_ori_stop_apos)  = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_stop_apos,  0); # '0': if ori_start_apos is a gap, return position of 1st non-gap nucleotide before it 
 
     # do we have at least 1 nucleotide predicted in the origin positions?
-    if(($cur_ori_start_apos < $ori_stop_pos) && ($cur_ori_stop_apos > $ori_start_pos))  { 
+    if(($cur_ori_start_apos < $ori_stop_apos) && ($cur_ori_stop_apos > $ori_start_apos))  { 
       # yes, we do:
       my $cur_ori_len = $cur_ori_stop_apos - $cur_ori_start_apos + 1;
       # determine strand 
@@ -291,12 +295,13 @@ foreach my $seqname (@seq_order_A) {
         # positive strand
         my $cur_ori_coords = ($cur_ori_start_uapos + $start - 1) . ".." . ($cur_ori_stop_uapos + $start - 1);
         # fetch origin sequence, and make sure it matches what we fetched in $out_origin_fa_file
+        #printf("seqname $seqname start: %d (%d+%d-1) stop: %d (%d+%d-1)\n", $cur_ori_start_uapos + $start - 1, $cur_ori_start_uapos, $start, $cur_ori_stop_uapos + $start - 1, $cur_ori_stop_uapos, $start);
         my $ori_fasta_seq1 = $sqfile->fetch_subseq_to_fasta_string    ($seqname, $cur_ori_start_uapos + $start - 1, $cur_ori_stop_uapos + $start -1, -1, 0);
         my $ori_fasta_seq2 = $ori_sqfile->fetch_subseq_to_fasta_string($msa_seqname, 1, $cur_ori_len, -1, 0);
         (my $cur_ori_seq1 = $ori_fasta_seq1) =~ s/^\>.+\n//;
         (my $cur_ori_seq2 = $ori_fasta_seq2) =~ s/^\>.+\n//;
         if($cur_ori_seq1 ne $cur_ori_seq2) { 
-          DNAORG_FAIL("ERROR, fetched origin check failed:\n$cur_ori_seq1\nne\n$cur_ori_seq2\n", 1, $ofile_info_HH{"FH"});
+          DNAORG_FAIL("ERROR, seqname: $seqname fetched origin check failed:\n$cur_ori_seq1\nne\n$cur_ori_seq2\n", 1, $ofile_info_HH{"FH"});
         }
         chomp $cur_ori_seq1;
         my $nmismatch = compare_to_consensus($cur_ori_seq1, \@cons_seq_A);
