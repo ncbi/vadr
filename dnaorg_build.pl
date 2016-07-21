@@ -313,7 +313,7 @@ if(opt_IsUsed("--orginput", \%opt_HH)) {
   process_origin_input_alignment($out_root, \%opt_HH, \%ofile_info_HH);
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
-exit 0;
+
 ###########################################################################
 # Step 3. Gather and process information on reference genome using Edirect.
 ###########################################################################
