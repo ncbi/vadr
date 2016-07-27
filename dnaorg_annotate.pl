@@ -776,7 +776,7 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     for(my $m = 0; $m < $ncmfiles; $m++) { 
       my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
       my $tmp_stdout_file = "/dev/null";
-      my $do_max = ($mdl_info_HA{"length"}[$m] <= 20)   ? 1 : 0; # do not filter for very short models
+      my $do_max = ($mdl_info_HA{"length"}[$m] <= 30)   ? 1 : 0; # do not filter for very short models
       my $do_big = ($mdl_info_HA{"length"}[$m] >= 3000) ? 1 : 0; # use bigger max matrix size for big models
       run_cmscan($execs_H{"cmscan"}, 1, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
       push(@tmp_tblout_file_A, $tmp_tblout_file);
