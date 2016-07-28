@@ -200,7 +200,7 @@ for(my $i = 0; $i < $nseq; $i++) {
 ###############################
 my $tblout_file = $out_root . ".tbl";
 my $stdout_file = $out_root . ".cmscan";
-my $opts = " --noali --cpu 0 --tblout $tblout_file --verbose ";
+my $opts = " --cpu 0 --tblout $tblout_file --verbose ";
 if(! opt_Get("--hmmonly", \%opt_HH)) { 
   $opts .= " --nohmmonly --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
 }

@@ -179,7 +179,8 @@ foreach my $seqname (sort keys %info1_HH) {
 # print summary
 printf("#\n# Summary:\n#\n");
 printf("# Number of sequences:                       %4d\n", $nseq);
-printf("# Number of no predictions:                  %4d  %4d  %4d\n", $neq_pred,       $nneq1_pred,       $nneq2_pred);
+printf("# Number of no predictions:                  %4d  %4d  %4d\n", $neq_nopred,     $nneq1_nopred,     $nneq2_nopred);
+printf("# Number of predictions:                     %4d  %4d  %4d\n", $neq_pred,       $nneq1_pred,       $nneq2_pred);
 printf("# Number of predictions of unexpected len:   %4d  %4d  %4d\n", $neq_wronglen,   $nneq1_wronglen,   $nneq2_wronglen);
 printf("# Number of predictions of expected len:     %4d  %4d  %4d\n", $neq_correctlen, $nneq1_correctlen, $nneq2_correctlen);
 for(my $z = 0; $z <= $clen; $z++) { 
@@ -191,6 +192,9 @@ for(my $z = 0; $z <= $clen; $z++) {
 
 # output sequences to files
 printf("#\n");
+output_info_to_file($out_root . ".neq_nopred.compare",          \@neq_nopred_A,       \%info1_HH, \%info2_HH);
+output_info_to_file($out_root . ".nneq1_nopred.compare",        \@nneq1_nopred_A,     \%info1_HH, \%info2_HH);
+output_info_to_file($out_root . ".nneq2_nopred.compare",        \@nneq2_nopred_A,     \%info1_HH, \%info2_HH);
 output_info_to_file($out_root . ".neq_pred.compare",            \@neq_pred_A,         \%info1_HH, \%info2_HH);
 output_info_to_file($out_root . ".nneq1_pred.compare",          \@nneq1_pred_A,       \%info1_HH, \%info2_HH);
 output_info_to_file($out_root . ".nneq2_pred.compare",          \@nneq2_pred_A,       \%info1_HH, \%info2_HH);
