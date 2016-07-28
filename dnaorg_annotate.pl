@@ -246,7 +246,6 @@ $opt_group_desc_H{"4"} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
 opt_Add("--doalign",    "boolean", 0,                       4,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
 
-
 $opt_group_desc_H{"5"} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                          help-output    
 opt_Add("--mdlinfo",    "boolean", 0,                        5,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
@@ -261,6 +260,13 @@ opt_Add("--skipfetch",     "boolean", 0,                       6,   undef,      
 opt_Add("--skipscan",      "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skiptranslate", "boolean", 0,                       6,"--skipscan",  undef,                    "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
+
+$opt_group_desc_H{"7"} = "TEMPORARY options for the alternative method of identifying origin sequences";
+#     option               type       default               group   requires                                   incompat     preamble-output                                                         help-output    
+opt_Add("--aorgmodel",     "string",  undef,                   7,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgstart",     "integer", 0,                       7,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
+opt_Add("--aorgoffset",    "integer", 0,                       7,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
+opt_Add("--aorglen",       "integer", 0,                       7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -304,7 +310,12 @@ my $options_okay =
                 'skipedirect'   => \$GetOptions_H{"--skipedirect"},
                 'skipfetch'     => \$GetOptions_H{"--skipfetch"},
                 'skipscan'      => \$GetOptions_H{"--skipscan"},
-                'skiptranslate' => \$GetOptions_H{"--skiptranslate"});
+                'skiptranslate' => \$GetOptions_H{"--skiptranslate"}, 
+# options for alternative origin detection method
+                'aorgmodel=s'   => \$GetOptions_H{"--aorgmodel"},
+                'aorgstart=s'   => \$GetOptions_H{"--aorgstart"},
+                'aorglen=s'     => \$GetOptions_H{"--aorglen"},
+                'aorgoffset=s'  => \$GetOptions_H{"--aorgoffset"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -348,6 +359,19 @@ if(opt_IsUsed("--origin", \%opt_HH)) {
   $origin_seq =~ tr/a-z/A-Z/; # capitalize origin seq
   $origin_offset = validate_origin_seq($origin_seq);
   $origin_seq =~ s/\|//; # remove the single "|"
+}
+
+# validate alternative origin detection options if necessary
+if(opt_IsUsed("--aorgmodel", \%opt_HH)) { 
+  my $aorg_model  = opt_Get("--aorgmodel", \%opt_HH);
+  if(! -s $aorg_model) { 
+    die "ERROR with --aorgmodel <s>, $aorg_model does not exist or is empty"; 
+  }    
+  my $aorg_offset = opt_Get("--aorgoffset", \%opt_HH);
+  my $aorg_len    = opt_Get("--aorglen",  \%opt_HH);
+  if(($aorg_offset <= 0) || ($aorg_offset > $aorg_len)) { 
+    die "ERROR with --aorgoffset <n>, <n> must be greater than 0 and less than or equal to <n> from --aorglen";
+  }
 }
 
 my $dir_build  = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
@@ -740,8 +764,17 @@ my %err_seq_instances_HH = ();
 error_instances_initialize_AHH(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
 
 if(opt_IsUsed("--origin", \%opt_HH)) { 
+  $start_secs = outputProgressPrior("Identifying origin sequences", $progress_w, $log_FH, *STDOUT);
   find_origin_sequences($sqfile, $origin_seq, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
+
+#############
+# TEMPORARY alternative origin detection method
+#############
+$start_secs = outputProgressPrior("Identifying origin sequences with profile HMM method", $progress_w, $log_FH, *STDOUT);
+find_origin_sequences_profile_hmm($ofile_info_HH{"fullpath"}{"fasta"}, $execs_H{"cmscan"}, $out_root, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ####################################
 # Step 5. Perform homology searches
@@ -4318,6 +4351,60 @@ sub find_origin_sequences {
   
   return;
 }
+
+#################################################################
+# Subroutine: find_origin_sequences_profile_hmm
+# Incept:     EPN, Thu Jul 28 14:46:31 2016
+# 
+# Purpose:    TEMPORARY function for identifying origin sequences 
+#             using 'alternative' method -- a profile HMM.
+#
+#             Checks for and adds the following error codes: "ori".
+#
+# Args:   
+#  $fasta_file:             the fasta file to look for origins in
+#                           should contain duplicated genome sequences
+#                           (so if --infasta <f> used, probably not <f>)
+#  $cmscan:                 path to the cmscan executable file
+#  $out_root:               root for naming output files
+#  $seq_info_HAR:           REF to hash of arrays with information 
+#                           on the sequences, PRE-FILLED
+#  $err_seq_instances_HHR:  REF to the 2D hash of per-sequence errors, initialized here
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, 
+#                           see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+#################################################################
+sub find_origin_sequences_profile_hmm { 
+  my $sub_name = "find_origin_sequences_profile_hmm";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($fasta_file, $cmscan, $out_root, $seq_info_HAR, $err_seq_instances_HHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+
+  my $aorg_model  = opt_Get("--aorgmodel",  $opt_HHR);
+  my $aorg_start  = opt_Get("--aorgstart",  $opt_HHR);
+  my $aorg_len    = opt_Get("--aorglen",    $opt_HHR);
+  my $aorg_offset = opt_Get("--aorgoffset", $opt_HHR);
+  
+  # run cmscan locally
+  my $tblout_file = $out_root . ".aorg.tblout";
+  my $cmscan_file = $out_root . ".aorg.cmscan";
+  my $opts = " --cpu 0 --tblout $tblout_file --verbose ";
+  $opts .= " --nohmmonly --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 "; 
+
+  my $cmd = "$cmscan $opts $aorg_model $fasta_file > $cmscan_file";
+
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+
+  exit 0;
+
+  return;
+}
+
 
 #################################################################
 # Subroutine: get_origin_output_for_sequence
