@@ -1547,7 +1547,7 @@ sub run_cmscan {
 
   my $opts = " --noali --cpu 0 --tblout $tblout_file --verbose ";
   if($do_max) { # no filtering
-    $opts .= "--max ";
+    $opts .= "--max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
   }
   else { 
     $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
