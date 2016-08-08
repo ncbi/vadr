@@ -231,6 +231,8 @@ opt_Add("--model",      "string",  undef,                    1,    undef, undef,
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",        "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
 opt_Add("--nseq",       "integer", 10,                       1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>", "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for alternative modes";
 #       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
@@ -287,6 +289,8 @@ my $options_okay =
                 'local'        => \$GetOptions_H{"--local"}, 
                 'nseq=s'       => \$GetOptions_H{"--nseq"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
+                'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
+                'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
 # options for alternative modes
                 'infasta'      => \$GetOptions_H{"--infasta"},
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
@@ -775,9 +779,9 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     # run a different cmscan run for each file
     for(my $m = 0; $m < $ncmfiles; $m++) { 
       my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
-      my $tmp_stdout_file = "/dev/null";
-      my $do_max = ($mdl_info_HA{"length"}[$m] <= 30)   ? 1 : 0; # do not filter for very short models
-      my $do_big = ($mdl_info_HA{"length"}[$m] >= 3000) ? 1 : 0; # use bigger max matrix size for big models
+      my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".cmscan" : "/dev/null";
+      my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
+      my $do_big = ($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) ? 1 : 0; # use HMM mode for big models
       run_cmscan($execs_H{"cmscan"}, 1, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
       push(@tmp_tblout_file_A, $tmp_tblout_file);
     }
@@ -797,9 +801,9 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
       push(@tmp_seq_file_A,    $tmp_seq_file);
       for(my $m = 0; $m < $ncmfiles; $m++) { 
         my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".s" . $s . ".tblout";
-        my $tmp_stdout_file = "/dev/null";
-        my $do_max = ($mdl_info_HA{"length"}[$m] <= 30)   ? 1 : 0; # do not filter for very short models
-        my $do_big = ($mdl_info_HA{"length"}[$m] >= 3000) ? 1 : 0; # use bigger max matrix size for big models
+        my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".s" . $s . ".cmscan" : "/dev/null";
+        my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
+        my $do_big = ($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) ? 1 : 0; # use HMM mode for big models
         run_cmscan($execs_H{"cmscan"}, 0, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m],  # 0: do not run locally
                    $tmp_seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH);
         push(@tmp_tblout_file_A, $tmp_tblout_file);
@@ -1545,7 +1549,8 @@ sub run_cmscan {
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
-  my $opts = " --noali --cpu 0 --tblout $tblout_file --verbose ";
+  my $opts = (opt_Get("-v", $opt_HHR)) ? " " : " --noali ";
+  $opts .= " --cpu 0 --tblout $tblout_file --verbose ";
   if($do_max) { # no filtering
     $opts .= "--max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
   }
