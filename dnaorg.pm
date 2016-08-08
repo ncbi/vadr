@@ -1,3 +1,4 @@
+#
 #!/usr/bin/perl
 #
 # dnaorg.pm
@@ -5643,7 +5644,7 @@ sub concatenateListOfFiles {
 ################################################################# 
 sub md5ChecksumOfFile { 
   my $nargs_expected = 4;
-  my $sub_name = "concatenateListOfFiles()";
+  my $sub_name = "md5ChecksumOfFile()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($file, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
 
