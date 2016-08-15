@@ -215,25 +215,27 @@ my %opt_group_desc_H = ();
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 $opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                                 help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                          "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is closed (a.k.a. circular)",           "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,"--dirout",undef,      "forcing directory overwrite (with --dirout)",  "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                   "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,   "output directory specified as",                "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--dirbuild",   "string",  undef,                    1,"--dirout",   undef,   "output directory used for dnaorg_build.pl",    "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,      "identify origin seq <s> in genomes",           "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
-opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",         "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
-opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",   "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
-opt_Add("--model",      "string",  undef,                    1,    undef, undef,      "use model in file",                            "use model file <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",        "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
-opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                                       help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                                "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is closed (a.k.a. circular)",                 "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                        1,"--dirout",undef,      "forcing directory overwrite (with --dirout)",        "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                         "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,   "output directory specified as",                         "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirbuild",   "string",  undef,                    1,"--dirout",   undef,   "output directory used for dnaorg_build.pl",          "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,      "identify origin seq <s> in genomes",                 "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
+opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",               "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
+opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                      "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
+opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",         "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                 "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("--model",      "string",  undef,                    1,    undef, undef,      "use model in file",                                  "use model file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",              "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
+opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job",       "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",          "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--smallthresh","integer", 20,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>", "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for alternative modes";
-#       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
+ #       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
 opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--skipedirect,--skipfetch",   "single cmdline argument is a fasta file of sequences, not a list of accessions", "single cmdline argument is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
 opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
 
@@ -293,6 +295,8 @@ my $options_okay =
                 'local'        => \$GetOptions_H{"--local"}, 
                 'nseq=s'       => \$GetOptions_H{"--nseq"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
+                'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
+                'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
 # options for alternative modes
                 'infasta'      => \$GetOptions_H{"--infasta"},
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
@@ -465,14 +469,26 @@ if(! defined $dir_out) {
 else { 
   # --dirout was used to specify $dir_out
   # if it already exists (and it's not $ref_accn and it's not $dir_build) 
-  # remove it only if -f also used
+  # check if one of the skip options was used (begin with --skip) 
+  # if so, try to use it. Else tell user to either rerun with -f
+  # or delete it.
   if(($dir_out ne $ref_accn) && ($dir_out ne $dir_build)) { 
     if(-d $dir_out) { 
       $cmd = "rm -rf $dir_out";
-      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-      else                        { die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
+      if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
+        runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); 
+      }
+      else { # dirout exists but -f not used
+        if(! ((opt_IsUsed("--skipedirect",   \%opt_HH)) || 
+              (opt_IsUsed("--skipfetch",     \%opt_HH)) || 
+              (opt_IsUsed("--skipscan",      \%opt_HH)) || 
+              (opt_IsUsed("--skiptranslate", \%opt_HH)))) { 
+          die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; 
+        }
+        # if a --skip option is used, we just press on
+      }
     }
-    if(-e $dir_out) { 
+    elsif(-e $dir_out) { 
       $cmd = "rm $dir_out";
       if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
       else                        { die "ERROR a file named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
@@ -772,9 +788,11 @@ if(opt_IsUsed("--origin", \%opt_HH)) {
 #############
 # TEMPORARY alternative origin detection method
 #############
-$start_secs = outputProgressPrior("Identifying origin sequences with profile HMM method", $progress_w, $log_FH, *STDOUT);
-aorg_find_origin_sequences($ofile_info_HH{"fullpath"}{"fasta"}, $sqfile, \%execs_H, $out_root, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH); 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+if(opt_IsUsed("--aorgmodel", \%opt_HH)) { 
+  $start_secs = outputProgressPrior("Identifying origin sequences with profile HMM method", $progress_w, $log_FH, *STDOUT);
+  aorg_find_origin_sequences($ofile_info_HH{"fullpath"}{"fasta"}, $sqfile, \%execs_H, $out_root, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH); 
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
 
 ####################################
 # Step 5. Perform homology searches
@@ -808,9 +826,9 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     # run a different cmscan run for each file
     for(my $m = 0; $m < $ncmfiles; $m++) { 
       my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
-      my $tmp_stdout_file = "/dev/null";
-      my $do_max = ($mdl_info_HA{"length"}[$m] <= 20)   ? 1 : 0; # do not filter for very short models
-      my $do_big = ($mdl_info_HA{"length"}[$m] >= 3000) ? 1 : 0; # use bigger max matrix size for big models
+      my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".cmscan" : "/dev/null";
+      my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
+      my $do_big = ($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) ? 1 : 0; # use HMM mode for big models
       run_cmscan($execs_H{"cmscan"}, 1, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
       push(@tmp_tblout_file_A, $tmp_tblout_file);
     }
@@ -830,9 +848,9 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
       push(@tmp_seq_file_A,    $tmp_seq_file);
       for(my $m = 0; $m < $ncmfiles; $m++) { 
         my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".s" . $s . ".tblout";
-        my $tmp_stdout_file = "/dev/null";
-        my $do_max = ($mdl_info_HA{"length"}[$m] <= 20)   ? 1 : 0; # do not filter for very short models
-        my $do_big = ($mdl_info_HA{"length"}[$m] >= 3000) ? 1 : 0; # use bigger max matrix size for big models
+        my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".s" . $s . ".cmscan" : "/dev/null";
+        my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
+        my $do_big = ($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) ? 1 : 0; # use HMM mode for big models
         run_cmscan($execs_H{"cmscan"}, 0, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m],  # 0: do not run locally
                    $tmp_seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH);
         push(@tmp_tblout_file_A, $tmp_tblout_file);
@@ -1578,7 +1596,8 @@ sub run_cmscan {
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
-  my $opts = " --noali --cpu 0 --tblout $tblout_file --verbose ";
+  my $opts = (opt_Get("-v", $opt_HHR)) ? " " : " --noali ";
+  $opts .= " --cpu 0 --tblout $tblout_file --verbose ";
   if($do_max) { # no filtering
     $opts .= "--max ";
   }
@@ -4400,7 +4419,9 @@ sub get_origin_output_for_sequence {
 
   if($oseq_ct == 1) { 
     ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
+    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_start: $oseq_start oseq_stop: $oseq_stop\n");
     $oseq_offset = ($oseq_start < 0) ? ($oseq_start + $origin_offset) : ($oseq_start + $origin_offset - 1);
+    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
     # $oseq_offset is now number of nts to shift origin in counterclockwise direction
     if($oseq_offset > ($accn_len / 2)) { # simpler (shorter distance) to move origin clockwise
       $oseq_offset = $accn_len - $oseq_offset; # note, we don't add 1 here
@@ -7538,8 +7559,8 @@ sub create_output_start_and_stop {
       # case 3
       $out_start = $in_start - $accn_len;
       $out_stop  = $in_stop  - $accn_len;
-      if($out_start < 0) { $out_start--; }
-      if($out_stop  < 0) { $out_stop--; }
+      if($out_start <= 0) { $out_start--; }
+      if($out_stop  <= 0) { $out_stop--; }
     }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unforeseen case in_start: $in_start in_stop: $in_stop seq_len: $seq_len accn_len: $accn_len", 1, $FH_HR);
@@ -7959,6 +7980,10 @@ sub aorg_find_origin_sequences {
   my $ori_start_apos     = $ori_msa->rfpos_to_aligned_pos($ori_start_rfpos);
   my $ori_stop_apos      = $ori_msa->rfpos_to_aligned_pos($ori_stop_rfpos);
   my $ori_offset_apos    = $ori_msa->rfpos_to_aligned_pos($ori_offset_rfpos);
+
+  #printf("ori_start_apos:  $ori_start_apos\n");
+  #printf("ori_stop_apos:   $ori_stop_apos\n");
+  #printf("ori_offset_apos: $ori_offset_apos\n");
   
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
@@ -7990,22 +8015,30 @@ sub aorg_find_origin_sequences {
         # determine strand 
         if($start <= $stop) { 
           # positive strand
-          $cur_ori_start_uapos += $start - 1;
-          $cur_ori_stop_uapos  += $start - 1;
+          $cur_ori_start_uapos  += $start - 1;
+          $cur_ori_stop_uapos   += $start - 1;
+          $cur_ori_offset_uapos += $start - 1;
         }
         else { 
           # negative strand
-          $cur_ori_start_uapos = $stop - $cur_ori_start_uapos + 1;
-          $cur_ori_stop_uapos  = $stop - $cur_ori_stop_uapos + 1;
+          $cur_ori_start_uapos   = $stop - $cur_ori_start_uapos  + 1;
+          $cur_ori_stop_uapos    = $stop - $cur_ori_stop_uapos   + 1;
+          $cur_ori_offset_uapos  = $stop - $cur_ori_offset_uapos + 1;
         }
         # adjust coordinates so they're within 1..L
         my ($out_ori_start_uapos, $out_ori_stop_uapos) = 
             create_output_start_and_stop($cur_ori_start_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
 
         my $out_ori_offset_uapos;
-        (undef, $out_ori_offset_uapos) = 
+        ($out_ori_offset_uapos, undef) = 
             create_output_start_and_stop($cur_ori_offset_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+        #printf("cur_ori_start_uapos:  $cur_ori_start_uapos\n");
+        #printf("cur_ori_offset_uapos: $cur_ori_offset_uapos\n");
+        #printf("cur_ori_stop_uapos:   $cur_ori_stop_uapos\n\n");
 
+        #printf("out_ori_start_uapos:  $out_ori_start_uapos\n");
+        #printf("out_ori_offset_uapos: $out_ori_offset_uapos\n");
+        #printf("out_ori_stop_uapos:   $out_ori_stop_uapos\n\n");
         $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= $out_ori_start_uapos . ":" . $out_ori_stop_uapos;
         $seq_info_HAR->{"origin_offset"}[$seq_idx]      = $out_ori_offset_uapos;
       }
@@ -8128,8 +8161,16 @@ sub aorg_get_origin_output_for_sequence {
 
   if($oseq_ct == 1) { 
     ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
+    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_start: $oseq_start oseq_stop: $oseq_stop\n");
     $oseq_offset = $seq_info_HAR->{"origin_offset"}[$seq_idx];
 
+    # $oseq_offset is now what should be the first position of the sequence, 
+    # if this is > 0, we subtract 1 because that's how many we need to shift counterclockwise 
+    # direction to put $oseq_offset as position 1 (imagine if $oseq_offset is 1, then we need to shift '0', not '1')
+    # if it's negative then it's already the correct shift (due to the off-by-one
+    # introduced because there is no position 0)
+    if($oseq_offset > 0) { $oseq_offset -= 1; }
+    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
     # $oseq_offset is now number of nts to shift origin in counterclockwise direction
     if($oseq_offset > ($accn_len / 2)) { # simpler (shorter distance) to move origin clockwise
       $oseq_offset = $accn_len - $oseq_offset; # note, we don't add 1 here
@@ -8137,6 +8178,7 @@ sub aorg_get_origin_output_for_sequence {
     else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
       $oseq_offset *= -1;
     }
+
     $oseq_passfail = "P";
   }
 
