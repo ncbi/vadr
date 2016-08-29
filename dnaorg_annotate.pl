@@ -309,8 +309,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.11";
-my $releasedate   = "July 2016";
+my $version       = "0.12";
+my $releasedate   = "August 2016";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -861,7 +861,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 $start_secs = outputProgressPrior("Combining predicted exons into CDS", $progress_w, $log_FH, *STDOUT);
 combine_model_hits("predicted", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 # we need to do this step even if there are no multi-exon CDS, because the function will update
-# an important part of %ftr_info_HA indicating which file subsequence steps should use 
+# an important part of %ftr_info_HA indicating which file subsequent steps should use 
 # (for models with 1 exon, this will be a file created prior to this (that is, we don't 
 # wastefully create a new version of that file for single exon cases.))
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -1964,7 +1964,7 @@ sub fetch_hits_given_results {
           }
         }
       }
-    }
+    } # end of for loop over $seq_idx
 
     my $fa_file               = $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx];
     my $fa_append_file        = $mdl_info_HAR->{$mdl_info_append_file_key}[$mdl_idx];
@@ -1981,7 +1981,12 @@ sub fetch_hits_given_results {
         addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_append_key, $fa_append_file, 0, "fasta file with $out_key appended hits for model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
       }
     }
-  }
+    else { 
+      # no sequences were fetched update the 
+      $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx]        = "/dev/null"; # indicates to downstream functions that this file does not exist
+      $mdl_info_HAR->{$mdl_info_append_file_key}[$mdl_idx] = "/dev/null"; # indicates to downstream functions that this file does not exist
+    }
+  } # end of for loop over model indices
 
   return;
 }
@@ -2027,10 +2032,15 @@ sub combine_model_hits {
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # we only do this for features annotated by models
+      my @tmp_hit_fafile_A = (); # only relevant if this feature has multiple models
       my $mdl_idx        = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
       my $mdl_hit_fafile = $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx];
-      validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-
+      my $at_least_one_fafile = 0; # set to '1' if at least one fa file exists (is not set to "/dev/null"
+      if($mdl_hit_fafile ne "/dev/null") { 
+        validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+        push(@tmp_hit_fafile_A, $mdl_hit_fafile);
+        $at_least_one_fafile = 1;
+      }
       #######################################
       # single model (e.g. exon) features
       #######################################
@@ -2045,17 +2055,26 @@ sub combine_model_hits {
       else { 
         # more than one model's hit files need to be combined to make this feature 
         my $ftr_hit_fafile = $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx];
-        my @tmp_hit_fafile_A = ($mdl_hit_fafile);
         for($mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
           $mdl_hit_fafile = $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx];
-          validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-          push(@tmp_hit_fafile_A, $mdl_hit_fafile);
+          if($mdl_hit_fafile ne "/dev/null") { 
+            validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+            push(@tmp_hit_fafile_A, $mdl_hit_fafile);
+            $at_least_one_fafile = 1;
+          }
         }
-        # combine the sequences into 1 file
-        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"});
-
-        my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+        if($at_least_one_fafile) { 
+          # combine the sequences into 1 file
+          combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"});
+          
+          my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
+          addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+        }
+        else { 
+          # no fasta files exist, redefine $ftr_info_HAR->{"$ftr_info_file_key"}[$ftr_idx] to 
+          # /dev/null so downstream functions know that it should not exist
+          $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = "/dev/null";
+        }
       }
 
       # check if there's a file to append
@@ -2064,7 +2083,9 @@ sub combine_model_hits {
       if(exists $ofile_info_HHR->{"fullpath"}{$mdl_ofile_info_append_key}) { 
         # yes, there is
         my $mdl_hit_append_fafile = $ofile_info_HH{"fullpath"}{$mdl_ofile_info_append_key};
-        validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+        if($mdl_hit_append_fafile ne "/dev/null") { 
+          validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+        }
         # this was initialized to something else, redefine it here:
         $ftr_info_HAR->{$ftr_info_append_file_key}[$ftr_idx] = $mdl_hit_append_fafile;
       }
@@ -2107,7 +2128,6 @@ sub combine_feature_hits {
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
 
   my $ftr_info_file_key        = $out_key . ".hits.fa";
-  my $ftr_info_append_file_key = $out_key . ".hits.append.fa";
   my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
 
   # printf("in $sub_name, out_key: $out_key, ftr_info_file_key: $ftr_info_file_key\n");
@@ -2118,30 +2138,43 @@ sub combine_feature_hits {
       my @primary_children_idx_A = (); # feature indices of the primary children of this feature
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
       my @tmp_hit_fafile_A = ();
+      my $at_least_one_fafile = 0; # set to 1 once we add a fasta file to @tmp_hit_fafile_A
       my $combined_ftr_hit_fafile = $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx];
       foreach my $cur_ftr_idx (@primary_children_idx_A) { 
         my $cur_ftr_hit_fafile = $ftr_info_HAR->{$ftr_info_file_key}[$cur_ftr_idx];
-        validateFileExistsAndIsNonEmpty($cur_ftr_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-        push(@tmp_hit_fafile_A, $cur_ftr_hit_fafile);
-
+        if($cur_ftr_hit_fafile ne "/dev/null") { 
+          validateFileExistsAndIsNonEmpty($cur_ftr_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+          push(@tmp_hit_fafile_A, $cur_ftr_hit_fafile);
+          $at_least_one_fafile = 1;
+        }
         # check if this feature has a mandatory file to append
         my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$cur_ftr_idx];
         my $mdl_ofile_info_append_key = get_mdl_or_ftr_ofile_info_key("mdl", $final_mdl_idx, $mdl_info_append_file_key, $ofile_info_HHR->{"FH"});
         if(exists $ofile_info_HHR->{"fullpath"}{$mdl_ofile_info_append_key}) {
           # it does, append it
           my $mdl_hit_append_fafile = $ofile_info_HH{"fullpath"}{$mdl_ofile_info_append_key};
-          validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-          push(@tmp_hit_fafile_A, $mdl_hit_append_fafile);
-        } 
+          if($mdl_hit_append_fafile ne "/dev/null") { 
+            validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+            push(@tmp_hit_fafile_A, $mdl_hit_append_fafile);
+            $at_least_one_fafile = 1;
+          } 
+        }
       } # end of 'foreach $cur_ftr_idx'
 
-      # combine the sequences into 1 file
-      combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"}); 
+      if($at_least_one_fafile) { 
+        # combine the sequences into 1 file
+        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"}); 
 
-      my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+        my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+      } # end of 'if($at_least_one_fafile)'
+      else { 
+        # no fasta files exist, redefine $ftr_info_HAR->{"$ftr_info_file_key"}[$ftr_idx] to 
+        # /dev/null so downstream functions know that it should not exist
+        $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = "/dev/null";
+      }
     }
-  }
+  } # end of 'for' loop over $ftr_idx
   return;
 }
 
@@ -2150,12 +2183,13 @@ sub combine_feature_hits {
 # Subroutine:  combine_sequences()
 # Incept:      EPN, Wed Mar  2 16:11:40 2016
 #
-# Purpose:    Helper function for combine_multiple_hits(). Given an array of
-#             fasta files, each with a different subsequence from the
-#             same parent sequences, create a single new fasta file
-#             that has the subsequences concatenated together.  An
-#             example is stitching together exons into a CDS.  Uses
-#             BioEasel's sqfile module.
+# Purpose:    Helper function for combine_model_hits() and
+#             combine_feature_hits().  Given an array of fasta files,
+#             each with a different subsequence from the same parent
+#             sequences, create a single new fasta file that has the
+#             subsequences concatenated together.  An example is
+#             stitching together exons into a CDS.  Uses BioEasel's
+#             sqfile module.
 #
 # Arguments: 
 #  $indi_file_AR: REF to array of fasta files to combine
@@ -2215,52 +2249,58 @@ sub combine_sequences {
   }
 
   for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
-    validateFileExistsAndIsNonEmpty($seq_file, $indi_file_AR->[$file_idx], $FH_HR);
+    if($indi_file_AR->[$file_idx] ne "/dev/null") { 
+      # only enter the loop if the file exists (is not "/dev/null")
+      # if the file does not exist it has zero sequences in it, so everything else after this
+      # loop works as intended, we just have zero sequences added from this file
 
-    # create the Bio::Easel object
-    # first remove any old .ssi files that may exist
-    my $ssi_file = $indi_file_AR->[$file_idx] . ".ssi";
-    if(-e $ssi_file) { 
-      removeFileUsingSystemRm($ssi_file, $sub_name, $opt_HHR, $FH_HR);
-    }
-    $sqfile_A[$file_idx] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$file_idx] });
-    @{$sqname_AA[$file_idx]} = ();
-
-    # get the names all of sequences in each file
-    for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $sqfile_A[$file_idx]->nseq_ssi; $sqfile_seq_idx++) { 
-      $sqname_AA[$file_idx][$sqfile_seq_idx] = $sqfile_A[$file_idx]->fetch_seq_name_given_ssi_number($sqfile_seq_idx);
-
-      # break down this name into the $seq_name and $coords
-      my ($seq_name, $coords) = split("/", $sqname_AA[$file_idx][$sqfile_seq_idx]);
-      if(! defined $coords || $coords !~ m/\-/) { 
-        DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$file_idx][$sqfile_seq_idx] into accession and coordinates", 1, $FH_HR);
+      validateFileExistsAndIsNonEmpty($seq_file, $indi_file_AR->[$file_idx], $FH_HR);
+      
+      # create the Bio::Easel object
+      # first remove any old .ssi files that may exist
+      my $ssi_file = $indi_file_AR->[$file_idx] . ".ssi";
+      if(-e $ssi_file) { 
+        removeFileUsingSystemRm($ssi_file, $sub_name, $opt_HHR, $FH_HR);
       }
-      if(! exists $seq_name_idx_H{$seq_name}) { 
-        DNAORG_FAIL("ERROR in $sub_name, parsed sequence name $seq_name from $sqname_AA[$file_idx][$sqfile_seq_idx] does not exist in our seq_name_A array", 1, $FH_HR);
+      $sqfile_A[$file_idx] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$file_idx] });
+      @{$sqname_AA[$file_idx]} = ();
+      
+      # get the names all of sequences in each file
+      for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $sqfile_A[$file_idx]->nseq_ssi; $sqfile_seq_idx++) { 
+        $sqname_AA[$file_idx][$sqfile_seq_idx] = $sqfile_A[$file_idx]->fetch_seq_name_given_ssi_number($sqfile_seq_idx);
+        
+        # break down this name into the $seq_name and $coords
+        my ($seq_name, $coords) = split("/", $sqname_AA[$file_idx][$sqfile_seq_idx]);
+        if(! defined $coords || $coords !~ m/\-/) { 
+          DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$file_idx][$sqfile_seq_idx] into accession and coordinates", 1, $FH_HR);
+        }
+        if(! exists $seq_name_idx_H{$seq_name}) { 
+          DNAORG_FAIL("ERROR in $sub_name, parsed sequence name $seq_name from $sqname_AA[$file_idx][$sqfile_seq_idx] does not exist in our seq_name_A array", 1, $FH_HR);
+        }
+        
+        $seq_idx = $seq_name_idx_H{$seq_name};
+        $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = $sqfile_seq_idx;
+        if($seq_name_coords_A[$seq_idx] ne "") { 
+          $seq_name_coords_A[$seq_idx] .= ",";
+        }
+        $seq_name_coords_A[$seq_idx] .= $coords;
+        $seq_name_exists_AA[$seq_idx][$file_idx] = 1;
+        
+        if($seq_name_fetch_me_A[$seq_idx] == ($file_idx-1)) { 
+          $seq_name_fetch_me_A[$seq_idx]++; # this can make $seq_name_fetch_me_A[$seq_idx] rise to as high as $nfiles-1,
+          # but it really only serves as a flag that this sequence exists in all files
+          # starting at the first file ($file_idx == 0) up to the current file, else
+          # we would have set this value to -2 in the iteration of the loop corresponding
+          # to the file $file_idx in which it doesn't exist
+        }
+        else { 
+          # if we get here, we went through at least one value for $file_idx 
+          # in which this sequence did not exist
+          $seq_name_fetch_me_A[$seq_idx] = -2; # we'll set this to 0 below
+        }
       }
-
-      $seq_idx = $seq_name_idx_H{$seq_name};
-      $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = $sqfile_seq_idx;
-      if($seq_name_coords_A[$seq_idx] ne "") { 
-        $seq_name_coords_A[$seq_idx] .= ",";
-      }
-      $seq_name_coords_A[$seq_idx] .= $coords;
-      $seq_name_exists_AA[$seq_idx][$file_idx] = 1;
-
-      if($seq_name_fetch_me_A[$seq_idx] == ($file_idx-1)) { 
-        $seq_name_fetch_me_A[$seq_idx]++; # this can make $seq_name_fetch_me_A[$seq_idx] rise to as high as $nfiles-1,
-                                          # but it really only serves as a flag that this sequence exists in all files
-                                          # starting at the first file ($file_idx == 0) up to the current file, else
-                                          # we would have set this value to -2 in the iteration of the loop corresponding
-                                          # to the file $file_idx in which it doesn't exist
-      }
-      else { 
-        # if we get here, we went through at least one value for $file_idx 
-        # in which this sequence did not exist
-        $seq_name_fetch_me_A[$seq_idx] = -2; # we'll set this to 0 below
-      }
-    }
-  }
+    } # end of 'if($indi_file_AR->[$file_idx] ne "/dev/null")'
+  } # end of 'for' loop over file indexes
 
   # update values in @seq_name_fetch_me_A
   for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
@@ -2598,26 +2638,29 @@ sub wrapper_esl_epn_translate_startstop {
     my $ftr_hit_fafile            = $ftr_info_HAR->{$ftr_info_fa_file_key}[$ftr_idx];
     my $esl_epn_translate_outfile = $ftr_info_HAR->{$ftr_info_out_file_key}[$ftr_idx];
   
-    # deal with alternative starts here
-    my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
+    if($ftr_hit_fafile ne "/dev/null") { # if this is set to /dev/null we know it's not supposed to exist, so we skip this feature
 
-    if(! opt_Get("--skiptranslate", $opt_HHR)) { 
-      # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
-      $cmd = $esl_epn_translate . " $altstart_opt -startstop $ftr_hit_fafile > $esl_epn_translate_outfile";
-      runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-    }
-    else { # --skiptranslate, validate the output file exists
-      validateFileExistsAndIsNonEmpty($esl_epn_translate_outfile, $sub_name, $ofile_info_HHR->{"FH"});
-    }
-
-    # parse the output
-    parse_esl_epn_translate_startstop_outfile($esl_epn_translate_outfile, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $ofile_info_HHR->{"FH"});
-    if((! opt_Get("--keep", $opt_HHR)) && (! opt_Get("--skiptranslate", $opt_HHR))) { 
-      removeFileUsingSystemRm($esl_epn_translate_outfile, $sub_name, $opt_HHR, $ofile_info_HHR);
-    }
-    elsif(! opt_Get("--skiptranslate", $opt_HHR)) { 
-      my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_out_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $esl_epn_translate_outfile, 0, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
+      # deal with alternative starts here
+      my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
+      
+      if(! opt_Get("--skiptranslate", $opt_HHR)) { 
+        # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
+        $cmd = $esl_epn_translate . " $altstart_opt -startstop $ftr_hit_fafile > $esl_epn_translate_outfile";
+        runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      }
+      else { # --skiptranslate, validate the output file exists
+        validateFileExistsAndIsNonEmpty($esl_epn_translate_outfile, $sub_name, $ofile_info_HHR->{"FH"});
+      }
+      
+      # parse the output
+      parse_esl_epn_translate_startstop_outfile($esl_epn_translate_outfile, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $ofile_info_HHR->{"FH"});
+      if((! opt_Get("--keep", $opt_HHR)) && (! opt_Get("--skiptranslate", $opt_HHR))) { 
+        removeFileUsingSystemRm($esl_epn_translate_outfile, $sub_name, $opt_HHR, $ofile_info_HHR);
+      }
+      elsif(! opt_Get("--skiptranslate", $opt_HHR)) { 
+        my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_out_file_key, $ofile_info_HHR->{"FH"});
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $esl_epn_translate_outfile, 0, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
+      }
     }
   }
   return;
@@ -6896,35 +6939,37 @@ sub translate_feature_sequences {
     my $nucleotide_fafile = $ftr_info_HAR->{$in_ftr_info_file_key}[$ftr_idx];
     my $protein_fafile    = $ftr_info_HAR->{$out_ftr_info_file_key}[$ftr_idx];
 
-    my $opts = "";
-    # require a proper start codon and stop codon if this is not a mature peptide
-    if($ftr_info_HA{"type"}[$ftr_idx] ne "mp") { 
-      $opts = " -reqstart -reqstop ";
+    if($nucleotide_fafile ne "/dev/null") { # if this is set to /dev/null we know it's not supposed to exist, so we skip this feature
+      my $opts = "";
+      # require a proper start codon and stop codon if this is not a mature peptide
+      if($ftr_info_HA{"type"}[$ftr_idx] ne "mp") { 
+        $opts = " -reqstart -reqstop ";
+      }
+      my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
+      
+      # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
+      $cmd = $esl_epn_translate . " -endatstop -nostop $opts $altstart_opt $nucleotide_fafile > $protein_fafile";
+      runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+      
+      # determine the number of >= 1 segments (exons or mature peptides) we put together to make this protein
+      my $nsegments = 0;
+      if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
+        $nsegments = $ftr_info_HA{"final_mdl"}[$ftr_idx] - $ftr_info_HA{"first_mdl"}[$ftr_idx] + 1;
+      }
+      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
+        my @primary_children_idx_A = ();
+        getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
+        $nsegments = scalar(@primary_children_idx_A);
+      }
+      else { 
+        DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx with name %s is of unknown annot_type %s\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $ftr_info_HAR->{"annot_type"}[$ftr_idx]);
+      } 
+      
+      my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $out_ftr_info_file_key, $ofile_info_HHR->{"FH"});
+      addClosedFileToOutputInfo(\%ofile_info_HH, $ofile_info_key, $protein_fafile, 0, sprintf("fasta file with translations of corrected hits for feature " . $ftr_info_HA{"out_tiny"}[$ftr_idx] . " composed of %d segments", $nsegments));
     }
-    my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
-    
-    # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
-    $cmd = $esl_epn_translate . " -endatstop -nostop $opts $altstart_opt $nucleotide_fafile > $protein_fafile";
-    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-    
-    # determine the number of >= 1 segments (exons or mature peptides) we put together to make this protein
-    my $nsegments = 0;
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
-      $nsegments = $ftr_info_HA{"final_mdl"}[$ftr_idx] - $ftr_info_HA{"first_mdl"}[$ftr_idx] + 1;
-    }
-    elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
-      my @primary_children_idx_A = ();
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
-      $nsegments = scalar(@primary_children_idx_A);
-    }
-    else { 
-      DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx with name %s is of unknown annot_type %s\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $ftr_info_HAR->{"annot_type"}[$ftr_idx]);
-    } 
-
-    my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $out_ftr_info_file_key, $ofile_info_HHR->{"FH"});
-    addClosedFileToOutputInfo(\%ofile_info_HH, $ofile_info_key, $protein_fafile, 0, sprintf("fasta file with translations of corrected hits for feature " . $ftr_info_HA{"out_tiny"}[$ftr_idx] . " composed of %d segments", $nsegments));
   }
-  
+
   return;
 }
 
