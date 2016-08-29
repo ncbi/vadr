@@ -88,6 +88,7 @@ opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matp
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",    "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options affecting calibration of models";
+<<<<<<< HEAD
 #       option       type          default                group  requires incompat  preamble-output                                           help-output    
 opt_Add("--slow",       "boolean", 0,                     2,    undef, undef,   "running cmcalibrate in slow mode",                           "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                     2,    undef, undef,   "running cmcalibrate on local machine",                       "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
@@ -98,6 +99,18 @@ opt_Add("--bigram",     "integer", "8",                   2,    undef, undef,   
 opt_Add("--biglen",     "real",    "0.16",                2,    undef, undef,   "for big models, set length to search in Mb as <x>",          "for big models, set cmcalibrate length to search in Mb as <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--bigncpu",    "integer", "8",                   2,    undef, undef,   "for big models, set number of CPUs for calibration to <n>",  "for big models, set number of CPUs for calibration to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--bigtailp",   "real",    "0.30",                2,    undef, undef,   "for big models, set --tailp cmcalibrate parameter as <x>",   "for big models, set --tailp cmcalibrate parameter as <x>", \%opt_HH, \@opt_order_A);
+=======
+#       option       type       default                group  requires incompat  preamble-output                          help-output    
+opt_Add("--slow",   "boolean", 0,                     2,    undef, undef,   "running cmcalibrate in slow mode",               "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
+opt_Add("--local",  "boolean", 0,                     2,    undef, undef,   "running cmcalibrate on local machine",           "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("--nosubmit",  "boolean", 0,                  2,    undef, "--local","do not submit cmcalibrate jobs to farm, run later", "do not submit cmcalibrate jobs to farm, run later with qsub script", \%opt_HH, \@opt_order_A);
+opt_Add("--rammult",   "boolean",   0,                2,    undef, undef,   "for all models, multiply RAM Gb by ncpu for mem_free", "for all models, multiply RAM Gb by ncpu for mem_free", \%opt_HH, \@opt_order_A);
+opt_Add("--bigthresh", "integer", "2500",              2,    undef, undef,   "set minimum length for a big model to <n>",      "set minimum length for a big model to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--bigram",    "integer", "8",                2,    undef, undef,   "for big models, set Gb RAM per core for calibration to <n>", "for big models, set Gb RAM per core for calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--biglen",  "real",     "0.16",              2,    undef, undef,   "for big models, set length to search in Mb as <x>", "for big models, set cmcalibrate length to search in Mb as <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--bigncpu",  "integer", "4",                 2,    undef, undef,   "for big models, set number of CPUs for calibration to <n>", "for big models, set number of CPUs for calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--bigtailp",  "real",   "0.30",              2,    undef, undef,   "for big models, set --tailp cmcalibrate parameter as <x>", "for big models, set --tailp cmcalibrate parameter as <x>", \%opt_HH, \@opt_order_A);
+>>>>>>> develop
 
 $opt_group_desc_H{"3"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
