@@ -207,6 +207,7 @@
 #   matpeptValidateCdsRelationships()
 #   checkForSpanningSequenceSegments()
 #   getIndexHashForArray()
+#  HERE HERE 
 #
 use strict;
 use warnings;
@@ -6262,6 +6263,127 @@ sub getIndexHashForArray {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine : waitForFarmJobsToFinish()
+# Incept:      EPN, Mon Feb 29 16:20:54 2016
+#              EPN, Wed Aug 31 09:07:05 2016 [moved from dnaorg_annotate.pl to dnaorg.pm]
+#
+# Purpose: Wait for jobs on the farm to finish by checking the final
+#          line of their output files (in @{$outfile_AR}) to see
+#          if the final line is exactly the string
+#          $finished_string. We'll wait a maximum of $nmin
+#          minutes, then return the number of jobs that have
+#          finished. If all jobs finish before $nmin minutes we
+#          return at that point.
+#
+#          A job is considered 'finished in error' if it outputs
+#          anything to its err file in @{$errfile_AR}. (We do not kill
+#          the job, although for the jobs we are monitoring with this
+#          subroutine, it should already have died (though we don't
+#          guarantee that in anyway).) If any jobs 'finish in error'
+#          this subroutine will continue until all jobs have finished
+#          or we've waited $nmin minutes and then it will cause the
+#          program to exit in error and output an error message
+#          listing the jobs that have 'finished in error'
+#          
+#
+# Arguments: 
+#  $outfile_AR:      ref to array of output files that will be created by jobs we are waiting for
+#  $errfile_AR:      ref to array of err files that will be created by jobs we are waiting for if 
+#                    any stderr output is created
+#  $finished_str:    string that indicates a job is finished e.g. "[ok]"
+#  $nmin:            number of minutes to wait
+#  $FH_HR:           REF to hash of file handles
+#
+# Returns:     Number of jobs (<= scalar(@{$outfile_AR})) that have
+#              finished.
+# 
+# Dies: never.
+#
+################################################################# 
+sub waitForFarmJobsToFinish { 
+  my $sub_name = "waitForFarmJobsToFinish()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($outfile_AR, $errfile_AR, $finished_str, $nmin, $FH_HR) = @_;
+
+  my $njobs = scalar(@{$outfile_AR});
+  if($njobs != scalar(@{$errfile_AR})) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, number of elements in outfile array ($njobs) differ from number of jobs in errfile array (%d)", scalar(@{$errfile_AR})), 1, $FH_HR);
+  }
+  my @is_finished_A  = ();  # $is_finished_A[$i] is 1 if job $i is finished (either successfully or having failed), else 0
+  my @is_failed_A    = ();  # $is_failed_A[$i] is 1 if job $i has finished and failed (all failed jobs are considered 
+                            # to be finished), else 0
+  my $nfinished      = 0;   # number of jobs finished
+  my $nfail          = 0;   # number of jobs that have failed
+  my $cur_sleep_secs = 15;  # number of seconds to wait between checks, we'll double this until we reach $max_sleep, every $doubling_secs seconds
+  my $doubling_secs  = 120; # number of seconds to wait before doublign $cur_sleep
+  my $max_sleep_secs = 120; # maximum number of seconds we'll wait between checks
+  my $secs_waited    = 0;   # number of total seconds we've waited thus far
+
+  # initialize @is_finished_A to all '0's
+  for(my $i = 0; $i < $njobs; $i++) { 
+    $is_finished_A[$i] = 0;
+    $is_failed_A[$i] = 0;
+  }
+
+  my $keep_going = 1;  # set to 0 if all jobs are finished
+  while(($secs_waited < (($nmin * 60) + $cur_sleep_secs)) && # we add $cur_sleep so we check one final time before exiting after time limit is reached
+        ($keep_going)) { 
+    # check to see if jobs are finished, every $cur_sleep seconds
+    sleep($cur_sleep_secs);
+    $secs_waited += $cur_sleep_secs;
+    if($secs_waited >= $doubling_secs) { 
+      $cur_sleep_secs *= 2;
+      if($cur_sleep_secs > $max_sleep_secs) { # reset to max if we've exceeded it
+        $cur_sleep_secs = $max_sleep_secs;
+      }
+    }
+
+    for(my $i = 0; $i < $njobs; $i++) { 
+      if(! $is_finished_A[$i]) { 
+        if(-s $outfile_AR->[$i]) { 
+          my $final_line = `tail -n 1 $outfile_AR->[$i]`;
+          chomp $final_line;
+          if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
+          if($final_line eq $finished_str) { 
+            $is_finished_A[$i] = 1;
+            $nfinished++;
+          }
+        }
+        if(-s $errfile_AR->[$i]) { # errfile exists and is non-empty, this is a failure, even if we saw [ok] above
+          if(! $is_finished_A[$i]) { 
+            $nfinished++;
+          }
+          $is_finished_A[$i] = 1;
+          $is_failed_A[$i] = 1;
+          $nfail++;
+        }
+      }
+    }
+    if($nfinished == $njobs) { 
+      # we're done break out of it
+      $keep_going = 0;
+    }
+  }
+
+  if($nfail > 0) { 
+    # construct error message
+    my $errmsg = "ERROR in $sub_name, $nfail of $njobs finished in error (output to their respective error files).\n";
+    $errmsg .= "Specifically the jobs that were supposed to create the following output and err files:\n";
+    for(my $i = 0; $i < $njobs; $i++) { 
+      if($is_failed_A[$i]) { 
+        $errmsg .= "\t$outfile_AR->[$i]\t$errfile_AR->[$i]\n";
+      }
+      DNAORG_FAIL($errmsg, 1, $FH_HR);
+    }
+  }
+
+  # if we get here we have no failures
+  return $nfinished;
 }
 
 ###########################################################################

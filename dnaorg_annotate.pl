@@ -811,7 +811,7 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     # wait for the jobs to finish
     $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", \%opt_HH)), 
                                       $progress_w, $log_FH, *STDOUT);
-    my $njobs_finished = wait_for_farm_jobs_to_finish(\@tmp_tblout_file_A, "# [ok]", opt_Get("--wait", \%opt_HH));
+    my $njobs_finished = waitForFarmJobsToFinish(\@tmp_tblout_file_A, \@tmp_err_file_A, "# [ok]", opt_Get("--wait", \%opt_HH), \%{$ofile_info_HH{"FH"}});
     if($njobs_finished != $nfarmjobs) { 
       DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
     }
@@ -1236,7 +1236,6 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #
 #  Subroutines related to homology searches:
 #    run_cmscan()
-#    wait_for_farm_jobs_to_finish()
 #    split_fasta_file()
 #    split_cm_file()
 #    parse_cmscan_tblout()
@@ -1498,7 +1497,6 @@ sub validate_cms_built_from_reference {
 #
 #  Subroutines related to preparing CM files for searches:
 #    run_cmscan()
-#    wait_for_farm_jobs_to_finish()
 #    split_fasta_file()
 #    split_cm_file()
 #    parse_cmscan_tblout()
@@ -1581,81 +1579,6 @@ sub run_cmscan {
   return;
 }
 
-#################################################################
-# Subroutine : wait_for_farm_jobs_to_finish()
-# Incept:      EPN, Mon Feb 29 16:20:54 2016
-#
-# Purpose: Wait for jobs on the farm to finish by checking the final
-#          line of their output files (in @{$outfile_AR}) to see
-#          if the final line is exactly the string
-#          $finished_string. We'll wait a maximum of $nmin
-#          minutes, then return the number of jobs that have
-#          finished. If all jobs finish before $nmin minutes we
-#          return at that point.
-#
-# Arguments: 
-#  $outfile_AR:      path to the cmscan executable file
-#  $finished_str:    string that indicates a job is finished e.g. "[ok]"
-#  $nmin:            number of minutes to wait
-# 
-# Returns:     Number of jobs (<= scalar(@{$outfile_AR})) that have
-#              finished.
-# 
-# Dies: never.
-#
-################################################################# 
-sub wait_for_farm_jobs_to_finish { 
-  my $sub_name = "wait_for_farm_jobs_to_finish()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($outfile_AR, $finished_str, $nmin) = @_;
-
-  my $njobs = scalar(@{$outfile_AR});
-  my @is_finished_A  = ();  # $is_finished_A[$i] is 1 if job $i is finished, else 0
-  my $nfinished      = 0;   # number of jobs finished
-  my $cur_sleep_secs = 15;  # number of seconds to wait between checks, we'll double this until we reach $max_sleep, every $doubling_secs seconds
-  my $doubling_secs  = 120; # number of seconds to wait before doublign $cur_sleep
-  my $max_sleep_secs = 120; # maximum number of seconds we'll wait between checks
-  my $secs_waited    = 0;   # number of total seconds we've waited thus far
-
-  # initialize @is_finished_A to all '0's
-  for(my $i = 0; $i < $njobs; $i++) { 
-    $is_finished_A[$i] = 0;
-  }
-
-  while($secs_waited < (($nmin * 60) + $cur_sleep_secs)) { # we add $cur_sleep so we check one final time before exiting after time limit is reached
-    # check to see if jobs are finished, every $cur_sleep seconds
-    sleep($cur_sleep_secs);
-    $secs_waited += $cur_sleep_secs;
-    if($secs_waited >= $doubling_secs) { 
-      $cur_sleep_secs *= 2;
-      if($cur_sleep_secs > $max_sleep_secs) { # reset to max if we've exceeded it
-        $cur_sleep_secs = $max_sleep_secs;
-      }
-    }
-
-    for(my $i = 0; $i < $njobs; $i++) { 
-      if(! $is_finished_A[$i]) { 
-        if(-s $outfile_AR->[$i]) { 
-          my $final_line = `tail -n 1 $outfile_AR->[$i]`;
-          chomp $final_line;
-          if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-          if($final_line eq $finished_str) { 
-            $is_finished_A[$i] = 1;
-            $nfinished++;
-          }
-        }
-      }
-    }
-    if($nfinished == $njobs) { 
-      # we're done break out of it
-      return $nfinished;
-    }
-  }
-  
-  return $nfinished;
-}
 
 #################################################################
 # Subroutine : split_fasta_file()
