@@ -227,7 +227,6 @@ opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",   "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
-opt_Add("--model",      "string",  undef,                    1,    undef, undef,      "use model in file",                            "use model file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",        "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
 opt_Add("--nseq",       "integer", 10,                       1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
@@ -285,7 +284,6 @@ my $options_okay =
                 'nomatpept'    => \$GetOptions_H{"--nomatpept"},
                 'specstart=s'  => \$GetOptions_H{"--specstart"},
                 'keep'         => \$GetOptions_H{"--keep"},
-                'model=s'      => \$GetOptions_H{"--model"}, 
                 'local'        => \$GetOptions_H{"--local"}, 
                 'nseq=s'       => \$GetOptions_H{"--nseq"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
@@ -313,8 +311,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.11";
-my $releasedate   = "July 2016";
+my $version       = "0.13";
+my $releasedate   = "Aug 2016";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -560,8 +558,6 @@ if(opt_IsOn("--specstart", \%opt_HH)) {
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmscan"}        = $inf_exec_dir   . "cmscan";
 $execs_H{"cmalign"}       = $inf_exec_dir   . "cmalign";
-$execs_H{"cmfetch"}       = $inf_exec_dir   . "cmfetch";
-$execs_H{"cmpress"}       = $inf_exec_dir   . "cmpress";
 $execs_H{"hmmbuild"}      = $hmmer_exec_dir . "hmmbuild";
 $execs_H{"hmmalign"}      = $hmmer_exec_dir . "hmmalign";
 $execs_H{"esl-reformat"}  = $esl_exec_dir   . "esl-reformat";
@@ -682,54 +678,41 @@ if($nseq != validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ##############################################################################
-# Step 3. Verify we have the model file that we need to do homology searches
+# Step 3. Verify we have the model files that we need to do homology searches
 ##############################################################################
-my $model_file = opt_Get("--model", \%opt_HH);     # this will be undefined unless --model set on cmdline
-if(! defined $model_file) { 
-  # -model not used, make sure we already have the CM DB file from
-  # an earlier dnaorg_build.pl run. 
-  $model_file = $build_root . ".ref.cm";
+my @model_file_A = (); # array of the model files we need
+for(my $i = 0; $i < $nmdl; $i++) { 
+  my $model_file = $build_root . ".$i.cm";
   if(! -s $model_file) { 
-    # the model file does not (yet) exist. This is probably the first
-    # time we've run dnaorg_annotate.pl and we have several individual
-    # CM files because each was calibrated independently on the
-    # farm. In this case, we concatenate the individual files to
-    # create one CM database.
-    $start_secs = outputProgressPrior("Creating CM database by concatenating individual CM files", $progress_w, $log_FH, *STDOUT);
-    concatenate_individual_cm_files($model_file, $build_root, \%opt_HH, \%ofile_info_HH);
-    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+    DNAORG_FAIL("ERROR CM file $model_file should exist but it does not. Did you (successfully) run dnaorg_build.pl?", 1, $ofile_info_HH{"FH"});
   }
+  for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
+    my $file = $model_file . "." . $suffix;
+    if(! -s $file) { 
+      DNAORG_FAIL("ERROR CM index file $file should exist but it does not. Did you (successfully) run dnaorg_build.pl?", 1, $ofile_info_HH{"FH"});
+    }
+  }
+  # set mdl_info_HAR->{"cmfile"}[$i]
+  $mdl_info_HA{"cmfile"}[$i] = $model_file;
 }
 
-# validate that we have the CM binary index files from cmpress that we need, 
-# if any of the files is missing, then create all of them
-my $do_press = 0;
-for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
-  my $file = $model_file . "." . $suffix;
-  if(! -s $file) { $do_press = 1; }
-}
-if($do_press) { 
-  # run cmpress to create the CM binary index files
-  $start_secs = outputProgressPrior("Preparing the CM database for homology search using cmpress", $progress_w, $log_FH, *STDOUT);
-  press_cm_database($model_file, $execs_H{"cmpress"}, 1, \%opt_HH, \%ofile_info_HH); # 1: do add info on files we create to %ofile_info_HH
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
-
-# Validate the CM we are about to use to annotate was actually created
+# Validate the CMs we are about to use to annotate were actually created
 # for the current reference sequence and annotation (same accession
 # and features (CDS, etc.)).
 # 
 # One subtle case occurs when the accession name gets changed because
 # a non-RefSeq sequence got promoted to become a RefSeq; in that
 # RefSeq promotion case, the accession name will change and the script
-# has to be rerun
+# has to be rerun.
 if(defined $infasta_file) { 
   $start_secs = outputProgressPrior("Skipping verification that CMs created for current reference $ref_accn (--infasta)", $progress_w, $log_FH, *STDOUT);
 }
 else { 
-  $start_secs = outputProgressPrior("Verifying CM database created for current reference $ref_accn", $progress_w, $log_FH, *STDOUT);
-  validate_cms_built_from_reference($model_file, \%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
+  $start_secs = outputProgressPrior("Verifying CMs were created for current reference $ref_accn", $progress_w, $log_FH, *STDOUT);
+  validate_cms_built_from_reference(\%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
 }
+
+
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###################################################################
@@ -767,7 +750,6 @@ if($nseqfiles == 0) { $nseqfiles = 1; }
 my $tblout_file = $out_root . ".tblout";
 
 # split up the CM file into individual CM files (if necessary)
-my $ncmfiles          = split_cm_file($execs_H{"cmfetch"}, $execs_H{"cmpress"}, $model_file, \%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
 my @tmp_tblout_file_A = (); # the array of tblout files, we'll remove after we're done, unless --keep
 my @tmp_seq_file_A = ();    # the array of sequence files we'll remove after we're done, unless --keep (empty if we run locally)
 my @tmp_err_file_A = ();    # the array of error files we'll remove after we're done, unless --keep (empty if we run locally)
@@ -777,7 +759,7 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     # run jobs locally
     $start_secs = outputProgressPrior("Running cmscan locally", $progress_w, $log_FH, *STDOUT);
     # run a different cmscan run for each file
-    for(my $m = 0; $m < $ncmfiles; $m++) { 
+    for(my $m = 0; $m < $nmdl; $m++) { 
       my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
       my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".cmscan" : "/dev/null";
       my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
@@ -793,13 +775,13 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     # which can differ from the requested amount (which is $nseqfiles) that we pass in. It will put $nseq/$nseqfiles
     # in each file, which often means we have to make $nseqfiles+1 files.
 
-    my $nfarmjobs = $nfasta_created * $ncmfiles;
+    my $nfarmjobs = $nfasta_created * $nmdl;
     # now submit a job for each
     $start_secs = outputProgressPrior("Submitting $nfarmjobs cmscan jobs to the farm", $progress_w, $log_FH, *STDOUT);
     for(my $s = 1; $s <= $nfasta_created; $s++) { 
       my $tmp_seq_file = $seq_file . "." . $s;
       push(@tmp_seq_file_A,    $tmp_seq_file);
-      for(my $m = 0; $m < $ncmfiles; $m++) { 
+      for(my $m = 0; $m < $nmdl; $m++) { 
         my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".s" . $s . ".tblout";
         my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".s" . $s . ".cmscan" : "/dev/null";
         my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
@@ -815,7 +797,7 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     # wait for the jobs to finish
     $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", \%opt_HH)), 
                                       $progress_w, $log_FH, *STDOUT);
-    my $njobs_finished = wait_for_farm_jobs_to_finish(\@tmp_tblout_file_A, "# [ok]", opt_Get("--wait", \%opt_HH));
+    my $njobs_finished = waitForFarmJobsToFinish(\@tmp_tblout_file_A, \@tmp_err_file_A, "[ok]", opt_Get("--wait", \%opt_HH), \%{$ofile_info_HH{"FH"}});
     if($njobs_finished != $nfarmjobs) { 
       DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
     }
@@ -823,7 +805,10 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     
   # concatenate all the tblout files into one 
   concatenateListOfFiles(\@tmp_tblout_file_A, $tblout_file, "dnaorg_annotate.pl", \%opt_HH, $ofile_info_HH{"FH"});
-
+  
+  if(! opt_Get("--local", \%opt_HH)) { 
+    outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
+  }
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 } # end of if(! opt_Get(--skipscan", \%opt_HH))
 
@@ -865,7 +850,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 $start_secs = outputProgressPrior("Combining predicted exons into CDS", $progress_w, $log_FH, *STDOUT);
 combine_model_hits("predicted", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 # we need to do this step even if there are no multi-exon CDS, because the function will update
-# an important part of %ftr_info_HA indicating which file subsequence steps should use 
+# an important part of %ftr_info_HA indicating which file subsequent steps should use 
 # (for models with 1 exon, this will be a file created prior to this (that is, we don't 
 # wastefully create a new version of that file for single exon cases.))
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -1132,7 +1117,7 @@ if(! opt_Get("--skiptranslate", \%opt_HH)) {
 if(opt_Get("--doalign", \%opt_HH)) { 
   $step_desc = "Aligning and parsing corrected nucleotide hits";
   $start_secs = outputProgressPrior($step_desc, $progress_w, $log_FH, *STDOUT);
-  align_hits(\%execs_H, $model_file, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH); 
+  align_hits(\%execs_H, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH); 
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
@@ -1235,12 +1220,10 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #
 #  Subroutines related to preparing CM files for searches:
 #    concatenate_individual_cm_files()
-#    press_cm_database()
 #    validate_cms_built_from_reference()
 #
 #  Subroutines related to homology searches:
 #    run_cmscan()
-#    wait_for_farm_jobs_to_finish()
 #    split_fasta_file()
 #    split_cm_file()
 #    parse_cmscan_tblout()
@@ -1316,120 +1299,17 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #################################################################
 #
 #  Subroutines related to preparing CM files for searches:
-#    concatenate_individual_cm_files()
-#    press_cm_database()
 #    validate_cms_built_from_reference()
 #
-#################################################################
-# Subroutine : concatenate_individual_cm_files()
-# Incept:      EPN, Mon Feb 29 10:53:53 2016
-#
-# Purpose:     Concatenate individual CM files created and calibrated
-#              by a previous call to dnaorg_build.pl into one 
-#              CM file.
-#
-# Arguments: 
-#   $combined_model_file: the full path to the concatenated model file to create
-#   $out_root:            output root the individual CM files share
-#   $opt_HHR:             REF to 2D hash of option values, see top of epn-options.pm for description
-#   $ofile_info_HHR:      REF to the 2D hash of output file information
-# 
-# Returns:     void
-# 
-# Dies: If any of the expected individual CM files do not exist.
-#
-################################################################# 
-sub concatenate_individual_cm_files {
-  my $sub_name = "concatenate_individual_cm_files()";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($combined_model_file, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
-
-  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  # concatenate the files into a CM DB
-  my $cat_cmd = "cat";
-  for(my $i = 0; $i < $nmdl; $i++) { 
-    my $indi_model = $out_root . ".ref.$i.cm"; # dnaorg_build created the CMs
-    if(! -s ($indi_model)) { 
-      DNAORG_FAIL("ERROR, model database file $combined_model_file does not exist, nor does individual model file $indi_model.\nDid you run 'dnaorg_build.pl $ref_accn' -- it doesn't seem like you have.", 1, $FH_HR);
-    }
-    $cat_cmd .= " $indi_model ";
-  }
-  $cat_cmd .= " > $combined_model_file";
-  runCommand($cat_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  addClosedFileToOutputInfo($ofile_info_HHR, "cm", $combined_model_file, 1, "CM file (a concatenation of individual files created by dnaorg_build.pl)");
-
-  # remove the binary index files if they exist, possibly from an earlier cmbuild/cmpress:
-  for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
-    my $file = $combined_model_file . "." . $suffix;
-    if(-e $file) { 
-      runCommand("rm $file", opt_Get("-v", $opt_HHR), $FH_HR);
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine : press_cm_database()
-# Incept:      EPN, Mon Feb 29 14:26:52 2016
-#
-# Purpose:     Run cmpress on a CM database file.
-#
-# Arguments: 
-#   $model_file:            the full path to the concatenated model file to create
-#   $cmpress:               path to cmpress executable
-#   $do_add_to_output_info: '1' to add file info to output info, '0' not to
-#   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
-#   $ofile_info_HHR:        REF to the 2D hash of output file information
-# 
-# Returns:     void
-# 
-# Dies: If any of the expected individual CM files do not exist.
-#
-################################################################# 
-sub press_cm_database {
-  my $sub_name = "press_cm_database()";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($model_file, $cmpress, $do_add_to_output_info, $opt_HHR, $ofile_info_HHR) = @_;
-
-  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  # remove the binary index files if they exist, possibly from an earlier cmbuild/cmpress:
-  for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
-    my $file = $model_file . "." . $suffix;
-    if(-e $file) { 
-      runCommand("rm $file", opt_Get("-v", $opt_HHR), $FH_HR);
-    }
-  }
-
-  my $cmpress_cmd = "$cmpress $model_file > /dev/null"; # output is irrelevant
-  runCommand($cmpress_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  if($do_add_to_output_info) { 
-    addClosedFileToOutputInfo($ofile_info_HHR, "cmi1m", $model_file.".i1m", 0, "index file for the CM, created by cmpress");
-    addClosedFileToOutputInfo($ofile_info_HHR, "cmi1i", $model_file.".i1i", 0, "index file for the CM, created by cmpress");
-    addClosedFileToOutputInfo($ofile_info_HHR, "cmi1f", $model_file.".i1f", 0, "index file for the CM, created by cmpress");
-    addClosedFileToOutputInfo($ofile_info_HHR, "cmi1p", $model_file.".i1p", 0, "index file for the CM, created by cmpress");
-  }
-  return;
-}
-
 #################################################################
 # Subroutine : validate_cms_built_from_reference()
 # Incept:      EPN, Mon Feb 29 11:21:11 2016
 #
-# Purpose:     Validate the CMs in a model file were built from
+# Purpose:     Validate the CM files in an array were built from
 #              the current reference, using information in 
 #              $mdl_info_HAR->{"cksum"}.
 #
 # Arguments: 
-#  $model_file:      the full path to the concatenated model file to create
 #  $mdl_info_HAR:    REF to hash of arrays with information on the models, PRE-FILLED
 #  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information
@@ -1441,59 +1321,36 @@ sub press_cm_database {
 ################################################################# 
 sub validate_cms_built_from_reference { 
   my $sub_name = "validate_cms_built_from_reference()";
-  my $nargs_expected = 4;
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($model_file, $mdl_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($mdl_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   # validate we have a complete model info hash
-  validateModelInfoHashIsComplete($mdl_info_HAR, undef, $FH_HR);
+  my $nmdl = validateModelInfoHashIsComplete($mdl_info_HAR, undef, $FH_HR);
 
-  # get the checksum lines from the CM file into a file
-  my $cksum_file  = $model_file . ".cksum";
-  $cmd = "grep ^CKSUM $model_file | awk '{ print \$2 '} > $cksum_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-
-  # for each of the checksums in the CM file, make sure they match the checksum from
-  # the alignment file used to build that CM, which is in $mdl_info_HAR->{"checksum"}[$i]
-  open(CKSUM, $cksum_file) || fileOpenFailure($cksum_file, $!, "reading", $FH_HR);
-  my $i = 0;
-  my $nmodel_cksum    = scalar(@{$mdl_info_HAR->{"checksum"}});
   my $mismatch_errmsg = ""; # we'll fill this with error messages about any checksum mismatches we find
   my $common_errmsg   = "This may mean that the GenBank annotation for the reference sequence changed since dnaorg_build.pl was run to create the CMs. Rerun dnaorg_build.pl.";
 
-  while(my $cksum = <CKSUM>) { 
-    if($i >= $nmodel_cksum) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, different number of models (%d) and reference features (%d). $common_errmsg", $i, $nmodel_cksum), 1, $FH_HR);    
-    }
+  for(my $i = 0; $i < $nmdl; $i++) { 
+    my $model_file = $mdl_info_HAR->{"cmfile"}[$i];
+    validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
+    # get the checksum line from the CM file into a file
+    my $cksum = `grep ^CKSUM $model_file | awk '{ print \$2 '}`;
     chomp $cksum;
     if($cksum =~ m/\r$/) { chop $cksum; } # remove ^M if it exists
     if($cksum != $mdl_info_HAR->{"checksum"}[$i]) { 
       $mismatch_errmsg .= sprintf("CM #%d checksum %d != alignment checksum: %d\n", $i+1, $cksum, $mdl_info_HAR->{"checksum"}[$i]);
     }
-    $i++;
   }
-  close(CKSUM);
   
   if($mismatch_errmsg ne "") { 
     DNAORG_FAIL("ERROR in $sub_name, checksum mismatch(es):\n$mismatch_errmsg\n$common_errmsg", 1, $FH_HR);
   }
 
-  # make sure we checked all the models
-  if($i != $nmodel_cksum) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, different number of models (%d) and reference features (%d). $common_errmsg", $i, $nmodel_cksum), 1, $FH_HR); 
-  }
-
-  # delete the checksum file, unless --keep used (in which case we don't remove intermediate files) 
-  if(! opt_Get("--keep", $opt_HHR)) { 
-    unlink $cksum_file;
-  }
-  else { 
-    addClosedFileToOutputInfo($ofile_info_HHR, "cmchecksum", $cksum_file, 0, "Checksum lines from the CM file");
-  }
   return;
 }
 
@@ -1502,9 +1359,7 @@ sub validate_cms_built_from_reference {
 #
 #  Subroutines related to preparing CM files for searches:
 #    run_cmscan()
-#    wait_for_farm_jobs_to_finish()
 #    split_fasta_file()
-#    split_cm_file()
 #    parse_cmscan_tblout()
 #
 #################################################################
@@ -1586,81 +1441,6 @@ sub run_cmscan {
   return;
 }
 
-#################################################################
-# Subroutine : wait_for_farm_jobs_to_finish()
-# Incept:      EPN, Mon Feb 29 16:20:54 2016
-#
-# Purpose: Wait for jobs on the farm to finish by checking the final
-#          line of their output files (in @{$outfile_AR}) to see
-#          if the final line is exactly the string
-#          $finished_string. We'll wait a maximum of $nmin
-#          minutes, then return the number of jobs that have
-#          finished. If all jobs finish before $nmin minutes we
-#          return at that point.
-#
-# Arguments: 
-#  $outfile_AR:      path to the cmscan executable file
-#  $finished_str:    string that indicates a job is finished e.g. "[ok]"
-#  $nmin:            number of minutes to wait
-# 
-# Returns:     Number of jobs (<= scalar(@{$outfile_AR})) that have
-#              finished.
-# 
-# Dies: never.
-#
-################################################################# 
-sub wait_for_farm_jobs_to_finish { 
-  my $sub_name = "wait_for_farm_jobs_to_finish()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($outfile_AR, $finished_str, $nmin) = @_;
-
-  my $njobs = scalar(@{$outfile_AR});
-  my @is_finished_A  = ();  # $is_finished_A[$i] is 1 if job $i is finished, else 0
-  my $nfinished      = 0;   # number of jobs finished
-  my $cur_sleep_secs = 15;  # number of seconds to wait between checks, we'll double this until we reach $max_sleep, every $doubling_secs seconds
-  my $doubling_secs  = 120; # number of seconds to wait before doublign $cur_sleep
-  my $max_sleep_secs = 120; # maximum number of seconds we'll wait between checks
-  my $secs_waited    = 0;   # number of total seconds we've waited thus far
-
-  # initialize @is_finished_A to all '0's
-  for(my $i = 0; $i < $njobs; $i++) { 
-    $is_finished_A[$i] = 0;
-  }
-
-  while($secs_waited < (($nmin * 60) + $cur_sleep_secs)) { # we add $cur_sleep so we check one final time before exiting after time limit is reached
-    # check to see if jobs are finished, every $cur_sleep seconds
-    sleep($cur_sleep_secs);
-    $secs_waited += $cur_sleep_secs;
-    if($secs_waited >= $doubling_secs) { 
-      $cur_sleep_secs *= 2;
-      if($cur_sleep_secs > $max_sleep_secs) { # reset to max if we've exceeded it
-        $cur_sleep_secs = $max_sleep_secs;
-      }
-    }
-
-    for(my $i = 0; $i < $njobs; $i++) { 
-      if(! $is_finished_A[$i]) { 
-        if(-s $outfile_AR->[$i]) { 
-          my $final_line = `tail -n 1 $outfile_AR->[$i]`;
-          chomp $final_line;
-          if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-          if($final_line eq $finished_str) { 
-            $is_finished_A[$i] = 1;
-            $nfinished++;
-          }
-        }
-      }
-    }
-    if($nfinished == $njobs) { 
-      # we're done break out of it
-      return $nfinished;
-    }
-  }
-  
-  return $nfinished;
-}
 
 #################################################################
 # Subroutine : split_fasta_file()
@@ -1707,69 +1487,6 @@ sub split_fasta_file {
   return $nfiles_created;
 }
 
-#################################################################
-# Subroutine : split_cm_file()
-# Incept:      EPN, Thu Apr 21 08:56:08 2016
-#
-# Purpose: Split up a CM database file into <n> smaller files by calling
-#          cmfetch for each model within. Then press each individual
-#          file in preparation for cmscan.
-#
-#          Set mdl_info_HAR->{"cmfile"}[$i] for each model.
-#
-# Arguments: 
-#  $cmfetch:         path to the cmfetch executable to use
-#  $cmpress:         path to the cmpress executable to use
-#  $model_file:      the CM library file
-#  $mdl_info_HAR:    REF to hash of arrays with information on the models, ADDED TO HERE
-#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information
-# 
-# Returns:    Number of CM files created.
-#
-# Dies:       if cmfetch or cmpress commands fail
-#
-################################################################# 
-sub split_cm_file { 
-  my $sub_name = "split_cm_file()";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($cmfetch, $cmpress, $model_file, $mdl_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  my $nmdl = validateModelInfoHashIsComplete(\%mdl_info_HA, undef, $FH_HR); # nmdl: number of homology models
-
-  # only fetch models that we need to fetch:
-
-  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    my $cmfile = $model_file . "." . $mdl_idx;
-    $mdl_info_HAR->{"cmfile"}[$mdl_idx] = $cmfile;
-
-    my $do_press = 0;
-    if(! -s $cmfile) { 
-      # CM file does not exist, fetch it
-      my $cmd    = "$cmfetch $model_file " . $mdl_info_HAR->{"cmname"}[$mdl_idx] . " > $cmfile";
-      runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-      $do_press = 1;
-    }
-    else { # CM file does exist, but we may need to press it
-      # check if we need to press it
-      for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
-        my $file = $cmfile . "." . $suffix;
-        if(! -s $file) { $do_press = 1; }
-      }
-    }
-    if($do_press) { 
-      # if we just created the file and/or it hasn't yet been pressed, press it
-      press_cm_database($cmfile, $cmpress, 0, $opt_HHR, $ofile_info_HHR); # 0: do not add info on the files we create to %ofile_info_HHR
-    }
-  }
-
-  return $nmdl;
-}
 
 #################################################################
 # Subroutine : parse_cmscan_tblout()
@@ -1969,7 +1686,7 @@ sub fetch_hits_given_results {
           }
         }
       }
-    }
+    } # end of for loop over $seq_idx
 
     my $fa_file               = $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx];
     my $fa_append_file        = $mdl_info_HAR->{$mdl_info_append_file_key}[$mdl_idx];
@@ -1986,7 +1703,12 @@ sub fetch_hits_given_results {
         addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_append_key, $fa_append_file, 0, "fasta file with $out_key appended hits for model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
       }
     }
-  }
+    else { 
+      # no sequences were fetched update the 
+      $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx]        = "/dev/null"; # indicates to downstream functions that this file does not exist
+      $mdl_info_HAR->{$mdl_info_append_file_key}[$mdl_idx] = "/dev/null"; # indicates to downstream functions that this file does not exist
+    }
+  } # end of for loop over model indices
 
   return;
 }
@@ -2032,10 +1754,15 @@ sub combine_model_hits {
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # we only do this for features annotated by models
+      my @tmp_hit_fafile_A = (); # only relevant if this feature has multiple models
       my $mdl_idx        = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
       my $mdl_hit_fafile = $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx];
-      validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-
+      my $at_least_one_fafile = 0; # set to '1' if at least one fa file exists (is not set to "/dev/null"
+      if($mdl_hit_fafile ne "/dev/null") { 
+        validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+        push(@tmp_hit_fafile_A, $mdl_hit_fafile);
+        $at_least_one_fafile = 1;
+      }
       #######################################
       # single model (e.g. exon) features
       #######################################
@@ -2050,17 +1777,26 @@ sub combine_model_hits {
       else { 
         # more than one model's hit files need to be combined to make this feature 
         my $ftr_hit_fafile = $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx];
-        my @tmp_hit_fafile_A = ($mdl_hit_fafile);
         for($mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
           $mdl_hit_fafile = $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx];
-          validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-          push(@tmp_hit_fafile_A, $mdl_hit_fafile);
+          if($mdl_hit_fafile ne "/dev/null") { 
+            validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+            push(@tmp_hit_fafile_A, $mdl_hit_fafile);
+            $at_least_one_fafile = 1;
+          }
         }
-        # combine the sequences into 1 file
-        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"});
-
-        my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+        if($at_least_one_fafile) { 
+          # combine the sequences into 1 file
+          combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"});
+          
+          my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
+          addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+        }
+        else { 
+          # no fasta files exist, redefine $ftr_info_HAR->{"$ftr_info_file_key"}[$ftr_idx] to 
+          # /dev/null so downstream functions know that it should not exist
+          $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = "/dev/null";
+        }
       }
 
       # check if there's a file to append
@@ -2069,7 +1805,9 @@ sub combine_model_hits {
       if(exists $ofile_info_HHR->{"fullpath"}{$mdl_ofile_info_append_key}) { 
         # yes, there is
         my $mdl_hit_append_fafile = $ofile_info_HH{"fullpath"}{$mdl_ofile_info_append_key};
-        validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+        if($mdl_hit_append_fafile ne "/dev/null") { 
+          validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+        }
         # this was initialized to something else, redefine it here:
         $ftr_info_HAR->{$ftr_info_append_file_key}[$ftr_idx] = $mdl_hit_append_fafile;
       }
@@ -2112,7 +1850,6 @@ sub combine_feature_hits {
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
 
   my $ftr_info_file_key        = $out_key . ".hits.fa";
-  my $ftr_info_append_file_key = $out_key . ".hits.append.fa";
   my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
 
   # printf("in $sub_name, out_key: $out_key, ftr_info_file_key: $ftr_info_file_key\n");
@@ -2123,30 +1860,43 @@ sub combine_feature_hits {
       my @primary_children_idx_A = (); # feature indices of the primary children of this feature
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
       my @tmp_hit_fafile_A = ();
+      my $at_least_one_fafile = 0; # set to 1 once we add a fasta file to @tmp_hit_fafile_A
       my $combined_ftr_hit_fafile = $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx];
       foreach my $cur_ftr_idx (@primary_children_idx_A) { 
         my $cur_ftr_hit_fafile = $ftr_info_HAR->{$ftr_info_file_key}[$cur_ftr_idx];
-        validateFileExistsAndIsNonEmpty($cur_ftr_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-        push(@tmp_hit_fafile_A, $cur_ftr_hit_fafile);
-
+        if($cur_ftr_hit_fafile ne "/dev/null") { 
+          validateFileExistsAndIsNonEmpty($cur_ftr_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+          push(@tmp_hit_fafile_A, $cur_ftr_hit_fafile);
+          $at_least_one_fafile = 1;
+        }
         # check if this feature has a mandatory file to append
         my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$cur_ftr_idx];
         my $mdl_ofile_info_append_key = get_mdl_or_ftr_ofile_info_key("mdl", $final_mdl_idx, $mdl_info_append_file_key, $ofile_info_HHR->{"FH"});
         if(exists $ofile_info_HHR->{"fullpath"}{$mdl_ofile_info_append_key}) {
           # it does, append it
           my $mdl_hit_append_fafile = $ofile_info_HH{"fullpath"}{$mdl_ofile_info_append_key};
-          validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-          push(@tmp_hit_fafile_A, $mdl_hit_append_fafile);
-        } 
+          if($mdl_hit_append_fafile ne "/dev/null") { 
+            validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
+            push(@tmp_hit_fafile_A, $mdl_hit_append_fafile);
+            $at_least_one_fafile = 1;
+          } 
+        }
       } # end of 'foreach $cur_ftr_idx'
 
-      # combine the sequences into 1 file
-      combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"}); 
+      if($at_least_one_fafile) { 
+        # combine the sequences into 1 file
+        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"}); 
 
-      my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+        my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+      } # end of 'if($at_least_one_fafile)'
+      else { 
+        # no fasta files exist, redefine $ftr_info_HAR->{"$ftr_info_file_key"}[$ftr_idx] to 
+        # /dev/null so downstream functions know that it should not exist
+        $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = "/dev/null";
+      }
     }
-  }
+  } # end of 'for' loop over $ftr_idx
   return;
 }
 
@@ -2155,12 +1905,13 @@ sub combine_feature_hits {
 # Subroutine:  combine_sequences()
 # Incept:      EPN, Wed Mar  2 16:11:40 2016
 #
-# Purpose:    Helper function for combine_multiple_hits(). Given an array of
-#             fasta files, each with a different subsequence from the
-#             same parent sequences, create a single new fasta file
-#             that has the subsequences concatenated together.  An
-#             example is stitching together exons into a CDS.  Uses
-#             BioEasel's sqfile module.
+# Purpose:    Helper function for combine_model_hits() and
+#             combine_feature_hits().  Given an array of fasta files,
+#             each with a different subsequence from the same parent
+#             sequences, create a single new fasta file that has the
+#             subsequences concatenated together.  An example is
+#             stitching together exons into a CDS.  Uses BioEasel's
+#             sqfile module.
 #
 # Arguments: 
 #  $indi_file_AR: REF to array of fasta files to combine
@@ -2220,52 +1971,58 @@ sub combine_sequences {
   }
 
   for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
-    validateFileExistsAndIsNonEmpty($seq_file, $indi_file_AR->[$file_idx], $FH_HR);
+    if($indi_file_AR->[$file_idx] ne "/dev/null") { 
+      # only enter the loop if the file exists (is not "/dev/null")
+      # if the file does not exist it has zero sequences in it, so everything else after this
+      # loop works as intended, we just have zero sequences added from this file
 
-    # create the Bio::Easel object
-    # first remove any old .ssi files that may exist
-    my $ssi_file = $indi_file_AR->[$file_idx] . ".ssi";
-    if(-e $ssi_file) { 
-      removeFileUsingSystemRm($ssi_file, $sub_name, $opt_HHR, $FH_HR);
-    }
-    $sqfile_A[$file_idx] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$file_idx] });
-    @{$sqname_AA[$file_idx]} = ();
-
-    # get the names all of sequences in each file
-    for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $sqfile_A[$file_idx]->nseq_ssi; $sqfile_seq_idx++) { 
-      $sqname_AA[$file_idx][$sqfile_seq_idx] = $sqfile_A[$file_idx]->fetch_seq_name_given_ssi_number($sqfile_seq_idx);
-
-      # break down this name into the $seq_name and $coords
-      my ($seq_name, $coords) = split("/", $sqname_AA[$file_idx][$sqfile_seq_idx]);
-      if(! defined $coords || $coords !~ m/\-/) { 
-        DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$file_idx][$sqfile_seq_idx] into accession and coordinates", 1, $FH_HR);
+      validateFileExistsAndIsNonEmpty($seq_file, $indi_file_AR->[$file_idx], $FH_HR);
+      
+      # create the Bio::Easel object
+      # first remove any old .ssi files that may exist
+      my $ssi_file = $indi_file_AR->[$file_idx] . ".ssi";
+      if(-e $ssi_file) { 
+        removeFileUsingSystemRm($ssi_file, $sub_name, $opt_HHR, $FH_HR);
       }
-      if(! exists $seq_name_idx_H{$seq_name}) { 
-        DNAORG_FAIL("ERROR in $sub_name, parsed sequence name $seq_name from $sqname_AA[$file_idx][$sqfile_seq_idx] does not exist in our seq_name_A array", 1, $FH_HR);
+      $sqfile_A[$file_idx] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$file_idx] });
+      @{$sqname_AA[$file_idx]} = ();
+      
+      # get the names all of sequences in each file
+      for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $sqfile_A[$file_idx]->nseq_ssi; $sqfile_seq_idx++) { 
+        $sqname_AA[$file_idx][$sqfile_seq_idx] = $sqfile_A[$file_idx]->fetch_seq_name_given_ssi_number($sqfile_seq_idx);
+        
+        # break down this name into the $seq_name and $coords
+        my ($seq_name, $coords) = split("/", $sqname_AA[$file_idx][$sqfile_seq_idx]);
+        if(! defined $coords || $coords !~ m/\-/) { 
+          DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$file_idx][$sqfile_seq_idx] into accession and coordinates", 1, $FH_HR);
+        }
+        if(! exists $seq_name_idx_H{$seq_name}) { 
+          DNAORG_FAIL("ERROR in $sub_name, parsed sequence name $seq_name from $sqname_AA[$file_idx][$sqfile_seq_idx] does not exist in our seq_name_A array", 1, $FH_HR);
+        }
+        
+        $seq_idx = $seq_name_idx_H{$seq_name};
+        $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = $sqfile_seq_idx;
+        if($seq_name_coords_A[$seq_idx] ne "") { 
+          $seq_name_coords_A[$seq_idx] .= ",";
+        }
+        $seq_name_coords_A[$seq_idx] .= $coords;
+        $seq_name_exists_AA[$seq_idx][$file_idx] = 1;
+        
+        if($seq_name_fetch_me_A[$seq_idx] == ($file_idx-1)) { 
+          $seq_name_fetch_me_A[$seq_idx]++; # this can make $seq_name_fetch_me_A[$seq_idx] rise to as high as $nfiles-1,
+          # but it really only serves as a flag that this sequence exists in all files
+          # starting at the first file ($file_idx == 0) up to the current file, else
+          # we would have set this value to -2 in the iteration of the loop corresponding
+          # to the file $file_idx in which it doesn't exist
+        }
+        else { 
+          # if we get here, we went through at least one value for $file_idx 
+          # in which this sequence did not exist
+          $seq_name_fetch_me_A[$seq_idx] = -2; # we'll set this to 0 below
+        }
       }
-
-      $seq_idx = $seq_name_idx_H{$seq_name};
-      $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = $sqfile_seq_idx;
-      if($seq_name_coords_A[$seq_idx] ne "") { 
-        $seq_name_coords_A[$seq_idx] .= ",";
-      }
-      $seq_name_coords_A[$seq_idx] .= $coords;
-      $seq_name_exists_AA[$seq_idx][$file_idx] = 1;
-
-      if($seq_name_fetch_me_A[$seq_idx] == ($file_idx-1)) { 
-        $seq_name_fetch_me_A[$seq_idx]++; # this can make $seq_name_fetch_me_A[$seq_idx] rise to as high as $nfiles-1,
-                                          # but it really only serves as a flag that this sequence exists in all files
-                                          # starting at the first file ($file_idx == 0) up to the current file, else
-                                          # we would have set this value to -2 in the iteration of the loop corresponding
-                                          # to the file $file_idx in which it doesn't exist
-      }
-      else { 
-        # if we get here, we went through at least one value for $file_idx 
-        # in which this sequence did not exist
-        $seq_name_fetch_me_A[$seq_idx] = -2; # we'll set this to 0 below
-      }
-    }
-  }
+    } # end of 'if($indi_file_AR->[$file_idx] ne "/dev/null")'
+  } # end of 'for' loop over file indexes
 
   # update values in @seq_name_fetch_me_A
   for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
@@ -2603,26 +2360,29 @@ sub wrapper_esl_epn_translate_startstop {
     my $ftr_hit_fafile            = $ftr_info_HAR->{$ftr_info_fa_file_key}[$ftr_idx];
     my $esl_epn_translate_outfile = $ftr_info_HAR->{$ftr_info_out_file_key}[$ftr_idx];
   
-    # deal with alternative starts here
-    my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
+    if($ftr_hit_fafile ne "/dev/null") { # if this is set to /dev/null we know it's not supposed to exist, so we skip this feature
 
-    if(! opt_Get("--skiptranslate", $opt_HHR)) { 
-      # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
-      $cmd = $esl_epn_translate . " $altstart_opt -startstop $ftr_hit_fafile > $esl_epn_translate_outfile";
-      runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-    }
-    else { # --skiptranslate, validate the output file exists
-      validateFileExistsAndIsNonEmpty($esl_epn_translate_outfile, $sub_name, $ofile_info_HHR->{"FH"});
-    }
-
-    # parse the output
-    parse_esl_epn_translate_startstop_outfile($esl_epn_translate_outfile, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $ofile_info_HHR->{"FH"});
-    if((! opt_Get("--keep", $opt_HHR)) && (! opt_Get("--skiptranslate", $opt_HHR))) { 
-      removeFileUsingSystemRm($esl_epn_translate_outfile, $sub_name, $opt_HHR, $ofile_info_HHR);
-    }
-    elsif(! opt_Get("--skiptranslate", $opt_HHR)) { 
-      my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_out_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $esl_epn_translate_outfile, 0, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
+      # deal with alternative starts here
+      my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
+      
+      if(! opt_Get("--skiptranslate", $opt_HHR)) { 
+        # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
+        $cmd = $esl_epn_translate . " $altstart_opt -startstop $ftr_hit_fafile > $esl_epn_translate_outfile";
+        runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      }
+      else { # --skiptranslate, validate the output file exists
+        validateFileExistsAndIsNonEmpty($esl_epn_translate_outfile, $sub_name, $ofile_info_HHR->{"FH"});
+      }
+      
+      # parse the output
+      parse_esl_epn_translate_startstop_outfile($esl_epn_translate_outfile, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $ofile_info_HHR->{"FH"});
+      if((! opt_Get("--keep", $opt_HHR)) && (! opt_Get("--skiptranslate", $opt_HHR))) { 
+        removeFileUsingSystemRm($esl_epn_translate_outfile, $sub_name, $opt_HHR, $ofile_info_HHR);
+      }
+      elsif(! opt_Get("--skiptranslate", $opt_HHR)) { 
+        my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_out_file_key, $ofile_info_HHR->{"FH"});
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $esl_epn_translate_outfile, 0, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
+      }
     }
   }
   return;
@@ -6901,35 +6661,37 @@ sub translate_feature_sequences {
     my $nucleotide_fafile = $ftr_info_HAR->{$in_ftr_info_file_key}[$ftr_idx];
     my $protein_fafile    = $ftr_info_HAR->{$out_ftr_info_file_key}[$ftr_idx];
 
-    my $opts = "";
-    # require a proper start codon and stop codon if this is not a mature peptide
-    if($ftr_info_HA{"type"}[$ftr_idx] ne "mp") { 
-      $opts = " -reqstart -reqstop ";
+    if($nucleotide_fafile ne "/dev/null") { # if this is set to /dev/null we know it's not supposed to exist, so we skip this feature
+      my $opts = "";
+      # require a proper start codon and stop codon if this is not a mature peptide
+      if($ftr_info_HA{"type"}[$ftr_idx] ne "mp") { 
+        $opts = " -reqstart -reqstop ";
+      }
+      my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
+      
+      # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
+      $cmd = $esl_epn_translate . " -endatstop -nostop $opts $altstart_opt $nucleotide_fafile > $protein_fafile";
+      runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+      
+      # determine the number of >= 1 segments (exons or mature peptides) we put together to make this protein
+      my $nsegments = 0;
+      if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
+        $nsegments = $ftr_info_HA{"final_mdl"}[$ftr_idx] - $ftr_info_HA{"first_mdl"}[$ftr_idx] + 1;
+      }
+      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
+        my @primary_children_idx_A = ();
+        getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
+        $nsegments = scalar(@primary_children_idx_A);
+      }
+      else { 
+        DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx with name %s is of unknown annot_type %s\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $ftr_info_HAR->{"annot_type"}[$ftr_idx]);
+      } 
+      
+      my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $out_ftr_info_file_key, $ofile_info_HHR->{"FH"});
+      addClosedFileToOutputInfo(\%ofile_info_HH, $ofile_info_key, $protein_fafile, 0, sprintf("fasta file with translations of corrected hits for feature " . $ftr_info_HA{"out_tiny"}[$ftr_idx] . " composed of %d segments", $nsegments));
     }
-    my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
-    
-    # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
-    $cmd = $esl_epn_translate . " -endatstop -nostop $opts $altstart_opt $nucleotide_fafile > $protein_fafile";
-    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-    
-    # determine the number of >= 1 segments (exons or mature peptides) we put together to make this protein
-    my $nsegments = 0;
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
-      $nsegments = $ftr_info_HA{"final_mdl"}[$ftr_idx] - $ftr_info_HA{"first_mdl"}[$ftr_idx] + 1;
-    }
-    elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
-      my @primary_children_idx_A = ();
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
-      $nsegments = scalar(@primary_children_idx_A);
-    }
-    else { 
-      DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx with name %s is of unknown annot_type %s\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $ftr_info_HAR->{"annot_type"}[$ftr_idx]);
-    } 
-
-    my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $out_ftr_info_file_key, $ofile_info_HHR->{"FH"});
-    addClosedFileToOutputInfo(\%ofile_info_HH, $ofile_info_key, $protein_fafile, 0, sprintf("fasta file with translations of corrected hits for feature " . $ftr_info_HA{"out_tiny"}[$ftr_idx] . " composed of %d segments", $nsegments));
   }
-  
+
   return;
 }
 
@@ -6942,9 +6704,7 @@ sub translate_feature_sequences {
 #             to the reference \%{$ref_del_HHA} and \%{$ref_ins_HHA}.
 #
 # Arguments: 
-#  $execs_HR:         REF to a hash with "cmalign" and "cmfetch" 
-#                     executable paths
-#  $model_file:       path to the CM file we can fetch individual models from
+#  $execs_HR:         REF to a hash with "cmalign" executable paths
 #  $mdl_info_HAR:     REF to the hash of arrays with model information
 #  $seq_info_HAR:     REF to the hash of arrays with sequence information
 #  $mdl_results_AAHR: REF to results AAH, ADDED TO HERE
@@ -6956,10 +6716,10 @@ sub translate_feature_sequences {
 ################################################################# 
 sub align_hits {
   my $sub_name = "align_hits";
-  my $nargs_exp = 7;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($execs_HR, $model_file, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nmdl: number of homology models
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $ofile_info_HHR->{"FH"}); # nseq: number of sequences
@@ -6970,9 +6730,6 @@ sub align_hits {
   my %seq_name_idx_H = (); # key: $seq_name, value: idx of $seq_name in @{$seq_info_HAR->{"seq_name"}}
   getIndexHashForArray(\@{$seq_info_HAR->{"seq_name"}}, \%seq_name_idx_H, $ofile_info_HHR->{"FH"});
 
-  # validate that we have the model file to fetch from
-  validateFileExistsAndIsNonEmpty($model_file, $sub_name, $ofile_info_HHR->{"FH"});
-
   my $mdl_fa_file_key   = "corrected.hits.fa";
   my $mdl_stk_file_key  = "corrected.hits.stk";
 
@@ -6982,9 +6739,11 @@ sub align_hits {
     validateFileExistsAndIsNonEmpty($fa_file, $sub_name, $ofile_info_HHR->{"FH"});
     my $stk_file = $mdl_info_HAR->{$mdl_stk_file_key}[$mdl_idx];  # Stockholm alignment file model was built from
     my $cmname   = $mdl_info_HAR->{"cmname"}[$mdl_idx];           # name of model 
-
+    my $cm_file  = $mdl_info_HAR->{"cmfile"}[$mdl_idx];           # file name
+    validateFileExistsAndIsNonEmpty($cm_file, $sub_name, $ofile_info_HHR->{"FH"});
+    
     # create the alignment
-    my $cmd = $execs_HR->{"cmfetch"} . " $model_file $cmname | " . $execs_HR->{"cmalign"} . " --cpu 0 - $fa_file > $stk_file";
+    my $cmd = $execs_HR->{"cmalign"} . " --cpu 0 $cm_file $fa_file > $stk_file";
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HHR->{"FH"});
     # save this file to %{$ofile_info_HHR}
     my $ofile_key = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_stk_file_key, $ofile_info_HHR->{"FH"});

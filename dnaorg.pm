@@ -208,6 +208,7 @@
 #   matpeptValidateCdsRelationships()
 #   checkForSpanningSequenceSegments()
 #   getIndexHashForArray()
+#   waitForFarmJobsToFinish()
 #
 use strict;
 use warnings;
@@ -5877,149 +5878,97 @@ sub getQualifierValues {
   return;
 }
 
+
 #################################################################
-# Subroutine: createCmDb()
-# Incept:     EPN, Fri Feb 12 09:06:52 2016
+# Subroutine : pressCmDb()
+# Incept:      EPN, Mon Feb 29 14:26:52 2016
+#
+# Purpose:     Run cmpress on a CM database file.
+#
+# Arguments: 
+#   $model_file:            the full path to the concatenated model file to create
+#   $cmpress:               path to cmpress executable
+#   $do_add_to_output_info: '1' to add file info to output info, '0' not to
+#   $do_run:                '1' to actually run the command, 0 to only return it
+#   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
+#   $ofile_info_HHR:        REF to the 2D hash of output file information
 # 
-# Purpose:    Create a CM database from a stockholm database file
-#             for use with Infernal 1.1 using the $cmbuild 
-#             executable. If $cmcalibrate is defined, also run 
-#             cmcalibrate. 
+# Returns:     cmpress command
+# 
+# Dies: If any of the expected individual CM files do not exist.
 #
-# Arguments:
-#   $execs_HR:       reference to hash with infernal executables, 
-#                    e.g. $execs_HR->{"cmbuild"} is path to cmbuild, PRE-FILLED
-#   $stk_file:       stockholm DB file
-#   $out_root:       string for naming output files
-#   $indi_name_AR:   ref to array of individual model names, we only use this if 
-#                    $do_calib_local is 0 or undef, PRE-FILLED
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
-#                    
-# Returns:    void
-#
-# Dies:       if $stk_file does not exist or is empty
-#             if we can't determine consensus length from the model file
-#################################################################
-sub createCmDb { 
-  my $sub_name = "createCmDb()";
+################################################################# 
+sub pressCmDb {
+  my $sub_name = "pressCmDb()";
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $stk_file, $out_root, $indi_name_AR, $opt_HHR, $FH_HR) = @_;
+  my ($model_file, $cmpress, $do_add_to_output_info, $do_run, $opt_HHR, $ofile_info_HHR) = @_;
 
-  if(! -s $stk_file)  { DNAORG_FAIL("ERROR in $sub_name, $stk_file file does not exist or is empty", 1, $FH_HR); }
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  my $abs_out_root = getcwd() . "/" . $out_root;
+  my $cmpress_cmd = "$cmpress -F $model_file > /dev/null"; # output is irrelevant
+  if($do_run) {
+    runCommand($cmpress_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
 
-  # remove the binary files for the CM from an earlier cmbuild/cmpress, if they exist:
-  for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
-    my $file = $out_root . ".cm." . $suffix;
-    if(-e $file) { unlink $file; }
-  }
-
-  my $do_calib_slow  = opt_Get("--slow", $opt_HHR);  # should we run in 'slow' mode (instead of fast mode)?
-  my $do_calib_local = opt_Get("--local", $opt_HHR); # should we run locally (instead of on farm)?
-
-  my ($cmbuild_opts,         $cmbuild_cmd);           # options and command for cmbuild
-  my ($df_cmcalibrate_opts,  $df_cmcalibrate_cmd);    # options and command for default cmcalibrate
-  my ($big_cmcalibrate_opts, $big_cmcalibrate_cmd);   # options and command for big-model cmcalibrate
-  my ($cmpress_opts,         $cmpress_cmd);           # options and command for cmpress
-  my $df_qsub_opts;  # default   options for qsub for cmcalibrate job
-  my $big_qsub_opts; # big-model options for qsub for cmcalibrate job
-
-  my $cmbuild     = $execs_HR->{"cmbuild"};
-  my $cmcalibrate = $execs_HR->{"cmcalibrate"};
-  my $cmpress     = $execs_HR->{"cmpress"};
-  my $cmfetch     = $execs_HR->{"cmfetch"};
-
-  my $nmodel = scalar(@{$indi_name_AR});
-  if($nmodel == 0) { DNAORG_FAIL("ERROR no model names in $sub_name", 1, $FH_HR); }
-
-  # build step:
-  $cmbuild_opts = "-F";
-  $cmbuild_cmd  = "$cmbuild $cmbuild_opts $out_root.cm $stk_file > $out_root.cmbuild";
-  my $secs_elapsed = runCommand($cmbuild_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-
-  # calibration step:
-  # set up cmcalibrate options for two scenarios: default and 'big' model
-  my $df_ncpu         = 4;
-  my $df_gb_per_core  = 8;
-  my $df_gb_tot       = opt_Get("--rammult", $opt_HHR) ? $df_gb_per_core * $df_ncpu : $df_gb_per_core;
-  my $df_time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%sG,mem_free=%sG,reserve_mem=%sG", $df_gb_tot, $df_gb_tot, $df_gb_per_core);
-
-  my $big_ncpu        = opt_Get("--bigncpu", $opt_HHR);
-  my $big_gb_per_core = opt_Get("--bigram", $opt_HHR);
-  my $big_gb_tot      = opt_Get("--rammult", $opt_HHR) ? $big_gb_per_core * $big_ncpu : $big_gb_per_core;
-
-  my $big_thresh      = opt_Get("--bigthresh", $opt_HHR);
-  my $big_time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%sG,mem_free=%sG,reserve_mem=%sG", $big_gb_tot, $big_gb_tot, $big_gb_per_core);
-
-  $df_cmcalibrate_opts  = " --cpu $df_ncpu ";
-  $big_cmcalibrate_opts = " --cpu $big_ncpu ";
-  if(! $do_calib_slow) { 
-    $df_cmcalibrate_opts  .= " -L 0.04 ";
-  }
-  $big_cmcalibrate_opts .= " -L " . opt_Get("--biglen", $opt_HHR) . " --tailp " . opt_Get("--bigtailp", $opt_HHR) . " ";
-
-  my $df_cmcalibrate_cmd_root   = "$cmcalibrate $df_cmcalibrate_opts";
-  my $big_cmcalibrate_cmd_root  = "$cmcalibrate $big_cmcalibrate_opts";
-  
-  if($do_calib_local) { 
-    # calibrate the model locally
-    $secs_elapsed = runCommand("$df_cmcalibrate_cmd_root $out_root.cm > $out_root.cmcalibrate", opt_Get("-v", $opt_HHR), $FH_HR);
-
-    # press the model
-    $cmpress_cmd = "$cmpress $out_root.cm > $out_root.cmpress";
-    $secs_elapsed = runCommand($cmpress_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  } # end of 'else' entered if $do_calib_farm is false
-  else { 
-    # run cmcalibrate on farm, one job for each CM file
-    # split up model file into individual CM files, then submit a job to calibrate each one, and exit. 
-    # the qsub commands will be submitted by executing a shell script with all of them
-    # unless --nosubmit option is enabled, in which case we'll just create the file
-    my $farm_cmd_file = $out_root . "ref.cm.qsub";
-    open(FARMOUT, ">", $farm_cmd_file) || fileOpenFailure($farm_cmd_file, $sub_name, $!, "writing", $FH_HR);
-    for(my $i = 0; $i < $nmodel; $i++) { 
-      my $cmfetch_cmd = "$cmfetch $out_root.cm $indi_name_AR->[$i] > $out_root.$i.cm";
-      runCommand($cmfetch_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-      my $out_tail    = $out_root;
-      $out_tail       =~ s/^.+\///;
-      my $jobname     = "c." . $out_tail . $i;
-      my $errfile     = $abs_out_root . "." . $i . ".err";
-
-      # determine length of the model, if >= opt_HHR->bigthresh, use --tailp, and require double memory (16Gb for 4 threads instead of 8Gb)
-      my $is_big = 0;
-      my $clen = `grep ^CLEN $out_root.$i.cm`;
-      chomp $clen;
-      if($clen =~ /^CLEN\s+(\d+)/) { 
-        $clen = $1;
-        if($clen >= $big_thresh) { $is_big = 1; }
-      }
-      else { 
-        DNAORG_FAIL("ERROR in $sub_name, couldn't determine consensus length in CM file $out_root.$i.cm, got $clen", 1, $FH_HR);
-      }
-
-      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $df_time_and_mem_req -pe multicore $df_ncpu -R y " . "\"" . $df_cmcalibrate_cmd_root . " $abs_out_root.$i.cm > $abs_out_root.$i.cmcalibrate\" > /dev/null\n";
-      if($is_big) { # rewrite it
-        $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $big_time_and_mem_req -pe multicore $big_ncpu -R y " . "\"" . $big_cmcalibrate_cmd_root . "$abs_out_root.$i.cm > $abs_out_root.$i.cmcalibrate\" > /dev/null\n";
-      }
-      print FARMOUT $farm_cmd;
-    } # end of 'for(my $i = 0; $i < $nmodel; $i++)' 
-    close(FARMOUT);
-
-    # and run the qsub commands unless --nosubmit
-    if(! opt_Get("--nosubmit", $opt_HHR)) { 
-      runCommand("sh $farm_cmd_file", opt_Get("-v", $opt_HHR), $FH_HR);
-    }      
-      
-    # final step, remove the master CM file if it exists, so we can create a new one after we're done calibrating
-    if(-e "$out_root.cm") { 
-      runCommand("rm $out_root.cm", opt_Get("-v", $opt_HHR), $FH_HR);
+    if($do_add_to_output_info) { 
+      addClosedFileToOutputInfo($ofile_info_HHR, "$model_file.i1m", $model_file.".i1m", 0, "index file for the CM, created by cmpress");
+      addClosedFileToOutputInfo($ofile_info_HHR, "$model_file.i1i", $model_file.".i1i", 0, "index file for the CM, created by cmpress");
+      addClosedFileToOutputInfo($ofile_info_HHR, "$model_file.i1f", $model_file.".i1f", 0, "index file for the CM, created by cmpress");
+      addClosedFileToOutputInfo($ofile_info_HHR, "$model_file.i1p", $model_file.".i1p", 0, "index file for the CM, created by cmpress");
     }
   }
+  return $cmpress_cmd;
+}
 
-  return;
+#################################################################
+# Subroutine : concatenateIndividualCmFiles()
+# Incept:      EPN, Mon Feb 29 10:53:53 2016
+#
+# Purpose:     Concatenate individual CM files created and calibrated
+#              by a previous call to dnaorg_build.pl into one 
+#              CM file.
+#
+# Arguments: 
+#   $combined_model_file:   the full path to the concatenated model file to create
+#   $out_root:              output root the individual CM files share
+#   $nmdl:                  number of models
+#   $do_run:                '1' to actually run the command, 0 to only return it
+#   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
+#   $ofile_info_HHR:        REF to the 2D hash of output file information
+# 
+# Returns:     the cat command
+# 
+# Dies: If any of the expected individual CM files do not exist.
+#
+################################################################# 
+sub concatenateIndividualCmFiles {
+  my $sub_name = "concatenateIndividualCmFiles()";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($combined_model_file, $out_root, $nmdl, $do_run, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  # concatenate the files into a CM DB
+  my $cat_cmd = "cat";
+  for(my $i = 0; $i < $nmdl; $i++) { 
+    my $indi_model = $out_root . ".$i.cm"; # dnaorg_build created the CMs
+    if(($do_run) && (! -s ($indi_model))) { 
+      DNAORG_FAIL("ERROR, individual model file $indi_model does not exist.", 1, $FH_HR);
+    }
+    $cat_cmd .= " $indi_model ";
+  }
+  $cat_cmd .= " > $combined_model_file";
+  if($do_run) { 
+    runCommand($cat_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+    addClosedFileToOutputInfo($ofile_info_HHR, "cm", $combined_model_file, 1, "CM file (a concatenation of individual files created by dnaorg_build.pl)");
+  }
+
+  return $cat_cmd;
 }
 
 #################################################################
@@ -6278,6 +6227,134 @@ sub getIndexHashForArray {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine : waitForFarmJobsToFinish()
+# Incept:      EPN, Mon Feb 29 16:20:54 2016
+#              EPN, Wed Aug 31 09:07:05 2016 [moved from dnaorg_annotate.pl to dnaorg.pm]
+#
+# Purpose: Wait for jobs on the farm to finish by checking the final
+#          line of their output files (in @{$outfile_AR}) to see
+#          if the final line is exactly the string
+#          $finished_string. We'll wait a maximum of $nmin
+#          minutes, then return the number of jobs that have
+#          finished. If all jobs finish before $nmin minutes we
+#          return at that point.
+#
+#          A job is considered 'finished in error' if it outputs
+#          anything to its err file in @{$errfile_AR}. (We do not kill
+#          the job, although for the jobs we are monitoring with this
+#          subroutine, it should already have died (though we don't
+#          guarantee that in anyway).) If any jobs 'finish in error'
+#          this subroutine will continue until all jobs have finished
+#          or we've waited $nmin minutes and then it will cause the
+#          program to exit in error and output an error message
+#          listing the jobs that have 'finished in error'
+#          
+#
+# Arguments: 
+#  $outfile_AR:      ref to array of output files that will be created by jobs we are waiting for
+#  $errfile_AR:      ref to array of err files that will be created by jobs we are waiting for if 
+#                    any stderr output is created
+#  $finished_str:    string that indicates a job is finished e.g. "[ok]"
+#  $nmin:            number of minutes to wait
+#  $FH_HR:           REF to hash of file handles
+#
+# Returns:     Number of jobs (<= scalar(@{$outfile_AR})) that have
+#              finished.
+# 
+# Dies: never.
+#
+################################################################# 
+sub waitForFarmJobsToFinish { 
+  my $sub_name = "waitForFarmJobsToFinish()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($outfile_AR, $errfile_AR, $finished_str, $nmin, $FH_HR) = @_;
+
+  my $log_FH = $FH_HR->{"log"};
+
+  my $njobs = scalar(@{$outfile_AR});
+  if($njobs != scalar(@{$errfile_AR})) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, number of elements in outfile array ($njobs) differ from number of jobs in errfile array (%d)", scalar(@{$errfile_AR})), 1, $FH_HR);
+  }
+  my @is_finished_A  = ();  # $is_finished_A[$i] is 1 if job $i is finished (either successfully or having failed), else 0
+  my @is_failed_A    = ();  # $is_failed_A[$i] is 1 if job $i has finished and failed (all failed jobs are considered 
+                            # to be finished), else 0
+  my $nfinished      = 0;   # number of jobs finished
+  my $nfail          = 0;   # number of jobs that have failed
+  my $cur_sleep_secs = 15;  # number of seconds to wait between checks, we'll double this until we reach $max_sleep, every $doubling_secs seconds
+  my $doubling_secs  = 120; # number of seconds to wait before doublign $cur_sleep
+  my $max_sleep_secs = 120; # maximum number of seconds we'll wait between checks
+  my $secs_waited    = 0;   # number of total seconds we've waited thus far
+
+  # initialize @is_finished_A to all '0's
+  for(my $i = 0; $i < $njobs; $i++) { 
+    $is_finished_A[$i] = 0;
+    $is_failed_A[$i] = 0;
+  }
+
+  my $keep_going = 1;  # set to 0 if all jobs are finished
+  outputString($log_FH, 1, "\n");
+  while(($secs_waited < (($nmin * 60) + $cur_sleep_secs)) && # we add $cur_sleep so we check one final time before exiting after time limit is reached
+        ($keep_going)) { 
+    # check to see if jobs are finished, every $cur_sleep seconds
+    sleep($cur_sleep_secs);
+    $secs_waited += $cur_sleep_secs;
+    if($secs_waited >= $doubling_secs) { 
+      $cur_sleep_secs *= 2;
+      if($cur_sleep_secs > $max_sleep_secs) { # reset to max if we've exceeded it
+        $cur_sleep_secs = $max_sleep_secs;
+      }
+    }
+
+    for(my $i = 0; $i < $njobs; $i++) { 
+      if(! $is_finished_A[$i]) { 
+        if(-s $outfile_AR->[$i]) { 
+          my $final_line = `tail -n 1 $outfile_AR->[$i]`;
+          chomp $final_line;
+          if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
+          if($final_line =~ m/\Q$finished_str\E/) { 
+            $is_finished_A[$i] = 1;
+            $nfinished++;
+          }
+        }
+        if(-s $errfile_AR->[$i]) { # errfile exists and is non-empty, this is a failure, even if we saw $finished_str above
+          if(! $is_finished_A[$i]) { 
+            $nfinished++;
+          }
+          $is_finished_A[$i] = 1;
+          $is_failed_A[$i] = 1;
+          $nfail++;
+        }
+      }
+    }
+
+    # output update
+    outputString($log_FH, 1, sprintf("#\t%4d of %4d jobs finished (%.1f minutes spent waiting)\n", $nfinished, $njobs, $secs_waited / 60.));
+
+    if($nfinished == $njobs) { 
+      # we're done break out of it
+      $keep_going = 0;
+    }
+  }
+
+  if($nfail > 0) { 
+    # construct error message
+    my $errmsg = "ERROR in $sub_name, $nfail of $njobs finished in error (output to their respective error files).\n";
+    $errmsg .= "Specifically the jobs that were supposed to create the following output and err files:\n";
+    for(my $i = 0; $i < $njobs; $i++) { 
+      if($is_failed_A[$i]) { 
+        $errmsg .= "\t$outfile_AR->[$i]\t$errfile_AR->[$i]\n";
+      }
+    }
+    DNAORG_FAIL($errmsg, 1, $FH_HR);
+  }
+
+  # if we get here we have no failures
+  return $nfinished;
 }
 
 ###########################################################################
