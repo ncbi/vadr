@@ -430,8 +430,19 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
 # a quick note to the user about what to do next
 if(! opt_Get("--skipbuild", \%opt_HH)) { 
   outputString($log_FH, 1, sprintf("#\n"));
-  outputString($log_FH, 1, "# You can now use dnaorg_annotate.pl to annotate genomes with the models\n");
-  outputString($log_FH, 1, "# you've created here.\n");
+  if(! opt_Get("--nosubmit", \%opt_HH)) { 
+    outputString($log_FH, 1, "# You can now use dnaorg_annotate.pl to annotate genomes with the models that\n");
+    outputString($log_FH, 1, "# you've created here.\n");
+  }
+  else { 
+    outputString($log_FH, 1, "# The models you've created have not yet been calibrated so you cannot use\n");
+    outputString($log_FH, 1, "# dnaorg_annotate.pl with them yet. First, you need to execute $out_root.cm.qsub\n");
+    outputString($log_FH, 1, "# in the directory $dir. That will submit jobs to the compute farm. Wait until those\n");
+    outputString($log_FH, 1, "# jobs have all finished running (monitor with qstat), and then execute\n");
+    outputString($log_FH, 1, "# $out_root.cm.run_when_jobs_are_finished.sh in the directory $dir. That script\n");
+    outputString($log_FH, 1, "# will prepare the calibrated CM files for use with dnaorg_annotate.pl. When that\n");
+    outputString($log_FH, 1, "# script finishes you can then use dnaorg_annotate.pl with the models.\n");
+  }    
   outputString($log_FH, 1, sprintf("#\n"));
 }
 
@@ -647,8 +658,8 @@ sub run_cmcalibrate_and_cmpress {
   # split up model file into individual CM files, then submit a job to calibrate each one, and exit. 
   # the qsub commands will be submitted by executing a shell script with all of them
   # unless --nosubmit option is enabled, in which case we'll just create the file
-  my $farm_cmd_file     = $out_root . "ref.cm.qsub";
-  my $postfarm_cmd_file = $out_root . "ref.cm.run_when_jobs_are_finished.sh";
+  my $farm_cmd_file     = $out_root . ".cm.qsub";
+  my $postfarm_cmd_file = $out_root . ".cm.run_when_jobs_are_finished.sh";
   my @tmp_out_file_A = (); # the array of cmcalibrate output files
   my @tmp_err_file_A = (); # the array of error files 
   my $nfarmjobs = 0; # number of jobs submitted to farm

@@ -554,8 +554,6 @@ if(opt_IsOn("--specstart", \%opt_HH)) {
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmscan"}        = $inf_exec_dir   . "cmscan";
 $execs_H{"cmalign"}       = $inf_exec_dir   . "cmalign";
-$execs_H{"cmfetch"}       = $inf_exec_dir   . "cmfetch";
-$execs_H{"cmpress"}       = $inf_exec_dir   . "cmpress";
 $execs_H{"hmmbuild"}      = $hmmer_exec_dir . "hmmbuild";
 $execs_H{"hmmalign"}      = $hmmer_exec_dir . "hmmalign";
 $execs_H{"esl-reformat"}  = $esl_exec_dir   . "esl-reformat";
@@ -803,8 +801,10 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     
   # concatenate all the tblout files into one 
   concatenateListOfFiles(\@tmp_tblout_file_A, $tblout_file, "dnaorg_annotate.pl", \%opt_HH, $ofile_info_HH{"FH"});
-
-  outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
+  
+  if(! opt_Get("--local", \%opt_HH)) { 
+    outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
+  }
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 } # end of if(! opt_Get(--skipscan", \%opt_HH))
 
@@ -1216,7 +1216,6 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #
 #  Subroutines related to preparing CM files for searches:
 #    concatenate_individual_cm_files()
-#    press_cm_database()
 #    validate_cms_built_from_reference()
 #
 #  Subroutines related to homology searches:
@@ -1296,7 +1295,6 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #################################################################
 #
 #  Subroutines related to preparing CM files for searches:
-#    press_cm_database()
 #    validate_cms_built_from_reference()
 #
 #################################################################
@@ -6701,8 +6699,7 @@ sub translate_feature_sequences {
 #             to the reference \%{$ref_del_HHA} and \%{$ref_ins_HHA}.
 #
 # Arguments: 
-#  $execs_HR:         REF to a hash with "cmalign" and "cmfetch" 
-#                     executable paths
+#  $execs_HR:         REF to a hash with "cmalign" executable paths
 #  $mdl_info_HAR:     REF to the hash of arrays with model information
 #  $seq_info_HAR:     REF to the hash of arrays with sequence information
 #  $mdl_results_AAHR: REF to results AAH, ADDED TO HERE
