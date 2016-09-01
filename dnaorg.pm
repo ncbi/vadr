@@ -6236,6 +6236,12 @@ sub getIndexHashForArray {
 #          program to exit in error and output an error message
 #          listing the jobs that have 'finished in error'
 #          
+#          When $do_errcheck is 1, this function considers any output
+#          written to stderr output files in @{$errfile_AR} to mean
+#          that the corresponding job has 'failed' and should be
+#          considered to have finished. When $do_errchecks is 0
+#          we don't look at the err files.
+# 
 #
 # Arguments: 
 #  $outfile_AR:      ref to array of output files that will be created by jobs we are waiting for
@@ -6243,6 +6249,7 @@ sub getIndexHashForArray {
 #                    any stderr output is created
 #  $finished_str:    string that indicates a job is finished e.g. "[ok]"
 #  $nmin:            number of minutes to wait
+#  $do_errcheck:     '1' to consider output to an error file a 'failure' of a job, '0' not to.
 #  $FH_HR:           REF to hash of file handles
 #
 # Returns:     Number of jobs (<= scalar(@{$outfile_AR})) that have
@@ -6253,10 +6260,10 @@ sub getIndexHashForArray {
 ################################################################# 
 sub waitForFarmJobsToFinish { 
   my $sub_name = "waitForFarmJobsToFinish()";
-  my $nargs_expected = 5;
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($outfile_AR, $errfile_AR, $finished_str, $nmin, $FH_HR) = @_;
+  my ($outfile_AR, $errfile_AR, $finished_str, $nmin, $do_errcheck, $FH_HR) = @_;
 
   my $log_FH = $FH_HR->{"log"};
 
@@ -6266,7 +6273,7 @@ sub waitForFarmJobsToFinish {
   }
   my @is_finished_A  = ();  # $is_finished_A[$i] is 1 if job $i is finished (either successfully or having failed), else 0
   my @is_failed_A    = ();  # $is_failed_A[$i] is 1 if job $i has finished and failed (all failed jobs are considered 
-                            # to be finished), else 0
+                            # to be finished), else 0. We only use this array if the --errcheck option is enabled.
   my $nfinished      = 0;   # number of jobs finished
   my $nfail          = 0;   # number of jobs that have failed
   my $cur_sleep_secs = 15;  # number of seconds to wait between checks, we'll double this until we reach $max_sleep, every $doubling_secs seconds
@@ -6305,7 +6312,7 @@ sub waitForFarmJobsToFinish {
             $nfinished++;
           }
         }
-        if(-s $errfile_AR->[$i]) { # errfile exists and is non-empty, this is a failure, even if we saw $finished_str above
+        if(($do_errcheck) && (-s $errfile_AR->[$i])) { # errfile exists and is non-empty, this is a failure, even if we saw $finished_str above
           if(! $is_finished_A[$i]) { 
             $nfinished++;
           }
