@@ -7836,7 +7836,7 @@ sub aorg_find_origin_sequences {
 #################################################################
 sub aorg_parse_cmscan_tblout_s2 { 
   my $sub_name = "aorg_parse_cmscan_tblout_s2()";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($tblout_file, $seq_info_HAR, $hit_HHR, $opt_HHR, $FH_HR) = @_;
