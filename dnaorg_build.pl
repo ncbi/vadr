@@ -103,6 +103,7 @@ opt_Add("--slow",      "boolean", 0,                     2,    undef, undef,    
 opt_Add("--local",     "boolean", 0,                     2,    undef, undef,              "running cmcalibrate on local machine",                       "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",      "integer", 1800,                  2,    undef,"--local,--nosubmit","allow <n> minutes for cmcalibrate jobs on farm",             "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--nosubmit",  "boolean", 0,                     2,    undef,"--local",           "do not submit cmcalibrate jobs to farm, run later",          "do not submit cmcalibrate jobs to farm, run later with qsub script", \%opt_HH, \@opt_order_A);
+opt_Add("--errcheck",  "boolean", 0,                     2,    undef,"--local",           "consider any stderr output as indicating a job failure",     "consider any stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--rammult",   "boolean", 0,                     2,    undef, undef,              "for all models, multiply RAM Gb by ncpu for mem_free",       "for all models, multiply RAM Gb by ncpu for mem_free", \%opt_HH, \@opt_order_A);
 opt_Add("--bigthresh", "integer", "2500",                2,    undef, undef,              "set minimum length for a big model to <n>",                  "set minimum length for a big model to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--bigram",    "integer", "8",                   2,    undef, undef,              "for big models, set Gb RAM per core for calibration to <n>", "for big models, set Gb RAM per core for calibration to <n>", \%opt_HH, \@opt_order_A);
@@ -148,6 +149,7 @@ my $options_okay =
                 'local'        => \$GetOptions_H{"--local"},
                 'wait=s'       => \$GetOptions_H{"--wait"},
                 'nosubmit'     => \$GetOptions_H{"--nosubmit"},
+                'errcheck'     => \$GetOptions_H{"--errcheck"},  
                 'rammult'      => \$GetOptions_H{"--rammult"},
                 'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
                 'bigram=s'     => \$GetOptions_H{"--bigram"},
@@ -169,8 +171,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.13";
-my $releasedate   = "Aug 2016";
+my $version       = "0.14";
+my $releasedate   = "Sep 2016";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -712,7 +714,7 @@ sub run_cmbuild {
     }
   }
   if(! $do_local) { # wait for farm jobs to finish
-    my $njobs_finished = waitForFarmJobsToFinish(\@out_A, \@err_A, "# CPU time", opt_Get("--wait", \%opt_HH), $FH_HR);
+    my $njobs_finished = waitForFarmJobsToFinish(\@out_A, \@err_A, "# CPU time", opt_Get("--wait", $opt_HHR), opt_Get("--errcheck", $opt_HHR), $FH_HR);
     if($njobs_finished != $nmodel) { 
       DNAORG_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nmodel are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $FH_HR);
     }
@@ -852,7 +854,7 @@ sub run_cmcalibrate_and_cmpress {
       # run the cmcalibrate commands
       runCommand("sh $farm_cmd_file", opt_Get("-v", $opt_HHR), $FH_HR);
       # and wait for all jobs to finish
-      my $njobs_finished = waitForFarmJobsToFinish(\@tmp_out_file_A, \@tmp_err_file_A, "[ok]", opt_Get("--wait", $opt_HHR), $FH_HR);
+      my $njobs_finished = waitForFarmJobsToFinish(\@tmp_out_file_A, \@tmp_err_file_A, "[ok]", opt_Get("--wait", $opt_HHR), opt_Get("--errcheck", $opt_HHR), $FH_HR);
       if($njobs_finished != $nfarmjobs) { 
         DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $FH_HR);
       }
