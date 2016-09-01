@@ -269,6 +269,8 @@ opt_Add("--aorgmodel",     "string",  undef,                   7,   "-c,--aorgst
 opt_Add("--aorgstart",     "integer", 0,                       7,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
 opt_Add("--aorgoffset",    "integer", 0,                       7,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
 opt_Add("--aorglen",       "integer", 0,                       7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgethresh",   "real",    1.0,                     7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgppthresh",  "real",    0.6,                     7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -319,7 +321,9 @@ my $options_okay =
                 'aorgmodel=s'   => \$GetOptions_H{"--aorgmodel"},
                 'aorgstart=s'   => \$GetOptions_H{"--aorgstart"},
                 'aorglen=s'     => \$GetOptions_H{"--aorglen"},
-                'aorgoffset=s'  => \$GetOptions_H{"--aorgoffset"});
+                'aorgoffset=s'  => \$GetOptions_H{"--aorgoffset"}, 
+                'aorgethresh=s' => \$GetOptions_H{"--aorgethresh"}, 
+                'aorgppthresh=s'=> \$GetOptions_H{"--aorgppthresh"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -7946,7 +7950,7 @@ sub aorg_find_origin_sequences {
   addClosedFileToOutputInfo(\%ofile_info_HH, "aorgcmscan",  "$cmscan_file",     1, "standard output file from cmscan for origin identification");
 
   my %hit_HH  = (); # 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
-  aorg_parse_cmscan_tblout_s2($tblout_file, $seq_info_HAR, \%hit_HH, $FH_HR);
+  aorg_parse_cmscan_tblout_s2($tblout_file, $seq_info_HAR, \%hit_HH, $opt_HHR, $FH_HR);
 
   # Fetch all hits into a fasta file that we can align with cmalign
   my @fetch_AA = ();
@@ -7971,7 +7975,6 @@ sub aorg_find_origin_sequences {
   addClosedFileToOutputInfo(\%ofile_info_HH, "outstk",     "$out_stk_file",     1, "alignment of cmscan hits");
   addClosedFileToOutputInfo(\%ofile_info_HH, "outcmalign", "$out_cmalign_file", 1, "cmalign output");
 
-
   # determine which positions the origin sequence is in each sequence
   my $ori_msa = Bio::Easel::MSA->new   ({ fileLocation => $out_stk_file });
   my $ori_start_rfpos    = $aorg_start;
@@ -7981,6 +7984,7 @@ sub aorg_find_origin_sequences {
   my $ori_stop_apos      = $ori_msa->rfpos_to_aligned_pos($ori_stop_rfpos);
   my $ori_offset_apos    = $ori_msa->rfpos_to_aligned_pos($ori_offset_rfpos);
 
+  my $ori_ppthresh = opt_Get("--aorgppthresh", $opt_HHR);
   #printf("ori_start_apos:  $ori_start_apos\n");
   #printf("ori_stop_apos:   $ori_stop_apos\n");
   #printf("ori_offset_apos: $ori_offset_apos\n");
@@ -7999,50 +8003,58 @@ sub aorg_find_origin_sequences {
       if($msa_sqidx == -1) { 
         DNAORG_FAIL("ERROR, unable to find $msa_seqname in $out_stk_file", 1, $ofile_info_HH{"FH"});
       }
-      
-      # determine the unaligned positions the origin spans in the alignment file $out_stk_file
-      my ($cur_ori_start_uapos, $cur_ori_start_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_start_apos, 1); # '1': if ori_start_apos is a gap, return position of 1st non-gap nucleotide after it 
-      my ($cur_ori_stop_uapos,  $cur_ori_stop_apos)  = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_stop_apos,  0); # '0': if ori_start_apos is a gap, return position of 1st non-gap nucleotide before it 
-      
-      # determine the unaligned position that maps to the special 'sequence start' position of the origin
-      # (this is --aorgoffset position of the origin), which will become position number 1 when we renumber
-      # sequences
-      my ($cur_ori_offset_uapos, $cur_ori_offset_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_offset_apos, 1); # '1': if ori_offset_apos is a gap, return position of 1st non-gap nucleotide after it 
-      
-      # do we have at least 1 nucleotide predicted in the origin positions?
-      if(($cur_ori_start_apos < $ori_stop_apos) && ($cur_ori_stop_apos > $ori_start_apos))  { 
-        # yes, we do:
-        # determine strand 
-        if($start <= $stop) { 
-          # positive strand
-          $cur_ori_start_uapos  += $start - 1;
-          $cur_ori_stop_uapos   += $start - 1;
-          $cur_ori_offset_uapos += $start - 1;
-        }
-        else { 
-          # negative strand
-          $cur_ori_start_uapos   = $stop - $cur_ori_start_uapos  + 1;
-          $cur_ori_stop_uapos    = $stop - $cur_ori_stop_uapos   + 1;
-          $cur_ori_offset_uapos  = $stop - $cur_ori_offset_uapos + 1;
-        }
-        # adjust coordinates so they're within 1..L
-        my ($out_ori_start_uapos, $out_ori_stop_uapos) = 
-            create_output_start_and_stop($cur_ori_start_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+      # determine average pp of aligned residues between $ori_start_apos and $ori_stop_apos (inclusive)
+      # and enforce our posterior probability threshold
+      my ($pp_avg, $pp_cnt) = $ori_msa->get_pp_avg($msa_sqidx, $ori_start_apos, $ori_stop_apos);
+      if($pp_cnt == 0) { printf("HEYA! no aligned residues for origin prediction for $seq_name\n"); }
+      if($pp_avg < $ori_ppthresh) { printf("HEYA! avg PP of aligned origin below threshold for $seq_name ($pp_avg < $ori_ppthresh)\n"); }
+      if(($pp_cnt > 0) && ($pp_avg >= $ori_ppthresh)) { 
 
-        my $out_ori_offset_uapos;
-        ($out_ori_offset_uapos, undef) = 
-            create_output_start_and_stop($cur_ori_offset_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-        #printf("cur_ori_start_uapos:  $cur_ori_start_uapos\n");
-        #printf("cur_ori_offset_uapos: $cur_ori_offset_uapos\n");
-        #printf("cur_ori_stop_uapos:   $cur_ori_stop_uapos\n\n");
-
-        #printf("out_ori_start_uapos:  $out_ori_start_uapos\n");
-        #printf("out_ori_offset_uapos: $out_ori_offset_uapos\n");
-        #printf("out_ori_stop_uapos:   $out_ori_stop_uapos\n\n");
-        $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= $out_ori_start_uapos . ":" . $out_ori_stop_uapos;
-        $seq_info_HAR->{"origin_offset"}[$seq_idx]      = $out_ori_offset_uapos;
-      }
-    }      
+        # determine the unaligned positions the origin spans in the alignment file $out_stk_file
+        my ($cur_ori_start_uapos, $cur_ori_start_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_start_apos, 1); # '1': if ori_start_apos is a gap, return position of 1st non-gap nucleotide after it 
+        my ($cur_ori_stop_uapos,  $cur_ori_stop_apos)  = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_stop_apos,  0); # '0': if ori_start_apos is a gap, return position of 1st non-gap nucleotide before it 
+        
+        # determine the unaligned position that maps to the special 'sequence start' position of the origin
+        # (this is --aorgoffset position of the origin), which will become position number 1 when we renumber
+        # sequences
+        my ($cur_ori_offset_uapos, $cur_ori_offset_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_offset_apos, 1); # '1': if ori_offset_apos is a gap, return position of 1st non-gap nucleotide after it 
+        
+        # do we have at least 1 nucleotide predicted in the origin positions?
+        if(($cur_ori_start_apos < $ori_stop_apos) && ($cur_ori_stop_apos > $ori_start_apos))  { 
+          # yes, we do:
+          # determine strand 
+          if($start <= $stop) { 
+            # positive strand
+            $cur_ori_start_uapos  += $start - 1;
+            $cur_ori_stop_uapos   += $start - 1;
+            $cur_ori_offset_uapos += $start - 1;
+          }
+          else { 
+            # negative strand
+            $cur_ori_start_uapos   = $stop - $cur_ori_start_uapos  + 1;
+            $cur_ori_stop_uapos    = $stop - $cur_ori_stop_uapos   + 1;
+            $cur_ori_offset_uapos  = $stop - $cur_ori_offset_uapos + 1;
+          }
+          # adjust coordinates so they're within 1..L
+          my ($out_ori_start_uapos, $out_ori_stop_uapos) = 
+              create_output_start_and_stop($cur_ori_start_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+          
+          my $out_ori_offset_uapos;
+          ($out_ori_offset_uapos, undef) = 
+              create_output_start_and_stop($cur_ori_offset_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+          #printf("cur_ori_start_uapos:  $cur_ori_start_uapos\n");
+          #printf("cur_ori_offset_uapos: $cur_ori_offset_uapos\n");
+          #printf("cur_ori_stop_uapos:   $cur_ori_stop_uapos\n\n");
+          
+          #printf("out_ori_start_uapos:  $out_ori_start_uapos\n");
+          #printf("out_ori_offset_uapos: $out_ori_offset_uapos\n");
+          #printf("out_ori_stop_uapos:   $out_ori_stop_uapos\n\n");
+          
+          $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= $out_ori_start_uapos . ":" . $out_ori_stop_uapos;
+          $seq_info_HAR->{"origin_offset"}[$seq_idx]      = $out_ori_offset_uapos;
+        } 
+      } # end of 'if(($pp_cnt > 0) && ($pp_avg >= $ori_ppthresh))'
+    } # end of 'if($has_hit)'
   }
 
   return;
@@ -8057,6 +8069,7 @@ sub aorg_find_origin_sequences {
 #  $seq_info_HAR:  REF to hash of arrays with information 
 #                  on the sequences, PRE-FILLED
 #  $hit_HHR:       REF to 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
+#  $opt_HHR:       ref to 2D options hash
 #  $FH_HR:         REF to hash of file handles
 #
 # Returns:    void
@@ -8067,13 +8080,14 @@ sub aorg_parse_cmscan_tblout_s2 {
   my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $seq_info_HAR, $hit_HHR, $FH_HR) = @_;
+  my ($tblout_file, $seq_info_HAR, $hit_HHR, $opt_HHR, $FH_HR) = @_;
   
   my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
   getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seqname_index_H, $FH_HR);
 
   open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
 
+  my $ethresh = opt_Get("--aorgethresh", $opt_HHR);
   my $did_field_check = 0; # set to '1' below after we check the fields of the file
   my $line_ctr = 0;  # counts lines in tblout_file
   while(my $line = <IN>) { 
@@ -8101,13 +8115,15 @@ sub aorg_parse_cmscan_tblout_s2 {
       # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
       # rule for deciding which of duplicate hits we'll store 
       if(($seqfrom <= $seqlen) || ($seqto <= $seqlen)) { 
-        if(! exists $hit_HHR->{$seqname}) { # takes only the top hit
-          %{$hit_HHR->{$seqname}} = ();
-          $hit_HHR->{$seqname}{"start"}  = $seqfrom;
-          $hit_HHR->{$seqname}{"stop"}   = $seqto;
-          $hit_HHR->{$seqname}{"score"}  = $score;
-          $hit_HHR->{$seqname}{"evalue"} = $evalue;
-        } 
+        if($evalue <= $ethresh) { # enforce E-value threshold
+          if(! exists $hit_HHR->{$seqname}) { # takes only the top hit
+            %{$hit_HHR->{$seqname}} = ();
+            $hit_HHR->{$seqname}{"start"}  = $seqfrom;
+            $hit_HHR->{$seqname}{"stop"}   = $seqto;
+            $hit_HHR->{$seqname}{"score"}  = $score;
+            $hit_HHR->{$seqname}{"evalue"} = $evalue;
+          } 
+        }
       }
     }
   }
