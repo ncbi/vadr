@@ -7753,6 +7753,7 @@ sub aorg_find_origin_sequences {
     my $has_hit = (defined $hit_HH{$seq_name}) ? 1 : 0;
     $seq_info_HAR->{"origin_coords_str"}[$seq_idx] = ""; # initialize
     $seq_info_HAR->{"origin_offset"}[$seq_idx]     = ""; # initialize
+    my $found_origin = 0;
     
     if($has_hit) { 
       my $start = $hit_HH{$seq_name}{"start"};
@@ -7811,10 +7812,15 @@ sub aorg_find_origin_sequences {
           
           $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= $out_ori_start_uapos . ":" . $out_ori_stop_uapos;
           $seq_info_HAR->{"origin_offset"}[$seq_idx]      = $out_ori_offset_uapos;
+          $found_origin = 1;
         } 
       } # end of 'if(($pp_cnt > 0) && ($pp_avg >= $ori_ppthresh))'
     } # end of 'if($has_hit)'
-  }
+    if(! $found_origin) { 
+      error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, "0 occurrences", $FH_HR);
+    }
+  } # end of 'for' loop over $seq_idx
+
 
   return;
 }
