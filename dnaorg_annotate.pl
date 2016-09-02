@@ -7768,8 +7768,8 @@ sub aorg_find_origin_sequences {
       # determine average pp of aligned residues between $ori_start_apos and $ori_stop_apos (inclusive)
       # and enforce our posterior probability threshold
       my ($pp_avg, $pp_cnt) = $ori_msa->get_pp_avg($msa_sqidx, $ori_start_apos, $ori_stop_apos);
-      if($pp_cnt == 0) { printf("HEYA! no aligned residues for origin prediction for $seq_name\n"); }
-      if($pp_avg < $ori_ppthresh) { printf("HEYA! avg PP of aligned origin below threshold for $seq_name ($pp_avg < $ori_ppthresh)\n"); }
+      # if($pp_cnt == 0) { printf("no aligned residues for origin prediction for $seq_name\n"); }
+      # if($pp_avg < $ori_ppthresh) { printf("avg PP of aligned origin below threshold for $seq_name ($pp_avg < $ori_ppthresh)\n"); }
       if(($pp_cnt > 0) && ($pp_avg >= $ori_ppthresh)) { 
 
         # determine the unaligned positions the origin spans in the alignment file $out_stk_file
@@ -7793,9 +7793,9 @@ sub aorg_find_origin_sequences {
           }
           else { 
             # negative strand
-            $cur_ori_start_uapos   = $stop - $cur_ori_start_uapos  + 1;
-            $cur_ori_stop_uapos    = $stop - $cur_ori_stop_uapos   + 1;
-            $cur_ori_offset_uapos  = $stop - $cur_ori_offset_uapos + 1;
+            $cur_ori_start_uapos   = $start - $cur_ori_start_uapos  + 1;
+            $cur_ori_stop_uapos    = $start - $cur_ori_stop_uapos   + 1;
+            $cur_ori_offset_uapos  = $start - $cur_ori_offset_uapos + 1;
           }
           # adjust coordinates so they're within 1..L
           my ($out_ori_start_uapos, $out_ori_stop_uapos) = 
