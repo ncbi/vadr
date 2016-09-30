@@ -110,7 +110,6 @@ opt_Add("--bigram",    "integer", "8",                   2,    undef, undef,    
 opt_Add("--biglen",    "real",    "0.16",                2,    undef, undef,              "for big models, set length to search in Mb as <x>",          "for big models, set cmcalibrate length to search in Mb as <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--bigncpu",   "integer", "4",                   2,    undef, undef,              "for big models, set number of CPUs for calibration to <n>",  "for big models, set number of CPUs for calibration to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--bigtailp",  "real",    "0.30",                2,    undef, undef,              "for big models, set --tailp cmcalibrate parameter as <x>",   "for big models, set --tailp cmcalibrate parameter as <x>", \%opt_HH, \@opt_order_A);
->>>>>>> develop
 
 $opt_group_desc_H{"3"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    

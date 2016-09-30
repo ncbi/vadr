@@ -854,14 +854,14 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     if($njobs_finished != $nfarmjobs) { 
       DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
     }
+    if(! opt_Get("--local", \%opt_HH)) { 
+      outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
+    }
   } # end of 'else' entered if($nfarmjobs > 1 && ! --local)
     
   # concatenate all the tblout files into one 
   concatenateListOfFiles(\@tmp_tblout_file_A, $tblout_file, "dnaorg_annotate.pl", \%opt_HH, $ofile_info_HH{"FH"});
   
-  if(! opt_Get("--local", \%opt_HH)) { 
-    outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
-  }
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 } # end of if(! opt_Get(--skipscan", \%opt_HH))
 
@@ -4879,6 +4879,7 @@ sub output_tbl_get_headings {
 #  origin sequence:#
 #  origin sequence:start
 #  origin sequence:stop
+#  origin sequence:1stps
 #  origin sequence:offst
 #  origin sequence:PF
 #  CDS #1 [single exon; +]:movement protein:start1
@@ -4965,14 +4966,21 @@ sub output_tbl_get_headings {
     output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
     output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of lone occurrence of origin sequence (if only 1 exists)", $FH_HR);
 
-    # column/row #7: 'origin sequence:offst'
+    # column/row #7: 'origin sequence:1stpos'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "1stps");
+    $tok5 = sprintf(" %5s", "-----");
+    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "what should be first position of genome, based on origin prediction", $FH_HR);
+
+    # column/row #8: 'origin sequence:offst'
     # tok1, tok2, tok3 do not change
     $tok4 = sprintf(" %5s", "offst");
     $tok5 = sprintf(" %5s", "-----");
     output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)", $FH_HR);
 
-    # column/row #7: 'origin sequence:PF'
+    # column/row #9: 'origin sequence:PF'
     # tok1, tok2, tok3 do not change
     $tok4 = sprintf(" %2s", "PF");
     $tok5 = sprintf(" %2s", "--");
@@ -5638,20 +5646,22 @@ sub output_tbl_all_sequences {
     push(@cur_out_A, sprintf("%-19s  ", $accn_name)); 
     push(@cur_out_A, sprintf("%6d ", $accn_len));
 
-    my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail);
+    my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail);
     if((opt_IsUsed("--origin",    $opt_HHR)) || 
        (opt_IsUsed("--aorgmodel", $opt_HHR))) { 
 
       if(opt_IsUsed("--origin",    $opt_HHR)) { 
         ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail) = get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $origin_offset, $FH_HR);
+        $oseq_firstpos = "?";
       }
       if(opt_IsUsed("--aorgmodel", $opt_HHR)) { 
-        ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail) = aorg_get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $FH_HR);
+        ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail) = aorg_get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $FH_HR);
       }
 
       push(@cur_out_A, sprintf("%2d ", $oseq_ct));
       push(@cur_out_A, sprintf("%5s ", $oseq_start));
       push(@cur_out_A, sprintf("%5s ", $oseq_stop));
+      push(@cur_out_A, sprintf("%5s ", $oseq_firstpos));
       push(@cur_out_A, sprintf("%5s ", $oseq_offset));
       push(@cur_out_A, sprintf(" %s", $oseq_passfail));
       $pass_fail_str .= $oseq_passfail;
@@ -7915,6 +7925,7 @@ sub aorg_parse_cmscan_tblout_s2 {
 #          $oseq_ct:       number of occurrences of origin sequence found
 #          $oseq_start:    start position of origin seq if $oseq_ct == 1, else '-'
 #          $oseq_stop:     stop  position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_firstpos: what should be the first position of the seq if $oseq_ct == 1, else '-'
 #          $oseq_offset:   offset position of origin seq if $oseq_ct == 1, else '-'
 #          $oseq_passfail: 'P' if $oseq_ct is 1, else 'F'
 #
@@ -7936,6 +7947,7 @@ sub aorg_get_origin_output_for_sequence {
   # initializereturn values
   my $oseq_start    = "-"; # changed below if $oseq_ct == 1
   my $oseq_stop     = "-"; # changed below if $oseq_ct == 1
+  my $oseq_firstpos = "-"; # changed below if $oseq_ct == 1
   my $oseq_offset   = "-"; # changed below if $oseq_ct == 1
   my $oseq_passfail = "F"; # changed below if $oseq_ct == 1
 
@@ -7944,8 +7956,11 @@ sub aorg_get_origin_output_for_sequence {
 
   if($oseq_ct == 1) { 
     ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
-    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_start: $oseq_start oseq_stop: $oseq_stop\n");
-    $oseq_offset = $seq_info_HAR->{"origin_offset"}[$seq_idx];
+    $oseq_firstpos = $seq_info_HAR->{"origin_offset"}[$seq_idx];
+    if($oseq_firstpos < 0) { 
+      $oseq_firstpos = $accn_len + $oseq_firstpos + 1;
+    }
+    $oseq_offset = $oseq_firstpos; 
 
     # $oseq_offset is now what should be the first position of the sequence, 
     # if this is > 0, we subtract 1 because that's how many we need to shift counterclockwise 
@@ -7965,5 +7980,5 @@ sub aorg_get_origin_output_for_sequence {
     $oseq_passfail = "P";
   }
 
-  return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail);
+  return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail);
 }
