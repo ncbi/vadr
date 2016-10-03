@@ -7182,7 +7182,7 @@ sub align_hits {
     my $alen  = $msa->alen();    # alignment length
     my @i_am_rfpos_A = (); # 0..$apos..$alen-1: '1' if RF is a nongap at position $apos+1, else '0'
     for(my $apos = 0; $apos < $alen; $apos++) { 
-      $i_am_rfpos_A[$apos] = ($rfseq_A[$apos] eq ".") ? 0 : 1;
+      $i_am_rfpos_A[$apos] = ($rfseq_A[$apos] eq "." || $rfseq_A[$apos] eq "~") ? 0 : 1;
     }          
     
     my $ref_seq_idx = 0; # this will remain '0'
