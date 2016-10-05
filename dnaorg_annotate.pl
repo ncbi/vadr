@@ -233,6 +233,7 @@ opt_Add("--nseq",       "integer", 5,                        1,    undef,"--loca
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>", "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--mxsize",     "integer", 1024,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for alternative modes";
 #       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
@@ -247,7 +248,6 @@ opt_Add("--tblnocomp",   "boolean", 0,                      3,    undef,   undef
 $opt_group_desc_H{"4"} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
 opt_Add("--doalign",    "boolean", 0,                       4,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
-
 
 $opt_group_desc_H{"5"} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                          help-output    
@@ -291,6 +291,7 @@ my $options_okay =
                 'wait=s'       => \$GetOptions_H{"--wait"},
                 'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
                 'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
+                'mxsize=s'     => \$GetOptions_H{"--mxsize"},
 # options for alternative modes
                 'infasta'      => \$GetOptions_H{"--infasta"},
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
@@ -7153,7 +7154,8 @@ sub align_hits {
     validateFileExistsAndIsNonEmpty($cm_file, $sub_name, $ofile_info_HHR->{"FH"});
     
     # create the alignment
-    my $cmd = $execs_HR->{"cmalign"} . " --cpu 0 $cm_file $fa_file > $stk_file";
+    my $mxsize_opt = sprintf("--mxsize %d", opt_Get("--mxsize", $opt_HHR));
+    my $cmd = $execs_HR->{"cmalign"} . " --cpu 0 $mxsize_opt $cm_file $fa_file > $stk_file";
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HHR->{"FH"});
     # save this file to %{$ofile_info_HHR}
     my $ofile_key = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_stk_file_key, $ofile_info_HHR->{"FH"});
