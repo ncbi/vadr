@@ -5801,15 +5801,15 @@ sub output_tbl_all_sequences {
           my $ref_olp_str = $mdl_info_HAR->{"out_olp_str"}[$mdl_idx];
           my $ref_adj_str = combine_ajb_and_aja_strings($mdl_info_HAR->{"out_ajb_str"}[$mdl_idx], $mdl_info_HAR->{"out_aja_str"}[$mdl_idx]);
           
+          if($is_first) { # reset variables
+            $at_least_one_fail  = 0; 
+            $start_codon_char   = "";
+            $stop_codon_char    = "";
+            $multiple_of_3_char = "";
+          }
+
           if(exists $mdl_results_HR->{"p_start"}) { 
             # hit exists
-            if($is_first) { # reset variables
-              $at_least_one_fail  = 0; 
-              $start_codon_char   = "";
-              $stop_codon_char    = "";
-              $multiple_of_3_char = "";
-            }
-            
             # check for special case when we had a trc in a previous segment for the same feature
             if((exists $mdl_results_HR->{"prv_trc_flag"}) && ($mdl_results_HR->{"prv_trc_flag"} == 1)) { # flag for a trc error in previous exon
               if($is_first) { 
@@ -5907,8 +5907,8 @@ sub output_tbl_all_sequences {
               
               # add the ss3 (start/stop/multiple of 3 info) if we're not a mature peptide
               if(! $is_matpept) { 
-                if($start_codon_char eq "") { die "ERROR $seq_idx $mdl_idx start_codon_char is blank\n"; }
-                if($stop_codon_char  eq "") { die "ERROR $seq_idx $mdl_idx stop_codon_char is blank\n"; }
+                if($start_codon_char eq "") { die "ERROR $seq_idx ($seq_name) $mdl_idx start_codon_char is blank\n"; }
+                if($stop_codon_char  eq "") { die "ERROR $seq_idx ($seq_name) $mdl_idx stop_codon_char is blank\n"; }
                 if($multiple_of_3_char  eq "") { die "ERROR $seq_idx $mdl_idx multiple_of_3_char is blank\n"; }
                 push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
                 if($do_stop) { 
@@ -5936,6 +5936,9 @@ sub output_tbl_all_sequences {
               $pass_fail_char = "F";
               push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
               $pass_fail_str .= $pass_fail_char;
+            }
+            if($is_first) { # important to do this so final model has a valid start_codon_char
+              $start_codon_char = "NP";
             }
           }
         } # end of 'for(my $mdl_idx'
