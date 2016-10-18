@@ -2929,7 +2929,7 @@ sub results_calculate_corrected_stops {
                                                                         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
                                                                         $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
           if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
-            $updated_ext_errmsg .= sprintf(" %s %d of %d", ($is_matpept) ? "segment" : "exon", $mdl_idx - $first_mdl_idx + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
+            $updated_ext_errmsg .= sprintf(" %s %d of %d", ($is_matpept) ? "segment" : "exon", $mdl_idx - $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
           }
           $updated_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
                                          create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
