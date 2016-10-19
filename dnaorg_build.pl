@@ -95,10 +95,10 @@ opt_Add("--wait",      "integer", 1800,                  2,    undef,"--local,--
 opt_Add("--nosubmit",  "boolean", 0,                     2,    undef,"--local",           "do not submit cmcalibrate jobs to farm, run later",          "do not submit cmcalibrate jobs to farm, run later with qsub script", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",  "boolean", 0,                     2,    undef,"--local",           "consider any stderr output as indicating a job failure",     "consider any stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--rammult",   "boolean", 0,                     2,    undef, undef,              "for all models, multiply RAM Gb by ncpu for mem_free",       "for all models, multiply RAM Gb by ncpu for mem_free", \%opt_HH, \@opt_order_A);
-opt_Add("--bigthresh", "integer", "3000",                2,    undef, undef,              "set minimum length for a big model to <n>",                  "set minimum length for a big model to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--bigthresh", "integer", "2500",                2,    undef, undef,              "set minimum length for a big model to <n>",                  "set minimum length for a big model to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--bigram",    "integer", "8",                   2,    undef, undef,              "for big models, set Gb RAM per core for calibration to <n>", "for big models, set Gb RAM per core for calibration to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--biglen",    "real",    "0.16",                2,    undef, undef,              "for big models, set length to search in Mb as <x>",          "for big models, set cmcalibrate length to search in Mb as <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--bigncpu",   "integer", "8",                   2,    undef, undef,              "for big models, set number of CPUs for calibration to <n>",  "for big models, set number of CPUs for calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--bigncpu",   "integer", "4",                   2,    undef, undef,              "for big models, set number of CPUs for calibration to <n>",  "for big models, set number of CPUs for calibration to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--bigtailp",  "real",    "0.30",                2,    undef, undef,              "for big models, set --tailp cmcalibrate parameter as <x>",   "for big models, set --tailp cmcalibrate parameter as <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"3"} = "optional output files";

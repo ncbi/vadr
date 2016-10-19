@@ -231,6 +231,9 @@ opt_Add("--local",      "boolean", 0,                        1,    undef, undef,
 opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>", "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--mxsize",     "integer", 1024,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for alternative modes";
 #       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
@@ -245,7 +248,6 @@ opt_Add("--tblnocomp",   "boolean", 0,                      3,    undef,   undef
 $opt_group_desc_H{"4"} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
 opt_Add("--doalign",    "boolean", 0,                       4,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
-
 
 $opt_group_desc_H{"5"} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                          help-output    
@@ -287,6 +289,9 @@ my $options_okay =
                 'errcheck'     => \$GetOptions_H{"--errcheck"},  
                 'nseq=s'       => \$GetOptions_H{"--nseq"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
+                'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
+                'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
+                'mxsize=s'     => \$GetOptions_H{"--mxsize"},
 # options for alternative modes
                 'infasta'      => \$GetOptions_H{"--infasta"},
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
@@ -511,6 +516,16 @@ my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
+
+# open gap info files, if --doalign
+if(opt_Get("--doalign", \%opt_HH))  { 
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_perseq_all",     $out_root . ".gap.perseq-all.txt",     1, "Per sequence gap information (all gaps)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_perseq_not3",    $out_root . ".gap.perseq-not3.txt",    1, "Per sequence gap information (gaps not a multiple of 3)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_perseq_special", $out_root . ".gap.perseq-special.txt", 1, "Per sequence gap information (special gaps)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_pergap_all",     $out_root . ".gap.pergap-all.txt",     1, "Per gap information (all gaps)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_pergap_not3",    $out_root . ".gap.pergap-not3.txt",    1, "Per gap information (gaps not a multiple of 3)");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_pergap_special", $out_root . ".gap.pergap-special.txt", 1, "Per gap information (special gaps)");
+}
 
 # open optional output files
 if(opt_Get("--mdlinfo", \%opt_HH)) { 
@@ -759,9 +774,9 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     # run a different cmscan run for each file
     for(my $m = 0; $m < $nmdl; $m++) { 
       my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
-      my $tmp_stdout_file = "/dev/null";
-      my $do_max = ($mdl_info_HA{"length"}[$m] <= 20)   ? 1 : 0; # do not filter for very short models
-      my $do_big = ($mdl_info_HA{"length"}[$m] >= 3000) ? 1 : 0; # use bigger max matrix size for big models
+      my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".cmscan" : "/dev/null";
+      my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
+      my $do_big = ($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) ? 1 : 0; # use HMM mode for big models
       run_cmscan($execs_H{"cmscan"}, 1, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
       push(@tmp_tblout_file_A, $tmp_tblout_file);
     }
@@ -781,9 +796,9 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
       push(@tmp_seq_file_A,    $tmp_seq_file);
       for(my $m = 0; $m < $nmdl; $m++) { 
         my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".s" . $s . ".tblout";
-        my $tmp_stdout_file = "/dev/null";
-        my $do_max = ($mdl_info_HA{"length"}[$m] <= 20)   ? 1 : 0; # do not filter for very short models
-        my $do_big = ($mdl_info_HA{"length"}[$m] >= 3000) ? 1 : 0; # use bigger max matrix size for big models
+        my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".s" . $s . ".cmscan" : "/dev/null";
+        my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
+        my $do_big = ($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) ? 1 : 0; # use HMM mode for big models
         run_cmscan($execs_H{"cmscan"}, 0, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m],  # 0: do not run locally
                    $tmp_seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH);
         push(@tmp_tblout_file_A, $tmp_tblout_file);
@@ -1178,10 +1193,18 @@ outputString($log_FH, 1, sprintf("#\n# Annotated %d accessions, %d (%6.4f fracti
 
 output_errors_summary($ofile_info_HH{"FH"}{"errsum"}, \@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, 1, \%opt_HH, \%ofile_info_HH); # 1: output to stdout
 
+##################
+# gap info files #
+##################
+if(opt_Get("--doalign", \%opt_HH)) { 
+  output_gap_info($ofile_info_HH{"FH"}{"gap_perseq_all"},     $ofile_info_HH{"FH"}{"gap_pergap_all"},     0, 1, 0, 0, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
+  output_gap_info($ofile_info_HH{"FH"}{"gap_perseq_not3"},    $ofile_info_HH{"FH"}{"gap_pergap_not3"},    0, 0, 1, 0, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
+  output_gap_info($ofile_info_HH{"FH"}{"gap_perseq_special"}, $ofile_info_HH{"FH"}{"gap_pergap_special"}, 0, 0, 0, 1, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
+}
+
 ################################
 # output optional output files #
 ################################
-# 
 if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
   dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
 }
@@ -1274,6 +1297,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #    output_errors_all_sequences()
 #    output_errors_summary()
 #    output_multifeature_relationships()
+#    output_gap_info()
 #
 #  Miscellaneous subroutines that don't fit in the above categories:
 #    find_inframe_stop()
@@ -1283,6 +1307,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #    translate_feature_sequences
 #    align_hits()
 #    update_gap_array()
+#    find_special_gap()
 #    define_model_and_feature_output_file_names()
 #    get_mdl_or_ftr_ofile_info_key()
 #    align_protein_sequences
@@ -1402,9 +1427,10 @@ sub run_cmscan {
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
-  my $opts = " --noali --cpu 0 --tblout $tblout_file --verbose ";
+  my $opts = (opt_Get("-v", $opt_HHR)) ? " " : " --noali ";
+  $opts .= " --cpu 0 --tblout $tblout_file --verbose ";
   if($do_max) { # no filtering
-    $opts .= "--max ";
+    $opts .= "--max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
   }
   else { 
     $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
@@ -4698,7 +4724,7 @@ sub error_instances_validate_all {
 #    output_errors_all_sequences()
 #    output_errors_summary()
 #    output_multifeature_relationships()
-#
+#    output_gap_info()
 #################################################################
 
 #################################################################
@@ -5542,7 +5568,7 @@ sub output_tbl_all_sequences {
   my $do_exist    = (opt_Get("--infasta", $opt_HHR) || opt_Get("--tblnocomp", $opt_HHR)) ? 0 : 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
   my $do_matpept  = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
 
-  my $nseqcol     = 10; # number of sequences we print per page
+  my $nseqcol     = 5; # number of sequences we print per page
   my $do_tblfirst = (opt_Get("--tblfirst", $opt_HHR)) ? 1 : 0; 
   my $act_nseqcol = $do_tblfirst ? $nseqcol-1 : $nseqcol;
 
@@ -5908,12 +5934,12 @@ sub output_tbl_all_sequences {
     else { 
       push(@page_out_AA, [@cur_out_A]);
       $cur_pagesize++;
-      if($accn_failed) { 
+      if(($accn_failed) || (($seq_idx == 0) && (! opt_IsUsed("--infasta", $opt_HHR)))) { # print ref if --infasta not used
         push(@fail_page_out_AA, [@cur_out_A]);
         $cur_fail_pagesize++;
         $tot_nfail++;
       }        
-      if($seq_info_HAR->{"nerrors"}[$seq_idx] > 0) { 
+      if(($seq_info_HAR->{"nerrors"}[$seq_idx] > 0) || (($seq_idx == 0) && (! opt_IsUsed("--infasta", $opt_HHR)))) { # print ref if --infasta not used { 
         push(@err_page_out_AA, [@cur_out_A]);
         $cur_err_pagesize++;
       }        
@@ -6371,6 +6397,393 @@ sub output_multifeature_relationships {
 }
 
 #################################################################
+# Subroutine: output_gap_info()
+# Incept:     EPN, Thu Mar 10 19:15:38 2016
+#
+# Purpose:    Output the multi-feature relationships, e.g. CDS comprised of
+#             multiple features.
+#
+# Arguments: 
+# $perseq_FH:        output file handle to print per-sequence gap info to, undef to not print perseq info
+# $pergap_FH:        output file handle to print per-gap info to
+# $do_perseq_tbl:    '1' to output per sequence gaps as a table, '0' to print a list
+# $do_gap_all:       '1' to output per gap info for all gaps
+# $do_gap_not3:      '1' to output per gap info for gaps that are not a multiple of 3, not for all gaps
+# $do_gap_special:   '1' to output per gap info for special gaps that are possibly causative of a frameshift
+#                    Only 1 of $pergap_all, $pergap_not3, and $pergap_special can be '1'.
+# $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
+# $ftr_info_HAR:     REF to hash of arrays with information on the features, PRE-FILLED
+# $seq_info_HAR:     REF to hash of arrays with information on the sequences, PRE-FILLED
+# $mdl_results_AAHR: REF to results AAH, PRE-FILLED
+# $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
+# $ofile_info_HHR:   REF to the 2D hash of output file information
+#
+# Returns:    void
+#
+#################################################################
+sub output_gap_info {
+  my $sub_name = "output_gap_info";
+  my $nargs_exp = 12;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+ 
+  my ($perseq_FH, $pergap_FH, $do_perseq_tbl, $do_gap_all, $do_gap_not3, $do_gap_special, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+
+  if($do_gap_all) {
+    if($do_gap_not3 || $do_gap_special) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
+  }
+  elsif($do_gap_not3) { 
+    if($do_gap_all || $do_gap_special) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
+  }
+  elsif($do_gap_special) { 
+    if($do_gap_all || $do_gap_not3) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
+  }
+  else { 
+    die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; 
+  }
+
+  my @gapstr_AA = ();           # [0..$nseq-1][0..$nftr-1]: string describing all gaps for this sequence and this feature
+  my @w_gapstr_A = ();          # [0..$i..$nftr-1] max width of $gapstr_AA[$0..nseq-1][$i] for feature $i over all sequences
+
+  my @tot_gap_length_AA = ();   # [0..$nseq-1][0..$nftr-1]: total number of gap positions for this sequence and this feature
+  my @w_tot_gap_length_A = ();  # [0..$i..$nftr-1] max width of $tot_gap_length_AA[$0..nseq-1][$i] for feature $i over all sequences
+
+  my @net_gap_length_AA = ();   # [0..$nseq-1][0..$nftr-1]: net number of gap positions for this sequence and this feature
+  my @w_net_gap_length_A = ();  # [0..$i..$nftr-1] max width of $net_gap_length_AA[$0..nseq-1][$i] for feature $i over all sequences
+
+  my @ftr_gapstr_AH      = ();  # [0..$i..$nftr-1]: hash w/key: gapstring for a single position, value: number of times that gapstring occurs in any of @gapstr_AA for feature $i
+  
+  my $ch_gapstr         = "string";
+  my $ch_tot_gap_length = "tot";
+  my $ch_net_gap_length = "net";
+
+  $w_gapstr_A[0]         = length($ch_gapstr);
+  $w_tot_gap_length_A[0] = length($ch_tot_gap_length);
+  $w_net_gap_length_A[0] = length($ch_net_gap_length);
+  %{$ftr_gapstr_AH[0]}   = ();
+
+  my $width_seq = length("#accession");
+  my $ftr_idx = 0;
+
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_accn = $seq_info_HAR->{"accn_name"}[$seq_idx];
+    if(length($seq_accn) > $width_seq) { 
+      $width_seq = length($seq_accn);
+    }
+    @{$gapstr_AA[$seq_idx]} = ();
+    my $offset = 0;
+    my $ins_idx = 0;
+    my $del_idx = 0;
+    my $next_ins_str   = undef;
+    my $next_del_str   = undef;
+    my $next_ins_rfpos = undef;
+    my $next_del_rfpos = undef;
+    my $next_ins_count = undef;
+    my $next_del_count = undef;
+    my $gapstr = "";
+    my $substr;
+    my $tot_gap_length = 0;
+    my $net_gap_length = 0;
+    $ftr_idx = 0;
+
+    for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+      my @refdel_A = (); 
+      my @refins_A = (); 
+      if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"}) { 
+        printf("HEYA mdl_idx: $mdl_idx, seq_idx: $seq_idx refinsstr does not exist\n"); 
+      }
+      if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"}) { 
+        printf("HEYA mdl_idx: $mdl_idx, seq_idx: $seq_idx refdelstr does not exist\n"); 
+      }
+      if((exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"}) && $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} ne "") {
+        @refins_A = split(",", $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"});
+      }
+      if((exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"}) && $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} ne "") {
+        @refdel_A = split(",", $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"});
+      }
+      my $ndel = scalar(@refdel_A);
+      my $nins = scalar(@refins_A);
+      my $mdl_is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx];
+      my $mdl_is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx];
+      $ins_idx = 0;
+      $del_idx = 0;
+      $next_del_str = ($del_idx < $ndel) ? $refdel_A[$del_idx] : undef;
+      $next_ins_str = ($ins_idx < $nins) ? $refins_A[$ins_idx] : undef;
+      
+      while(defined $next_ins_str || defined $next_del_str) { 
+        # printf("next_ins_str: %s\n", (defined $next_ins_str) ? $next_ins_str : "undefined");
+        # printf("next_del_str: %s\n", (defined $next_del_str) ? $next_del_str : "undefined");
+        ($next_del_rfpos, $next_del_count) = (defined $next_del_str) ? split(":", $next_del_str) : (undef, undef);
+        ($next_ins_rfpos, $next_ins_count) = (defined $next_ins_str) ? split(":", $next_ins_str) : (undef, undef);
+        if(defined $next_del_rfpos) { $next_del_rfpos += $offset; }
+        if(defined $next_ins_rfpos) { $next_ins_rfpos += $offset; }
+        
+        if(defined $next_ins_str && defined $next_del_str) { 
+          if($next_del_rfpos <= $next_ins_rfpos) { # delete comes first, print it
+            $substr = "D" . $next_del_rfpos . ":" . $next_del_count;
+            if($do_gap_all || (($next_del_count % 3) != 0)) { 
+              if($gapstr ne "") { $gapstr .= ","; }
+              $gapstr .= $substr;
+              $tot_gap_length += $next_del_count;
+              $net_gap_length -= $next_del_count;
+              if(! $do_gap_special) { 
+                $ftr_gapstr_AH[$ftr_idx]{$substr}++;
+              }
+            }
+            $del_idx++;
+            $next_del_str = ($del_idx < $ndel) ? $refdel_A[$del_idx] : undef;
+          }
+          elsif($next_ins_rfpos < $next_del_rfpos) { # insert comes first, print it
+            $substr = "I" . $next_ins_rfpos . ":" . $next_ins_count;
+            if($do_gap_all || (($next_ins_count % 3) != 0)) { 
+              if($gapstr ne "") { $gapstr .= ","; }
+              $gapstr .= $substr;
+              $tot_gap_length += $next_ins_count;
+              $net_gap_length += $next_ins_count;
+              if(! $do_gap_special) { 
+                $ftr_gapstr_AH[$ftr_idx]{$substr}++;
+              }
+            }
+            $ins_idx++;
+            $next_ins_str = ($ins_idx < $nins) ? $refins_A[$ins_idx] : undef;
+          }
+        }
+        elsif(defined $next_del_str) { # $next_ins is undefined
+          $substr = "D" . $next_del_rfpos . ":" . $next_del_count;
+          if($do_gap_all || (($next_del_count % 3) != 0)) { 
+            if($gapstr ne "") { $gapstr .= ","; }
+            $gapstr .= $substr;
+            $tot_gap_length += $next_del_count;
+            $net_gap_length -= $next_del_count;
+            if(! $do_gap_special) {
+              $ftr_gapstr_AH[$ftr_idx]{$substr}++;
+            }
+          }
+          $del_idx++;
+          $next_del_str = ($del_idx < $ndel) ? $refdel_A[$del_idx] : undef;
+        }
+        elsif(defined $next_ins_str) { # $next_del is undefined
+          $substr = "I" . $next_ins_rfpos . ":" . $next_ins_count;
+          if($do_gap_all | (($next_ins_count % 3) != 0))  { 
+            if($gapstr ne "") { $gapstr .= ","; }
+            $gapstr .= $substr;
+            $tot_gap_length += $next_ins_count;
+            $net_gap_length += $next_ins_count;
+            if(! $do_gap_special) { 
+              $ftr_gapstr_AH[$ftr_idx]{$substr}++;
+            }
+          }
+          $ins_idx++;
+          $next_ins_str = ($ins_idx < $nins) ? $refins_A[$ins_idx] : undef;
+        }        
+      } # end of 'while(defined $next_ins_str || defined $next_del_str) { 
+      
+      $offset += $mdl_info_HAR->{"length"}[$mdl_idx];
+      
+      if($mdl_is_final) {
+        if($gapstr eq "") { $gapstr = "-"; }
+
+        # important to update $gapstr here, before we store it if $do_gap_special is true
+        if($do_gap_special) { 
+          # printf("calling find_special_gap with $gapstr\n");
+          $gapstr = find_special_gap($gapstr);
+          $net_gap_length = $tot_gap_length;
+          if($gapstr ne "?" && $gapstr ne "-") { 
+            my @el_A = split(",", $gapstr); 
+            foreach my $el (@el_A) { 
+              $ftr_gapstr_AH[$ftr_idx]{$el}++;
+            }
+          }
+        }
+
+        push(@{$gapstr_AA[$seq_idx]}, $gapstr);
+        if(length($gapstr) > $w_gapstr_A[$ftr_idx]) { $w_gapstr_A[$ftr_idx] = length($gapstr); }
+
+        push(@{$tot_gap_length_AA[$seq_idx]}, $tot_gap_length);
+        if(length($tot_gap_length) > $w_tot_gap_length_A[$ftr_idx]) { $w_tot_gap_length_A[$ftr_idx] = length($tot_gap_length); }
+        $tot_gap_length = 0;
+
+        push(@{$net_gap_length_AA[$seq_idx]}, $net_gap_length);
+        if(length($net_gap_length) > $w_net_gap_length_A[$ftr_idx]) { $w_net_gap_length_A[$ftr_idx] = length($net_gap_length); }
+        $net_gap_length = 0;
+
+        $gapstr = "";
+        $offset = 0;
+        $ftr_idx++;
+
+        if(scalar(@w_gapstr_A)         <= $ftr_idx) { $w_gapstr_A[$ftr_idx]         = length($ch_gapstr); }
+        if(scalar(@w_tot_gap_length_A) <= $ftr_idx) { $w_tot_gap_length_A[$ftr_idx] = length($ch_tot_gap_length); }
+        if(scalar(@w_net_gap_length_A) <= $ftr_idx) { $w_net_gap_length_A[$ftr_idx] = length($ch_net_gap_length); }
+        if(scalar(@ftr_gapstr_AH)      <= $ftr_idx) { %{$ftr_gapstr_AH[$ftr_idx]}   = (); }
+      }
+    }
+  }
+
+  #################################################################
+  # Output table of all gap info
+  # output line 1 of the column headers:
+  if($do_gap_all) { 
+    printf $perseq_FH ("# List of all gaps in alignment of each sequence:\n#\n");
+  }
+  elsif($do_gap_not3) { 
+    printf $perseq_FH ("# List of all gaps with length that is not a multiple of 3 in alignment of each sequence:\n#\n");
+  }
+  else { # $do_gap_special 
+    printf $perseq_FH ("# List of all gaps that may solely explain a feature's (CDS or mat_peptide) length not being a multiple of 3, for each sequence:\n#\n");
+  }
+
+  if(! $do_gap_special) { 
+    printf $perseq_FH  ("%-*s  ", $width_seq, "#");
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
+      my $type_idx   = $ftr_info_HAR->{"type_idx"}[$ftr_idx];
+      my $w_cur = $w_tot_gap_length_A[$ftr_idx] + 2 + $w_net_gap_length_A[$ftr_idx] + 2 + $w_gapstr_A[$ftr_idx];
+      if($ftr_idx > 0) { print $perseq_FH "  "; }
+      printf $perseq_FH ("%-*s", $w_cur, ($is_matpept) ? ("mat_peptide#" . $type_idx) : ("CDS#" . $type_idx));
+    }
+    print $perseq_FH "\n";
+    
+    # output line 2 (dashes under line 1 of column headers)
+    printf $perseq_FH ("%-*s  ", $width_seq, "#");
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      my $w_cur = $w_tot_gap_length_A[$ftr_idx] + 2 + $w_net_gap_length_A[$ftr_idx] + 2 + $w_gapstr_A[$ftr_idx];
+      if($ftr_idx > 0) { print $perseq_FH "  "; }
+      printf $perseq_FH ("%-*s", $w_cur, getMonocharacterString($w_cur, "=", $FH_HR));
+    }    
+    print $perseq_FH "\n";
+  }
+
+  # output line 3 of the column headers:
+  printf $perseq_FH ("%-*s  ", $width_seq, "#accession");
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
+    my $type_idx   = $ftr_info_HAR->{"type_idx"}[$ftr_idx];
+    if($ftr_idx > 0) { print $perseq_FH "  "; }
+    if(! $do_gap_special) { 
+      printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], $ch_tot_gap_length);
+      printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], $ch_net_gap_length);
+      printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], $ch_gapstr);
+    }
+    else { 
+      printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], ($is_matpept) ? ("mat_peptide#" . $type_idx) : ("CDS#" . $type_idx));
+    }
+  }
+  print $perseq_FH "\n";
+
+  # output line 4 (dashes under line 3 of column headers)
+  printf $perseq_FH ("%-*s  ", $width_seq, "#" . getMonocharacterString($width_seq-1, "-", $FH_HR));
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_idx > 0) { print $perseq_FH "  "; }
+    if(!  $do_gap_special) { 
+      printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], getMonocharacterString($w_tot_gap_length_A[$ftr_idx], "-", $FH_HR));
+      printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], getMonocharacterString($w_net_gap_length_A[$ftr_idx], "-", $FH_HR));
+    }
+    printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], getMonocharacterString($w_gapstr_A[$ftr_idx], "-", $FH_HR));
+  }
+  print $perseq_FH "\n";
+
+  # output actual data, for each sequence
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_accn = $seq_info_HAR->{"accn_name"}[$seq_idx];
+    printf $perseq_FH ("%-*s  ", $width_seq, $seq_accn);
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if($ftr_idx > 0) { print $perseq_FH "  "; }
+      if(! $do_gap_special) { 
+        printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], $tot_gap_length_AA[$seq_idx][$ftr_idx]);
+        printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], $net_gap_length_AA[$seq_idx][$ftr_idx]);
+      }
+      printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], $gapstr_AA[$seq_idx][$ftr_idx]);
+    }
+    print $perseq_FH ("\n");
+  }
+
+  # output explanatory text
+  print $perseq_FH "#\n";
+  print $perseq_FH ("# Explanation of the above table:\n");
+  if($do_gap_all) { 
+    print  $perseq_FH ("# The table includes information on all gaps that exist between all pairwise alignments of\n");
+    printf $perseq_FH ("# the reference feature (mature peptide or CDS) and the predicted homologous feature for each sequence.\n");
+  }
+  elsif($do_gap_not3) { 
+    print  $perseq_FH ("# The table includes information on all gaps of lengths that are not multiples of 3 that exist\n");
+    printf $perseq_FH ("# between all pairwise alignments of the reference feature (mature peptide or CDS) and the predicted homologous feature for each sequence.\n");
+  }
+  else { 
+    print $perseq_FH ("# The table includes information on some gaps that can solely explain a feature (CDS or mat_peptide) not being a multiple of length 3.\n");
+    print $perseq_FH ("# This is (probably) not an exhaustive list of all such gaps.\n");
+    print $perseq_FH ("# Specifically it is only gaps X in a feature Y, such that the following criteria are met:\n");
+    print $perseq_FH ("#   - length of feature Y is not a multiple of 3\n");
+    print $perseq_FH ("#   - if you remove only X from list of all gaps, total feature length of Y becomes a multiple of 3\n");
+    print $perseq_FH ("#       with length difference of D with reference feature\n");
+    print $perseq_FH ("#    - there are no other gaps Z such that if you remove only Z then length of Y becomes a multiple\n");
+    print $perseq_FH ("#       of 3 with length difference D2 from reference where D2 < D.\n");
+  }
+  print $perseq_FH ("#\n");
+  if($do_gap_all || $do_gap_not3) { 
+    printf $perseq_FH ("# There are 3 columns under each header \"<%s>#<n> (%s)\" named \"tot\", \"net\",\n", ($do_matpept) ? "mat_peptide" : "CDS", ($do_gap_all) ? "all gaps" : "gaps %3 != 0");
+    print $perseq_FH ("# and \"string\".\n");
+    print $perseq_FH ("# The \"tot\" columns list the total number of gap positions in either sequence in the pairwise alignment.\n");
+    print $perseq_FH ("# The \"net\" columns list the net number of the listed gaps in the pairwise alignment; this is the number\n");
+    print $perseq_FH ("#   of gaps in the reference sequence minus the number of gaps in the current sequence (inserts minus deletes)\n");
+    print $perseq_FH ("# The \"string\" columns include a list of <n> tokens, each of which describes a gap of length >= 1 nucleotide.\n");
+  }
+  print  $perseq_FH ("#\n");
+  print  $perseq_FH ("# Tokens are in the form: <char><position><length>\n");
+  printf $perseq_FH ("#   <char>     is 'I' for an insertion relative to the reference feature (gap in reference sequence)\n");
+  printf $perseq_FH ("#              or 'D' for a  deletion  relative to the reference feature (gap in current sequence)\n");
+  print  $perseq_FH ("#   <position> is the nucleotide position of the gap in reference coordinates.\n");
+  print  $perseq_FH ("#              For insertions this is the reference position after which the insertion occurs.\n");
+  print  $perseq_FH ("#              For deletions  this is the first reference position for this deletion.\n");
+  print  $perseq_FH ("#   <length>   length of the gap in nucleotides.\n");
+  print  $perseq_FH ("#              For insertions this is the number of nucleotides inserted relative to the reference\n");
+  print  $perseq_FH ("#              For deletions  this is the number of reference positions deleted.\n");
+  print  $perseq_FH ("#\n");
+  if($do_gap_special) { 
+    print  $perseq_FH ("#\n");
+    printf $perseq_FH ("# \"-\" tokens indicate the feature is a multiple of length 3\n");
+    printf $perseq_FH ("# \"?\" tokens indicate the feature is not a multiple of length 3, but that no gaps that satisfy our criteria exist.\n");
+    print  $perseq_FH ("#\n");
+  }
+
+  # Now the per gap information
+  if($do_gap_all) { 
+    printf $pergap_FH ("# Counts of all gaps:\n#\n");
+  }
+  elsif($do_gap_not3) { 
+    printf $pergap_FH ("# Counts of gaps that have length that is not a multiple of 3:\n#\n");
+  }
+  else { # $do_gap_special == 1
+    printf $pergap_FH ("# Counts of gaps that are special (responsible for net gap length that is not a multiple of 3):\n#\n");
+    print $perseq_FH ("# Specifically, these are counts of gaps X in a feature Y (CDS or mat_peptide), such that the following criteria are met:\n");
+    print $perseq_FH ("#   - length of feature Y is not a multiple of 3\n");
+    print $perseq_FH ("#   - if you remove only X from list of all gaps, total feature length of Y becomes a multiple of 3\n");
+    print $perseq_FH ("#       with length difference of D with reference feature\n");
+    print $perseq_FH ("#    - there are no other gaps Z such that if you remove only Z then length of Y becomes a multiple\n");
+    print $perseq_FH ("#       of 3 with length difference D2 from reference where D2 < D.\n");
+    print $perseq_FH ("#\n");
+  }
+  my $nprinted = 0;
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
+    if((scalar(keys %{$ftr_gapstr_AH[$ftr_idx]})) > 0) { 
+      foreach my $key (sort keys %{$ftr_gapstr_AH[$ftr_idx]}) { 
+        printf $pergap_FH ("%s#" . ($ftr_idx+1) . " " . $key . " " . $ftr_gapstr_AH[$ftr_idx]{$key} . "\n", ($is_matpept) ? "mat_peptide" : "CDS");
+        $nprinted++;
+      }
+      printf $pergap_FH ("#\n");
+    }
+  }
+  if($nprinted == 0) { 
+    printf $pergap_FH ("# NONE\n");
+  }
+
+  return;
+}
 #################################################################
 #
 #  Miscellaneous subroutines that don't fit in the above categories:
@@ -6381,6 +6794,7 @@ sub output_multifeature_relationships {
 #    translate_feature_sequences()
 #    align_hits()
 #    update_gap_array()
+#    find_special_gap()
 #    define_model_and_feature_output_file_names()
 #    get_mdl_or_ftr_ofile_info_key()
 #    align_protein_sequences()
@@ -6740,7 +7154,8 @@ sub align_hits {
     validateFileExistsAndIsNonEmpty($cm_file, $sub_name, $ofile_info_HHR->{"FH"});
     
     # create the alignment
-    my $cmd = $execs_HR->{"cmalign"} . " --cpu 0 $cm_file $fa_file > $stk_file";
+    my $mxsize_opt = sprintf("--mxsize %d", opt_Get("--mxsize", $opt_HHR));
+    my $cmd = $execs_HR->{"cmalign"} . " --cpu 0 $mxsize_opt $cm_file $fa_file > $stk_file";
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HHR->{"FH"});
     # save this file to %{$ofile_info_HHR}
     my $ofile_key = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_stk_file_key, $ofile_info_HHR->{"FH"});
@@ -6769,7 +7184,7 @@ sub align_hits {
     my $alen  = $msa->alen();    # alignment length
     my @i_am_rfpos_A = (); # 0..$apos..$alen-1: '1' if RF is a nongap at position $apos+1, else '0'
     for(my $apos = 0; $apos < $alen; $apos++) { 
-      $i_am_rfpos_A[$apos] = ($rfseq_A[$apos] eq ".") ? 0 : 1;
+      $i_am_rfpos_A[$apos] = ($rfseq_A[$apos] eq "." || $rfseq_A[$apos] eq "~") ? 0 : 1;
     }          
     
     my $ref_seq_idx = 0; # this will remain '0'
@@ -6819,6 +7234,7 @@ sub align_hits {
 
         # refdel
         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} = "";
+        printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refdelstr} to empty string\n");
         foreach $el (@tmp_refdel_A) { 
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} .= $el . ",";
         }
@@ -6826,6 +7242,7 @@ sub align_hits {
 
         # refins
         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} = "";
+        printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refinsstr} to empty string\n");
         foreach $el (@tmp_refins_A) { 
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} .= $el . ",";
         }
@@ -6887,6 +7304,135 @@ sub update_gap_array {
   return;
 }
 
+#################################################################
+# Subroutine: find_special_gap()
+#
+# Purpose: Given a gap string that lists all gaps of a feature in an
+#          alignment, determine if the gaps cause the predicted
+#          length of the feature to be non-modulo 3. If so,
+#          determine if there's exactly one gap that if we remove
+#          it, the remaining gaps will make the predicted length of
+#          the CDS to be modulo 3.
+#
+#          I think there can only be 0 or 1 such gap, but I'm not sure.
+# 
+#          Return two values: 
+#          - the length of the speical gap if there is one, or 0 if there is not
+#            (this value will be negative if it is a deletion relative to the 
+#            reference, and positive if it is an insertion relative to the reference)
+#          - the string that describes the special gap, 
+#            or '-' if the predicted length of the feature is modulo 3 if we include all gaps
+#            or '?' if the predicted length of the feature is not modulo 3 but there is no
+#            special gap that can explain the non-modulo-3ness.
+#
+#          If the net gap length is zero modulo 3, return (0, "-").
+#          If the net gap length is nonzero modulo 3, and there's exactly 1 gap that equals the net length modulo 3, return its length and the string..
+#          If the net gap length is nonzero modulo 3, and there's not exactly 1 gap that equals the net length modulo 3, return (0, "?");
+#            
+#          Examples: 
+#
+#            Input:    $gapstr = "D377:2,I388:2,I1066:1 net gap is 1
+#            Returns:  (1, "I1066:1")
+#
+#            Input:    $gapstr = "D377:2,I388:2", , net gap is 0;
+#            Returns:  (0, "-")
+#
+#            Input:    $gapstr = "D377:5,I388:2", net gap is -3;
+#            Returns:  (0, "-")
+#
+#            Input:    $gapstr = "D377:2,I388:5", net gap is 3;
+#            Returns:  (0, "-")
+#
+#            Input:    $gapstr = "D377:2,I388:3,I1066:1", net gap is 2;
+#            Returns:  (0, "?")
+#
+#            Input:    $gapstr = "D277:2,D377:2,I388:2", $net_gap = 2;
+#            Returns:  (0, "?")
+#
+# Arguments: 
+#  $gapstr:  string describing all gaps
+#
+# Returns:   Two values: as explained above in "Purpose"
+# 
+################################################################# 
+sub find_special_gap {
+  my $sub_name = "find_special_gap";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($gapstr) = (@_);
+  # printf("in $sub_name gapstr: $gapstr\n");
+
+  if($gapstr eq "-") { # no gaps
+    return ("-"); 
+  }
+
+  # determine net number of gaps if we include them all
+  my @el_A = split(",", $gapstr);
+  my $ngaps = scalar(@el_A);
+  my @gapsize_A = (); # [0..$ngaps-1], length of each gap
+  my $tot_gaps = 0;
+
+  for(my $e = 0; $e < $ngaps; $e++) { 
+    my $el = $el_A[$e];
+    my ($type_loc, $len) = split(":", $el);
+
+    if(! defined $len) { printf("gapstr: $gapstr, el: $el\n"); }
+
+    if(($len % 3) == 0) { 
+      $gapsize_A[$e] = 0;
+    }
+    else { 
+      if($type_loc =~ /^I(\d+)/) { # insert
+        $gapsize_A[$e] = $len;
+        $tot_gaps += $len;
+      }
+      elsif($type_loc =~ /^D(\d+)/) { # delete
+        $gapsize_A[$e] = -1 * $len;
+        $tot_gaps -= $len;
+      }
+      else { 
+        die "ERROR: in $sub_name, unable to parse gap string: $gapstr element $el"; 
+      }
+    }
+    if(($tot_gaps % 3) == 0) { 
+      return ("-"); 
+    }
+  }
+
+  # find gap that gives minimal net gap length
+  
+  my $min_len = undef;
+  for(my $e = 0; $e < $ngaps; $e++) { 
+    my $net_gap_len = $tot_gaps - $gapsize_A[$e];
+    if(($net_gap_len % 3) == 0) { 
+      if(! defined $min_len || ($net_gap_len < $min_len)) { 
+        $min_len = $net_gap_len;
+      }
+    }
+  }
+
+  my $nspecial = 0;
+  my $special_str = "";
+  my $special_len = 0;
+
+  if(! defined $min_len) { # no gaps can be removed and give modulo 3
+    return ("?");
+  }
+  else { # at least 1 gap can be removed and give modulo 3
+    for(my $e = 0; $e < $ngaps; $e++) { 
+      my $net_gap_len = $tot_gaps - $gapsize_A[$e];
+      if(($net_gap_len % 3) == 0) { 
+        if($net_gap_len == $min_len) { 
+          if($special_str ne "") { $special_str .= ","; }
+          $special_str .= $el_A[$e];
+        }
+      }
+    }
+    # printf("returning special_str: $special_str\n");
+    return $special_str;
+  }
+}
 
 #################################################################
 # Subroutine:  define_model_and_feature_output_file_names()

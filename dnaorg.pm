@@ -1,3 +1,4 @@
+#
 #!/usr/bin/perl
 #
 # dnaorg.pm
@@ -1099,7 +1100,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "bd3", "feature",  0,             "alignment to reference does not extend to 3' boundary of reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "olp", "feature",  0,             "feature does not overlap with same set of features as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "str", "feature",  0,             "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "stp", "feature",  1,             "predicted CDS stop  position is not end of valid stop codon (TAG|TAA|TGA)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "stp", "feature",  1,             "predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA)", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ajb", "feature",  0,             "feature (MP or CDS) is not adjacent to same set of features before it as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "aja", "feature",  0,             "feature (MP or CDS) is not adjacent to same set of features after it as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "trc", "feature",  0,             "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
@@ -2759,6 +2760,7 @@ sub parseLengthFile {
 #################################################################
 sub parseEdirectFtableFile {
   my $sub_name = "parseEdirectFtableFile()";
+
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -3060,10 +3062,20 @@ sub parseEdirectMatPeptideFile {
   my $feature = "mat_peptide";
   while(my $line = <IN>) { 
     if($line =~ m/\w/) { 
+# example line:
+# NC_001477.1	95..436	anchored capsid protein C
       if($line =~ /(\S+)\s+(\S+)\s*(.*)$/) { 
-        my ($acc, $coords, $product) = ($1, $2, $3);
+        my ($acc, $coords, $product) = ($1, $2, $3); 
+        # with .mat_peptide files, the accession is not in the 'full accession' ($faccn, e.g. ref|NC_001477.1|) 
+        # that appears in the .ftable files, but we still want to use similar downstream code to 
+        # handle both the parsed .mat_peptide and .ftable files, so we still fill faccn2accn_HR
+        # for .mat_peptide files, even though the keys and values are identical
+
         $product =~ s/\s+$//; # remove trailing whitespace
-        $faccn = $acc;
+        $faccn = $acc; # in this case, full accession and accession are the same
+        # we use both $faccn and $acc so that this code matches the code in this subroutine matches
+        # with the code in parseEdirectFtableFile() for consistency.
+
         if(! exists $faccn2accn_HR->{$acc}) { 
           push(@{$faccn_AR}, $acc);
           $faccn2accn_HR->{$acc} = $acc;
@@ -3099,6 +3111,10 @@ sub parseEdirectMatPeptideFile {
         push(@{$fac_HHAR->{"mat_peptide"}{$acc}}, $fac);
         
         # first add the 'dummy' qual
+        # we need to do this so that we can store the coordinate information (in $fac)
+        # for mature peptides that have no additional information besides coordinates
+        # (.mat_peptide files often include only mature peptide coordinates and no
+        # product information ($product below) 
         my $qname = $dummy_column;
         my $qval  = "<no_value>";
         if($qname =~ m/\Q$qnqv_sep/)   { DNAORG_FAIL("ERROR in $sub_name, qualifier_name $qname has the string $qnqv_sep in it", 1, $FH_HR); }
@@ -5629,7 +5645,7 @@ sub concatenateListOfFiles {
 ################################################################# 
 sub md5ChecksumOfFile { 
   my $nargs_expected = 4;
-  my $sub_name = "concatenateListOfFiles()";
+  my $sub_name = "md5ChecksumOfFile()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($file, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
 
@@ -6028,12 +6044,12 @@ sub matpeptValidateCdsRelationships {
       # example of a multi-'exon' CDS that we CAN handle is West Nile Virus CDS #2: NC_001563.2 join(97..3540,3540..3671)
       if($cds_strands_A[0] eq "+") { 
         if(($cds_starts_A[1] - $cds_stops_A[0] - 1) > 0) { 
-          DNAORG_FAIL("ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
+#          DNAORG_FAIL("ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
         }
       }
       else { # negative strand
         if(($cds_stops_A[0] - $cds_starts_A[1] - 1) > 0) { 
-          DNAORG_FAIL("ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
+#          DNAORG_FAIL("ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
         }
       }
     }
