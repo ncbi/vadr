@@ -2007,11 +2007,19 @@ sub combine_sequences {
       if(-e $ssi_file) { 
         removeFileUsingSystemRm($ssi_file, $sub_name, $opt_HHR, $FH_HR);
       }
-      $sqfile_A[$file_idx] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$file_idx] });
       @{$sqname_AA[$file_idx]} = ();
+      my $sqfile_nseq = 0;
+      if(-s $indi_file_AR->[$file_idx]) { 
+        $sqfile_A[$file_idx] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$file_idx] });
+        $sqfile_nseq = $sqfile_A[$file_idx]->nseq_ssi;
+      }
+      else { 
+        $sqfile_A[$file_idx] = undef;
+        $sqfile_nseq = 0;
+      }
       
       # get the names all of sequences in each file
-      for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $sqfile_A[$file_idx]->nseq_ssi; $sqfile_seq_idx++) { 
+      for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $sqfile_nseq; $sqfile_seq_idx++) { 
         $sqname_AA[$file_idx][$sqfile_seq_idx] = $sqfile_A[$file_idx]->fetch_seq_name_given_ssi_number($sqfile_seq_idx);
         
         # break down this name into the $seq_name and $coords
@@ -2921,7 +2929,7 @@ sub results_calculate_corrected_stops {
                                                                         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
                                                                         $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
           if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
-            $updated_ext_errmsg .= sprintf(" %s %d of %d", ($is_matpept) ? "segment" : "exon", $mdl_idx - $first_mdl_idx + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
+            $updated_ext_errmsg .= sprintf(" %s %d of %d", ($is_matpept) ? "segment" : "exon", $mdl_idx - $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
           }
           $updated_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
                                          create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
@@ -5716,15 +5724,15 @@ sub output_tbl_all_sequences {
           my $ref_olp_str = $mdl_info_HAR->{"out_olp_str"}[$mdl_idx];
           my $ref_adj_str = combine_ajb_and_aja_strings($mdl_info_HAR->{"out_ajb_str"}[$mdl_idx], $mdl_info_HAR->{"out_aja_str"}[$mdl_idx]);
           
+          if($is_first) { # reset variables
+            $at_least_one_fail  = 0; 
+            $start_codon_char   = "";
+            $stop_codon_char    = "";
+            $multiple_of_3_char = "";
+          }
+
           if(exists $mdl_results_HR->{"p_start"}) { 
             # hit exists
-            if($is_first) { # reset variables
-              $at_least_one_fail  = 0; 
-              $start_codon_char   = "";
-              $stop_codon_char    = "";
-              $multiple_of_3_char = "";
-            }
-            
             # check for special case when we had a trc in a previous segment for the same feature
             if((exists $mdl_results_HR->{"prv_trc_flag"}) && ($mdl_results_HR->{"prv_trc_flag"} == 1)) { # flag for a trc error in previous exon
               if($is_first) { 
@@ -5822,8 +5830,8 @@ sub output_tbl_all_sequences {
               
               # add the ss3 (start/stop/multiple of 3 info) if we're not a mature peptide
               if(! $is_matpept) { 
-                if($start_codon_char eq "") { die "ERROR $seq_idx $mdl_idx start_codon_char is blank\n"; }
-                if($stop_codon_char  eq "") { die "ERROR $seq_idx $mdl_idx stop_codon_char is blank\n"; }
+                if($start_codon_char eq "") { die "ERROR $seq_idx ($seq_name) $mdl_idx start_codon_char is blank\n"; }
+                if($stop_codon_char  eq "") { die "ERROR $seq_idx ($seq_name) $mdl_idx stop_codon_char is blank\n"; }
                 if($multiple_of_3_char  eq "") { die "ERROR $seq_idx $mdl_idx multiple_of_3_char is blank\n"; }
                 push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
                 if($do_stop) { 
@@ -5851,6 +5859,9 @@ sub output_tbl_all_sequences {
               $pass_fail_char = "F";
               push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
               $pass_fail_str .= $pass_fail_char;
+            }
+            if($is_first) { # important to do this so final model has a valid start_codon_char
+              $start_codon_char = "NP";
             }
           }
         } # end of 'for(my $mdl_idx'
@@ -7172,6 +7183,7 @@ sub align_hits {
     # first we need to read in the MSA we just created 
     my $msa = Bio::Easel::MSA->new({
       fileLocation => $stk_file,
+      isDna => 1
                                    });  
 
     # Determine which positions are RF (reference) positions,
@@ -7576,49 +7588,55 @@ sub align_protein_sequences {
     if(-e $ssi_file) { 
       removeFileUsingSystemRm($ssi_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
     }
-    my $prot_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $fa_file });
-    my $ref_prot_str = $prot_sqfile->fetch_consecutive_seqs(1, "", -1, undef); # the reference protein sequence string
-    my ($ref_prot_name, $ref_prot_seq) = split(/\n/, $ref_prot_str);
-    $ref_prot_name =~ s/^\>//; # remove fasta header line '>'
-
-    # write it out to a new stockholm alignment file
-    open(OUT, ">", $hmmstk_file) || die "ERROR, unable to open $hmmstk_file for writing.";
-    print OUT ("# STOCKHOLM 1.0\n");
-    print OUT ("$ref_prot_name $ref_prot_seq\n");
-    print OUT ("//\n");
-    close OUT;
-
-    # build an HMM from this single sequence alignment:
-    my $cmd = $execs_HR->{"hmmbuild"} . " $hmm_file $hmmstk_file > $hmmbuild_file";
-    runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"}); 
-
-    # store the files we just created
-    my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmm_file_key, $ofile_info_HHR->{"FH"});
-    addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmm_file, 0, sprintf("HMM built from the reference protein sequence for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
-
-    # remove the hmmbuild and hmmbuild alignment files, unless --keep
-    if(! opt_Get("--keep", $opt_HHR)) { 
-      removeFileUsingSystemRm($hmmstk_file,   $sub_name, $opt_HHR, $ofile_info_HHR);
-      removeFileUsingSystemRm($hmmbuild_file, $sub_name, $opt_HHR, $ofile_info_HHR);
+    if(! -e $fa_file) { 
+      DNAORG_FAIL("ERROR in $sub_name, input protein fasta file to align $fa_file does not exist", 1, $ofile_info_HHR->{"FH"});
     }
-    else { 
-      $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmmstk_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmstk_file, 0, sprintf("Stockholm alignment of reference protein for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
-      $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmmbuild_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmbuild_file, 0, sprintf("hmmbuild output file for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
-    }
-
-    # align all sequences to this HMM
-    $cmd = $execs_HR->{"hmmalign"} . " $hmm_file $fa_file > $stk_file";
-    runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-
-    # store the file in ofile_info_HH
-    $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_stk_file_key, $ofile_info_HHR->{"FH"});
-    addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, 0, sprintf("alignment of all protein sequences to reference for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
-    
-    # remove the .ssi files, always
-    if(-e $fa_file . ".ssi") { 
-      removeFileUsingSystemRm($fa_file . ".ssi", $sub_name, $opt_HHR, $ofile_info_HHR);
+    # it's possible that the file exists, but is empty, if none of the predicted sequences are translatable
+    if(-s $fa_file) {  
+      my $prot_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $fa_file });
+      my $ref_prot_str = $prot_sqfile->fetch_consecutive_seqs(1, "", -1, undef); # the reference protein sequence string
+      my ($ref_prot_name, $ref_prot_seq) = split(/\n/, $ref_prot_str);
+      $ref_prot_name =~ s/^\>//; # remove fasta header line '>'
+      
+      # write it out to a new stockholm alignment file
+      open(OUT, ">", $hmmstk_file) || die "ERROR, unable to open $hmmstk_file for writing.";
+      print OUT ("# STOCKHOLM 1.0\n");
+      print OUT ("$ref_prot_name $ref_prot_seq\n");
+      print OUT ("//\n");
+      close OUT;
+      
+      # build an HMM from this single sequence alignment:
+      my $cmd = $execs_HR->{"hmmbuild"} . " $hmm_file $hmmstk_file > $hmmbuild_file";
+      runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"}); 
+      
+      # store the files we just created
+      my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmm_file_key, $ofile_info_HHR->{"FH"});
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmm_file, 0, sprintf("HMM built from the reference protein sequence for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+      
+      # remove the hmmbuild and hmmbuild alignment files, unless --keep
+      if(! opt_Get("--keep", $opt_HHR)) { 
+        removeFileUsingSystemRm($hmmstk_file,   $sub_name, $opt_HHR, $ofile_info_HHR);
+        removeFileUsingSystemRm($hmmbuild_file, $sub_name, $opt_HHR, $ofile_info_HHR);
+      }
+      else { 
+        $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmmstk_file_key, $ofile_info_HHR->{"FH"});
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmstk_file, 0, sprintf("Stockholm alignment of reference protein for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+        $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmmbuild_file_key, $ofile_info_HHR->{"FH"});
+        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmbuild_file, 0, sprintf("hmmbuild output file for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+      }
+      
+      # align all sequences to this HMM
+      $cmd = $execs_HR->{"hmmalign"} . " $hmm_file $fa_file > $stk_file";
+      runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      
+      # store the file in ofile_info_HH
+      $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_stk_file_key, $ofile_info_HHR->{"FH"});
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, 0, sprintf("alignment of all protein sequences to reference for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
+      
+      # remove the .ssi files, always
+      if(-e $fa_file . ".ssi") { 
+        removeFileUsingSystemRm($fa_file . ".ssi", $sub_name, $opt_HHR, $ofile_info_HHR);
+      }
     }
   }
 
