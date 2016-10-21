@@ -236,7 +236,7 @@ opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,
 opt_Add("--mxsize",     "integer", 1024,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for alternative modes";
-#       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
+ #       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
 opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--skipedirect,--skipfetch",   "single cmdline argument is a fasta file of sequences, not a list of accessions", "single cmdline argument is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
 opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
 
@@ -263,6 +263,15 @@ opt_Add("--skipfetch",     "boolean", 0,                       6,   undef,      
 opt_Add("--skipscan",      "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skiptranslate", "boolean", 0,                       6,"--skipscan",  undef,                    "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
+
+$opt_group_desc_H{"7"} = "TEMPORARY options for the alternative method of identifying origin sequences";
+#     option               type       default               group   requires                                   incompat     preamble-output                                                         help-output    
+opt_Add("--aorgmodel",     "string",  undef,                   7,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgstart",     "integer", 0,                       7,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
+opt_Add("--aorgoffset",    "integer", 0,                       7,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
+opt_Add("--aorglen",       "integer", 0,                       7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgethresh",   "real",    1.0,                     7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgppthresh",  "real",    0.6,                     7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -309,7 +318,14 @@ my $options_okay =
                 'skipedirect'   => \$GetOptions_H{"--skipedirect"},
                 'skipfetch'     => \$GetOptions_H{"--skipfetch"},
                 'skipscan'      => \$GetOptions_H{"--skipscan"},
-                'skiptranslate' => \$GetOptions_H{"--skiptranslate"});
+                'skiptranslate' => \$GetOptions_H{"--skiptranslate"}, 
+# options for alternative origin detection method
+                'aorgmodel=s'   => \$GetOptions_H{"--aorgmodel"},
+                'aorgstart=s'   => \$GetOptions_H{"--aorgstart"},
+                'aorglen=s'     => \$GetOptions_H{"--aorglen"},
+                'aorgoffset=s'  => \$GetOptions_H{"--aorgoffset"}, 
+                'aorgethresh=s' => \$GetOptions_H{"--aorgethresh"}, 
+                'aorgppthresh=s'=> \$GetOptions_H{"--aorgppthresh"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -353,6 +369,19 @@ if(opt_IsUsed("--origin", \%opt_HH)) {
   $origin_seq =~ tr/a-z/A-Z/; # capitalize origin seq
   $origin_offset = validate_origin_seq($origin_seq);
   $origin_seq =~ s/\|//; # remove the single "|"
+}
+
+# validate alternative origin detection options if necessary
+if(opt_IsUsed("--aorgmodel", \%opt_HH)) { 
+  my $aorg_model  = opt_Get("--aorgmodel", \%opt_HH);
+  if(! -s $aorg_model) { 
+    die "ERROR with --aorgmodel <s>, $aorg_model does not exist or is empty"; 
+  }    
+  my $aorg_offset = opt_Get("--aorgoffset", \%opt_HH);
+  my $aorg_len    = opt_Get("--aorglen",  \%opt_HH);
+  if(($aorg_offset <= 0) || ($aorg_offset > $aorg_len)) { 
+    die "ERROR with --aorgoffset <n>, <n> must be greater than 0 and less than or equal to <n> from --aorglen";
+  }
 }
 
 my $dir_build  = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
@@ -446,14 +475,26 @@ if(! defined $dir_out) {
 else { 
   # --dirout was used to specify $dir_out
   # if it already exists (and it's not $ref_accn and it's not $dir_build) 
-  # remove it only if -f also used
+  # check if one of the skip options was used (begin with --skip) 
+  # if so, try to use it. Else tell user to either rerun with -f
+  # or delete it.
   if(($dir_out ne $ref_accn) && ($dir_out ne $dir_build)) { 
     if(-d $dir_out) { 
       $cmd = "rm -rf $dir_out";
-      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-      else                        { die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
+      if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
+        runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); 
+      }
+      else { # dirout exists but -f not used
+        if(! ((opt_IsUsed("--skipedirect",   \%opt_HH)) || 
+              (opt_IsUsed("--skipfetch",     \%opt_HH)) || 
+              (opt_IsUsed("--skipscan",      \%opt_HH)) || 
+              (opt_IsUsed("--skiptranslate", \%opt_HH)))) { 
+          die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; 
+        }
+        # if a --skip option is used, we just press on
+      }
     }
-    if(-e $dir_out) { 
+    elsif(-e $dir_out) { 
       $cmd = "rm $dir_out";
       if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
       else                        { die "ERROR a file named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
@@ -740,7 +781,18 @@ my %err_seq_instances_HH = ();
 error_instances_initialize_AHH(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
 
 if(opt_IsUsed("--origin", \%opt_HH)) { 
+  $start_secs = outputProgressPrior("Identifying origin sequences", $progress_w, $log_FH, *STDOUT);
   find_origin_sequences($sqfile, $origin_seq, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
+#############
+# TEMPORARY alternative origin detection method
+#############
+if(opt_IsUsed("--aorgmodel", \%opt_HH)) { 
+  $start_secs = outputProgressPrior("Identifying origin sequences with profile HMM method", $progress_w, $log_FH, *STDOUT);
+  aorg_find_origin_sequences($ofile_info_HH{"fullpath"}{"fasta"}, $sqfile, \%execs_H, $out_root, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH); 
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
 ####################################
@@ -814,14 +866,14 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     if($njobs_finished != $nfarmjobs) { 
       DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
     }
+    if(! opt_Get("--local", \%opt_HH)) { 
+      outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
+    }
   } # end of 'else' entered if($nfarmjobs > 1 && ! --local)
     
   # concatenate all the tblout files into one 
   concatenateListOfFiles(\@tmp_tblout_file_A, $tblout_file, "dnaorg_annotate.pl", \%opt_HH, $ofile_info_HH{"FH"});
   
-  if(! opt_Get("--local", \%opt_HH)) { 
-    outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
-  }
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 } # end of if(! opt_Get(--skipscan", \%opt_HH))
 
@@ -4115,6 +4167,7 @@ sub find_origin_sequences {
   return;
 }
 
+
 #################################################################
 # Subroutine: get_origin_output_for_sequence
 # Incept:     EPN, Tue Mar 15 13:33:29 2016
@@ -4162,7 +4215,9 @@ sub get_origin_output_for_sequence {
 
   if($oseq_ct == 1) { 
     ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
+    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_start: $oseq_start oseq_stop: $oseq_stop\n");
     $oseq_offset = ($oseq_start < 0) ? ($oseq_start + $origin_offset) : ($oseq_start + $origin_offset - 1);
+    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
     # $oseq_offset is now number of nts to shift origin in counterclockwise direction
     if($oseq_offset > ($accn_len / 2)) { # simpler (shorter distance) to move origin clockwise
       $oseq_offset = $accn_len - $oseq_offset; # note, we don't add 1 here
@@ -4175,6 +4230,8 @@ sub get_origin_output_for_sequence {
 
   return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail);
 }
+
+
 
 #################################################################
 #################################################################
@@ -4852,6 +4909,7 @@ sub output_tbl_get_headings {
 #  origin sequence:#
 #  origin sequence:start
 #  origin sequence:stop
+#  origin sequence:1stps
 #  origin sequence:offst
 #  origin sequence:PF
 #  CDS #1 [single exon; +]:movement protein:start1
@@ -4913,7 +4971,8 @@ sub output_tbl_get_headings {
   output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "total length (nt) for accession", $FH_HR);
   output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR); # adds a blank line
 
-  if(opt_IsUsed("--origin", $opt_HHR)) { 
+  if((opt_IsUsed("--origin", $opt_HHR)) || 
+     (opt_IsUsed("--aorgstart", $opt_HHR))) { 
     # column/row #4: 'origin sequence:#'
     $tok1 = sprintf("  %22s", "");
     $tok2 = sprintf("  %22s", "   origin sequence");
@@ -4937,14 +4996,21 @@ sub output_tbl_get_headings {
     output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
     output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of lone occurrence of origin sequence (if only 1 exists)", $FH_HR);
 
-    # column/row #7: 'origin sequence:offst'
+    # column/row #7: 'origin sequence:1stpos'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "1stps");
+    $tok5 = sprintf(" %5s", "-----");
+    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "what should be first position of genome, based on origin prediction", $FH_HR);
+
+    # column/row #8: 'origin sequence:offst'
     # tok1, tok2, tok3 do not change
     $tok4 = sprintf(" %5s", "offst");
     $tok5 = sprintf(" %5s", "-----");
     output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)", $FH_HR);
 
-    # column/row #7: 'origin sequence:PF'
+    # column/row #9: 'origin sequence:PF'
     # tok1, tok2, tok3 do not change
     $tok4 = sprintf(" %2s", "PF");
     $tok5 = sprintf(" %2s", "--");
@@ -5595,7 +5661,7 @@ sub output_tbl_all_sequences {
   if(opt_IsUsed("--origin", $opt_HHR)) { 
     $origin_offset = validate_origin_seq(opt_Get("--origin", $opt_HHR));
   }
-  
+
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
     my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
@@ -5610,11 +5676,22 @@ sub output_tbl_all_sequences {
     push(@cur_out_A, sprintf("%-19s  ", $accn_name)); 
     push(@cur_out_A, sprintf("%6d ", $accn_len));
 
-    if(opt_IsUsed("--origin", $opt_HHR)) { 
-      my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail) = get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $origin_offset, $FH_HR);
+    my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail);
+    if((opt_IsUsed("--origin",    $opt_HHR)) || 
+       (opt_IsUsed("--aorgmodel", $opt_HHR))) { 
+
+      if(opt_IsUsed("--origin",    $opt_HHR)) { 
+        ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail) = get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $origin_offset, $FH_HR);
+        $oseq_firstpos = "?";
+      }
+      if(opt_IsUsed("--aorgmodel", $opt_HHR)) { 
+        ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail) = aorg_get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $FH_HR);
+      }
+
       push(@cur_out_A, sprintf("%2d ", $oseq_ct));
       push(@cur_out_A, sprintf("%5s ", $oseq_start));
       push(@cur_out_A, sprintf("%5s ", $oseq_stop));
+      push(@cur_out_A, sprintf("%5s ", $oseq_firstpos));
       push(@cur_out_A, sprintf("%5s ", $oseq_offset));
       push(@cur_out_A, sprintf(" %s", $oseq_passfail));
       $pass_fail_str .= $oseq_passfail;
@@ -7817,8 +7894,8 @@ sub create_output_start_and_stop {
       # case 3
       $out_start = $in_start - $accn_len;
       $out_stop  = $in_stop  - $accn_len;
-      if($out_start < 0) { $out_start--; }
-      if($out_stop  < 0) { $out_stop--; }
+      if($out_start <= 0) { $out_start--; }
+      if($out_stop  <= 0) { $out_stop--; }
     }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unforeseen case in_start: $in_start in_stop: $in_stop seq_len: $seq_len accn_len: $accn_len", 1, $FH_HR);
@@ -8141,4 +8218,330 @@ sub validate_options_are_consistent_with_dnaorg_build {
 
   # if we get here, all options are consistent
   return;
+}
+
+################################################
+## TEMPORARY SUBROUTINES for the --aorg* options
+################################################
+
+#################################################################
+# Subroutine: aorg_find_origin_sequences
+# Incept:     EPN, Thu Jul 28 14:46:31 2016
+# 
+# Purpose:    TEMPORARY function for identifying origin sequences 
+#             using 'alternative' method -- a profile HMM.
+#
+#             Checks for and adds the following error codes: "ori".
+#
+# Args:   
+#  $fasta_file:             the fasta file to look for origins in
+#                           should contain duplicated genome sequences
+#                           (so if --infasta <f> used, probably not <f>)
+#  $sqfile:                 Bio:Easel object for $fasta_file
+#  $execs_HR:               ref to hash with paths to executables
+#  $out_root:               root for naming output files
+#  $seq_info_HAR:           REF to hash of arrays with information 
+#                           on the sequences, PRE-FILLED
+#  $err_seq_instances_HHR:  REF to the 2D hash of per-sequence errors, initialized here
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, 
+#                           see top of epn-options.pm for description
+#  $ofile_info_HHR:         REF to the 2D hash of output file information
+#
+# Returns:    void
+#
+#################################################################
+sub aorg_find_origin_sequences { 
+  my $sub_name = "aorg_find_origin_sequences";
+  my $nargs_exp = 9;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($fasta_file, $sqfile, $execs_HR, $out_root, $seq_info_HAR, $err_seq_instances_HHR, $err_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
+
+  my $aorg_model  = opt_Get("--aorgmodel",  $opt_HHR);
+  my $aorg_start  = opt_Get("--aorgstart",  $opt_HHR);
+  my $aorg_len    = opt_Get("--aorglen",    $opt_HHR);
+  my $aorg_offset = opt_Get("--aorgoffset", $opt_HHR);
+  
+  # run cmscan locally
+  my $tblout_file = $out_root . ".aorg.tblout";
+  my $cmscan_file = $out_root . ".aorg.cmscan";
+  my $opts = " --cpu 0 --tblout $tblout_file --verbose ";
+  $opts .= " --nohmmonly --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 "; 
+
+  my $cmd = $execs_HR->{"cmscan"} . " $opts $aorg_model $fasta_file > $cmscan_file";
+
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+
+  addClosedFileToOutputInfo(\%ofile_info_HH, "aorgtblout",  "$tblout_file",     1, "tblout file from cmscan for origin identification");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "aorgcmscan",  "$cmscan_file",     1, "standard output file from cmscan for origin identification");
+
+  my %hit_HH  = (); # 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
+  aorg_parse_cmscan_tblout_s2($tblout_file, $seq_info_HAR, \%hit_HH, $opt_HHR, $FH_HR);
+
+  # Fetch all hits into a fasta file that we can align with cmalign
+  my @fetch_AA = ();
+  for(my $i = 0; $i < $nseq; $i++) { 
+    my $seqname = $seq_info_HAR->{"seq_name"}[$i];
+    if(exists $hit_HH{$seqname}) { 
+      my $newname = $seqname . "/" . $hit_HH{$seqname}{"start"} . "-" . $hit_HH{$seqname}{"stop"};
+      push(@fetch_AA, [ $newname, $hit_HH{$seqname}{"start"}, $hit_HH{$seqname}{"stop"}, $seqname ]);
+      #printf("pushed $newname\n");
+    }
+  }
+  my $out_fasta_file = $out_root . ".cmscan.fa";
+  $sqfile->fetch_subseqs(\@fetch_AA, undef, $out_fasta_file);
+  addClosedFileToOutputInfo(\%ofile_info_HH, "aorgoutfasta", "$out_fasta_file", 1, "cmscan hits in fasta format");
+
+  # Align all hits with cmalign
+  my $out_stk_file     = $out_root . ".cmalign.stk";
+  my $out_cmalign_file = $out_root . ".cmalign";
+  $cmd = $execs_HR->{"cmalign"} . " -o $out_stk_file $aorg_model $out_fasta_file > $out_cmalign_file";
+
+  runCommand($cmd, 0, $ofile_info_HH{"FH"});
+  addClosedFileToOutputInfo(\%ofile_info_HH, "outstk",     "$out_stk_file",     1, "alignment of cmscan hits");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "outcmalign", "$out_cmalign_file", 1, "cmalign output");
+
+  # determine which positions the origin sequence is in each sequence
+  my $ori_msa = Bio::Easel::MSA->new   ({ 
+    fileLocation => $out_stk_file,
+    isDna => 1
+                                        });
+  my $ori_start_rfpos    = $aorg_start;
+  my $ori_stop_rfpos     = $aorg_start + $aorg_len - 1;
+  my $ori_offset_rfpos   = $aorg_start + $aorg_offset - 1;
+  my $ori_start_apos     = $ori_msa->rfpos_to_aligned_pos($ori_start_rfpos);
+  my $ori_stop_apos      = $ori_msa->rfpos_to_aligned_pos($ori_stop_rfpos);
+  my $ori_offset_apos    = $ori_msa->rfpos_to_aligned_pos($ori_offset_rfpos);
+
+  my $ori_ppthresh = opt_Get("--aorgppthresh", $opt_HHR);
+  #printf("ori_start_apos:  $ori_start_apos\n");
+  #printf("ori_stop_apos:   $ori_stop_apos\n");
+  #printf("ori_offset_apos: $ori_offset_apos\n");
+  
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+    my $has_hit = (defined $hit_HH{$seq_name}) ? 1 : 0;
+    $seq_info_HAR->{"origin_coords_str"}[$seq_idx] = ""; # initialize
+    $seq_info_HAR->{"origin_offset"}[$seq_idx]     = ""; # initialize
+    my $found_origin = 0;
+    
+    if($has_hit) { 
+      my $start = $hit_HH{$seq_name}{"start"};
+      my $stop  = $hit_HH{$seq_name}{"stop"};
+      my $msa_seqname = $seq_name . "/" . $start . "-" . $stop;
+      my $msa_sqidx = $ori_msa->get_sqidx($msa_seqname);
+      if($msa_sqidx == -1) { 
+        DNAORG_FAIL("ERROR, unable to find $msa_seqname in $out_stk_file", 1, $ofile_info_HH{"FH"});
+      }
+      # determine average pp of aligned residues between $ori_start_apos and $ori_stop_apos (inclusive)
+      # and enforce our posterior probability threshold
+      my ($pp_avg, $pp_cnt) = $ori_msa->get_pp_avg($msa_sqidx, $ori_start_apos, $ori_stop_apos);
+      # if($pp_cnt == 0) { printf("no aligned residues for origin prediction for $seq_name\n"); }
+      # if($pp_avg < $ori_ppthresh) { printf("avg PP of aligned origin below threshold for $seq_name ($pp_avg < $ori_ppthresh)\n"); }
+      if(($pp_cnt > 0) && ($pp_avg >= $ori_ppthresh)) { 
+
+        # determine the unaligned positions the origin spans in the alignment file $out_stk_file
+        my ($cur_ori_start_uapos, $cur_ori_start_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_start_apos, 1); # '1': if ori_start_apos is a gap, return position of 1st non-gap nucleotide after it 
+        my ($cur_ori_stop_uapos,  $cur_ori_stop_apos)  = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_stop_apos,  0); # '0': if ori_start_apos is a gap, return position of 1st non-gap nucleotide before it 
+        
+        # determine the unaligned position that maps to the special 'sequence start' position of the origin
+        # (this is --aorgoffset position of the origin), which will become position number 1 when we renumber
+        # sequences
+        my ($cur_ori_offset_uapos, $cur_ori_offset_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_offset_apos, 1); # '1': if ori_offset_apos is a gap, return position of 1st non-gap nucleotide after it 
+        
+        # do we have at least 1 nucleotide predicted in the origin positions?
+        if(($cur_ori_start_apos < $ori_stop_apos) && ($cur_ori_stop_apos > $ori_start_apos))  { 
+          # yes, we do:
+          # determine strand 
+          if($start <= $stop) { 
+            # positive strand
+            $cur_ori_start_uapos  += $start - 1;
+            $cur_ori_stop_uapos   += $start - 1;
+            $cur_ori_offset_uapos += $start - 1;
+          }
+          else { 
+            # negative strand
+            $cur_ori_start_uapos   = $start - $cur_ori_start_uapos  + 1;
+            $cur_ori_stop_uapos    = $start - $cur_ori_stop_uapos   + 1;
+            $cur_ori_offset_uapos  = $start - $cur_ori_offset_uapos + 1;
+          }
+          # adjust coordinates so they're within 1..L
+          my ($out_ori_start_uapos, $out_ori_stop_uapos) = 
+              create_output_start_and_stop($cur_ori_start_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+          
+          my $out_ori_offset_uapos;
+          ($out_ori_offset_uapos, undef) = 
+              create_output_start_and_stop($cur_ori_offset_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+          #printf("cur_ori_start_uapos:  $cur_ori_start_uapos\n");
+          #printf("cur_ori_offset_uapos: $cur_ori_offset_uapos\n");
+          #printf("cur_ori_stop_uapos:   $cur_ori_stop_uapos\n\n");
+          
+          #printf("out_ori_start_uapos:  $out_ori_start_uapos\n");
+          #printf("out_ori_offset_uapos: $out_ori_offset_uapos\n");
+          #printf("out_ori_stop_uapos:   $out_ori_stop_uapos\n\n");
+          
+          $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= $out_ori_start_uapos . ":" . $out_ori_stop_uapos;
+          $seq_info_HAR->{"origin_offset"}[$seq_idx]      = $out_ori_offset_uapos;
+          $found_origin = 1;
+        } 
+      } # end of 'if(($pp_cnt > 0) && ($pp_avg >= $ori_ppthresh))'
+    } # end of 'if($has_hit)'
+    if(! $found_origin) { 
+      error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, "0 occurrences", $FH_HR);
+    }
+  } # end of 'for' loop over $seq_idx
+
+
+  return;
+}
+
+#################################################################
+# Subroutine : aorg_parse_cmscan_tblout_s2()
+# Incept:      EPN, Tue Jul 12 08:54:07 2016
+#
+# Arguments: 
+#  $tblout_file:   tblout file to parse
+#  $seq_info_HAR:  REF to hash of arrays with information 
+#                  on the sequences, PRE-FILLED
+#  $hit_HHR:       REF to 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
+#  $opt_HHR:       ref to 2D options hash
+#  $FH_HR:         REF to hash of file handles
+#
+# Returns:    void
+#
+#################################################################
+sub aorg_parse_cmscan_tblout_s2 { 
+  my $sub_name = "aorg_parse_cmscan_tblout_s2()";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($tblout_file, $seq_info_HAR, $hit_HHR, $opt_HHR, $FH_HR) = @_;
+  
+  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
+  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seqname_index_H, $FH_HR);
+
+  open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
+
+  my $ethresh = opt_Get("--aorgethresh", $opt_HHR);
+  my $did_field_check = 0; # set to '1' below after we check the fields of the file
+  my $line_ctr = 0;  # counts lines in tblout_file
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    if(($line =~ m/^\#/) && (! $did_field_check)) { 
+      # sanity check, make sure the fields are what we expect
+      if($line !~ m/#target name\s+accession\s+query name\s+accession\s+mdl\s+mdl\s+from\s+mdl to\s+seq from\s+seq to\s+strand\s+trunc\s+pass\s+gc\s+bias\s+score\s+E-value inc description of target/) { 
+        DNAORG_FAIL("ERROR in $sub_name, unexpected field names in $tblout_file\n$line\n", 1, $FH_HR);
+      }
+      $did_field_check = 1;
+    }
+    elsif($line !~ m/^\#/) { 
+      chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+      # example line:
+      # NC_001346.dnaorg_build.origin.5p -         KJ699341             -         hmm        1       59     2484     2542      +     -    6 0.59   0.1   78.5     2e-24 !   -
+      my @elA = split(/\s+/, $line);
+      my ($mdlname, $seqname, $mod, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $score, $evalue) = 
+          ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
+
+      my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+      my $seqlen = $seq_info_HAR->{"accn_len"}[$seqidx];
+
+      # only consider hits where either the start or end are less than the total length
+      # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
+      # rule for deciding which of duplicate hits we'll store 
+      if(($seqfrom <= $seqlen) || ($seqto <= $seqlen)) { 
+        if($evalue <= $ethresh) { # enforce E-value threshold
+          if(! exists $hit_HHR->{$seqname}) { # takes only the top hit
+            %{$hit_HHR->{$seqname}} = ();
+            $hit_HHR->{$seqname}{"start"}  = $seqfrom;
+            $hit_HHR->{$seqname}{"stop"}   = $seqto;
+            $hit_HHR->{$seqname}{"score"}  = $score;
+            $hit_HHR->{$seqname}{"evalue"} = $evalue;
+          } 
+        }
+      }
+    }
+  }
+}
+
+
+#################################################################
+# Subroutine: aorg_get_origin_output_for_sequence
+# Incept:     EPN, Fri Jul 29 14:45:43 2016
+#
+# Synopsis:   For a given sequence index $seq_idx, determine 
+#             the output strings related to the origin sequence
+#             using the new profile HMM based method.
+#
+# Args: 
+#  $seq_info_HAR:  REF to hash of arrays with information 
+#                  on the sequences (including origins), PRE-FILLED
+#  $seq_idx:       index of sequence we're working on
+#  $FH_HR:         REF to hash of file handles
+#
+# Returns: 5 values:
+#          $oseq_ct:       number of occurrences of origin sequence found
+#          $oseq_start:    start position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_stop:     stop  position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_firstpos: what should be the first position of the seq if $oseq_ct == 1, else '-'
+#          $oseq_offset:   offset position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_passfail: 'P' if $oseq_ct is 1, else 'F'
+#
+# Dies: if $seq_info_HAR->{"origin_coords_str"}[$seq_idx] does not exist.
+# 
+#################################################################
+sub aorg_get_origin_output_for_sequence { 
+  my $sub_name = "aorg_get_origin_output_for_sequence";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_info_HAR, $seq_idx, $FH_HR) = @_;
+
+  if(! exists $seq_info_HAR->{"origin_coords_str"}[$seq_idx]) { 
+    DNAORG_FAIL("ERROR in $sub_name, no origin_coords_str (not even empty str) exists in seq_info_HAR for $seq_idx", 1, $FH_HR);
+  }
+  my $accn_len = $seq_info_HAR->{"accn_len"}[$seq_idx];
+
+  # initializereturn values
+  my $oseq_start    = "-"; # changed below if $oseq_ct == 1
+  my $oseq_stop     = "-"; # changed below if $oseq_ct == 1
+  my $oseq_firstpos = "-"; # changed below if $oseq_ct == 1
+  my $oseq_offset   = "-"; # changed below if $oseq_ct == 1
+  my $oseq_passfail = "F"; # changed below if $oseq_ct == 1
+
+  my @coords_A = split(",", $seq_info_HAR->{"origin_coords_str"}[$seq_idx]);
+  my $oseq_ct = scalar(@coords_A);
+
+  if($oseq_ct == 1) { 
+    ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
+    $oseq_firstpos = $seq_info_HAR->{"origin_offset"}[$seq_idx];
+    if($oseq_firstpos < 0) { 
+      $oseq_firstpos = $accn_len + $oseq_firstpos + 1;
+    }
+    $oseq_offset = $oseq_firstpos; 
+
+    # $oseq_offset is now what should be the first position of the sequence, 
+    # if this is > 0, we subtract 1 because that's how many we need to shift counterclockwise 
+    # direction to put $oseq_offset as position 1 (imagine if $oseq_offset is 1, then we need to shift '0', not '1')
+    # if it's negative then it's already the correct shift (due to the off-by-one
+    # introduced because there is no position 0)
+    if($oseq_offset > 0) { $oseq_offset -= 1; }
+    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
+    # $oseq_offset is now number of nts to shift origin in counterclockwise direction
+    if($oseq_offset > ($accn_len / 2)) { # simpler (shorter distance) to move origin clockwise
+      $oseq_offset = $accn_len - $oseq_offset; # note, we don't add 1 here
+    }
+    else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
+      $oseq_offset *= -1;
+    }
+
+    $oseq_passfail = "P";
+  }
+
+  return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail);
 }

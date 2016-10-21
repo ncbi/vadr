@@ -91,7 +91,7 @@ $opt_group_desc_H{"2"} = "options affecting calibration of models";
 #       option       type        default                group  requires incompat          preamble-output                                              help-output    
 opt_Add("--slow",      "boolean", 0,                     2,    undef, undef,              "running cmcalibrate in slow mode",                           "use default cmcalibrate parameters, not parameters optimized for speed", \%opt_HH, \@opt_order_A);
 opt_Add("--local",     "boolean", 0,                     2,    undef, undef,              "running cmcalibrate on local machine",                       "run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",      "integer", 1800,                  2,    undef,"--local,--nosubmit","allow <n> minutes for cmcalibrate jobs on farm",             "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",      "integer", 1800,                  2,    undef,"--local,--nosubmit","allow <n> minutes for cmcalibrate jobs on farm",             "allow <n> wall-clock minutes for cmcalibrate jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--nosubmit",  "boolean", 0,                     2,    undef,"--local",           "do not submit cmcalibrate jobs to farm, run later",          "do not submit cmcalibrate jobs to farm, run later with qsub script", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",  "boolean", 0,                     2,    undef,"--local",           "consider any stderr output as indicating a job failure",     "consider any stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--rammult",   "boolean", 0,                     2,    undef, undef,              "for all models, multiply RAM Gb by ncpu for mem_free",       "for all models, multiply RAM Gb by ncpu for mem_free", \%opt_HH, \@opt_order_A);
@@ -112,6 +112,11 @@ opt_Add("--skipedirect",   "boolean", 0,                       4,   undef,      
 opt_Add("--skipfetch",     "boolean", 0,                       4,   undef,      undef,                    "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipbuild",     "boolean", 0,                       4,   undef,      undef,                    "skip the build/calibrate steps",                         "skip the model building/calibrating, requires --mdlinfo and/or --ftrinfo", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{"5"} = "options for building models for origin sequences";
+#     option               type       default               group   requires               incompat                  preamble-output                                              help-output    
+opt_Add("--orginput",      "string",  undef,                   5,   "-c,--orgstart,--orglen",  undef,                   "read training alignment for origin sequence from file <s>", "read training alignment for origin sequences from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--orgstart",      "integer", 0,                       5,   "-c,--orginput,--orglen",  undef,                   "origin sequence starts at position <n>",                    "origin sequence starts at position <n> in file <s> from --orginput <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--orglen",        "integer", 0,                       5,   "-c,--orginput,--orgstart",undef,                   "origin sequence is <n> nucleotides long",                   "origin sequence is <n> nucleotides long", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -140,13 +145,17 @@ my $options_okay =
                 'biglen=s'     => \$GetOptions_H{"--biglen"},
                 'bigncpu=s'    => \$GetOptions_H{"--bigncpu"},
                 'bigtailp=s'   => \$GetOptions_H{"--bigtailp"},
+# optional output files
+                'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
+                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"},
 # options for skipping stages, using earlier results
                 'skipedirect'  => \$GetOptions_H{"--skipedirect"},
                 'skipfetch'    => \$GetOptions_H{"--skipfetch"},
                 'skipbuild'    => \$GetOptions_H{"--skipbuild"},
-# optional output files
-                'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
-                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});
+# options for building models for the origin sequence
+                'orginput=s'   => \$GetOptions_H{"--orginput"},
+                'orgstart=s'   => \$GetOptions_H{"--orgstart"},
+                'orglen=s'     => \$GetOptions_H{"--orglen"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -185,6 +194,7 @@ if((opt_Get("--skipbuild", \%opt_HH)) &&
 
 my $dir        = opt_Get("--dirout", \%opt_HH);          # this will be undefined unless -d set on cmdline
 my $do_matpept = opt_IsOn("--matpept", \%opt_HH);
+my $do_origin  = opt_IsUsed("--matpept", \%opt_HH);
 
 #############################
 # create the output directory
@@ -290,7 +300,7 @@ $execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################
-# Step 0. Output the consopts file that dnaorg_annotate.pl will use to 
+# Step 1. Output the consopts file that dnaorg_annotate.pl will use to 
 #         make sure options used are consistent between dnaorg_build.pl and 
 #         dnaorg_annotate.pl 
 ###########################################################################
@@ -300,7 +310,17 @@ output_consopts_file($out_root . ".consopts", \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###########################################################################
-# Step 1. Gather and process information on reference genome using Edirect.
+# Step 2. Validate the origin alignment file (if --orginput used).
+###########################################################################
+if(opt_IsUsed("--orginput", \%opt_HH)) { 
+  $progress_w = 80; # the width of the left hand column in our progress output, hard-coded
+  $start_secs = outputProgressPrior("Validating and processing origin input alignment", $progress_w, $log_FH, *STDOUT);
+  process_origin_input_alignment($out_root, \%opt_HH, \%ofile_info_HH);
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
+###########################################################################
+# Step 3. Gather and process information on reference genome using Edirect.
 ###########################################################################
 $start_secs = outputProgressPrior("Gathering information on reference using edirect", $progress_w, $log_FH, *STDOUT);
 
@@ -334,7 +354,7 @@ if($do_matpept) {
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
-# Step 2. Fetch and process the reference genome sequence
+# Step 4. Fetch and process the reference genome sequence
 ##########################################################
 $start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
 my %mdl_info_HA = ();          # hash of arrays, values are arrays [0..$nmdl-1];
@@ -371,7 +391,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #dumpInfoHashOfArrays("ftr_info", 0, \%ftr_info_HA, *STDOUT);
 
 ####################################
-# Step 3. Build and calibrate models 
+# Step 5. Build and calibrate models 
 ####################################
 my $do_local      = opt_Get("--local", \%opt_HH); # are we running calibration locally
 my $do_farm_now   = 0; # set to '1' if we are submitting to farm now and waiting for jobs to finish
@@ -452,7 +472,6 @@ $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
-
 #################################################################
 # Subroutine: output_consopts_file()
 # Incept:     EPN, Fri May 27 14:20:28 2016
@@ -512,6 +531,109 @@ sub output_consopts_file {
   close(OUT);
   
   addClosedFileToOutputInfo($ofile_info_HHR, "consopts", "$consopts_file", 1, "File with list of options that must be kept consistent between dnaorg_build.pl and dnaorg_annotate.pl runs");
+  return;
+}
+
+#################################################################
+# Subroutine: process_origin_input_alignment()
+# Incept:     EPN, Thu Jul  7 13:44:15 2016 [origin-hmms-01 branch]
+#
+# Purpose:   Validate an input alignment file that will be used
+#            to identify origin sequences, and then 'process' it
+#            by splitting it nearly in half, with an overlap between 
+#            the two halves which is exactly the origin sequence.
+#            The two halves will each serve as a training alignment for 
+#            cmbuild in a later step.
+#
+# Arguments:
+#  $out_root:          root for naming output files
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:    REF to output file hash
+# 
+# Returns:  void
+# 
+# Dies: If $consopts_file doesn't exist, or we can't parse it.
+#
+#       If an option enabled in dnaorg_build.pl that needs to 
+#       be consistently used in dnaorg_annotate.pl is not, or
+#       vice versa.
+#
+#       If an option enabled in dnaorg_build.pl that takes a file
+#       as input has a different checksum for that file than 
+#       
+#################################################################
+sub process_origin_input_alignment {
+  my $sub_name = "process_origin_input_alignment";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_root, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+
+  my $input_file   = opt_Get("--orginput", $opt_HHR);
+  my $origin_start = opt_Get("--orgstart", $opt_HHR);
+  my $origin_stop  = $origin_start + opt_Get("--orglen", $opt_HHR) - 1; 
+  my $origin_len   = $origin_stop - $origin_start + 1;
+
+  my $msa1_outfile = $out_root . ".origin.5p.stk";
+  my $msa2_outfile = $out_root . ".origin.3p.stk";
+
+  # open and validate file
+  my $msa1 = Bio::Easel::MSA->new({
+    fileLocation => $input_file,
+    isDna => 1
+                                 });  
+
+  # determine length of the alignment
+  my $alen = $msa1->alen();
+
+  if($alen < $origin_stop) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, with --orgstart, stop position of origin in alignment should be %d, but alignment is only %d columns long", $origin_stop, $alen),
+                1, $FH_HR); 
+  }
+
+  # split the alignment in half, we need two versions of the alignment to do this:
+  my $msa2 = Bio::Easel::MSA->new({
+    fileLocation => $input_file,
+    isDna => 1
+                                 });  
+  
+
+  my @useme1_A = (); # 0..$i..$alen-1: '1' if column $i+1 should be kept in $msa1, '0' if not
+  my @useme2_A = (); # 0..$i..$alen-1: '1' if column $i+1 should be kept in $msa2, '0' if not
+  my $i;
+  for($i = 0; $i < ($origin_start-1); $i++) { 
+    $useme1_A[$i] = 1;
+    $useme2_A[$i] = 0;
+  }
+  for($i = $origin_start-1; $i < $origin_stop; $i++) { 
+    $useme1_A[$i] = 1;
+    $useme2_A[$i] = 1;
+  }
+  for($i = $origin_stop; $i < $alen; $i++) { 
+    $useme1_A[$i] = 0;
+    $useme2_A[$i] = 1;
+  }
+
+  $msa1->column_subset_rename_nse(\@useme1_A, 0);
+  $msa2->column_subset_rename_nse(\@useme2_A, 0);
+
+  my $name1 = removeDirPath($out_root);
+  my $name2 = removeDirPath($out_root);
+  $name1 .= sprintf(".origin.5p.len%d", $origin_len);
+  $name2 .= sprintf(".origin.3p.len%d", $origin_len);
+  
+  $msa1->set_name($name1);
+  $msa2->set_name($name2);
+
+  $msa1->write_msa($msa1_outfile);
+  $msa2->write_msa($msa2_outfile);
+
+
+  addClosedFileToOutputInfo($ofile_info_HHR, "origin5p", "$msa1_outfile", 1, sprintf("Subset of alignment in %s containing positions %d to %d. The origin and the flanking 5 prime sequence.", $input_file, 1, $origin_stop));
+  addClosedFileToOutputInfo($ofile_info_HHR, "origin3p", "$msa2_outfile", 1, sprintf("Subset of alignment in %s containing positions %d to %d. The origin and the flanking 3 prime sequence.", $input_file, $origin_start, $alen));
+
   return;
 }
 
