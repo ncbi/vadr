@@ -12,7 +12,6 @@ use Bio::Easel::SqFile;
 use Data::Dumper;
 
 require "dnaorg.pm"; 
-require "epn-options.pm";
 
 #######################################################################################
 # What this script does: 
@@ -51,78 +50,12 @@ if(! (-d $dnaorgdir)) {
 # determine other required paths to executables relative to $dnaorgdir
 my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
 
-#########################################################
-# Command line and option processing using epn-options.pm
-#
-# opt_HH: 2D hash:
-#         1D key: option name (e.g. "-h")
-#         2D key: string denoting type of information 
-#                 (one of "type", "default", "group", "requires", "incompatible", "preamble", "help")
-#         value:  string explaining 2D key:
-#                 "type":          "boolean", "string", "int" or "real"
-#                 "default":       default value for option
-#                 "group":         integer denoting group number this option belongs to
-#                 "requires":      string of 0 or more other options this option requires to work, each separated by a ','
-#                 "incompatiable": string of 0 or more other options this option is incompatible with, each separated by a ','
-#                 "preamble":      string describing option for preamble section (beginning of output from script)
-#                 "help":          string describing option for help section (printed if -h used)
-#                 "setby":         '1' if option set by user, else 'undef'
-#                 "value":         value for option, can be undef if default is undef
-#
-# opt_order_A: array of options in the order they should be processed
-# 
-# opt_group_desc_H: key: group number (integer), value: description of group for help output
-my %opt_HH = ();      
-my @opt_order_A = (); 
-my %opt_group_desc_H = ();
-
-# Add all options to %opt_HH and @opt_order_A.
-# This section needs to be kept in sync (manually) with the &GetOptions call below
-$opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                          help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",           "force; if dir <reference accession>.get_mat_pept_file exists, overwrite it", \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-
-# This section needs to be kept in sync (manually) with the opt_Add() section above
-my %GetOptions_H = ();
-my $usage    = "Usage: dnaorg_build.pl [-options] <reference accession>\n";
-my $synopsis = "dnaorg_build.pl :: build homology models for features of a reference sequence";
-
-my $options_okay = 
-    &GetOptions('h'            => \$GetOptions_H{"-h"}, 
-# basic options
-                'f'            => \$GetOptions_H{"-f"},
-                'v'            => \$GetOptions_H{"-v"},
-    );
-
-my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
-my $executable    = $0;
-my $date          = scalar localtime();
-my $version       = "0.15";
-my $releasedate   = "Oct 2016";
-
-# print help and exit if necessary
-if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
-  opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
-  if(! $options_okay) { die "ERROR, unrecognized option;"; }
-  else                { exit 0; } # -h, exit with 0 status
-}
-
 # check that number of command line args is correct                                                                                                                                                                                                       
 if(scalar(@ARGV) != 1) {
     print "Incorrect number of command line arguments.\n";
     exit(1);
 }
 my ($ref_accn) = (@ARGV);
-
-# set options in opt_HH
-opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
-
-# validate options (check for conflicts)
-opt_ValidateSet(\%opt_HH, \@opt_order_A);
-
 
 #############################
 # create the output directory
@@ -138,16 +71,16 @@ if(! defined $dir) {
 else { 
   if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 }
-if(-d $dir) { 
-  $cmd = "rm -rf $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
-}
-if(-e $dir) { 
-  $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
-}
+#if(-d $dir) { 
+  #$cmd = "rm -rf $dir";
+  #if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  #else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+#}
+#if(-e $dir) { 
+#  $cmd = "rm $dir";
+#  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+#  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
+#}
 
 # create the dir
 $cmd = "mkdir $dir";
@@ -157,7 +90,7 @@ push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir - this is the file folder that all output files will be in
-my $out_root = $dir . "/" . $dir_tail . ".dnaorg_get_matpepts";
+my $out_root = $dir . "/" . $dir_tail . ".dnaorg_build";
 
 #############################################
 # output program banner and open output files
@@ -286,7 +219,7 @@ for (my $i=0; $i<scalar(@cds_start_coords); $i++) {
 
     # check for interruptions
     my $interrupt_mp = undef; # index of matpept which is interrupted
-    if($cds_interruptions[$i] ne "0") {
+    if($cds_interruptions[$i] != 0) {
 	# finds the index of the matpept which is interrupted
 	for(my $k=0; $k<scalar(@mp_interruptions); $k++) {           
 	    if($mp_interruptions[$k] eq $cds_interruptions[$i]) { #if this matpept has the same interruption as the cds
@@ -403,19 +336,19 @@ for(my $cds=0; $cds < scalar(@cds_primary_AA); $cds++) {
 
 
 }
-close(MPIN);
+
 
 
 ##########
 # Conclude
 ##########
 
-# close any open file handles                                                                                                                               
-my $key2d;
+# close any open file handles                                                                                                                                                                                                                             
+my $key2d;  
 foreach $key2d (keys ($ofile_info_HH{"FH"})) {
-  if(defined $ofile_info_HH{"FH"}{$key2d}) {
-    close $ofile_info_HH{"FH"}{$key2d};
-  }
+    if(defined $ofile_info_HH{"FH"}{$key2d}) {
+	close $ofile_info_HH{"FH"}{$key2d};
+    }
 }
 
 exit 0;
