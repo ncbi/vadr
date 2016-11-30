@@ -580,9 +580,9 @@ foreach my $seq (@seqs_to_assign_A) {
                                                                                                                                                                                                                     
 	    push(@hit_output_A, @{@{$hit_info_HAA{$seq}}[-2]}[1]);
 	
-	    my $bit_diff = $hit_info_HAA{$seq}[-1][4] - $hit_info_HAA{$seq}[-2][4];
-	    $bit_diff = sprintf("%.7f", $bit_diff);
-	    my $cov_diff = $hit_info_HAA{$seq}[-1][6] - $hit_info_HAA{$seq}[-2][6];
+	    my $bit_diff = $hit_info_HAA{$seq}[-1][2] - $hit_info_HAA{$seq}[-2][2];
+	    $bit_diff = sprintf("%9.1f", $bit_diff);
+	    my $cov_diff = $hit_info_HAA{$seq}[-1][4] - $hit_info_HAA{$seq}[-2][4];
 	    $cov_diff = sprintf("%.7f", $cov_diff);
 	    push(@hit_output_A, $bit_diff);
 	    push(@hit_output_A, $cov_diff);
