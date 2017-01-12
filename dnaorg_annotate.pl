@@ -3164,10 +3164,10 @@ sub results_calculate_overlaps_and_adjacencies {
 }
 
 #################################################################
-# Subroutine:  mdl_results_add_str_nop_bd5_bd3_errors
+# Subroutine:  mdl_results_add_str_nop_ost_bd5_bd3_errors
 # Incept:      EPN, Thu Mar 31 13:43:58 2016
 #
-# Purpose:    Report 'str', 'nop', 'bd5' and 'bd3' errors
+# Purpose:    Report 'str', 'nop', 'ost', 'bd5' and 'bd3' errors
 #             and fill in the following keys in $mdl_results_AAHR:
 #             "out_5boundary" and "out_3boundary".
 #
@@ -3180,6 +3180,8 @@ sub results_calculate_overlaps_and_adjacencies {
 #                  parse_esl_epn_translate_startstop_outfile()
 #                  by making the error message more informative
 #                  to include position and codon of predicted start
+#
+#             "ost": adds this error, model prediction is on incorrect strand
 #
 #             "bd5": adds this error, predicted hit not flush with 
 #                  model on 5' end
@@ -3288,6 +3290,12 @@ sub mdl_results_add_str_nop_bd5_bd3_errors {
           else { 
             $mdl_results_HR->{"out_3boundary"} = $mdl_results_HR->{"p_3overhang"};
           }
+        }
+        if($mdl_results_HR->{"p_strand"} ne $mdl_info_HAR->{"ref_strand"}[$mdl_idx]) { 
+          ################################
+          # ost error (incorrect strand) #
+          ################################
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ost", $seq_name, "", $FH_HR);
         }
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop
@@ -5705,25 +5713,45 @@ sub output_tbl_all_sequences {
 
     # 5' UTR, if nec
     if($do_matpept) { 
-      # TODO, update this to work for positive or negative strand
-      if((exists $mdl_results_AAHR->[0][$seq_idx]{"p_strand"}) && 
-         ($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} ne "+")) { 
-        DNAORG_FAIL("ERROR in $sub_name, prediction is on negative strand and trying to compute 5' UTR, need to add code for this case.", 1, $FH_HR);
-      }
       if(! exists $mdl_results_AAHR->[0][$seq_idx]{"p_start"}) { 
         push(@cur_out_A, sprintf("  %6s", "?")); # start
         push(@cur_out_A, sprintf(" %6s", "?"));  # stop
         push(@cur_out_A, sprintf(" %6s", "?"));  # length
       }
-      elsif($mdl_results_AAHR->[0][$seq_idx]{"p_start"} == 1) { 
-        push(@cur_out_A, sprintf("  %6d", 0)); # start 
-        push(@cur_out_A, sprintf("  %6d", 0)); # stop 
-        push(@cur_out_A, sprintf("  %6d", 0)); # length
-      }
-      else { # 1st matpept does not start at nt 1 (normal case)
-        push(@cur_out_A, sprintf("  %6d", 1)); # start 
-        push(@cur_out_A, sprintf("  %6d", $mdl_results_AAHR->[0][$seq_idx]{"p_start"}-1)); # stop
-        push(@cur_out_A, sprintf("  %6d", $mdl_results_AAHR->[0][$seq_idx]{"p_start"}-1)); # length
+      else { # we know that $mdl_results_AAHR->[0][$seq_idx]{"p_start"} exists) { 
+        # determine output start and output stop
+        my ($cur_start, undef) = create_output_start_and_stop($mdl_results_AAHR->[0][$seq_idx]{"p_start"},
+                                                              $mdl_results_AAHR->[0][$seq_idx]{"p_stop"},
+                                                              $accn_len, $seq_len, $FH_HR);
+        if($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "+") { 
+          # positive strand, easy case
+          if($cur_start == 1) { 
+            push(@cur_out_A, sprintf("  %6d", 0)); # start 
+            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+            push(@cur_out_A, sprintf("  %6d", 0)); # length
+          }
+          else { # 1st matpept does not start at nt 1 (normal case)
+            push(@cur_out_A, sprintf("  %6d", 1)); # start 
+            push(@cur_out_A, sprintf("  %6d", $cur_start - 1)); # stop
+            push(@cur_out_A, sprintf("  %6d", $cur_start - 1)); # length
+          }
+        }
+        elsif($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "-") { 
+          # negative strand, more complicated, slightly
+          if($cur_start == $accn_len) { 
+            push(@cur_out_A, sprintf("  %6d", 0)); # start 
+            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+            push(@cur_out_A, sprintf("  %6d", 0)); # length
+          }
+          else { # 1st feature does not start at nt $accn_len on negative strand
+            push(@cur_out_A, sprintf("  %6d", $accn_len)); # start 
+            push(@cur_out_A, sprintf("  %6d", $cur_start + 1)); # stop
+            push(@cur_out_A, sprintf("  %6d", $accn_len - $cur_start)); # length
+          }
+        }
+        else { # not + or - strand, weird...
+          DNAORG_FAIL("ERROR in $sub_name, trying to compute 5' UTR for prediction that exists but is not + or - strand", 1, $FH_HR);
+        }
       }
     }
 
@@ -5947,45 +5975,60 @@ sub output_tbl_all_sequences {
 
     # 3' UTR, if nec
     if($do_matpept) { 
-      # TODO, update this to work for positive or negative strand
-      if((exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"}) && 
-         ($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} ne "+")) { 
-        DNAORG_FAIL("ERROR in $sub_name, prediction is on negative strand and trying to compute 3' UTR, need to add code for this case.", 1, $FH_HR);
-      }
       if(! exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}) { 
         push(@cur_out_A, sprintf("  %6s", "?")); # start
         push(@cur_out_A, sprintf(" %6s", "?"));  # stop
         push(@cur_out_A, sprintf(" %6s", "?"));  # length
       }
-      elsif($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"out_stop"} == $accn_len) { # final model prediction stops at final nt
-        push(@cur_out_A, sprintf("  %6d", 0)); # start 
-        push(@cur_out_A, sprintf("  %6d", 0)); # stop 
-        push(@cur_out_A, sprintf("  %6d", 0)); # length
-      }            
-      else { 
-        my $utr_start = undef;
-        my $tmp_stop = undef; # final stop position
+      else { # we know that $mdl_results_AAHR->[0][$seq_idx]{"p_start"} exists) { 
+        # determine output start and output stop
+        my $cur_stop = undef; # final stop position
         if(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"}) { 
-          (undef, $tmp_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_start"}, 
+          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_start"}, 
                                                             $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"},
                                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
         }
         elsif(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"}) { 
-          (undef, $tmp_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"},  # irrelevant due to the first undef arg
+          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"},  # irrelevant due to the first undef arg
                                                             $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"},
                                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
         }
         else { 
-          (undef, $tmp_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
+          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
                                                             $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_stop"}, 
                                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
         }
-        $utr_start = $tmp_stop + 1;
-        push(@cur_out_A, sprintf("  %6d", $utr_start));                   # start
-        push(@cur_out_A, sprintf("  %6d", $accn_len));                    # stop 
-        push(@cur_out_A, sprintf("  %6d", ($accn_len - $utr_start) + 1)); # length
+        if($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "+") { 
+          # positive strand, easy case
+          if($cur_stop == $accn_len) { # final model prediction stops at final nt
+            push(@cur_out_A, sprintf("  %6d", 0)); # start 
+            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+            push(@cur_out_A, sprintf("  %6d", 0)); # length
+          }            
+          else { 
+            push(@cur_out_A, sprintf("  %6d", $cur_stop + 1));           # start
+            push(@cur_out_A, sprintf("  %6d", $accn_len));               # stop 
+            push(@cur_out_A, sprintf("  %6d", ($accn_len - $cur_stop))); # length
+          }
+        }
+        elsif($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "-") { 
+          # negative strand, more complicated, slightly
+          if($cur_stop == 1) { # final model prediction stops at first nt
+            push(@cur_out_A, sprintf("  %6d", 0)); # start 
+            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+            push(@cur_out_A, sprintf("  %6d", 0)); # length
+          }            
+          else { # final feature does not stop at nt 1 on negative strand
+            push(@cur_out_A, sprintf("  %6d", 1)); # start 
+            push(@cur_out_A, sprintf("  %6d", $cur_stop - 1)); # stop 
+            push(@cur_out_A, sprintf("  %6d", $cur_stop - 1)); # length
+          }
+        }
+        else { # not + or - strand, weird...
+          DNAORG_FAIL("ERROR in $sub_name, trying to compute 5' UTR for prediction that exists but is not + or - strand", 1, $FH_HR);
+        }
       }
-    }                
+    }
 
     # total length
     push(@cur_out_A, sprintf("  %6d", $accn_len));
@@ -6295,7 +6338,7 @@ sub output_errors_all_sequences {
           if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
             # an error exists, output it
             printf $all_FH ("%-10s  %3s  %-9s  %4s  %s%s\n", $accn_name, ($ftr_idx+1), $out_tiny, $err_code, $err_info_HAR->{"msg"}[$err_idx], 
-                            " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]"); 
+                            ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]"); 
             if($ftr_seq_nftrerr == 0) { 
               $per_line .= (" " . ($ftr_idx+1) . ":" . $err_code);
             }
