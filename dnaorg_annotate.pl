@@ -95,7 +95,7 @@ require "epn-options.pm";
 # three letter error 'code'. The list of error codes is in the
 # dnaorg.pm perl module file. It can also be found here:
 #
-#  /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5.documentation.txt
+#  /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5d.documentation.txt
 #
 # The most complicated code in this script is related to identifying
 # and storing these errors. Ideally, there would be one or a small set
@@ -140,6 +140,7 @@ require "epn-options.pm";
 # 5. ftr_results_calculate()
 # 6. find_origin_sequences()
 # 7. MAIN (not a function but rather the main body of the script):
+# 8. mdl_results_add_b5e_b5u_errors()
 #
 #              annot_type
 #          -------------------
@@ -147,8 +148,10 @@ require "epn-options.pm";
 # -------  -----  ------------ --------
 # nop      4      N/A          N/A
 # nm3      5      5            N/A
-# bd5      4      N/A          N/A
-# bd3      4      N/A          N/A
+# b5e      8      N/A          N/A
+# b5u      8      N/A          N/A
+# b3e      4      N/A          N/A
+# b3u      4      N/A          N/A
 # olp      3      N/A          N/A
 # str      1,4    1,5          N/A
 # stp      1,2    1,5          N/A
@@ -1127,7 +1130,7 @@ my @ftr_results_AAH = (); # 1st dim: array, 0..$ftr_idx..$nftr-1, one per model
 initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 $start_secs = outputProgressPrior("Finalizing annotations and validating error combinations", $progress_w, $log_FH, *STDOUT);
-# report str, nop, bd5, bd3 errors, we need to know these before we call ftr_results_calculate()
+# report str, nop, b3e, b3u errors, we need to know these before we call ftr_results_calculate()
 mdl_results_add_str_nop_ost_b3e_b3u_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
                                            \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
@@ -3961,7 +3964,7 @@ sub ftr_results_calculate {
         ###############################################################
         # if we did not find a child with a trc, and we have 
         # a trc error for this CDS, it must be invalid and caused
-        # by an aji error or an nm3 error or something like it,
+        # by an aji, nm3, or b5e error or something like it,
         # so we remove it
         ###############################################################
         if(! $child_had_trc) { 
