@@ -136,7 +136,7 @@ require "epn-options.pm";
 # 1. parse_esl_epn_translate_startstop_outfile()
 # 2. results_calculate_corrected_stops()
 # 3. results_calculate_overlaps_and_adjacencies() 
-# 4. mdl_results_add_stp_nop_bd5_bd3_errors()
+# 4. mdl_results_add_stp_nop_ost_b3e_b3u_errors()
 # 5. ftr_results_calculate()
 # 6. find_origin_sequences()
 # 7. MAIN (not a function but rather the main body of the script):
@@ -158,6 +158,7 @@ require "epn-options.pm";
 # ext      1,7,2  1,7,2        N/A
 # ntr      5      N/A          N/A
 # nst      1,7    1,7          N/A
+# ost      4      N/A          N/A
 # aji      N/A    5            N/A
 # int      N/A    5            N/A
 # inp      N/A    5            N/A
@@ -884,7 +885,7 @@ $start_secs = outputProgressPrior("Parsing cmscan results", $progress_w, $log_FH
 
 my @mdl_results_AAH = ();  # 1st dim: array, 0..$nmdl-1, one per model
                            # 2nd dim: array, 0..$nseq-1, one per sequence
-                           # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_evalue", "p_fid2ref"
+                           # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_evalue", "p_fid2ref"
 initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # parse the cmscan results
@@ -928,6 +929,20 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 $start_secs = outputProgressPrior("Combining predicted mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
 combine_feature_hits("predicted", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#########################################################
+# Step 10b. Identify b5e, b5u, b3e, and b3u errors that occur when
+#           alignment does not extend to the model boundary. 
+#           We need to do this before step 12 which sets trc
+#           errors because a sequence with a b5e error cannot
+#           also have a trc error (we purposefully avoid checking
+#           for early stops). 
+#########################################################
+$start_secs = outputProgressPrior("Identifying errors associated with incomplete alignment to the model", $progress_w, $log_FH, *STDOUT);
+mdl_results_add_b5e_b5u_errors(\%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 
 #########################################################
 # Step 11. Examine each predicted feature to see if:
@@ -1107,14 +1122,14 @@ my @ftr_results_AAH = (); # 1st dim: array, 0..$ftr_idx..$nftr-1, one per model
                           # if $ftr_info_HA{"annot_type"}[$ftr_idx] == "model", then $mdl_results_AAH
                           # contains all the results we need.
                           # 2nd dim: array, 0..$nseq-1, one per sequence
-                          # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_evalue", "fid2ref"
+                          # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_evalue", "fid2ref"
 
 initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 $start_secs = outputProgressPrior("Finalizing annotations and validating error combinations", $progress_w, $log_FH, *STDOUT);
 # report str, nop, bd5, bd3 errors, we need to know these before we call ftr_results_calculate()
-mdl_results_add_str_nop_bd5_bd3_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                                       \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+mdl_results_add_str_nop_ost_b3e_b3u_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                                           \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # calculate out_start, out_stop and out_stop_codon values, we need to know some of these before we call ftr_results_calculate()
 mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, $ofile_info_HH{"FH"});
@@ -1319,7 +1334,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_bd5_bd3_errors()
+#    mdl_results_add_str_nop_ost_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate() ***
@@ -1628,13 +1643,14 @@ sub parse_cmscan_tblout {
       my $mdlidx = $mdlname_index_H{$mdlname}; # model    index for the hit in results_AAH (1st dim of results_AAH)
       my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
       my $mdllen = $mdl_info_HAR->{"length"}[$mdlidx]; # model length, used to determine how far hit is from boundary of the model
-      if(! exists $seq_info_HAR->{"accn_len"}[$seqidx]) { 
+      if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
         DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
       }
-      my $seqlen = $seq_info_HAR->{"accn_len"}[$seqidx]; # sequence length, used to exclude storing of hits that start and stop after $seqlen, 
-                                                         # which can occur in circular genomes, where we've duplicated the sequence
+      my $accn_len = $seq_info_HAR->{"accn_len"}[$seqidx]; # accession length, used to exclude storing of hits that start and stop after $seqlen, 
+                                                           # which can occur in circular genomes, where we've duplicated the sequence
+      my $seq_len  = $seq_info_HAR->{"seq_len"}[$seqidx]; # total length of sequence searched, could be $accn_len or two times $accn_len if -c used
 
-      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $seqlen, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $FH_HR);
+      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $FH_HR);
     }
   }
   close(IN);
@@ -2225,117 +2241,124 @@ sub parse_esl_epn_translate_startstop_outfile {
     if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
       my ($seq_name, $coords, $start_is_valid, $stop_is_valid, $first_stop_posn1) = ($1, $2, $3, $4, $5);
 
-      # determine if we have an early stop
-      my $cds_len            = dashCoordsStringCommaDelimitedToLength($coords, $sub_name, $FH_HR);
-      my $final_codon_posn1  = $cds_len - 2; # final codon position 1 
-      my $early_inframe_stop;
-      my $corr_len           = 0; # number of nts to correct prediction by, changed if $early_inframe_stop
-      if($first_stop_posn1 == $final_codon_posn1) { # first stop is the final codon
-        $early_inframe_stop = 0;
-      }
-      elsif($first_stop_posn1 == 0) { # esl-epn-translate didn't find any in-frame stop
-        $early_inframe_stop = 0;
-      }
-      else { # there is an early stop
-        $early_inframe_stop = 1; 
-        $corr_len = (-1 * ($final_codon_posn1 - $first_stop_posn1)) + $append_num; # negative because early stop shortens length
-      }
+      # skip this sequence IFF we have a b5e error already for it, this means 
+      # that the alignment does not extend to the 5' boundary of the model but
+      # it does extend to the 5' boundary of the sequence (first seq posn of 
+      # alignment is 1 (on + strand) or L (on - strand)). In this case we 
+      # don't search for a trc error.
+      if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) { 
+        # determine if we have an early stop
+        my $cds_len            = dashCoordsStringCommaDelimitedToLength($coords, $sub_name, $FH_HR);
+        my $final_codon_posn1  = $cds_len - 2; # final codon position 1 
+        my $early_inframe_stop;
+        my $corr_len           = 0; # number of nts to correct prediction by, changed if $early_inframe_stop
+        if($first_stop_posn1 == $final_codon_posn1) { # first stop is the final codon
+          $early_inframe_stop = 0;
+        }
+        elsif($first_stop_posn1 == 0) { # esl-epn-translate didn't find any in-frame stop
+          $early_inframe_stop = 0;
+        }
+        else { # there is an early stop
+          $early_inframe_stop = 1; 
+          $corr_len = (-1 * ($final_codon_posn1 - $first_stop_posn1)) + $append_num; # negative because early stop shortens length
+        }
 
-      # We now have all of the relevant data on the current
-      # CDS/mat_peptide sequence and we need to use to determine
-      # what errors each sequence should throw (at least for those
-      # that can tell should be thrown at this point in the
-      # processing) as well as any corrections to stop predictions
-      # that we should make prior to translation (trc errors are
-      # thrown when this happens).
-      # 
-      # There are 4 relevant variables that dictate which errors
-      # should be thrown/checked for later and whether a stop
-      # correction should be made. The table gives all possible
-      # combinations of values of those variables and lists the
-      # outcome of each possibility.
-      #
-      # Variables we know from earlier processing:
-      # $is_matpept:     '1' if current feature is a mature peptide, '0' if it is a CDS
-      #
-      # Variables derived from esl-epn-translate output we're currently parsing
-      # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
-      # $stop_is_valid:      '1' if current feature's final 3 nt encode a valid stop codon and total feature length is multiple of 3
-      # $early_inframe_stop: '1' if an inframe stop exists prior to predicted stop
-      #
-      # 7 possibilities, each with different outcome (P1-P7):
-      #                                                                                       | make correction to |
-      # idx | is_matpept | start_is_valid | stop_is_valid | early_inframe_stop ||   errors    | stop coordinate?   |
-      # ----|------------|----------------|---------------|--------------------||-------------|--------------------|
-      #  P1 |      false |          false |          any  |                any ||         str |                 no |
-      #  P2 |      false |           true |        false  |              false ||     stp ext?|     maybe (if ext) |
-      #  P3 |      false |           true |        false  |               true ||     stp trc |                yes |
-      #  P4 |      false |           true |         true  |              false ||        none |                 no |
-      #  P5 |      false |           true |         true  |               true ||         trc |                yes |
-      # -----------------------------------------------------------------------||-----------------------------------
-      #  P6 |       true |            any |          any  |              false ||        ntr? |                 no |
-      #  P7 |       true |            any |          any  |               true ||    trc ntr? |                yes |
-      # ------------------------------------------------------------------------------------------------------------
-      # 
-      # in table above:
-      # '?' after error code means that error is possible, we have to check for it later           
-      # 'any' means that any value is possible, outcome is unaffected by value
-      #
-      if(! $is_matpept) { 
-        if(! $start_is_valid) { # possibility 1 (P1)
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, "", $FH_HR);
-          # printf("in $sub_name, feature index $ftr_idx, seq $seq_name $c possibility 1 (str)\n");
-        }
-        else { 
-          # $start_is_valid is 1
-          if(! $stop_is_valid) { 
-            if(! $early_inframe_stop) { 
-              # possibility 2 (P2): stp error, need to check for ext error later
+        # We now have all of the relevant data on the current
+        # CDS/mat_peptide sequence and we need to use to determine
+        # what errors each sequence should throw (at least for those
+        # that can tell should be thrown at this point in the
+        # processing) as well as any corrections to stop predictions
+        # that we should make prior to translation (trc errors are
+        # thrown when this happens).
+        # 
+        # There are 4 relevant variables that dictate which errors
+        # should be thrown/checked for later and whether a stop
+        # correction should be made. The table gives all possible
+        # combinations of values of those variables and lists the
+        # outcome of each possibility.
+        #
+        # Variables we know from earlier processing:
+        # $is_matpept:     '1' if current feature is a mature peptide, '0' if it is a CDS
+        #
+        # Variables derived from esl-epn-translate output we're currently parsing
+        # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
+        # $stop_is_valid:      '1' if current feature's final 3 nt encode a valid stop codon and total feature length is multiple of 3
+        # $early_inframe_stop: '1' if an inframe stop exists prior to predicted stop
+        #
+        # 7 possibilities, each with different outcome (P1-P7):
+        #                                                                                       | make correction to |
+        # idx | is_matpept | start_is_valid | stop_is_valid | early_inframe_stop ||   errors    | stop coordinate?   |
+        # ----|------------|----------------|---------------|--------------------||-------------|--------------------|
+        #  P1 |      false |          false |          any  |                any ||         str |                 no |
+        #  P2 |      false |           true |        false  |              false ||     stp ext?|     maybe (if ext) |
+        #  P3 |      false |           true |        false  |               true ||     stp trc |                yes |
+        #  P4 |      false |           true |         true  |              false ||        none |                 no |
+        #  P5 |      false |           true |         true  |               true ||         trc |                yes |
+        # -----------------------------------------------------------------------||-----------------------------------
+        #  P6 |       true |            any |          any  |              false ||        ntr? |                 no |
+        #  P7 |       true |            any |          any  |               true ||    trc ntr? |                yes |
+        # ------------------------------------------------------------------------------------------------------------
+        # 
+        # in table above:
+        # '?' after error code means that error is possible, we have to check for it later           
+        # 'any' means that any value is possible, outcome is unaffected by value
+        #
+        if(! $is_matpept) { 
+          if(! $start_is_valid) { # possibility 1 (P1)
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, "", $FH_HR);
+            # printf("in $sub_name, feature index $ftr_idx, seq $seq_name $c possibility 1 (str)\n");
+          }
+          else { 
+            # $start_is_valid is 1
+            if(! $stop_is_valid) { 
+              if(! $early_inframe_stop) { 
+                # possibility 2 (P2): stp error, need to check for ext error later
 
-              # add the 3 potential error codes, we'll check again later and possibly remove them
-              # the 'stp' error is only a "maybe" because (! $stop_is_valid) implies it's not an
-              # *IN-FRAME* valid stop codon, but we only throw 'stp' if the final 3 nt of the prediction
-              # are not a valid stop codon, regardless of frame
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
-              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
-            }
-            else { # $early_inframe_stop is 1
-              # possibility 3 (P3): stp and trc error
+                # add the 3 potential error codes, we'll check again later and possibly remove them
+                # the 'stp' error is only a "maybe" because (! $stop_is_valid) implies it's not an
+                # *IN-FRAME* valid stop codon, but we only throw 'stp' if the final 3 nt of the prediction
+                # are not a valid stop codon, regardless of frame
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
+                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
+              }
+              else { # $early_inframe_stop is 1
+                # possibility 3 (P3): stp and trc error
 
-              # add the 2 potential error codes, we'll check again later and possibly remove them
-              # the 'stp' error is only a "maybe" because of reason explained above similar case in possibility 2 above
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
-              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 3 (trc and stp)\n");
-            }
-          } # end of 'if(! $stop_is_valid)'
-          else { # $stop_is_valid is 1
-            if(! $early_inframe_stop) { 
-              ; 
-              # possibility 4 (P4): no errors, do nothing
-              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 4 (no errors)\n");
-            }
-            else { 
-              # possibility 5 (P5): trc error
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
-              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 5 (trc)\n");
-            }
-          }              
+                # add the 2 potential error codes, we'll check again later and possibly remove them
+                # the 'stp' error is only a "maybe" because of reason explained above similar case in possibility 2 above
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
+                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 3 (trc and stp)\n");
+              }
+            } # end of 'if(! $stop_is_valid)'
+            else { # $stop_is_valid is 1
+              if(! $early_inframe_stop) { 
+                ; 
+                # possibility 4 (P4): no errors, do nothing
+                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 4 (no errors)\n");
+              }
+              else { 
+                # possibility 5 (P5): trc error
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
+                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 5 (trc)\n");
+              }
+            }              
+          }
+        } # end of 'if(! $is_matpept)'
+        else { # $is_matpept is 1 
+          if(! $early_inframe_stop) { 
+            ; 
+            # possibility 6 (P6): maybe ntr error later, but can't check for it now, do nothing;
+            #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 6 (no error)\n");
+          }
+          else { # $early_inframe_stop is '1'
+            # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
+          }
         }
-      } # end of 'if(! $is_matpept)'
-      else { # $is_matpept is 1 
-        if(! $early_inframe_stop) { 
-          ; 
-          # possibility 6 (P6): maybe ntr error later, but can't check for it now, do nothing;
-          #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 6 (no error)\n");
-        }
-        else { # $early_inframe_stop is '1'
-          # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
-        }
-      }
+      } # end of 'if(! exists b5e error)'
     }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unable to parse esl-epn-translate.pl output line:\n$line\n", 1, $FH_HR);
@@ -2411,7 +2434,7 @@ sub get_esl_epn_translate_altstart_opt {
 # Incept:      EPN, Thu Mar 10 15:04:53 2016
 #
 # Purpose:    For each feature's predicted hits in a fasta file,
-#             call 'esl-epn-translate/ using the startstop option 
+#             call 'esl-epn-translate' using the -startstop option 
 #             to investigate where the in frame stop codons are.
 #
 # Arguments: 
@@ -2480,7 +2503,7 @@ sub wrapper_esl_epn_translate_startstop {
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_bd5_bd3_errors()
+#    mdl_results_add_str_nop_ost_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate
@@ -2662,7 +2685,8 @@ sub results_calculate_predicted_lengths {
 #  $mdlidx:            model index, 1st dim index in results_AAH to store in
 #  $seqidx:            sequence index, 2nd dim index in results_AAH to store in
 #  $mdllen:            model length
-#  $seqlen:            sequence length (before duplicating, if relevant)
+#  $accn_len:          sequence length (before duplicating, if relevant)
+#  $seq_len:           length of sequence actually searched (after duplicating, if relevant)
 #  $mdlfrom:           start position of hit
 #  $mdlto:             stop position of hit
 #  $seqfrom:           start position of hit
@@ -2678,15 +2702,18 @@ sub results_calculate_predicted_lengths {
 ################################################################# 
 sub store_hit { 
   my $sub_name = "store_hit()";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $seqlen, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $FH_HR) = @_;
+  my ($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $FH_HR) = @_;
 
   # only consider hits where either the start or end are less than the total length
   # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
   # rule for deciding which of duplicate hits we'll store 
-  if(($seqfrom <= $seqlen) || ($seqto <= $seqlen)) { 
+  if(($seqfrom <= $accn_len) || ($seqto <= $accn_len)) { 
+
+    my $p_5seqflush = undef; # set to '1' if hit is flush with 5' end of sequence (1st nt in seq is 1st nt in hit), else 0
+    my $p_3seqflush = undef; # set to '1' if hit is flush with 3' end of sequence (final nt in seq is final nt in hit), else 0
 
 # Code block below is how we used to modify start/stop if hit spanned
 # stop..start boundary, now we just store it as it is, and then modify
@@ -2714,12 +2741,23 @@ sub store_hit {
     }
     else { 
       # no hit yet exists, make one
+      # determine if hit extends to very end of sequence on 5' and 3' end
+      if($strand eq "+") { 
+        $p_5seqflush = (($seqfrom == 1)         || ($seqfrom == ($accn_len+1))) ? 1 : 0; # $accn_len+1 only possible if seq is duplicated
+        $p_3seqflush = (($seqto   == $accn_len) || ($seqto   == $seq_len))      ? 1 : 0; # $accn_len == $seq_len if sequence is not duplicated
+      }
+      else { # strand is -
+        $p_5seqflush = (($seqfrom == $accn_len) || ($seqfrom == $seq_len))      ? 1 : 0; # $accn_len == $seq_len if sequence is not duplicated
+        $p_3seqflush = (($seqto   == 1)         || ($seqto   == ($accn_len+1))) ? 1 : 0; # $accn_len+1 only possible if seq is duplicated
+      }
       %{$mdl_results_AAHR->[$mdlidx][$seqidx]} = ();
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_start"}     = $seqfrom;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_stop"}      = $seqto;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_strand"}    = $strand;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5overhang"} = ($mdlfrom - 1);
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3overhang"} = ($mdllen - $mdlto);
+      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5seqflush"} = $p_5seqflush;
+      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3seqflush"} = $p_3seqflush;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"}    = $evalue;
     }
   }
@@ -3164,32 +3202,23 @@ sub results_calculate_overlaps_and_adjacencies {
 }
 
 #################################################################
-# Subroutine:  mdl_results_add_str_nop_ost_bd5_bd3_errors
-# Incept:      EPN, Thu Mar 31 13:43:58 2016
+# Subroutine:  mdl_results_add_b5e_b5u_errors
+# Incept:      EPN, Fri Jan 13 13:26:49 2017
 #
-# Purpose:    Report 'str', 'nop', 'ost', 'bd5' and 'bd3' errors
-#             and fill in the following keys in $mdl_results_AAHR:
-#             "out_5boundary" and "out_3boundary".
+# Purpose:    Report 'b5e' and 'b5u'. The reporting of these
+#             is decoupled from 'b3e' and 'b3u' which are reported
+#             later, because we need to find 'b5e' errors before
+#             we look for 'trc' errors because a b5e precludes 
+#             a trc.
 #
 #             Checks for and adds or updates the following error 
 #             codes for features with "annot_type" eq "model":
 #             
-#             "nop": adds this error, no model prediction
-#             
-#             "str": updates this error, originally added in 
-#                  parse_esl_epn_translate_startstop_outfile()
-#                  by making the error message more informative
-#                  to include position and codon of predicted start
+#             "b5e": adds this error, predicted hit not flush with 
+#                    model end but flush with sequence end on 5'
 #
-#             "ost": adds this error, model prediction is on incorrect strand
-#
-#             "bd5": adds this error, predicted hit not flush with 
-#                  model on 5' end
-#             
-#             "bd3": adds this error, predicted hit not flush with 
-#                  model on 3' end
-#
-#             
+#             "b5u": adds this error, predicted hit not flush with 
+#                    model end and not flush with sequence end on 5'
 #
 # Arguments: 
 #  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
@@ -3207,8 +3236,85 @@ sub results_calculate_overlaps_and_adjacencies {
 #       given the lengths of the accession and the sequence we searched.
 #
 ################################################################# 
-sub mdl_results_add_str_nop_bd5_bd3_errors { 
-  my $sub_name = "mdl_results_add_str_nop_bd5_bd3_errors()";
+sub mdl_results_add_b5e_b5u_errors { 
+  my $sub_name = "mdl_results_add_b5e_b5u_errors";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # total counts of things
+  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $mdl_idx; # counter over models
+  my $seq_idx; # counter over sequences
+
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
+    my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
+    my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
+    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
+      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
+      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
+      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
+      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
+
+      if(exists $mdl_results_HR->{"p_start"}) { 
+        if($mdl_results_HR->{"p_5overhang"} != 0) { 
+          # and add b5e or b5u error
+          if($mdl_results_HR->{"p_5seqflush"} == 1) { # b5e
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end", $FH_HR);
+            # special case for which we will not allow a trc error later
+          }
+          else { # $mdl_results_HR->{"p_5seqflush"} == 0, b5u
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5u", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end", $FH_HR);
+          }
+        }
+      } # end of 'else' entered if we have a prediction
+    } # end of 'for($seq_idx' loop
+  } # end of 'for($mdl_idx' loop
+  return;
+}      
+
+#################################################################
+# Subroutine:  mdl_results_add_str_nop_ost_errors
+# Incept:      EPN, Thu Mar 31 13:43:58 2016
+#
+# Purpose:    Report 'str', 'nop', 'ost', 'b3e', and 'b3u' errors
+#             and fill in the following keys in $mdl_results_AAHR:
+#             "out_5boundary" and "out_3boundary".
+#
+#             Checks for and adds or updates the following error 
+#             codes for features with "annot_type" eq "model":
+#             
+#             "nop": adds this error, no model prediction
+#             
+#             "str": updates this error, originally added in 
+#                  parse_esl_epn_translate_startstop_outfile()
+#                  by making the error message more informative
+#                  to include position and codon of predicted start
+#
+#             "ost": adds this error, model prediction is on incorrect strand
+#
+# Arguments: 
+#  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
+#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
+#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
+#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies: If we have predicted start and stop coordinates that don't make sense
+#       given the lengths of the accession and the sequence we searched.
+#
+################################################################# 
+sub mdl_results_add_str_nop_ost_b3e_b3u_errors { 
+  my $sub_name = "mdl_results_add_str_nop_ost_b3e_b3u_errors()";
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -3256,13 +3362,11 @@ sub mdl_results_add_str_nop_bd5_bd3_errors {
         #######################################
         # update p_5overhang and p_3overhang
         # at this point, $mdl_results_HR->{"p_5overhang"} and $results->{"p_3overhang"} are both integers >= 0
-        # bd5 block
+        # 5' block
         if($mdl_results_HR->{"p_5overhang"} == 0) { 
           $mdl_results_HR->{"out_5boundary"} = ".";
         }
         else { 
-          # bd5 error
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd5", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end", $FH_HR);
           if($mdl_results_HR->{"p_5overhang"} > 9) { 
             $mdl_results_HR->{"out_5boundary"} = "+"; 
           }
@@ -3270,8 +3374,8 @@ sub mdl_results_add_str_nop_bd5_bd3_errors {
             $mdl_results_HR->{"out_5boundary"} = $mdl_results_HR->{"p_5overhang"};
           }
         }
-        # bd3 block
-        # check for 2 special cases, a trc or ext error, which invalidate the bd3 value
+        # 3' block
+        # check for 2 special cases, a trc or ext error, which invalidate the b3e or b3u values
         if(exists $mdl_results_HR->{"trc_err_flag"}) { 
           $mdl_results_HR->{"out_3boundary"} = "t";
         }
@@ -3282,14 +3386,22 @@ sub mdl_results_add_str_nop_bd5_bd3_errors {
           $mdl_results_HR->{"out_3boundary"} = ".";
         }
         else { 
-          # bd3 error
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd3", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
           if($mdl_results_HR->{"p_3overhang"} > 9) { 
             $mdl_results_HR->{"out_3boundary"} = "+"; 
           }
           else { 
             $mdl_results_HR->{"out_3boundary"} = $mdl_results_HR->{"p_3overhang"};
           }
+
+          # b3e or b3u error
+          if($mdl_results_HR->{"p_3seqflush"} == 1) { # b3e
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3e", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
+            # special case for which we will not allow a trc error later
+          }
+          else { # $mdl_results_HR->{"p_3seqflush"} == 0, b3u
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3u", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
+          }
+
         }
         if($mdl_results_HR->{"p_strand"} ne $mdl_info_HAR->{"ref_strand"}[$mdl_idx]) { 
           ################################
