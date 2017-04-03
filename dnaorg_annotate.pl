@@ -232,6 +232,7 @@ opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--loca
 opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--midthresh",  "integer", 100,                      1,    undef, undef,      "set max model length for using mid sensitivity mode to <n>", "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>", "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--mxsize",     "integer", 1024,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
 
@@ -299,6 +300,7 @@ my $options_okay =
                 'nseq=s'       => \$GetOptions_H{"--nseq"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
                 'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
+                'midthresh=s'  => \$GetOptions_H{"--midthresh"},
                 'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
 # options for alternative modes
@@ -402,6 +404,39 @@ if(opt_Get("--infasta", \%opt_HH)) {
   $infasta_file = $listfile;
   $listfile = undef;
   $do_infasta = 1;
+}
+
+# if --smallthresh or --midthresh or --bigthresh used, validate that the thresholds make sense:
+# small < mid < big
+if(opt_IsUsed("--smallthresh", \%opt_HH)) { 
+  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--midthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
+  }
+  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  }
+}
+if(opt_IsUsed("--midthresh", \%opt_HH)) { 
+  if(opt_Get("--midthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
+  }
+  if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --midthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--midthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  }
+}
+if(opt_IsUsed("--bigthresh", \%opt_HH)) { 
+  if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  }
+  if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --midthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--midthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  }
 }
 
 ###############
@@ -828,8 +863,19 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
       my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
       my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".cmscan" : "/dev/null";
       my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
-      my $do_big = ($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) ? 1 : 0; # use HMM mode for big models
-      run_cmscan($execs_H{"cmscan"}, 1, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
+      my $do_mid = 0;
+      if(! $do_max) { 
+        if($mdl_info_HA{"length"}[$m] <= (opt_Get("--midthresh", \%opt_HH))) { 
+          $do_max = 1; # set filter thresholds to --mid for middle sized models
+        } 
+      }
+      my $do_big = 0;
+      if((! $do_max) && (! $do_mid)) { 
+        if($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) { 
+          $do_big = 1; # use HMM mode for big models
+        }
+      }
+      run_cmscan($execs_H{"cmscan"}, 1, $do_max, $do_mid, $do_big, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
       push(@tmp_tblout_file_A, $tmp_tblout_file);
     }
   }
@@ -850,8 +896,19 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
         my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".s" . $s . ".tblout";
         my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".s" . $s . ".cmscan" : "/dev/null";
         my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
-        my $do_big = ($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) ? 1 : 0; # use HMM mode for big models
-        run_cmscan($execs_H{"cmscan"}, 0, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m],  # 0: do not run locally
+        my $do_mid = 0;
+        if(! $do_max) { 
+          if($mdl_info_HA{"length"}[$m] <= (opt_Get("--midthresh", \%opt_HH))) { 
+            $do_max = 1; # set filter thresholds to --mid for middle sized models
+          } 
+        }
+        my $do_big = 0;
+        if((! $do_max) && (! $do_mid)) { 
+          if($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) { 
+            $do_big = 1; # use HMM mode for big models
+          }
+        }
+        run_cmscan($execs_H{"cmscan"}, 0, $do_max, $do_mid, $do_big, $mdl_info_HA{"cmfile"}[$m],  # 0: do not run locally
                    $tmp_seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH);
         push(@tmp_tblout_file_A, $tmp_tblout_file);
         push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
@@ -1450,6 +1507,7 @@ sub validate_cms_built_from_reference {
 #  $do_max:          '1' to run with --max option, '0' to run with default options
 #                    '1' is usually used only when $model_file contains a single 
 #                    very short model
+#  $do_mid:          '1' to run with --mid option, '0' to not
 #  $do_big:          '1' to run with --mxsize 6144 option, '0' to run with default options
 #  $model_file:      path to the CM file
 #  $seq_file:        path to the sequence file
@@ -1465,16 +1523,22 @@ sub validate_cms_built_from_reference {
 ################################################################# 
 sub run_cmscan { 
   my $sub_name = "run_cmscan()";
-  my $nargs_expected = 10;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($cmscan, $do_local, $do_max, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($cmscan, $do_local, $do_max, $do_mid, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   if($do_big && $do_max) { 
     DNAORG_FAIL("ERROR in $sub_name, do_big and do_max are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_big && $do_mid) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_big and do_mid are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_max && $do_mid) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_max and do_mid are both true, only one should be.", 1, $FH_HR);
   }
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
@@ -1484,8 +1548,8 @@ sub run_cmscan {
   if($do_max) { # no filtering
     $opts .= "--max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
   }
-  else { 
-    $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
+  elsif($do_mid) { 
+    $opts .= " --mid -E 0.1"; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
   }
   # finally add --nohmmonly if we're not a big model
   if(! $do_big) { # do not use hmm unless model is big
@@ -7366,7 +7430,7 @@ sub align_hits {
 
         # refdel
         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} = "";
-        printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refdelstr} to empty string\n");
+        #printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refdelstr} to empty string\n");
         foreach $el (@tmp_refdel_A) { 
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} .= $el . ",";
         }
@@ -7374,7 +7438,7 @@ sub align_hits {
 
         # refins
         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} = "";
-        printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refinsstr} to empty string\n");
+        #printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refinsstr} to empty string\n");
         foreach $el (@tmp_refins_A) { 
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} .= $el . ",";
         }
