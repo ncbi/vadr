@@ -234,7 +234,7 @@ opt_Add("--wait",       "integer", 500,                      1,    undef,"--loca
 opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--midthresh",  "integer", 100,                      1,    undef, undef,      "set max model length for using mid sensitivity mode to <n>", "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>", "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--mxsize",     "integer", 1024,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--mxsize",     "integer", 2048,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for alternative modes";
  #       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
@@ -258,11 +258,11 @@ opt_Add("--seqinfo",    "boolean", 0,                        5,    undef, undef,
 opt_Add("--errinfo",    "boolean", 0,                        5,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"6"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
-#     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                       6,"--skipscan",  undef,                    "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+#     option               type       default               group   requires    incompat                    preamble-output                                            help-output    
+opt_Add("--skipedirect",   "boolean", 0,                       6,   undef,      "-f,--nseq,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                       6,   undef,      "-f,--nseq,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",      "boolean", 0,                       6,   undef,      "-f,--nseq,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skiptranslate", "boolean", 0,                       6,"--skipscan",  undef,                      "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 
 $opt_group_desc_H{"7"} = "TEMPORARY options for the alternative method of identifying origin sequences";
@@ -6653,11 +6653,6 @@ sub output_gap_info {
   my $ch_tot_gap_length = "tot";
   my $ch_net_gap_length = "net";
 
-  $w_gapstr_A[0]         = length($ch_gapstr);
-  $w_tot_gap_length_A[0] = length($ch_tot_gap_length);
-  $w_net_gap_length_A[0] = length($ch_net_gap_length);
-  %{$ftr_gapstr_AH[0]}   = ();
-
   my $width_seq = length("#accession");
   my $ftr_idx = 0;
 
@@ -6665,7 +6660,16 @@ sub output_gap_info {
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
 
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $w_gapstr_A[$ftr_idx]         = length($ch_gapstr);
+    $w_tot_gap_length_A[$ftr_idx] = length($ch_tot_gap_length);
+    $w_net_gap_length_A[$ftr_idx] = length($ch_net_gap_length);
+    %{$ftr_gapstr_AH[$ftr_idx]}   = ();
+  }
+
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    # initialize 
+
     my $seq_accn = $seq_info_HAR->{"accn_name"}[$seq_idx];
     if(length($seq_accn) > $width_seq) { 
       $width_seq = length($seq_accn);
@@ -6689,12 +6693,6 @@ sub output_gap_info {
     for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
       my @refdel_A = (); 
       my @refins_A = (); 
-      if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"}) { 
-        printf("HEYA mdl_idx: $mdl_idx, seq_idx: $seq_idx refinsstr does not exist\n"); 
-      }
-      if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"}) { 
-        printf("HEYA mdl_idx: $mdl_idx, seq_idx: $seq_idx refdelstr does not exist\n"); 
-      }
       if((exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"}) && $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} ne "") {
         @refins_A = split(",", $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"});
       }
@@ -6888,11 +6886,20 @@ sub output_gap_info {
     printf $perseq_FH ("%-*s  ", $width_seq, $seq_accn);
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       if($ftr_idx > 0) { print $perseq_FH "  "; }
-      if(! $do_gap_special) { 
-        printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], $tot_gap_length_AA[$seq_idx][$ftr_idx]);
-        printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], $net_gap_length_AA[$seq_idx][$ftr_idx]);
+      if($ftr_info_HAR->{"type"}[$ftr_idx] eq "model") { 
+        if(! $do_gap_special) { 
+          printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], $tot_gap_length_AA[$seq_idx][$ftr_idx]);
+          printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], $net_gap_length_AA[$seq_idx][$ftr_idx]);
+        }
+        printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], $gapstr_AA[$seq_idx][$ftr_idx]);
       }
-      printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], $gapstr_AA[$seq_idx][$ftr_idx]);
+      else { # feature is not type 'model', we have no gap info
+        if(! $do_gap_special) { 
+          printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], "0");
+          printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], "0");
+        }
+        printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], "-");
+      }
     }
     print $perseq_FH ("\n");
   }
