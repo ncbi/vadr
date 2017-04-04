@@ -1096,8 +1096,10 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0,             "there is not exactly 1 occurrence of origin sequence", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "nop", "feature",  0,             "unable to identify homologous feature", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "nm3", "feature",  0,             "length of nucleotide feature is not a multiple of 3", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "bd5", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "bd3", "feature",  0,             "alignment to reference does not extend to 3' boundary of reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "b5e", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference but does extend to 5' boundary of target", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "b5u", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference or target", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "b3e", "feature",  0,             "alignment to reference does not extend to 3' boundary of reference but does extend to 3' boundary of target", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "b3u", "feature",  0,             "alignment to reference does not extend to 3' boundary of reference or target", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "olp", "feature",  0,             "feature does not overlap with same set of features as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "str", "feature",  0,             "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "stp", "feature",  1,             "predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA)", $FH_HR);
@@ -1117,10 +1119,10 @@ sub initializeHardCodedErrorInfoHash {
 # a nop in one exon or segment of a multi-model segment (e.g. one exon of a 2-exon feature) 
 # could have a nop and the other could have the other errors. May want to revisit this
 # at some point.
-#  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,bd5,bd3,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
+#  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,b5e,b5u,b3e,b3u,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "aji,int,inp", $FH_HR); 
   setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext", $FH_HR);
-  setIncompatibilityErrorInfoHash($err_info_HAR, "trc", "ext,nst,aji,inp", $FH_HR);
+  setIncompatibilityErrorInfoHash($err_info_HAR, "trc", "ext,nst,aji,inp,b5e", $FH_HR);
 
   # define the required combinations, these are one-sided, error code arg 2 requires error code arg 3, but error code arg 3 does not require err code arg 2
   #
