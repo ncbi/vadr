@@ -1064,13 +1064,13 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
         }
       }
     }
-    # printf("ext error for $seq_name ftr_idx: $ftr_idx %s mdl_idx: $mdl_idx\n", $ftr_info_HA{"out_tiny"}[$ftr_idx]);
+     printf("ext error for $seq_name ftr_idx: $ftr_idx %s mdl_idx: $mdl_idx\n", $ftr_info_HA{"out_tiny"}[$ftr_idx]);
 
     my $cur_start     = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"};
     my $cur_stop      = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_stop"};
     my $cur_strand    = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_strand"};
-    my $plen          = (abs($cur_stop - $cur_start)) + 1;
-    my $offset        = ($plen % 3); 
+    my $cur_cumlen    = $mdl_results_AAH[$mdl_idx][$seq_idx]{"cumlen"};
+    my $offset        = ($cur_cumlen % 3); 
     my $posn_to_start = $cur_stop;
     if($cur_strand eq "+") { 
       $posn_to_start -= $offset; # only want to look for downstream stops in-frame with respect to the START codon, not the predicted STOP
