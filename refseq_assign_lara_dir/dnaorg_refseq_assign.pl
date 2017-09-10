@@ -738,16 +738,17 @@ sub createFastas {
 	    #$id = $nextline;
 	    ($id) = ($nextline =~ m/^>(\S+)/);               # get rid of > and words after space                                                                                                                              
 	    $id =~ s/^gi\|?\d+\|\w+\|//; # get rid of everything before the accession number                                                                                                                  
-	    
-	    
-	    $id =~ s/\|$//;               # get rid of end | or                                                                                                                                  
-	    $id =~ s/\|\w+//;             # get rid of end | and everything after |                                                                                                                                        
-        
-
-	    # gets rid of version number                                                                                                                                                                                                         
-	    if($id =~ m/\.\d+$/) {
-		$id =~ s/\.\d+$//;
-	    }
+            # special case to deal with accessions that being with pdb\|, e.g. 'pdb|5TSN|T' which is the 
+            # name of the sequence that gets fetched for the accession 5TSN|T
+            if($id =~ /^pdb\|(\S+)\|(\S+)$/) { 
+              $id = $1 . "_" . $2;
+            }
+	    else { 
+              $id =~ s/\|$//;               # get rid of end | or                                                                                                                                  
+              $id =~ s/\|\w+//;             # get rid of end | and everything after |
+            }        
+	    # gets rid of version number
+            $id =~ s/\.\d+$//;
 
 	    $new_file_name = $out_root . "." . $id . "." . "fasta";
 	    open(ONEFILE, ">$new_file_name") or die "Cannot open $new_file_name\n";
@@ -761,12 +762,16 @@ sub createFastas {
 		    close(ONEFILE);
 		    #$id = $nextline;
 		    ($id) = ($nextline =~ m/^>(\S+)/);               # get rid of > and words after space                                                                                                                              
-		    $id =~ s/^gi\|?\d+\|\w+\|//; # get rid of everything before the accession number                                                                                                                  
-		    
-		    
-		    $id =~ s/\|$//;               # get rid of end | or                                                                                                                                  
-		    $id =~ s/\|\w+//;             # get rid of end | and everything after |                                                                                                                                        
-		    
+		    $id =~ s/^gi\|?\d+\|\w+\|//; # get rid of everything before the accession number                                                                                                     
+                    # special case to deal with accessions that being with pdb\|, e.g. 'pdb|5TSN|T' which is the 
+                    # name of the sequence that gets fetched for the accession 5TSN|T
+                    if($id =~ /^pdb\|(\S+)\|(\S+)$/) { 
+                      $id = $1 . "_" . $2;
+                    }
+                    else { 
+                      $id =~ s/\|$//;               # get rid of end | or                                                                                                                                  
+                      $id =~ s/\|\w+//;             # get rid of end | and everything after |
+                    }        
 		    
 		    # gets rid of version number                                                                                                                                                                                                         
 		    if($id =~ m/\.\d+$/) {
