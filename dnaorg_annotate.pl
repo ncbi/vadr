@@ -95,7 +95,7 @@ require "epn-options.pm";
 # three letter error 'code'. The list of error codes is in the
 # dnaorg.pm perl module file. It can also be found here:
 #
-#  /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5.documentation.txt
+#  /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5d.documentation.txt
 #
 # The most complicated code in this script is related to identifying
 # and storing these errors. Ideally, there would be one or a small set
@@ -136,10 +136,11 @@ require "epn-options.pm";
 # 1. parse_esl_epn_translate_startstop_outfile()
 # 2. results_calculate_corrected_stops()
 # 3. results_calculate_overlaps_and_adjacencies() 
-# 4. mdl_results_add_stp_nop_bd5_bd3_errors()
+# 4. mdl_results_add_stp_nop_ost_b3e_b3u_errors()
 # 5. ftr_results_calculate()
 # 6. find_origin_sequences()
 # 7. MAIN (not a function but rather the main body of the script):
+# 8. mdl_results_add_b5e_b5u_errors()
 #
 #              annot_type
 #          -------------------
@@ -147,8 +148,10 @@ require "epn-options.pm";
 # -------  -----  ------------ --------
 # nop      4      N/A          N/A
 # nm3      5      5            N/A
-# bd5      4      N/A          N/A
-# bd3      4      N/A          N/A
+# b5e      8      N/A          N/A
+# b5u      8      N/A          N/A
+# b3e      4      N/A          N/A
+# b3u      4      N/A          N/A
 # olp      3      N/A          N/A
 # str      1,4    1,5          N/A
 # stp      1,2    1,5          N/A
@@ -158,6 +161,7 @@ require "epn-options.pm";
 # ext      1,7,2  1,7,2        N/A
 # ntr      5      N/A          N/A
 # nst      1,7    1,7          N/A
+# ost      4      N/A          N/A
 # aji      N/A    5            N/A
 # int      N/A    5            N/A
 # inp      N/A    5            N/A
@@ -232,11 +236,13 @@ opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--loca
 opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>", "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--mxsize",     "integer", 1024,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--dfthresh",   "integer", 250,                      1,    undef, undef,      "set max model length for using default sensitivity mode to <n>", "set max model length for using default sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--midthresh",  "integer", 75,                       1,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",     "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>",     "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--mxsize",     "integer", 2048,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for alternative modes";
-#       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
+ #       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
 opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--skipedirect,--skipfetch",   "single cmdline argument is a fasta file of sequences, not a list of accessions", "single cmdline argument is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
 opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
 
@@ -257,12 +263,21 @@ opt_Add("--seqinfo",    "boolean", 0,                        5,    undef, undef,
 opt_Add("--errinfo",    "boolean", 0,                        5,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"6"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
-#     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                       6,   undef,      "--nseq,--local,--wait",  "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                       6,"--skipscan",  undef,                    "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+#     option               type       default               group   requires    incompat                    preamble-output                                            help-output    
+opt_Add("--skipedirect",   "boolean", 0,                       6,   undef,      "-f,--nseq,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                       6,   undef,      "-f,--nseq,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",      "boolean", 0,                       6,   undef,      "-f,--nseq,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skiptranslate", "boolean", 0,                       6,"--skipscan",  undef,                      "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
+
+$opt_group_desc_H{"7"} = "TEMPORARY options for the alternative method of identifying origin sequences";
+#     option               type       default               group   requires                                   incompat     preamble-output                                                         help-output    
+opt_Add("--aorgmodel",     "string",  undef,                   7,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgstart",     "integer", 0,                       7,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
+opt_Add("--aorgoffset",    "integer", 0,                       7,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
+opt_Add("--aorglen",       "integer", 0,                       7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgethresh",   "real",    1.0,                     7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgppthresh",  "real",    0.6,                     7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -290,6 +305,8 @@ my $options_okay =
                 'nseq=s'       => \$GetOptions_H{"--nseq"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
                 'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
+                'dfthresh=s'   => \$GetOptions_H{"--dfthresh"},
+                'midthresh=s'  => \$GetOptions_H{"--midthresh"},
                 'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
 # options for alternative modes
@@ -309,13 +326,20 @@ my $options_okay =
                 'skipedirect'   => \$GetOptions_H{"--skipedirect"},
                 'skipfetch'     => \$GetOptions_H{"--skipfetch"},
                 'skipscan'      => \$GetOptions_H{"--skipscan"},
-                'skiptranslate' => \$GetOptions_H{"--skiptranslate"});
+                'skiptranslate' => \$GetOptions_H{"--skiptranslate"}, 
+# options for alternative origin detection method
+                'aorgmodel=s'   => \$GetOptions_H{"--aorgmodel"},
+                'aorgstart=s'   => \$GetOptions_H{"--aorgstart"},
+                'aorglen=s'     => \$GetOptions_H{"--aorglen"},
+                'aorgoffset=s'  => \$GetOptions_H{"--aorgoffset"}, 
+                'aorgethresh=s' => \$GetOptions_H{"--aorgethresh"}, 
+                'aorgppthresh=s'=> \$GetOptions_H{"--aorgppthresh"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.15";
-my $releasedate   = "Oct 2016";
+my $version       = "0.16";
+my $releasedate   = "Sept 2017";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -355,6 +379,19 @@ if(opt_IsUsed("--origin", \%opt_HH)) {
   $origin_seq =~ s/\|//; # remove the single "|"
 }
 
+# validate alternative origin detection options if necessary
+if(opt_IsUsed("--aorgmodel", \%opt_HH)) { 
+  my $aorg_model  = opt_Get("--aorgmodel", \%opt_HH);
+  if(! -s $aorg_model) { 
+    die "ERROR with --aorgmodel <s>, $aorg_model does not exist or is empty"; 
+  }    
+  my $aorg_offset = opt_Get("--aorgoffset", \%opt_HH);
+  my $aorg_len    = opt_Get("--aorglen",  \%opt_HH);
+  if(($aorg_offset <= 0) || ($aorg_offset > $aorg_len)) { 
+    die "ERROR with --aorgoffset <n>, <n> must be greater than 0 and less than or equal to <n> from --aorglen";
+  }
+}
+
 my $dir_build  = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
 my $dir_out    = opt_Get("--dirout",   \%opt_HH);  # this will be undefined unless --dirout set on cmdline
 my $do_matpept = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --matpept set on cmdline 
@@ -373,6 +410,65 @@ if(opt_Get("--infasta", \%opt_HH)) {
   $infasta_file = $listfile;
   $listfile = undef;
   $do_infasta = 1;
+}
+
+# if --smallthresh or --midthresh or --dfthresh or --bigthresh used, validate that the thresholds make sense:
+# small < mid < df < big
+if(opt_IsUsed("--smallthresh", \%opt_HH)) { 
+  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--midthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
+  }
+  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--dfthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
+  }
+  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  }
+}
+if(opt_IsUsed("--midthresh", \%opt_HH)) { 
+  if(opt_Get("--midthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
+  }
+  if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--dfthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --midthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--midthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
+  }
+  if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --midthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--midthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  }
+}
+if(opt_IsUsed("--dfthresh", \%opt_HH)) { 
+  if(opt_Get("--dfthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
+  }
+  if(opt_Get("--dfthresh", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --midthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--midthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
+  }
+  if(opt_Get("--dfthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --dfthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--dfthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  }
+}
+if(opt_IsUsed("--bigthresh", \%opt_HH)) { 
+  if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  }
+  if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --midthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--midthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  }
+  if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--dfthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --dfthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--dfthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  }
 }
 
 ###############
@@ -446,14 +542,26 @@ if(! defined $dir_out) {
 else { 
   # --dirout was used to specify $dir_out
   # if it already exists (and it's not $ref_accn and it's not $dir_build) 
-  # remove it only if -f also used
+  # check if one of the skip options was used (begin with --skip) 
+  # if so, try to use it. Else tell user to either rerun with -f
+  # or delete it.
   if(($dir_out ne $ref_accn) && ($dir_out ne $dir_build)) { 
     if(-d $dir_out) { 
       $cmd = "rm -rf $dir_out";
-      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-      else                        { die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
+      if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
+        runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); 
+      }
+      else { # dirout exists but -f not used
+        if(! ((opt_IsUsed("--skipedirect",   \%opt_HH)) || 
+              (opt_IsUsed("--skipfetch",     \%opt_HH)) || 
+              (opt_IsUsed("--skipscan",      \%opt_HH)) || 
+              (opt_IsUsed("--skiptranslate", \%opt_HH)))) { 
+          die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; 
+        }
+        # if a --skip option is used, we just press on
+      }
     }
-    if(-e $dir_out) { 
+    elsif(-e $dir_out) { 
       $cmd = "rm $dir_out";
       if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
       else                        { die "ERROR a file named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
@@ -740,7 +848,18 @@ my %err_seq_instances_HH = ();
 error_instances_initialize_AHH(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
 
 if(opt_IsUsed("--origin", \%opt_HH)) { 
+  $start_secs = outputProgressPrior("Identifying origin sequences", $progress_w, $log_FH, *STDOUT);
   find_origin_sequences($sqfile, $origin_seq, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
+#############
+# TEMPORARY alternative origin detection method
+#############
+if(opt_IsUsed("--aorgmodel", \%opt_HH)) { 
+  $start_secs = outputProgressPrior("Identifying origin sequences with profile HMM method", $progress_w, $log_FH, *STDOUT);
+  aorg_find_origin_sequences($ofile_info_HH{"fullpath"}{"fasta"}, $sqfile, \%execs_H, $out_root, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH); 
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
 ####################################
@@ -775,9 +894,8 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     for(my $m = 0; $m < $nmdl; $m++) { 
       my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
       my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".cmscan" : "/dev/null";
-      my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
-      my $do_big = ($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) ? 1 : 0; # use HMM mode for big models
-      run_cmscan($execs_H{"cmscan"}, 1, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
+      my ($do_max, $do_mid, $do_df, $do_big) = determine_cmscan_filter_settings($mdl_info_HA{"length"}[$m], \%opt_HH);
+      run_cmscan($execs_H{"cmscan"}, 1, $do_max, $do_mid, $do_df, $do_big, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
       push(@tmp_tblout_file_A, $tmp_tblout_file);
     }
   }
@@ -797,9 +915,8 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
       for(my $m = 0; $m < $nmdl; $m++) { 
         my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".s" . $s . ".tblout";
         my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".s" . $s . ".cmscan" : "/dev/null";
-        my $do_max = ($mdl_info_HA{"length"}[$m] <= (opt_Get("--smallthresh", \%opt_HH))) ? 1 : 0; # do not filter for very short models
-        my $do_big = ($mdl_info_HA{"length"}[$m] >= (opt_Get("--bigthresh",   \%opt_HH))) ? 1 : 0; # use HMM mode for big models
-        run_cmscan($execs_H{"cmscan"}, 0, $do_max, $do_big, $mdl_info_HA{"cmfile"}[$m],  # 0: do not run locally
+        my ($do_max, $do_mid, $do_df, $do_big) = determine_cmscan_filter_settings($mdl_info_HA{"length"}[$m], \%opt_HH);
+        run_cmscan($execs_H{"cmscan"}, 0, $do_max, $do_mid, $do_df, $do_big, $mdl_info_HA{"cmfile"}[$m],  # 0: do not run locally
                    $tmp_seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH);
         push(@tmp_tblout_file_A, $tmp_tblout_file);
         push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
@@ -814,14 +931,14 @@ if(! opt_Get("--skipscan", \%opt_HH)) {
     if($njobs_finished != $nfarmjobs) { 
       DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
     }
+    if(! opt_Get("--local", \%opt_HH)) { 
+      outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
+    }
   } # end of 'else' entered if($nfarmjobs > 1 && ! --local)
     
   # concatenate all the tblout files into one 
   concatenateListOfFiles(\@tmp_tblout_file_A, $tblout_file, "dnaorg_annotate.pl", \%opt_HH, $ofile_info_HH{"FH"});
   
-  if(! opt_Get("--local", \%opt_HH)) { 
-    outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
-  }
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 } # end of if(! opt_Get(--skipscan", \%opt_HH))
 
@@ -832,7 +949,7 @@ $start_secs = outputProgressPrior("Parsing cmscan results", $progress_w, $log_FH
 
 my @mdl_results_AAH = ();  # 1st dim: array, 0..$nmdl-1, one per model
                            # 2nd dim: array, 0..$nseq-1, one per sequence
-                           # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_evalue", "p_fid2ref"
+                           # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_evalue", "p_fid2ref"
 initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # parse the cmscan results
@@ -876,6 +993,20 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 $start_secs = outputProgressPrior("Combining predicted mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
 combine_feature_hits("predicted", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#########################################################
+# Step 10b. Identify b5e, b5u, b3e, and b3u errors that occur when
+#           alignment does not extend to the model boundary. 
+#           We need to do this before step 12 which sets trc
+#           errors because a sequence with a b5e error cannot
+#           also have a trc error (we purposefully avoid checking
+#           for early stops). 
+#########################################################
+$start_secs = outputProgressPrior("Identifying errors associated with incomplete alignment to the model", $progress_w, $log_FH, *STDOUT);
+mdl_results_add_b5e_b5u_errors(\%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 
 #########################################################
 # Step 11. Examine each predicted feature to see if:
@@ -937,13 +1068,13 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
         }
       }
     }
-    # printf("ext error for $seq_name ftr_idx: $ftr_idx %s mdl_idx: $mdl_idx\n", $ftr_info_HA{"out_tiny"}[$ftr_idx]);
+     printf("ext error for $seq_name ftr_idx: $ftr_idx %s mdl_idx: $mdl_idx\n", $ftr_info_HA{"out_tiny"}[$ftr_idx]);
 
     my $cur_start     = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"};
     my $cur_stop      = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_stop"};
     my $cur_strand    = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_strand"};
-    my $plen          = (abs($cur_stop - $cur_start)) + 1;
-    my $offset        = ($plen % 3); 
+    my $cur_cumlen    = $mdl_results_AAH[$mdl_idx][$seq_idx]{"cumlen"};
+    my $offset        = ($cur_cumlen % 3); 
     my $posn_to_start = $cur_stop;
     if($cur_strand eq "+") { 
       $posn_to_start -= $offset; # only want to look for downstream stops in-frame with respect to the START codon, not the predicted STOP
@@ -1055,14 +1186,14 @@ my @ftr_results_AAH = (); # 1st dim: array, 0..$ftr_idx..$nftr-1, one per model
                           # if $ftr_info_HA{"annot_type"}[$ftr_idx] == "model", then $mdl_results_AAH
                           # contains all the results we need.
                           # 2nd dim: array, 0..$nseq-1, one per sequence
-                          # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_evalue", "fid2ref"
+                          # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_evalue", "fid2ref"
 
 initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 $start_secs = outputProgressPrior("Finalizing annotations and validating error combinations", $progress_w, $log_FH, *STDOUT);
-# report str, nop, bd5, bd3 errors, we need to know these before we call ftr_results_calculate()
-mdl_results_add_str_nop_bd5_bd3_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                                       \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+# report str, nop, b3e, b3u errors, we need to know these before we call ftr_results_calculate()
+mdl_results_add_str_nop_ost_b3e_b3u_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                                           \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # calculate out_start, out_stop and out_stop_codon values, we need to know some of these before we call ftr_results_calculate()
 mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, $ofile_info_HH{"FH"});
@@ -1267,7 +1398,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_bd5_bd3_errors()
+#    mdl_results_add_str_nop_ost_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate() ***
@@ -1381,10 +1512,65 @@ sub validate_cms_built_from_reference {
 #################################################################
 #
 #  Subroutines related to preparing CM files for searches:
+#    determine_cmscan_filter_settings()
 #    run_cmscan()
 #    split_fasta_file()
 #    parse_cmscan_tblout()
 #
+#################################################################
+# Subroutine:  determine_cmscan_filter_settings()
+# Incept:      EPN, Wed Apr  5 10:52:38 2017
+#
+# Purpose:     Given a model length and command line options, 
+#              determine the filtering mode to run cmscan in.
+#
+# Arguments: 
+#  $model_len:       length of model
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#
+# Returns:     4 values, exactly 0 or 1 of which will be '1'
+#              others will be '0'
+#              $do_max: '1' to run in max sensitivity mode
+#              $do_mid: '1' to run in mid sensitivity mode
+#              $do_df:  '1' to run in default sensitivity mode
+#              $do_big: '1' to run in fast (min sensitivity) mode
+# 
+# Dies: Never
+################################################################# 
+sub determine_cmscan_filter_settings { 
+  my $sub_name = "determine_cmscan_filter_settings()";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($model_len, $opt_HHR) = @_;
+
+  my $do_max = 0;
+  my $do_mid = 0;
+  my $do_df  = 0;
+  my $do_big = 0;
+
+  if($model_len <= (opt_Get("--smallthresh", $opt_HHR))) { 
+    $do_max = 1; # set filter thresholds to --max for small models
+  } 
+  if(! $do_max) { 
+    if($model_len <= (opt_Get("--midthresh", $opt_HHR))) { 
+      $do_mid = 1; # set filter thresholds to --mid for kind of small models
+    } 
+  }
+  if((! $do_max) && (! $do_mid)) { 
+    if($model_len <= (opt_Get("--dfthresh", $opt_HHR))) { 
+      $do_df = 1; # set filter thresholds to --FZ 30 for middle sized models
+    } 
+  }
+  if((! $do_max) && (! $do_mid) && (! $do_df)) { 
+    if($model_len >= (opt_Get("--bigthresh",   $opt_HHR))) { 
+      $do_big = 1; # use HMM mode for big models
+    }
+  }
+
+  return ($do_max, $do_mid, $do_df, $do_big);
+}
+
 #################################################################
 # Subroutine : run_cmscan()
 # Incept:      EPN, Mon Feb 29 15:09:22 2016
@@ -1398,6 +1584,8 @@ sub validate_cms_built_from_reference {
 #  $do_max:          '1' to run with --max option, '0' to run with default options
 #                    '1' is usually used only when $model_file contains a single 
 #                    very short model
+#  $do_mid:          '1' to run with --mid option, '0' to not
+#  $do_df:           '1' to run with --FZ 30 option, '0' to not
 #  $do_big:          '1' to run with --mxsize 6144 option, '0' to run with default options
 #  $model_file:      path to the CM file
 #  $seq_file:        path to the sequence file
@@ -1413,16 +1601,31 @@ sub validate_cms_built_from_reference {
 ################################################################# 
 sub run_cmscan { 
   my $sub_name = "run_cmscan()";
-  my $nargs_expected = 10;
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($cmscan, $do_local, $do_max, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($cmscan, $do_local, $do_max, $do_mid, $do_df, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   if($do_big && $do_max) { 
     DNAORG_FAIL("ERROR in $sub_name, do_big and do_max are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_big && $do_mid) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_big and do_mid are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_max && $do_mid) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_max and do_mid are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_max && $do_df) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_max and do_df are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_mid && $do_df) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_mid and do_df are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_big && $do_df) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_big and do_df are both true, only one should be.", 1, $FH_HR);
   }
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
@@ -1431,6 +1634,12 @@ sub run_cmscan {
   $opts .= " --cpu 0 --tblout $tblout_file --verbose ";
   if($do_max) { # no filtering
     $opts .= "--max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
+  }
+  elsif($do_mid) { 
+    $opts .= " --mid -E 0.1"; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
+  }
+  elsif($do_df) { 
+    $opts .= " --FZ 30 "; # do search with filters set up as if database was 30Mb.
   }
   else { 
     $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
@@ -1576,13 +1785,14 @@ sub parse_cmscan_tblout {
       my $mdlidx = $mdlname_index_H{$mdlname}; # model    index for the hit in results_AAH (1st dim of results_AAH)
       my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
       my $mdllen = $mdl_info_HAR->{"length"}[$mdlidx]; # model length, used to determine how far hit is from boundary of the model
-      if(! exists $seq_info_HAR->{"accn_len"}[$seqidx]) { 
+      if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
         DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
       }
-      my $seqlen = $seq_info_HAR->{"accn_len"}[$seqidx]; # sequence length, used to exclude storing of hits that start and stop after $seqlen, 
-                                                         # which can occur in circular genomes, where we've duplicated the sequence
+      my $accn_len = $seq_info_HAR->{"accn_len"}[$seqidx]; # accession length, used to exclude storing of hits that start and stop after $seqlen, 
+                                                           # which can occur in circular genomes, where we've duplicated the sequence
+      my $seq_len  = $seq_info_HAR->{"seq_len"}[$seqidx]; # total length of sequence searched, could be $accn_len or two times $accn_len if -c used
 
-      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $seqlen, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $FH_HR);
+      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $FH_HR);
     }
   }
   close(IN);
@@ -2173,117 +2383,124 @@ sub parse_esl_epn_translate_startstop_outfile {
     if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
       my ($seq_name, $coords, $start_is_valid, $stop_is_valid, $first_stop_posn1) = ($1, $2, $3, $4, $5);
 
-      # determine if we have an early stop
-      my $cds_len            = dashCoordsStringCommaDelimitedToLength($coords, $sub_name, $FH_HR);
-      my $final_codon_posn1  = $cds_len - 2; # final codon position 1 
-      my $early_inframe_stop;
-      my $corr_len           = 0; # number of nts to correct prediction by, changed if $early_inframe_stop
-      if($first_stop_posn1 == $final_codon_posn1) { # first stop is the final codon
-        $early_inframe_stop = 0;
-      }
-      elsif($first_stop_posn1 == 0) { # esl-epn-translate didn't find any in-frame stop
-        $early_inframe_stop = 0;
-      }
-      else { # there is an early stop
-        $early_inframe_stop = 1; 
-        $corr_len = (-1 * ($final_codon_posn1 - $first_stop_posn1)) + $append_num; # negative because early stop shortens length
-      }
+      # skip this sequence IFF we have a b5e error already for it, this means 
+      # that the alignment does not extend to the 5' boundary of the model but
+      # it does extend to the 5' boundary of the sequence (first seq posn of 
+      # alignment is 1 (on + strand) or L (on - strand)). In this case we 
+      # don't search for a trc error.
+      if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) { 
+        # determine if we have an early stop
+        my $cds_len            = dashCoordsStringCommaDelimitedToLength($coords, $sub_name, $FH_HR);
+        my $final_codon_posn1  = $cds_len - 2; # final codon position 1 
+        my $early_inframe_stop;
+        my $corr_len           = 0; # number of nts to correct prediction by, changed if $early_inframe_stop
+        if($first_stop_posn1 == $final_codon_posn1) { # first stop is the final codon
+          $early_inframe_stop = 0;
+        }
+        elsif($first_stop_posn1 == 0) { # esl-epn-translate didn't find any in-frame stop
+          $early_inframe_stop = 0;
+        }
+        else { # there is an early stop
+          $early_inframe_stop = 1; 
+          $corr_len = (-1 * ($final_codon_posn1 - $first_stop_posn1)) + $append_num; # negative because early stop shortens length
+        }
 
-      # We now have all of the relevant data on the current
-      # CDS/mat_peptide sequence and we need to use to determine
-      # what errors each sequence should throw (at least for those
-      # that can tell should be thrown at this point in the
-      # processing) as well as any corrections to stop predictions
-      # that we should make prior to translation (trc errors are
-      # thrown when this happens).
-      # 
-      # There are 4 relevant variables that dictate which errors
-      # should be thrown/checked for later and whether a stop
-      # correction should be made. The table gives all possible
-      # combinations of values of those variables and lists the
-      # outcome of each possibility.
-      #
-      # Variables we know from earlier processing:
-      # $is_matpept:     '1' if current feature is a mature peptide, '0' if it is a CDS
-      #
-      # Variables derived from esl-epn-translate output we're currently parsing
-      # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
-      # $stop_is_valid:      '1' if current feature's final 3 nt encode a valid stop codon and total feature length is multiple of 3
-      # $early_inframe_stop: '1' if an inframe stop exists prior to predicted stop
-      #
-      # 7 possibilities, each with different outcome (P1-P7):
-      #                                                                                       | make correction to |
-      # idx | is_matpept | start_is_valid | stop_is_valid | early_inframe_stop ||   errors    | stop coordinate?   |
-      # ----|------------|----------------|---------------|--------------------||-------------|--------------------|
-      #  P1 |      false |          false |          any  |                any ||         str |                 no |
-      #  P2 |      false |           true |        false  |              false ||     stp ext?|     maybe (if ext) |
-      #  P3 |      false |           true |        false  |               true ||     stp trc |                yes |
-      #  P4 |      false |           true |         true  |              false ||        none |                 no |
-      #  P5 |      false |           true |         true  |               true ||         trc |                yes |
-      # -----------------------------------------------------------------------||-----------------------------------
-      #  P6 |       true |            any |          any  |              false ||        ntr? |                 no |
-      #  P7 |       true |            any |          any  |               true ||    trc ntr? |                yes |
-      # ------------------------------------------------------------------------------------------------------------
-      # 
-      # in table above:
-      # '?' after error code means that error is possible, we have to check for it later           
-      # 'any' means that any value is possible, outcome is unaffected by value
-      #
-      if(! $is_matpept) { 
-        if(! $start_is_valid) { # possibility 1 (P1)
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, "", $FH_HR);
-          # printf("in $sub_name, feature index $ftr_idx, seq $seq_name $c possibility 1 (str)\n");
-        }
-        else { 
-          # $start_is_valid is 1
-          if(! $stop_is_valid) { 
-            if(! $early_inframe_stop) { 
-              # possibility 2 (P2): stp error, need to check for ext error later
+        # We now have all of the relevant data on the current
+        # CDS/mat_peptide sequence and we need to use to determine
+        # what errors each sequence should throw (at least for those
+        # that can tell should be thrown at this point in the
+        # processing) as well as any corrections to stop predictions
+        # that we should make prior to translation (trc errors are
+        # thrown when this happens).
+        # 
+        # There are 4 relevant variables that dictate which errors
+        # should be thrown/checked for later and whether a stop
+        # correction should be made. The table gives all possible
+        # combinations of values of those variables and lists the
+        # outcome of each possibility.
+        #
+        # Variables we know from earlier processing:
+        # $is_matpept:     '1' if current feature is a mature peptide, '0' if it is a CDS
+        #
+        # Variables derived from esl-epn-translate output we're currently parsing
+        # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
+        # $stop_is_valid:      '1' if current feature's final 3 nt encode a valid stop codon and total feature length is multiple of 3
+        # $early_inframe_stop: '1' if an inframe stop exists prior to predicted stop
+        #
+        # 7 possibilities, each with different outcome (P1-P7):
+        #                                                                                       | make correction to |
+        # idx | is_matpept | start_is_valid | stop_is_valid | early_inframe_stop ||   errors    | stop coordinate?   |
+        # ----|------------|----------------|---------------|--------------------||-------------|--------------------|
+        #  P1 |      false |          false |          any  |                any ||         str |                 no |
+        #  P2 |      false |           true |        false  |              false ||     stp ext?|     maybe (if ext) |
+        #  P3 |      false |           true |        false  |               true ||     stp trc |                yes |
+        #  P4 |      false |           true |         true  |              false ||        none |                 no |
+        #  P5 |      false |           true |         true  |               true ||         trc |                yes |
+        # -----------------------------------------------------------------------||-----------------------------------
+        #  P6 |       true |            any |          any  |              false ||        ntr? |                 no |
+        #  P7 |       true |            any |          any  |               true ||    trc ntr? |                yes |
+        # ------------------------------------------------------------------------------------------------------------
+        # 
+        # in table above:
+        # '?' after error code means that error is possible, we have to check for it later           
+        # 'any' means that any value is possible, outcome is unaffected by value
+        #
+        if(! $is_matpept) { 
+          if(! $start_is_valid) { # possibility 1 (P1)
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, "", $FH_HR);
+            # printf("in $sub_name, feature index $ftr_idx, seq $seq_name $c possibility 1 (str)\n");
+          }
+          else { 
+            # $start_is_valid is 1
+            if(! $stop_is_valid) { 
+              if(! $early_inframe_stop) { 
+                # possibility 2 (P2): stp error, need to check for ext error later
 
-              # add the 3 potential error codes, we'll check again later and possibly remove them
-              # the 'stp' error is only a "maybe" because (! $stop_is_valid) implies it's not an
-              # *IN-FRAME* valid stop codon, but we only throw 'stp' if the final 3 nt of the prediction
-              # are not a valid stop codon, regardless of frame
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
-              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
-            }
-            else { # $early_inframe_stop is 1
-              # possibility 3 (P3): stp and trc error
+                # add the 3 potential error codes, we'll check again later and possibly remove them
+                # the 'stp' error is only a "maybe" because (! $stop_is_valid) implies it's not an
+                # *IN-FRAME* valid stop codon, but we only throw 'stp' if the final 3 nt of the prediction
+                # are not a valid stop codon, regardless of frame
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
+                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
+              }
+              else { # $early_inframe_stop is 1
+                # possibility 3 (P3): stp and trc error
 
-              # add the 2 potential error codes, we'll check again later and possibly remove them
-              # the 'stp' error is only a "maybe" because of reason explained above similar case in possibility 2 above
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
-              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 3 (trc and stp)\n");
-            }
-          } # end of 'if(! $stop_is_valid)'
-          else { # $stop_is_valid is 1
-            if(! $early_inframe_stop) { 
-              ; 
-              # possibility 4 (P4): no errors, do nothing
-              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 4 (no errors)\n");
-            }
-            else { 
-              # possibility 5 (P5): trc error
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
-              #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 5 (trc)\n");
-            }
-          }              
+                # add the 2 potential error codes, we'll check again later and possibly remove them
+                # the 'stp' error is only a "maybe" because of reason explained above similar case in possibility 2 above
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
+                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 3 (trc and stp)\n");
+              }
+            } # end of 'if(! $stop_is_valid)'
+            else { # $stop_is_valid is 1
+              if(! $early_inframe_stop) { 
+                ; 
+                # possibility 4 (P4): no errors, do nothing
+                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 4 (no errors)\n");
+              }
+              else { 
+                # possibility 5 (P5): trc error
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
+                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 5 (trc)\n");
+              }
+            }              
+          }
+        } # end of 'if(! $is_matpept)'
+        else { # $is_matpept is 1 
+          if(! $early_inframe_stop) { 
+            ; 
+            # possibility 6 (P6): maybe ntr error later, but can't check for it now, do nothing;
+            #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 6 (no error)\n");
+          }
+          else { # $early_inframe_stop is '1'
+            # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
+          }
         }
-      } # end of 'if(! $is_matpept)'
-      else { # $is_matpept is 1 
-        if(! $early_inframe_stop) { 
-          ; 
-          # possibility 6 (P6): maybe ntr error later, but can't check for it now, do nothing;
-          #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 6 (no error)\n");
-        }
-        else { # $early_inframe_stop is '1'
-          # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
-        }
-      }
+      } # end of 'if(! exists b5e error)'
     }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unable to parse esl-epn-translate.pl output line:\n$line\n", 1, $FH_HR);
@@ -2359,7 +2576,7 @@ sub get_esl_epn_translate_altstart_opt {
 # Incept:      EPN, Thu Mar 10 15:04:53 2016
 #
 # Purpose:    For each feature's predicted hits in a fasta file,
-#             call 'esl-epn-translate/ using the startstop option 
+#             call 'esl-epn-translate' using the -startstop option 
 #             to investigate where the in frame stop codons are.
 #
 # Arguments: 
@@ -2428,7 +2645,7 @@ sub wrapper_esl_epn_translate_startstop {
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_bd5_bd3_errors()
+#    mdl_results_add_str_nop_ost_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate
@@ -2610,7 +2827,8 @@ sub results_calculate_predicted_lengths {
 #  $mdlidx:            model index, 1st dim index in results_AAH to store in
 #  $seqidx:            sequence index, 2nd dim index in results_AAH to store in
 #  $mdllen:            model length
-#  $seqlen:            sequence length (before duplicating, if relevant)
+#  $accn_len:          sequence length (before duplicating, if relevant)
+#  $seq_len:           length of sequence actually searched (after duplicating, if relevant)
 #  $mdlfrom:           start position of hit
 #  $mdlto:             stop position of hit
 #  $seqfrom:           start position of hit
@@ -2626,15 +2844,18 @@ sub results_calculate_predicted_lengths {
 ################################################################# 
 sub store_hit { 
   my $sub_name = "store_hit()";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $seqlen, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $FH_HR) = @_;
+  my ($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $FH_HR) = @_;
 
   # only consider hits where either the start or end are less than the total length
   # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
   # rule for deciding which of duplicate hits we'll store 
-  if(($seqfrom <= $seqlen) || ($seqto <= $seqlen)) { 
+  if(($seqfrom <= $accn_len) || ($seqto <= $accn_len)) { 
+
+    my $p_5seqflush = undef; # set to '1' if hit is flush with 5' end of sequence (1st nt in seq is 1st nt in hit), else 0
+    my $p_3seqflush = undef; # set to '1' if hit is flush with 3' end of sequence (final nt in seq is final nt in hit), else 0
 
 # Code block below is how we used to modify start/stop if hit spanned
 # stop..start boundary, now we just store it as it is, and then modify
@@ -2662,12 +2883,23 @@ sub store_hit {
     }
     else { 
       # no hit yet exists, make one
+      # determine if hit extends to very end of sequence on 5' and 3' end
+      if($strand eq "+") { 
+        $p_5seqflush = (($seqfrom == 1)         || ($seqfrom == ($accn_len+1))) ? 1 : 0; # $accn_len+1 only possible if seq is duplicated
+        $p_3seqflush = (($seqto   == $accn_len) || ($seqto   == $seq_len))      ? 1 : 0; # $accn_len == $seq_len if sequence is not duplicated
+      }
+      else { # strand is -
+        $p_5seqflush = (($seqfrom == $accn_len) || ($seqfrom == $seq_len))      ? 1 : 0; # $accn_len == $seq_len if sequence is not duplicated
+        $p_3seqflush = (($seqto   == 1)         || ($seqto   == ($accn_len+1))) ? 1 : 0; # $accn_len+1 only possible if seq is duplicated
+      }
       %{$mdl_results_AAHR->[$mdlidx][$seqidx]} = ();
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_start"}     = $seqfrom;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_stop"}      = $seqto;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_strand"}    = $strand;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5overhang"} = ($mdlfrom - 1);
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3overhang"} = ($mdllen - $mdlto);
+      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5seqflush"} = $p_5seqflush;
+      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3seqflush"} = $p_3seqflush;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"}    = $evalue;
     }
   }
@@ -3112,30 +3344,23 @@ sub results_calculate_overlaps_and_adjacencies {
 }
 
 #################################################################
-# Subroutine:  mdl_results_add_str_nop_bd5_bd3_errors
-# Incept:      EPN, Thu Mar 31 13:43:58 2016
+# Subroutine:  mdl_results_add_b5e_b5u_errors
+# Incept:      EPN, Fri Jan 13 13:26:49 2017
 #
-# Purpose:    Report 'str', 'nop', 'bd5' and 'bd3' errors
-#             and fill in the following keys in $mdl_results_AAHR:
-#             "out_5boundary" and "out_3boundary".
+# Purpose:    Report 'b5e' and 'b5u'. The reporting of these
+#             is decoupled from 'b3e' and 'b3u' which are reported
+#             later, because we need to find 'b5e' errors before
+#             we look for 'trc' errors because a b5e precludes 
+#             a trc.
 #
 #             Checks for and adds or updates the following error 
 #             codes for features with "annot_type" eq "model":
 #             
-#             "nop": adds this error, no model prediction
-#             
-#             "str": updates this error, originally added in 
-#                  parse_esl_epn_translate_startstop_outfile()
-#                  by making the error message more informative
-#                  to include position and codon of predicted start
+#             "b5e": adds this error, predicted hit not flush with 
+#                    model end but flush with sequence end on 5'
 #
-#             "bd5": adds this error, predicted hit not flush with 
-#                  model on 5' end
-#             
-#             "bd3": adds this error, predicted hit not flush with 
-#                  model on 3' end
-#
-#             
+#             "b5u": adds this error, predicted hit not flush with 
+#                    model end and not flush with sequence end on 5'
 #
 # Arguments: 
 #  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
@@ -3153,8 +3378,85 @@ sub results_calculate_overlaps_and_adjacencies {
 #       given the lengths of the accession and the sequence we searched.
 #
 ################################################################# 
-sub mdl_results_add_str_nop_bd5_bd3_errors { 
-  my $sub_name = "mdl_results_add_str_nop_bd5_bd3_errors()";
+sub mdl_results_add_b5e_b5u_errors { 
+  my $sub_name = "mdl_results_add_b5e_b5u_errors";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # total counts of things
+  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $mdl_idx; # counter over models
+  my $seq_idx; # counter over sequences
+
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
+    my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
+    my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
+    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+      my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
+      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
+      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
+      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
+      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
+
+      if(exists $mdl_results_HR->{"p_start"}) { 
+        if($mdl_results_HR->{"p_5overhang"} != 0) { 
+          # and add b5e or b5u error
+          if($mdl_results_HR->{"p_5seqflush"} == 1) { # b5e
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end", $FH_HR);
+            # special case for which we will not allow a trc error later
+          }
+          else { # $mdl_results_HR->{"p_5seqflush"} == 0, b5u
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5u", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end", $FH_HR);
+          }
+        }
+      } # end of 'else' entered if we have a prediction
+    } # end of 'for($seq_idx' loop
+  } # end of 'for($mdl_idx' loop
+  return;
+}      
+
+#################################################################
+# Subroutine:  mdl_results_add_str_nop_ost_errors
+# Incept:      EPN, Thu Mar 31 13:43:58 2016
+#
+# Purpose:    Report 'str', 'nop', 'ost', 'b3e', and 'b3u' errors
+#             and fill in the following keys in $mdl_results_AAHR:
+#             "out_5boundary" and "out_3boundary".
+#
+#             Checks for and adds or updates the following error 
+#             codes for features with "annot_type" eq "model":
+#             
+#             "nop": adds this error, no model prediction
+#             
+#             "str": updates this error, originally added in 
+#                  parse_esl_epn_translate_startstop_outfile()
+#                  by making the error message more informative
+#                  to include position and codon of predicted start
+#
+#             "ost": adds this error, model prediction is on incorrect strand
+#
+# Arguments: 
+#  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
+#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
+#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
+#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies: If we have predicted start and stop coordinates that don't make sense
+#       given the lengths of the accession and the sequence we searched.
+#
+################################################################# 
+sub mdl_results_add_str_nop_ost_b3e_b3u_errors { 
+  my $sub_name = "mdl_results_add_str_nop_ost_b3e_b3u_errors()";
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -3202,13 +3504,11 @@ sub mdl_results_add_str_nop_bd5_bd3_errors {
         #######################################
         # update p_5overhang and p_3overhang
         # at this point, $mdl_results_HR->{"p_5overhang"} and $results->{"p_3overhang"} are both integers >= 0
-        # bd5 block
+        # 5' block
         if($mdl_results_HR->{"p_5overhang"} == 0) { 
           $mdl_results_HR->{"out_5boundary"} = ".";
         }
         else { 
-          # bd5 error
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd5", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end", $FH_HR);
           if($mdl_results_HR->{"p_5overhang"} > 9) { 
             $mdl_results_HR->{"out_5boundary"} = "+"; 
           }
@@ -3216,8 +3516,8 @@ sub mdl_results_add_str_nop_bd5_bd3_errors {
             $mdl_results_HR->{"out_5boundary"} = $mdl_results_HR->{"p_5overhang"};
           }
         }
-        # bd3 block
-        # check for 2 special cases, a trc or ext error, which invalidate the bd3 value
+        # 3' block
+        # check for 2 special cases, a trc or ext error, which invalidate the b3e or b3u values
         if(exists $mdl_results_HR->{"trc_err_flag"}) { 
           $mdl_results_HR->{"out_3boundary"} = "t";
         }
@@ -3228,14 +3528,28 @@ sub mdl_results_add_str_nop_bd5_bd3_errors {
           $mdl_results_HR->{"out_3boundary"} = ".";
         }
         else { 
-          # bd3 error
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "bd3", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
           if($mdl_results_HR->{"p_3overhang"} > 9) { 
             $mdl_results_HR->{"out_3boundary"} = "+"; 
           }
           else { 
             $mdl_results_HR->{"out_3boundary"} = $mdl_results_HR->{"p_3overhang"};
           }
+
+          # b3e or b3u error
+          if($mdl_results_HR->{"p_3seqflush"} == 1) { # b3e
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3e", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
+            # special case for which we will not allow a trc error later
+          }
+          else { # $mdl_results_HR->{"p_3seqflush"} == 0, b3u
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3u", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
+          }
+
+        }
+        if($mdl_results_HR->{"p_strand"} ne $mdl_info_HAR->{"ref_strand"}[$mdl_idx]) { 
+          ################################
+          # ost error (incorrect strand) #
+          ################################
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ost", $seq_name, "", $FH_HR);
         }
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop
@@ -3789,7 +4103,7 @@ sub ftr_results_calculate {
         ###############################################################
         # if we did not find a child with a trc, and we have 
         # a trc error for this CDS, it must be invalid and caused
-        # by an aji error or an nm3 error or something like it,
+        # by an aji, nm3, or b5e error or something like it,
         # so we remove it
         ###############################################################
         if(! $child_had_trc) { 
@@ -4115,6 +4429,7 @@ sub find_origin_sequences {
   return;
 }
 
+
 #################################################################
 # Subroutine: get_origin_output_for_sequence
 # Incept:     EPN, Tue Mar 15 13:33:29 2016
@@ -4162,7 +4477,9 @@ sub get_origin_output_for_sequence {
 
   if($oseq_ct == 1) { 
     ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
+    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_start: $oseq_start oseq_stop: $oseq_stop\n");
     $oseq_offset = ($oseq_start < 0) ? ($oseq_start + $origin_offset) : ($oseq_start + $origin_offset - 1);
+    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
     # $oseq_offset is now number of nts to shift origin in counterclockwise direction
     if($oseq_offset > ($accn_len / 2)) { # simpler (shorter distance) to move origin clockwise
       $oseq_offset = $accn_len - $oseq_offset; # note, we don't add 1 here
@@ -4175,6 +4492,8 @@ sub get_origin_output_for_sequence {
 
   return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail);
 }
+
+
 
 #################################################################
 #################################################################
@@ -4852,6 +5171,7 @@ sub output_tbl_get_headings {
 #  origin sequence:#
 #  origin sequence:start
 #  origin sequence:stop
+#  origin sequence:1stps
 #  origin sequence:offst
 #  origin sequence:PF
 #  CDS #1 [single exon; +]:movement protein:start1
@@ -4913,7 +5233,8 @@ sub output_tbl_get_headings {
   output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "total length (nt) for accession", $FH_HR);
   output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR); # adds a blank line
 
-  if(opt_IsUsed("--origin", $opt_HHR)) { 
+  if((opt_IsUsed("--origin", $opt_HHR)) || 
+     (opt_IsUsed("--aorgstart", $opt_HHR))) { 
     # column/row #4: 'origin sequence:#'
     $tok1 = sprintf("  %22s", "");
     $tok2 = sprintf("  %22s", "   origin sequence");
@@ -4937,14 +5258,21 @@ sub output_tbl_get_headings {
     output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
     output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of lone occurrence of origin sequence (if only 1 exists)", $FH_HR);
 
-    # column/row #7: 'origin sequence:offst'
+    # column/row #7: 'origin sequence:1stpos'
+    # tok1, tok2, tok3 do not change
+    $tok4 = sprintf(" %5s", "1stps");
+    $tok5 = sprintf(" %5s", "-----");
+    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "what should be first position of genome, based on origin prediction", $FH_HR);
+
+    # column/row #8: 'origin sequence:offst'
     # tok1, tok2, tok3 do not change
     $tok4 = sprintf(" %5s", "offst");
     $tok5 = sprintf(" %5s", "-----");
     output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise", $FH_HR);
+    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)", $FH_HR);
 
-    # column/row #7: 'origin sequence:PF'
+    # column/row #9: 'origin sequence:PF'
     # tok1, tok2, tok3 do not change
     $tok4 = sprintf(" %2s", "PF");
     $tok5 = sprintf(" %2s", "--");
@@ -5595,7 +5923,7 @@ sub output_tbl_all_sequences {
   if(opt_IsUsed("--origin", $opt_HHR)) { 
     $origin_offset = validate_origin_seq(opt_Get("--origin", $opt_HHR));
   }
-  
+
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
     my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
@@ -5610,11 +5938,22 @@ sub output_tbl_all_sequences {
     push(@cur_out_A, sprintf("%-19s  ", $accn_name)); 
     push(@cur_out_A, sprintf("%6d ", $accn_len));
 
-    if(opt_IsUsed("--origin", $opt_HHR)) { 
-      my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail) = get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $origin_offset, $FH_HR);
+    my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail);
+    if((opt_IsUsed("--origin",    $opt_HHR)) || 
+       (opt_IsUsed("--aorgmodel", $opt_HHR))) { 
+
+      if(opt_IsUsed("--origin",    $opt_HHR)) { 
+        ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail) = get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $origin_offset, $FH_HR);
+        $oseq_firstpos = "?";
+      }
+      if(opt_IsUsed("--aorgmodel", $opt_HHR)) { 
+        ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail) = aorg_get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $FH_HR);
+      }
+
       push(@cur_out_A, sprintf("%2d ", $oseq_ct));
       push(@cur_out_A, sprintf("%5s ", $oseq_start));
       push(@cur_out_A, sprintf("%5s ", $oseq_stop));
+      push(@cur_out_A, sprintf("%5s ", $oseq_firstpos));
       push(@cur_out_A, sprintf("%5s ", $oseq_offset));
       push(@cur_out_A, sprintf(" %s", $oseq_passfail));
       $pass_fail_str .= $oseq_passfail;
@@ -5628,25 +5967,45 @@ sub output_tbl_all_sequences {
 
     # 5' UTR, if nec
     if($do_matpept) { 
-      # TODO, update this to work for positive or negative strand
-      if((exists $mdl_results_AAHR->[0][$seq_idx]{"p_strand"}) && 
-         ($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} ne "+")) { 
-        DNAORG_FAIL("ERROR in $sub_name, prediction is on negative strand and trying to compute 5' UTR, need to add code for this case.", 1, $FH_HR);
-      }
       if(! exists $mdl_results_AAHR->[0][$seq_idx]{"p_start"}) { 
         push(@cur_out_A, sprintf("  %6s", "?")); # start
         push(@cur_out_A, sprintf(" %6s", "?"));  # stop
         push(@cur_out_A, sprintf(" %6s", "?"));  # length
       }
-      elsif($mdl_results_AAHR->[0][$seq_idx]{"p_start"} == 1) { 
-        push(@cur_out_A, sprintf("  %6d", 0)); # start 
-        push(@cur_out_A, sprintf("  %6d", 0)); # stop 
-        push(@cur_out_A, sprintf("  %6d", 0)); # length
-      }
-      else { # 1st matpept does not start at nt 1 (normal case)
-        push(@cur_out_A, sprintf("  %6d", 1)); # start 
-        push(@cur_out_A, sprintf("  %6d", $mdl_results_AAHR->[0][$seq_idx]{"p_start"}-1)); # stop
-        push(@cur_out_A, sprintf("  %6d", $mdl_results_AAHR->[0][$seq_idx]{"p_start"}-1)); # length
+      else { # we know that $mdl_results_AAHR->[0][$seq_idx]{"p_start"} exists) { 
+        # determine output start and output stop
+        my ($cur_start, undef) = create_output_start_and_stop($mdl_results_AAHR->[0][$seq_idx]{"p_start"},
+                                                              $mdl_results_AAHR->[0][$seq_idx]{"p_stop"},
+                                                              $accn_len, $seq_len, $FH_HR);
+        if($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "+") { 
+          # positive strand, easy case
+          if($cur_start == 1) { 
+            push(@cur_out_A, sprintf("  %6d", 0)); # start 
+            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+            push(@cur_out_A, sprintf("  %6d", 0)); # length
+          }
+          else { # 1st matpept does not start at nt 1 (normal case)
+            push(@cur_out_A, sprintf("  %6d", 1)); # start 
+            push(@cur_out_A, sprintf("  %6d", $cur_start - 1)); # stop
+            push(@cur_out_A, sprintf("  %6d", $cur_start - 1)); # length
+          }
+        }
+        elsif($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "-") { 
+          # negative strand, more complicated, slightly
+          if($cur_start == $accn_len) { 
+            push(@cur_out_A, sprintf("  %6d", 0)); # start 
+            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+            push(@cur_out_A, sprintf("  %6d", 0)); # length
+          }
+          else { # 1st feature does not start at nt $accn_len on negative strand
+            push(@cur_out_A, sprintf("  %6d", $accn_len)); # start 
+            push(@cur_out_A, sprintf("  %6d", $cur_start + 1)); # stop
+            push(@cur_out_A, sprintf("  %6d", $accn_len - $cur_start)); # length
+          }
+        }
+        else { # not + or - strand, weird...
+          DNAORG_FAIL("ERROR in $sub_name, trying to compute 5' UTR for prediction that exists but is not + or - strand", 1, $FH_HR);
+        }
       }
     }
 
@@ -5870,45 +6229,60 @@ sub output_tbl_all_sequences {
 
     # 3' UTR, if nec
     if($do_matpept) { 
-      # TODO, update this to work for positive or negative strand
-      if((exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"}) && 
-         ($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} ne "+")) { 
-        DNAORG_FAIL("ERROR in $sub_name, prediction is on negative strand and trying to compute 3' UTR, need to add code for this case.", 1, $FH_HR);
-      }
       if(! exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}) { 
         push(@cur_out_A, sprintf("  %6s", "?")); # start
         push(@cur_out_A, sprintf(" %6s", "?"));  # stop
         push(@cur_out_A, sprintf(" %6s", "?"));  # length
       }
-      elsif($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"out_stop"} == $accn_len) { # final model prediction stops at final nt
-        push(@cur_out_A, sprintf("  %6d", 0)); # start 
-        push(@cur_out_A, sprintf("  %6d", 0)); # stop 
-        push(@cur_out_A, sprintf("  %6d", 0)); # length
-      }            
-      else { 
-        my $utr_start = undef;
-        my $tmp_stop = undef; # final stop position
+      else { # we know that $mdl_results_AAHR->[0][$seq_idx]{"p_start"} exists) { 
+        # determine output start and output stop
+        my $cur_stop = undef; # final stop position
         if(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"}) { 
-          (undef, $tmp_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_start"}, 
+          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_start"}, 
                                                             $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"},
                                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
         }
         elsif(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"}) { 
-          (undef, $tmp_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"},  # irrelevant due to the first undef arg
+          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"},  # irrelevant due to the first undef arg
                                                             $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"},
                                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
         }
         else { 
-          (undef, $tmp_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
+          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
                                                             $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_stop"}, 
                                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
         }
-        $utr_start = $tmp_stop + 1;
-        push(@cur_out_A, sprintf("  %6d", $utr_start));                   # start
-        push(@cur_out_A, sprintf("  %6d", $accn_len));                    # stop 
-        push(@cur_out_A, sprintf("  %6d", ($accn_len - $utr_start) + 1)); # length
+        if($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "+") { 
+          # positive strand, easy case
+          if($cur_stop == $accn_len) { # final model prediction stops at final nt
+            push(@cur_out_A, sprintf("  %6d", 0)); # start 
+            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+            push(@cur_out_A, sprintf("  %6d", 0)); # length
+          }            
+          else { 
+            push(@cur_out_A, sprintf("  %6d", $cur_stop + 1));           # start
+            push(@cur_out_A, sprintf("  %6d", $accn_len));               # stop 
+            push(@cur_out_A, sprintf("  %6d", ($accn_len - $cur_stop))); # length
+          }
+        }
+        elsif($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "-") { 
+          # negative strand, more complicated, slightly
+          if($cur_stop == 1) { # final model prediction stops at first nt
+            push(@cur_out_A, sprintf("  %6d", 0)); # start 
+            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
+            push(@cur_out_A, sprintf("  %6d", 0)); # length
+          }            
+          else { # final feature does not stop at nt 1 on negative strand
+            push(@cur_out_A, sprintf("  %6d", 1)); # start 
+            push(@cur_out_A, sprintf("  %6d", $cur_stop - 1)); # stop 
+            push(@cur_out_A, sprintf("  %6d", $cur_stop - 1)); # length
+          }
+        }
+        else { # not + or - strand, weird...
+          DNAORG_FAIL("ERROR in $sub_name, trying to compute 5' UTR for prediction that exists but is not + or - strand", 1, $FH_HR);
+        }
       }
-    }                
+    }
 
     # total length
     push(@cur_out_A, sprintf("  %6d", $accn_len));
@@ -6218,7 +6592,7 @@ sub output_errors_all_sequences {
           if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
             # an error exists, output it
             printf $all_FH ("%-10s  %3s  %-9s  %4s  %s%s\n", $accn_name, ($ftr_idx+1), $out_tiny, $err_code, $err_info_HAR->{"msg"}[$err_idx], 
-                            " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]"); 
+                            ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]"); 
             if($ftr_seq_nftrerr == 0) { 
               $per_line .= (" " . ($ftr_idx+1) . ":" . $err_code);
             }
@@ -6469,11 +6843,6 @@ sub output_gap_info {
   my $ch_tot_gap_length = "tot";
   my $ch_net_gap_length = "net";
 
-  $w_gapstr_A[0]         = length($ch_gapstr);
-  $w_tot_gap_length_A[0] = length($ch_tot_gap_length);
-  $w_net_gap_length_A[0] = length($ch_net_gap_length);
-  %{$ftr_gapstr_AH[0]}   = ();
-
   my $width_seq = length("#accession");
   my $ftr_idx = 0;
 
@@ -6481,7 +6850,16 @@ sub output_gap_info {
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
 
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $w_gapstr_A[$ftr_idx]         = length($ch_gapstr);
+    $w_tot_gap_length_A[$ftr_idx] = length($ch_tot_gap_length);
+    $w_net_gap_length_A[$ftr_idx] = length($ch_net_gap_length);
+    %{$ftr_gapstr_AH[$ftr_idx]}   = ();
+  }
+
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    # initialize 
+
     my $seq_accn = $seq_info_HAR->{"accn_name"}[$seq_idx];
     if(length($seq_accn) > $width_seq) { 
       $width_seq = length($seq_accn);
@@ -6505,12 +6883,6 @@ sub output_gap_info {
     for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
       my @refdel_A = (); 
       my @refins_A = (); 
-      if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"}) { 
-        printf("HEYA mdl_idx: $mdl_idx, seq_idx: $seq_idx refinsstr does not exist\n"); 
-      }
-      if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"}) { 
-        printf("HEYA mdl_idx: $mdl_idx, seq_idx: $seq_idx refdelstr does not exist\n"); 
-      }
       if((exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"}) && $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} ne "") {
         @refins_A = split(",", $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"});
       }
@@ -6704,11 +7076,20 @@ sub output_gap_info {
     printf $perseq_FH ("%-*s  ", $width_seq, $seq_accn);
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       if($ftr_idx > 0) { print $perseq_FH "  "; }
-      if(! $do_gap_special) { 
-        printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], $tot_gap_length_AA[$seq_idx][$ftr_idx]);
-        printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], $net_gap_length_AA[$seq_idx][$ftr_idx]);
+      if($ftr_info_HAR->{"type"}[$ftr_idx] eq "model") { 
+        if(! $do_gap_special) { 
+          printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], $tot_gap_length_AA[$seq_idx][$ftr_idx]);
+          printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], $net_gap_length_AA[$seq_idx][$ftr_idx]);
+        }
+        printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], $gapstr_AA[$seq_idx][$ftr_idx]);
       }
-      printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], $gapstr_AA[$seq_idx][$ftr_idx]);
+      else { # feature is not type 'model', we have no gap info
+        if(! $do_gap_special) { 
+          printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], "0");
+          printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], "0");
+        }
+        printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], "-");
+      }
     }
     print $perseq_FH ("\n");
   }
@@ -7246,7 +7627,7 @@ sub align_hits {
 
         # refdel
         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} = "";
-        printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refdelstr} to empty string\n");
+        #printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refdelstr} to empty string\n");
         foreach $el (@tmp_refdel_A) { 
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} .= $el . ",";
         }
@@ -7254,7 +7635,7 @@ sub align_hits {
 
         # refins
         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} = "";
-        printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refinsstr} to empty string\n");
+        #printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refinsstr} to empty string\n");
         foreach $el (@tmp_refins_A) { 
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} .= $el . ",";
         }
@@ -7817,8 +8198,8 @@ sub create_output_start_and_stop {
       # case 3
       $out_start = $in_start - $accn_len;
       $out_stop  = $in_stop  - $accn_len;
-      if($out_start < 0) { $out_start--; }
-      if($out_stop  < 0) { $out_stop--; }
+      if($out_start <= 0) { $out_start--; }
+      if($out_stop  <= 0) { $out_stop--; }
     }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unforeseen case in_start: $in_start in_stop: $in_stop seq_len: $seq_len accn_len: $accn_len", 1, $FH_HR);
@@ -8141,4 +8522,331 @@ sub validate_options_are_consistent_with_dnaorg_build {
 
   # if we get here, all options are consistent
   return;
+}
+
+################################################
+## TEMPORARY SUBROUTINES for the --aorg* options
+################################################
+
+#################################################################
+# Subroutine: aorg_find_origin_sequences
+# Incept:     EPN, Thu Jul 28 14:46:31 2016
+# 
+# Purpose:    TEMPORARY function for identifying origin sequences 
+#             using 'alternative' method -- a profile HMM.
+#
+#             Checks for and adds the following error codes: "ori".
+#
+# Args:   
+#  $fasta_file:             the fasta file to look for origins in
+#                           should contain duplicated genome sequences
+#                           (so if --infasta <f> used, probably not <f>)
+#  $sqfile:                 Bio:Easel object for $fasta_file
+#  $execs_HR:               ref to hash with paths to executables
+#  $out_root:               root for naming output files
+#  $seq_info_HAR:           REF to hash of arrays with information 
+#                           on the sequences, PRE-FILLED
+#  $err_seq_instances_HHR:  REF to the 2D hash of per-sequence errors, initialized here
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, 
+#                           see top of epn-options.pm for description
+#  $ofile_info_HHR:         REF to the 2D hash of output file information
+#
+# Returns:    void
+#
+#################################################################
+sub aorg_find_origin_sequences { 
+  my $sub_name = "aorg_find_origin_sequences";
+  my $nargs_exp = 9;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($fasta_file, $sqfile, $execs_HR, $out_root, $seq_info_HAR, $err_seq_instances_HHR, $err_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
+
+  my $aorg_model  = opt_Get("--aorgmodel",  $opt_HHR);
+  my $aorg_start  = opt_Get("--aorgstart",  $opt_HHR);
+  my $aorg_len    = opt_Get("--aorglen",    $opt_HHR);
+  my $aorg_offset = opt_Get("--aorgoffset", $opt_HHR);
+  
+  # run cmscan locally
+  my $tblout_file = $out_root . ".aorg.tblout";
+  my $cmscan_file = $out_root . ".aorg.cmscan";
+  my $opts = " --cpu 0 --tblout $tblout_file --verbose ";
+#  $opts .= " --nohmmonly --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 "; 
+  $opts .= " --nohmmonly --FZ 30 ";
+
+  my $cmd = $execs_HR->{"cmscan"} . " $opts $aorg_model $fasta_file > $cmscan_file";
+
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+
+  addClosedFileToOutputInfo(\%ofile_info_HH, "aorgtblout",  "$tblout_file",     1, "tblout file from cmscan for origin identification");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "aorgcmscan",  "$cmscan_file",     1, "standard output file from cmscan for origin identification");
+
+  my %hit_HH  = (); # 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
+  aorg_parse_cmscan_tblout_s2($tblout_file, $seq_info_HAR, \%hit_HH, $opt_HHR, $FH_HR);
+
+  # Fetch all hits into a fasta file that we can align with cmalign
+  my @fetch_AA = ();
+  for(my $i = 0; $i < $nseq; $i++) { 
+    my $seqname = $seq_info_HAR->{"seq_name"}[$i];
+    if(exists $hit_HH{$seqname}) { 
+      my $newname = $seqname . "/" . $hit_HH{$seqname}{"start"} . "-" . $hit_HH{$seqname}{"stop"};
+      push(@fetch_AA, [ $newname, $hit_HH{$seqname}{"start"}, $hit_HH{$seqname}{"stop"}, $seqname ]);
+      #printf("pushed $newname\n");
+    }
+  }
+  my $out_fasta_file = $out_root . ".cmscan.fa";
+  $sqfile->fetch_subseqs(\@fetch_AA, undef, $out_fasta_file);
+  addClosedFileToOutputInfo(\%ofile_info_HH, "aorgoutfasta", "$out_fasta_file", 1, "cmscan hits in fasta format");
+
+  # Align all hits with cmalign
+  my $out_stk_file     = $out_root . ".cmalign.stk";
+  my $out_cmalign_file = $out_root . ".cmalign";
+  $cmd = $execs_HR->{"cmalign"} . " -o $out_stk_file $aorg_model $out_fasta_file > $out_cmalign_file";
+
+  runCommand($cmd, 0, $ofile_info_HH{"FH"});
+  addClosedFileToOutputInfo(\%ofile_info_HH, "outstk",     "$out_stk_file",     1, "alignment of cmscan hits");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "outcmalign", "$out_cmalign_file", 1, "cmalign output");
+
+  # determine which positions the origin sequence is in each sequence
+  my $ori_msa = Bio::Easel::MSA->new   ({ 
+    fileLocation => $out_stk_file,
+    isDna => 1
+                                        });
+  my $ori_start_rfpos    = $aorg_start;
+  my $ori_stop_rfpos     = $aorg_start + $aorg_len - 1;
+  my $ori_offset_rfpos   = $aorg_start + $aorg_offset - 1;
+  my $ori_start_apos     = $ori_msa->rfpos_to_aligned_pos($ori_start_rfpos);
+  my $ori_stop_apos      = $ori_msa->rfpos_to_aligned_pos($ori_stop_rfpos);
+  my $ori_offset_apos    = $ori_msa->rfpos_to_aligned_pos($ori_offset_rfpos);
+
+  my $ori_ppthresh = opt_Get("--aorgppthresh", $opt_HHR);
+  #printf("ori_start_apos:  $ori_start_apos\n");
+  #printf("ori_stop_apos:   $ori_stop_apos\n");
+  #printf("ori_offset_apos: $ori_offset_apos\n");
+  
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+    my $has_hit = (defined $hit_HH{$seq_name}) ? 1 : 0;
+    $seq_info_HAR->{"origin_coords_str"}[$seq_idx] = ""; # initialize
+    $seq_info_HAR->{"origin_offset"}[$seq_idx]     = ""; # initialize
+    my $found_origin = 0;
+    
+    if($has_hit) { 
+      my $start = $hit_HH{$seq_name}{"start"};
+      my $stop  = $hit_HH{$seq_name}{"stop"};
+      my $msa_seqname = $seq_name . "/" . $start . "-" . $stop;
+      my $msa_sqidx = $ori_msa->get_sqidx($msa_seqname);
+      if($msa_sqidx == -1) { 
+        DNAORG_FAIL("ERROR, unable to find $msa_seqname in $out_stk_file", 1, $ofile_info_HH{"FH"});
+      }
+      # determine average pp of aligned residues between $ori_start_apos and $ori_stop_apos (inclusive)
+      # and enforce our posterior probability threshold
+      my ($pp_avg, $pp_cnt) = $ori_msa->get_pp_avg($msa_sqidx, $ori_start_apos, $ori_stop_apos);
+      # if($pp_cnt == 0) { printf("no aligned residues for origin prediction for $seq_name\n"); }
+      # if($pp_avg < $ori_ppthresh) { printf("avg PP of aligned origin below threshold for $seq_name ($pp_avg < $ori_ppthresh)\n"); }
+      if(($pp_cnt > 0) && ($pp_avg >= $ori_ppthresh)) { 
+
+        # determine the unaligned positions the origin spans in the alignment file $out_stk_file
+        my ($cur_ori_start_uapos, $cur_ori_start_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_start_apos, 1); # '1': if ori_start_apos is a gap, return position of 1st non-gap nucleotide after it 
+        my ($cur_ori_stop_uapos,  $cur_ori_stop_apos)  = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_stop_apos,  0); # '0': if ori_start_apos is a gap, return position of 1st non-gap nucleotide before it 
+        
+        # determine the unaligned position that maps to the special 'sequence start' position of the origin
+        # (this is --aorgoffset position of the origin), which will become position number 1 when we renumber
+        # sequences
+        my ($cur_ori_offset_uapos, $cur_ori_offset_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_offset_apos, 1); # '1': if ori_offset_apos is a gap, return position of 1st non-gap nucleotide after it 
+        
+        # do we have at least 1 nucleotide predicted in the origin positions?
+        if(($cur_ori_start_apos < $ori_stop_apos) && ($cur_ori_stop_apos > $ori_start_apos))  { 
+          # yes, we do:
+          # determine strand 
+          if($start <= $stop) { 
+            # positive strand
+            $cur_ori_start_uapos  += $start - 1;
+            $cur_ori_stop_uapos   += $start - 1;
+            $cur_ori_offset_uapos += $start - 1;
+          }
+          else { 
+            # negative strand
+            $cur_ori_start_uapos   = $start - $cur_ori_start_uapos  + 1;
+            $cur_ori_stop_uapos    = $start - $cur_ori_stop_uapos   + 1;
+            $cur_ori_offset_uapos  = $start - $cur_ori_offset_uapos + 1;
+          }
+          # adjust coordinates so they're within 1..L
+          my ($out_ori_start_uapos, $out_ori_stop_uapos) = 
+              create_output_start_and_stop($cur_ori_start_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+          
+          my $out_ori_offset_uapos;
+          ($out_ori_offset_uapos, undef) = 
+              create_output_start_and_stop($cur_ori_offset_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+          #printf("cur_ori_start_uapos:  $cur_ori_start_uapos\n");
+          #printf("cur_ori_offset_uapos: $cur_ori_offset_uapos\n");
+          #printf("cur_ori_stop_uapos:   $cur_ori_stop_uapos\n\n");
+          
+          #printf("out_ori_start_uapos:  $out_ori_start_uapos\n");
+          #printf("out_ori_offset_uapos: $out_ori_offset_uapos\n");
+          #printf("out_ori_stop_uapos:   $out_ori_stop_uapos\n\n");
+          
+          $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= $out_ori_start_uapos . ":" . $out_ori_stop_uapos;
+          $seq_info_HAR->{"origin_offset"}[$seq_idx]      = $out_ori_offset_uapos;
+          $found_origin = 1;
+        } 
+      } # end of 'if(($pp_cnt > 0) && ($pp_avg >= $ori_ppthresh))'
+    } # end of 'if($has_hit)'
+    if(! $found_origin) { 
+      error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, "0 occurrences", $FH_HR);
+    }
+  } # end of 'for' loop over $seq_idx
+
+
+  return;
+}
+
+#################################################################
+# Subroutine : aorg_parse_cmscan_tblout_s2()
+# Incept:      EPN, Tue Jul 12 08:54:07 2016
+#
+# Arguments: 
+#  $tblout_file:   tblout file to parse
+#  $seq_info_HAR:  REF to hash of arrays with information 
+#                  on the sequences, PRE-FILLED
+#  $hit_HHR:       REF to 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
+#  $opt_HHR:       ref to 2D options hash
+#  $FH_HR:         REF to hash of file handles
+#
+# Returns:    void
+#
+#################################################################
+sub aorg_parse_cmscan_tblout_s2 { 
+  my $sub_name = "aorg_parse_cmscan_tblout_s2()";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($tblout_file, $seq_info_HAR, $hit_HHR, $opt_HHR, $FH_HR) = @_;
+  
+  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
+  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seqname_index_H, $FH_HR);
+
+  open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
+
+  my $ethresh = opt_Get("--aorgethresh", $opt_HHR);
+  my $did_field_check = 0; # set to '1' below after we check the fields of the file
+  my $line_ctr = 0;  # counts lines in tblout_file
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    if(($line =~ m/^\#/) && (! $did_field_check)) { 
+      # sanity check, make sure the fields are what we expect
+      if($line !~ m/#target name\s+accession\s+query name\s+accession\s+mdl\s+mdl\s+from\s+mdl to\s+seq from\s+seq to\s+strand\s+trunc\s+pass\s+gc\s+bias\s+score\s+E-value inc description of target/) { 
+        DNAORG_FAIL("ERROR in $sub_name, unexpected field names in $tblout_file\n$line\n", 1, $FH_HR);
+      }
+      $did_field_check = 1;
+    }
+    elsif($line !~ m/^\#/) { 
+      chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+      # example line:
+      # NC_001346.dnaorg_build.origin.5p -         KJ699341             -         hmm        1       59     2484     2542      +     -    6 0.59   0.1   78.5     2e-24 !   -
+      my @elA = split(/\s+/, $line);
+      my ($mdlname, $seqname, $mod, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $score, $evalue) = 
+          ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
+
+      my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+      my $seqlen = $seq_info_HAR->{"accn_len"}[$seqidx];
+
+      # only consider hits where either the start or end are less than the total length
+      # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
+      # rule for deciding which of duplicate hits we'll store 
+      if(($seqfrom <= $seqlen) || ($seqto <= $seqlen)) { 
+        if($evalue <= $ethresh) { # enforce E-value threshold
+          if(! exists $hit_HHR->{$seqname}) { # takes only the top hit
+            %{$hit_HHR->{$seqname}} = ();
+            $hit_HHR->{$seqname}{"start"}  = $seqfrom;
+            $hit_HHR->{$seqname}{"stop"}   = $seqto;
+            $hit_HHR->{$seqname}{"score"}  = $score;
+            $hit_HHR->{$seqname}{"evalue"} = $evalue;
+          } 
+        }
+      }
+    }
+  }
+}
+
+
+#################################################################
+# Subroutine: aorg_get_origin_output_for_sequence
+# Incept:     EPN, Fri Jul 29 14:45:43 2016
+#
+# Synopsis:   For a given sequence index $seq_idx, determine 
+#             the output strings related to the origin sequence
+#             using the new profile HMM based method.
+#
+# Args: 
+#  $seq_info_HAR:  REF to hash of arrays with information 
+#                  on the sequences (including origins), PRE-FILLED
+#  $seq_idx:       index of sequence we're working on
+#  $FH_HR:         REF to hash of file handles
+#
+# Returns: 5 values:
+#          $oseq_ct:       number of occurrences of origin sequence found
+#          $oseq_start:    start position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_stop:     stop  position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_firstpos: what should be the first position of the seq if $oseq_ct == 1, else '-'
+#          $oseq_offset:   offset position of origin seq if $oseq_ct == 1, else '-'
+#          $oseq_passfail: 'P' if $oseq_ct is 1, else 'F'
+#
+# Dies: if $seq_info_HAR->{"origin_coords_str"}[$seq_idx] does not exist.
+# 
+#################################################################
+sub aorg_get_origin_output_for_sequence { 
+  my $sub_name = "aorg_get_origin_output_for_sequence";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_info_HAR, $seq_idx, $FH_HR) = @_;
+
+  if(! exists $seq_info_HAR->{"origin_coords_str"}[$seq_idx]) { 
+    DNAORG_FAIL("ERROR in $sub_name, no origin_coords_str (not even empty str) exists in seq_info_HAR for $seq_idx", 1, $FH_HR);
+  }
+  my $accn_len = $seq_info_HAR->{"accn_len"}[$seq_idx];
+
+  # initializereturn values
+  my $oseq_start    = "-"; # changed below if $oseq_ct == 1
+  my $oseq_stop     = "-"; # changed below if $oseq_ct == 1
+  my $oseq_firstpos = "-"; # changed below if $oseq_ct == 1
+  my $oseq_offset   = "-"; # changed below if $oseq_ct == 1
+  my $oseq_passfail = "F"; # changed below if $oseq_ct == 1
+
+  my @coords_A = split(",", $seq_info_HAR->{"origin_coords_str"}[$seq_idx]);
+  my $oseq_ct = scalar(@coords_A);
+
+  if($oseq_ct == 1) { 
+    ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
+    $oseq_firstpos = $seq_info_HAR->{"origin_offset"}[$seq_idx];
+    if($oseq_firstpos < 0) { 
+      $oseq_firstpos = $accn_len + $oseq_firstpos + 1;
+    }
+    $oseq_offset = $oseq_firstpos; 
+
+    # $oseq_offset is now what should be the first position of the sequence, 
+    # if this is > 0, we subtract 1 because that's how many we need to shift counterclockwise 
+    # direction to put $oseq_offset as position 1 (imagine if $oseq_offset is 1, then we need to shift '0', not '1')
+    # if it's negative then it's already the correct shift (due to the off-by-one
+    # introduced because there is no position 0)
+    if($oseq_offset > 0) { $oseq_offset -= 1; }
+    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
+    # $oseq_offset is now number of nts to shift origin in counterclockwise direction
+    if($oseq_offset > ($accn_len / 2)) { # simpler (shorter distance) to move origin clockwise
+      $oseq_offset = $accn_len - $oseq_offset; # note, we don't add 1 here
+    }
+    else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
+      $oseq_offset *= -1;
+    }
+
+    $oseq_passfail = "P";
+  }
+
+  return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail);
 }

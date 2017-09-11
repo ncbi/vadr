@@ -5,6 +5,13 @@ This 00README file explains the functioning of:
 dnaorg_refseq_assign.pl
 dnaorg_evaluate_refseq_assign.pl
 
+PREREQUISITES:
+
+HMMER v3.1b2 (hmmer.org) executables must be in your path for these
+scripts to work.  If you are at NCBI you can achieve this by adding
+'hmmer' to the facilities line of .ncbi_hints file, and adding the
+line 'option hmmer_version 3.1b2' to the end of your .ncbi_hints file.
+
 ----------------------------------------------------------------------------------------------------------------
 
 Program:	dnaorg_refseq_assign.pl

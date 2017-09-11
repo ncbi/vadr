@@ -111,8 +111,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.1";
-my $releasedate   = "August 2016 - ?";
+my $version       = "0.16";
+my $releasedate   = "Sept 2017";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -580,9 +580,9 @@ foreach my $seq (@seqs_to_assign_A) {
                                                                                                                                                                                                                     
 	    push(@hit_output_A, @{@{$hit_info_HAA{$seq}}[-2]}[1]);
 	
-	    my $bit_diff = $hit_info_HAA{$seq}[-1][4] - $hit_info_HAA{$seq}[-2][4];
-	    $bit_diff = sprintf("%.7f", $bit_diff);
-	    my $cov_diff = $hit_info_HAA{$seq}[-1][6] - $hit_info_HAA{$seq}[-2][6];
+	    my $bit_diff = $hit_info_HAA{$seq}[-1][2] - $hit_info_HAA{$seq}[-2][2];
+	    $bit_diff = sprintf("%9.1f", $bit_diff);
+	    my $cov_diff = $hit_info_HAA{$seq}[-1][4] - $hit_info_HAA{$seq}[-2][4];
 	    $cov_diff = sprintf("%.7f", $cov_diff);
 	    push(@hit_output_A, $bit_diff);
 	    push(@hit_output_A, $cov_diff);
@@ -738,16 +738,17 @@ sub createFastas {
 	    #$id = $nextline;
 	    ($id) = ($nextline =~ m/^>(\S+)/);               # get rid of > and words after space                                                                                                                              
 	    $id =~ s/^gi\|?\d+\|\w+\|//; # get rid of everything before the accession number                                                                                                                  
-	    
-	    
-	    $id =~ s/\|$//;               # get rid of end | or                                                                                                                                  
-	    $id =~ s/\|\w+//;             # get rid of end | and everything after |                                                                                                                                        
-        
-
-	    # gets rid of version number                                                                                                                                                                                                         
-	    if($id =~ m/\.\d+$/) {
-		$id =~ s/\.\d+$//;
-	    }
+            # special case to deal with accessions that being with pdb\|, e.g. 'pdb|5TSN|T' which is the 
+            # name of the sequence that gets fetched for the accession 5TSN|T
+            if($id =~ /^pdb\|(\S+)\|(\S+)$/) { 
+              $id = $1 . "_" . $2;
+            }
+	    else { 
+              $id =~ s/\|$//;               # get rid of end | or                                                                                                                                  
+              $id =~ s/\|\w+//;             # get rid of end | and everything after |
+            }        
+	    # gets rid of version number
+            $id =~ s/\.\d+$//;
 
 	    $new_file_name = $out_root . "." . $id . "." . "fasta";
 	    open(ONEFILE, ">$new_file_name") or die "Cannot open $new_file_name\n";
@@ -761,12 +762,16 @@ sub createFastas {
 		    close(ONEFILE);
 		    #$id = $nextline;
 		    ($id) = ($nextline =~ m/^>(\S+)/);               # get rid of > and words after space                                                                                                                              
-		    $id =~ s/^gi\|?\d+\|\w+\|//; # get rid of everything before the accession number                                                                                                                  
-		    
-		    
-		    $id =~ s/\|$//;               # get rid of end | or                                                                                                                                  
-		    $id =~ s/\|\w+//;             # get rid of end | and everything after |                                                                                                                                        
-		    
+		    $id =~ s/^gi\|?\d+\|\w+\|//; # get rid of everything before the accession number                                                                                                     
+                    # special case to deal with accessions that being with pdb\|, e.g. 'pdb|5TSN|T' which is the 
+                    # name of the sequence that gets fetched for the accession 5TSN|T
+                    if($id =~ /^pdb\|(\S+)\|(\S+)$/) { 
+                      $id = $1 . "_" . $2;
+                    }
+                    else { 
+                      $id =~ s/\|$//;               # get rid of end | or                                                                                                                                  
+                      $id =~ s/\|\w+//;             # get rid of end | and everything after |
+                    }        
 		    
 		    # gets rid of version number                                                                                                                                                                                                         
 		    if($id =~ m/\.\d+$/) {
