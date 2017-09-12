@@ -1895,7 +1895,9 @@ sub fetch_hits_given_results {
             # only do the appending if the full region $append_start..$append_stop 
             # exists
             if(($append_start <= $seq_info_HAR->{"seq_len"}[$seq_idx]) && 
-               ($append_stop  <= $seq_info_HAR->{"seq_len"}[$seq_idx])) { 
+               ($append_stop  <= $seq_info_HAR->{"seq_len"}[$seq_idx]) && 
+               ($append_start >= 1) && 
+               ($append_stop  >= 1)) { 
               my $append_new_name = $seq_name . "/" . $append_start . "-" . $append_stop;
               # we always put $start first and $stop second so that we can (usually) tell strand from the name,
               # "+" if start < stop, "-" if start > stop, ambiguous if start==stop
