@@ -31,20 +31,6 @@ use File::Slurp;
 require "dnaorg.pm";
 require "epn-options.pm";
 
-# first, determine the paths to all modules, scripts and executables that we'll need                                                               
-# we currently use hard-coded-paths for Infernal, HMMER and easel executables:                                                                                             
-my $hmmer_exec_dir    = "/usr/local/hmmer/3.1/bin/";
-
-# make sure the DNAORGDIR environment variable is set                                                                                                                       
-my $dnaorgdir = $ENV{'DNAORGDIR'};
-if(! exists($ENV{'DNAORGDIR'})) {
-    printf STDERR ("\nERROR, the environment variable DNAORGDIR is not set, please set it to the directory where you installed the dnaorg scripts and their dependencies.\n");
-    exit(1);
-}
-if(! (-d $dnaorgdir)) {
-    printf STDERR ("\nERROR, the dnaorg directory specified by your environment variable DNAORGDIR does not exist.\n");
-    exit(1);
-}
 
 ########################################################                                                                                                                                                                                                     
 # Command line and option processing using epn-options.pm                                                                      
@@ -100,8 +86,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time                                                 
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.17";
-my $releasedate   = "Sept 2017";
+my $version       = "0.18";
+my $releasedate   = "Oct 2017";
 
 # print help and exit if necessary                                                                                                                                                                                                                           
 if((! $options_okay) || ($GetOptions_H{"-h"})) {
