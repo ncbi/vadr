@@ -39,9 +39,6 @@ require "epn-options.pm";
 #######################################################################################
 
 # first, determine the paths to all modules, scripts and executables that we'll need
-# we currently use hard-coded-paths for Infernal, HMMER and easel executables:
-my $hmmer_exec_dir    = "/usr/local/hmmer/3.1/bin/";
-
 # make sure the DNAORGDIR environment variable is set
 my $dnaorgdir = $ENV{'DNAORGDIR'};
 if(! exists($ENV{'DNAORGDIR'})) { 
@@ -54,7 +51,9 @@ if(! (-d $dnaorgdir)) {
 }    
  
 # determine other required paths to executables relative to $dnaorgdir
-my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
+my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
+my $esl_exec_dir      = $dnaorgdir . "/infernal-1.1.2/easel/miniapps/";
+
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -111,8 +110,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.16";
-my $releasedate   = "Sept 2017";
+my $version       = "0.18";
+my $releasedate   = "Oct 2017";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -221,6 +220,16 @@ foreach $cmd (@early_cmd_A) {
 my $do_keep = opt_Get("--keep", \%opt_HH); # should we leave intermediates files on disk, instead of removing them?
 my @files2rm_A = ();                       # will be filled with files to remove, --keep was not enabled
 
+###################################################
+# make sure the required executables are executable
+###################################################
+my %execs_H = (); # hash with paths to all required executables
+$execs_H{"nhmmscan"}      = $hmmer_exec_dir . "nhmmscan";
+$execs_H{"hmmbuild"}      = $hmmer_exec_dir . "hmmbuild";
+$execs_H{"hmmpress"}      = $hmmer_exec_dir . "hmmpress";
+$execs_H{"esl-reformat"}  = $esl_exec_dir   . "esl-reformat";
+validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
+
 #################################################################################
 #################################################################################
 #
@@ -264,11 +273,11 @@ my $ref_library = $out_root . ".hmm";
 foreach (@refseqs_A) {
     my $fa_file = $out_root . ".$_.fasta";
     my $stk_file = $out_root . ".$_.stk";
-    $cmd = "esl-reformat --informat afa stockholm $fa_file > $stk_file";
+    $cmd = $execs_H{"esl-reformat"} . " --informat afa stockholm $fa_file > $stk_file";
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
 
     my $hmm_file = $out_root . ".$_.hmm";
-    $cmd = "hmmbuild $hmm_file $stk_file > /dev/null";  # dumps the output of hmmbuild
+    $cmd = $execs_H{"hmmbuild"} . " $hmm_file $stk_file > /dev/null";  # dumps the output of hmmbuild
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
     
     $cmd = "cat $hmm_file >> $ref_library";   # adds each individual hmm to the hmm library
@@ -284,7 +293,7 @@ foreach (@refseqs_A) {
 
 addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib", $ref_library, 1, "Library of HMMs of RefSeqs. Not press'd");
 
-$cmd = "hmmpress $ref_library > /dev/null";
+$cmd = $execs_H{"hmmpress"} . " $ref_library > /dev/null";
 runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -307,7 +316,7 @@ while (<SEQ_LIS>) {
 }
 
 # creates a tblout summary of the nhmmscan results and a file with nhmmscan results for each accession
-nhmmscanSeqs($out_root, \@seqs_to_assign_A, $ref_library, \@files2rm_A, \%ofile_info_HH); 
+nhmmscanSeqs($execs_H{"nhmmscan"}, $out_root, \@seqs_to_assign_A, $ref_library, \@files2rm_A, \%ofile_info_HH); 
 
 
 # clean up intermediate files (hmmpress binaries)
@@ -805,7 +814,8 @@ sub createFastas {
 #
 # Purpose:   Calls nhmmscan for each seq against the given HMM library
 # 
-# Arguments: $out_root            - path to the output directory
+# Arguments: $nhmmscan            - path to hmmer-3.1b2 nhmmscan executable
+#            $out_root            - path to the output directory
 #            $seqs_to_assign_AR   - unique identifier that distinguishes this command from others
 #            $ref_library         - HMM library of RefSeqs
 #            $files2rm_AR         - REF to a list of files to remove at the end of the
@@ -819,10 +829,10 @@ sub createFastas {
 #######################################################################################
 sub nhmmscanSeqs {
     my $sub_name  = "nhmmscanSeqs()";
-    my $nargs_expected = 5;
+    my $nargs_expected = 6;
     if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-    my ($out_root, $seqs_to_assign_AR, $ref_library, $files2rm_AR, $ofile_info_HHR) = (@_);
+    my ($nhmmscan, $out_root, $seqs_to_assign_AR, $ref_library, $files2rm_AR, $ofile_info_HHR) = (@_);
 
     my $qsub_script_name = $out_root . ".qsub.script";                                                                                                                                         
     open(QSUB, ">$qsub_script_name") || fileOpenFailure($qsub_script_name, $sub_name, $!, "writing", $ofile_info_HHR->{"FH"});
@@ -832,7 +842,7 @@ sub nhmmscanSeqs {
 	my $fa_file = $out_root . ".$seq.fasta";
 
 	# --noali , --cpu 0
-	my $cmd = "/usr/local/hmmer/3.1b2/bin/nhmmscan --noali --cpu 0 --tblout $seq_tbl_file $ref_library $fa_file > $seq_results_file";
+	my $cmd = "$nhmmscan --noali --cpu 0 --tblout $seq_tbl_file $ref_library $fa_file > $seq_results_file";
 
       	my $output_script_name = "$out_root" . "." . "$seq" . "\.qsub\.csh";                                                                                                                               
 	open(SCRIPT, ">$output_script_name") or die "Cannot open 4 $output_script_name\n";
