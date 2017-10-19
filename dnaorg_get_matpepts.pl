@@ -32,11 +32,6 @@ require "epn-options.pm";
 #######################################################################################
 
 # first, determine the paths to all modules, scripts and executables that we'll need
-# we currently use hard-coded-paths for Infernal, HMMER and easel executables:
-my $inf_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
-my $hmmer_exec_dir    = "/usr/local/hmmer/3.1/bin/";
-my $esl_exec_dir      = "/usr/local/infernal/1.1.1/bin/";
-
 # make sure the DNAORGDIR environment variable is set
 my $dnaorgdir = $ENV{'DNAORGDIR'};
 if(! exists($ENV{'DNAORGDIR'})) { 
@@ -49,6 +44,9 @@ if(! (-d $dnaorgdir)) {
 }    
  
 # determine other required paths to executables relative to $dnaorgdir
+my $inf_exec_dir      = $dnaorgdir . "/infernal-1.1.2/src/";
+my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
+my $esl_exec_dir      = $dnaorgdir . "/infernal-1.1.2/easel/miniapps/";
 my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
 
 #########################################################
@@ -99,8 +97,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.15";
-my $releasedate   = "Oct 2016";
+my $version       = "0.18";
+my $releasedate   = "Oct 2017";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
