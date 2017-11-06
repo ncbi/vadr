@@ -1,4 +1,4 @@
-# EPN, Thu Mar 17 14:30:57 2016
+# EPN, Sun Nov  5 20:20:05 2017
 # pwd: /panfs/pan1/dnaorg/programs/15_0924_dnaorg_annotate_genomes
 # git repository url: https://github.com/nawrockie/dnaorg_scripts.git
 #
@@ -150,9 +150,9 @@ source ~/.cshrc
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.18 (Oct 2017)
+## dnaorg 0.19 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Thu Oct 19 10:35:46 2017
+## date:    Sun Nov  5 20:20:50 2017
 ##
 #Usage: dnaorg_build.pl [-options] <reference accession>
 #
@@ -191,7 +191,6 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 #  --orginput <s> : read training alignment for origin sequences from file <s>
 #  --orgstart <n> : origin sequence starts at position <n> in file <s> from --orginput <s> [0]
 #  --orglen <n>   : origin sequence is <n> nucleotides long [0]
-#
 ######
 #
 # dnaorg_annotate.pl should be run after dnaorg_build.pl is finished
@@ -218,9 +217,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.18 (Oct 2017)
+## dnaorg 0.19 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Thu Oct 19 10:36:53 2017
+## date:    Sun Nov  5 20:21:57 2017
 ##
 #Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>
 #
@@ -345,9 +344,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 # 
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -c NC_001346
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.18 (Oct 2017)
+## dnaorg 0.19 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Thu Oct 19 10:38:11 2017
+## date:    Sun Nov  5 20:23:33 2017
 ##
 ## reference accession:  NC_001346
 ## genome is circular:   yes [-c]
@@ -489,9 +488,9 @@ cat NC_001346.ntlist
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -c /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001346.ntlist 
 # dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-# dnaorg 0.18 (Oct 2017)
+# dnaorg 0.19 (Nov 2017)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Thu Oct 19 11:13:21 2017
+# date:    Sun Nov  5 20:23:52 2017
 #
 # file with list of accessions:        /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001346.ntlist
 # genome is closed (a.k.a. circular):  yes [-c]
@@ -754,9 +753,9 @@ cat NC_001477.matpept.in
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl --matpept /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in NC_001477
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.18 (Oct 2017)
+## dnaorg 0.19 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Thu Oct 19 11:19:33 2017
+## date:    Sun Nov  5 20:24:14 2017
 ##
 ## reference accession:                   NC_001477
 ## using pre-specified mat_peptide info:  /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in [--matpept]
@@ -865,9 +864,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl --matpep
 # 
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nseq 1 --matpept /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.ntlist 
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.18 (Oct 2017)
+## dnaorg 0.19 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Thu Oct 19 14:37:04 2017
+## date:    Sun Nov  5 20:24:23 2017
 ##
 ## file with list of accessions:                  /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.ntlist
 ## using pre-specified mat_peptide info:          /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in [--matpept]
@@ -1006,9 +1005,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nse
 # special mode:
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --infasta --refaccn NC_001346 --local --dirout NC_001346-out1 --dirbuild NC_001346 -c NC_001346.fa
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.18 (Oct 2017)
+## dnaorg 0.19 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Thu Oct 19 14:57:19 2017
+## date:    Sun Nov  5 20:24:31 2017
 ##
 ## fasta file with sequences to annotate (--infasta):                               NC_001346.fa
 ## genome is closed (a.k.a. circular):                                              yes [-c]
