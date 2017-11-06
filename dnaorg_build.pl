@@ -159,8 +159,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.18";
-my $releasedate   = "Oct 2017";
+my $version       = "0.19";
+my $releasedate   = "Nov 2017";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -836,7 +836,6 @@ sub run_cmcalibrate_and_cmpress {
     # if we didn't run jobs locally...
     close(FARMOUT);
   
-    my $cmfile; # name of a CM file
     my $cmd; # a command
     if(! $do_calib_later) { 
       # run the cmcalibrate commands
@@ -846,12 +845,15 @@ sub run_cmcalibrate_and_cmpress {
       if($njobs_finished != $nfarmjobs) { 
         DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $FH_HR);
       }
-      # now all jobs are finished, now we need to press each file 
     }      
-
-    for(my $i = 0; $i < $nmodel; $i++) { 
-      $cmfile = "$out_root.$i.cm";
-      $cmd = pressCmDb($cmfile, $cmpress, 1, (!$do_calib_later), $opt_HHR, $ofile_info_HHR);
+  }
+  
+  # now all jobs are finished or local runs are finished, we need to press each file 
+  my $cmfile; # name of a CM file
+  for(my $i = 0; $i < $nmodel; $i++) { 
+    $cmfile = "$out_root.$i.cm";
+    $cmd = pressCmDb($cmfile, $cmpress, 1, (!$do_calib_later), $opt_HHR, $ofile_info_HHR);
+    if(! $do_calib_local) { 
       print POSTOUT $cmd . "\n";
     }
   }
