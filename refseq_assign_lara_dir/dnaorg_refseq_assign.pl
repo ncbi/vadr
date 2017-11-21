@@ -195,7 +195,20 @@ push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir
-my $out_root = $dir . "/" . $dir_tail;
+my $out_root = $dir . "/" . $dir_tail . ".dnaorg_refseq_assign";
+
+my $dir_build = undef;
+if(opt_IsUsed("--dirbuild", \%opt_HH)) { 
+  $dir_build = opt_Get("--dirbuild", \%opt_HH);
+}
+else { 
+  $dir_build = $dir;
+}
+
+$dir_build =~ s/\/$//; # remove final '/' if there is one
+my $dir_build_tail = $dir_build;
+$dir_build_tail =~ s/^.+\///; # remove all but last dir
+my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_refseq_assign";
 
 #############################################
 # output program banner and open output files
@@ -257,36 +270,21 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 #################################################################################
 
-
-my $ref_list  = undef; # file with list of reference accessions
-my $seq_list  = undef; # file with list of sequence accessions to classify
-my $dir_build = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
-my $dir_build_tail = undef;
-my $build_root = undef;
-if(defined $dir_build) { 
-  $dir_build =~ s/\/$//; # remove final '/' if there is one
-  $dir_build_tail = $dir_build;
-  $dir_build_tail =~ s/^.+\///; # remove all but last dir
-  $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_refseq_assign";
+# Determine location of seq_list (list of sequences to annotate) and ref_list (list of RefSeqs HMM library pertains to)
+my $seq_list = undef;
+if($inlist_mode) { 
+  $seq_list = opt_Get("--inlist", \%opt_HH);
 }
 
+my $ref_list = undef;
+my $ref_list_dir_build = $build_root . ".reflist";
 if($onlybuild_mode) { 
   $ref_list = opt_Get("--onlybuild", \%opt_HH);
 }
 else { 
-  if(! defined $dir_build) { 
-    die "ERROR if you use --inlist or --infasta, you must also use --dirbuild <s> to specify the directory <s>\nfor which you previously ran dnaorg_refseq_assign.pl --onlybuild --dirout <s> to create the HMM library that you want to use to classify"; 
-  }
-  $ref_list = $build_root . ".reflist";
-  validateFileExistsAndIsNonEmpty($ref_list);
-
-  if($inlist_mode) { 
-    $seq_list = opt_Get("--inlist", \%opt_HH);
-  }
-  else { 
-    ;
-  }
+  $ref_list = $ref_list_dir_build;
 }
+validateFileExistsAndIsNonEmpty($ref_list, "main", $ofile_info_HH{"FH"});
 
 #################################################################################
 #
@@ -307,6 +305,11 @@ my $start_secs = outputProgressPrior("Parsing RefSeq list", $progress_w, $log_FH
 my $ref_library = $out_root . ".hmm";
 my @refseqs_A = (); #array of refseqs
 fileLinesToArray($ref_list, 1, \@refseqs_A, $ofile_info_HH{"FH"});
+if($onlybuild_mode) { 
+  runCommand("cp $ref_list $ref_list_dir_build", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  addClosedFileToOutputInfo(\%ofile_info_HH, "reflist", $ref_list_dir_build, 1, "List of reference sequences used to build HMMs");
+
+}
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 if($onlybuild_mode) { 
@@ -344,6 +347,10 @@ if($onlybuild_mode) {
 
   $cmd = $execs_H{"hmmpress"} . " $ref_library > /dev/null";
   runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.m", $ref_library . ".h3m", 1, "HMM press index file (.h3m)");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.f", $ref_library . ".h3f", 1, "HMM press index file (.h3f)");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.p", $ref_library . ".h3p", 1, "HMM press index file (.h3p)");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.i", $ref_library . ".h3i", 1, "HMM press index file (.h3i)");
 
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -357,7 +364,7 @@ else {
 
   # parse list of sequences
   my @seqs_to_assign_A = (); #array that will contain all the accessions in $seq_list (all the accns to be assigned to a ntlist)
-  fileLinesToArray($seq_list, \@seqs_to_assign_A, $ofile_info_HH{"FH"});
+  fileLinesToArray($seq_list, 1, \@seqs_to_assign_A, $ofile_info_HH{"FH"});
   
   # creates a tblout summary of the nhmmscan results and a file with nhmmscan results for each accession
   nhmmscanSeqs($execs_H{"nhmmscan"}, $out_root, \@seqs_to_assign_A, $ref_library, \@files2rm_A, \%ofile_info_HH); 
