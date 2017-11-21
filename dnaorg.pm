@@ -5508,7 +5508,7 @@ sub fileLinesToArray {
 
   open(IN, $filename) || fileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
-    if(/\S/) { 
+    if($line =~ /\S/) { 
       chomp $line;
       if($remove_trailing_whitespace) { $line =~ s/\s*$//; }
       push(@{$AR}, $line);

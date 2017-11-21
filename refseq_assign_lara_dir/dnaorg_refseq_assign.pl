@@ -142,13 +142,12 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
 }
 
 # check that number of command line args is correct
-if(scalar(@ARGV) != 2) {   
+if(scalar(@ARGV) != 0) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
   print "\nTo see more help on available options, do $script_name -h\n\n";
   exit(1);
 }
-my ($ref_list, $seq_list) = (@ARGV);
 
 # set options in opt_HH
 opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
@@ -162,12 +161,13 @@ if(! defined $dir) {
 }
 
 # determine which 'mode' we are running in
-my $onlybuild_mode = opt_Get("--onlybuild", \%opt_HH);
-my $inlist_mode    = opt_Get("--inlist", \%opt_HH);
-my $infasta_mode   = opt_Get("--infasta", \%opt_HH);
+my $onlybuild_mode = opt_IsUsed("--onlybuild", \%opt_HH);
+my $inlist_mode    = opt_IsUsed("--inlist", \%opt_HH);
+my $infasta_mode   = opt_IsUsed("--infasta", \%opt_HH);
 if(($onlybuild_mode + $inlist_mode + $infasta_mode) != 1) { 
   die "ERROR exactly one of the options --onlybuild, --inlist, --infasta must be used.";
 }
+
 
 #############################
 # create the output directory
@@ -201,8 +201,8 @@ my $out_root = $dir . "/" . $dir_tail;
 # output program banner and open output files
 #############################################
 # output preamble
-my @arg_desc_A = ("list of refseqs", "list of sequences");
-my @arg_A      = ($ref_list, $seq_list);
+my @arg_desc_A = ();
+my @arg_A      = ();
 outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -256,6 +256,38 @@ $execs_H{"esl-reformat"}  = $esl_exec_dir   . "esl-reformat";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 #################################################################################
+
+
+my $ref_list  = undef; # file with list of reference accessions
+my $seq_list  = undef; # file with list of sequence accessions to classify
+my $dir_build = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
+my $dir_build_tail = undef;
+my $build_root = undef;
+if(defined $dir_build) { 
+  $dir_build =~ s/\/$//; # remove final '/' if there is one
+  $dir_build_tail = $dir_build;
+  $dir_build_tail =~ s/^.+\///; # remove all but last dir
+  $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_refseq_assign";
+}
+
+if($onlybuild_mode) { 
+  $ref_list = opt_Get("--onlybuild", \%opt_HH);
+}
+else { 
+  if(! defined $dir_build) { 
+    die "ERROR if you use --inlist or --infasta, you must also use --dirbuild <s> to specify the directory <s>\nfor which you previously ran dnaorg_refseq_assign.pl --onlybuild --dirout <s> to create the HMM library that you want to use to classify"; 
+  }
+  $ref_list = $build_root . ".reflist";
+  validateFileExistsAndIsNonEmpty($ref_list);
+
+  if($inlist_mode) { 
+    $seq_list = opt_Get("--inlist", \%opt_HH);
+  }
+  else { 
+    ;
+  }
+}
+
 #################################################################################
 #
 # LES Jul 26 2016
@@ -267,7 +299,7 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 #
 #################################################################################
 
-my $progress_w = 80; # the width of the left hand column in our progress output, hard-coded                                                     
+my $progress_w = 30; # the width of the left hand column in our progress output, hard-coded                                                     
 my $start_secs = outputProgressPrior("Parsing RefSeq list", $progress_w, $log_FH, *STDOUT);
 ;
 
