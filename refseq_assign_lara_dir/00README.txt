@@ -115,18 +115,9 @@ Assumptions:    1) The program will sort all the accessions provided. It is assu
 Program:	dnaorg_evaluate_refseq_assign.pl
 
 
-Description:	Given a list of RefSeqs, and a list of accessions, uses the accesions to generate ntlists for 
-		each RefSeq.
+Description:	Compares dnarog_refseq_assign.pl output (assignment of
+		accessions to RefSeqs) to expected output. 
 		
-		Specifically:
-		Uses E-Utilities to generate FASTA files for all sequences
-		Generates an HMM library of RefSeqs
-		Runs each accession against the HMM library with nhmmscan
-		     - This step is run in parallel on the farm for each sequence
-		Parses nhmmscan results, and assigns each accession to one RefSeq
-		Generates ntlists for each RefSeq
-
-
 Usage:          perl dnaorg_evaluate-refseq_assign.pl <results> <standards>
 
 

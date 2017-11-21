@@ -193,8 +193,8 @@
 #   removeFileUsingSystemRm()
 #   getMonocharacterString()
 #   countLinesInFile()
+#   fileLinesToArray()
 #   validateFileExistsAndIsNonEmpty()
-#   concatenateListOfFiles()
 #   concatenateListOfFiles()
 #   md5ChecksumOfFile()
 #
@@ -5480,6 +5480,43 @@ sub countLinesInFile {
   close(IN);
 
   return $nlines;
+}
+
+#################################################################
+# Subroutine : fileLinesToArray()
+# Incept:      EPN, Tue Nov 21 10:26:58 2017
+#
+# Purpose:     Store each non-blank line in a file as an element
+#              in an array, after removing newline.
+#
+# Arguments: 
+#   $filename:                   file that we are parsing
+#   $remove_trailing_whitespace: '1' to remove trailing whitespace in each line, '0' not to
+#   $AR:                         ref to array to add to
+#   $FH_HR:                      ref to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies:        If $filename does not exist or cannot be opened for reading.
+#
+################################################################# 
+sub fileLinesToArray { 
+  my $nargs_expected = 4;
+  my $sub_name = "fileLinesToArray()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($filename, $remove_trailing_whitespace, $AR, $FH_HR) = @_;
+
+  open(IN, $filename) || fileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <IN>) { 
+    if(/\S/) { 
+      chomp $line;
+      if($remove_trailing_whitespace) { $line =~ s/\s*$//; }
+      push(@{$AR}, $line);
+    }
+  }
+  close(IN);
+
+  return;
 }
 
 #################################################################
