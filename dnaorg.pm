@@ -209,6 +209,7 @@
 #   checkForSpanningSequenceSegments()
 #   getIndexHashForArray()
 #   waitForFarmJobsToFinish()
+#   splitFastaFile()
 #
 use strict;
 use warnings;
@@ -6402,6 +6403,367 @@ sub waitForFarmJobsToFinish {
 
   # if we get here we have no failures
   return $nfinished;
+}
+
+#################################################################
+# Subroutine : splitFastaFile()
+# Incept:      EPN, Tue Mar  1 09:30:10 2016
+#
+# Purpose: Split up a fasta file into <n> smaller files by calling
+#          the esl-ssplit perl script.
+#
+# Arguments: 
+#  $esl_ssplit:      path to the esl-ssplit.pl script to use
+#  $fasta_file:      fasta file to split up
+#  $nfiles:          desired number of files to split $fasta_file into
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+# 
+# Returns:    Number of files actually created (can differ from requested
+#             amount (which is $nfiles)).
+#
+# Dies:       if esl-ssplit command fails
+#
+################################################################# 
+sub splitFastaFile { 
+  my $sub_name = "splitFastaFile()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($esl_ssplit, $fasta_file, $nfiles, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $outfile = $fasta_file . ".esl-ssplit";
+  my $cmd = "$esl_ssplit -v -n $fasta_file $nfiles > $outfile";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+
+  # parse output to determine exactly how many files were created:
+  # $esl_ssplit will have output exactly 1 line per fasta file it created
+  my $nfiles_created = countLinesInFile($outfile, $FH_HR);
+
+  if(! opt_Get("--keep", $opt_HHR)) { 
+    runCommand("rm $outfile", opt_Get("-v", $opt_HHR), $FH_HR);
+  }
+
+  return $nfiles_created;
+}
+
+#################################################################
+# Subroutine:  cmscanOrNhmmscanWrapper()
+# Incept:      EPN, Tue Nov 21 15:54:20 2017
+#
+# Purpose:     Run one or more cmscan or nhmmscan jobs on the farm
+#              or locally, after possibly splitting up the input
+#              sequence file. 
+#              The following must all be valid options in opt_HHR:
+#              --nseq, --local, --wait, --keep, -v
+#              See dnaorg_annotate.pl for examples of these options.
+#
+# Arguments: 
+#  $execs_HR:        ref to executables with "esl-ssplit" and either "cmscan" or "nhmmscan" 
+#                    defined as keys
+#  $do_cmscan:       '1' if we are running cmscan, '0' if we are running nhmmscan
+#  $out_root:        string for naming output files
+#  $seq_file:        name of sequence file with all sequences to run against
+#  $nseq:            number of sequences in $seq_file
+#  $tblout_file:     string for name of concatnated tblout file to create
+#  $progress_w:      width for outputProgressPrior output
+#  $mdl_filename_AR: ref to array of model file names
+#  $mdl_len_AR:      ref to array of model lengths, can be undef, but only if $do_cmscan == 0
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+#
+# Returns:     void, updates $$nfa_created_R with number of
+#              fasta files created.
+# 
+# Dies: If an executable doesn't exist, or cmscan or nhmmscan or esl-ssplit
+#       command fails if we're running locally
+################################################################# 
+sub cmscanOrNhmmscanWrapper { 
+  my $sub_name = "cmscanOrNhmmscanWrapper";
+  my $nargs_expected = 11;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($execs_HR, $do_cmscan, $out_root, $seq_file, $nseq, $tblout_file, $progress_w,
+      $mdl_filename_AR, $mdl_len_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # contract check
+  if($do_cmscan) { 
+    if(! defined $mdl_len_AR) { 
+      DNAORG_FAIL("ERROR in $sub_name, do_cmscan is TRUE but mdl_len_AR is undefined.", 1, $ofile_info_HHR->{"FH"});
+    }
+  }
+
+  my $program_choice = ($do_cmscan) ? "cmscan" : "nhmmscan";
+  my @tmp_seq_file_A = ();    # array of sequence files created by esl-ssplit, we'll remove after we're done unless --keep
+  my @tmp_tblout_file_A = (); # array of tblout files, we'll remove after we're done, unless --keep
+  my @tmp_stdout_file_A = (); # array of stdout files created by cmscan/nhmmscan, only created if -v
+  my @tmp_err_file_A = ();    # array of error files we'll remove after we're done, unless --keep (empty if we run locally)
+  my $nfasta_created = 0;     # number of fasta files created by esl-ssplit
+  my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
+  my $mdl_filename = undef; # file name of current model file
+  my $mdl_len      = undef; # length of current model
+  # filter threshold settings relevant only if $do_cmscan is TRUE
+  my $do_max = 0; # if $do_cmscan, possibly set to true based on model length
+  my $do_mid = 0; # if $do_cmscan, possibly set to true based on model length
+  my $do_df  = 0; # if $do_cmscan, possibly set to true based on model length
+  my $do_big = 0; # if $do_cmscan, possibly set to true based on model length
+  my $start_secs; # timing start
+  my $nmdl = scalar(@{$mdl_filename_AR});
+
+  # determine how many sequence files we need to split $seq_file into to satisfy <n> sequences
+  # per job (where n is from --nseq <n>). If more than 1 and --local not used, we split up 
+  # the sequence file and submit jobs to farm, if only 1 or --local used, we just run it locally
+  my $targ_nseqfiles = int($nseq / opt_Get("--nseq", $opt_HHR)); 
+  # int() takes the floor, so there can be a nonzero remainder. We don't add 1 though, 
+  # because splitFastaFile() will return the actual number of sequence files created
+  # and we'll use that as the number of jobs subsequently. $nfarmjobs is currently only
+  # the 'target' number of sequence files that we pass into splitFastaFile().
+  if($targ_nseqfiles == 0) { $targ_nseqfiles = 1; }
+
+  if(($targ_nseqfiles == 1) || (opt_Get("--local", $opt_HHR))) { 
+    # run jobs locally
+    $start_secs = outputProgressPrior("Running cmscan locally", $progress_w, $log_FH, *STDOUT);
+    # run a different cmscan/nhmmscan run for each model file
+    for(my $m = 0; $m < $nmdl; $m++) { 
+      my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
+      my $tmp_stdout_file = opt_Get("-v", $opt_HHR) ? $out_root . ".m" . ($m+1) . ".cmscan" : "/dev/null";
+      $mdl_filename = $mdl_filename_AR->[$m];
+      $mdl_len      = (defined $mdl_len_AR) ? $mdl_len_AR->[$m] : 0;
+      if($do_cmscan) { 
+        ($do_max, $do_mid, $do_df, $do_big) = determineCmscanFilterSettings($mdl_len, $opt_HHR);
+      }
+      runCmscanOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmscan, 1, $do_max, $do_mid, $do_df, $do_big, $mdl_filename,
+                          $seq_file, $tmp_stdout_file, $tmp_tblout_file, $opt_HHR, $ofile_info_HHR); # 1: run locally
+      push(@tmp_tblout_file_A, $tmp_tblout_file);
+      push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
+      if($tmp_stdout_file ne "/dev/null") { push(@tmp_stdout_file_A, $tmp_stdout_file); }
+    }
+  }
+  else { 
+    # we need to split up the sequence file, and submit a separate set of nhmmscan/cmscan jobs (one per model file) for each
+    my $nfasta_created = splitFastaFile($execs_HR->{"esl_ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
+    # splitFastaFile will return the actual number of fasta files created, 
+    # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. It will put $nseq/$targ_nseqfiles
+    # in each file, which often means we have to make $nseqfiles+1 files.
+
+    my $nfarmjobs = $nfasta_created * $nmdl;
+    # now submit a job for each
+    $start_secs = outputProgressPrior("Submitting $nfarmjobs cmscan jobs to the farm", $progress_w, $log_FH, *STDOUT);
+    for(my $s = 1; $s <= $nfasta_created; $s++) { 
+      my $tmp_seq_file = $seq_file . "." . $s;
+      push(@tmp_seq_file_A, $tmp_seq_file);
+      for(my $m = 0; $m < $nmdl; $m++) { 
+        my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".s" . $s . ".tblout";
+        my $tmp_stdout_file = opt_Get("-v", $opt_HHR) ? $out_root . ".m" . ($m+1) . ".s" . $s . "." . $program_choice : "/dev/null";
+        $mdl_filename = $mdl_filename_AR->[$m];
+        $mdl_len      = (defined $mdl_len_AR) ? $mdl_len_AR->[$m] : 0;
+        if($do_cmscan) { 
+          ($do_max, $do_mid, $do_df, $do_big) = determineCmscanFilterSettings($mdl_len, $opt_HHR);
+        }
+        runCmscanOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmscan, 0, $do_max, $do_mid, $do_df, $do_big, $mdl_filename,
+                            $tmp_seq_file, $tmp_stdout_file, $tmp_tblout_file, $opt_HHR, $ofile_info_HHR);   # 0: do not run locally
+        push(@tmp_tblout_file_A, $tmp_tblout_file);
+        push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
+        if($tmp_stdout_file ne "/dev/null") { push(@tmp_stdout_file_A, $tmp_stdout_file); }
+      }
+    }
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+    
+    # wait for the jobs to finish
+    $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
+                                      $progress_w, $log_FH, *STDOUT);
+    my $njobs_finished = waitForFarmJobsToFinish(\@tmp_tblout_file_A, \@tmp_err_file_A, "[ok]", opt_Get("--wait", $opt_HHR), opt_Get("--errcheck", $opt_HHR), $ofile_info_HHR->{"FH"});
+    if($njobs_finished != $nfarmjobs) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
+    }
+    if(! opt_Get("--local", $opt_HHR)) { 
+      outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
+    }
+  } # end of 'else' entered if($nfarmjobs > 1 && ! --local)
+    
+  # concatenate all the tblout files into one 
+  concatenateListOfFiles(\@tmp_tblout_file_A, $tblout_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+  # remove temporary files if --keep not enabled
+  if(! opt_Get("--keep", $opt_HHR)) { 
+    foreach my $tmp_file (@tmp_seq_file_A, @tmp_tblout_file_A, @tmp_err_file_A) { 
+      if(-e $tmp_file) { 
+        removeFileUsingSystemRm($tmp_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+        # we don't remove stdout files, they'll only exist if -v, so we assume user wants them
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  determineCmscanFilterSettings()
+# Incept:      EPN, Wed Apr  5 10:52:38 2017
+#
+# Purpose:     Given a model length and command line options, 
+#              determine the filtering mode to run cmscan in.
+#
+# Arguments: 
+#  $model_len:       length of model
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#
+# Returns:     4 values, exactly 0 or 1 of which will be '1'
+#              others will be '0'
+#              $do_max: '1' to run in max sensitivity mode
+#              $do_mid: '1' to run in mid sensitivity mode
+#              $do_df:  '1' to run in default sensitivity mode
+#              $do_big: '1' to run in fast (min sensitivity) mode
+# 
+# Dies: Never
+################################################################# 
+sub determineCmscanFilterSettings { 
+  my $sub_name = "determineCmscanFilterSettings()";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($model_len, $opt_HHR) = @_;
+
+  my $do_max = 0;
+  my $do_mid = 0;
+  my $do_df  = 0;
+  my $do_big = 0;
+
+  if($model_len <= (opt_Get("--smallthresh", $opt_HHR))) { 
+    $do_max = 1; # set filter thresholds to --max for small models
+  } 
+  if(! $do_max) { 
+    if($model_len <= (opt_Get("--midthresh", $opt_HHR))) { 
+      $do_mid = 1; # set filter thresholds to --mid for kind of small models
+    } 
+  }
+  if((! $do_max) && (! $do_mid)) { 
+    if($model_len <= (opt_Get("--dfthresh", $opt_HHR))) { 
+      $do_df = 1; # set filter thresholds to --FZ 30 for middle sized models
+    } 
+  }
+  if((! $do_max) && (! $do_mid) && (! $do_df)) { 
+    if($model_len >= (opt_Get("--bigthresh",   $opt_HHR))) { 
+      $do_big = 1; # use HMM mode for big models
+    }
+  }
+
+  return ($do_max, $do_mid, $do_df, $do_big);
+}
+
+#################################################################
+# Subroutine : runCmscanOrNhmmscan()
+# Incept:      EPN, Mon Feb 29 15:09:22 2016
+#
+# Purpose:     Run Infernal's cmscan executable or HMMER's nhmmscan 
+#              executable using $model_file as the model file on sequence 
+#              file $seq_file.
+#
+# Arguments: 
+#  $executable:      path to the cmscan or nhmmscan executable file
+#  $do_cmscan:       '1' if we are running cmscan, '0' if we are running nhmmscan
+#  $do_local:        '1' to run locally, '0' to submit job to farm
+#  $do_max:          '1' to run with --max option, '0' to run with default options
+#                    '1' is usually used only when $model_file contains a single 
+#                    very short model
+#  $do_mid:          '1' to run with --mid option, '0' to not
+#  $do_df:           '1' to run with --FZ 30 option, '0' to not
+#  $do_big:          '1' to run with --mxsize 6144 option, '0' to run with default options
+#  $model_file:      path to the CM file
+#  $seq_file:        path to the sequence file
+#  $stdout_file:     path to the stdout file to create, can be "/dev/null", or undef 
+#  $tblout_file:     path to the cmscan --tblout file to create
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+# 
+# Returns:     void
+# 
+# Dies: If at least one CM was not built from the current reference.
+#       If $do_max and $do_big are both true.
+################################################################# 
+sub runCmscanOrNhmmscan { 
+  my $sub_name = "runCmscanOrNhmmscan()";
+  my $nargs_expected = 13;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($executable, $do_cmscan, $do_local, $do_max, $do_mid, $do_df, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  # contract checks
+  if($do_big && $do_max) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_big and do_max are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_big && $do_mid) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_big and do_mid are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_max && $do_mid) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_max and do_mid are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_max && $do_df) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_max and do_df are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_mid && $do_df) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_mid and do_df are both true, only one should be.", 1, $FH_HR);
+  }
+  if($do_big && $do_df) { 
+    DNAORG_FAIL("ERROR in $sub_name, do_big and do_df are both true, only one should be.", 1, $FH_HR);
+  }
+  validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
+  validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
+
+  my $program_choice = ($do_cmscan) ? "cmscan" : "nhmmscan";
+
+  my $opts = (opt_Get("-v", $opt_HHR)) ? " " : " --noali ";
+  $opts .= " --cpu 0 --tblout $tblout_file";
+
+  # cmscan specific options
+  if($program_choice eq "cmscan") { 
+    $opts .= " --verbose";
+  
+    if($do_max) { # no filtering
+      $opts .= "--max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
+    }
+    elsif($do_mid) { 
+      $opts .= " --mid -E 0.1"; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
+    }
+    elsif($do_df) { 
+      $opts .= " --FZ 30 "; # do search with filters set up as if database was 30Mb.
+    }
+    else { 
+      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
+    }
+    # finally add --nohmmonly if we're not a big model
+    if(! $do_big) { # do not use hmm unless model is big
+      $opts .= " --nohmmonly ";
+    }
+  }
+
+  my $cmd = "$executable $opts $model_file $seq_file > $stdout_file";
+
+  # remove the tblout file if it exists, this is important because we'll use the existence and
+  # final line of this file to determine when the jobs are finished, if it already exists, we'll
+  # think the job is finished before it actual is.
+  if(-e $tblout_file) { removeFileUsingSystemRm($tblout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
+
+  # run cmscan, either locally or by submitting jobs to the farm
+  if($do_local) { 
+    # run locally
+    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  }
+  else { 
+    # submit job to farm and return
+    my $jobname = "s" . removeDirPath($seq_file);
+    my $errfile = $tblout_file . ".err";
+    if(-e $errfile) { removeFileUsingSystemRm($errfile, $sub_name, $opt_HHR, $ofile_info_HHR); }
+    my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G,reserve_mem=8G " . "\"" . $cmd . "\" > /dev/null\n";
+    runCommand($farm_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  }
+
+  return;
 }
 
 ###########################################################################
