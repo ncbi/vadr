@@ -6525,7 +6525,7 @@ sub cmscanOrNhmmscanWrapper {
 
   if(($targ_nseqfiles == 1) || (opt_Get("--local", $opt_HHR))) { 
     # run jobs locally
-    $start_secs = outputProgressPrior("Running cmscan locally", $progress_w, $log_FH, *STDOUT);
+    $start_secs = outputProgressPrior("Running $program_choice locally", $progress_w, $log_FH, *STDOUT);
     # run a different cmscan/nhmmscan run for each model file
     for(my $m = 0; $m < $nmdl; $m++) { 
       my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
@@ -6544,14 +6544,14 @@ sub cmscanOrNhmmscanWrapper {
   }
   else { 
     # we need to split up the sequence file, and submit a separate set of nhmmscan/cmscan jobs (one per model file) for each
-    my $nfasta_created = splitFastaFile($execs_HR->{"esl_ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
+    my $nfasta_created = splitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
     # splitFastaFile will return the actual number of fasta files created, 
     # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. It will put $nseq/$targ_nseqfiles
     # in each file, which often means we have to make $nseqfiles+1 files.
 
     my $nfarmjobs = $nfasta_created * $nmdl;
     # now submit a job for each
-    $start_secs = outputProgressPrior("Submitting $nfarmjobs cmscan jobs to the farm", $progress_w, $log_FH, *STDOUT);
+    $start_secs = outputProgressPrior("Submitting $nfarmjobs $program_choice jobs to the farm", $progress_w, $log_FH, *STDOUT);
     for(my $s = 1; $s <= $nfasta_created; $s++) { 
       my $tmp_seq_file = $seq_file . "." . $s;
       push(@tmp_seq_file_A, $tmp_seq_file);

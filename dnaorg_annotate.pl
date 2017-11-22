@@ -682,7 +682,7 @@ $execs_H{"hmmbuild"}      = $hmmer_exec_dir . "hmmbuild";
 $execs_H{"hmmalign"}      = $hmmer_exec_dir . "hmmalign";
 $execs_H{"esl-reformat"}  = $esl_exec_dir   . "esl-reformat";
 $execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
-$execs_H{"esl_ssplit"}    = $esl_ssplit;
+$execs_H{"esl-ssplit"}    = $esl_ssplit;
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################

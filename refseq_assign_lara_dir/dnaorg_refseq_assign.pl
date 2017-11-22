@@ -53,7 +53,7 @@ if(! (-d $dnaorgdir)) {
 # determine other required paths to executables relative to $dnaorgdir
 my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
 my $esl_exec_dir      = $dnaorgdir . "/infernal-1.1.2/easel/miniapps/";
-
+my $bioeasel_exec_dir = $dnaorgdir . "/Bio-Easel/scripts/";
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -96,10 +96,14 @@ opt_Add("--infasta",    "string", undef,                    2,    "--dirbuild", 
 opt_Add("--dirbuild",   "string", undef,                    2,    undef,        "--onlybuild",           "specify directory with HMM library is <s>",        "specify directory with HMM library is <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"3"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                          help-output    
-opt_Add("-f",           "boolean", 0,                        3,    undef, undef,      "forcing directory overwrite",           "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        3,    undef, undef,      "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",       "boolean", 0,                        3,    undef, undef,      "leaving intermediate files on disk",    "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                                                help-output    
+opt_Add("-f",           "boolean", 0,                        3,    undef, undef,      "forcing directory overwrite",                                 "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        3,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,                        3,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("--nseq",       "integer", 10,                       3,    undef,"--local",   "number of sequences for each nhmmscan farm job",              "set number of sequences for each nhmmscan farm job to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for nhmmscan jobs on farm",                 "allow <n> wall-clock minutes for nhmmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--local",      "boolean", 0,                        3,    undef, undef,      "run nhmmscan locally instead of on farm",                     "run nhmmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
+opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
@@ -125,6 +129,10 @@ my $options_okay =
                 'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
                 'inlist=s'     => \$GetOptions_H{"--inlist"},
                 'infasta=s'    => \$GetOptions_H{"--infasta"},
+                'nseq=s'       => \$GetOptions_H{"--nseq"}, 
+                'wait=s'       => \$GetOptions_H{"--wait"},
+                'local'        => \$GetOptions_H{"--local"}, 
+                'errcheck'     => \$GetOptions_H{"--errcheck"},  
                 );
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
@@ -167,7 +175,6 @@ my $infasta_mode   = opt_IsUsed("--infasta", \%opt_HH);
 if(($onlybuild_mode + $inlist_mode + $infasta_mode) != 1) { 
   die "ERROR exactly one of the options --onlybuild, --inlist, --infasta must be used.";
 }
-
 
 #############################
 # create the output directory
@@ -262,29 +269,14 @@ my @files2rm_A = ();                       # will be filled with files to remove
 # make sure the required executables are executable
 ###################################################
 my %execs_H = (); # hash with paths to all required executables
-$execs_H{"nhmmscan"}      = $hmmer_exec_dir . "nhmmscan";
-$execs_H{"hmmbuild"}      = $hmmer_exec_dir . "hmmbuild";
-$execs_H{"hmmpress"}      = $hmmer_exec_dir . "hmmpress";
-$execs_H{"esl-reformat"}  = $esl_exec_dir   . "esl-reformat";
+$execs_H{"nhmmscan"}     = $hmmer_exec_dir . "nhmmscan";
+$execs_H{"hmmbuild"}     = $hmmer_exec_dir . "hmmbuild";
+$execs_H{"hmmpress"}     = $hmmer_exec_dir . "hmmpress";
+$execs_H{"esl-reformat"} = $esl_exec_dir   . "esl-reformat";
+$execs_H{"esl-seqstat"}  = $esl_exec_dir   . "esl-seqstat";
+$execs_H{"esl-sfetch"}   = $esl_exec_dir   . "esl-sfetch";
+$execs_H{"esl-ssplit"}   = $bioeasel_exec_dir . "esl-ssplit.pl";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
-
-#################################################################################
-
-# Determine location of seq_list (list of sequences to annotate) and ref_list (list of RefSeqs HMM library pertains to)
-my $seq_list = undef;
-if($inlist_mode) { 
-  $seq_list = opt_Get("--inlist", \%opt_HH);
-}
-
-my $ref_list = undef;
-my $ref_list_dir_build = $build_root . ".reflist";
-if($onlybuild_mode) { 
-  $ref_list = opt_Get("--onlybuild", \%opt_HH);
-}
-else { 
-  $ref_list = $ref_list_dir_build;
-}
-validateFileExistsAndIsNonEmpty($ref_list, "main", $ofile_info_HH{"FH"});
 
 #################################################################################
 #
@@ -297,78 +289,131 @@ validateFileExistsAndIsNonEmpty($ref_list, "main", $ofile_info_HH{"FH"});
 #
 #################################################################################
 
-my $progress_w = 30; # the width of the left hand column in our progress output, hard-coded                                                     
+my $progress_w = 70; # the width of the left hand column in our progress output, hard-coded                                                     
 my $start_secs = outputProgressPrior("Parsing RefSeq list", $progress_w, $log_FH, *STDOUT);
-;
+
 
 # open and parse list of RefSeqs
-my $ref_library = $out_root . ".hmm";
-my @refseqs_A = (); #array of refseqs
-fileLinesToArray($ref_list, 1, \@refseqs_A, $ofile_info_HH{"FH"});
-if($onlybuild_mode) { 
-  runCommand("cp $ref_list $ref_list_dir_build", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-  addClosedFileToOutputInfo(\%ofile_info_HH, "reflist", $ref_list_dir_build, 1, "List of reference sequences used to build HMMs");
+# we do this in all modes, because we use ref_seqs_A in all modes
+my @ref_seqs_A         = (); # array of accessions listed in RefSeq input file
+my @ref_fetched_seqs_A = (); # array of names of RefSeqs fetched in fasta file (may include version)
+my $onlybuild_file     = opt_Get("--onlybuild", \%opt_HH);
+my $ref_library        = $build_root . ".hmm";
+my $ref_fa             = $build_root . ".ref.fa";
+my $ref_stk            = $build_root . ".ref.stk";
+my $ref_list           = $build_root . ".ref.list";
+my $ref_fetched_list   = $build_root . ".ref.fetched.list"; # fetched names (may include version)
 
+# copy the ref list to the build directory if --onlybuild
+if($onlybuild_mode) { 
+  validateFileExistsAndIsNonEmpty($onlybuild_file, "main", $ofile_info_HH{"FH"});
+  runCommand("cp $onlybuild_file $ref_list", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  addClosedFileToOutputInfo(\%ofile_info_HH, "RefList", $ref_list, 1, "List of reference sequences used to build HMMs");
 }
+fileLinesToArray($ref_list, 1, \@ref_seqs_A, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+my $n_ref = scalar(@ref_seqs_A);
 
 if($onlybuild_mode) { 
   $start_secs = outputProgressPrior("Creating RefSeq HMM Library", $progress_w, $log_FH, *STDOUT);
 
-  # create fasta files for refseqs
-  createFastas($ref_list, $out_root, \%opt_HH, $ofile_info_HH{"FH"});
-  
-  # create HMM library
-  my $ref_library = $out_root . ".hmm";
-  
-  # make a .stk and .hmm file for each RefSeq
-  foreach (@refseqs_A) {
-    my $fa_file = $out_root . ".$_.fasta";
-    my $stk_file = $out_root . ".$_.stk";
-    $cmd = $execs_H{"esl-reformat"} . " --informat afa stockholm $fa_file > $stk_file";
+  # create fasta file of all refseqs
+  list_to_fasta($ref_list, $ref_fa, \%opt_HH, $ofile_info_HH{"FH"});
+  addClosedFileToOutputInfo(\%ofile_info_HH, "RefFasta", $ref_fa, 1, "fasta file of all RefSeq sequences");
+
+  # get a list file with their actual names 
+  fasta_to_list($ref_fa, $ref_fetched_list, $execs_H{"esl-seqstat"}, \%opt_HH, $ofile_info_HH{"FH"});
+  addClosedFileToOutputInfo(\%ofile_info_HH, "RefFetchedList", $ref_fetched_list, 1, "list of all fetched RefSeq sequence accession.versions");
+  fileLinesToArray($ref_fetched_list, 1, \@ref_fetched_seqs_A, $ofile_info_HH{"FH"});
+
+  if(! -e $ref_fa . ".ssi") { 
+    $cmd = $execs_H{"esl-sfetch"} . " --index $ref_fa > /dev/null";
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-    
-    my $hmm_file = $out_root . ".$_.hmm";
-    $cmd = $execs_H{"hmmbuild"} . " $hmm_file $stk_file > /dev/null";  # dumps the output of hmmbuild
+  }
+
+  for(my $i = 0; $i < $n_ref; $i++) { 
+    my $hmm_file = $out_root . ".$i.hmm";
+    # build up the command, we'll fetch the sequence, pass it into esl-reformat to make a stockholm 'alignment', and pass that into hmmbuild
+    $cmd  = $execs_H{"esl-sfetch"} . " $ref_fa $ref_fetched_seqs_A[$i] | "; # fetch the sequence
+#    $cmd .= $execs_H{"esl-reformat"} . " --informat afa stockholm - | "; # reformat to stockholm
+    $cmd .= $execs_H{"hmmbuild"} . " --informat afa -n $ref_seqs_A[$i] $hmm_file - > /dev/null"; # build HMM file
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-    
     $cmd = "cat $hmm_file >> $ref_library";   # adds each individual hmm to the hmm library
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
     
-    # clean up intermediate files
     if(! $do_keep) {
-      push(@files2rm_A, $fa_file);
-      push(@files2rm_A, $stk_file);
       push(@files2rm_A, $hmm_file);
     }
-  }
-  
+  }    
   addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib", $ref_library, 1, "Library of HMMs of RefSeqs. Not press'd");
 
   $cmd = $execs_H{"hmmpress"} . " $ref_library > /dev/null";
   runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.m", $ref_library . ".h3m", 1, "HMM press index file (.h3m)");
-  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.f", $ref_library . ".h3f", 1, "HMM press index file (.h3f)");
-  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.p", $ref_library . ".h3p", 1, "HMM press index file (.h3p)");
-  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.i", $ref_library . ".h3i", 1, "HMM press index file (.h3i)");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.m", $ref_library . ".h3m", 0, "HMM press index file (.h3m)");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.f", $ref_library . ".h3f", 0, "HMM press index file (.h3f)");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.p", $ref_library . ".h3p", 0, "HMM press index file (.h3p)");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.i", $ref_library . ".h3i", 0, "HMM press index file (.h3i)");
 
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 else { 
+  # not --onlybuild, classify sequences
+  # first, define some file names, copy files and make sure all required files exist and are nonempty
+  my $infasta_file = opt_Get("--infasta", \%opt_HH);
+  my $inlist_file  = opt_Get("--inlist", \%opt_HH);
+  my $seq_list     = $out_root . ".seqlist";
+  my $seq_fa       = $out_root . ".fa";
+
+  if($inlist_mode) { 
+    # copy the inlist file to our output dir
+    validateFileExistsAndIsNonEmpty($inlist_file, "main", $ofile_info_HH{"FH"});
+    $cmd = "cp $inlist_file $seq_list";
+    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+    validateFileExistsAndIsNonEmpty($seq_list, "main", $ofile_info_HH{"FH"});
+    addClosedFileToOutputInfo(\%ofile_info_HH, "SeqList", $seq_list, 1, "List file with sequences to classify (copy of $inlist_file)");
+
+    # create the fasta file using efetch
+    list_to_fasta($seq_list, $seq_fa, \%opt_HH, $ofile_info_HH{"FH"});
+    validateFileExistsAndIsNonEmpty($seq_fa, "main", $ofile_info_HH{"FH"});
+    addClosedFileToOutputInfo(\%ofile_info_HH, "SeqFasta", $seq_fa, 1, "Fasta file with sequences to classify");
+  }
+  elsif($infasta_mode) { 
+    # copy the fasta file to our output dir
+    validateFileExistsAndIsNonEmpty($infasta_file, "main", $ofile_info_HH{"FH"});
+    $cmd = "cp $infasta_file $seq_fa";
+    validateFileExistsAndIsNonEmpty($seq_fa, "main", $ofile_info_HH{"FH"});
+    addClosedFileToOutputInfo(\%ofile_info_HH, "SeqFasta", $seq_fa, 1, "Fasta file with sequences to classify (copy of $infasta_file)");
+
+    # create the list file using esl-seqstat    
+    fasta_to_list($seq_fa, $seq_list, $execs_H{"esl-seqstat"}, \%opt_HH, $ofile_info_HH{"FH"});
+    validateFileExistsAndIsNonEmpty($seq_list, "main", $ofile_info_HH{"FH"});
+    addClosedFileToOutputInfo(\%ofile_info_HH, $seq_list, 0, "List file with sequences to classify");
+  }
+
+  # now regardless of whether --inlist or --infasta was chosen we're at the same spot
+  # $seq_list is our list  file of all seqs and
+  # $seq_fa   is our fasta file of all seqs
+  my @seqs_to_assign_fetched_A = (); # array of sequences in $seq_fa, may be in "accession-version" format
+  fileLinesToArray($seq_list, 1, \@seqs_to_assign_fetched_A, $ofile_info_HH{"FH"});
+  my $n_seqs_to_assign = scalar(@seqs_to_assign_fetched_A); 
+  my @seqs_to_assign_A = ();
+  # copy @seqs_to_assign_fetched_A and strip versions to create @seqs_to_assign_A
+  for(my $i = 0; $i < $n_seqs_to_assign; $i++) { 
+    my $tmp_seq = $seqs_to_assign_fetched_A[$i];
+    stripVersion(\$tmp_seq);
+    $seqs_to_assign_A[$i] = $tmp_seq;
+  }
+
   ########### RUN nhmmscan and generate output files ####################################################################################################
+  my $tblout_file = $out_root . ".tblout"; # concatenated tblout file, created by concatenating all of the individual 
+                                           # tblout files in cmscanOrNhmmscanWrapper()
+  my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
 
-  $start_secs = outputProgressPrior("Running nhmmscan on sequences", $progress_w, $log_FH, *STDOUT);
+  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $seq_fa, $n_seqs_to_assign, $tblout_file, $progress_w, 
+                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
+  # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
+  exit 0;
 
-  # create fasta files for all accessions
-  createFastas($seq_list, $out_root, \%opt_HH, $ofile_info_HH{"FH"});
-
-  # parse list of sequences
-  my @seqs_to_assign_A = (); #array that will contain all the accessions in $seq_list (all the accns to be assigned to a ntlist)
-  fileLinesToArray($seq_list, 1, \@seqs_to_assign_A, $ofile_info_HH{"FH"});
-  
-  # creates a tblout summary of the nhmmscan results and a file with nhmmscan results for each accession
-  nhmmscanSeqs($execs_H{"nhmmscan"}, $out_root, \@seqs_to_assign_A, $ref_library, \@files2rm_A, \%ofile_info_HH); 
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   ########################################################################################################################################################
   #
@@ -416,7 +461,7 @@ else {
   my %ntlist_HA = (); # Hash of arrays containing each RefSeq's ntlist
                       # Key:    RefSeq accession #
                       # Value:  Array of accessions for which have been assigned to this RefSeq
-  foreach (@refseqs_A) {
+  foreach (@ref_seqs_A) {
     $ntlist_HA{$_} = (); # initialize each RefSeq's value to an empty array
   }
   
@@ -659,7 +704,7 @@ else {
   $start_secs = outputProgressPrior("Creating ntlists and other output files", $progress_w, $log_FH, *STDOUT);
   
   # Generate ntlist files
-  foreach my $refseq (@refseqs_A) {
+  foreach my $refseq (@ref_seqs_A) {
     my $ntlist_file = $out_root . ".$refseq.ntlist";
     
     open(NTLIST, "> $ntlist_file")  || fileOpenFailure($ntlist_file, $0, $!, "writing", $ofile_info_HH{"FH"});
@@ -716,8 +761,73 @@ exit 0;
 
 #################################################################################
 #
-# Sub name:  createFastas()
+# Sub name:  list_to_fasta()
 #
+# Authors:    Lara Shonkwiler and Eric Nawrocki
+# Date:       2016 Aug 01 [Lara] 2017 Nov 21 [Eric]
+#
+# Purpose:   Given a list of accessions, create a fasta file with all of them.
+#            using efetch.
+#
+# Arguments: $list_file    list of all accessions for fastas to be made for
+#            $fa_file      directory path for fasta file to create
+#            $opt_HHR      reference to hash of options
+#            $FH_HR        reference to hash of file handles
+#
+# Returns:   void
+#
+#################################################################################
+sub list_to_fasta {
+  my $sub_name  = "list_to_fasta()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  
+  my ($list_file, $fa_file, $opt_HHR, $FH_HR) = (@_);
+  
+  $cmd = "cat $list_file | epost -db nuccore -format acc | efetch -format fasta > $fa_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+
+  return;
+}
+
+#################################################################################
+#
+# Sub name:  fasta_to_list()
+#
+# Author:     Eric Nawrocki
+# Date:       2017 Nov 21
+#
+# Purpose:   Given a fasta file, create a list file with names of the sequences 
+#            in that fasta file.
+#
+# Arguments: $fa_file      directory path for fasta file to create
+#            $list_file    list of all accessions for fastas to be made for
+#            $seqstat      path to esl-seqstat executable
+#            $opt_HHR      reference to hash of options
+#            $FH_HR        reference to hash of file handles
+#
+# Returns:   void
+#
+#################################################################################
+sub fasta_to_list { 
+  my $sub_name  = "fasta_to_list()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  
+  my ($fa_file, $list_file, $seqstat, $opt_HHR, $FH_HR) = (@_);
+  
+  $cmd = $seqstat . " -a $fa_file | grep ^\= | awk '{ print \$2 }' > $list_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+
+  return;
+}
+
+#################################################################################
+# 
+# Sub name:  createFastas()
+# EPN, Wed Nov 22 15:09:41 2017: NO LONGER USED, list_to_fasta creates one
+# large fasta file of all seqs, then it's split as necessary by other functions.
+# 
 # Author:    Lara Shonkwiler
 # Date:      2016 Aug 01
 #
@@ -824,6 +934,10 @@ sub createFastas {
 #######################################################################################
 #
 # Sub name:  nhmmscanSeqs()
+#
+# EPN, Wed Nov 22 15:08:08 2017: NO LONGER USED, dnaorg.pm:cmscanOrNhmmscanWrapper
+#            handles this: splitting up sequence file as necessary, submitting
+#            jobs (if necessary) and monitoring the farm until they're done.
 #
 # Author:    Lara Shonkwiler (adopted from code by Alejandro Schaffer)
 # Date:      2016 Aug 01
@@ -982,3 +1096,4 @@ sub nhmmscanSeqs {
     sleep(10);
   }
 }
+
