@@ -86,7 +86,7 @@ my %opt_group_desc_H = ();
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"1"} = "REQUIRED options";
 #     option            type       default               group   requires incompat    preamble-output                          help-output    
-opt_Add("--dirout",     "string", undef,                     1,    undef, undef,       "REQUIRED: name for output directory to create is <s>",  "REQUIRED: name for output directory to create is <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string", undef,                     1,    undef, undef,       "REQUIRED name for output directory to create is <s>",  "REQUIRED: name for output directory to create is <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for selecting mode to run in: build-mode (--onlybuild) or classify-mode (--inlist OR --infasta)";
 #     option            type       default               group   requires       incompat                 preamble-output                                     help-output    
@@ -421,13 +421,14 @@ else {
     # copy the fasta file to our output dir
     validateFileExistsAndIsNonEmpty($infasta_file, "main", $ofile_info_HH{"FH"});
     $cmd = "cp $infasta_file $cls_fa";
+    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
     validateFileExistsAndIsNonEmpty($cls_fa, "main", $ofile_info_HH{"FH"});
     addClosedFileToOutputInfo(\%ofile_info_HH, "SeqFasta", $cls_fa, 1, "Fasta file with sequences to classify (copy of $infasta_file)");
 
     # create the list file and get sequence lengths using esl-seqstat    
     fasta_to_list_and_lengths($cls_fa, $cls_list, $cls_list . ".tmp", $execs_H{"esl-seqstat"}, \@cls_fasta_seqname_A, \%cls_fasta_seqlen_H, \%opt_HH, $ofile_info_HH{"FH"});
     validateFileExistsAndIsNonEmpty($cls_list, "main", $ofile_info_HH{"FH"});
-    addClosedFileToOutputInfo(\%ofile_info_HH, $cls_list, 0, "List file with sequences to classify");
+    addClosedFileToOutputInfo(\%ofile_info_HH, "ClassList", $cls_list, 0, "List file with sequences to classify");
 
     @cls_list_seqname_A = @cls_fasta_seqname_A; # list seqname array is same as fasta seqname array if --infasta used
     $n_cls_seqs = scalar(@cls_list_seqname_A);
@@ -484,7 +485,7 @@ else {
   print MATCH_INFO "# H2: RefSeq:  The RefSeq that had the second strongest hit\n";
   print MATCH_INFO "# Bit Diff:    The amount by which the bit score of the 'RefSeq' hit is greater than that of the 'H2: RefSeq' hit\n";
   print MATCH_INFO "# Covg. Diff:  The amount by which the coverage of the 'RefSeq' hit is greater than that of the 'H2: RefSeq' hit\n";
-  print MATCH_INFO "# Num. Correct Hits: The amount of times 'Exp. RefSeq' produced a hit\n";
+#  print MATCH_INFO "# Num. Correct Hits: The amount of times 'Exp. RefSeq' produced a hit\n";
   print MATCH_INFO "#\n";
   print MATCH_INFO "########################################################################################################################################\n";
   print MATCH_INFO "\n";
