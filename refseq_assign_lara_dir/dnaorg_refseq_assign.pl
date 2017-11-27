@@ -186,18 +186,18 @@ my @early_cmd_A = (); # array of commands we run before our log file is opened
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+#!#  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+#!#  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
   $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
+#!#  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+#!#  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
+#!#runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -325,6 +325,8 @@ if($onlybuild_mode) {
   addClosedFileToOutputInfo(\%ofile_info_HH, "RefFastaList", $ref_fasta_list, 1, "list of RefSeq names from fasta file (may include version)");
   fileLinesToArray($ref_fasta_list, 1, \@ref_fasta_seqname_A, $ofile_info_HH{"FH"});
 
+
+
   if(! -e $ref_fa . ".ssi") { 
     $cmd = $execs_H{"esl-sfetch"} . " --index $ref_fa > /dev/null";
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
@@ -362,10 +364,15 @@ else {
   my $inlist_file         = opt_Get("--inlist", \%opt_HH);
   my $cls_list            = $out_root . ".seqlist";
   my $cls_fa              = $out_root . ".fa";
-  my %cls_seqlen_H        = (); # key is sequence name from fasta file, value is length of sequence
+  my %cls_fasta_seqlen_H  = (); # key is sequence name from fasta file, value is length of sequence
   my @cls_fasta_seqname_A = (); # array of sequences in $cls_fa,   may be in "accession-version" format
   my @cls_list_seqname_A  = (); # array of sequences in $cls_list, may not include version
   my $n_cls_seqs          = 0;  # number of sequences to classify, size of @cls_fasta_seqname_A and @cls_list_seqname_A
+  my $ref_list_seqname;  # name of a reference sequence
+  my $cls_fasta_seqname; # name of a sequence in the fasta file to classify
+  my $cls_fasta_seqlen;  # length of $cls_fasta_seqname
+  my $cls_list_seqname;  # name of a sequence in the list file to classify (this is what we'll output)
+  my %cls_list2fasta_seqname_H = (); # hash mapping a list sequence name (key) to a fasta sequence name (value)
 
   if($inlist_mode) { 
     # copy the inlist file to our output dir
@@ -381,13 +388,20 @@ else {
     addClosedFileToOutputInfo(\%ofile_info_HH, "SeqFasta", $cls_fa, 1, "Fasta file with sequences to classify");
 
     # get sequence lengths 
-    fasta_to_list_and_lengths($cls_fa, undef, $cls_list . ".tmp", $execs_H{"esl-seqstat"}, \@cls_fasta_seqname_A, \%cls_seqlen_H, \%opt_HH, $ofile_info_HH{"FH"});
+    fasta_to_list_and_lengths($cls_fa, undef, $cls_list . ".tmp", $execs_H{"esl-seqstat"}, \@cls_fasta_seqname_A, \%cls_fasta_seqlen_H, \%opt_HH, $ofile_info_HH{"FH"});
 
     # store sequence names in list file
     fileLinesToArray($cls_list, 1, \@cls_list_seqname_A, $ofile_info_HH{"FH"});
     $n_cls_seqs = scalar(@cls_list_seqname_A);
     if($n_cls_seqs != (scalar(@cls_fasta_seqname_A))) { 
-      DNAORG_FAIL(sprintf("ERROR in dnaorg_refseq_assign.pl::main(), fetched %d != %d seqs, when %d were listed in %s\n", scalar(@cls_fasta_seqname_A), $n_cls_seqs, $n_cls_seqs, $cls_list));
+      DNAORG_FAIL(sprintf("ERROR in dnaorg_refseq_assign.pl::main(), fetched %d != %d seqs, when %d were listed in %s\n", scalar(@cls_fasta_seqname_A), $n_cls_seqs, $n_cls_seqs, $cls_list), 1, $ofile_info_HH{"FH"});
+    }
+
+    # create the hash mapping the list sequence names to the fasta sequence names
+    foreach $cls_fasta_seqname (@cls_fasta_seqname_A) {
+      $cls_list_seqname = $cls_fasta_seqname;
+      stripVersion(\$cls_list_seqname);
+      $cls_list2fasta_seqname_H{$cls_list_seqname} = $cls_fasta_seqname;
     }
   }
   elsif($infasta_mode) { 
@@ -398,12 +412,17 @@ else {
     addClosedFileToOutputInfo(\%ofile_info_HH, "SeqFasta", $cls_fa, 1, "Fasta file with sequences to classify (copy of $infasta_file)");
 
     # create the list file and get sequence lengths using esl-seqstat    
-    fasta_to_list_and_lengths($cls_fa, $cls_list, $cls_list . ".tmp", $execs_H{"esl-seqstat"}, \@cls_fasta_seqname_A, \%cls_seqlen_H, \%opt_HH, $ofile_info_HH{"FH"});
+    fasta_to_list_and_lengths($cls_fa, $cls_list, $cls_list . ".tmp", $execs_H{"esl-seqstat"}, \@cls_fasta_seqname_A, \%cls_fasta_seqlen_H, \%opt_HH, $ofile_info_HH{"FH"});
     validateFileExistsAndIsNonEmpty($cls_list, "main", $ofile_info_HH{"FH"});
     addClosedFileToOutputInfo(\%ofile_info_HH, $cls_list, 0, "List file with sequences to classify");
 
     @cls_list_seqname_A = @cls_fasta_seqname_A; # list seqname array is same as fasta seqname array if --infasta used
     $n_cls_seqs = scalar(@cls_list_seqname_A);
+
+    # create the hash mapping the list sequence names to the fasta sequence names
+    foreach $cls_fasta_seqname (@cls_fasta_seqname_A) {
+      $cls_list2fasta_seqname_H{$cls_fasta_seqname} = $cls_fasta_seqname; # names are identical in both arrays
+    }
   }
 
   # now regardless of whether --inlist or --infasta was chosen we're at the same spot
@@ -412,16 +431,15 @@ else {
   # $cls_fa:              fasta file of all seqs to classify
   # @cls_fasta_seqname_A: array of all sequence names from $cls_fa
 
-  # create the map from the list sequence names to the fasta sequence names
-
+  
 
   ########### RUN nhmmscan and generate output files ####################################################################################################
   my $tblout_file = $out_root . ".tblout"; # concatenated tblout file, created by concatenating all of the individual 
                                            # tblout files in cmscanOrNhmmscanWrapper()
   my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
 
-  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $n_cls_seqs, $tblout_file, $progress_w, 
-                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
+  #!#cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $n_cls_seqs, $tblout_file, $progress_w, 
+  #!#                        \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
 
   ########################################################################################################################################################
@@ -484,19 +502,20 @@ else {
   
   my @hit_output_A = (); # array containing all the output for this hit
   my %counter_H    = (); # key is sequence name, value is number of hits for this sequence
-  my $refseq;
-  my $seq;
+  my $h;                 # counter over hits
+  my $i;                 # counter over sequences
 
   open(NHMMSCANTBL, $tblout_file) || fileOpenFailure($tblout_file, $0, $!, "reading", $ofile_info_HH{"FH"});
   while(my $line = <NHMMSCANTBL>) {
     if($line !~ m/^\#/) {               #if this line is not commented
       my @hit_specs_A = split(/\s+/, $line);
-      $refseq = $hit_specs_A[0];
-      $seq    = $hit_specs_A[2];
-      if(! exists $cls_seqlen_H{$seq}) { 
-        DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main() sequence length for sequence $seq does not exist in the length hash", 1, $ofile_info_HH{"FH"});
+      $ref_list_seqname = $hit_specs_A[0];
+      $cls_fasta_seqname = $hit_specs_A[2];
+      if(! exists $cls_fasta_seqlen_H{$cls_fasta_seqname}) { 
+        DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main() sequence length for sequence $cls_fasta_seqname does not exist in the length hash", 1, $ofile_info_HH{"FH"}, 1, $ofile_info_HH{"FH"});
       }
-      my $seq_len = $cls_seqlen_H{$seq};
+      my $cls_fasta_seqlen = $cls_fasta_seqlen_H{$cls_fasta_seqname};
+
       ##########################################################################
       # In @hit_specs_A - array containing all the output info for the hit on this line
       #
@@ -536,16 +555,16 @@ else {
       # check if this RefSeq has appeared in a previous hit for this sequence                                              
 
       # initialize if necessary
-      if(! exists($hit_info_HAA{$seq}) ) {
-	@{$hit_info_HAA{$seq}} = ();
-        $counter_H{$seq} = 0;
+      if(! exists($hit_info_HAA{$cls_fasta_seqname}) ) {
+	@{$hit_info_HAA{$cls_fasta_seqname}} = ();
+        $counter_H{$cls_fasta_seqname} = 0;
       }
 
       my $first_index = undef;  # the first occuring index of a previous hit, if one exists                                                             
       # if there are previous hits, search through them to see if this RefSeq has been hit before
-      if( @{$hit_info_HAA{$seq}} != 0 ) {
-        for(my $i=0;  $i < scalar(@{$hit_info_HAA{$seq}});  $i++) {
-          if( @{@{$hit_info_HAA{$seq}}[$i]}[1] eq $refseq ) {       # if index $i's RefSeq is the same as this one    
+      if( @{$hit_info_HAA{$cls_fasta_seqname}} != 0 ) {
+        for($h=0;  $h < scalar(@{$hit_info_HAA{$cls_fasta_seqname}});  $h++) {
+          if( @{@{$hit_info_HAA{$cls_fasta_seqname}}[$h]}[1] eq $ref_list_seqname ) {       # if index $i's RefSeq is the same as this one    
             $first_index = $i;
           }
         }
@@ -553,22 +572,23 @@ else {
     
       # Deciding hit length from alito alifrom - will be used to find Coverage
       my $hit_len = $hit_specs_A[7] - $hit_specs_A[6];
-        
+      #printf("HEYA ref:$ref_list_seqname seq:$cls_fasta_seqname seqlen:$cls_fasta_seqname_len hitlen:$hit_len\n");        
+
       # if this is the first hit to this RefSeq
       if(! defined($first_index)) {
         #debug
-        #print "first occurence of $seq \n";
+        #print "\tfirst occurence of $cls_fasta_seqname \n";
           
         @hit_output_A = (); # Array to be outputed to match info file                                                                                                                          
-        push(@hit_output_A, $seq);
-        push(@hit_output_A, $refseq);
+        push(@hit_output_A, $cls_fasta_seqname);
+        push(@hit_output_A, $ref_list_seqname);
           
         push(@hit_output_A, $hit_specs_A[13]); # add bit score
         my $e_val = sprintf("%.7f", $hit_specs_A[12]);
         push(@hit_output_A, $e_val); # add E-val                                                                                                            
           
         # add coverage				
-        my $coverage = $hit_len/$seq_len;
+        my $coverage = $hit_len/$cls_fasta_seqlen;
         $coverage = sprintf("%.7f", $coverage);
         push(@hit_output_A, $coverage);
           
@@ -576,30 +596,30 @@ else {
         push(@hit_output_A, 1);                 # initialize 'Number of hits' to 1
           
           
-        @{$hit_info_HAA{$seq}}[$counter_H{$seq}] = ();
-        @{$hit_info_HAA{$seq}[$counter_H{$seq}]} = @hit_output_A;
+        @{$hit_info_HAA{$cls_fasta_seqname}}[$counter_H{$cls_fasta_seqname}] = ();
+        @{$hit_info_HAA{$cls_fasta_seqname}[$counter_H{$cls_fasta_seqname}]} = @hit_output_A;
           
-        $counter_H{$seq}++;
+        $counter_H{$cls_fasta_seqname}++;
           
       }else {    # if this is a hit to a sequence that has already been hit
-        #@hit_output_A = \@{$hit_info_HAA{$seq}[$first_index]};
+        #@hit_output_A = \@{$hit_info_HAA{$cls_fasta_seqname}[$first_index]};
           
         #debug
-        #print "second, third, etc hit of $seq \n";
+        #print "\tsecond, third, etc hit of $cls_fasta_seqname \n";
           
         # TODO - check with Eric!
-        @{$hit_info_HAA{$seq}[$first_index]}[2] += $hit_specs_A[13]; # Add bit score
-###        @{$hit_info_HAA{$seq}[$first_index]}[3] += $hit_specs_A[12]; # Add E-val
-        @{$hit_info_HAA{$seq}[$first_index]}[5] += $hit_specs_A[14]; # Add bias
-        @{$hit_info_HAA{$seq}[$first_index]}[6] ++;                  # increase 'Number of hits' by 1
+        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[2] += $hit_specs_A[13]; # Add bit score
+###        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[3] += $hit_specs_A[12]; # Add E-val
+        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[5] += $hit_specs_A[14]; # Add bias
+        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[6] ++;                  # increase 'Number of hits' by 1
           
         ##############################################
         # Calculate and add coverage
-        my $prev_covg = @{$hit_info_HAA{$seq}[$first_index]}[4];
-        my $prev_hit_len = $prev_covg*$seq_len;
-        my $coverage = ($prev_hit_len + $hit_len) / $seq_len;
+        my $prev_covg = @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[4];
+        my $prev_hit_len = $prev_covg*$cls_fasta_seqlen;
+        my $coverage = ($prev_hit_len + $hit_len) / $cls_fasta_seqlen;
         $coverage = sprintf("%.7f", $coverage);
-        @{$hit_info_HAA{$seq}[$first_index]}[4] = $coverage;
+        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[4] = $coverage;
         #############################################
       }  
     }
@@ -609,26 +629,32 @@ else {
   # now we have everything stored in $hit_info_HAA
   # go through and for each sequence create the output
 
-  foreach my $seq (@cls_list_seqname_A) {
-    if(exists($hit_info_HAA{$seq})) { 
+  for($i = 0; $i < $n_cls_seqs; $i++) { 
+    $cls_list_seqname  = $cls_list_seqname_A[$i];
+    $cls_fasta_seqname = $cls_list2fasta_seqname_H{$cls_list_seqname};
+    if(! defined $cls_fasta_seqname) { 
+      DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main(), could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
+    }
+    printf("HEYA fasta: $cls_fasta_seqname list: $cls_list_seqname\n");
+    if(exists($hit_info_HAA{$cls_fasta_seqname})) { 
       # there was at least one valid hit for this sequence
       # parse and output the best hit's info
 
       # sort order of hits by bit score
-      @{$hit_info_HAA{$seq}} = sort { $a->[2] <=> $b->[2] } @{$hit_info_HAA{$seq}};
+      @{$hit_info_HAA{$cls_fasta_seqname}} = sort { $a->[2] <=> $b->[2] } @{$hit_info_HAA{$cls_fasta_seqname}};
       
       # Assigns the sequence to the refseq hit with the the highest combined bit score of all hits to that refseq
       #my $max_index = 0; # contains the index of the hit with the highest bit score - initialized at index 0
       #my $second_index = 0;
-      #for( my $hit=0; $hit< scalar(@{$hit_info_HAA{$seq}}) ; $hit++  ) {
-      #	if( @{$hit_info_HAA{$seq}[$hit]}[2] > @{$hit_info_HAA{$seq}[$max_index]}[2] ) {
+      #for( my $hit=0; $hit< scalar(@{$hit_info_HAA{$cls_fasta_seqname}}) ; $hit++  ) {
+      #	if( @{$hit_info_HAA{$cls_fasta_seqname}[$hit]}[2] > @{$hit_info_HAA{$cls_fasta_seqname}[$max_index]}[2] ) {
       #	    $max_index = $hit;
       #	}
       #}
       
-      # assign hit_output_A to the assigned refseq hit's info, assign $refseq to the assigned refseq
-      @hit_output_A = @{@{$hit_info_HAA{$seq}}[-1]}; 
-      $refseq = $hit_output_A[1];
+      # assign hit_output_A to the assigned refseq hit's info, assign $ref_list_seqname to the assigned refseq
+      @hit_output_A = @{@{$hit_info_HAA{$cls_fasta_seqname}}[-1]}; 
+      $ref_list_seqname = $hit_output_A[1];
       
       ##############################################################################
       # Add comparison indicies to @hit_output_A
@@ -641,12 +667,12 @@ else {
       ##############################################################################
       
       # TODO - hardcode-y 
-      if( scalar(@{$hit_info_HAA{$seq}}) >= 2) {     # if there is more than one hit  
-        push(@hit_output_A, @{@{$hit_info_HAA{$seq}}[-2]}[1]);
+      if( scalar(@{$hit_info_HAA{$cls_fasta_seqname}}) >= 2) {     # if there is more than one hit  
+        push(@hit_output_A, @{@{$hit_info_HAA{$cls_fasta_seqname}}[-2]}[1]);
 	
-        my $bit_diff = $hit_info_HAA{$seq}[-1][2] - $hit_info_HAA{$seq}[-2][2];
+        my $bit_diff = $hit_info_HAA{$cls_fasta_seqname}[-1][2] - $hit_info_HAA{$cls_fasta_seqname}[-2][2];
         $bit_diff = sprintf("%9.1f", $bit_diff);
-        my $cov_diff = $hit_info_HAA{$seq}[-1][4] - $hit_info_HAA{$seq}[-2][4];
+        my $cov_diff = $hit_info_HAA{$cls_fasta_seqname}[-1][4] - $hit_info_HAA{$cls_fasta_seqname}[-2][4];
         $cov_diff = sprintf("%.7f", $cov_diff);
         push(@hit_output_A, $bit_diff);
         push(@hit_output_A, $cov_diff);
@@ -662,17 +688,20 @@ else {
       print MATCH_INFO "\n";
       
       # Add this seq to the hash key that corresponds to it's RefSeq
-      push(@{$ntlist_HA{$refseq}}, $seq);
-      
+      push(@{$ntlist_HA{$ref_list_seqname}}, $cls_list_seqname);
+      # IMPORTANT: push $cls_list_seqname, and not $cls_fasta_seqname (cls_list_seqname is from the input list 
+      # (unless --infasta) and may not include the version
     } else { # if there were no eligible hits
-      @hit_output_A = ($seq,"--------","--------","--------","--------","--------","--------","--------","--------","--------");
+      @hit_output_A = ($cls_fasta_seqname,"--------","--------","--------","--------","--------","--------","--------","--------","--------");
       print MATCH_INFO join("\t\t", @hit_output_A);
       print MATCH_INFO "\n";
       
       # add this sequence to the file that lists non-assigned sequences
-      push(@{$ntlist_HA{"non-assigned"}}, $seq);
+      push(@{$ntlist_HA{"non-assigned"}}, $cls_list_seqname); 
+      # IMPORTANT: push $cls_list_seqname, and not $cls_fasta_seqname (cls_list_seqname is from the input list 
+      # (unless --infasta) and may not include the version
     }
-  } # end of 'foreach $seq' loop
+  } # end of 'foreach $cls_fasta_seqname' loop
 
   addClosedFileToOutputInfo(\%ofile_info_HH, "match-info", $match_file, 1, "Table with statistics for each match");
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -680,16 +709,16 @@ else {
   $start_secs = outputProgressPrior("Creating ntlists and other output files", $progress_w, $log_FH, *STDOUT);
   
   # Generate ntlist files
-  foreach my $refseq (@ref_list_seqname_A) {
-    my $ntlist_file = $out_root . ".$refseq.ntlist";
+  foreach my $ref_list_seqname (@ref_list_seqname_A) {
+    my $ntlist_file = $out_root . ".$ref_list_seqname.ntlist";
     
     open(NTLIST, "> $ntlist_file")  || fileOpenFailure($ntlist_file, $0, $!, "writing", $ofile_info_HH{"FH"});
-    print NTLIST "$refseq\n";
-    foreach (@{$ntlist_HA{$refseq}}) {
+    print NTLIST "$ref_list_seqname\n";
+    foreach (@{$ntlist_HA{$ref_list_seqname}}) {
       print NTLIST "$_\n";
     }
     
-    addClosedFileToOutputInfo(\%ofile_info_HH, "$refseq.ntlist", $ntlist_file, 1, "ntlist for $refseq");
+    addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.ntlist", $ntlist_file, 1, "ntlist for $ref_list_seqname");
   }
   
   # Generate file that lists non-assigned sequences
