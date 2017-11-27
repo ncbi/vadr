@@ -185,19 +185,19 @@ my @early_cmd_A = (); # array of commands we run before our log file is opened
 # check if our output dir $symbol exists
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
-  $cmd = "rm -rf $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+  #!#$cmd = "rm -rf $dir";
+  #!#if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  #!#else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
-  $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
+  #!#$cmd = "rm $dir";
+  #!#if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  #!#else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
+#!#runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -425,6 +425,11 @@ else {
     validateFileExistsAndIsNonEmpty($cls_fa, "main", $ofile_info_HH{"FH"});
     addClosedFileToOutputInfo(\%ofile_info_HH, "SeqFasta", $cls_fa, 1, "Fasta file with sequences to classify (copy of $infasta_file)");
 
+    if(! -e $cls_fa . ".ssi") { 
+      $cmd = $execs_H{"esl-sfetch"} . " --index $cls_fa > /dev/null";
+      runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+    }
+
     # create the list file and get sequence lengths using esl-seqstat    
     fasta_to_list_and_lengths($cls_fa, $cls_list, $cls_list . ".tmp", $execs_H{"esl-seqstat"}, \@cls_fasta_seqname_A, \%cls_fasta_seqlen_H, \%opt_HH, $ofile_info_HH{"FH"});
     validateFileExistsAndIsNonEmpty($cls_list, "main", $ofile_info_HH{"FH"});
@@ -451,9 +456,9 @@ else {
   my $tblout_file = $out_root . ".tblout"; # concatenated tblout file, created by concatenating all of the individual 
                                            # tblout files in cmscanOrNhmmscanWrapper()
   my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
-
-  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $n_cls_seqs, $tblout_file, $progress_w, 
-                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
+  
+  #!#cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $n_cls_seqs, $tblout_file, $progress_w, 
+  #!#                        \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
 
   ########################################################################################################################################################
@@ -502,11 +507,11 @@ else {
                       # Key:    RefSeq accession #
                       # Value:  Array of accessions for which have been assigned to this RefSeq
   foreach (@ref_list_seqname_A) {
-    $ntlist_HA{$_} = (); # initialize each RefSeq's value to an empty array
+    @{$ntlist_HA{$_}} = (); # initialize each RefSeq's value to an empty array
   }
   
   # initialize the non-assigned list to an empty array
-  $ntlist_HA{"non-assigned"} = ();
+  @{$ntlist_HA{"non-assigned"}} = ();
   
   # Generate data structures to build a sequence profile for further evaluation                       
   my %hit_info_HAA = (); # Hash of hash of arrays containing nhmmscan info for each hit for each sequence
@@ -720,32 +725,60 @@ else {
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   ########################################################################
   $start_secs = outputProgressPrior("Creating ntlists and other output files", $progress_w, $log_FH, *STDOUT);
+
+  my @tmp_output_A = (); # array of lines to output after we create the files we want to create
   
-  # Generate ntlist files
-  foreach my $ref_list_seqname (@ref_list_seqname_A) {
-    my $ntlist_file = $out_root . ".$ref_list_seqname.ntlist";
-    
-    open(NTLIST, "> $ntlist_file")  || fileOpenFailure($ntlist_file, $0, $!, "writing", $ofile_info_HH{"FH"});
-    print NTLIST "$ref_list_seqname\n";
-    foreach (@{$ntlist_HA{$ref_list_seqname}}) {
-      print NTLIST "$_\n";
+  # Generate ntlist files, one per RefSeq
+  # If --infasta used: generate fasta files, one per RefSeq with at least 
+  if($infasta_mode) { 
+    if(! -s $cls_fa . ".ssi") { 
+      DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main(), ssi file for $cls_fa does not exist when trying to fetch", 1, $ofile_info_HH{"FH"});
     }
-    
-    addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.ntlist", $ntlist_file, 1, "ntlist for $ref_list_seqname");
+  }
+
+  push(@tmp_output_A, sprintf("#\n"));
+  push(@tmp_output_A, sprintf("# Number of input sequences assigned to each RefSeq:\n"));
+  push(@tmp_output_A, sprintf("#\n"));
+  push(@tmp_output_A, sprintf("%-20s  %10s  %10s\n", "# RefSeq-accession", "num-seqs", "fract-seqs"));
+  push(@tmp_output_A, sprintf("%-20s  %10s  %10s\n", "#-------------------", "----------", "----------"));
+  foreach my $ref_list_seqname (@ref_list_seqname_A) {
+    my $ntlist_file    = $out_root . ".$ref_list_seqname.ntlist";
+    my $sub_fasta_file = $out_root . ".$ref_list_seqname.fa";
+    my $cur_nseq = scalar(@{$ntlist_HA{$ref_list_seqname}});
+    push(@tmp_output_A, sprintf("%-20s  %10d  %10.4f\n", $ref_list_seqname, $cur_nseq, $cur_nseq / $n_cls_seqs));
+    if($cur_nseq > 0) { 
+      open(NTLIST, "> $ntlist_file")  || fileOpenFailure($ntlist_file, $0, $!, "writing", $ofile_info_HH{"FH"});
+      print NTLIST "$ref_list_seqname\n";
+      foreach (@{$ntlist_HA{$ref_list_seqname}}) {
+        print NTLIST "$_\n";
+      }
+      close(NTLIST);
+      addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.ntlist", $ntlist_file, 1, "ntlist for $ref_list_seqname");
+
+      if($infasta_mode) { 
+        # fetch the sequences into a new fasta file
+        sleep(0.1); # make sure that NTLIST is closed
+        $cmd  = "tail -n +2 $ntlist_file |" . $execs_H{"esl-sfetch"} . " -f $cls_fa - > $sub_fasta_file"; # fetch the sequences
+        runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+        addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.fa", $sub_fasta_file, 1, "fasta file with sequences assigned to $ref_list_seqname");
+      }
+    }
   }
   
   # Generate file that lists non-assigned sequences
   my $non_assigned_file = $out_root . ".non-assigned";
   
-  open(NALIST, "> $non_assigned_file")  || fileOpenFailure($non_assigned_file, $0, $!, "writing", $ofile_info_HH{"FH"});
-  foreach (@{$ntlist_HA{"non-assigned"}}) {
-    print NALIST "$_\n";
+  my $cur_nseq = scalar(@{$ntlist_HA{"non-assigned"}});
+  push(@tmp_output_A, sprintf("%-20s  %10d  %10.4f\n", "NON-ASSIGNED", $cur_nseq, $cur_nseq / $n_cls_seqs));
+  if($cur_nseq > 0) { 
+    open(NALIST, "> $non_assigned_file")  || fileOpenFailure($non_assigned_file, $0, $!, "writing", $ofile_info_HH{"FH"});
+    foreach (@{$ntlist_HA{"non-assigned"}}) {
+      print NALIST "$_\n";
+    }
+    addClosedFileToOutputInfo(\%ofile_info_HH, "non-assigned", $non_assigned_file, 1, "List of sequences not assigned to a RefSeq");
   }
   
-  addClosedFileToOutputInfo(\%ofile_info_HH, "non-assigned", $non_assigned_file, 1, "List of sequences not assigned to a RefSeq");
-  
-  
-  # add $ref_list and #cls_list to output direcotry
+  # add $ref_list and $cls_list to output direcotry
   my $out_ref_list = $out_root . ".all.refseqs";
   my $out_cls_list = $out_root . ".all.seqs";
   $cmd = "cat $ref_list | grep . > $out_ref_list";
@@ -757,6 +790,12 @@ else {
   addClosedFileToOutputInfo(\%ofile_info_HH, "ClsSeqs", $out_cls_list, 1, "List of sequences that were sorted into ntlists");
   
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  
+  # now output statistics summary
+  foreach my $tmp_line (@tmp_output_A) { 
+    outputString($log_FH, 1, $tmp_line);
+  }
+
 } # end of 'else' entered if $onlybuild_mode is FALSE
 ##########################################################################################################################################################
 
