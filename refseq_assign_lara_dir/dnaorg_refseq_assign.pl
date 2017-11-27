@@ -583,15 +583,16 @@ else {
       # if there are previous hits, search through them to see if this RefSeq has been hit before
       if( @{$hit_info_HAA{$cls_fasta_seqname}} != 0 ) {
         for($h=0;  $h < scalar(@{$hit_info_HAA{$cls_fasta_seqname}});  $h++) {
-          if( @{@{$hit_info_HAA{$cls_fasta_seqname}}[$h]}[1] eq $ref_list_seqname ) {       # if index $i's RefSeq is the same as this one    
-            $first_index = $i;
+          if( $hit_info_HAA{$cls_fasta_seqname}[$h][1] eq $ref_list_seqname ) {       # if index $i's RefSeq is the same as this one    
+            $first_index = $h;
+            $h = scalar(@{$hit_info_HAA{$cls_fasta_seqname}});
           }
         }
       }
     
       # Deciding hit length from alito alifrom - will be used to find Coverage
       my $hit_len = $hit_specs_A[7] - $hit_specs_A[6];
-      #printf("HEYA ref:$ref_list_seqname seq:$cls_fasta_seqname seqlen:$cls_fasta_seqname_len hitlen:$hit_len\n");        
+      #printf("HEYA ref:$ref_list_seqname seq:$cls_fasta_seqname seqlen:$cls_fasta_seqlen hitlen:$hit_len\n");        
 
       # if this is the first hit to this RefSeq
       if(! defined($first_index)) {
@@ -627,19 +628,21 @@ else {
         #print "\tsecond, third, etc hit of $cls_fasta_seqname \n";
           
         # TODO - check with Eric!
-        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[2] += $hit_specs_A[13]; # Add bit score
+        if($hit_specs_A[13] > 0) { # only add hits with positive bit scores
+          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[2] += $hit_specs_A[13]; # Add bit score
 ###        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[3] += $hit_specs_A[12]; # Add E-val
-        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[5] += $hit_specs_A[14]; # Add bias
-        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[6] ++;                  # increase 'Number of hits' by 1
-          
-        ##############################################
-        # Calculate and add coverage
-        my $prev_covg = @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[4];
-        my $prev_hit_len = $prev_covg*$cls_fasta_seqlen;
-        my $coverage = ($prev_hit_len + $hit_len) / $cls_fasta_seqlen;
-        $coverage = sprintf("%.7f", $coverage);
-        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[4] = $coverage;
-        #############################################
+          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[5] += $hit_specs_A[14]; # Add bias
+          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[6] ++;                  # increase 'Number of hits' by 1
+
+          ##############################################
+          # Calculate and add coverage
+          my $prev_covg = @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[4];
+          my $prev_hit_len = $prev_covg*$cls_fasta_seqlen;
+          my $coverage = ($prev_hit_len + $hit_len) / $cls_fasta_seqlen;
+          $coverage = sprintf("%.7f", $coverage);
+          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[4] = $coverage;
+          #############################################
+        }
       }  
     }
   }
