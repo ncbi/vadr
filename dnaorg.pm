@@ -6529,6 +6529,10 @@ sub cmscanOrNhmmscanWrapper {
   # because splitFastaFile() will return the actual number of sequence files created
   # and we'll use that as the number of jobs subsequently. $nfarmjobs is currently only
   # the 'target' number of sequence files that we pass into splitFastaFile().
+  # make sure we won't exceed our max number of jobs (from --maxnjobs)
+  if(($targ_nseqfiles * $nmdl) > (opt_Get("--maxnjobs", $opt_HHR))) { 
+    $targ_nseqfiles = int((opt_Get("--maxnjobs", $opt_HHR)) / $nmdl);
+  }
   if($targ_nseqfiles == 0) { $targ_nseqfiles = 1; }
 
   if(($targ_nseqfiles == 1) || (opt_Get("--local", $opt_HHR))) { 

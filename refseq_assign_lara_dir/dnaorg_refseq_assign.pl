@@ -101,6 +101,7 @@ opt_Add("-f",           "boolean", 0,                        3,    undef, undef,
 opt_Add("-v",           "boolean", 0,                        3,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        3,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--nseq",       "integer", 10,                       3,    undef,"--local",   "number of sequences for each nhmmscan farm job",              "set number of sequences for each nhmmscan farm job to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--maxnjobs",   "integer", 500,                      1,    undef,"--local",   "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for nhmmscan jobs on farm",                 "allow <n> wall-clock minutes for nhmmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        3,    undef, undef,      "run nhmmscan locally instead of on farm",                     "run nhmmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
@@ -130,6 +131,7 @@ my $options_okay =
                 'inlist=s'     => \$GetOptions_H{"--inlist"},
                 'infasta=s'    => \$GetOptions_H{"--infasta"},
                 'nseq=s'       => \$GetOptions_H{"--nseq"}, 
+                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
                 'local'        => \$GetOptions_H{"--local"}, 
                 'errcheck'     => \$GetOptions_H{"--errcheck"},  
@@ -185,19 +187,19 @@ my @early_cmd_A = (); # array of commands we run before our log file is opened
 # check if our output dir $symbol exists
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
-  #!#$cmd = "rm -rf $dir";
-  #!#if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  #!#else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+  $cmd = "rm -rf $dir";
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
-  #!#$cmd = "rm $dir";
-  #!#if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  #!#else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
+  $cmd = "rm $dir";
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-#!#runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
+runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -457,8 +459,8 @@ else {
                                            # tblout files in cmscanOrNhmmscanWrapper()
   my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
   
-  #!#cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $n_cls_seqs, $tblout_file, $progress_w, 
-  #!#                        \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
+  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $n_cls_seqs, $tblout_file, $progress_w, 
+                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
 
   ########################################################################################################################################################
