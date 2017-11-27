@@ -186,18 +186,18 @@ my @early_cmd_A = (); # array of commands we run before our log file is opened
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
-#!#  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-#!#  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
   $cmd = "rm $dir";
-#!#  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-#!#  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-#!#runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
+runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -302,6 +302,9 @@ my $ref_fa            = $build_root . ".ref.fa";
 my $ref_stk           = $build_root . ".ref.stk";
 my $ref_list          = $build_root . ".ref.list";
 my $ref_fasta_list    = $build_root . ".ref.fa.list"; # fasta names (may include version)
+my $ref_fasta_seqname; # name of a sequence in the fasta file to classify
+my $ref_list_seqname;  # name of a sequence in the list file to classify (this is what we'll output)
+my %ref_list2fasta_seqname_H = (); # hash mapping a list sequence name (key) to a fasta sequence name (value)
 
 # copy the ref list to the build directory if --onlybuild
 if($onlybuild_mode) { 
@@ -325,7 +328,12 @@ if($onlybuild_mode) {
   addClosedFileToOutputInfo(\%ofile_info_HH, "RefFastaList", $ref_fasta_list, 1, "list of RefSeq names from fasta file (may include version)");
   fileLinesToArray($ref_fasta_list, 1, \@ref_fasta_seqname_A, $ofile_info_HH{"FH"});
 
-
+  # create the hash mapping the list sequence names to the fasta sequence names
+  foreach $ref_fasta_seqname (@ref_fasta_seqname_A) {
+    $ref_list_seqname = $ref_fasta_seqname;
+    stripVersion(\$ref_list_seqname);
+    $ref_list2fasta_seqname_H{$ref_list_seqname} = $ref_fasta_seqname;
+  }
 
   if(! -e $ref_fa . ".ssi") { 
     $cmd = $execs_H{"esl-sfetch"} . " --index $ref_fa > /dev/null";
@@ -334,10 +342,15 @@ if($onlybuild_mode) {
 
   for(my $i = 0; $i < $n_ref; $i++) { 
     my $hmm_file = $out_root . ".$i.hmm";
+    $ref_list_seqname  = $ref_list_seqname_A[$i];
+    $ref_fasta_seqname = $ref_list2fasta_seqname_H{$ref_list_seqname};
+    if(! defined $ref_fasta_seqname) { 
+      DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main(), could not find mapping fasta sequence name for list sequence name $ref_list_seqname", 1, $ofile_info_HH{"FH"});
+    }
     # build up the command, we'll fetch the sequence, pass it into esl-reformat to make a stockholm 'alignment', and pass that into hmmbuild
-    $cmd  = $execs_H{"esl-sfetch"} . " $ref_fa $ref_fasta_seqname_A[$i] | "; # fetch the sequence
+    $cmd  = $execs_H{"esl-sfetch"} . " $ref_fa $ref_fasta_seqname | "; # fetch the sequence
 #    $cmd .= $execs_H{"esl-reformat"} . " --informat afa stockholm - | "; # reformat to stockholm
-    $cmd .= $execs_H{"hmmbuild"} . " --informat afa -n $ref_list_seqname_A[$i] $hmm_file - > /dev/null"; # build HMM file
+    $cmd .= $execs_H{"hmmbuild"} . " --informat afa -n $ref_list_seqname $hmm_file - > /dev/null"; # build HMM file
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
     $cmd = "cat $hmm_file >> $ref_library";   # adds each individual hmm to the hmm library
     runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
@@ -430,7 +443,7 @@ else {
   # @cls_list_seqname_A:  array of all sequence names from $cls_list
   # $cls_fa:              fasta file of all seqs to classify
   # @cls_fasta_seqname_A: array of all sequence names from $cls_fa
-
+  # %cls_list2fasta_seqname_H: hash mapping list sequence names to fasta sequence
   
 
   ########### RUN nhmmscan and generate output files ####################################################################################################
@@ -438,8 +451,8 @@ else {
                                            # tblout files in cmscanOrNhmmscanWrapper()
   my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
 
-  #!#cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $n_cls_seqs, $tblout_file, $progress_w, 
-  #!#                        \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
+  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $n_cls_seqs, $tblout_file, $progress_w, 
+                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
 
   ########################################################################################################################################################
@@ -635,7 +648,6 @@ else {
     if(! defined $cls_fasta_seqname) { 
       DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main(), could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
     }
-    printf("HEYA fasta: $cls_fasta_seqname list: $cls_list_seqname\n");
     if(exists($hit_info_HAA{$cls_fasta_seqname})) { 
       # there was at least one valid hit for this sequence
       # parse and output the best hit's info
