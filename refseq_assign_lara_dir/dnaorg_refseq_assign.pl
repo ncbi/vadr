@@ -390,6 +390,7 @@ else {
   my %cls_list2fasta_seqname_H = (); # hash mapping a list sequence name (key) to a fasta sequence name (value)
 
   if($inlist_mode) { 
+    $start_secs = outputProgressPrior("Fetching sequences to a fasta file", $progress_w, $log_FH, *STDOUT);
     # copy the inlist file to our output dir
     validateFileExistsAndIsNonEmpty($inlist_file, "main", $ofile_info_HH{"FH"});
     $cmd = "cp $inlist_file $cls_list";
@@ -402,7 +403,10 @@ else {
     validateFileExistsAndIsNonEmpty($cls_fa, "main", $ofile_info_HH{"FH"});
     addClosedFileToOutputInfo(\%ofile_info_HH, "SeqFasta", $cls_fa, 1, "Fasta file with sequences to classify");
 
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
     # get sequence lengths 
+    $start_secs = outputProgressPrior("Processing fasta file to get sequence lengths", $progress_w, $log_FH, *STDOUT);
     fasta_to_list_and_lengths($cls_fa, undef, $cls_list . ".tmp", $execs_H{"esl-seqstat"}, \@cls_fasta_seqname_A, \%cls_fasta_seqlen_H, \%opt_HH, $ofile_info_HH{"FH"});
 
     # store sequence names in list file
@@ -418,8 +422,10 @@ else {
       stripVersion(\$cls_list_seqname);
       $cls_list2fasta_seqname_H{$cls_list_seqname} = $cls_fasta_seqname;
     }
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
   elsif($infasta_mode) { 
+    $start_secs = outputProgressPrior("Processing fasta file to get sequence lengths", $progress_w, $log_FH, *STDOUT);
     # copy the fasta file to our output dir
     validateFileExistsAndIsNonEmpty($infasta_file, "main", $ofile_info_HH{"FH"});
     $cmd = "cp $infasta_file $cls_fa";
@@ -444,6 +450,7 @@ else {
     foreach $cls_fasta_seqname (@cls_fasta_seqname_A) {
       $cls_list2fasta_seqname_H{$cls_fasta_seqname} = $cls_fasta_seqname; # names are identical in both arrays
     }
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
 
   # now regardless of whether --inlist or --infasta was chosen we're at the same spot
