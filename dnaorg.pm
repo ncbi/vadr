@@ -5203,7 +5203,15 @@ sub findValueInArray {
 sub DNAORG_FAIL { 
   my $nargs_expected = 3;
   my $sub_name = "DNAORG_FAIL()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, DNAORG_FAIL() entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  if(scalar(@_) != $nargs_expected) { 
+    if(scalar(@_) > 0) { 
+      printf STDERR ("ERROR, DNAORG_FAIL() entered with %d != %d input arguments.\n(errmsg: $_[0])\n\n", scalar(@_), $nargs_expected); 
+    }
+    else { 
+      printf STDERR ("ERROR, DNAORG_FAIL() entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); 
+    }
+    exit(1); 
+  }
   my ($errmsg, $status, $FH_HR) = @_;
   
   if($errmsg !~ m/\n$/) { $errmsg .= "\n\n"; }
