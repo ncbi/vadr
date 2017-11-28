@@ -89,7 +89,6 @@ opt_Add("-f",           "boolean", 0,                        1,    undef, undef,
 opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as <s>",     "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",    "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
-opt_Add("-c" ,          "boolean", 0,                        1,    undef, undef,      "genomre is circular",                   "genome is circular",                                   \%opt_HH, \@opt_order_A);
 
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
@@ -103,14 +102,13 @@ my $options_okay =
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
                 'dirout=s'     => \$GetOptions_H{"--dirout"},
-                'keep'         => \$GetOptions_H{"--keep"},
-		'c'            => \$GetOptions_H{"-c"},
+                'keep'         => \$GetOptions_H{"--keep"}
                 );
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.19";
+my $version       = "0.20";
 my $releasedate   = "Nov 2017";
 
 # print help and exit if necessary
@@ -137,7 +135,7 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
 
-my $dir        = opt_Get("--dirout", \%opt_HH);          # this will be undefined unless -d set on cmdline
+my $dir = opt_Get("--dirout", \%opt_HH);          # this will be undefined unless -d set on cmdline
 
 #############################
 # create the output directory
@@ -212,7 +210,7 @@ my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
-# output any commands we already executed to $log_FH
+# output any commands we already executed to $cmd_FH
 foreach $cmd (@early_cmd_A) { 
   print $cmd_FH $cmd . "\n";
 }
@@ -452,19 +450,19 @@ foreach my $seq (@seqs_to_assign_A) {
             $refseq = $hit_specs_A[0];
             $refseq =~ s/^.+\.//;
 
-            # ########################################################################                                                                                                                        
-            # In @hit_output_A - array containing all the output for this hit                                                                                                                                 
-            #                                                                                                                                                                                     
-            # index         feature                                                                                                                                                 
-            #--------------------------                                                                                                                                                   
-            # 0             Query accn #                                                                                                                                                                                 
-            # 1             RefSeq accn #                                                                                                                                                                           
-            # 2             Bit-score                                                                                                                                                                                    
-            # 3             E-value                                                                                                                                                                                           
-            # 4             Coverage (Hit length)/(Query length)                                                                                                                                                                                     
-            # 5             Bias        
+            # ########################################################################
+            # In @hit_output_A - array containing all the output for this hit
+            #
+            # index         feature
+            #--------------------------
+            # 0             Query accn
+            # 1             RefSeq accn
+            # 2             Bit-score
+            # 3             E-value
+            # 4             Coverage (Hit length)/(Query length)
+            # 5             Bias
 	    # 6             Number of hits to this RefSeq
-            ###########################################################################                                                                                                                                
+            ###########################################################################
 	    # check if this RefSeq has appeared in a previous hit for this sequence                                              
             my $first_index = undef;  # the first occuring index of a previous hit, if one exists                                                             
             # if there are previous hits, search through them to see if this RefSeq has been hit before
@@ -475,7 +473,6 @@ foreach my $seq (@seqs_to_assign_A) {
                     }
                 }
             }
-
 
 	    ## Find length of $seq - will be used to find Coverage                                                                                                                                                                                       
 	    my $full_nhmmscan_file = $out_root . "." . $seq . ".nhmmscan.out";
@@ -574,19 +571,18 @@ foreach my $seq (@seqs_to_assign_A) {
 	@hit_output_A = @{@{$hit_info_HAA{$seq}}[-1]}; 
 	$refseq = $hit_output_A[1];
 	
-	##############################################################################                                                                                        
-	# Add comparison indicies to @hit_output_A                                                                                                                          
-	#                                                                                                                                                                                
-	# index        feature                                                                                                                                                            
-	# ----------------------                                                                                                                                                                                 
-	# 7            RefSeq accn # for hit 2                                                                                                                                                                    
-	# 8            difference between bit scores of hit 1 and hit 2                                                                                                                                                     
-	# 9            difference between coverage of hit 1 and hit 2                                                                                                                                                               
-	##############################################################################                                                                                                                                                   
+	##############################################################################
+	# Add comparison indicies to @hit_output_A
+	#
+	# index        feature
+	# ----------------------
+	# 7            RefSeq accn # for hit 2
+	# 8            difference between bit scores of hit 1 and hit 2
+	# 9            difference between coverage of hit 1 and hit 2
+	##############################################################################
 	
 	# TODO - hardcode-y 
 	if( scalar(@{$hit_info_HAA{$seq}}) >= 2) {     # if there is more than one hit  
-                                                                                                                                                                                                                    
 	    push(@hit_output_A, @{@{$hit_info_HAA{$seq}}[-2]}[1]);
 	
 	    my $bit_diff = $hit_info_HAA{$seq}[-1][2] - $hit_info_HAA{$seq}[-2][2];

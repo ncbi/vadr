@@ -1,5 +1,4 @@
 Lara Shonkwiler, Aug 3 2016
-Eric Nawrocki,   Nov 28 2017 [updated]
 
 This 00README file explains the functioning of:
 
@@ -8,79 +7,40 @@ dnaorg_evaluate_refseq_assign.pl
 
 PREREQUISITES:
 
-Before running these scripts, follow the instructions in the
-PREREQUISITES section of the 00NOTES.txt file in dnaorg_scripts/ (one
-directory up).
+HMMER v3.1b2 (hmmer.org) executables must be in your path for these
+scripts to work.  If you are at NCBI you can achieve this by adding
+'hmmer' to the facilities line of .ncbi_hints file, and adding the
+line 'option hmmer_version 3.1b2' to the end of your .ncbi_hints file.
 
 ----------------------------------------------------------------------------------------------------------------
 
 Program:	dnaorg_refseq_assign.pl
 
-Description:	Run in one of 3 modes:
 
-                Build mode: Build HMM library and exit (no
-                classification), enabled with the --onlybuild option. 
+Description:	Given a list of RefSeqs, and a list of accessions, uses the accesions to generate ntlists for 
+		each RefSeq.
+		
+		Specifically:
+		Uses E-Utilities to generate FASTA files for all sequences
+		Generates an HMM library of RefSeqs
+		Runs each accession against the HMM library with nhmmscan
+		     - This step is run in parallel on the farm for each sequence
+		Parses nhmmscan results, and assigns each accession to one RefSeq
+		Generates ntlists for each RefSeq
 
-                Classify mode given list: Use a previously created HMM
-                library to annotate sequence accessions listed in an
-                input file, enabled with the --inlist option.
 
-                Classify mode given fasta: Use a previously created
-                HMM library to annotate sequences in an input fasta
-                file, enabled with the --infasta option.
+Usage:          perl dnaorg_refseq_assign.pl <refseq_list> <accn_list>
 
-Usage:          Build mode: 
-                dnaorg_refseq_assign.pl [-options] --onlybuild <RefSeq list> --dirout <output directory to create with HMM library>
 
-                Classify mode given list:
-                dnaorg_refseq_assign.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --inlist <list of accessions to classify>
+Input:          <refseq_list> - file containing the accession numbers of all the RefSeqs that should be in the 
+                                RefSeq HMM library. Each accession number is on a separate line.
 
-                Classify mode given fasta:
-                dnaorg_refseq_assign.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --infasta <fasta file with sequences to classify>
+		<accn_list>   - file containing the accession numbers of all the sequences that should be sorted
+		                into ntlists.
 
-Inputs:         <RefSeq list> - file containing the accession numbers
-                of all the RefSeqs that should be in the RefSeq HMM
-                library. Each accession number is on a separate line.
+Output:		<out_folder>  - folder named as "<refseq_list>-ntlists" which contains:
 
-                <output directory ... > - name of output directory to 
-                create and create output files within
-
-                <directory with HMM library to use> - output directory
-                from a previous dnaorg_refseq_assign.pl call in 'Build
-                mode', which contains the HMM library to use. 
-                
-		<list of accessions to classify> - file containing
-		the accession numbers of all the sequences that should
-		be classified.
-
-		<fasta file of sequences to classify> - fasta file 
-		with the sequences that should be classified.
-
-Output:		<output directory ... >  - folder named as specified
-                (<outdir> from --dirout <outdir>) which contains different files
-                depending on the mode the script is run in:
-
-                Build mode:
-
-                1) <outdir>.ref.list - a copy of <RefSeq list>, the
-                   list of RefSeqs to build HMMs for.
-
-                2) <outdir>.ref.fa - fasta file with the RefSeqs to
-                    build HMMs for.
-
-                3) <outdir>.ref.fa.list - list of sequence names from 
-                   <outdir>.ref.fa, may be slightly different than 
-                   <outdir>.ref.list (may include version after
-                   accessions).
-
-                4) <outdir>.ref.fa.ssi - index for <outdir>.ref.fa
-
-                5) <outdir>.hmm         - HMM library of RefSeqs
-                   <outdir>.hmm.h3m - HMM library binary file
-		   <outdir>.hmm.h3i - HMM library binary file
-		   <outdir>.hmm.h3f - HMM library binary file
-		   <outdir>.hmm.h3p - HMM library binary file
-
+				1) <out_folder>.hmm                - the HMM library of RefSeqs
 				2) <out_folder>.log  	           - file containing all output printed to the screen
 				   			       	     during the run
 				3) <out_folder>.list	           - file containing a list and description of all
@@ -105,6 +65,10 @@ Output:		<output directory ... >  - folder named as specified
 
 				################## IF --keep OPTION IS ENABLED ###############################
 				
+				1) <out_folder>.h3m		   - RefSeq HMM library binaries
+				   <out_folder>.h3i
+				   <out_folder>.h3f
+				   <out_folder>.h3p
 
 				For each accession <accn> in <accn_list>, if --keep option is enabled:
 
@@ -206,14 +170,14 @@ Instructions:   dnaorg_refseq_assign should be run first, as dnaorg_evaluate_ref
 		All other lines are onscreen output
 
 
-#####################################################
+###########################################
 #
-Step 1: Run dnaorg_refseq_assign.pl with --onlybuild
+Step 1: Run dnaorg_refseq_assign.pl
 #
-#####################################################
+###########################################
 
 
-[]$  perl ./dnaorg_refseq_assign.pl --onlybuild refseq_list_test --dirout test_build
+[]$  perl dnaorg_refseq_assign.pl refseq_list_test test_list
 
 # dnaorg_refseq_assign.pl :: Given sequences, decides which RefSeq's ntlist to add them to
 # dnaorg 0.1 (August 2016 - ?)
