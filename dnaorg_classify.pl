@@ -2,6 +2,7 @@
 # EPN, Mon Aug 10 10:39:33 2015 [development began on dnaorg_annotate_genomes.pl]
 # EPN, Mon Feb  1 15:07:43 2016 [dnaorg_build.pl split off from dnaorg_annotate_genomes.pl]
 # LES, Mon Jul 25 09:25    2016 [dnaorg_refseq_assign.pl split off from dnaorg_build.pl]
+# EPN, Tue Nov 28 10:44:54 2017 [dnaorg_classify.pl created, renamed from dnaorg_refseq_assign.pl]
 #
 # Some code in here is also adopted from dnaorg.pm
 
@@ -28,13 +29,15 @@ require "epn-options.pm";
 #   - output program banner and open output files
 #   - parse the input files
 #
-# Step 1. Create an HMM library of RefSeqs
+# If --onlybuild: Create an HMM library of RefSeqs, and then exit.
+# 
+# Else (--inlist of --infasta): 
 #
-# Step 2. Run nhmmscan for all accessions
+# Step 1. Run nhmmscan for all accessions using HMM library from previous --onlybuild run.
 #
-# Step 3. Parse the nhmmscan output to determine the proper RefSeq for each accession
+# Step 2. Parse the nhmmscan output to determine the proper RefSeq for each accession
 #
-# Step 4. Generate ntlists for each RefSeq
+# Step 3. Generate ntlists and possibly fasta files for each RefSeq
 #
 #######################################################################################
 
@@ -111,12 +114,12 @@ opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--loca
 my %GetOptions_H = ();
 my $usage    = "Usage: This script must be run in 1 of 3 modes:\n";
 $usage      .= "\nBuild mode (--onlybuild): Build HMM library and exit (no classification).\nExample usage:\n\t";
-$usage      .= "dnaorg_refseq_assign.pl [-options] --onlybuild <RefSeq list> --dirout <output directory to create with HMM library>\n";
+$usage      .= "dnaorg_classify.pl [-options] --onlybuild <RefSeq list> --dirout <output directory to create with HMM library>\n";
 $usage      .= "\nClassify mode given list (--inlist): Use a previously created HMM library to annotate sequence accessions listed in an input file.\nExample usage:\n\t";
-$usage      .= "dnaorg_refseq_assign.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --inlist <list of accessions to classify>\n";
+$usage      .= "dnaorg_classify.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --inlist <list of accessions to classify>\n";
 $usage      .= "\nClassify mode given fasta (--infasta): Use a previously created HMM library to annotate sequences in an input fasta file.\nExample usage:\n\t";
-$usage      .= "dnaorg_refseq_assign.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --infasta <fasta file with sequences to classify>\n";
-my $script_name = "dnaorg_refseq_assign.pl";
+$usage      .= "dnaorg_classify.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --infasta <fasta file with sequences to classify>\n";
+my $script_name = "dnaorg_classify.pl";
 my $synopsis = "$script_name :: classify sequences using an HMM library of RefSeqs";
 
 my $options_okay = 
@@ -204,7 +207,7 @@ push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir
-my $out_root = $dir . "/" . $dir_tail . ".dnaorg_refseq_assign";
+my $out_root = $dir . "/" . $dir_tail . ".dnaorg_classify";
 
 my $dir_build = undef;
 if(opt_IsUsed("--dirbuild", \%opt_HH)) { 
@@ -217,7 +220,7 @@ else {
 $dir_build =~ s/\/$//; # remove final '/' if there is one
 my $dir_build_tail = $dir_build;
 $dir_build_tail =~ s/^.+\///; # remove all but last dir
-my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_refseq_assign";
+my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_classify";
 
 #############################################
 # output program banner and open output files
@@ -323,11 +326,11 @@ if($onlybuild_mode) {
 
   # create fasta file of all refseqs
   list_to_fasta($ref_list, $ref_fa, \%opt_HH, $ofile_info_HH{"FH"});
-  addClosedFileToOutputInfo(\%ofile_info_HH, "RefFasta", $ref_fa, 1, "fasta file of all RefSeq sequences");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "RefFasta", $ref_fa, 1, "Fasta file of all RefSeq sequences");
 
   # get a list file with their actual names 
   fasta_to_list_and_lengths($ref_fa, $ref_fasta_list, $ref_fasta_list . ".tmp", $execs_H{"esl-seqstat"}, undef, undef, \%opt_HH, $ofile_info_HH{"FH"});
-  addClosedFileToOutputInfo(\%ofile_info_HH, "RefFastaList", $ref_fasta_list, 1, "list of RefSeq names from fasta file (may include version)");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "RefFastaList", $ref_fasta_list, 1, "List of RefSeq names from fasta file (may include version)");
   fileLinesToArray($ref_fasta_list, 1, \@ref_fasta_seqname_A, $ofile_info_HH{"FH"});
 
   # create the hash mapping the list sequence names to the fasta sequence names
@@ -346,7 +349,7 @@ if($onlybuild_mode) {
     $ref_list_seqname  = $ref_list_seqname_A[$i];
     $ref_fasta_seqname = $ref_list2fasta_seqname_H{$ref_list_seqname};
     if(! defined $ref_fasta_seqname) { 
-      DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main(), could not find mapping fasta sequence name for list sequence name $ref_list_seqname", 1, $ofile_info_HH{"FH"});
+      DNAORG_FAIL("ERROR in dnaorg_classify.pl::main(), could not find mapping fasta sequence name for list sequence name $ref_list_seqname", 1, $ofile_info_HH{"FH"});
     }
     # build up the command, we'll fetch the sequence, pass it into esl-reformat to make a stockholm 'alignment', and pass that into hmmbuild
     $cmd  = $execs_H{"esl-sfetch"} . " $ref_fa $ref_fasta_seqname | "; # fetch the sequence
@@ -360,7 +363,7 @@ if($onlybuild_mode) {
       push(@files2rm_A, $hmm_file);
     }
   }    
-  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib", $ref_library, 1, "Library of HMMs of RefSeqs. Not press'd");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib", $ref_library, 1, "Library of HMMs of RefSeqs");
 
   $cmd = $execs_H{"hmmpress"} . " $ref_library > /dev/null";
   runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
@@ -412,7 +415,7 @@ else {
     fileLinesToArray($cls_list, 1, \@cls_list_seqname_A, $ofile_info_HH{"FH"});
     $n_cls_seqs = scalar(@cls_list_seqname_A);
     if($n_cls_seqs != (scalar(@cls_fasta_seqname_A))) { 
-      DNAORG_FAIL(sprintf("ERROR in dnaorg_refseq_assign.pl::main(), fetched %d != %d seqs, when %d were listed in %s\n", scalar(@cls_fasta_seqname_A), $n_cls_seqs, $n_cls_seqs, $cls_list), 1, $ofile_info_HH{"FH"});
+      DNAORG_FAIL(sprintf("ERROR in dnaorg_classify.pl::main(), fetched %d != %d seqs, when %d were listed in %s\n", scalar(@cls_fasta_seqname_A), $n_cls_seqs, $n_cls_seqs, $cls_list), 1, $ofile_info_HH{"FH"});
     }
 
     # create the hash mapping the list sequence names to the fasta sequence names
@@ -423,7 +426,7 @@ else {
     # make sure we have a valid mapping for all sequences in the list file
     foreach $cls_list_seqname (@cls_list_seqname_A) { 
       if(! defined $cls_list2fasta_seqname_H{$cls_list_seqname}) { 
-        DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main(), could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
+        DNAORG_FAIL("ERROR in dnaorg_classify.pl::main(), could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
       }
     }
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -544,7 +547,7 @@ else {
       $ref_list_seqname = $hit_specs_A[0];
       $cls_fasta_seqname = $hit_specs_A[2];
       if(! exists $cls_fasta_seqlen_H{$cls_fasta_seqname}) { 
-        DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main() sequence length for sequence $cls_fasta_seqname does not exist in the length hash", 1, $ofile_info_HH{"FH"}, 1, $ofile_info_HH{"FH"});
+        DNAORG_FAIL("ERROR in dnaorg_classify.pl::main() sequence length for sequence $cls_fasta_seqname does not exist in the length hash", 1, $ofile_info_HH{"FH"}, 1, $ofile_info_HH{"FH"});
       }
       my $cls_fasta_seqlen = $cls_fasta_seqlen_H{$cls_fasta_seqname};
 
@@ -668,7 +671,7 @@ else {
     $cls_list_seqname  = $cls_list_seqname_A[$i];
     $cls_fasta_seqname = $cls_list2fasta_seqname_H{$cls_list_seqname};
     if(! defined $cls_fasta_seqname) { 
-      DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main(), could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
+      DNAORG_FAIL("ERROR in dnaorg_classify.pl::main(), could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
     }
     if(exists($hit_info_HAA{$cls_fasta_seqname})) { 
       # there was at least one valid hit for this sequence
@@ -748,7 +751,7 @@ else {
   # If --infasta used: generate fasta files, one per RefSeq with at least 
   if($infasta_mode) { 
     if(! -s $cls_fa . ".ssi") { 
-      DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main(), ssi file for $cls_fa does not exist when trying to fetch", 1, $ofile_info_HH{"FH"});
+      DNAORG_FAIL("ERROR in dnaorg_classify.pl::main(), ssi file for $cls_fa does not exist when trying to fetch", 1, $ofile_info_HH{"FH"});
     }
   }
 

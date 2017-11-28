@@ -89,8 +89,8 @@
 #####################
 # 
 # The $DNAORG, $PERL5LIB and $PATH environment variables need to be
-# modified prior to using the dnaorg_build.pl and dnaorg_annotate.pl 
-# scripts.
+# modified prior to using the dnaorg_classify, dnaorg_build.pl and 
+# dnaorg_annotate.pl scripts.
 #
 # For bash shell users, add the following lines to the end of your
 # ~/.bashrc file:
@@ -131,32 +131,99 @@ source ~/.cshrc
 # scripts and code:
 #
 # esl-fetch-cds.pl v0.01        (https://github.com/nawrockie/esl-fetch-cds)
-# esl-epn-translate.pl v0.01    (https://github.com/nawrockie/esl-epn-translate)
+# esl-epn-translate.pl v0.02    (https://github.com/nawrockie/esl-epn-translate)
 # Bio-Easel v0.05               (https://github.com/nawrockie/Bio-Easel)
 # epn-options v0.03             (https://github.com/nawrockie/epn-options)
 #
 # Infernal v1.1.2               (http://eddylab.org/infernal/)
 # HMMER v3.1b2                  (http://hmmer.org/)
 # 
-############################################
-### USAGE AND OPTIONS OF dnaorg_build.pl ###
-############################################
+###############################################
+### USAGE AND OPTIONS OF dnaorg_classify.pl ###
+###############################################
 #
 # The output of each program run with the '-h' option
 # is informative about how to use that script:
-# 
-# dnaorg_build.pl takes a single argument: the reference 
-# accession:
 #
+#########################
+### USAGE AND OPTIONS ###
+#########################
+#
+# The output of each program run with the '-h' option
+# is informative about how to use that script:
+#
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
+## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
+## dnaorg 0.19 (Nov 2017)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Tue Nov 28 11:32:17 2017
+##
+#Usage: This script must be run in 1 of 3 modes:
+#
+#Build mode (--onlybuild): Build HMM library and exit (no classification).
+#Example usage:
+#	dnaorg_classify.pl [-options] --onlybuild <RefSeq list> --dirout <output directory to create with HMM library>
+#
+#Classify mode given list (--inlist): Use a previously created HMM library to annotate sequence accessions listed in an input file.
+#Example usage:
+#	dnaorg_classify.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --inlist <list of accessions to classify>
+#
+#Classify mode given fasta (--infasta): Use a previously created HMM library to annotate sequences in an input fasta file.
+#Example usage:
+#	dnaorg_classify.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --infasta <fasta file with sequences to classify>
+#
+#REQUIRED options:
+#  --dirout <s>   : REQUIRED: name for output directory to create is <s>
+#  --maxnjobs <n> : set max number of jobs to submit to compute farm to <n> [500]
+#  --wait <n>     : allow <n> wall-clock minutes for nhmmscan jobs on farm to finish, including queueing time [500]
+#  --errcheck     : consider any farm stderr output as indicating a job failure
+#
+#options for selecting mode to run in: build-mode (--onlybuild) or classify-mode (--inlist OR --infasta):
+#  --onlybuild <s> : build an HMM library for sequences listed in <s>, then exit
+#  --inlist <s>    : list of sequence accessions to classify is <s>, requires --dirbuild
+#  --infasta <s>   : fasta file with sequences to classify is <s>, requires --dirbuild
+#  --dirbuild <s>  : specify directory with HMM library is <s>
+#
+#basic options:
+#  -f         : force; if dir <reference accession> exists, overwrite it
+#  -v         : be verbose; output commands to stdout as they're run
+#  --keep     : do not remove intermediate files, keep them all on disk
+#  --nseq <n> : set number of sequences for each nhmmscan farm job to <n> [10]
+#  --local    : run nhmmscan locally instead of on farm
+######
+#
+# As reported by the dnaorg_classify.pl -h output. dnaorg_classify.pl
+# must be run in 1 of 3 modes. The first time you run it, it must be
+# run in the --onlybuild mode, which builds an HMM library of the
+# RefSeqs that you are going to use to classify input sequences in
+# subsequent runs of the program in the --inlist or --infasta modes.
+# An example is given below in "Example 1".
+# 
+# After you've run the --onlybuild mode, you can then run the program
+# in the --inlist or --infasta modes, which will use the HMM library
+# that you built when you ran it in --onlybuild mode. Again, examples
+# are below in "Example 1" and "Example 2".
+# 
+############
+# 
+# After you run dnaorg_classify.pl in either the --inlist or --infasta
+# modes, you will have a list of sequences that have been classified
+# as most similar to each of the RefSeqs listed in the input list of
+# RefSeqs you specified when you ran dnaorg_classify.pl with the
+# --onlybuild option. You can then use the dnaorg_build.pl and
+# dnaorg_annotate.pl scripts for each of those RefSeqs to annotate the
+# sequences that have been classified to each RefSeq.
+# 
+# Here are the options and usage for dnaorg_build.pl:
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
 ## dnaorg 0.19 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Sun Nov  5 20:20:50 2017
+## date:    Tue Nov 28 11:08:36 2017
 ##
 #Usage: dnaorg_build.pl [-options] <reference accession>
-#
-#basic options:
+##
+##basic options:
 #  -c            : genome is circular
 #  -f            : force; if dir <reference accession> exists, overwrite it
 #  -v            : be verbose; output commands to stdout as they're run
@@ -191,20 +258,28 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 #  --orginput <s> : read training alignment for origin sequences from file <s>
 #  --orgstart <n> : origin sequence starts at position <n> in file <s> from --orginput <s> [0]
 #  --orglen <n>   : origin sequence is <n> nucleotides long [0]
-######
 #
-# dnaorg_annotate.pl should be run after dnaorg_build.pl is finished
-# and all of the cmcalibrate jobs it has submitted have completed
-# running on the farm.
+#########
+#
+# dnaorg_build.pl takes a single argument: the reference 
+# accession. It then builds models based for sequence features in the
+# reference sequence using the compute farm. 
+#
+#########
+#
+# dnaorg_annotate.pl should be run after dnaorg_build.pl is finished.
 #
 # dnaorg_annotate.pl is typically run with a single command line
 # argument, a .ntlist file that contains a list of accessions, one per
-# line.  These accessions should be the same species as the reference
-# aaccession used in dnaorg_build.pl. The reference accession used
-# passed into dnaorg_build.pl should be the first accession listed in
-# the .ntlist file.
+# line. These ntlists are output from the dnaorg_classify.pl script
+# when it is run with the --inlist option, which you can use as input
+# to dnaorg_annotate.pl or alternatively you can create your own
+# lists. The accessions in the .ntlist file should be the same species
+# as the reference aaccession used in dnaorg_build.pl. The reference
+# accession used passed into dnaorg_build.pl should be the first
+# accession listed in the .ntlist file.
 #
-# See the example runs #1 and #2 below for more detailed instructions.
+# See examples 3 and 4 below for more detailed instructions.
 #
 # Alternatively, with the --infasta option, the user can provide a
 # fasta file of sequences to annotate instead of a list of accessions
@@ -212,14 +287,19 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 # none of the NCBI databases are accessed (for sequence fetching,
 # etc.). In particular, the --infasta option makes it feasible to
 # annotate newly arriving sequences that are not in GenBank. See
-# 'example run 3 of 3' below for an example of running
-# dnaorg_annotate.pl in this mode.
+# example 5 below for an example of running dnaorg_annotate.pl in this
+# mode. 
+#
+# When the dnaorg_classify.pl script is run with the --infasta
+# option, it will create fasta files for each of the RefSeqs that had
+# at least one sequence assigned to it. These fasta files can be 
+# used as input to dnaorg_annotate.pl with the --infasta option.
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
 ## dnaorg 0.19 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Sun Nov  5 20:21:57 2017
+## date:    Tue Nov 28 11:15:23 2017
 ##
 #Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>
 #
@@ -241,6 +321,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 #  --local           : run cmscan locally instead of on farm
 #  --errcheck        : consider any farm stderr output as indicating a job failure
 #  --nseq <n>        : set number of sequences for each cmscan farm job to <n> [5]
+#  --maxnjobs <n>    : set max number of jobs to submit to compute farm to <n> [2500]
 #  --wait <n>        : allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time [500]
 #  --bigthresh <n>   : set minimum model length for using HMM mode to <n> [4000]
 #  --dfthresh <n>    : set max model length for using default sensitivity mode to <n> [250]
@@ -278,58 +359,166 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 #  --aorglen <n>      : length of origin sequence is <n> [0]
 #  --aorgethresh <x>  : E-value threshold for origin detection is <x> [1]
 #  --aorgppthresh <x> : average PP threshold for origin detection is <x> [0.6]
-
+#
 ####################
 ### EXAMPLE RUNS ###
 ####################
 # 
-# There are currently two dnaorg scripts and they are meant to be used
-# in the following order:
+# There are currently three dnaorg scripts and they are meant to be
+# used in the following order:
 # 
-# 1) dnaorg_build.pl: build homology models for a reference accession.
+# 1) dnaorg_classify.pl: classify sequences by comparing to a set of
+#    reference sequences and picking the most similar one. 
+#
+# 2) dnaorg_build.pl: build homology models for a reference accession.
 #    Must be run once per reference accession.
 # 
-# 2) dnaorg_annotate.pl: use models built from dnaorg_build.pl to
+# 3) dnaorg_annotate.pl: use models built from dnaorg_build.pl to
 #    annotate other sequences of the same species as the reference.
 #    Can be run many times for each species provided that
 #    dnaorg_build.pl has been run for that species (and reference).
 # 
-# The discussion below includes example runs of each of the two
-# scripts in turn for two different species (Maize streak virus and
-# Dengue virus). 
+# The discussion below includes five examples, which together cover
+# each of the three scripts.
 #
-# A third example run of dnaorg_annotate.pl for Maize streak virus
-# demonstrates how to run the dnaorg_annotate.pl script using an input
-# fasta file instead of a list of accessions, and running the homology
-# searches locally instead of on the compute farm. In this
-# 'fasta-input' mode, dnaorg_annotate.pl does not need to access any
-# NCBI databases.
+# Example 1: classifying sequences as MSV or Dengue using
+# dnaorg_classify.pl. 
 #
-# When a species has multiple reference sequences, one may wish to
-# partition the genomes, so that each genome is assigned to a single
-# reference and hence annotated with respect to that reference. We
-# have done this partitioning experimentally for Dengue virus, West
-# Nile virus, and Norovirus. However, this partitioning is not
-# required; it is permissible to annotate the same genome with respect
-# to multiple reference sequences. This document (as of June 2016)
-# does not discuss the partitioning further.  It is assumed that each
-# reference sequence has associated with it a list of sequences to be
-# annotated with respect to the reference sequence.  A target sequence
-# may appear in the "to-be-annotated" lists for multiple references.
+# Example 2: classifying sequences as MSV or Dengue using
+# dnaorg_classify.pl using the special --infasta option to take a
+# fasta file instead of a list of accessions as input and the --local
+# option to run homology searches locally instead of on the compute
+# farm. In this 'fasta-input' mode, dnaorg_classify.pl does not need
+# to access any NCBI databases.
+#
+# Example 3: annotating MSV sequences using dnaorg_build.pl and
+# dnaorg_annotate.pl. 
+#
+# Example 4: annotating Dengue sequences using dnaorg_build.pl and
+# dnaorg_annotate.pl.
+#
+# Example 5: annotating Dengue sequences using dnaorg_build.pl and
+# dnaorg_annotate.pl using the special --infasta option to take a
+# fasta file instead of a list of accessions as input and the --local
+# option to run homology searches locally instead of on the compute
+# farm. In this 'fasta-input' mode, dnaorg_annotate.pl does not need
+# to access any NCBI databases.
+#
+# The Maize streak virus, which has a circular ssDNA genome with 4 CDS
+# that code for proteins, one of which has 2 exons.  The Dengue virus
+# has a linear ssRNA genome. Dengue translates a single polyprotein
+# that is cleaved in two stages into 14 smaller peptides, called
+# "mature peptides". The first stage cleaves the polyprotein into 11
+# adjacent, disjoint peptides. The second stage further cleaves
+# "sub-peptides" from three of the first stage peptides.  Together,
+# the two runs on the two different species demonstrate most of the
+# features and versatility of the dnaorg_build.pl and
+# dnaorg_annotate.pl scripts.
 # 
-# The first run is for the Maize streak virus, which has a circular
-# ssDNA genome with 4 CDS that code for proteins, one of which has 2
-# exons.  The second run is for Dengue (type 1) virus, which has a
-# linear ssRNA genome. Dengue translates a single polyprotein that is
-# cleaved in two stages into 14 smaller peptides, called "mature
-# peptides". The first stage cleaves the polyprotein into 11 adjacent,
-# disjoint peptides. The second stage further cleaves "sub-peptides"
-# from three of the first stage peptides.  Together, the two runs on
-# the two different species demonstrate most of the features and
-# versatility of the dnaorg scripts.
+#############################################################
+# Example 1: dnaorg_classify.pl to classify viral sequences #
+#############################################################
+#
+# Here is an example of running dnaorg_classify.pl to classify 
+# sequences as either MSV, Dengue or neither.
+#  
+# First, dnaorg_classify.pl must be run in 'build mode' using the
+# --onlybuild option. From above, in the "USAGE AND OPTIONS" section
+# above, the script reported how to run itself in build mode when it
+# was called with only the -h option:
+#
+####
+#Build mode (--onlybuild): Build HMM library and exit (no classification).
+#Example usage:
+#	dnaorg_classify.pl [-options] --onlybuild <RefSeq list> --dirout <output directory to create with HMM library>
+####
+# 
+# For this example we'll use the RefSeq list in the file
+# testfiles/test.refseq.ntlist. Take a look at that file
+cat testfiles/test.refseq.ntlist
+#NC_001346
+#NC_001477
+#
+# NC_001346 is the accession of the Maize streak virus RefSeq and
+# NC_001477 is the accession of the Dengue virus type 1 RefSeq
+#
+# When we run dnaorg_classify.pl with this input file it will create
+# an HMM library with HMM models for each of these two RefSeqs. 
+# We need to specify an output directory name as well, let's use
+# 'test-build': 
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --onlybuild testfiles/test.refseq.ntlist --dirout test-build
+## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
+## dnaorg 0.19 (Nov 2017)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Tue Nov 28 11:34:50 2017
+##
+## REQUIRED name for output directory to create is <s>:  test-build [--dirout]
+## build an HMM library for seqs in <s>, then exit:      testfiles/test.refseq.ntlist [--onlybuild]
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Parsing RefSeq list                                                    ... done. [0.0 seconds]
+## Creating RefSeq HMM Library                                            ... done. [8.0 seconds]
+##
+## Output printed to screen saved in:                                     test-build.dnaorg_classify.log
+## List of executed commands saved in:                                    test-build.dnaorg_classify.cmd
+## List and description of all output files saved in:                     test-build.dnaorg_classify.list
+## List of reference sequences used to build HMMs saved in:               test-build.dnaorg_classify.ref.list
+## Fasta file of all RefSeq sequences saved in:                           test-build.dnaorg_classify.ref.fa
+## List of RefSeq names from fasta file (may include version) saved in:   test-build.dnaorg_classify.ref.fa.list
+## Library of HMMs of RefSeqs saved in:                                   test-build.dnaorg_classify.hmm
+##
+## All output files created in directory ./test-build/
+##
+## CPU time:  00:00:08.17
+##            hh:mm:ss
+## 
+## DNAORG-SUCCESS
+#
+# The script reports that it has created files in the directory
+# test-build/. The most important of these is the HMM file
+# test-build.dnaorg_classify.hmm. This file will be used by subsequent
+# runs to classify sequences.
+#
+# The next step is to run dnaorg_classify.pl again but in the --inlist
+# with a list of sequence accessions to classify, or in the --infasta
+# mode with a fasta file of sequences to classify.
+# 
+# For the remainder of this example, we'll go over the --inlist
+# option; the --infasta option is demonstrated in example 2 below.
+#
+# The usage for the --inlist mode was shown above in the "USAGE AND
+# OPTIONS" section when the script was run with -h:
+#
+###
+#Classify mode given list (--inlist): Use a previously created HMM library to annotate sequence accessions listed in an input file.
+#Example usage:
+#	dnaorg_classify.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --inlist <list of accessions to classify>
+###
+#
+
+# We first need to specify the directory with the HMM library to use
+# with the --dirbuild option, which is 'test-build' from above.  We
+# also need to specify a new output directory with the --dirout
+# option, let's use "test-classify". Finally, we'll use the file
+# testfiles/test.toclassify.ntlist as our input list to be supplied
+# after the --inlist option. This list contains 3 Dengue type 1 viral
+# sequence accessions, 3 Maize streak viral sequence accessions and 2
+# Norovirus sequence accessions.
+# 
+# To execute the program:
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dirbuild test-build --dirout test-classify --inlist testfiles/test.refseq.ntlist
+#
+# 
+
+#
+
+# 
+
+# 
+# 
 #
 ####################
-# Example run 1 of 3
+# Example 2 of 4: dnaorg_build.pl and dnaorg_annotate.pl to annotate
+# MSV viral sequencesn
 ####################
 #
 # Here is an example of running the dnaorg_build.pl and

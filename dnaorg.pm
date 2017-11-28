@@ -6591,6 +6591,7 @@ sub cmscanOrNhmmscanWrapper {
       push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
       if($tmp_stdout_file ne "/dev/null") { push(@tmp_stdout_file_A, $tmp_stdout_file); }
     }
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
   else { 
     # we need to split up the sequence file, and submit a separate set of nhmmscan/cmscan jobs (one per model file) for each
