@@ -762,24 +762,36 @@ else {
   push(@tmp_output_A, sprintf("%-20s  %10s  %10s\n", "#-------------------", "----------", "----------"));
   foreach my $ref_list_seqname (@ref_list_seqname_A) {
     my $ntlist_file    = $out_root . ".$ref_list_seqname.ntlist";
+    my $dv_ntlist_file = $out_root . ".$ref_list_seqname.deversioned.ntlist"; # same as $ntlist_file but accessions have been de-versioned
     my $sub_fasta_file = $out_root . ".$ref_list_seqname.fa";
     my $cur_nseq = scalar(@{$ntlist_HA{$ref_list_seqname}});
     push(@tmp_output_A, sprintf("%-20s  %10d  %10.4f\n", $ref_list_seqname, $cur_nseq, $cur_nseq / $n_cls_seqs));
     if($cur_nseq > 0) { 
       open(NTLIST, "> $ntlist_file")  || fileOpenFailure($ntlist_file, $0, $!, "writing", $ofile_info_HH{"FH"});
-      print NTLIST "$ref_list_seqname\n";
+      if(! $infasta_mode) { # only print ref accession if ! --infasta
+        print NTLIST "$ref_list_seqname\n";
+      }
       foreach (@{$ntlist_HA{$ref_list_seqname}}) {
         print NTLIST "$_\n";
       }
       close(NTLIST);
       addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.ntlist", $ntlist_file, 1, "ntlist for $ref_list_seqname");
 
+      # if --infasta mode make another ntlist file without versions, and also use the original ntfiles file to fetch the sequences
       if($infasta_mode) { 
+        open(DVNTLIST, "> $dv_ntlist_file")  || fileOpenFailure($dv_ntlist_file, $0, $!, "writing", $ofile_info_HH{"FH"});
+        print DVNTLIST "$ref_list_seqname\n";
+        foreach (@{$ntlist_HA{$ref_list_seqname}}) {
+          print DVNTLIST fetchedNameToListName($_) . "\n";
+        }
+        close(DVNTLIST);
+        addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.deversioned.ntlist", $dv_ntlist_file, 1, "De-versioned ntlist for $ref_list_seqname");
+
         # fetch the sequences into a new fasta file
         sleep(0.1); # make sure that NTLIST is closed
-        $cmd  = "tail -n +2 $ntlist_file |" . $execs_H{"esl-sfetch"} . " -f $cls_fa - > $sub_fasta_file"; # fetch the sequences
+        $cmd  = "cat $ntlist_file |" . $execs_H{"esl-sfetch"} . " -f $cls_fa - > $sub_fasta_file"; # fetch the sequences
         runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-        addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.fa", $sub_fasta_file, 1, "fasta file with sequences assigned to $ref_list_seqname");
+        addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.fa", $sub_fasta_file, 1, "Fasta file with sequences assigned to $ref_list_seqname");
       }
     }
   }
@@ -814,7 +826,6 @@ else {
   foreach my $tmp_line (@tmp_output_A) { 
     outputString($log_FH, 1, $tmp_line);
   }
-
 } # end of 'else' entered if $onlybuild_mode is FALSE
 ##########################################################################################################################################################
 
@@ -829,7 +840,20 @@ foreach my $file2rm (@files2rm_A) {
   next if $seen{$file2rm}++;
   runCommand("rm $file2rm", 0, $ofile_info_HH{"FH"});
 }
-  
+
+if($inlist_mode) { 
+  outputString($log_FH, 1, "#\n");
+  outputString($log_FH, 1, "# *** The $out_root.dnaorg_classify.<s>.ntlist files\n");
+  outputString($log_FH, 1, "# *** can be used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'\n");
+  outputString($log_FH, 1, "# *** to create models for RefSeq <s>.\n#\n");
+}
+elsif($infasta_mode) { 
+  outputString($log_FH, 1, "#\n");
+  outputString($log_FH, 1, "# *** The $out_root.dnaorg_classify.<s>.deversioned.ntlist files or\n");
+  outputString($log_FH, 1, "# *** the $out_root.dnaorg_classify.<s>.fa files (with the --infasta option) can be\n");
+  outputString($log_FH, 1, "# *** used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'\n");
+  outputString($log_FH, 1, "# *** to create models for RefSeq <s>.\n#\n");
+}
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
