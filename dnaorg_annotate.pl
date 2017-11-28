@@ -4,6 +4,7 @@
 #
 use strict;
 use warnings;
+use diagnostics;
 use Getopt::Long;
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
@@ -231,7 +232,8 @@ opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",        "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job", "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nseq",       "integer", 5,                        1,    undef,"--local",   "number of sequences for each cmscan farm job",    "set number of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--maxnjobs",   "integer", 2500,                     1,    undef,"--local",   "maximum allowed number of jobs for compute farm", "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--dfthresh",   "integer", 250,                      1,    undef, undef,      "set max model length for using default sensitivity mode to <n>", "set max model length for using default sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
@@ -262,9 +264,9 @@ opt_Add("--errinfo",    "boolean", 0,                        5,    undef, undef,
 
 $opt_group_desc_H{"6"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
 #     option               type       default               group   requires    incompat                    preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       6,   undef,      "-f,--nseq,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                       6,   undef,      "-f,--nseq,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                       6,   undef,      "-f,--nseq,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipedirect",   "boolean", 0,                       6,   undef,      "-f,--nseq,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                       6,   undef,      "-f,--nseq,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",      "boolean", 0,                       6,   undef,      "-f,--nseq,--maxnjobs,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skiptranslate", "boolean", 0,                       6,"--skipscan",  undef,                      "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 
@@ -301,6 +303,7 @@ my $options_okay =
                 'local'        => \$GetOptions_H{"--local"}, 
                 'errcheck'     => \$GetOptions_H{"--errcheck"},  
                 'nseq=s'       => \$GetOptions_H{"--nseq"}, 
+                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
                 'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
                 'dfthresh=s'   => \$GetOptions_H{"--dfthresh"},
@@ -681,7 +684,7 @@ $execs_H{"hmmbuild"}      = $hmmer_exec_dir . "hmmbuild";
 $execs_H{"hmmalign"}      = $hmmer_exec_dir . "hmmalign";
 $execs_H{"esl-reformat"}  = $esl_exec_dir   . "esl-reformat";
 $execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
-$execs_H{"esl_ssplit"}    = $esl_ssplit;
+$execs_H{"esl-ssplit"}    = $esl_ssplit;
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################
@@ -866,79 +869,12 @@ if(opt_IsUsed("--aorgmodel", \%opt_HH)) {
 my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
 validateFileExistsAndIsNonEmpty($seq_file, "dnaorg_annotate.pl:main", $ofile_info_HH{"FH"});
 
-# determine how many sequence files we need to split $seq_file into to satisfy <n> sequences
-# per job (where n is from --nseq <n>). If more than 1 and --local not used, we split up 
-# the sequence file and submit jobs to farm, if only 1 or --local used, we just run it locally
-my $nseqfiles = int($nseq / opt_Get("--nseq", \%opt_HH)); 
-# int() takes the floor, so there can be a nonzero remainder. We don't add 1 though, 
-# because split_fasta_file() will return the actual number of sequence files created
-# and we'll use that as the number of jobs subsequently. $nfarmjobs is currently only
-# the 'target' number of sequence files that we pass into split_fasta_file().
-if($nseqfiles == 0) { $nseqfiles = 1; }
-
-# concatenated tblout file, created by concatenating all of the @tmp_tblout_file_A files
-my $tblout_file = $out_root . ".tblout";
-
-# split up the CM file into individual CM files (if necessary)
-my @tmp_tblout_file_A = (); # the array of tblout files, we'll remove after we're done, unless --keep
-my @tmp_seq_file_A = ();    # the array of sequence files we'll remove after we're done, unless --keep (empty if we run locally)
-my @tmp_err_file_A = ();    # the array of error files we'll remove after we're done, unless --keep (empty if we run locally)
-
+my $tblout_file = $out_root . ".tblout"; # concatenated tblout file, created by concatenating all of the individual 
+                                         # tblout files in cmscanOrNhmmscanWrapper()
 if(! opt_Get("--skipscan", \%opt_HH)) { 
-  if(($nseqfiles == 1) || (opt_Get("--local", \%opt_HH))) { 
-    # run jobs locally
-    $start_secs = outputProgressPrior("Running cmscan locally", $progress_w, $log_FH, *STDOUT);
-    # run a different cmscan run for each file
-    for(my $m = 0; $m < $nmdl; $m++) { 
-      my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".tblout";
-      my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".cmscan" : "/dev/null";
-      my ($do_max, $do_mid, $do_df, $do_big) = determine_cmscan_filter_settings($mdl_info_HA{"length"}[$m], \%opt_HH);
-      run_cmscan($execs_H{"cmscan"}, 1, $do_max, $do_mid, $do_df, $do_big, $mdl_info_HA{"cmfile"}[$m], $seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH); # 1: run locally
-      push(@tmp_tblout_file_A, $tmp_tblout_file);
-    }
-  }
-  else { 
-    # we need to split up the sequence file, and submit a separate set of cmscan jobs (one per model) for each
-    my $nfasta_created = split_fasta_file($execs_H{"esl_ssplit"}, $seq_file, $nseqfiles, \%opt_HH, \%ofile_info_HH);
-    # split_fasta_file will return the actual number of fasta files created, 
-    # which can differ from the requested amount (which is $nseqfiles) that we pass in. It will put $nseq/$nseqfiles
-    # in each file, which often means we have to make $nseqfiles+1 files.
-
-    my $nfarmjobs = $nfasta_created * $nmdl;
-    # now submit a job for each
-    $start_secs = outputProgressPrior("Submitting $nfarmjobs cmscan jobs to the farm", $progress_w, $log_FH, *STDOUT);
-    for(my $s = 1; $s <= $nfasta_created; $s++) { 
-      my $tmp_seq_file = $seq_file . "." . $s;
-      push(@tmp_seq_file_A,    $tmp_seq_file);
-      for(my $m = 0; $m < $nmdl; $m++) { 
-        my $tmp_tblout_file = $out_root . ".m" . ($m+1) . ".s" . $s . ".tblout";
-        my $tmp_stdout_file = opt_Get("-v", \%opt_HH) ? $out_root . ".m" . ($m+1) . ".s" . $s . ".cmscan" : "/dev/null";
-        my ($do_max, $do_mid, $do_df, $do_big) = determine_cmscan_filter_settings($mdl_info_HA{"length"}[$m], \%opt_HH);
-        run_cmscan($execs_H{"cmscan"}, 0, $do_max, $do_mid, $do_df, $do_big, $mdl_info_HA{"cmfile"}[$m],  # 0: do not run locally
-                   $tmp_seq_file, $tmp_stdout_file, $tmp_tblout_file, \%opt_HH, \%ofile_info_HH);
-        push(@tmp_tblout_file_A, $tmp_tblout_file);
-        push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
-      }
-    }
-    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-    
-    # wait for the jobs to finish
-    $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", \%opt_HH)), 
-                                      $progress_w, $log_FH, *STDOUT);
-    my $njobs_finished = waitForFarmJobsToFinish(\@tmp_tblout_file_A, \@tmp_err_file_A, "[ok]", opt_Get("--wait", \%opt_HH), opt_Get("--errcheck", \%opt_HH), \%{$ofile_info_HH{"FH"}});
-    if($njobs_finished != $nfarmjobs) { 
-      DNAORG_FAIL(sprintf("ERROR in main() only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, \%{$ofile_info_HH{"FH"}});
-    }
-    if(! opt_Get("--local", \%opt_HH)) { 
-      outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
-    }
-  } # end of 'else' entered if($nfarmjobs > 1 && ! --local)
-    
-  # concatenate all the tblout files into one 
-  concatenateListOfFiles(\@tmp_tblout_file_A, $tblout_file, "dnaorg_annotate.pl", \%opt_HH, $ofile_info_HH{"FH"});
-  
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-} # end of if(! opt_Get(--skipscan", \%opt_HH))
+  cmscanOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $nseq, $tblout_file, $progress_w, 
+                          $mdl_info_HA{"cmfile"}, $mdl_info_HA{"length"}, \%opt_HH, \%ofile_info_HH);
+} 
 
 ####################################################################
 # Step 6. Parse homology search results into usable data structures
@@ -1374,7 +1310,6 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #
 #  Subroutines related to homology searches:
 #    run_cmscan()
-#    split_fasta_file()
 #    split_cm_file()
 #    parse_cmscan_tblout()
 #
@@ -1510,212 +1445,9 @@ sub validate_cms_built_from_reference {
 #################################################################
 #
 #  Subroutines related to preparing CM files for searches:
-#    determine_cmscan_filter_settings()
-#    run_cmscan()
-#    split_fasta_file()
 #    parse_cmscan_tblout()
 #
-#################################################################
-# Subroutine:  determine_cmscan_filter_settings()
-# Incept:      EPN, Wed Apr  5 10:52:38 2017
-#
-# Purpose:     Given a model length and command line options, 
-#              determine the filtering mode to run cmscan in.
-#
-# Arguments: 
-#  $model_len:       length of model
-#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
-#
-# Returns:     4 values, exactly 0 or 1 of which will be '1'
-#              others will be '0'
-#              $do_max: '1' to run in max sensitivity mode
-#              $do_mid: '1' to run in mid sensitivity mode
-#              $do_df:  '1' to run in default sensitivity mode
-#              $do_big: '1' to run in fast (min sensitivity) mode
-# 
-# Dies: Never
-################################################################# 
-sub determine_cmscan_filter_settings { 
-  my $sub_name = "determine_cmscan_filter_settings()";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($model_len, $opt_HHR) = @_;
-
-  my $do_max = 0;
-  my $do_mid = 0;
-  my $do_df  = 0;
-  my $do_big = 0;
-
-  if($model_len <= (opt_Get("--smallthresh", $opt_HHR))) { 
-    $do_max = 1; # set filter thresholds to --max for small models
-  } 
-  if(! $do_max) { 
-    if($model_len <= (opt_Get("--midthresh", $opt_HHR))) { 
-      $do_mid = 1; # set filter thresholds to --mid for kind of small models
-    } 
-  }
-  if((! $do_max) && (! $do_mid)) { 
-    if($model_len <= (opt_Get("--dfthresh", $opt_HHR))) { 
-      $do_df = 1; # set filter thresholds to --FZ 30 for middle sized models
-    } 
-  }
-  if((! $do_max) && (! $do_mid) && (! $do_df)) { 
-    if($model_len >= (opt_Get("--bigthresh",   $opt_HHR))) { 
-      $do_big = 1; # use HMM mode for big models
-    }
-  }
-
-  return ($do_max, $do_mid, $do_df, $do_big);
-}
-
-#################################################################
-# Subroutine : run_cmscan()
-# Incept:      EPN, Mon Feb 29 15:09:22 2016
-#
-# Purpose:     Run Infernal's cmscan executable using $model_file
-#              as the CM file on sequence file $seq_file.
-#
-# Arguments: 
-#  $cmscan:          path to the cmscan executable file
-#  $do_local:        '1' to run locally, '0' to submit job to farm
-#  $do_max:          '1' to run with --max option, '0' to run with default options
-#                    '1' is usually used only when $model_file contains a single 
-#                    very short model
-#  $do_mid:          '1' to run with --mid option, '0' to not
-#  $do_df:           '1' to run with --FZ 30 option, '0' to not
-#  $do_big:          '1' to run with --mxsize 6144 option, '0' to run with default options
-#  $model_file:      path to the CM file
-#  $seq_file:        path to the sequence file
-#  $stdout_file:     path to the stdout file to create, can be "/dev/null", or undef 
-#  $tblout_file:     path to the cmscan --tblout file to create
-#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information
-# 
-# Returns:     void
-# 
-# Dies: If at least one CM was not built from the current reference.
-#       If $do_max and $do_big are both true.
-################################################################# 
-sub run_cmscan { 
-  my $sub_name = "run_cmscan()";
-  my $nargs_expected = 12;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($cmscan, $do_local, $do_max, $do_mid, $do_df, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
-
-  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  if($do_big && $do_max) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_big and do_max are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_big && $do_mid) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_big and do_mid are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_max && $do_mid) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_max and do_mid are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_max && $do_df) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_max and do_df are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_mid && $do_df) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_mid and do_df are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_big && $do_df) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_big and do_df are both true, only one should be.", 1, $FH_HR);
-  }
-  validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
-  validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
-
-  my $opts = (opt_Get("-v", $opt_HHR)) ? " " : " --noali ";
-  $opts .= " --cpu 0 --tblout $tblout_file --verbose ";
-  if($do_max) { # no filtering
-    $opts .= "--max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
-  }
-  elsif($do_mid) { 
-    $opts .= " --mid -E 0.1"; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
-  }
-  elsif($do_df) { 
-    $opts .= " --FZ 30 "; # do search with filters set up as if database was 30Mb.
-  }
-  else { 
-    $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
-  }
-  # finally add --nohmmonly if we're not a big model
-  if(! $do_big) { # do not use hmm unless model is big
-    $opts .= " --nohmmonly ";
-  }
-
-  my $cmd = "$cmscan $opts $model_file $seq_file > $stdout_file";
-
-  # remove the tblout file if it exists, this is important because we'll use the existence and
-  # final line of this file to determine when the jobs are finished, if it already exists, we'll
-  # think the job is finished before it actual is.
-  if(-e $tblout_file) { removeFileUsingSystemRm($tblout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
-
-  # run cmscan, either locally or by submitting jobs to the farm
-  if($do_local) { 
-    # run locally
-    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  }
-  else { 
-    # submit job to farm and return
-    my $jobname = "s" . removeDirPath($seq_file);
-    my $errfile = $tblout_file . ".err";
-    if(-e $errfile) { removeFileUsingSystemRm($errfile, $sub_name, $opt_HHR, $ofile_info_HHR); }
-    my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G,reserve_mem=8G " . "\"" . $cmd . "\" > /dev/null\n";
-    runCommand($farm_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-  }
-
-  return;
-}
-
-
-#################################################################
-# Subroutine : split_fasta_file()
-# Incept:      EPN, Tue Mar  1 09:30:10 2016
-#
-# Purpose: Split up a fasta file into <n> smaller files by calling
-#          the esl-ssplit perl script.
-#
-# Arguments: 
-#  $esl_ssplit:      path to the esl-ssplit.pl script to use
-#  $fasta_file:      fasta file to split up
-#  $nfiles:          desired number of files to split $fasta_file into
-#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information
-# 
-# Returns:    Number of files actually created (can differ from requested
-#             amount (which is $nfiles)).
-#
-# Dies:       if esl-ssplit command fails
-#
-################################################################# 
-sub split_fasta_file { 
-  my $sub_name = "split_fasta_file()";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($esl_ssplit, $fasta_file, $nfiles, $opt_HHR, $ofile_info_HHR) = @_;
-
-  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  my $outfile = $fasta_file . ".esl-ssplit";
-  my $cmd = "$esl_ssplit -v -n $fasta_file $nfiles > $outfile";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-
-  # parse output to determine exactly how many files were created:
-  # $esl_ssplit will have output exactly 1 line per fasta file it created
-  my $nfiles_created = countLinesInFile($outfile, $FH_HR);
-
-  if(! opt_Get("--keep", $opt_HHR)) { 
-    runCommand("rm $outfile", opt_Get("-v", $opt_HHR), $FH_HR);
-  }
-
-  return $nfiles_created;
-}
 
 
 #################################################################
