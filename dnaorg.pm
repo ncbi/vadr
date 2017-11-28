@@ -6482,7 +6482,7 @@ sub splitFastaFile {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   my $outfile = $fasta_file . ".esl-ssplit";
-  my $cmd = "$esl_ssplit -v -n $fasta_file $nfiles > $outfile";
+  my $cmd = "$esl_ssplit -v -r -n $fasta_file $nfiles > $outfile";
   runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
 
   # parse output to determine exactly how many files were created:
