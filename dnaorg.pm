@@ -1,5 +1,6 @@
-#
 #!/usr/bin/perl
+# 
+# version: 0.20 [Nov 2017]
 #
 # dnaorg.pm
 # Eric Nawrocki
