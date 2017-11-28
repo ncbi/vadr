@@ -1224,14 +1224,14 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl --matpep
 # cmscan jobs to the farm, one per sequence to annotate. We again have
 # to use the --matpept option.
 # 
-perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nseq 1 --matpept /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.ntlist 
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nseq 1 --matpept /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/testfiles/NC_001477.matpept.in /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/testfiles/NC_001477.ntlist 
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
 ## dnaorg 0.19 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Sun Nov  5 20:24:23 2017
 ##
-## file with list of accessions:                  /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.ntlist
-## using pre-specified mat_peptide info:          /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in [--matpept]
+## file with list of accessions:                  /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/testfiles/NC_001477.ntlist
+## using pre-specified mat_peptide info:          /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/testfiles/NC_001477.matpept.in [--matpept]
 ## number of sequences for each cmscan farm job:  1 [--nseq]
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## Verifying options are consistent with options used for dnaorg_build.pl                ... done. [0.1 seconds]
