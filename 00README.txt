@@ -1,0 +1,1242 @@
+# EPN, Tue Nov 28 10:04:48 2017
+# git repository url: https://github.com/nawrockie/dnaorg_scripts.git
+#
+# This file is organized into the following sections: 
+# -----------
+# INTRODUCTION
+# GETTING MORE INFORMATION
+# PREREQUISITES
+# INSTALLATION OF DNAORG SCRIPTS AND DEPENDENCIES INTO A NEW DIRECTORY
+# USAGE AND OPTIONS OF dnaorg_build.pl
+# EXAMPLE RUNS
+# OPTIONS THAT MUST BE USED CONSISTENTLY IN BOTH dnaorg_build.pl AND dnaorg_annotate.pl
+# REPRODUCIBILITY AND ORDER-DEPENDENCE OF LIST OF ACCESSIONS
+# NAMING CONVENTION FOR SEQUENCES IN FASTA FILES
+# -----------
+#
+####################
+### INTRODUCTION ###
+####################
+# The dnaorg_classify.pl, dnaorg_build.pl and dnaorg_annotate.pl
+# executable scripts are in this directory. See the 'PREQUISITES'
+# section of this file before trying to run them.
+#
+# This file gives examples of using the dnaorg scripts
+# dnaorg_classify.pl, dnaorg_build.pl and
+# dnaorg_annotate.pl. dnaorg_classify.pl can be used to classify a
+# given sequence or accession as most similar to one of a set of
+# "reference" sequences. dnaorg_build.pl and dnaorg_annotate.pl can be
+# used annotate viral genomes of species S given the most closely
+# related single reference GenBank entry for S. In this context, the
+# meaning of "reference" sequence is that it has all the annotations
+# expected and for circular genomes that position 1 is consistent with
+# the accepted convention about where the origin should be. If there
+# are multiple reference sequences for S, one runs dnaorg_build.pl and
+# dnaorg_annotate.pl separately for each reference sequence. In some
+# places, the technical term "RefSeq" is used instead of the less
+# formal "reference sequence".
+#
+# The overarching objectives of *dnaorg*.pl are to compute all information
+# needed to produce annotations and to output that information via
+# tables and FASTA files;
+#
+# The dnaorg scripts do not produce an updated GenBank flat file.
+#
+###########
+#
+# The meaning of line prefixes in this file is:
+# '#':    a comment line (text written just for this file).
+# "##":   line output from a command
+# "###":  line output from a command, with a '#' as the first char of
+#         the output
+# "####": 4 or more '#' are dividing lines used to help organize the
+#         file
+# "":     a command to use when learning about this file
+#
+################################
+### GETTING MORE INFORMATION ###
+################################
+#
+# For more information on the .ntlist files used as input to this script 
+# see the bottom of the file:
+# /panfs/pan1/dnaorg/programs/15_0529_dnaorg_virus_wrapper/00NOTES.txt.
+#
+# Also, see voluminous notes on development and testing of the *dnaorg* scripts in
+#
+# /home/nawrocke/notebook/15_0810_dnaorg_virus_annotate/00LOG.txt 
+# /home/nawrocke/notebook/16_0201_dnaorg_annotate_genomes_documentation/00LOG.txt
+# /home/nawrocke/notebook/15_0909_dnaorg_virus_dengue_annotate/00LOG.txt
+# /panfs/pan1/dnaorg/notebook/15_1113_dnaorg_virus_error_codes/00LOG.txt
+# /home/nawrocke/notebook/16_0201_dnaorg_annotate_genomes_documentation/00LOG.txt
+#
+# Also, github has revision history
+# (https://github.com/nawrockie/dnaorg_scripts.git)
+#
+# The NCBI JIRA tickets VIV-254 and VIV-272 may also be relevant.
+# Both tickets contain (pointers to) sample annotations. VIV-254 is
+# more focused on what bioinformatics problems to solve, the genomics
+# of specific viruses, and discussion of what makes an annotation
+# correct and complete. VIV-272 is about engineering the output of
+# dnaorg_annotate.pl, so that this output is unambiguously suitable as
+# input to other software tools in process of being written by members
+# of J. Rodney Brister's group in NCBI/IEB.
+# 
+# For more information on the error codes, see the file
+# /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5.documentation.txt 
+#
+#####################
+### PREREQUISITES ###
+#####################
+# 
+# The $DNAORG, $PERL5LIB and $PATH environment variables need to be
+# modified prior to using the dnaorg_build.pl and dnaorg_annotate.pl 
+# scripts.
+#
+# For bash shell users, add the following lines to the end of your
+# ~/.bashrc file:
+#
+export DNAORGDIR="/panfs/pan1/dnaorg/virseqannot/code"
+export PERL5LIB="$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio-Easel/blib/lib:$DNAORGDIR/Bio-Easel/blib/arch:$PERL5LIB"
+export PATH="$DNAORGDIR/dnaorg_scripts:$PATH"
+#
+# Then execute:
+source ~/.bashrc
+#
+# For C shell or C shell compatible users, add the following lines
+# to the end of your ~/.cshrc file:
+setenv DNAORGDIR "/panfs/pan1/dnaorg/virseqannot/code"
+setenv PERL5LIB "$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio-Easel/blib/lib:$DNAORGDIR/Bio-Easel/blib/arch:$PERL5LIB"
+setenv PATH "$DNAORGDIR/dnaorg_scripts:$PATH"
+#
+# Then execute: 
+source ~/.cshrc
+#
+##################################################################
+### INSTALLATION OF DNAORG SCRIPTS AND DEPENDENCIES INTO A NEW ###
+### DIRECTORY                                                  ###
+##################################################################
+#
+# There is a shell script that will install all of the dnaorg code
+# necessary to run dnaorg_annotate.pl and dnaorg_build.pl into 
+# a directory of your choosing. To obtain that file execute the 
+# following command:
+# 
+# git clone https://github.com/nawrockie/dnaorg_install_script.git
+#
+# That will create a directory called dnaorg_install_script/.
+# Read and follow the instructions for installation in the 
+# 00README file in that directory.
+#
+# Those installation instructions will install the following 
+# scripts and code:
+#
+# esl-fetch-cds.pl v0.01        (https://github.com/nawrockie/esl-fetch-cds)
+# esl-epn-translate.pl v0.01    (https://github.com/nawrockie/esl-epn-translate)
+# Bio-Easel v0.05               (https://github.com/nawrockie/Bio-Easel)
+# epn-options v0.03             (https://github.com/nawrockie/epn-options)
+#
+# Infernal v1.1.2               (http://eddylab.org/infernal/)
+# HMMER v3.1b2                  (http://hmmer.org/)
+# 
+############################################
+### USAGE AND OPTIONS OF dnaorg_build.pl ###
+############################################
+#
+# The output of each program run with the '-h' option
+# is informative about how to use that script:
+# 
+# dnaorg_build.pl takes a single argument: the reference 
+# accession:
+#
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
+## dnaorg_build.pl :: build homology models for features of a reference sequence
+## dnaorg 0.19 (Nov 2017)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Sun Nov  5 20:20:50 2017
+##
+#Usage: dnaorg_build.pl [-options] <reference accession>
+#
+#basic options:
+#  -c            : genome is circular
+#  -f            : force; if dir <reference accession> exists, overwrite it
+#  -v            : be verbose; output commands to stdout as they're run
+#  --dirout <s>  : specify output directory as <s>, not <ref accession>
+#  --matpept <s> : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
+#  --nomatpept   : ignore mat_peptide information in reference annotation
+#  --keep        : do not remove intermediate files, keep them all on disk
+#
+#options affecting calibration of models:
+#  --slow          : use default cmcalibrate parameters, not parameters optimized for speed
+#  --local         : run cmcalibrate locally, do not submit calibration jobs for each CM to the compute farm
+#  --wait <n>      : allow <n> wall-clock minutes for cmcalibrate jobs on farm to finish, including queueing time [1800]
+#  --nosubmit      : do not submit cmcalibrate jobs to farm, run later with qsub script
+#  --errcheck      : consider any stderr output as indicating a job failure
+#  --rammult       : for all models, multiply RAM Gb by ncpu for mem_free
+#  --bigthresh <n> : set minimum length for a big model to <n> [2500]
+#  --bigram <n>    : for big models, set Gb RAM per core for calibration to <n> [8]
+#  --biglen <x>    : for big models, set cmcalibrate length to search in Mb as <x> [0.16]
+#  --bigncpu <n>   : for big models, set number of CPUs for calibration to <n> [4]
+#  --bigtailp <x>  : for big models, set --tailp cmcalibrate parameter as <x> [0.30]
+#
+#optional output files:
+#  --mdlinfo : create file with internal model information
+#  --ftrinfo : create file with internal feature information
+#
+#options for skipping stages and using files from an earlier, identical run, primarily useful for debugging:
+#  --skipedirect : skip the edirect steps, use data from an earlier run of the script
+#  --skipfetch   : skip the sequence fetching steps, use files from an earlier run of the script
+#  --skipbuild   : skip the model building/calibrating, requires --mdlinfo and/or --ftrinfo
+#
+#options for building models for origin sequences:
+#  --orginput <s> : read training alignment for origin sequences from file <s>
+#  --orgstart <n> : origin sequence starts at position <n> in file <s> from --orginput <s> [0]
+#  --orglen <n>   : origin sequence is <n> nucleotides long [0]
+######
+#
+# dnaorg_annotate.pl should be run after dnaorg_build.pl is finished
+# and all of the cmcalibrate jobs it has submitted have completed
+# running on the farm.
+#
+# dnaorg_annotate.pl is typically run with a single command line
+# argument, a .ntlist file that contains a list of accessions, one per
+# line.  These accessions should be the same species as the reference
+# aaccession used in dnaorg_build.pl. The reference accession used
+# passed into dnaorg_build.pl should be the first accession listed in
+# the .ntlist file.
+#
+# See the example runs #1 and #2 below for more detailed instructions.
+#
+# Alternatively, with the --infasta option, the user can provide a
+# fasta file of sequences to annotate instead of a list of accessions
+# as the .ntlist file. This may be desirable because in this mode,
+# none of the NCBI databases are accessed (for sequence fetching,
+# etc.). In particular, the --infasta option makes it feasible to
+# annotate newly arriving sequences that are not in GenBank. See
+# 'example run 3 of 3' below for an example of running
+# dnaorg_annotate.pl in this mode.
+#
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
+## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
+## dnaorg 0.19 (Nov 2017)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Sun Nov  5 20:21:57 2017
+##
+#Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>
+#
+#       OR
+#
+#       dnaorg_annotate.pl [-options] --refaccn <reference accession> --infasta <fasta sequence file with sequences to annotate>
+#
+#basic options:
+#  -c                : genome is closed (a.k.a circular)
+#  -f                : force; if dir from --dirout exists, overwrite it
+#  -v                : be verbose; output commands to stdout as they're run
+#  --dirout <s>      : specify output directory as <s>, not <ref accession>
+#  --dirbuild <s>    : specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>
+#  --origin <s>      : identify origin seq <s> in genomes, put "|" at site of origin ("|" must be escaped, i.e. "\|"
+#  --matpept <s>     : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
+#  --nomatpept       : ignore mat_peptide information in reference annotation
+#  --specstart <s>   : read specified alternate start codons per CDS from file <s>
+#  --keep            : do not remove intermediate files, keep them all on disk
+#  --local           : run cmscan locally instead of on farm
+#  --errcheck        : consider any farm stderr output as indicating a job failure
+#  --nseq <n>        : set number of sequences for each cmscan farm job to <n> [5]
+#  --wait <n>        : allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time [500]
+#  --bigthresh <n>   : set minimum model length for using HMM mode to <n> [4000]
+#  --dfthresh <n>    : set max model length for using default sensitivity mode to <n> [250]
+#  --midthresh <n>   : set max model length for using mid sensitivity mode to <n> [75]
+#  --smallthresh <n> : set max model length for using max sensitivity mode to <n> [30]
+#  --mxsize <n>      : with --doalign, set --mxsize <n> for cmalign to <n> [2048]
+#
+#options for alternative modes:
+#  --infasta     : single cmdline argument is a fasta file of sequences, not a list of accessions
+#  --refaccn <s> : specify reference accession is <s> (must be used in combination with --infasta)
+#
+#options that modify the tabular output file:
+#  --tblfirst  : include annotation for first accession on each page of .tbl output file
+#  --tblnocomp : do not include information comparing predicted annotations to existing GenBank annotations
+#
+#options for skipping/adding optional stages:
+#  --doalign : create nucleotide and protein alignments
+#
+#optional output files:
+#  --mdlinfo : create file with internal model information
+#  --ftrinfo : create file with internal feature information
+#  --seqinfo : create file with internal sequence information
+#  --errinfo : create file with internal error information
+#
+#options for skipping stages and using files from earlier, identical runs, primarily useful for debugging:
+#  --skipedirect   : skip the edirect steps, use data from an earlier run of the script
+#  --skipfetch     : skip the sequence fetching steps, use files from an earlier run of the script
+#  --skipscan      : skip the cmscan step, use results from an earlier run of the script
+#  --skiptranslate : skip the translation steps, use results from an earlier run of the script
+#
+#TEMPORARY options for the alternative method of identifying origin sequences:
+#  --aorgmodel <s>    : use alternative origin method with origin model in <s>
+#  --aorgstart <n>    : origin begins at position <n> in --aorgmodel model [0]
+#  --aorgoffset <n>   : first position of genome sequence is position <n> in origin sequence [0]
+#  --aorglen <n>      : length of origin sequence is <n> [0]
+#  --aorgethresh <x>  : E-value threshold for origin detection is <x> [1]
+#  --aorgppthresh <x> : average PP threshold for origin detection is <x> [0.6]
+
+####################
+### EXAMPLE RUNS ###
+####################
+# 
+# There are currently two dnaorg scripts and they are meant to be used
+# in the following order:
+# 
+# 1) dnaorg_build.pl: build homology models for a reference accession.
+#    Must be run once per reference accession.
+# 
+# 2) dnaorg_annotate.pl: use models built from dnaorg_build.pl to
+#    annotate other sequences of the same species as the reference.
+#    Can be run many times for each species provided that
+#    dnaorg_build.pl has been run for that species (and reference).
+# 
+# The discussion below includes example runs of each of the two
+# scripts in turn for two different species (Maize streak virus and
+# Dengue virus). 
+#
+# A third example run of dnaorg_annotate.pl for Maize streak virus
+# demonstrates how to run the dnaorg_annotate.pl script using an input
+# fasta file instead of a list of accessions, and running the homology
+# searches locally instead of on the compute farm. In this
+# 'fasta-input' mode, dnaorg_annotate.pl does not need to access any
+# NCBI databases.
+#
+# When a species has multiple reference sequences, one may wish to
+# partition the genomes, so that each genome is assigned to a single
+# reference and hence annotated with respect to that reference. We
+# have done this partitioning experimentally for Dengue virus, West
+# Nile virus, and Norovirus. However, this partitioning is not
+# required; it is permissible to annotate the same genome with respect
+# to multiple reference sequences. This document (as of June 2016)
+# does not discuss the partitioning further.  It is assumed that each
+# reference sequence has associated with it a list of sequences to be
+# annotated with respect to the reference sequence.  A target sequence
+# may appear in the "to-be-annotated" lists for multiple references.
+# 
+# The first run is for the Maize streak virus, which has a circular
+# ssDNA genome with 4 CDS that code for proteins, one of which has 2
+# exons.  The second run is for Dengue (type 1) virus, which has a
+# linear ssRNA genome. Dengue translates a single polyprotein that is
+# cleaved in two stages into 14 smaller peptides, called "mature
+# peptides". The first stage cleaves the polyprotein into 11 adjacent,
+# disjoint peptides. The second stage further cleaves "sub-peptides"
+# from three of the first stage peptides.  Together, the two runs on
+# the two different species demonstrate most of the features and
+# versatility of the dnaorg scripts.
+#
+####################
+# Example run 1 of 3
+####################
+#
+# Here is an example of running the dnaorg_build.pl and
+# dnaorg_annotate.pl scripts for the Maize streak virus (MSV). 
+# 
+#######################################
+# Step 1. Run dnaorg_build.pl for MSV #
+#######################################
+#
+# The RefSeq accession for MSV is NC_001346, so to run the
+# dnaorg_build.pl script one should run:
+# 
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -c NC_001346
+## dnaorg_build.pl :: build homology models for features of a reference sequence
+## dnaorg 0.19 (Nov 2017)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Sun Nov  5 20:23:33 2017
+##
+## reference accession:  NC_001346
+## genome is circular:   yes [-c]
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Outputting information on options used for future use with dnaorg_annotate.pl    ... done. [0.0 seconds]
+## Gathering information on reference using edirect                                 ... done. [6.7 seconds]
+## Fetching and processing the reference genome                                     ... done. [1.1 seconds]
+## Submitting jobs to build models to compute farm and waiting for them to finish   ... 
+##	   0 of    5 jobs finished (0.2 minutes spent waiting)
+##	   1 of    5 jobs finished (0.5 minutes spent waiting)
+##	   1 of    5 jobs finished (0.8 minutes spent waiting)
+##	   2 of    5 jobs finished (1.0 minutes spent waiting)
+##	   3 of    5 jobs finished (1.2 minutes spent waiting)
+##	   3 of    5 jobs finished (1.5 minutes spent waiting)
+##	   4 of    5 jobs finished (1.8 minutes spent waiting)
+##	   5 of    5 jobs finished (2.0 minutes spent waiting)
+## done. [121.2 seconds]
+## Submitting jobs to calibrate models to compute farm and waiting for them to finish ... 
+##	   0 of    5 jobs finished (0.2 minutes spent waiting)
+##	   0 of    5 jobs finished (0.5 minutes spent waiting)
+##	   0 of    5 jobs finished (0.8 minutes spent waiting)
+##	   0 of    5 jobs finished (1.0 minutes spent waiting)
+##	   0 of    5 jobs finished (1.2 minutes spent waiting)
+##	   0 of    5 jobs finished (1.5 minutes spent waiting)
+##	   0 of    5 jobs finished (1.8 minutes spent waiting)
+##	   0 of    5 jobs finished (2.0 minutes spent waiting)
+##	   0 of    5 jobs finished (2.5 minutes spent waiting)
+##	   1 of    5 jobs finished (3.5 minutes spent waiting)
+##	   2 of    5 jobs finished (5.5 minutes spent waiting)
+##	   3 of    5 jobs finished (7.5 minutes spent waiting)
+##	   4 of    5 jobs finished (9.5 minutes spent waiting)
+##	   4 of    5 jobs finished (11.5 minutes spent waiting)
+##	   4 of    5 jobs finished (13.5 minutes spent waiting)
+##	   5 of    5 jobs finished (15.5 minutes spent waiting)
+## done. [933.3 seconds]
+##
+## You can now use dnaorg_annotate.pl to annotate genomes with the models that
+## you've created here.
+##
+##
+## Output printed to screen saved in:                                                                                     NC_001346.dnaorg_build.log
+## List of executed commands saved in:                                                                                    NC_001346.dnaorg_build.cmd
+## List and description of all output files saved in:                                                                     NC_001346.dnaorg_build.list
+## File with list of options that must be kept consistent between dnaorg_build.pl and dnaorg_annotate.pl runs saved in:   NC_001346.dnaorg_build.consopts
+## CM file #1, CDS#1 saved in:                                                                                            NC_001346.dnaorg_build.0.cm
+## CM file #2, CDS#2 saved in:                                                                                            NC_001346.dnaorg_build.1.cm
+## CM file #3, CDS#3.1 saved in:                                                                                          NC_001346.dnaorg_build.2.cm
+## CM file #4, CDS#3.2 saved in:                                                                                          NC_001346.dnaorg_build.3.cm
+## CM file #5, CDS#4 saved in:                                                                                            NC_001346.dnaorg_build.4.cm
+##
+## All output files created in directory ./NC_001346/
+##
+## CPU time:  00:17:42.38
+##            hh:mm:ss
+## 
+## DNAORG-SUCCESS
+################################
+# 
+# We use the -c option because MSV is a circular genome; more information on 
+# the annotation of circular genomes is given below.
+#
+#
+# The output printed to the screen is also saved to the file
+# NC_001346/NC_001346.dnaorg_build.log. It explains the three main
+# steps the script performs as they are being performed, and then
+# outputs a list of some of the output files created by the script.
+# For a complete list see NC_001346.dnaorg_build.list.
+# All output files have been created in the subdirectory 'NC_001346/'.
+# A particularly important file is the NC_001346.dnaorg_build.cmd
+# file that includes all of the commands executed by the script during
+# its execution.
+#
+# The three main steps performed by the script are:
+# 1. 'Gathering information on reference using edirect'. In this step, 
+#    the edirect tools (esearch, efetch, xtract, etc.) are used to
+#    extract information from the NCBI databases for the reference
+#    accession NC_001346. The output files ending in .ftable and
+#    .length include this information.
+# 
+# 2. 'Fetching and processing the reference genome'. In this step, the
+#    actual sequence for NC_001346 is fetched using a program called
+#    esl-fetch.cds.pl, and the CDS features are extracted from this
+#    sequence and saved separately to be used to create homology
+#    models in step 3. The output files with the .fa and .stk suffixes
+#    are created in this step.
+# 
+# 3. 'Submitting jobs to build models to compute farm and waiting for
+#    them to finish' In this step, commands to build models for each
+#    of the reference CDS are submitted to the compute farm, and the
+#    program waits for them to finish. These commands can take a while
+#    if the farm is busy and they have to wait to run for a long time.
+#
+# 4. 'Submitting jobs to calibrate models to compute farm and waiting
+#    for them to finish' In this step, commands to 'calibrate' the models 
+#    is submitted to the farm and the script waits for them to
+#    finish. A 'calibration' is a simulation used to determine E-value
+#    parameters for the model. These commands can take a while, even
+#    once they start running.
+#
+# During steps 3 and 4, the user can open a separate shell and check
+# the status of the jobs if they'd like, using the 'qstat' program. 
+# For example:
+#
+qstat
+##job-ID  prior   name       user         state submit/start at     queue                          jclass                         slots ja-task-ID 
+##------------------------------------------------------------------------------------------------------------------------------------------------
+## 187690 1.50472 c.NC_00134 nawrocke     r     05/20/2016 11:59:34 unified@sge581.be-md.ncbi.nlm.                                    4        
+## 187692 1.50472 c.NC_00134 nawrocke     r     05/20/2016 11:59:34 unified@sge151.be-md.ncbi.nlm.                                    4        
+## 187694 1.50472 c.NC_00134 nawrocke     r     05/20/2016 11:59:34 unified@sge109.be-md.ncbi.nlm.                                    4        
+#
+#
+##########################################
+# Step 2. Run dnaorg_annotate.pl for MSV #
+##########################################
+#
+# Once the calibrations are finished, we can run dnaorg_annotate.pl
+# to annotate other MSV genomes. For this example, we will annotate
+# 5 genomes, one of which is the reference genome. These are listed 
+# in NC_001346.ntlist. Take a look at that file:
+#
+cat NC_001346.ntlist 
+#NC_001346
+#KJ699341
+#KJ437659
+#HQ693446
+#HQ693435
+##
+#
+# It is a requirement that the first accession in the .ntlist file that
+# is passed into dnaorg_annotate.pl is the same accession used in 
+# the dnaorg_build.pl call. In the .ntlist files, the accessions should
+# be listed without versions (e.g., .1, .2). The order of accessions
+# after the first row is unimportant. Each accession may appear only
+# once in the file. If at least one accession appears more than once,
+# dnaorg_annotate.pl will exit in error and inform the user of all
+# accessions that appear more than once.
+#
+# To run dnaorg_annotate.pl do:
+#
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -c /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001346.ntlist 
+# dnaorg_annotate.pl :: annotate sequences based on a reference annotation
+# dnaorg 0.19 (Nov 2017)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:    Sun Nov  5 20:23:52 2017
+#
+# file with list of accessions:        /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001346.ntlist
+# genome is closed (a.k.a. circular):  yes [-c]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Verifying options are consistent with options used for dnaorg_build.pl                ... done. [0.0 seconds]
+# Gathering information on 5 sequences using edirect                                    ... done. [7.9 seconds]
+# Fetching all sequences and processing the reference genome                            ... done. [2.1 seconds]
+# Verifying CMs were created for current reference NC_001346                            ... done. [0.1 seconds]
+# Running cmscan locally                                                                ... done. [71.4 seconds]
+# Parsing cmscan results                                                                ... done. [0.0 seconds]
+# Calculating predicted feature lengths                                                 ... done. [0.0 seconds]
+# Fetching cmscan predicted hits into fasta files                                       ... done. [0.0 seconds]
+# Combining predicted exons into CDS                                                    ... done. [0.1 seconds]
+# Combining predicted mature peptides into CDS                                          ... done. [0.0 seconds]
+# Identifying errors associated with incomplete alignment to the model                  ... done. [0.0 seconds]
+# Identifying internal starts/stops in coding sequences                                 ... done. [1.6 seconds]
+# Correcting homology search stop codon predictions to account for observed stop codons ... done. [0.0 seconds]
+# Identifying overlap and adjacency errors                                              ... done. [0.0 seconds]
+# Finalizing annotations and validating error combinations                              ... done. [0.0 seconds]
+# Fetching corrected matches into fasta files                                           ... done. [0.0 seconds]
+# Combining corrected exons into CDS                                                    ... done. [0.1 seconds]
+# Combining corrected mature peptides into CDS                                          ... done. [0.0 seconds]
+# Translating corrected nucleotide features into protein sequences                      ... done. [1.4 seconds]
+# Generating error code output                                                          ... done. [0.0 seconds]
+# Generating tabular annotation output                                                  ... done. [0.0 seconds]
+#
+# Annotated 5 accessions, 1 (0.2000 fraction) had at least one annotation 'failure', see NC_001346.dnaorg_annotate.tbl for all details.
+# Table below includes counts of error codes
+#
+# Explanation of columns:
+# "code"       : the error code
+# "#tot"       : total number of occurences of code , possibly > 1 for some accessions
+# "#accn"      : number of accessions with at least 1 occurence of code
+# "fraction...": fraction of all 5 accessions with at least 1 occurence of code
+#
+# Explanation of final two rows beginning with "total" and "any":
+#   "total":"#tot"   column is total number of error codes reported
+#   "any":"#tot"     column is number of accessions with >= 1 error code
+#   "any":"fraction" column is fraction of accessions with >= 1 error code
+#code   #tot  #accn  fraction-of-all-5-accn
+#----  -----  -----  ------
+  ori      0      0  0.0000
+  nop      0      0  0.0000
+  nm3      0      0  0.0000
+  b5e      0      0  0.0000
+  b5u      0      0  0.0000
+  b3e      0      0  0.0000
+  b3u      0      0  0.0000
+  olp      0      0  0.0000
+  str      0      0  0.0000
+  stp      0      0  0.0000
+  ajb      0      0  0.0000
+  aja      0      0  0.0000
+  trc      2      2  0.4000
+  ext      0      0  0.0000
+  ntr      0      0  0.0000
+  nst      0      0  0.0000
+  ost      0      0  0.0000
+  aji      0      0  0.0000
+  int      0      0  0.0000
+  inp      0      0  0.0000
+#----  -----  -----  ------
+total      2      -       -
+  any      2      -  0.4000
+#
+# Output printed to screen saved in:                                            NC_001346.dnaorg_annotate.log
+# List of executed commands saved in:                                           NC_001346.dnaorg_annotate.cmd
+# List and description of all output files saved in:                            NC_001346.dnaorg_annotate.list
+# All annotations in tabular format saved in:                                   NC_001346.dnaorg_annotate.tbl
+# Summary of all annotations saved in:                                          NC_001346.dnaorg_annotate.tbl.summary
+# Annotations for all sequences with >= 1 failure in tabular format saved in:   NC_001346.dnaorg_annotate.fail.tbl
+# Annotations for all sequences with >= 1 error in tabular format saved in:     NC_001346.dnaorg_annotate.error.tbl
+# List of errors, one line per sequence saved in:                               NC_001346.dnaorg_annotate.peraccn.errors
+# List of errors, one line per error saved in:                                  NC_001346.dnaorg_annotate.all.errors
+# Summary of all errors saved in:                                               NC_001346.dnaorg_annotate.errors.summary
+#
+# All output files created in directory ./NC_001346/
+#
+# CPU time:  00:01:24.82
+#            hh:mm:ss
+# 
+# DNAORG-SUCCESS
+##############
+#
+# The dnaorg_annotate.pl output begins with a description of the many
+# steps it performs, with timings of each step.
+#
+###########################
+## chunk of script output #
+###########################
+## Verifying options are consistent with options used for dnaorg_build.pl                ... done. [0.0 seconds]
+## Gathering information on 5 sequences using edirect                                    ... done. [7.9 seconds]
+## Fetching all sequences and processing the reference genome                            ... done. [2.1 seconds]
+## Verifying CMs were created for current reference NC_001346                            ... done. [0.1 seconds]
+## Running cmscan locally                                                                ... done. [71.4 seconds]
+## Parsing cmscan results                                                                ... done. [0.0 seconds]
+## Calculating predicted feature lengths                                                 ... done. [0.0 seconds]
+## Fetching cmscan predicted hits into fasta files                                       ... done. [0.0 seconds]
+## Combining predicted exons into CDS                                                    ... done. [0.1 seconds]
+## Combining predicted mature peptides into CDS                                          ... done. [0.0 seconds]
+## Identifying errors associated with incomplete alignment to the model                  ... done. [0.0 seconds]
+## Identifying internal starts/stops in coding sequences                                 ... done. [1.6 seconds]
+## Correcting homology search stop codon predictions to account for observed stop codons ... done. [0.0 seconds]
+## Identifying overlap and adjacency errors                                              ... done. [0.0 seconds]
+## Finalizing annotations and validating error combinations                              ... done. [0.0 seconds]
+## Fetching corrected matches into fasta files                                           ... done. [0.0 seconds]
+## Combining corrected exons into CDS                                                    ... done. [0.1 seconds]
+## Combining corrected mature peptides into CDS                                          ... done. [0.0 seconds]
+## Translating corrected nucleotide features into protein sequences                      ... done. [1.4 seconds]
+## Generating error code output                                                          ... done. [0.0 seconds]
+## Generating tabular annotation output                                                  ... done. [0.0 seconds]
+##################################
+## end of chunk of script output #
+##################################
+#
+# The first step verifies that some special command line options used
+# with dnaorg_build.pl were also used with dnaorg_annotate.pl, e.g. 
+# '-c'. For details on this, see 'OPTIONS THAT MUST BE USED
+# CONSISTENTLY IN BOTH dnaorg_build.pl AND dnaorg_annotate.pl' below
+#
+# The next several steps gather information about the reference
+# accession, the existing annotations of all accessions, and validate
+# the CM file in the NC_001346/ directory that is about to be used for
+# annotation was indeed made for the current reference sequence.
+# 
+# The script then runs the Infernal 'cmscan' program to annotate all
+# the 'features' of each of the accessions. In this case, 'cmscan' was
+# run locally (on the current machine). If more than 5 sequences were
+# to be annotated, the annotations would be submitted to the compute
+# farm, with 5 sequences per compute job, and the script would wait
+# for them all to finish before proceeding. (This magic number of '5'
+# can be changed to <n> with the --nseq <n> option.)
+#
+# The cmscan results are then parsed and the predicted hits are
+# fetched into fasta files. These sequence files are then examined for
+# the validity of their start and stop codons and also to identify any
+# early in-frame stop codons. The results of these examinations are
+# used to 'correct' predictions where early in-frame stop codons were
+# found. The 'corrected' sequences are then fetched, aligned,
+# translated, and then those translations are aligned.
+#
+# Finally the script outputs the tabular annotation and lists of
+# errors found, and outputs a summary of the annotations and errors:
+#
+###########################
+## chunk of script output #
+###########################
+## Annotated 5 accessions, 1 (0.2000 fraction) had at least one annotation 'failure', see NC_001346.dnaorg_annotate.tbl for all details.
+## Table below includes counts of error codes
+##
+## Explanation of columns:
+## "code"       : the error code
+## "#tot"       : total number of occurences of code , possibly > 1 for some accessions
+## "#accn"      : number of accessions with at least 1 occurence of code
+## "fraction...": fraction of all 5 accessions with at least 1 occurence of code
+##
+## Explanation of final two rows beginning with "total" and "any":
+##   "total":"#tot"   column is total number of error codes reported
+##   "any":"#tot"     column is number of accessions with >= 1 error code
+##   "any":"fraction" column is fraction of accessions with >= 1 error code
+##code   #tot  #accn  fraction-of-all-5-accn
+##----  -----  -----  ------
+#  ori      0      0  0.0000
+#  nop      0      0  0.0000
+#  nm3      0      0  0.0000
+#  b5e      0      0  0.0000
+#  b5u      0      0  0.0000
+#  b3e      0      0  0.0000
+#  b3u      0      0  0.0000
+#  olp      0      0  0.0000
+#  str      0      0  0.0000
+#  stp      0      0  0.0000
+#  ajb      0      0  0.0000
+#  aja      0      0  0.0000
+#  trc      2      2  0.4000
+#  ext      0      0  0.0000
+#  ntr      0      0  0.0000
+#  nst      0      0  0.0000
+#  ost      0      0  0.0000
+#  aji      0      0  0.0000
+#  int      0      0  0.0000
+#  inp      0      0  0.0000
+##----  -----  -----  ------
+#total      2      -       -
+#  any      2      -  0.4000
+#################################
+# end of chunk of script output #
+#################################
+#
+# In this case, 5 accessions were annotated, with zero 'failures'. See
+# the NC_001346.dnaorg_annotate.tbl file in the NC_001346/ directory
+# for the detailed annotations.
+#
+# The final table output summarizes the counts of each of the error
+# codes. These error codes are described more here:in this file:
+# https://github.com/nawrockie/dnaorg_error_code_documentation
+#
+# In this case, there were only 2 trc errors. For all errors, see the
+# NC_001346.dnaorg_annotate.all.errors file (one error per line) and
+# the NC_001346.dnaorg_annotate.peraccn.errors (one accession per
+# line) file in the NC_001346 directory.
+# 
+####################
+# Example run 2 of 3
+####################
+# 
+# In this second example run of the dnaorg scripts, we will repeat the
+# same steps as in the MSV example, but with the Dengue virus, which
+# differs from MSV in some important biological ways. 
+# 
+# Dengue has a single CDS that encodes a polypeptide, which is cleaved
+# in two stages into 14 distinct peptides. These peptides are
+# annotated as 'mat_peptide' features in GenBank; "mat" is short for
+# "mature". The dnaorg_annotate.pl script attempts to annotate each
+# mature peptide independently, and then combine those annotations to
+# annotate the CDS that encode the mature peptide sequences. The
+# script needs a special input file to define the relationships
+# between the mature peptides and the CDS for the reference
+# accession. In this example, we will use the 'NC_001477.matpept.in'
+# file as input to dnaorg_annotate.pl.
+#
+# Here is that file:
+cat NC_001477.matpept.in 
+## This file explains how CDS and mat_peptide annotation for NC_001477
+## are related.
+##
+## Format of lines in this file:
+## <CDS-idx> <'primary' OR 'all'> <mat_peptide-1-idx>:<mat_peptide-2-idx>:<mat_peptide-n-idx>
+## 'primary' lines: these define the 'primary' peptides in order, the
+##                  CDS <CDS-idx> is comprised of the peptides listed
+##                  in final token, which are contiguous, start of 
+##                  first mat_peptide to stop of final mat_peptide is
+##                  one contiguous subsequence.
+##
+## 'all' lines:     these define all the peptides that are ultimately
+##                  derived from CDS <CDS-idx>. It will be a superset
+##                  of the primary line for this index but will
+##                  additionally include mat_peptides that are
+##                  secondarily cleaved from the primary mat_peptides.
+##
+#1 primary 1:3:6:7:8:9:10:11:12:13:14
+#1 all     1:2:3:4:5:6:7:8:9:10:11:12:13:14
+##################################
+#
+# To construct one of these files for a new species, it is necessary
+# to look at the annotation of the reference genome and manually
+# determine which mature peptides are encoded by each CDS, and in what
+# order they are encoded. 
+# 
+# Another important difference with the first MSV
+# example is that Dengue is not a circular genome. Therefore,
+# Dengue does not have an origin sequence, so we do not use 
+# the -c option for Dengue.
+#
+##########################################
+# Step 1. Run dnaorg_build.pl for Dengue #
+##########################################
+#
+# Here is an example run of dnaorg_build.pl for Dengue:
+#
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl --matpept /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in NC_001477
+## dnaorg_build.pl :: build homology models for features of a reference sequence
+## dnaorg 0.19 (Nov 2017)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Sun Nov  5 20:24:14 2017
+##
+## reference accession:                   NC_001477
+## using pre-specified mat_peptide info:  /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in [--matpept]
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Outputting information on options used for future use with dnaorg_annotate.pl    ... done. [0.0 seconds]
+## Gathering information on reference using edirect                                 ... done. [6.9 seconds]
+## Fetching and processing the reference genome                                     ... done. [2.3 seconds]
+## Submitting jobs to build models to compute farm and waiting for them to finish   ... 
+##	   1 of   14 jobs finished (0.2 minutes spent waiting)
+##	   2 of   14 jobs finished (0.5 minutes spent waiting)
+##	   3 of   14 jobs finished (0.8 minutes spent waiting)
+##	   4 of   14 jobs finished (1.0 minutes spent waiting)
+##	   4 of   14 jobs finished (1.2 minutes spent waiting)
+##	   4 of   14 jobs finished (1.5 minutes spent waiting)
+##	   4 of   14 jobs finished (1.8 minutes spent waiting)
+##	   4 of   14 jobs finished (2.0 minutes spent waiting)
+##	   4 of   14 jobs finished (2.5 minutes spent waiting)
+##	   9 of   14 jobs finished (3.5 minutes spent waiting)
+##	  14 of   14 jobs finished (5.5 minutes spent waiting)
+## done. [334.3 seconds]
+## Submitting jobs to calibrate models to compute farm and waiting for them to finish ... 
+##	   0 of   14 jobs finished (0.2 minutes spent waiting)
+##	   0 of   14 jobs finished (0.5 minutes spent waiting)
+##	   0 of   14 jobs finished (0.8 minutes spent waiting)
+##	   0 of   14 jobs finished (1.0 minutes spent waiting)
+##	   0 of   14 jobs finished (1.2 minutes spent waiting)
+##	   0 of   14 jobs finished (1.5 minutes spent waiting)
+##	   1 of   14 jobs finished (1.8 minutes spent waiting)
+##	   2 of   14 jobs finished (2.0 minutes spent waiting)
+##	   4 of   14 jobs finished (2.5 minutes spent waiting)
+##	   5 of   14 jobs finished (3.5 minutes spent waiting)
+##	   5 of   14 jobs finished (5.5 minutes spent waiting)
+##	   6 of   14 jobs finished (7.5 minutes spent waiting)
+##	   8 of   14 jobs finished (9.5 minutes spent waiting)
+##	   9 of   14 jobs finished (11.5 minutes spent waiting)
+##	   9 of   14 jobs finished (13.5 minutes spent waiting)
+##	   9 of   14 jobs finished (15.5 minutes spent waiting)
+##	  10 of   14 jobs finished (17.5 minutes spent waiting)
+##	  10 of   14 jobs finished (19.5 minutes spent waiting)
+##	  11 of   14 jobs finished (21.5 minutes spent waiting)
+##	  12 of   14 jobs finished (23.5 minutes spent waiting)
+##	  12 of   14 jobs finished (25.5 minutes spent waiting)
+##	  12 of   14 jobs finished (27.5 minutes spent waiting)
+##	  12 of   14 jobs finished (29.5 minutes spent waiting)
+##	  12 of   14 jobs finished (31.5 minutes spent waiting)
+##	  12 of   14 jobs finished (33.5 minutes spent waiting)
+##	  12 of   14 jobs finished (35.5 minutes spent waiting)
+##	  12 of   14 jobs finished (37.5 minutes spent waiting)
+##	  12 of   14 jobs finished (39.5 minutes spent waiting)
+##	  12 of   14 jobs finished (41.5 minutes spent waiting)
+##	  12 of   14 jobs finished (43.5 minutes spent waiting)
+##	  12 of   14 jobs finished (45.5 minutes spent waiting)
+##	  13 of   14 jobs finished (47.5 minutes spent waiting)
+##	  13 of   14 jobs finished (49.5 minutes spent waiting)
+##	  13 of   14 jobs finished (51.5 minutes spent waiting)
+##	  13 of   14 jobs finished (53.5 minutes spent waiting)
+####################SOME LINES REMOVED FOR BREVITY#######################
+##	  13 of   14 jobs finished (171.5 minutes spent waiting)
+##	  13 of   14 jobs finished (173.5 minutes spent waiting)
+##	  14 of   14 jobs finished (175.5 minutes spent waiting)
+## done. [10549.4 seconds]
+##
+## You can now use dnaorg_annotate.pl to annotate genomes with the models that
+## you've created here.
+##
+##
+## Output printed to screen saved in:                                                                                     NC_001477.dnaorg_build.log
+## List of executed commands saved in:                                                                                    NC_001477.dnaorg_build.cmd
+## List and description of all output files saved in:                                                                     NC_001477.dnaorg_build.list
+## File with list of options that must be kept consistent between dnaorg_build.pl and dnaorg_annotate.pl runs saved in:   NC_001477.dnaorg_build.consopts
+## CM file #1, MP#1 saved in:                                                                                             NC_001477.dnaorg_build.0.cm
+## CM file #2, MP#2 saved in:                                                                                             NC_001477.dnaorg_build.1.cm
+## CM file #3, MP#3 saved in:                                                                                             NC_001477.dnaorg_build.2.cm
+## CM file #4, MP#4 saved in:                                                                                             NC_001477.dnaorg_build.3.cm
+## CM file #5, MP#5 saved in:                                                                                             NC_001477.dnaorg_build.4.cm
+## CM file #6, MP#6 saved in:                                                                                             NC_001477.dnaorg_build.5.cm
+## CM file #7, MP#7 saved in:                                                                                             NC_001477.dnaorg_build.6.cm
+## CM file #8, MP#8 saved in:                                                                                             NC_001477.dnaorg_build.7.cm
+## CM file #9, MP#9 saved in:                                                                                             NC_001477.dnaorg_build.8.cm
+## CM file #10, MP#10 saved in:                                                                                           NC_001477.dnaorg_build.9.cm
+## CM file #11, MP#11 saved in:                                                                                           NC_001477.dnaorg_build.10.cm
+## CM file #12, MP#12 saved in:                                                                                           NC_001477.dnaorg_build.11.cm
+## CM file #13, MP#13 saved in:                                                                                           NC_001477.dnaorg_build.12.cm
+## CM file #14, MP#14 saved in:                                                                                           NC_001477.dnaorg_build.13.cm
+##
+## All output files created in directory ./NC_001477/
+##
+## CPU time:  03:01:33.07
+##            hh:mm:ss
+## 
+## DNAORG-SUCCESS
+########################
+#
+# In this case, there were 14 CMs that were built and calibrated.
+# 
+#############################################
+# Step 2. Run dnaorg_annotate.pl for Dengue #
+#############################################
+#
+# When these 14 calibration jobs have finished, we can run
+# dnaorg_annotate.pl. This time we will run the script on only the 3
+# sequences in NC_001477.ntlist, but we will force the cmscan jobs to
+# run on the compute farm with the --nseq 1 option. With this option,
+# we will submit 3 cmscan jobs to the farm, one per sequence to
+# annotate.  We again have to use the --matpept option.
+# 
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nseq 1 --matpept /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.ntlist 
+## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
+## dnaorg 0.19 (Nov 2017)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Sun Nov  5 20:24:23 2017
+##
+## file with list of accessions:                  /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.ntlist
+## using pre-specified mat_peptide info:          /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/NC_001477.matpept.in [--matpept]
+## number of sequences for each cmscan farm job:  1 [--nseq]
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Verifying options are consistent with options used for dnaorg_build.pl                ... done. [0.1 seconds]
+## Gathering information on 3 sequences using edirect                                    ... done. [6.1 seconds]
+## Fetching all sequences and processing the reference genome                            ... done. [1.0 seconds]
+## Verifying CMs were created for current reference NC_001477                            ... done. [0.1 seconds]
+## Submitting 42 cmscan jobs to the farm                                                 ... done. [9.3 seconds]
+## Waiting a maximum of 500 minutes for all farm jobs to finish                          ... 
+##	   5 of   42 jobs finished (0.2 minutes spent waiting)
+##	   7 of   42 jobs finished (0.5 minutes spent waiting)
+##	  15 of   42 jobs finished (0.8 minutes spent waiting)
+##	  21 of   42 jobs finished (1.0 minutes spent waiting)
+##	  30 of   42 jobs finished (1.2 minutes spent waiting)
+##	  36 of   42 jobs finished (1.5 minutes spent waiting)
+##	  41 of   42 jobs finished (1.8 minutes spent waiting)
+##	  41 of   42 jobs finished (2.0 minutes spent waiting)
+##	  42 of   42 jobs finished (2.5 minutes spent waiting)
+## done. [150.6 seconds]
+## Parsing cmscan results                                                                ... done. [0.0 seconds]
+## Calculating predicted feature lengths                                                 ... done. [0.0 seconds]
+## Fetching cmscan predicted hits into fasta files                                       ... done. [0.1 seconds]
+## Combining predicted exons into CDS                                                    ... done. [0.0 seconds]
+## Combining predicted mature peptides into CDS                                          ... done. [0.2 seconds]
+## Identifying errors associated with incomplete alignment to the model                  ... done. [0.0 seconds]
+## Identifying internal starts/stops in coding sequences                                 ... done. [3.7 seconds]
+## Correcting homology search stop codon predictions to account for observed stop codons ... done. [0.0 seconds]
+## Identifying overlap and adjacency errors                                              ... done. [0.0 seconds]
+## Finalizing annotations and validating error combinations                              ... done. [0.0 seconds]
+## Fetching corrected matches into fasta files                                           ... done. [0.1 seconds]
+## Combining corrected exons into CDS                                                    ... done. [0.0 seconds]
+## Combining corrected mature peptides into CDS                                          ... done. [0.2 seconds]
+## Translating corrected nucleotide features into protein sequences                      ... done. [3.4 seconds]
+## Generating error code output                                                          ... done. [0.0 seconds]
+## Generating tabular annotation output                                                  ... done. [0.0 seconds]
+##
+## Annotated 3 accessions, 1 (0.3333 fraction) had at least one annotation 'failure', see NC_001477.dnaorg_annotate.tbl for all details.
+## Table below includes counts of error codes
+##
+## Explanation of columns:
+## "code"       : the error code
+## "#tot"       : total number of occurences of code , possibly > 1 for some accessions
+## "#accn"      : number of accessions with at least 1 occurence of code
+## "fraction...": fraction of all 3 accessions with at least 1 occurence of code
+##
+## Explanation of final two rows beginning with "total" and "any":
+##   "total":"#tot"   column is total number of error codes reported
+##   "any":"#tot"     column is number of accessions with >= 1 error code
+##   "any":"fraction" column is fraction of accessions with >= 1 error code
+##code   #tot  #accn  fraction-of-all-3-accn
+##----  -----  -----  ------
+#  ori      0      0  0.0000
+#  nop      0      0  0.0000
+#  nm3      0      0  0.0000
+#  b5e      0      0  0.0000
+#  b5u      0      0  0.0000
+#  b3e      0      0  0.0000
+#  b3u      0      0  0.0000
+#  olp      0      0  0.0000
+#  str      0      0  0.0000
+#  stp      0      0  0.0000
+#  ajb      0      0  0.0000
+#  aja      0      0  0.0000
+#  trc      0      0  0.0000
+#  ext      0      0  0.0000
+#  ntr      0      0  0.0000
+#  nst      0      0  0.0000
+#  ost      0      0  0.0000
+#  aji      0      0  0.0000
+#  int      0      0  0.0000
+#  inp      0      0  0.0000
+##----  -----  -----  ------
+#total      0      -       -
+#  any      0      -  0.0000
+##
+## Output printed to screen saved in:                                            NC_001477.dnaorg_annotate.log
+## List of executed commands saved in:                                           NC_001477.dnaorg_annotate.cmd
+## List and description of all output files saved in:                            NC_001477.dnaorg_annotate.list
+## All annotations in tabular format saved in:                                   NC_001477.dnaorg_annotate.tbl
+## Summary of all annotations saved in:                                          NC_001477.dnaorg_annotate.tbl.summary
+## Annotations for all sequences with >= 1 failure in tabular format saved in:   NC_001477.dnaorg_annotate.fail.tbl
+## Annotations for all sequences with >= 1 error in tabular format saved in:     NC_001477.dnaorg_annotate.error.tbl
+## List of errors, one line per sequence saved in:                               NC_001477.dnaorg_annotate.peraccn.errors
+## List of errors, one line per error saved in:                                  NC_001477.dnaorg_annotate.all.errors
+## Summary of all errors saved in:                                               NC_001477.dnaorg_annotate.errors.summary
+##
+## All output files created in directory ./NC_001477/
+##
+## CPU time:  00:02:55.14
+##            hh:mm:ss
+## 
+## DNAORG-SUCCESS
+####################################
+# 
+# The output is very similar to the output for MSV. In this case, no
+# failures or errors were found. See the NC_001477.dnaorg_annotate.tbl
+# for annotations. NC_001477.dnaorg_annotate.all.errors and 
+# NC_001477.dnaorg_annotate.peraccn.errors would contain error
+# information if there had been any errors.
+# 
+#
+####################
+# Example run 3 of 3
+####################
+#
+# For this example run, we will repeat the dnaorg_annotate.pl step for
+# example run #1 (dnaorg_build.pl does not need to be rerun), but
+# using special command line options that change the behavior of
+# dnaorg_annotate.pl, as follows:
+#
+# - Due to the --infasta option: 
+#   NCBI databases (e.g. id) and edirect tools are not accessed.
+#   Instead, sequences to annotate are read from an input fasta
+#   file.
+#
+# - Due to the --dirout <s> option: 
+#   The output files will be placed in a directory specified
+#   by the user, instead of putting output files in the directory
+#   named <ref_accession> (for Maize streak this is 'NC_001346').
+#
+# - Due to the --local option:
+#   The homology search steps by the cmscan program will not
+#   be submitted to the compute farm, instead they will be
+#   run locally on the current machine that is running 
+#   dnaorg_annotate.pl (due to the --local option).
+#
+# To run dnaorg_annotate.pl in this special mode, we will use the
+# dnaorg_build output files already created in step #1 of example
+# run #1 above. If you haven't already attempted to reproduce
+# example 1, you must do that first before you can execute
+# the command below.
+#
+# Here is the command for executing dnaorg_annotate.pl in this
+# special mode:
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --infasta --refaccn NC_001346 --local --dirout NC_001346-out1 --dirbuild NC_001346 -c NC_001346.fa
+## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
+## dnaorg 0.19 (Nov 2017)
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## date:    Sun Nov  5 20:24:31 2017
+##
+## fasta file with sequences to annotate (--infasta):                               NC_001346.fa
+## genome is closed (a.k.a. circular):                                              yes [-c]
+## output directory specified as:                                                   NC_001346-out1 [--dirout]
+## output directory used for dnaorg_build.pl:                                       NC_001346 [--dirbuild]
+## run cmscan locally instead of on farm:                                           yes [--local]
+## single cmdline argument is a fasta file of sequences, not a list of accessions:  yes [--infasta]
+## specify reference accession is <s>:                                              NC_001346 [--refaccn]
+## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Verifying options are consistent with options used for dnaorg_build.pl                ... done. [0.0 seconds]
+## Processing input fasta file                                                           ... done. [0.0 seconds]
+## Fetching all sequences and processing the reference genome                            ... done. [0.0 seconds]
+## Skipping verification that CMs created for current reference NC_001346 (--infasta)    ... done. [0.0 seconds]
+## Running cmscan locally                                                                ... done. [32.1 seconds]
+## Parsing cmscan results                                                                ... done. [0.0 seconds]
+## Calculating predicted feature lengths                                                 ... done. [0.0 seconds]
+## Fetching cmscan predicted hits into fasta files                                       ... done. [0.0 seconds]
+## Combining predicted exons into CDS                                                    ... done. [0.0 seconds]
+## Combining predicted mature peptides into CDS                                          ... done. [0.0 seconds]
+## Identifying errors associated with incomplete alignment to the model                  ... done. [0.0 seconds]
+## Identifying internal starts/stops in coding sequences                                 ... done. [1.0 seconds]
+## Correcting homology search stop codon predictions to account for observed stop codons ... done. [0.0 seconds]
+## Identifying overlap and adjacency errors                                              ... done. [0.0 seconds]
+## Finalizing annotations and validating error combinations                              ... done. [0.0 seconds]
+## Fetching corrected matches into fasta files                                           ... done. [0.0 seconds]
+## Combining corrected exons into CDS                                                    ... done. [0.0 seconds]
+## Combining corrected mature peptides into CDS                                          ... done. [0.0 seconds]
+## Translating corrected nucleotide features into protein sequences                      ... done. [1.0 seconds]
+## Generating error code output                                                          ... done. [0.0 seconds]
+## Generating tabular annotation output                                                  ... done. [0.0 seconds]
+##
+## Annotated 4 accessions, 0 (0.0000 fraction) had at least one annotation 'failure', see NC_001346-out1.dnaorg_annotate.tbl for all details.
+## Table below includes counts of error codes
+##
+## Explanation of columns:
+## "code"       : the error code
+## "#tot"       : total number of occurences of code , possibly > 1 for some accessions
+## "#accn"      : number of accessions with at least 1 occurence of code
+## "fraction...": fraction of all 4 accessions with at least 1 occurence of code
+##
+## Explanation of final two rows beginning with "total" and "any":
+##   "total":"#tot"   column is total number of error codes reported
+##   "any":"#tot"     column is number of accessions with >= 1 error code
+##   "any":"fraction" column is fraction of accessions with >= 1 error code
+##code   #tot  #accn  fraction-of-all-4-accn
+##----  -----  -----  ------
+#  ori      0      0  0.0000
+#  nop      0      0  0.0000
+#  nm3      0      0  0.0000
+#  b5e      0      0  0.0000
+#  b5u      0      0  0.0000
+#  b3e      0      0  0.0000
+#  b3u      0      0  0.0000
+#  olp      0      0  0.0000
+#  str      0      0  0.0000
+#  stp      0      0  0.0000
+#  ajb      0      0  0.0000
+#  aja      0      0  0.0000
+#  trc      2      2  0.5000
+#  ext      0      0  0.0000
+#  ntr      0      0  0.0000
+#  nst      0      0  0.0000
+#  ost      0      0  0.0000
+#  aji      0      0  0.0000
+#  int      0      0  0.0000
+#  inp      0      0  0.0000
+##----  -----  -----  ------
+#total      2      -       -
+#  any      2      -  0.5000
+##
+## Output printed to screen saved in:                                            NC_001346-out1.dnaorg_annotate.log
+## List of executed commands saved in:                                           NC_001346-out1.dnaorg_annotate.cmd
+## List and description of all output files saved in:                            NC_001346-out1.dnaorg_annotate.list
+## All annotations in tabular format saved in:                                   NC_001346-out1.dnaorg_annotate.tbl
+## Summary of all annotations saved in:                                          NC_001346-out1.dnaorg_annotate.tbl.summary
+## Annotations for all sequences with >= 1 failure in tabular format saved in:   NC_001346-out1.dnaorg_annotate.fail.tbl
+## Annotations for all sequences with >= 1 error in tabular format saved in:     NC_001346-out1.dnaorg_annotate.error.tbl
+## List of errors, one line per sequence saved in:                               NC_001346-out1.dnaorg_annotate.peraccn.errors
+## List of errors, one line per error saved in:                                  NC_001346-out1.dnaorg_annotate.all.errors
+## Summary of all errors saved in:                                               NC_001346-out1.dnaorg_annotate.errors.summary
+##
+## All output files created in directory ./NC_001346-out1/
+##
+## CPU time:  00:00:34.29
+##            hh:mm:ss
+## 
+## DNAORG-SUCCESS
+## 
+#######################################################
+#
+# The script has annotated the 4 sequences in NC_001346.fa 
+# without accessing any NCBI databases or submitting any
+# jobs to the compute farm. The first sequence in NC_001346.fa
+# does not need to be the reference accession (and in this case
+# it is not).
+# 
+# Here is an explanation of all of the options used in the 
+# above command:
+#
+# '--infasta' specifies that the one command line argument
+# (NC_001346.fa) is a fasta file of sequences to annotate instead of
+# a list of accessions.
+#
+# '--refaccn' is a required option when --infasta is used. It must
+# be followed by the reference accession that was passed into
+# dnaorg_build.pl, 'NC_001346' in this case.
+#
+# '--local' specifies that the cmscan homology search steps will be
+# run locally (not submitted to the compute farm).
+# 
+# '--dirout NC_001346-out1' specifies that a new directory should be
+# created for the output named 'NC_001346-out1'. 
+# 
+# '--dirbuild NC_001346' specifies that a directory named 'NC_001346'
+# already exists, and was created by an earlier dnaorg_build.pl run.
+# That dnaorg_build.pl run must be completed (any cmcalibrate steps
+# submitted to the compute farm by dnaorg_build.pl must have
+# successfully completed.)
+#
+# '-c' specifies that the sequences are circular (this option was also
+# used in example run #1).
+# 
+# Importantly, the dnaorg_build.pl step (example run #1, step #1) still
+# accesses NCBI databases, but that step only needs to be run once per
+# reference accession.
+#
+# Also, using dnaorg_annotate.pl with --infasta causes the script to 
+# skip the step where it checks that the reference accession has not
+# changed since the models were built from it with dnaorg_build.pl.
+# That check is normally performed each time dnaorg_annotate.pl is
+# run without the --infasta option.
+#
+##########################################################################
+### OPTIONS THAT MUST BE USED CONSISTENTLY IN BOTH dnaorg_build.pl AND ###
+### dnaorg_annotate.pl                                                 ###
+##########################################################################
+# 
+# Some options exist for both dnaorg_build.pl and dnaorg_annotate.pl
+# and must be used consistently with both programs. These options are:
+#
+#  -c             : genome is closed (a.k.a circular)
+#  --matpept <s>  : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
+#  --nomatpept    : ignore mat_peptide information in reference annotation
+#
+# If you use either -c, --matpept <s>, or --nomatpept with
+# dnaorg_build.pl for reference sequence x, then you must also use it
+# when you run dnaorg_annotate.pl to annotate sequences according
+# to reference sequence x. Further with --matpept <s>, the file
+# supplied as <s> must be the same exact file for both dnaorg_build.pl
+# and dnaorg_annotate.pl.
+# 
+# The dnaorg_annotate.pl script enforces that these options are used
+# consistently. dnaorg_annotate.pl will fail with an informative error
+# message if they are not used consistently. For example, if you run
+# dnaorg_build.pl like this (the command from example run 1, above):
+#
+# 'perl dnaorg_build.pl -c NC_001346'
+# 
+# and subsequently run dnaorg_annotate.pl without -c, like this:
+#
+# 'perl dnaorg_annotate.pl NC_001346.ntlist'
+#
+# The program will quickly exit with the following output explaining
+# the problem:
+#ERROR, the -c option was used when dnaorg_build.pl was run (according to file NC_001346/NC_001346.dnaorg_build.consopts).
+#You must also use it with dnaorg_annotate.pl.
+#
+##################################################################
+### REPRODUCIBILITY AND ORDER-DEPENDENCE OF LIST OF ACCESSIONS ###
+##################################################################
+# 
+# The results of the script are completely reproducible if the
+# following two criteria are met:
+# 
+# 1) the same reference accession is listed as the first accession
+# 2) none of the accessions have changed annotation, i.e. no versions
+#    have changed for any of the accessions.
+# 
+# Restriction (2) is a limitation and a TODO below is to have the
+# script record not just accessions but versions as well, so the user
+# will know when a version has changed.
+#
+# The calibration step includes a simulation that does use random
+# numbers, but this does not threaten reproducibility because in the
+# present usage, there is a single seed to the random number
+# generator and the seed is assigned deterministically.
+# 
+######################################################
+### NAMING CONVENTION FOR SEQUENCES IN FASTA FILES ###
+######################################################
+#
+# Single exon nucleotide sequences are named <s>/<d1>-<d2>: 
+# Where <s> is the sequence accession, <d1> is the coordinate of the
+# start, and <d2> is the coordinate of the stop. 
+#
+# For example:
+# NC_001346/150-455
+#
+# Multi-exon nucleotide sequences of <m> exons are similarly named,
+# but contain <m> sets of <d1>-<d2>, one per exon separated by a
+# single ','.
+# 
+# For example:
+# NC_001346/2527-1886,1793-1353
+# 
+# Protein sequences are similarly named with the coordinates
+# pertaining to nucleotide coordinates the protein was translated
+# from. Additionally, the string "-translated" is appended to the
+# name. 
+#
+# For the two examples above:
+# NC_001346/150-455-translated
+# NC_001346/2527-1886,1793-1353-translated
+# 
+#############
+### TODOS ###
+#############
+#
+# - add version to accessions, and check that they are up-to-date somehow
+#   at beginning of run
+# 
+# - add section to this file explaining output files
+# 
+#############################################
+# EPN, Thu Oct 19 15:02:50 2017
+#############################################
+#
+# This directory is under git control. Use
+# git commands to see revision history.
+# https://github.com/nawrockie/dnaorg_scripts.git
+#
+############################################

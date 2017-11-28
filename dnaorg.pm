@@ -201,6 +201,7 @@
 # Miscellaneous subroutines that don't fall into one of the above
 # categories:
 #   stripVersion()
+#   fetchedNameToListName()
 #   fetchSequencesUsingEslFetchCds()
 #   addNameAndBlankSsToStockholmAlignment()
 #   getQualifierValues()
@@ -5730,6 +5731,7 @@ sub md5ChecksumOfFile {
 # Miscellaneous subroutines that don't fall into one of the above
 # categories:
 #   stripVersion()
+#   fetchedNameToListName()
 #   fetchSequencesUsingEslFetchCds()
 #   addNameAndBlankSsToStockholmAlignment()
 #   getQualifierValues()
@@ -5762,6 +5764,42 @@ sub stripVersion {
   $$accver_R =~ s/\.[0-9]*$//; # strip version
 
   return;
+}
+
+#################################################################
+# Subroutine: fetchedNameToListName()
+# Incept:     EPN, Thu Feb 11 14:25:52 2016
+#
+# Purpose:    Convert a fetched sequence name via efetch to the 
+#             name that was used as input to efetch, with a version.
+#
+# Arguments: 
+#   $fetched_name: name from fasta file efetch returned
+#
+# Returns:    $list_name, processed fetched_name
+#
+# Dies:       never
+#################################################################
+sub fetchedNameToListName { 
+  my $sub_name  = "fetchedNameToListName";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($fetched_name) = (@_);
+
+  my $list_name = $fetched_name;
+  
+  $list_name =~ s/^gi\|?\d+\|\w+\|//; # get rid of everything before the accession number
+  if($list_name =~ /^pdb\|(\S+)\|(\S+)$/) {  # special case of PDB accessions
+    $list_name = $1 . "_" . $2;
+  }
+  else { 
+    $list_name =~ s/\|$//;              # get rid of end | or
+    $list_name =~ s/\|\w+//;            # get rid of end | and everything after |
+  }
+  $list_name =~ s/\.[0-9]*$//;        # strip version
+
+  return $list_name;
 }
 
 #################################################################

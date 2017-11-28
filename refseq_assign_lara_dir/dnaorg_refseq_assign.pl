@@ -332,8 +332,7 @@ if($onlybuild_mode) {
 
   # create the hash mapping the list sequence names to the fasta sequence names
   foreach $ref_fasta_seqname (@ref_fasta_seqname_A) {
-    $ref_list_seqname = $ref_fasta_seqname;
-    stripVersion(\$ref_list_seqname);
+    $ref_list_seqname = fetchedNameToListName($ref_fasta_seqname);
     $ref_list2fasta_seqname_H{$ref_list_seqname} = $ref_fasta_seqname;
   }
 
@@ -418,9 +417,14 @@ else {
 
     # create the hash mapping the list sequence names to the fasta sequence names
     foreach $cls_fasta_seqname (@cls_fasta_seqname_A) {
-      $cls_list_seqname = $cls_fasta_seqname;
-      stripVersion(\$cls_list_seqname);
+      $cls_list_seqname = fetchedNameToListName($cls_fasta_seqname);
       $cls_list2fasta_seqname_H{$cls_list_seqname} = $cls_fasta_seqname;
+    }
+    # make sure we have a valid mapping for all sequences in the list file
+    foreach $cls_list_seqname (@cls_list_seqname_A) { 
+      if(! defined $cls_list2fasta_seqname_H{$cls_list_seqname}) { 
+        DNAORG_FAIL("ERROR in dnaorg_refseq_assign.pl::main(), could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
+      }
     }
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
@@ -828,6 +832,28 @@ outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
 #################################################################################
+# SUBROUTINES:
+#
+# list_to_fasta():             given a list file, fetch sequences into a fasta file 
+#                              using edirect
+#
+# fasta_to_list_and_lengths(): given a fasta file, create a list of sequences in it
+#                              and get the sequence names and lengths to data structures
+#
+#
+# Old subroutines no longer used but kept for reference:
+#
+# createFastas():              given a list of sequences create a single sequence fasta file
+#                              for each sequence. Replaced with list_to_fasta() which creates
+#                              one large fasta file.
+#
+# nhmmscanSeqs():              Calls nhmmscan for each sequence in input list. Replaced with
+#                              dnaorg.pm::cmscanOrNhmmscanWrapper() a function also called 
+#                              by dnaorg_annotate.pl which splits up the sequence file into
+#                              an appropriate number of files (with >= 1 sequence), runs
+#                              each job on the compute farm, and monitors the output.
+#
+#################################################################################
 #
 # Sub name:  list_to_fasta()
 #
@@ -888,7 +914,7 @@ sub fasta_to_list_and_lengths {
   
   my ($fa_file, $list_file, $tmp_file, $seqstat, $seqname_AR, $seqlen_HR, $opt_HHR, $FH_HR) = (@_);
 
-  $cmd = $seqstat . " -a $fa_file | grep ^\= | awk '{ printf(\"\%s \%s\\n\", \$2, \$3); }' > $tmp_file";
+  $cmd = $seqstat . " --dna -a $fa_file | grep ^\= | awk '{ printf(\"\%s \%s\\n\", \$2, \$3); }' > $tmp_file";
   runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
 
   open(IN, $tmp_file) || fileOpenFailure($tmp_file, $0, $!, "reading", $FH_HR);
