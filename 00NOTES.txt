@@ -1,4 +1,4 @@
-# EPN, Tue Nov 28 15:44:20 2017
+# EPN, Wed Nov 29 06:40:21 2017
 # git repository url: https://github.com/nawrockie/dnaorg_scripts.git
 #
 # This file is organized into the following sections: 
@@ -153,9 +153,9 @@ source ~/.cshrc
 # The output of each program run with the '-h' option
 # is informative about how to use that script:
 #
-perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
+perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -h
 ## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Tue Nov 28 11:32:17 2017
 ##
@@ -218,7 +218,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 # Here are the options and usage for dnaorg_build.pl:
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Tue Nov 28 11:08:36 2017
 ##
@@ -298,7 +298,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Tue Nov 28 11:15:23 2017
 ##
@@ -454,9 +454,9 @@ cat testfiles/test.refseq.ntlist
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --onlybuild testfiles/test.refseq.ntlist --dirout test-build
 ## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Tue Nov 28 11:34:50 2017
+## date:    Wed Nov 29 06:42:05 2017
 ##
 ## REQUIRED name for output directory to create is <s>:  test-build [--dirout]
 ## build an HMM library for seqs in <s>, then exit:      testfiles/test.refseq.ntlist [--onlybuild]
@@ -519,7 +519,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --onl
 # To execute the program:
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dirbuild test-build --dirout test-classify --inlist testfiles/test.toclassify.ntlist
 ## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Tue Nov 28 11:46:15 2017
 ##
@@ -635,9 +635,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dir
 # So, to execute dnaorg_classify.pl:
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dirbuild test-build --dirout test-classify2 --infasta testfiles/test.toclassify.fa
 ## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Tue Nov 28 13:25:00 2017
+## date:    Wed Nov 29 06:43:14 2017
 ##
 ## REQUIRED name for output directory to create is <s>:  test-classify2 [--dirout]
 ## fasta file with sequences to classify is <s>:         testfiles/test.toclassify.fa [--infasta]
@@ -669,9 +669,11 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dir
 ## Fasta file with sequences to classify (copy of testfiles/test.toclassify.fa) saved in:   test-classify2.dnaorg_classify.fa
 ## Table with statistics for each match saved in:                                           test-classify2.dnaorg_classify.matches.info
 ## ntlist for NC_001346 saved in:                                                           test-classify2.dnaorg_classify.NC_001346.ntlist
-## fasta file with sequences assigned to NC_001346 saved in:                                test-classify2.dnaorg_classify.NC_001346.fa
+## De-versioned ntlist for NC_001346 saved in:                                              test-classify2.dnaorg_classify.NC_001346.deversioned.ntlist
+## Fasta file with sequences assigned to NC_001346 saved in:                                test-classify2.dnaorg_classify.NC_001346.fa
 ## ntlist for NC_001477 saved in:                                                           test-classify2.dnaorg_classify.NC_001477.ntlist
-## fasta file with sequences assigned to NC_001477 saved in:                                test-classify2.dnaorg_classify.NC_001477.fa
+## De-versioned ntlist for NC_001477 saved in:                                              test-classify2.dnaorg_classify.NC_001477.deversioned.ntlist
+## Fasta file with sequences assigned to NC_001477 saved in:                                test-classify2.dnaorg_classify.NC_001477.fa
 ## List of sequences not assigned to a RefSeq saved in:                                     test-classify2.dnaorg_classify.non-assigned
 ## List of RefSeqs in the HMM library saved in:                                             test-classify2.dnaorg_classify.all.refseqs
 ## List of sequences that were sorted into ntlists saved in:                                test-classify2.dnaorg_classify.all.seqs
@@ -694,9 +696,33 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dir
 #
 # Which contain the sequences that were classified as being closest to
 # NC_001346 and NC_001477 respectively. An exact copy of the NC_001477
-# file will be used as input to dnaorg_annotate.pl in example 5
-# below. 
+# file will be used as input to dnaorg_annotate.pl when using the
+# --infasta option in example 5 below.
+# 
+# The files: 
 #
+# test-classify2.dnaorg_classify.NC_001346.deversioned.ntlist
+# test-classify2.dnaorg_classify.NC_001477.deversioned.ntlist
+# test-classify2.dnaorg_classify.NC_001346.ntlist
+# test-classify2.dnaorg_classify.NC_001477.ntlist
+# 
+# were also created. These files are lists of the accessions in 
+# the fasta files, which may be useful. 
+#
+# Although it's recommended you use the newly created fasta files as
+# input to dnaorg_annotate.pl with the --infasta option (example 5
+# below), the .deversioned.ntlist files could possibly be used as
+# input to dnaorg_annotate.pl, like the .ntlist files output in the
+# dnaorg_classify.pl --inlist example above. But this is only true if
+# the original sequences in the --infasta input file are GenBank
+# sequences named by their accession or accessions and versions. The
+# accessions in these files will have their versions removed making
+# the file suitable as input to dnaorg_annotate.pl.
+#
+# The sequence names in the two .ntlist files (the ones with
+# 'deversioned' in their names) are simply lists of the sequences in
+# each of the fasta files, without versions removed.
+# 
 #################################################################
 # Example 3. Annotating MSV sequences using dnaorg_build.pl and #
 #            dnaorg_annotate.pl                                 #
@@ -710,7 +736,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dir
 # 
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -c NC_001346
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Tue Nov 28 13:35:25 2017
 ##
@@ -847,7 +873,7 @@ cat testfiles/NC_001346.ntlist
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -c /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/testfiles/NC_001346.ntlist 
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Tue Nov 28 13:55:49 2017
 ##
@@ -1113,7 +1139,7 @@ cat testfiles/NC_001477.matpept.in
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl --matpept /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/testfiles/NC_001477.matpept.in NC_001477
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Sun Nov  5 20:24:14 2017
 ##
@@ -1226,7 +1252,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl --matpep
 # 
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nseq 1 --matpept /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/testfiles/NC_001477.matpept.in /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/testfiles/NC_001477.ntlist 
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Sun Nov  5 20:24:23 2017
 ##
@@ -1371,7 +1397,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nse
 # special mode:
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --infasta --refaccn NC_001346 --local --dirout NC_001346-out1 --dirbuild NC_001346 -c testfiles/NC_001346.fa
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.20 (Nov 2017)
+## dnaorg 0.21 (Nov 2017)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## date:    Sun Nov  5 20:24:31 2017
 ##
