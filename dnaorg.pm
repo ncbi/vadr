@@ -6818,6 +6818,85 @@ sub runCmscanOrNhmmscan {
   return;
 }
 
+#################################################################
+# Subroutine: featureInfoTypeToFeatureTableType()
+# Incept:     EPN, Tue Dec  5 14:16:09 2017
+#
+# Purpose:    Given a feature type from the ftr_info_HA{"type"} array,
+#             convert it into a string for a feature in a feature table.
+#
+#             Input        Return value
+#             'cds-notmp'  "CDS"
+#             'cds-mp'     "CDS"
+#             'mp':        "mat_peptide"
+#
+# Arguments:
+#   $in_feature:  input feature
+#   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#             
+# Returns:    feature string for the feature table
+#
+# Dies:       if $in_feature is unrecognized
+#################################################################
+sub featureInfoTypeToFeatureTableType { 
+  my $sub_name  = "featureInfoTypeToFeatureTableType";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_feature, $FH_HR) = (@_);
+
+  if($in_feature eq "cds-notmp") { 
+    return "CDS";
+  }
+  elsif($in_feature eq "cds-mp") { 
+    return "CDS";
+  }
+  elsif($in_feature eq "mp") { 
+    return "mat_peptide";
+  }
+  else { 
+    DNAORG_FAIL("ERROR in $sub_name, unrecognized input feature string: $in_feature.", 1, $FH_HR);
+  }
+
+  return ""; # NEVERREACHED
+}
+
+#################################################################
+# Subroutine: featureInfoKeyToFeatureTableQualifierName()
+# Incept:     EPN, Tue Dec  5 14:22:25 2017
+#
+# Purpose:    Given a key from the ftr_info_HA{"type"} array, 
+#             convert it into a string for a qualifier name
+#             in a feature table.
+#
+#             Input          Return value
+#             'out_product'  "product"
+#
+# Arguments:
+#   $in_key:  input key from %ftr_info_HA
+#   $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#             
+# Returns:    qualifier name as a string for the feature table
+#
+# Dies:       if $in_key is unrecognized
+#################################################################
+sub featureInfoKeyToFeatureTableQualifierName { 
+  my $sub_name  = "featureInfoKeyToFeatureTableQualifierName";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_key, $FH_HR) = (@_);
+
+  if($in_key eq "out_product") { 
+    return "product";
+  }
+  else { 
+    DNAORG_FAIL("ERROR in $sub_name, unrecognized input key string: $in_key.", 1, $FH_HR);
+  }
+
+  return ""; # NEVERREACHED
+}
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;
