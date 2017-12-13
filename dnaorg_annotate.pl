@@ -1003,7 +1003,7 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
         }
       }
     }
-     printf("ext error for $seq_name ftr_idx: $ftr_idx %s mdl_idx: $mdl_idx\n", $ftr_info_HA{"out_tiny"}[$ftr_idx]);
+    #printf("ext error for $seq_name ftr_idx: $ftr_idx %s mdl_idx: $mdl_idx\n", $ftr_info_HA{"out_tiny"}[$ftr_idx]);
 
     my $cur_start     = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"};
     my $cur_stop      = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_stop"};
@@ -1257,7 +1257,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ######################
 $start_secs = outputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 
-output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
+output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -6212,6 +6212,7 @@ sub output_tbl_page_of_sequences {
 #  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
 #  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
 #  $mdl_results_AAHR:       REF to model results AAH, PRE-FILLED
 #  $ftr_results_AAHR:       REF to feature results AAH, PRE-FILLED
 #  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
@@ -6224,17 +6225,18 @@ sub output_tbl_page_of_sequences {
 #################################################################
 sub output_feature_tbl_all_sequences { 
   my $sub_name = "output_feature_tbl_all_sequences";
-  my $nargs_exp = 9;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, 
-      $mdl_results_AAHR, $ftr_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $ftbl_FH = $FH_HR->{"ftbl"};
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
   my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); 
 
   my $origin_offset = undef;
   if(opt_IsUsed("--origin", $opt_HHR)) { 
@@ -6279,46 +6281,77 @@ sub output_feature_tbl_all_sequences {
       }
     }
 
+    my @cur_err_output_A = (); # will hold output error messages
+    my $nop_error_flag = 0;
     # go through each feature and output information on it
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
-      #####################################################################################
-      # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
-      #####################################################################################
-      if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
-         ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-        my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
-        if(($ftr_results_HR->{"out_start"} ne "?") && 
-           ($ftr_results_HR->{"out_stop"}  ne "?")) { 
-          # we have a predicted start and stop for this feature
-          my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
-          printf $ftbl_FH("%d\t%d\t%s\n", $ftr_results_HR->{"out_start"}, $ftr_results_HR->{"out_stop"}, $type); 
-          
+      @cur_err_output_A = (); # will hold output error messages
+      $nop_error_flag = 0;
+      # are there any errors for this feature? 
+      for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+        if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
+          my $err_code = $err_info_HAR->{"code"}[$err_idx];
+          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
+            # an error exists, output it
+            push(@cur_err_output_A, sprintf("%4s %s code:%s", 
+                                            $err_code, 
+                                            $err_info_HAR->{"msg"}[$err_idx], 
+                                            ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]")); 
+            if($err_code eq "nop") { 
+              $nop_error_flag = 1;
+            }
+          }
+        }
+      } # end of for loop over $err_idx 
+
+      if(! $nop_error_flag) { 
+        # we only print information on a feature if there is no 'nop' error
+
+        my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
+        #####################################################################################
+        # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
+        #####################################################################################
+        if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
+           ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
+          my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
+          if(($ftr_results_HR->{"out_start"} ne "?") && 
+             ($ftr_results_HR->{"out_stop"}  ne "?")) { 
+            # we have a predicted start and stop for this feature
+            my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
+            printf $ftbl_FH("%d\t%d\t%s\n", $ftr_results_HR->{"out_start"}, $ftr_results_HR->{"out_stop"}, $type); 
+            
+            foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
+              my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+              printf $ftbl_FH("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+            }
+            foreach my $err_line (@cur_err_output_A) { 
+              printf $ftbl_FH("\t\t\t%s\t%s\n", "note", "ERROR:" . $err_line);
+            }
+          }
+        }
+        else { # not a multifeature cds-mp 
+          for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
+            my $is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx]; # is this the first model for feature $ftr_idx?
+            my $is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx]; # is this the final model for feature $ftr_idx?
+            my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
+            my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
+            
+            if($is_first) { 
+              printf $ftbl_FH("%d\t%d\t%s\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}, $type); 
+            }
+            else { 
+              printf $ftbl_FH("%d\t%d\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"});
+            }
+          }
           foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
             my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
             printf $ftbl_FH("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
           }
-        }
-      }
-      else { # not a multifeature cds-mp 
-        for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-          my $is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx]; # is this the first model for feature $ftr_idx?
-          my $is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx]; # is this the final model for feature $ftr_idx?
-          my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
-          my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-          
-          if($is_first) { 
-            printf $ftbl_FH("%d\t%d\t%s\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}, $type); 
-          }
-          else { 
-            printf $ftbl_FH("%d\t%d\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"});
+          foreach my $err_line (@cur_err_output_A) { 
+            printf $ftbl_FH("\t\t\t%s\t%s\n", "note", $err_line);
           }
         }
-        foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
-          my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-          printf $ftbl_FH("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-        }
-      }
+      } # end of 'if (! $nop_error_flag)'
     } # end of 'for(my $ftr_idx'      
 
     # 3' UTR, if nec
