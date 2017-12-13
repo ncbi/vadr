@@ -1220,7 +1220,8 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",  $out_root . ".error.tbl",
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",  $out_root . ".peraccn.errors", 1, "List of errors, one line per sequence");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",  $out_root . ".all.errors",     1, "List of errors, one line per error");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",  $out_root . ".errors.summary", 1, "Summary of all errors");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "ftbl",    $out_root . ".ftbl",           1, "Feature table output");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "sftbl",   $out_root . ".short.ftable",   1, "Feature table output (minimal)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "lftbl",   $out_root . ".long.ftable",    1, "Feature table output (minimal)");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -6232,7 +6233,9 @@ sub output_feature_tbl_all_sequences {
       $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $ftbl_FH = $FH_HR->{"ftbl"};
+  my $sftbl_FH = $FH_HR->{"sftbl"};
+  my $lftbl_FH = $FH_HR->{"lftbl"};
+  my $cur_out_line; # current output line to print
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
   my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
@@ -6249,7 +6252,9 @@ sub output_feature_tbl_all_sequences {
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
     my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
 
-    print $ftbl_FH (">Feature\t$accn_name\tdnaorg_annotate.pl\n");
+    $cur_out_line = (">Feature\t$accn_name\tdnaorg_annotate.pl\n");
+    print $sftbl_FH $cur_out_line;
+    print $lftbl_FH $cur_out_line;
 
     # placeholder for origin info?
 
@@ -6265,14 +6270,18 @@ sub output_feature_tbl_all_sequences {
         if($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "+") { 
           # positive strand, easy case
           if($cur_start > 1) { 
-            printf $ftbl_FH ("%d\t%d\t5'UTR\n", 1, $cur_start - 1);
+            $cur_out_line = sprintf("%d\t%d\t5'UTR\n", 1, $cur_start - 1);
+            print $sftbl_FH $cur_out_line;
+            print $lftbl_FH $cur_out_line;
           }
         }
         elsif($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "-") { 
           # negative strand, more complicated, slightly
           if($cur_start < $accn_len) { 
             # 1st feature does not start at nt $accn_len on negative strand
-            printf $ftbl_FH("%d\t%d\t5'UTR\n", $accn_len, $cur_start + 1);
+            $cur_out_line = sprintf("%d\t%d\t5'UTR\n", $accn_len, $cur_start + 1);
+            print $sftbl_FH $cur_out_line;
+            print $lftbl_FH $cur_out_line;
           }
         }
         else { # not + or - strand, weird...
@@ -6318,14 +6327,20 @@ sub output_feature_tbl_all_sequences {
              ($ftr_results_HR->{"out_stop"}  ne "?")) { 
             # we have a predicted start and stop for this feature
             my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
-            printf $ftbl_FH("%d\t%d\t%s\n", $ftr_results_HR->{"out_start"}, $ftr_results_HR->{"out_stop"}, $type); 
+            $cur_out_line = sprintf("%d\t%d\t%s\n", $ftr_results_HR->{"out_start"}, $ftr_results_HR->{"out_stop"}, $type); 
+            print $sftbl_FH $cur_out_line;
+            print $lftbl_FH $cur_out_line;
             
             foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
               my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-              printf $ftbl_FH("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+              $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+              print $sftbl_FH $cur_out_line;
+              print $lftbl_FH $cur_out_line;
             }
             foreach my $err_line (@cur_err_output_A) { 
-              printf $ftbl_FH("\t\t\t%s\t%s\n", "note", "ERROR:" . $err_line);
+              # only print errors to long feature table output
+              $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", "ERROR:" . $err_line);
+              print $lftbl_FH $cur_out_line;
             }
           }
         }
@@ -6337,18 +6352,26 @@ sub output_feature_tbl_all_sequences {
             my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
             
             if($is_first) { 
-              printf $ftbl_FH("%d\t%d\t%s\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}, $type); 
+              $cur_out_line = sprintf("%d\t%d\t%s\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}, $type); 
+              print $sftbl_FH $cur_out_line;
+              print $lftbl_FH $cur_out_line;
             }
             else { 
-              printf $ftbl_FH("%d\t%d\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"});
+              $cur_out_line = sprintf("%d\t%d\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"});
+              print $sftbl_FH $cur_out_line;
+              print $lftbl_FH $cur_out_line;
             }
           }
           foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
             my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-            printf $ftbl_FH("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+            $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+            print $sftbl_FH $cur_out_line;
+            print $lftbl_FH $cur_out_line;
           }
           foreach my $err_line (@cur_err_output_A) { 
-            printf $ftbl_FH("\t\t\t%s\t%s\n", "note", $err_line);
+            # only print errors to long feature table output
+            $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", $err_line);
+            print $lftbl_FH $cur_out_line;
           }
         }
       } # end of 'if (! $nop_error_flag)'
@@ -6378,14 +6401,18 @@ sub output_feature_tbl_all_sequences {
         if($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "+") { 
           # positive strand, easy case
           if($cur_stop < $accn_len) { # final model prediction stops at final nt
-            printf $ftbl_FH ("%d\t%d\t3'UTR\n", $cur_stop + 1, $accn_len);
+            $cur_out_line = sprintf("%d\t%d\t3'UTR\n", $cur_stop + 1, $accn_len);
+            print $sftbl_FH $cur_out_line;
+            print $lftbl_FH $cur_out_line;
           }
         }
         elsif($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "-") { 
           # negative strand, more complicated, slightly
           if($cur_stop > 1) { # final model prediction stops at first nt
             # final feature does not stop at nt 1 on negative strand
-            printf $ftbl_FH("%d\t%d\t3'UTR\n", $cur_stop - 1, 1);
+            $cur_out_line = sprintf("%d\t%d\t3'UTR\n", $cur_stop - 1, 1);
+            print $sftbl_FH $cur_out_line;
+            print $lftbl_FH $cur_out_line;
           }
         }
         else { # not + or - strand, weird...

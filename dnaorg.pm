@@ -1816,9 +1816,9 @@ sub wrapperGetInfoUsingEdirect {
     }
   }
 
-  # 2) create the edirect .ftable file
+  # 2) create the edirect .fetched.ftable file
   # create the edirect ftable file
-  my $ft_file  = $out_root . ".ftable";
+  my $ft_file  = $out_root . ".fetched.ftable";
   if(! $do_skip) { 
     if($have_listfile) { 
       $cmd = "cat $listfile | epost -db nuccore -format acc";
@@ -3002,7 +3002,7 @@ sub parseEdirectFtableFile {
 #            command, parse that file into usable data structures.
 #
 #            Can be called by the wrapper subroutine: 
-#             edirectFtableOrMatPept2SingleFeatureTableInfo().
+#            edirectFtableOrMatPept2SingleFeatureTableInfo().
 #
 #            Caller will commonly call getSingleFeatureTableInfo() after calling this
 #            subroutine.
