@@ -2755,178 +2755,185 @@ sub results_calculate_corrected_stops {
       my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
       for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-        # determine first and final model indices, we'll use these differently depending 
-        # on if we're a stp, trc or ext, but we need to know these for all three cases
-        $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
-        $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
-        # first_mdl_idx should be the first model for which we have a prediction
-        while(! exists $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]{"p_start"}) { 
-          $first_mdl_idx++; 
-          if($first_mdl_idx > $final_mdl_idx) { 
-            DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine first model for feature $ftr_idx (%s) for sequence $seq_name. stp or trc or ext error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
+
+        # only proceed past here if we have a stp, trc or ext error
+        if((exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) ||
+           (exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) ||
+           (exists $err_ftr_instances_AHH[$ftr_idx]{"ext"}{$seq_name})) { 
+
+          # determine first and final model indices, we'll use these differently depending 
+          # on if we're a stp, trc or ext, but we need to know these for all three cases
+          $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
+          $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+          # first_mdl_idx should be the first model for which we have a prediction
+          while(! exists $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]{"p_start"}) { 
+            $first_mdl_idx++; 
+            if($first_mdl_idx > $final_mdl_idx) { 
+              DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine first model for feature $ftr_idx (%s) for sequence $seq_name. stp or trc or ext error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
+            }
           }
-        }
-        # final_mdl_idx should be the final model for which we have a prediction
-        while(! exists $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_start"}) { 
-          $final_mdl_idx--; 
-          if($final_mdl_idx < $first_mdl_idx) { 
-            DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine final model for feature $ftr_idx (%s) for sequence $seq_name. stp or trc or ext error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
+          # final_mdl_idx should be the final model for which we have a prediction
+          while(! exists $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_start"}) { 
+            $final_mdl_idx--; 
+            if($final_mdl_idx < $first_mdl_idx) { 
+              DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine final model for feature $ftr_idx (%s) for sequence $seq_name. stp or trc or ext error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
+            }
           }
-        }
-        ###########################################
-        # block that handles potential stp errors #
-        ###########################################
-        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
-          if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
-            DNAORG_FAIL(sprintf("ERROR in $sub_name, stp error with non-maybe value %s for ftr %s seq_name: $seq_name", 
-                                $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}, $ftr_info_HAR->{"out_short"}[$ftr_idx]),
-                        1, $FH_HR);
-          }
-          my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, 
-                                                  $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, 
-                                                  $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
-          if(validateStopCodon($stp_err_stop_codon)) { 
-            # it's a valid stop, remove the "maybe"
-            error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
-          }
-          else { 
-            # it is not a valid stop, the error stays and we update the error message
-            my $updated_stp_errmsg = sprintf("%s ending at position %d on %s strand", $stp_err_stop_codon, 
-                                             $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}); 
-            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
-          }
-        }        
-        # only one of trc or ext can exist, they're 'incompatible' in err_info_HAR
-        ###########################################
-        # block that handles potential trc errors #
-        ###########################################
-        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
-          $len_corr = $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name};
-          if($len_corr >= 0) { 
-            DNAORG_FAIL("ERROR in $sub_name, trc error with non-negative correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
-          }
-          # determine the new length of the prediction, this is the old length plus the correction (which is negative)
-          $newlen = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{$cumlen_key} + $len_corr;
-          # careful: the length correction is with respect to the full feature (potentially multiple models (e.g. exons))
-          # so it can be as high as the cumulative length of all model predictions, so we need to adjust the length 
-          # by subtracting the correction from the cumulative length, not from the model length
-          if($newlen <= 0) { 
-            DNAORG_FAIL(sprintf("ERROR in $sub_name, trc error has length correction ($len_corr) longer than predicted length (%d) for ftr: $ftr_idx seq_name: $seq_name", 
-                                $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{$cumlen_key}), 1, $FH_HR);
-          }
-          # determine which model to set corrected stop position for, and set it
-          # again, this is only necessary because our correction is with respect to the 
-          # feature, and if this feature is multi-model it means we need to figure out
-          # which model the corrected stop is going to affect. 
-          # 
-          # For example: imagine feature 1 is comprised of models 1
-          # and 2. Model 1 prediction is 1..300 model 2 prediction is
-          # 601..1200.  If the length correction is 660, this means
-          # that model 2 is now irrelevant (truncation occurs before
-          # it's predicted start, and model 1's prediction should
-          # change to 1..240.
-          #
-          $remaininglen = $newlen;
-          for(my $mdl_idx = $first_mdl_idx; $mdl_idx <= $final_mdl_idx; $mdl_idx++) { 
+          ###########################################
+          # block that handles potential stp errors #
+          ###########################################
+          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
+            if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
+              DNAORG_FAIL(sprintf("ERROR in $sub_name, stp error with non-maybe value %s for ftr %s seq_name: $seq_name", 
+                                  $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}, $ftr_info_HAR->{"out_short"}[$ftr_idx]),
+                          1, $FH_HR);
+            }
+            my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, 
+                                                    $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, 
+                                                    $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
+            if(validateStopCodon($stp_err_stop_codon)) { 
+              # it's a valid stop, remove the "maybe"
+              error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
+            }
+            else { 
+              # it is not a valid stop, the error stays and we update the error message
+              my $updated_stp_errmsg = sprintf("%s ending at position %d on %s strand", $stp_err_stop_codon, 
+                                               $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}); 
+              error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
+            }
+          }        
+          # only one of trc or ext can exist, they're 'incompatible' in err_info_HAR
+          ###########################################
+          # block that handles potential trc errors #
+          ###########################################
+          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
+            $len_corr = $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name};
+            if($len_corr >= 0) { 
+              DNAORG_FAIL("ERROR in $sub_name, trc error with non-negative correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
+            }
+            # determine the new length of the prediction, this is the old length plus the correction (which is negative)
+            $newlen = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{$cumlen_key} + $len_corr;
+            # careful: the length correction is with respect to the full feature (potentially multiple models (e.g. exons))
+            # so it can be as high as the cumulative length of all model predictions, so we need to adjust the length 
+            # by subtracting the correction from the cumulative length, not from the model length
+            if($newlen <= 0) { 
+              DNAORG_FAIL(sprintf("ERROR in $sub_name, trc error has length correction ($len_corr) longer than predicted length (%d) for ftr: $ftr_idx seq_name: $seq_name", 
+                                  $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{$cumlen_key}), 1, $FH_HR);
+            }
+            # determine which model to set corrected stop position for, and set it
+            # again, this is only necessary because our correction is with respect to the 
+            # feature, and if this feature is multi-model it means we need to figure out
+            # which model the corrected stop is going to affect. 
+            # 
+            # For example: imagine feature 1 is comprised of models 1
+            # and 2. Model 1 prediction is 1..300 model 2 prediction is
+            # 601..1200.  If the length correction is 660, this means
+            # that model 2 is now irrelevant (truncation occurs before
+            # it's predicted start, and model 1's prediction should
+            # change to 1..240.
+            #
+            $remaininglen = $newlen;
+            for(my $mdl_idx = $first_mdl_idx; $mdl_idx <= $final_mdl_idx; $mdl_idx++) { 
+              if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}) { 
+                DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
+              }
+              if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
+                DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
+              }
+              $cumlen = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key};
+              if($newlen <= $cumlen) { # this is the model to update
+                if($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
+                  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key} + $remaininglen - 1;
+                }
+                else { # negative strand
+                  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key} - $remaininglen + 1;
+                }
+                # update "len" and "cumlen" and set $trc_err_key
+                my $exon_len_corr = ($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key} - $remaininglen);
+                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} -= $exon_len_corr;
+                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}     = $remaininglen;
+                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$trc_err_key} = 1;
+                my $cur_cumlen = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key};
+
+                # update the errmsg in @{$err_ftr_instances_AHHR} based on 
+                # what just figured out about this truncated stop
+                my $updated_trc_errmsg = sprintf("homology search predicted %d..%d", 
+                                                 create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
+                                                                              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
+                                                                              $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
+                if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
+                  $updated_trc_errmsg .= sprintf(" %s %d of %d", ($is_matpept) ? "segment" : "exon", $mdl_idx - $first_mdl_idx + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
+                }
+                $updated_trc_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
+                                               create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
+                                                                            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
+                                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
+                                               $exon_len_corr);
+                error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_trc_errmsg, $FH_HR);
+                
+                # now for all remaining models for this feature, set $cumlen_key to $cur_cumlen, 
+                # and $prv_trc_key to '1' indicating that that model prediction 
+                # doesn't really exist due to an early stop in a previous model
+                $mdl_idx++;
+                while($mdl_idx <= $final_mdl_idx) { 
+                  if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
+                    DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
+                  }
+                  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}  = $cur_cumlen;
+                  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$prv_trc_key} = 1;
+                  $mdl_idx++;
+                }
+                # after the above while($mdl_idx) loop, $mdl_idx == $final_mdl_idx+1, so this means 
+                # we will break out of the enclosing 'for(my $mdl_idx = $first_mdl_idx; $mdl_idx <= $final_mdl_idx; $mdl_idx++)' loop at 
+                # the beginning of the next iteration
+              } # end of 'if($newlen <= $cumlen)'
+              $remaininglen -= $cumlen; # update $remaininglen
+            } # end of 'for(my $mdl_idx' loop
+          } # end of 'if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}'
+          #################################
+          # block that handles ext errors #
+          #################################
+          elsif(exists $err_ftr_instances_AHH[$ftr_idx]{"ext"}{$seq_name}) { 
+            $len_corr = $err_ftr_instances_AHH[$ftr_idx]{"ext"}{$seq_name};
+            if($len_corr <= 0) { 
+              DNAORG_FAIL("ERROR in $sub_name, ext error with non-positive correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
+            }
+            # ext are easier, always modify stop of final model
+            my $mdl_idx = $final_mdl_idx;
             if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}) { 
               DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
             }
             if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
-              DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
+              DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} does not exist, but it should.", 1, $FH_HR); 
             }
-            $cumlen = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key};
-            if($newlen <= $cumlen) { # this is the model to update
-              if($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
-                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key} + $remaininglen - 1;
-              }
-              else { # negative strand
-                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key} - $remaininglen + 1;
-              }
-              # update "len" and "cumlen" and set $trc_err_key
-              my $exon_len_corr = ($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key} - $remaininglen);
-              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} -= $exon_len_corr;
-              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}     = $remaininglen;
-              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$trc_err_key} = 1;
-              my $cur_cumlen = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key};
+            if($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
+              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} + $len_corr;
+            }
+            else { # negative strand
+              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} - $len_corr;
+            }
+            # update "len" and "cumlen"
+            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}    += $len_corr;
+            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} += $len_corr;
+            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$ext_err_key} = 1;
 
-              # update the errmsg in @{$err_ftr_instances_AHHR} based on 
-              # what just figured out about this truncated stop
-              my $updated_trc_errmsg = sprintf("homology search predicted %d..%d", 
+            # update the errmsg in @{$err_ftr_instances_AHHR} based on 
+            # what we just figured out about this extended stop
+            my $updated_ext_errmsg = sprintf("homology search predicted %d..%d", 
+                                             create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
+                                                                          $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
+                                                                          $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
+            if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
+              $updated_ext_errmsg .= sprintf(" %s %d of %d", ($is_matpept) ? "segment" : "exon", $mdl_idx - $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
+            }
+            $updated_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
                                            create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
-                                                                        $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
-                                                                        $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
-              if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
-                $updated_trc_errmsg .= sprintf(" %s %d of %d", ($is_matpept) ? "segment" : "exon", $mdl_idx - $first_mdl_idx + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
-              }
-              $updated_trc_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
-                                            create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
-                                                                         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
-                                                                         $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
-                                            $exon_len_corr);
-              error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_trc_errmsg, $FH_HR);
-              
-              # now for all remaining models for this feature, set $cumlen_key to $cur_cumlen, 
-              # and $prv_trc_key to '1' indicating that that model prediction 
-              # doesn't really exist due to an early stop in a previous model
-              $mdl_idx++;
-              while($mdl_idx <= $final_mdl_idx) { 
-                if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
-                  DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
-                }
-                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}  = $cur_cumlen;
-                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$prv_trc_key} = 1;
-                $mdl_idx++;
-              }
-              # after the above while($mdl_idx) loop, $mdl_idx == $final_mdl_idx+1, so this means 
-              # we will break out of the enclosing 'for(my $mdl_idx = $first_mdl_idx; $mdl_idx <= $final_mdl_idx; $mdl_idx++)' loop at 
-              # the beginning of the next iteration
-            } # end of 'if($newlen <= $cumlen)'
-            $remaininglen -= $cumlen; # update $remaininglen
-          } # end of 'for(my $mdl_idx' loop
-        } # end of 'if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}'
-        #################################
-        # block that handles ext errors #
-        #################################
-        elsif(exists $err_ftr_instances_AHH[$ftr_idx]{"ext"}{$seq_name}) { 
-          $len_corr = $err_ftr_instances_AHH[$ftr_idx]{"ext"}{$seq_name};
-          if($len_corr <= 0) { 
-            DNAORG_FAIL("ERROR in $sub_name, ext error with non-positive correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
-          }
-          # ext are easier, always modify stop of final model
-          my $mdl_idx = $final_mdl_idx;
-          if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}) { 
-            DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
-          }
-          if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
-            DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} does not exist, but it should.", 1, $FH_HR); 
-          }
-          if($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} + $len_corr;
-          }
-          else { # negative strand
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} - $len_corr;
-          }
-          # update "len" and "cumlen"
-          $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}    += $len_corr;
-          $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} += $len_corr;
-          $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$ext_err_key} = 1;
-
-          # update the errmsg in @{$err_ftr_instances_AHHR} based on 
-          # what we just figured out about this extended stop
-          my $updated_ext_errmsg = sprintf("homology search predicted %d..%d", 
-                                           create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
-                                                                        $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
-                                                                        $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
-          if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
-            $updated_ext_errmsg .= sprintf(" %s %d of %d", ($is_matpept) ? "segment" : "exon", $mdl_idx - $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
-          }
-          $updated_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
-                                         create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
-                                                                      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
-                                                                      $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
-                                         $len_corr);
-          error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_ext_errmsg, $FH_HR);
-        }
+                                                                        $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
+                                                                        $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
+                                           $len_corr);
+            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_ext_errmsg, $FH_HR);
+          } # end of ext block
+        } # end of if statement entered if stp, trc or ext
       } # end of loop over $seq_idx
     } # end of if $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model"
   } # end of loop over $ftr_idx
