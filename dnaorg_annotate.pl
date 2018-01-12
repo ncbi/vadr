@@ -2132,14 +2132,13 @@ sub parse_esl_epn_translate_startstop_outfile {
   }
 
   open(IN, $translate_outfile) || fileOpenFailure($translate_outfile, "main", $!, "reading", $FH_HR);
-  printf("translate_outfile $translate_outfile\n");
 
   while(my $line = <IN>) { 
     # example line
     #HQ693465/1-306 1 1 304
     if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
       my ($seq_name, $coords, $start_is_valid, $stop_is_valid, $first_stop_posn1) = ($1, $2, $3, $4, $5);
-      print "HEYA esl-translate line $line";
+      #print "HEYA esl-translate line $line";
 
       # skip this sequence IFF we have a b5e error already for it, this means 
       # that the alignment does not extend to the 5' boundary of the model but
@@ -2221,7 +2220,7 @@ sub parse_esl_epn_translate_startstop_outfile {
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
-                printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
+                # printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
               }
               else { # $early_inframe_stop is 1
                 # possibility 3 (P3): stp and trc error
@@ -2749,7 +2748,6 @@ sub results_calculate_corrected_stops {
 
   # loop through all features and sequences, and correct stop
   # stop predictions for all trc and ext errors
-  printf("HEYA here\n");
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
       # we only deal with features for which annot_type is "model" here, we
@@ -2784,11 +2782,9 @@ sub results_calculate_corrected_stops {
                                 $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}, $ftr_info_HAR->{"out_short"}[$ftr_idx]),
                         1, $FH_HR);
           }
-          printf("HEYA here 2 final_mdl_idx: $final_mdl_idx\n");
           my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, 
                                                   $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, 
                                                   $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
-          printf("HEYA here 3\n");
           if(validateStopCodon($stp_err_stop_codon)) { 
             # it's a valid stop, remove the "maybe"
             error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
@@ -4372,7 +4368,7 @@ sub error_instances_add {
 
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $value, $FH_HR) = @_;
 
-  printf("in $sub_name, ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n");
+  # printf("in $sub_name, ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n");
   
   my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
   if($err_idx == -1) { 
