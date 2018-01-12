@@ -4,7 +4,7 @@
 #
 use strict;
 use warnings;
-use diagnostics;
+#use diagnostics;
 use Getopt::Long;
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
@@ -1099,6 +1099,18 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
 #          the 'cumlen' values in the @mdl_results_AAH to 
 #          simplify this for multi-exon features. 
 #############################################################
+if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
+  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
+}
+if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
+  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
+}
+if(exists $ofile_info_HH{"FH"}{"seqinfo"}) { 
+  dumpInfoHashOfArrays("Sequence information (%seq_info_HA)", 0, \%seq_info_HA, $ofile_info_HH{"FH"}{"seqinfo"});
+}
+if(exists $ofile_info_HH{"FH"}{"errinfo"}) { 
+  dumpInfoHashOfArrays("Error information (%err_info_HA)", 0, \%err_info_HA, $ofile_info_HH{"FH"}{"errinfo"});
+}
 
 $start_secs = outputProgressPrior("Correcting homology search stop codon predictions to account for observed stop codons", $progress_w, $log_FH, *STDOUT);
 results_calculate_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
@@ -1221,7 +1233,7 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",  $out_root . ".peraccn.err
 openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",  $out_root . ".all.errors",     1, "List of errors, one line per error");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",  $out_root . ".errors.summary", 1, "Summary of all errors");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "sftbl",   $out_root . ".short.ftable",   1, "Feature table output (minimal)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "lftbl",   $out_root . ".long.ftable",    1, "Feature table output (minimal)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "lftbl",   $out_root . ".long.ftable",    1, "Feature table output (verbose)");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -2120,12 +2132,14 @@ sub parse_esl_epn_translate_startstop_outfile {
   }
 
   open(IN, $translate_outfile) || fileOpenFailure($translate_outfile, "main", $!, "reading", $FH_HR);
-  
+  printf("translate_outfile $translate_outfile\n");
+
   while(my $line = <IN>) { 
     # example line
     #HQ693465/1-306 1 1 304
     if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
       my ($seq_name, $coords, $start_is_valid, $stop_is_valid, $first_stop_posn1) = ($1, $2, $3, $4, $5);
+      print "HEYA esl-translate line $line";
 
       # skip this sequence IFF we have a b5e error already for it, this means 
       # that the alignment does not extend to the 5' boundary of the model but
@@ -2207,7 +2221,7 @@ sub parse_esl_epn_translate_startstop_outfile {
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
-                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
+                printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
               }
               else { # $early_inframe_stop is 1
                 # possibility 3 (P3): stp and trc error
@@ -2228,7 +2242,7 @@ sub parse_esl_epn_translate_startstop_outfile {
               else { 
                 # possibility 5 (P5): trc error
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
-                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 5 (trc)\n");
+                # printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 5 (trc)\n");
               }
             }              
           }
@@ -2735,6 +2749,7 @@ sub results_calculate_corrected_stops {
 
   # loop through all features and sequences, and correct stop
   # stop predictions for all trc and ext errors
+  printf("HEYA here\n");
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
       # we only deal with features for which annot_type is "model" here, we
@@ -2742,6 +2757,24 @@ sub results_calculate_corrected_stops {
       my $is_matpept = ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp") ? 1 : 0;
       for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+        # determine first and final model indices, we'll use these differently depending 
+        # on if we're a stp, trc or ext, but we need to know these for all three cases
+        $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
+        $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+        # first_mdl_idx should be the first model for which we have a prediction
+        while(! exists $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]{"p_start"}) { 
+          $first_mdl_idx++; 
+          if($first_mdl_idx > $final_mdl_idx) { 
+            DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine first model for feature $ftr_idx (%s) for sequence $seq_name. stp or trc or ext error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
+          }
+        }
+        # final_mdl_idx should be the final model for which we have a prediction
+        while(! exists $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_start"}) { 
+          $final_mdl_idx--; 
+          if($final_mdl_idx < $first_mdl_idx) { 
+            DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine final model for feature $ftr_idx (%s) for sequence $seq_name. stp or trc or ext error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
+          }
+        }
         ###########################################
         # block that handles potential stp errors #
         ###########################################
@@ -2751,10 +2784,11 @@ sub results_calculate_corrected_stops {
                                 $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}, $ftr_info_HAR->{"out_short"}[$ftr_idx]),
                         1, $FH_HR);
           }
-          $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+          printf("HEYA here 2 final_mdl_idx: $final_mdl_idx\n");
           my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, 
                                                   $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, 
                                                   $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
+          printf("HEYA here 3\n");
           if(validateStopCodon($stp_err_stop_codon)) { 
             # it's a valid stop, remove the "maybe"
             error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
@@ -2776,23 +2810,6 @@ sub results_calculate_corrected_stops {
             DNAORG_FAIL("ERROR in $sub_name, trc error with non-negative correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
           }
           # determine the new length of the prediction, this is the old length plus the correction (which is negative)
-          $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
-          $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
-          # first_mdl_idx should be the first model for which we have a prediction
-          while(! exists $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]{"p_start"}) { 
-            $first_mdl_idx++; 
-            if($first_mdl_idx > $final_mdl_idx) { 
-              DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine first model for feature $ftr_idx (%s) for sequence $seq_name. trc error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
-            }
-          }
-          # final_mdl_idx should be the final model for which we have a prediction
-          while(! exists $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_start"}) { 
-            $final_mdl_idx--; 
-            if($final_mdl_idx < $first_mdl_idx) { 
-              DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine final model for feature $ftr_idx (%s) for sequence $seq_name. trc error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
-            }
-          }
-
           $newlen = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{$cumlen_key} + $len_corr;
           # careful: the length correction is with respect to the full feature (potentially multiple models (e.g. exons))
           # so it can be as high as the cumulative length of all model predictions, so we need to adjust the length 
@@ -2880,7 +2897,7 @@ sub results_calculate_corrected_stops {
             DNAORG_FAIL("ERROR in $sub_name, ext error with non-positive correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
           }
           # ext are easier, always modify stop of final model
-          my $mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+          my $mdl_idx = $final_mdl_idx;
           if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}) { 
             DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
           }
@@ -4355,7 +4372,7 @@ sub error_instances_add {
 
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $value, $FH_HR) = @_;
 
-  # printf("in $sub_name, ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n");
+  printf("in $sub_name, ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n");
   
   my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
   if($err_idx == -1) { 

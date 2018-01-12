@@ -6778,9 +6778,11 @@ sub runCmscanOrNhmmscan {
   
     if($do_max) { # no filtering
       $opts .= " --max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
+#      $opts .= " --max -E 1 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
     }
     elsif($do_mid) { 
       $opts .= " --mid -E 0.1"; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
+#      $opts .= " --mid -E 1"; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
     }
     elsif($do_df) { 
       $opts .= " --FZ 30 "; # do search with filters set up as if database was 30Mb.
