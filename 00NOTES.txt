@@ -132,7 +132,7 @@ source ~/.cshrc
 # scripts and code:
 #
 # esl-fetch-cds.pl v0.01        (https://github.com/nawrockie/esl-fetch-cds)
-# esl-epn-translate.pl v0.02    (https://github.com/nawrockie/esl-epn-translate)
+# esl-epn-translate.pl v0.03    (https://github.com/nawrockie/esl-epn-translate)
 # Bio-Easel v0.05               (https://github.com/nawrockie/Bio-Easel)
 # epn-options v0.03             (https://github.com/nawrockie/epn-options)
 #
@@ -218,15 +218,16 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -h
 # Here are the options and usage for dnaorg_build.pl:
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.22 (Nov 2017)
+## dnaorg 0.24 (Jan 2018)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Tue Nov 28 11:08:36 2017
+## date:    Fri Jan 12 09:08:10 2018
 ##
 #Usage: dnaorg_build.pl [-options] <reference accession>
 ##
 ##basic options:
 #  -c            : genome is circular
 #  -f            : force; if dir <reference accession> exists, overwrite it
+#  -n <n>        : for non-big models, set number of CPUs for calibration to <n> [4]
 #  -v            : be verbose; output commands to stdout as they're run
 #  --dirout <s>  : specify output directory as <s>, not <ref accession>
 #  --matpept <s> : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
@@ -843,6 +844,23 @@ qstat
 ## 187692 1.50472 c.NC_00134 nawrocke     r     05/20/2016 11:59:34 unified@sge151.be-md.ncbi.nlm.                                    4        
 ## 187694 1.50472 c.NC_00134 nawrocke     r     05/20/2016 11:59:34 unified@sge109.be-md.ncbi.nlm.                                    4        
 #
+
+# The 'r' value in the 'state' column indicates that the jobs are
+# currently running on a compute farm node. The '4' in the 'slots'
+# column indicates that they are running on 4 processors. If you
+# notice that the jobs are in a 'qw' state, this means that they are
+# currently waiting in the queue for a computer to run on. If they are
+# stuck in this 'qw' state for longer than you would like, it is most
+# likely due to the fact that they are waiting for a computer with 4
+# free processors to run on. In this case, you can cancel the current
+# command by hitting 'Ctrl-C' on the shell and rerun the command
+# with the '-n 1' command line option (like this:
+# 'perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -c -f -n 1 NC_001346'
+# ) to specify that only 1 processor is necessary, although the
+# calibrations will take roughly 4 times as long. The '-f' option in
+# the above command is necessary to allow the script to overwrite the
+# previous files created by the run you aborted.
+#
 #=======================================================
 # Example 3, Step 2 of 2. Run dnaorg_annotate.pl for MSV 
 #=======================================================
@@ -875,34 +893,35 @@ cat testfiles/NC_001346.ntlist
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -c /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/testfiles/NC_001346.ntlist 
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.22 (Nov 2017)
+## dnaorg 0.24 (Jan 2018)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:    Tue Nov 28 13:55:49 2017
+## date:    Fri Jan 12 09:17:55 2018
 ##
-## file with list of accessions:               testfiles/NC_001346.ntlist
-## genome is closed (a.k.a. circular):         yes [-c]
+## file with list of accessions:        /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/testfiles/NC_001346.ntlist
+## genome is closed (a.k.a. circular):  yes [-c]                                                                     
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## Verifying options are consistent with options used for dnaorg_build.pl                ... done. [0.0 seconds]
-## Gathering information on 5 sequences using edirect                                    ... done. [8.2 seconds]
-## Fetching all sequences and processing the reference genome                            ... done. [10.9 seconds]
-## Verifying CMs were created for current reference NC_001346                            ... done. [0.1 seconds]
-## Running cmscan locally                                                                ... done. [41.8 seconds]
+## Gathering information on 5 sequences using edirect                                    ... done. [8.0 seconds]
+## Fetching all sequences and processing the reference genome                            ... done. [1.8 seconds]
+## Verifying CMs were created for current reference NC_001346                            ... done. [0.3 seconds]
+## Running cmscan locally                                                                ... done. [44.5 seconds]
 ## Parsing cmscan results                                                                ... done. [0.0 seconds]
 ## Calculating predicted feature lengths                                                 ... done. [0.0 seconds]
 ## Fetching cmscan predicted hits into fasta files                                       ... done. [0.0 seconds]
 ## Combining predicted exons into CDS                                                    ... done. [0.0 seconds]
 ## Combining predicted mature peptides into CDS                                          ... done. [0.0 seconds]
 ## Identifying errors associated with incomplete alignment to the model                  ... done. [0.0 seconds]
-## Identifying internal starts/stops in coding sequences                                 ... done. [1.9 seconds]
+## Identifying internal starts/stops in coding sequences                                 ... done. [1.6 seconds]
 ## Correcting homology search stop codon predictions to account for observed stop codons ... done. [0.0 seconds]
 ## Identifying overlap and adjacency errors                                              ... done. [0.0 seconds]
 ## Finalizing annotations and validating error combinations                              ... done. [0.0 seconds]
 ## Fetching corrected matches into fasta files                                           ... done. [0.0 seconds]
 ## Combining corrected exons into CDS                                                    ... done. [0.0 seconds]
 ## Combining corrected mature peptides into CDS                                          ... done. [0.0 seconds]
-## Translating corrected nucleotide features into protein sequences                      ... done. [2.0 seconds]
+## Translating corrected nucleotide features into protein sequences                      ... done. [1.4 seconds]
 ## Generating error code output                                                          ... done. [0.0 seconds]
 ## Generating tabular annotation output                                                  ... done. [0.0 seconds]
+## Generating feature table output                                                       ... done. [0.0 seconds]
 ##
 ## Annotated 5 accessions, 1 (0.2000 fraction) had at least one annotation 'failure', see NC_001346.dnaorg_annotate.tbl for all details.
 ## Table below includes counts of error codes
@@ -953,10 +972,12 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -c /p
 ## List of errors, one line per sequence saved in:                               NC_001346.dnaorg_annotate.peraccn.errors
 ## List of errors, one line per error saved in:                                  NC_001346.dnaorg_annotate.all.errors
 ## Summary of all errors saved in:                                               NC_001346.dnaorg_annotate.errors.summary
+## Feature table output (minimal) saved in:                                      NC_001346.dnaorg_annotate.short.ftable
+## Feature table output (verbose) saved in:                                      NC_001346.dnaorg_annotate.long.ftable
 ##
 ## All output files created in directory ./NC_001346/
 ##
-## CPU time:  00:01:05.12
+## CPU time:  00:00:57.92
 ##            hh:mm:ss
 ## 
 ## DNAORG-SUCCESS
@@ -969,26 +990,27 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -c /p
 ## chunk of script output #
 ###########################
 ## Verifying options are consistent with options used for dnaorg_build.pl                ... done. [0.0 seconds]
-## Gathering information on 5 sequences using edirect                                    ... done. [8.2 seconds]
-## Fetching all sequences and processing the reference genome                            ... done. [10.9 seconds]
-## Verifying CMs were created for current reference NC_001346                            ... done. [0.1 seconds]
-## Running cmscan locally                                                                ... done. [41.8 seconds]
+## Gathering information on 5 sequences using edirect                                    ... done. [8.0 seconds]
+## Fetching all sequences and processing the reference genome                            ... done. [1.8 seconds]
+## Verifying CMs were created for current reference NC_001346                            ... done. [0.3 seconds]
+## Running cmscan locally                                                                ... done. [44.5 seconds]
 ## Parsing cmscan results                                                                ... done. [0.0 seconds]
 ## Calculating predicted feature lengths                                                 ... done. [0.0 seconds]
 ## Fetching cmscan predicted hits into fasta files                                       ... done. [0.0 seconds]
 ## Combining predicted exons into CDS                                                    ... done. [0.0 seconds]
 ## Combining predicted mature peptides into CDS                                          ... done. [0.0 seconds]
 ## Identifying errors associated with incomplete alignment to the model                  ... done. [0.0 seconds]
-## Identifying internal starts/stops in coding sequences                                 ... done. [1.9 seconds]
+## Identifying internal starts/stops in coding sequences                                 ... done. [1.6 seconds]
 ## Correcting homology search stop codon predictions to account for observed stop codons ... done. [0.0 seconds]
 ## Identifying overlap and adjacency errors                                              ... done. [0.0 seconds]
 ## Finalizing annotations and validating error combinations                              ... done. [0.0 seconds]
 ## Fetching corrected matches into fasta files                                           ... done. [0.0 seconds]
 ## Combining corrected exons into CDS                                                    ... done. [0.0 seconds]
 ## Combining corrected mature peptides into CDS                                          ... done. [0.0 seconds]
-## Translating corrected nucleotide features into protein sequences                      ... done. [2.0 seconds]
+## Translating corrected nucleotide features into protein sequences                      ... done. [1.4 seconds]
 ## Generating error code output                                                          ... done. [0.0 seconds]
 ## Generating tabular annotation output                                                  ... done. [0.0 seconds]
+## Generating feature table output                                                       ... done. [0.0 seconds]
 ##################################
 ## end of chunk of script output #
 ##################################
@@ -1358,7 +1380,6 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --nse
 # for annotations. NC_001477.dnaorg_annotate.all.errors and 
 # NC_001477.dnaorg_annotate.peraccn.errors would contain error
 # information if there had been any errors.
-# 
 #
 ###################################################################
 # Example 5. Annotating Dengue sequences using dnaorg_annotate.pl # 
