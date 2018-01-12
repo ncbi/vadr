@@ -6291,23 +6291,31 @@ sub output_feature_tbl_all_sequences {
     }
 
     my @cur_err_output_A = (); # will hold output error messages
-    my $nop_error_flag = 0;
+    my $any_error_flag = 0;          # set to '1' if this feature for this sequence has >= 1 errors (of any type)
+    my $nop_error_flag = 0;          # set to '1' if this feature for this sequence has an 'nop' error
+    my $non_neighbor_error_flag = 0; # set to '1' if this feature for has any error *except* 'neighbor' errors: olp or aja or ajb
     # go through each feature and output information on it
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       @cur_err_output_A = (); # will hold output error messages
+      $any_error_flag = 0;
       $nop_error_flag = 0;
+      $non_neighbor_error_flag = 0;
       # are there any errors for this feature? 
       for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
         if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
           my $err_code = $err_info_HAR->{"code"}[$err_idx];
           if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
             # an error exists, output it
-            push(@cur_err_output_A, sprintf("%4s %s code:%s", 
+            push(@cur_err_output_A, sprintf("%4s error code: %s%s", 
                                             $err_code, 
                                             $err_info_HAR->{"msg"}[$err_idx], 
                                             ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]")); 
+            $any_error_flag = 1;
             if($err_code eq "nop") { 
               $nop_error_flag = 1;
+            }
+            if($err_code ne "olp" && $err_code ne "aja" && $err_code ne "ajb") { 
+              $non_neighbor_error_flag = 1;
             }
           }
         }
@@ -6328,18 +6336,21 @@ sub output_feature_tbl_all_sequences {
             # we have a predicted start and stop for this feature
             my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
             $cur_out_line = sprintf("%d\t%d\t%s\n", $ftr_results_HR->{"out_start"}, $ftr_results_HR->{"out_stop"}, $type); 
-            print $sftbl_FH $cur_out_line;
             print $lftbl_FH $cur_out_line;
-            
+            if(! $non_neighbor_error_flag) { 
+              print $sftbl_FH $cur_out_line;
+            }
             foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
               my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
               $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-              print $sftbl_FH $cur_out_line;
               print $lftbl_FH $cur_out_line;
+              if(! $non_neighbor_error_flag) { 
+                print $sftbl_FH $cur_out_line;
+              }
             }
             foreach my $err_line (@cur_err_output_A) { 
               # only print errors to long feature table output
-              $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", "ERROR:" . $err_line);
+              $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", $err_line);
               print $lftbl_FH $cur_out_line;
             }
           }
@@ -6353,20 +6364,26 @@ sub output_feature_tbl_all_sequences {
             
             if($is_first) { 
               $cur_out_line = sprintf("%d\t%d\t%s\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}, $type); 
-              print $sftbl_FH $cur_out_line;
               print $lftbl_FH $cur_out_line;
+              if(! $non_neighbor_error_flag) { 
+                print $sftbl_FH $cur_out_line;
+              }
             }
             else { 
               $cur_out_line = sprintf("%d\t%d\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"});
-              print $sftbl_FH $cur_out_line;
               print $lftbl_FH $cur_out_line;
+              if(! $non_neighbor_error_flag) { 
+                print $sftbl_FH $cur_out_line;
+              }
             }
           }
           foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
             my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
             $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-            print $sftbl_FH $cur_out_line;
             print $lftbl_FH $cur_out_line;
+            if(! $non_neighbor_error_flag) { 
+              print $sftbl_FH $cur_out_line;
+            }
           }
           foreach my $err_line (@cur_err_output_A) { 
             # only print errors to long feature table output
