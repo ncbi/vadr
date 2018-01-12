@@ -76,15 +76,16 @@ my %opt_group_desc_H = ();
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 $opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                          help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is circular",                    "genome is circular",                                 \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",           "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as <s>",     "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",  "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",         "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",    "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                              help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                       "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is circular",                        "genome is circular",                                 \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",               "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
+opt_Add("-n",           "integer", "4",                      1,    undef, undef,      "set number of CPUs for calibration to <n>", "for non-big models, set number of CPUs for calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as <s>",         "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",      "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
+opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",             "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",        "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options affecting calibration of models";
 #       option       type        default                group  requires incompat          preamble-output                                              help-output    
@@ -127,6 +128,7 @@ my $options_okay =
 # basic options
                 'c'            => \$GetOptions_H{"-c"},
                 'f'            => \$GetOptions_H{"-f"},
+                'n=s'          => \$GetOptions_H{"-n"},
                 'v'            => \$GetOptions_H{"-v"},
                 'dirout=s'     => \$GetOptions_H{"--dirout"},
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
@@ -159,7 +161,7 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.23";
+my $version       = "0.24";
 my $releasedate   = "Jan 2018";
 
 # print help and exit if necessary
@@ -756,7 +758,7 @@ sub run_cmcalibrate_and_cmpress {
   my $cmpress     = $execs_HR->{"cmpress"};
 
   # set up cmcalibrate options for two scenarios: default and 'big' model
-  my $df_ncpu         = 4;
+  my $df_ncpu         = opt_Get("-n", $opt_HHR);
   my $df_gb_per_core  = 8;
   my $df_gb_tot       = opt_Get("--rammult", $opt_HHR) ? $df_gb_per_core * $df_ncpu : $df_gb_per_core;
   my $df_time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%sG,mem_free=%sG,reserve_mem=%sG", $df_gb_tot, $df_gb_tot, $df_gb_per_core);
@@ -767,7 +769,7 @@ sub run_cmcalibrate_and_cmpress {
   my $big_thresh      = opt_Get("--bigthresh", $opt_HHR);
   my $big_time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%sG,mem_free=%sG,reserve_mem=%sG", $big_gb_tot, $big_gb_tot, $big_gb_per_core);
 
-  $df_cmcalibrate_opts  = " --cpu $df_ncpu ";
+  $df_cmcalibrate_opts  = ($df_ncpu == 1) ? " --cpu 0 " : " --cpu $df_ncpu ";
   $big_cmcalibrate_opts = " --cpu $big_ncpu ";
   if(! $do_calib_slow) { 
     $df_cmcalibrate_opts  .= " -L 0.04 ";
@@ -821,7 +823,8 @@ sub run_cmcalibrate_and_cmpress {
       runCommand($actual_command, opt_Get("-v", $opt_HHR), $FH_HR);
     }
     else { # ! local, run job on farm
-      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $df_time_and_mem_req -pe multicore $df_ncpu -R y " . "\"" . $actual_command . "\"" . " > /dev/null\n";
+      my $pe_part = ($df_ncpu == 1) ? "" : " -pe multicore $df_ncpu -R y ";
+      my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $df_time_and_mem_req $pe_part " . "\"" . $actual_command . "\"" . " > /dev/null\n";
       if($is_big) { # rewrite it
         $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n $big_time_and_mem_req -pe multicore $big_ncpu -R y " . "\"" . $actual_command . "\"" . " > /dev/null\n";
       }
