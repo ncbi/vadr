@@ -89,24 +89,57 @@
 ### PREREQUISITES ###
 #####################
 # 
-# The $DNAORG, $PERL5LIB and $PATH environment variables need to be
-# modified prior to using the dnaorg_classify, dnaorg_build.pl and 
-# dnaorg_annotate.pl scripts.
+# Before running any of the scripts described below, the $DNAORG,
+# $PERL5LIB and $PATH environment variables need to be modified one
+# time. To do the modification correctly one needs to modify either
+# the file .bashrc (for users of bash shell) or the file .cshrc file
+# (for users of C shell or tcsh). The .bashrc or .cshrc file is in the
+# user's home directory. To determine what shell is in use, enter the
+# command
 #
-# For bash shell users, add the following lines to the end of your
-# ~/.bashrc file:
+echo $SHELL
+#
+# If this command returns '/bin/bash', then update the file .bashrc.
+# If this command returns '/bin/csh' or '/bin/tcsh', then update the
+# file .cshrc.
+#
+# Before updating the pertinent shell file, it is necessary to know
+# whether the environment variable PERL5LIB is already defined or
+# not. To determine this information, enter the command:
+#
+echo $PERL5LIB
+#
+# If this command returns one or more directories, then PERL5LIB is
+# already defined.
+#
+# For bash shell users with PERL5LIB already defined, add the
+# following lines to the end of your ~/.bashrc file:
 #
 export DNAORGDIR="/panfs/pan1/dnaorg/virseqannot/code"
 export PERL5LIB="$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio-Easel/blib/lib:$DNAORGDIR/Bio-Easel/blib/arch:$PERL5LIB"
 export PATH="$DNAORGDIR/dnaorg_scripts:$PATH"
 #
+# If PERL5LIB was not already defined, then insert instead the three
+# lines:
+#
+export DNAORGDIR="/panfs/pan1/dnaorg/virseqannot/code"
+export PERL5LIB="$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio-Easel/blib/lib:$DNAORGDIR/Bio-Easel/blib/arch"
+export PATH="$DNAORGDIR/dnaorg_scripts:$PATH"
+#
 # Then execute:
 source ~/.bashrc
 #
-# For C shell or C shell compatible users, add the following lines
-# to the end of your ~/.cshrc file:
+# For C shell or C shell compatible users with PERL5LIB defined, add
+# the following lines to the end of your ~/.cshrc file:
+#
 setenv DNAORGDIR "/panfs/pan1/dnaorg/virseqannot/code"
 setenv PERL5LIB "$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio-Easel/blib/lib:$DNAORGDIR/Bio-Easel/blib/arch:$PERL5LIB"
+setenv PATH "$DNAORGDIR/dnaorg_scripts:$PATH"
+#
+#If PERL5LIB was not already defined, the add instead the three lines:
+#
+setenv DNAORGDIR "/panfs/pan1/dnaorg/virseqannot/code"
+setenv PERL5LIB "$DNAORGDIR/dnaorg_scripts:$DNAORGDIR/epn-options:$DNAORGDIR/Bio-Easel/blib/lib:$DNAORGDIR/Bio-Easel/blib/arch"
 setenv PATH "$DNAORGDIR/dnaorg_scripts:$PATH"
 #
 # Then execute: 
