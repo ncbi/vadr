@@ -85,6 +85,7 @@ opt_Add("-v",           "boolean", 0,                        1,    undef, undef,
 opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as <s>",         "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",      "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",             "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
+opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "build models of additional qualifiers",     "build models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",        "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options affecting calibration of models";
@@ -133,6 +134,7 @@ my $options_okay =
                 'dirout=s'     => \$GetOptions_H{"--dirout"},
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
                 'nomatpept'    => \$GetOptions_H{"--nomatpept"},
+                'xfeat=s'      => \$GetOptions_H{"--xfeat"},
                 'keep'         => \$GetOptions_H{"--keep"},
 # calibration related options
                 'slow'         => \$GetOptions_H{"--slow"},
@@ -325,18 +327,33 @@ if(opt_IsUsed("--orginput", \%opt_HH)) {
 ###########################################################################
 $start_secs = outputProgressPrior("Gathering information on reference using edirect", $progress_w, $log_FH, *STDOUT);
 
-my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
-                        # 1D: key: accession
-                        # 2D: key: column name in gene ftable file
-                        # 3D: per-row values for each column
-my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashes of arrays, 
-                        # 1D: key: accession
-                        # 2D: key: column name in gene ftable file
-                        # 3D: per-row values for each column
-my %seq_info_HA = ();   # hash of arrays, avlues are arrays [0..$nseq-1];
-                        # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
-                        # $seq_info_HA{"accn_name"}[0] is our reference accession
+my %cds_tbl_HHA = ();    # CDS data from .cds.tbl file, hash of hashes of arrays, 
+                         # 1D: key: accession
+                         # 2D: key: column name in gene ftable file
+                         # 3D: per-row values for each column
+my %mp_tbl_HHA = ();     # mat_peptide data from .matpept.tbl file, hash of hashes of arrays, 
+                         # 1D: key: accession
+                         # 2D: key: column name in gene ftable file
+                         # 3D: per-row values for each column
+my %xfeat_tbl_HHHA = (); # xfeat data from feature table file, hash of hash of hashes of arrays
+                         # 1D: qualifier name, e.g. 'gene'
+                         # 2D: key: accession
+                         # 3D: key: column name in gene ftable file
+                         # 4D: per-row values for each column
+my %seq_info_HA = ();    # hash of arrays, avlues are arrays [0..$nseq-1];
+                         # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
+                         # $seq_info_HA{"accn_name"}[0] is our reference accession
 @{$seq_info_HA{"accn_name"}} = ($ref_accn);
+
+# parse --xfeat option if necessary and initiate hash of hash of arrays for each comma separated value
+my $do_xfeat = 0;
+if(opt_IsUsed("--xfeat", \%opt_HH)) { 
+  $do_xfeat = 1;
+  my $xfeat_str = opt_Get("--xfeat", \%opt_HH);
+  foreach my $xfeat (split(",", $xfeat_str)) { 
+    %{$xfeat_tbl_HHHA{$xfeat}} = ();
+  }
+}
 
 # Call the wrapper function that does the following:
 #  1) creates the edirect .mat_peptide file, if necessary
@@ -345,7 +362,8 @@ my %seq_info_HA = ();   # hash of arrays, avlues are arrays [0..$nseq-1];
 #  4) parses the edirect .mat_peptide file, if necessary
 #  5) parses the edirect .ftable file
 #  6) parses the length file
-wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH, 
+wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA,
+                           \%seq_info_HA, \%ofile_info_HH, 
                            \%opt_HH, $ofile_info_HH{"FH"}); # 1st argument is undef because we are only getting info for $ref_accn
 
 if($do_matpept) {  
@@ -375,8 +393,9 @@ my $sqfile = undef;            # pointer to the Bio::Easel::SqFile object we'll 
 #   4) fetches the reference sequence feature and populates information on the models and features
 wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $out_root, # yes, $out_root is passed in twice, on purpose
                                                     undef, undef, undef, undef,  # 4 variables used only if --infasta enabled in dnaorg_annotate.pl (irrelevant here)
-                                                    \%cds_tbl_HHA,
+                                                    \%cds_tbl_HHA, 
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
+                                                    ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
                                                     ($do_matpept) ? \@cds2amatpept_AA : undef, 
                                                     \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA,
