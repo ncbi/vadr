@@ -6987,6 +6987,75 @@ sub featureTypeIsCds() {
 
   return ""; # NEVERREACHED
 }
+#################################################################
+# Subroutine: featureTypeIsMaturePeptide()
+# Incept:     EPN, Tue Feb  6 11:50:25 2018
+#
+# Purpose:    Is a feature type a mature peptide? 
+#
+#             Input        Return value
+#             'mp':        1
+#             'cds-notmp'  0
+#             'cds-mp'     0
+#             other:       0
+#
+# Arguments:
+#   $feature_type:  input feature
+#             
+# Returns:    1 or 0
+#
+#################################################################
+sub featureTypeIsMaturePeptide() { 
+  my $sub_name  = "featureTypeIsMaturePeptide";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_feature) = (@_);
+
+  if($in_feature eq "mp") { 
+    return 1;
+  }
+  else { 
+    return 0;
+  }
+
+  return ""; # NEVERREACHED
+}
+#################################################################
+# Subroutine: featureTypeIsExtraFeature()
+# Incept:     EPN, Tue Feb  6 12:17:29 2018
+#
+# Purpose:    Is a feature type an 'extra feature'?
+#
+#             Input        Return value
+#             'xfeat':     1
+#             'mp':        0
+#             'cds-notmp'  0
+#             'cds-mp'     0
+#             other:       0
+#
+# Arguments:
+#   $feature_type:  input feature
+#             
+# Returns:    1 or 0
+#
+#################################################################
+sub featureTypeIsExtraFeature() { 
+  my $sub_name  = "featureTypeIsExtraFeature";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_feature) = (@_);
+
+  if($in_feature eq "xfeat") { 
+    return 1;
+  }
+  else { 
+    return 0;
+  }
+
+  return ""; # NEVERREACHED
+}
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;
