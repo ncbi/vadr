@@ -228,6 +228,7 @@ opt_Add("--dirbuild",   "string",  undef,                    1,"--dirout",   und
 opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,      "identify origin seq <s> in genomes",           "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",         "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
+opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "use models of additional qualifiers",          "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
 opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",   "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",        "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
@@ -298,6 +299,7 @@ my $options_okay =
                 'origin=s'     => \$GetOptions_H{"--origin"},
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
                 'nomatpept'    => \$GetOptions_H{"--nomatpept"},
+                'xfeat=s'      => \$GetOptions_H{"--xfeat"},
                 'specstart=s'  => \$GetOptions_H{"--specstart"},
                 'keep'         => \$GetOptions_H{"--keep"},
                 'local'        => \$GetOptions_H{"--local"}, 
@@ -717,7 +719,21 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
                         # 1D: key: accession
                         # 2D: key: column name in gene ftable file
                         # 3D: per-row values for each column
+my %xfeat_tbl_HHHA = (); # xfeat data from feature table file, hash of hash of hashes of arrays
+                         # 1D: qualifier name, e.g. 'gene'
+                         # 2D: key: accession
+                         # 3D: key: column name in gene ftable file
+                         # 4D: per-row values for each column
 
+# parse --xfeat option if necessary and initiate hash of hash of arrays for each comma separated value
+my $do_xfeat = 0;
+if(opt_IsUsed("--xfeat", \%opt_HH)) { 
+  $do_xfeat = 1;
+  my $xfeat_str = opt_Get("--xfeat", \%opt_HH);
+  foreach my $xfeat (split(",", $xfeat_str)) { 
+    %{$xfeat_tbl_HHHA{$xfeat}} = ();
+  }
+}
 
 # Call the wrapper function that does the following:
 #  1) creates the edirect .mat_peptide file, if necessary
@@ -733,7 +749,7 @@ if(defined $infasta_file) {
   # note that we pass in a reference to %ref_seq_info_HA to wrapperGetInfoUsingEdirect()
   # and *not* a reference to %seq_info_HA. We will use %infasta_ref_seq_info_HA to 
   # store information on the reference sequence only.
-  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
+  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
                              \%opt_HH, $ofile_info_HH{"FH"}); 
   $nseq = process_input_fasta_file($infasta_file, $outfasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
   if(defined $outfasta_file) { # this will be true if -c
@@ -741,7 +757,7 @@ if(defined $infasta_file) {
   }
 }
 else { # --infasta not used (default)
-  wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%seq_info_HA, \%ofile_info_HH,
+  wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%seq_info_HA, \%ofile_info_HH,
                              \%opt_HH, $ofile_info_HH{"FH"}); 
 }
 
@@ -777,6 +793,7 @@ wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_ro
                                                     ($do_infasta) ? $infasta_file                            : undef,
                                                     \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
+                                                    ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
                                                     ($do_matpept) ? \@cds2amatpept_AA : undef, 
                                                     \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, 
@@ -6344,7 +6361,7 @@ sub output_feature_tbl_all_sequences {
       if(! $nop_error_flag) { 
         # we only print information on a feature if there is no 'nop' error
 
-        my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
+        my $feature_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
         #####################################################################################
         # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
         #####################################################################################
@@ -6354,8 +6371,8 @@ sub output_feature_tbl_all_sequences {
           if(($ftr_results_HR->{"out_start"} ne "?") && 
              ($ftr_results_HR->{"out_stop"}  ne "?")) { 
             # we have a predicted start and stop for this feature
-            my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
-            $cur_out_line = sprintf("%d\t%d\t%s\n", $ftr_results_HR->{"out_start"}, $ftr_results_HR->{"out_stop"}, $type); 
+            my $feature_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
+            $cur_out_line = sprintf("%d\t%d\t%s\n", $ftr_results_HR->{"out_start"}, $ftr_results_HR->{"out_stop"}, $feature_type); 
             print $lftbl_FH $cur_out_line;
             if(! $non_neighbor_error_flag) { 
               print $sftbl_FH $cur_out_line;
@@ -6383,7 +6400,7 @@ sub output_feature_tbl_all_sequences {
             my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
             
             if($is_first) { 
-              $cur_out_line = sprintf("%d\t%d\t%s\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}, $type); 
+              $cur_out_line = sprintf("%d\t%d\t%s\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}, $feature_type); 
               print $lftbl_FH $cur_out_line;
               if(! $non_neighbor_error_flag) { 
                 print $sftbl_FH $cur_out_line;
@@ -8472,6 +8489,7 @@ sub validate_options_are_consistent_with_dnaorg_build {
   my $no_build_c_opt         = 1; # changed to 0 below if -c was used by dnaorg_build.pl
   my $no_build_nomatpept_opt = 1; # changed to 0 below if --nomatpept was used by dnaorg_build.pl
   my $no_build_matpept_opt   = 1; # changed to 0 below if --matpept was used by dnaorg_build.pl
+  my $no_build_xfeat_opt     = 1; # changed to 0 below if --xfeat was used by dnaorg_build.pl
 
   while(my $line = <IN>) { 
     chomp $line;
@@ -8507,7 +8525,20 @@ sub validate_options_are_consistent_with_dnaorg_build {
           DNAORG_FAIL("ERROR, the file $annotate_matpept_file specified with the --matpept file does not appear to be identical to the file used\nwith dnaorg_build.pl. The md5 checksums of the two files differ: dnaorg_build.pl: $build_matpept_cksum, dnaorg_annotate.pl: $annotate_matpept_cksum", 1, $FH_HR);
         }
       }
-    }        
+    }
+    elsif($line =~ /^\-\-xfeat\s+(\S+)$/) { # first string is file name, second is argument
+      my $build_xfeat_str = $1;
+      $no_build_xfeat_opt = 0;
+      if(! opt_IsUsed("--xfeat", $opt_HHR)) { 
+        DNAORG_FAIL("ERROR, the --xfeat option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
+      }
+      else { # make sure argument matches
+        my $xfeat_str = opt_Get("--xfeat", $opt_HHR);
+        if($xfeat_str ne $build_xfeat_str) { 
+          DNAORG_FAIL("ERROR, the option argument string $xfeat_str specified with the --xfeat option does not appear to be identical to the argument string used\nwith the --xfeat option when dnaorg_build.pl was run, which was $build_xfeat_str", 1, $FH_HR);
+        }
+      }
+    }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unable to parse line from consopts file $consopts_file:\n$line\n", 1, $FH_HR);
     }
@@ -8524,6 +8555,10 @@ sub validate_options_are_consistent_with_dnaorg_build {
   }    
   if($no_build_matpept_opt && (opt_IsUsed("--matpept", $opt_HHR))) {  
     DNAORG_FAIL("ERROR, the --matpept option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with --matpept.", 1, $FH_HR);
+  }    
+  if($no_build_xfeat_opt && (opt_IsUsed("--xfeat", $opt_HHR))) { 
+    my $xfeat_str = opt_Get("--xfeat", $opt_HHR);
+    DNAORG_FAIL("ERROR, the --xfeat option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with --xfeat $xfeat_str.", 1, $FH_HR);
   }    
 
   # if we get here, all options are consistent

@@ -500,7 +500,7 @@ exit 0;
 #            information on options that must be kept consistent
 #            between dnaorg_build.pl and dnaorg_annotate.pl.
 #            Currently this is only "--matpept", "--nomatpept",
-#            and "-c".
+#            "--xfeat" and "-c".
 #
 # Arguments:
 #  $consopts_file:     name of the file to create
@@ -542,6 +542,10 @@ sub output_consopts_file {
     printf OUT ("--matpept %s %s\n", 
                 $matpept_file, 
                 md5ChecksumOfFile($matpept_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}));
+    $printed_any_options = 1;
+  }
+  if(opt_IsUsed("--xfeat", $opt_HHR)) { 
+    printf OUT ("--xfeat %s\n", opt_Get("--xfeat", $opt_HHR);
     $printed_any_options = 1;
   }
   
