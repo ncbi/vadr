@@ -6272,7 +6272,7 @@ sub output_feature_tbl_all_sequences {
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
     my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
 
-    $cur_out_line = (">Feature\t$accn_name\tdnaorg_annotate.pl\n");
+    $cur_out_line = (">Feature $accn_name\n");
     print $sftbl_FH $cur_out_line;
     print $lftbl_FH $cur_out_line;
 
