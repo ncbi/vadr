@@ -4992,6 +4992,8 @@ sub formatTimeString {
 #   maxLengthScalarValueInHash()
 #   maxLengthScalarValueInArray()
 #   findValueInArray()
+#   sumArray()
+#   sumHashValues()
 #
 #################################################################
 # Subroutine : findNonNumericValueInArray()
@@ -5169,6 +5171,56 @@ sub findValueInArray {
   }
   return -1;
 }  
+
+#################################################################
+# Subroutine : sumArray()
+# Incept:      EPN, Wed Feb  7 13:53:07 2018
+# 
+# Purpose:     Sum the scalar values in an array
+#
+# Arguments: 
+#   $AR: reference to the array
+# 
+# Returns:     Sum of all values in the array
+#
+################################################################# 
+sub sumArray {
+  my $nargs_expected = 1;
+  my $sub_name = "sumArray()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR) = $_[0];
+
+  my $sum = 0;
+  foreach my $el (@{$AR}) { 
+    $sum += $el; 
+  }
+  return $sum;
+}
+
+#################################################################
+# Subroutine : sumHashValues()
+# Incept:      EPN, Wed Feb  7 13:58:25 2018
+# 
+# Purpose:     Sum the values for all keys in a hash
+#
+# Arguments: 
+#   $HR: reference to the hash
+# 
+# Returns:     Sum of all values in the hash
+#
+################################################################# 
+sub sumHashValues {
+  my $nargs_expected = 1;
+  my $sub_name = "sumHashValues()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($HR) = $_[0];
+
+  my $sum = 0;
+  foreach my $key (keys (%{$HR})) { 
+    $sum += $HR->{$key};
+  }
+  return $sum;
+}
 
 #################################################################
 #################################################################
@@ -6514,7 +6566,7 @@ sub splitFastaFile {
 #  $do_cmscan:       '1' if we are running cmscan, '0' if we are running nhmmscan
 #  $out_root:        string for naming output files
 #  $seq_file:        name of sequence file with all sequences to run against
-#  $nseq:            number of sequences in $seq_file
+#  $tot_len_nt:      total length of all nucleotides in $seq_file
 #  $tblout_file:     string for name of concatnated tblout file to create
 #  $progress_w:      width for outputProgressPrior output
 #  $mdl_filename_AR: ref to array of model file names
@@ -6533,7 +6585,7 @@ sub cmscanOrNhmmscanWrapper {
   my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $do_cmscan, $out_root, $seq_file, $nseq, $tblout_file, $progress_w,
+  my ($execs_HR, $do_cmscan, $out_root, $seq_file, $tot_len_nt, $tblout_file, $progress_w,
       $mdl_filename_AR, $mdl_len_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   # contract check
@@ -6563,7 +6615,7 @@ sub cmscanOrNhmmscanWrapper {
   # determine how many sequence files we need to split $seq_file into to satisfy <n> sequences
   # per job (where n is from --nseq <n>). If more than 1 and --local not used, we split up 
   # the sequence file and submit jobs to farm, if only 1 or --local used, we just run it locally
-  my $targ_nseqfiles = int($nseq / opt_Get("--nseq", $opt_HHR)); 
+  my $targ_nseqfiles = int($tot_len_nt / (opt_Get("--nkb", $opt_HHR) * 1000)); 
   # int() takes the floor, so there can be a nonzero remainder. We don't add 1 though, 
   # because splitFastaFile() will return the actual number of sequence files created
   # and we'll use that as the number of jobs subsequently. $nfarmjobs is currently only
@@ -6598,8 +6650,7 @@ sub cmscanOrNhmmscanWrapper {
     # we need to split up the sequence file, and submit a separate set of nhmmscan/cmscan jobs (one per model file) for each
     my $nfasta_created = splitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
     # splitFastaFile will return the actual number of fasta files created, 
-    # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. It will put $nseq/$targ_nseqfiles
-    # in each file, which often means we have to make $nseqfiles+1 files.
+    # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
 
     my $nfarmjobs = $nfasta_created * $nmdl;
     # now submit a job for each
