@@ -113,7 +113,6 @@
 # Subroutines related to the feature table error exception array of hashes:
 #   initializeHardCodedFTableErrorExceptions()
 #   addFTableErrorException()
-#   validateFTableErrorExceptions()
 #
 # Subroutines related to overlaps and adjacencies:
 #   overlapsAndAdjacenciesHelper()
@@ -173,6 +172,7 @@
 #   validateOutputFileInfoHashOfHashes()
 #   validateAndGetSizeOfInfoHashOfArrays()
 #   getConsistentSizeOfInfoHashOfArrays()
+#   validateFTableErrorExceptions()
 #
 # Subroutines related to codons:
 #   fetchStopCodon()
@@ -1330,7 +1330,9 @@ sub setRequiredErrorInfoHash {
 # Subroutines related to the feature table error exception array of hashes:
 #   initializeHardCodedFTableErrorExceptions()
 #   addFTableErrorException()
-#   validateFTableErrorExceptions()
+#   checkSequenceAndFeatureAgainstFTableErrorExceptions()
+#   checkErrorsAgainstFTableErrorExceptions()
+#   exhaustiveSearchFTableErrorExceptions()
 #
 #################################################################
 # Subroutine: initializeHardCodedFTableErrorExceptions()
@@ -1376,12 +1378,6 @@ sub initializeHardCodedFTableErrorExceptions {
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",             0,            0,            0,            "COPY!ost", $FH_HR); # "COPY!ost" indicates we should use the ost error string to make the note
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",             0,            0,            0,            "COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
   
-  # now validate the error exceptions by ensuring that exactly 0 or 1 exceptions applies
-  # to every possible error combination
-  # validateFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR);
-
-  dumpArrayOfHashes("ftbl_err_exceptions_AH", $ftbl_err_exceptions_AHR, *STDOUT);
-
   return;
 }
 
@@ -1574,6 +1570,7 @@ sub checkSequenceAndFeatureAgainstFTableErrorExceptions {
   return checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $err_str, $FH_HR);
   # this will die if more than one exceptions match, which is supposed to be impossible
 }
+
 #################################################################
 # Subroutine: checkErrorsAgainstFTableErrorExceptions()
 # Incept:     EPN, Thu Feb  8 11:53:02 2018
@@ -1641,6 +1638,7 @@ sub checkErrorsAgainstFTableErrorExceptions {
     # make sure that it has all required errors:
 
     for(my $err_idx = 0; $err_idx < $nerr_codes; $err_idx++) { 
+      $err_code = $err_info_HAR->{"code"}[$err_idx];
       if(! exists $HR->{$err_code}) { 
         DNAORG_FAIL("ERROR in $sub_name, valid error code $err_code does not exist in feature table error exception array $i", 1, $FH_HR); 
       }
@@ -1665,7 +1663,69 @@ sub checkErrorsAgainstFTableErrorExceptions {
 
   return $pass_idx;
 }
+
 #################################################################
+# Subroutine: exhaustiveSearchFTableErrorExceptions()
+# Incept:     EPN, Thu Feb  8 12:33:18 2018
+#
+# Purpose:    Do an exhaustive search of all possible combinations of errors 
+#             to make sure that for any error combination exactly 0 or 1
+#             error exceptions matches it. 
+#
+# Arguments:
+#   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
+#                              exceptions, FILLED HERE 
+#   $err_info_HAR:             REF to the error info hash of arrays, PRE-FILLED
+#   $FH_HR:                    REF to hash of file handles, including "log" 
+#                              and "cmd"
+# 
+# Returns: void
+#
+# Dies:    If any error combination matches more than one error exception.
+#          Actually dies in checkErrorsAgainstFTableErrorExceptions().
+#
+#################################################################
+sub exhaustiveSearchFTableErrorExceptions { 
+  my $sub_name = "exhaustiveSearchFTableErrorExceptions";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR) = (@_);
+
+  validateFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR);
+
+  # now for every possible combination of errors, run the checkErrorsAgainstFTableErrorExceptions()
+  # which will die if more than 1 exception applies
+
+  my $nerr = validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
+  my @err_code_A = @{$err_info_HAR->{"code"}};
+
+  # there are 2^$nerr possible combinations of errors
+  # for each, we can determine the binary number that corresponds to it, 
+  # and convert that to an array which tells us if each error is on/off
+  # in each combination
+  my @err_on_off_A = ();
+  my $exc_idx = -2;
+  for(my $i = 0; $i < 2 ** ($nerr); $i++) { 
+    my $b = sprintf("%0*b", $nerr, $i);
+    @err_on_off_A = split("", $b);
+    if(scalar(@err_on_off_A) != $nerr) { 
+      DNAORG_FAIL("ERROR in $sub_name, on off string is incorrect length: $b", 1, $FH_HR);
+    }
+
+    my $err_str = "";
+    for(my $j = 0; $j < $nerr; $j++) { 
+      if($err_on_off_A[$j] == 1) { 
+        if($err_str ne "") { $err_str .= ","; }
+        $err_str .= $err_code_A[$j];
+      }
+    }
+    $exc_idx = checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $err_str, $FH_HR);
+    # if($exc_idx != -1) { printf("EXCEPTION: %7d $b exc_idx: $exc_idx\n", $i); }
+  }
+
+  return;
+}
 
 #################################################################
 #################################################################
@@ -4569,6 +4629,7 @@ sub dumpArrayOfHashes {
 #   validateOutputFileInfoHashOfHashes()
 #   validateAndGetSizeOfInfoHashOfArrays()
 #   getConsistentSizeOfInfoHashOfArrays()
+#   validateFTableErrorExceptions()
 #
 #################################################################
 # Subroutine : validateExecutableHash()
@@ -5139,6 +5200,64 @@ sub getConsistentSizeOfInfoHashOfArrays {
   return $nel;
 }
 
+#################################################################
+# Subroutine: validateFTableErrorExceptions()
+# Incept:     EPN, Thu Feb  8 12:36:37 2018
+#
+# Purpose:    Validate that every hash element of the array of hashes
+#             @{$ftbl_err_exceptions_AHR} has all required keys, which 
+#             includes all error codes from %{$err_info_HAR}.
+#
+# Arguments:
+#   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
+#                              exceptions
+#   $err_info_HAR:             REF to hash of arrays of error information
+#   $FH_HR:                    REF to hash of file handles, including "log" 
+#                              and "cmd"
+# 
+# Returns: void
+#
+# Dies:    If any error combination matches more than one error exception.
+#          Actually dies in checkErrorsAgainstFTableErrorExceptions().
+#
+#################################################################
+sub validateFTableErrorExceptions { 
+  my $sub_name = "validateFTableErrorExceptions";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR) = (@_);
+
+  my $nerr = validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
+  my @other_reqd_keys_A = ("misc_feature", "start_carrot", "stop_carrot", "note");
+
+  my $nexc = scalar(@{$ftbl_err_exceptions_AHR});
+  # make sure all error codes are hash keys with valid values ("R", "D", or "A")
+  for(my $i = 0; $i < $nexc; $i++) { 
+    for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+      my $err_code = $err_info_HAR->{"code"}[$err_idx];
+      if(! exists $ftbl_err_exceptions_AHR->[$i]{$err_code}) { 
+        DNAORG_FAIL("ERROR in $sub_name, array element $i does not have a hash key of $err_code", 1, $FH_HR);
+      }
+      if($ftbl_err_exceptions_AHR->[$i]{$err_code} ne "R" &&
+         $ftbl_err_exceptions_AHR->[$i]{$err_code} ne "A" &&
+         $ftbl_err_exceptions_AHR->[$i]{$err_code} ne "D") { 
+        DNAORG_FAIL("ERROR in $sub_name, array element $i does not have valid value of \"R\" \"A\" or \"D\", but rather $ftbl_err_exceptions_AHR->[$i]{$err_code}", 1, $FH_HR);
+      }
+    }
+  }
+
+  # make sure all other required keys exist as well
+  for(my $i = 0; $i < $nexc; $i++) { 
+    for(my $j = 0; $j < scalar(@other_reqd_keys_A); $j++) { 
+      if(! exists $ftbl_err_exceptions_AHR->[$i]{$other_reqd_keys_A[$j]}) { 
+        DNAORG_FAIL("ERROR in $sub_name, array element $i does not have a hash key of $other_reqd_keys_A[$j]", 1, $FH_HR);
+      }
+    }
+  }
+
+  return;
+}
 #################################################################
 #################################################################
 #

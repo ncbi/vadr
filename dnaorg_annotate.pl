@@ -254,6 +254,7 @@ opt_Add("--tblnocomp",   "boolean", 0,                      3,    undef,   undef
 $opt_group_desc_H{"4"} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
 opt_Add("--doalign",    "boolean", 0,                       4,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
+opt_Add("--checkftable","boolean", 0,                       4,    undef,   undef,   "exhaustively check feature table rules",   "exhastively check feature table error exception rules", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"5"} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                          help-output    
@@ -318,6 +319,7 @@ my $options_okay =
                 'tblnocomp'    => \$GetOptions_H{"--tblnocomp"},
 # options for skipping/adding optional stages
                 'doalign'      => \$GetOptions_H{"--doalign"},
+                'checkftable'  => \$GetOptions_H{"--checkftable"},
 # optional output files
                 'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"}, 
@@ -706,6 +708,14 @@ initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
 
 my @ftbl_err_exceptions_AH = ();
 initializeHardCodedFTableErrorExceptions(\@ftbl_err_exceptions_AH, \%err_info_HA, $ofile_info_HH{"FH"});
+
+if(opt_Get("--checkftable", \%opt_HH)) { 
+  # validate the error exceptions by ensuring that exactly 0 or 1 exceptions applies
+  # to every possible error combination
+  $start_secs = outputProgressPrior("Exhaustively checking no error combination satisfies more than one feature table error exception", $progress_w, $log_FH, *STDOUT);
+  exhaustiveSearchFTableErrorExceptions(\@ftbl_err_exceptions_AH, \%err_info_HA, $ofile_info_HH{"FH"});
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
 
 ###########################################################################
 # Step 1. Gather and process information on reference genome using Edirect.
