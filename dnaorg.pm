@@ -1332,6 +1332,7 @@ sub setRequiredErrorInfoHash {
 #   addFTableErrorException()
 #   checkSequenceAndFeatureAgainstFTableErrorExceptions()
 #   checkErrorsAgainstFTableErrorExceptions()
+#   populateFTableNote()
 #   exhaustiveSearchFTableErrorExceptions()
 #
 #################################################################
@@ -1665,6 +1666,75 @@ sub checkErrorsAgainstFTableErrorExceptions {
 }
 
 #################################################################
+# Subroutine: populateFTableNote
+# Incept:     EPN, Thu Feb  8 14:31:16 2018
+#
+# Purpose:    Given a %{$err_ftr_instances_AHR->[$i]} hash
+# 
+#             what errors, determine if any of the feature table
+#             error exceptions apply for this sequence. 
+#             Die if more than one apply, that's supposed to be
+#             impossible.
+#
+# Arguments:
+#   $ftbl_err_exceptions_HR:   REF to hash with exception info, PRE-FILLED
+#   $err_info_HAR:             REF to the error info hash of arrays, PRE-FILLED
+#   $err_ftr_instances_HHR:    REF to 2D hash with per-feature errors, PRE-FILLED
+#   $seq_name:                 name of current sequence
+#   $FH_HR:                    REF to hash of file handles, including "log" 
+#                              and "cmd"
+# 
+# Returns: string with the feature table note for the current sequence/feature combo
+#
+# Dies:    If ftbl_err_exceptions_HR doesn't have information we need
+#          or has invalid information
+#
+#################################################################
+sub populateFTableNote { 
+  my $sub_name = "populateFTableNote";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftbl_err_exceptions_HR, $err_info_HAR, $err_ftr_instances_HHR, $seq_name, $FH_HR) = (@_);
+  
+  my $note = $ftbl_err_exceptions_HR->{"note"};
+  if(! defined $note) { 
+    DNAORG_FAIL("ERROR in $sub_name, note value is undefined in error exceptions hash", 1, $FH_HR);
+  }
+  
+  if($note eq "") { 
+    return "";
+  }
+  
+  # if $note starts with COPY!<s>, then return the error messages for all errcodes that 
+  # compose <s> (separated by commas)
+  my $orig_note = $note;
+  my $ret_note  = "";
+  my $idx;
+  if($note =~ s/^COPY!//) { 
+    my @err_A = split(",", $note);
+    foreach my $err_code (@err_A) { 
+      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
+      if($idx == -1) { 
+        DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code in note $orig_note", 1, $FH_HR);
+      }
+      if(exists $err_ftr_instances_HHR->{$err_code}{$seq_name}) { 
+        if($ret_note ne "") { $ret_note .= ";"; }
+        $ret_note .= sprintf("%4s error code: %s%s", 
+                             $err_code, 
+                             $err_info_HAR->{"msg"}[$idx], 
+                             ($err_ftr_instances_HHR->{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_HHR->{$err_code}{$seq_name} . "]"); 
+      }        
+    }
+  }
+  else { # note does not start with COPY!
+    $ret_note = $orig_note;
+  }
+
+  return $ret_note;
+}
+
+#################################################################
 # Subroutine: exhaustiveSearchFTableErrorExceptions()
 # Incept:     EPN, Thu Feb  8 12:33:18 2018
 #
@@ -1674,7 +1744,7 @@ sub checkErrorsAgainstFTableErrorExceptions {
 #
 # Arguments:
 #   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
-#                              exceptions, FILLED HERE 
+#                              exceptions, PRE-FILLED
 #   $err_info_HAR:             REF to the error info hash of arrays, PRE-FILLED
 #   $FH_HR:                    REF to hash of file handles, including "log" 
 #                              and "cmd"
@@ -1685,15 +1755,15 @@ sub checkErrorsAgainstFTableErrorExceptions {
 #          Actually dies in checkErrorsAgainstFTableErrorExceptions().
 #
 #################################################################
-sub exhaustiveSearchFTableErrorExceptions { 
+sub exhaustiveSearchFTableErrorExceptions  { 
   my $sub_name = "exhaustiveSearchFTableErrorExceptions";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
+  
   my ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR) = (@_);
-
-  validateFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR);
-
+  
+  my $nexc = validateFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR);
+  
   # now for every possible combination of errors, run the checkErrorsAgainstFTableErrorExceptions()
   # which will die if more than 1 exception applies
 
@@ -1772,7 +1842,7 @@ sub exhaustiveSearchFTableErrorExceptions {
 # 
 # Dies: 
 ################################################################# 
-sub overlapsAndAdjacenciesHelper() { 
+sub overlapsAndAdjacenciesHelper { 
   my $nargs_expected = 14;
   my $sub_name = "overlapsAndAdjacenciesHelper()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
@@ -5215,7 +5285,7 @@ sub getConsistentSizeOfInfoHashOfArrays {
 #   $FH_HR:                    REF to hash of file handles, including "log" 
 #                              and "cmd"
 # 
-# Returns: void
+# Returns: Number of elements in @{$ftbl_err_exceptions_HAR}
 #
 # Dies:    If any error combination matches more than one error exception.
 #          Actually dies in checkErrorsAgainstFTableErrorExceptions().
@@ -5256,7 +5326,7 @@ sub validateFTableErrorExceptions {
     }
   }
 
-  return;
+  return $nexc;
 }
 #################################################################
 #################################################################

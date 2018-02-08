@@ -1287,7 +1287,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ######################
 $start_secs = outputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 
-output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
+output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \@ftbl_err_exceptions_AH, \%opt_HH, \%ofile_info_HH);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -6245,16 +6245,17 @@ sub output_tbl_page_of_sequences {
 # Purpose:   Output the feature table for all sequences.
 #
 # Arguments:
-#  $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
-#  $err_seq_instances_HHR:  REF to 2D hash with per-sequence errors, PRE-FILLED
-#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $mdl_results_AAHR:       REF to model results AAH, PRE-FILLED
-#  $ftr_results_AAHR:       REF to feature results AAH, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:         REF to the 2D hash of output file information
+#  $err_ftr_instances_AHHR:  REF to array of 2D hashes with per-feature errors, PRE-FILLED
+#  $err_seq_instances_HHR:   REF to 2D hash with per-sequence errors, PRE-FILLED
+#  $mdl_info_HAR:            REF to hash of arrays with information on the models, PRE-FILLED
+#  $ftr_info_HAR:            REF to hash of arrays with information on the features, PRE-FILLED
+#  $seq_info_HAR:            REF to hash of arrays with information on the sequences, PRE-FILLED
+#  $err_info_HAR:            REF to the error info hash of arrays, PRE-FILLED
+#  $mdl_results_AAHR:        REF to model results AAH, PRE-FILLED
+#  $ftr_results_AAHR:        REF to feature results AAH, PRE-FILLED
+#  $ftbl_err_exceptions_AHR: REF to array of hashes of feature table error exceptions, PRE-FILLED
+#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
 # Returns:  void
 # 
@@ -6263,20 +6264,28 @@ sub output_tbl_page_of_sequences {
 #################################################################
 sub output_feature_tbl_all_sequences { 
   my $sub_name = "output_feature_tbl_all_sequences";
-  my $nargs_exp = 10;
+  my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, 
-      $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $ftbl_err_exceptions_AHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $sftbl_FH = $FH_HR->{"sftbl"};
   my $lftbl_FH = $FH_HR->{"lftbl"};
   my $cur_out_line; # current output line to print
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); 
+  my $nmdl = validateModelInfoHashIsComplete    ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); # nerr: number of different error codes
+  my $nexc = validateFTableErrorExceptions      ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR); # nexc: number of different feature table exceptions
+  my $exc_idx; # an index in @{$ftbl_err_exceptions_AHR}
+  my $cur_err_str;     # current string of errors for this sequence/feature combo
+  my $do_short_ftable; # '1' if we are printing this current sequence/feature to the short feature table, '0' if not
+  my $do_misc_feature; # '1' if this feature becomes a 'misc_feature' in the feature tables, '0' if not 
+  my $do_start_carrot; # '1' if this feature's start position gets prepended with a '<'
+  my $do_stop_carrot;  # '1' if this feature's stop position gets prepended with a '>'
+  my $note_value;      # value for the note in the feature table, "" for none
 
   my $origin_offset = undef;
   if(opt_IsUsed("--origin", $opt_HHR)) { 
@@ -6295,7 +6304,6 @@ sub output_feature_tbl_all_sequences {
 
     # placeholder for origin info?
 
-    # placeholder for 5' UTR
     # 5' UTR, if nec
     if($do_matpept) { 
       if(exists $mdl_results_AAHR->[0][$seq_idx]{"p_start"}) { 
@@ -6331,9 +6339,11 @@ sub output_feature_tbl_all_sequences {
     my $any_error_flag = 0;          # set to '1' if this feature for this sequence has >= 1 errors (of any type)
     my $nop_error_flag = 0;          # set to '1' if this feature for this sequence has an 'nop' error
     my $non_neighbor_error_flag = 0; # set to '1' if this feature for has any error *except* 'neighbor' errors: olp or aja or ajb
+
     # go through each feature and output information on it
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       @cur_err_output_A = (); # will hold output error messages
+      $cur_err_str = "";      # we will add all errors below
       $any_error_flag = 0;
       $nop_error_flag = 0;
       $non_neighbor_error_flag = 0;
@@ -6342,21 +6352,43 @@ sub output_feature_tbl_all_sequences {
         if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
           my $err_code = $err_info_HAR->{"code"}[$err_idx];
           if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-            # an error exists, output it
+            if($cur_err_str ne "") { $cur_err_str .= ","; }
+            $cur_err_str .= $err_code;
             push(@cur_err_output_A, sprintf("%4s error code: %s%s", 
                                             $err_code, 
                                             $err_info_HAR->{"msg"}[$err_idx], 
                                             ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]")); 
-            $any_error_flag = 1;
             if($err_code eq "nop") { 
               $nop_error_flag = 1;
             }
-            if($err_code ne "olp" && $err_code ne "aja" && $err_code ne "ajb") { 
-              $non_neighbor_error_flag = 1;
-            }
+            ###$any_error_flag = 1;
+            ###if($err_code ne "olp" && $err_code ne "aja" && $err_code ne "ajb") { 
+            ###  $non_neighbor_error_flag = 1;
+            ###}
           }
         }
       } # end of for loop over $err_idx 
+
+      # determine if this sequence/feature combo satisfies any of the feature 
+      # table exceptions, allowing it to be output to the short feature table
+      # (all sequence/feature combos are printed to the long table except 
+      # those with an 'nop' error)
+      $exc_idx = checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $cur_err_str, $FH_HR);
+
+      if($exc_idx != -1) { 
+        $do_short_ftable = 1;
+        $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
+        $do_start_carrot = $ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"};
+        $do_stop_carrot  = $ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"};
+        $note_value      = populateFTableNote($ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+      }
+      else { 
+        $do_short_ftable = 0;
+        $do_misc_feature = 0;
+        $do_start_carrot = 0;
+        $do_stop_carrot  = 0;
+        $note_value      = "";
+      }
 
       if(! $nop_error_flag) { 
         # we only print information on a feature if there is no 'nop' error
@@ -6372,23 +6404,30 @@ sub output_feature_tbl_all_sequences {
              ($ftr_results_HR->{"out_stop"}  ne "?")) { 
             # we have a predicted start and stop for this feature
             my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
-            $cur_out_line = sprintf("%d\t%d\t%s\n", $ftr_results_HR->{"out_start"}, $ftr_results_HR->{"out_stop"}, $type); 
+            $cur_out_line = sprintf("%s%d\t%s%d\t%s\n", 
+                                    $do_start_carrot ? "<" : "", $ftr_results_HR->{"out_start"}, 
+                                    $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"out_stop"}, $type); 
             print $lftbl_FH $cur_out_line;
-            if(! $non_neighbor_error_flag) { 
+            if($do_short_ftable) { 
               print $sftbl_FH $cur_out_line;
             }
             foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
-              my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+              my $qualifier_name = ($do_misc_feature) ? "misc_feature" : featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
               $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
               print $lftbl_FH $cur_out_line;
-              if(! $non_neighbor_error_flag) { 
+              if($do_short_ftable) { 
                 print $sftbl_FH $cur_out_line;
               }
             }
             foreach my $err_line (@cur_err_output_A) { 
-              # only print errors to long feature table output
+              # print all errors to long feature table output
               $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", $err_line);
               print $lftbl_FH $cur_out_line;
+            }
+            if($do_short_ftable && $note_value ne "") { 
+              # print note to short feature table output
+              $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", $note_value);
+              print $sftbl_FH $cur_out_line;
             }
           }
         }
@@ -6400,25 +6439,29 @@ sub output_feature_tbl_all_sequences {
             my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
             
             if($is_first) { 
-              $cur_out_line = sprintf("%d\t%d\t%s\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}, $type); 
+              $cur_out_line = sprintf("%s%d\t%s%d\t%s\n", 
+                                      $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
+                                      ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"}, $type); 
               print $lftbl_FH $cur_out_line;
-              if(! $non_neighbor_error_flag) { 
+              if($do_short_ftable) { 
                 print $sftbl_FH $cur_out_line;
               }
             }
             else { 
-              $cur_out_line = sprintf("%d\t%d\n", $mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"});
+              $cur_out_line = sprintf("%d\t%s%d\n", 
+                                      $mdl_results_HR->{"out_start"}, 
+                                      ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
               print $lftbl_FH $cur_out_line;
-              if(! $non_neighbor_error_flag) { 
+              if($do_short_ftable) { 
                 print $sftbl_FH $cur_out_line;
               }
             }
           }
           foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
-            my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+            my $qualifier_name = ($do_misc_feature) ? "misc_feature" : featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
             $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
             print $lftbl_FH $cur_out_line;
-            if(! $non_neighbor_error_flag) { 
+            if($do_short_ftable) { 
               print $sftbl_FH $cur_out_line;
             }
           }
@@ -6426,6 +6469,11 @@ sub output_feature_tbl_all_sequences {
             # only print errors to long feature table output
             $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", $err_line);
             print $lftbl_FH $cur_out_line;
+          }
+          if($do_short_ftable && $note_value ne "") { 
+            # print note to short feature table output
+            $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", $note_value);
+            print $sftbl_FH $cur_out_line;
           }
         }
       } # end of 'if (! $nop_error_flag)'
