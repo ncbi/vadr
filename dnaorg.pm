@@ -1380,10 +1380,11 @@ sub initializeHardCodedFTableErrorExceptions {
   # to every possible error combination
   # validateFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR);
 
-  exit 0;
+  dumpArrayOfHashes("ftbl_err_exceptions_AH", $ftbl_err_exceptions_AHR, *STDOUT);
+
   return;
 }
-#################################################################
+
 #################################################################
 # Subroutine: addFTableErrorException()
 # Incept:     EPN, Thu Feb  8 10:32:52 2018
@@ -1439,39 +1440,41 @@ sub addFTableErrorException() {
   my $HR = \%{$ftbl_err_exceptions_AHR->[$nexc]};
 
   my @err_A = ();
-  my $errcode = undef;
+  my $err_code = undef;
   my $idx; # index of code in $err_info_HAR->{"code"};
+  my $nerr = scalar(@{$err_info_HAR->{"code"}});
   
   # make sure that each error code in the required error string is valid (exists in @{$err_info_HAR->{"code"}}
   if(defined $required_err_str) { 
     @err_A = split(",", $required_err_str);
-    foreach $errcode (@err_A) { 
-      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $errcode, $FH_HR);
+    foreach $err_code (@err_A) { 
+      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
       if($idx == -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with required string $required_err_str, but error code $errcode is invalid", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with required string $required_err_str, but error code $err_code is invalid", 1, $FH_HR);
       }
+      $HR->{$err_code} = "R"; # required 
     }
-    $HR->{"required"} = $required_err_str;
-  }
-  else { # required string not defined
-    $HR->{"required"} = "";
   }
   # make sure that each error code in the allowed error string is valid (exists in @{$err_info_HAR->{"code"}}
   if(defined $allowed_err_str) { 
     @err_A = split(",", $allowed_err_str);
-    foreach $errcode (@err_A) { 
-      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $errcode, $FH_HR);
+    foreach $err_code (@err_A) { 
+      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
       if($idx == -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with allowed string $allowed_err_str, but error code $errcode is invalid", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with allowed string $allowed_err_str, but error code $err_code is invalid", 1, $FH_HR);
       }
-      if((defined $required_err_str) && ($required_err_str =~ m/$errcode/)) { 
-        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with allowed string $allowed_err_str, but error code $errcode exists in both allowed string and required string, this is not allowed", 1, $FH_HR);
+      if((exists $HR->{$err_code}) && ($HR->{$err_code} eq "R")) { 
+        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with allowed string $allowed_err_str, but error code $err_code exists in both allowed string and required string, this is not allowed", 1, $FH_HR);
       }
+      $HR->{$err_code} = "A"; # allowed
     }
-    $HR->{"allowed"} = $allowed_err_str;
   }
-  else { # required string not defined
-    $HR->{"allowed"} = "";
+  # fill in all other errors as disallowed ("D")
+  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+    $err_code = $err_info_HAR->{"code"}[$err_idx];
+    if(! exists $HR->{$err_code}) { 
+      $HR->{$err_code} = "D";
+    }
   }
 
   if(($misc_feature ne "0") && ($misc_feature ne "1")) { 
@@ -1497,13 +1500,13 @@ sub addFTableErrorException() {
         DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but there are no required errors for this exception", 1, $FH_HR);
       }
       @err_A = split(",", $note);
-      foreach $errcode (@err_A) { 
-        $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $errcode, $FH_HR);
+      foreach $err_code (@err_A) { 
+        $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
         if($idx == -1) { 
-          DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but error code $errcode is invalid", 1, $FH_HR);
+          DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but error code $err_code is invalid", 1, $FH_HR);
         }
-        if($required_err_str !~ m/$errcode/) { 
-          DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but error code $errcode is not a required error (required error string is $required_err_str)", 1, $FH_HR);
+        if((! exists $HR->{$err_code}) || ($HR->{$err_code} ne "R")) { 
+          DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but error code $err_code is not a required error (required error string is $required_err_str)", 1, $FH_HR);
         }
       }          
       $HR->{"note"} = $orig_note;
@@ -1518,6 +1521,153 @@ sub addFTableErrorException() {
 
   return;
 }
+
+#################################################################
+# Subroutine: checkSequenceAndFeatureAgainstFTableErrorExceptions()
+# Incept:     EPN, Thu Feb  8 11:40:19 2018
+#
+# Purpose:    Given a feature index, sequence name and 
+#             the @{$err_ftr_instances_AHHR} data structure which holds
+#             information on what sequences and features have
+#             what errors, determine if any of the feature table
+#             error exceptions apply for this sequence. 
+#             Die if more than one apply, that's supposed to be
+#             impossible.
+#
+# Arguments:
+#   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
+#                              exceptions, FILLED HERE 
+#   $err_ftr_instances_AHHR:   REF to array of 2D hashes with per-feature errors, PRE-FILLED
+#   $err_info_HAR:             REF to the error info hash of arrays, PRE-FILLED
+#   $seq_name:                 name of sequence
+#   $ftr_idx:                  feature index 
+#   $FH_HR:                    REF to hash of file handles, including "log" 
+#                              and "cmd"
+# 
+# Returns: index of error exception that applies in @{$ftb_err_exceptions_AHR}, 
+#           or -1 if none do,
+#
+# Dies:    If more than one feature table error exception applies for 
+#          this sequence/feature combination. Actually dies in 
+#          checkErrorsAgainstFTableErrorExceptions().
+#
+#################################################################
+sub checkSequenceAndFeatureAgainstFTableErrorExceptions { 
+  my $sub_name = "checkSequenceAndFeatureAgainstFTableErrorExceptions";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($ftbl_err_exceptions_AHR, $err_ftr_instances_AHHR, $err_info_HAR, $seq_name, $ftr_idx, $FH_HR) = (@_);
+
+  my $err_str = "";
+  my $nerr = scalar(@{$err_info_HAR->{"code"}});
+  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+    if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
+      my $err_code = $err_info_HAR->{"code"}[$err_idx];
+      if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
+        if($err_str ne "") { $err_str .= ","; }
+        $err_str .= $err_code;
+      }
+    }
+  }
+
+  return checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $err_str, $FH_HR);
+  # this will die if more than one exceptions match, which is supposed to be impossible
+}
+#################################################################
+# Subroutine: checkErrorsAgainstFTableErrorExceptions()
+# Incept:     EPN, Thu Feb  8 11:53:02 2018
+#
+# Purpose:    Given a string of errors that correspond to a specific
+#             sequence and feature, determine if any of the feature table
+#             error exceptions apply for this sequence. 
+#             Die if more than one apply, that's supposed to be
+#             impossible.
+#
+# Arguments:
+#   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
+#                              exceptions, FILLED HERE 
+#   $err_info_HAR:             REF to the error info hash of arrays, PRE-FILLED
+#   $err_str:                  string of errors, comma separated, can be ""
+#   $FH_HR:                    REF to hash of file handles, including "log" 
+#                              and "cmd"
+# 
+# Returns: index of error exception that applies in @{$ftb_err_exceptions_AHR}, 
+#           or -1 if none do,
+#
+# Dies:    If more than one feature table error exception applies for 
+#          this sequence/feature combination.
+#
+#################################################################
+sub checkErrorsAgainstFTableErrorExceptions { 
+  my $sub_name = "checkErrorsAgainstFTableErrorExceptions";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $err_str, $FH_HR) = (@_);
+
+  # create a hash of all errors in the input $err_str
+  my %input_err_H = (); # $cur_err_H{$err_code} = 1 if $err_code is in $err_str
+  my @err_A = ();
+  my $err_code; 
+  my $idx; 
+  if($err_str ne "") { 
+    foreach $err_code (split(",", $err_str)) { 
+      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
+      if($idx == -1) { 
+        DNAORG_FAIL("ERROR in $sub_name, input error of $err_code in string $err_str is invalid", 1, $FH_HR);
+      }
+      $input_err_H{$err_code} = 1; 
+    }
+  }
+
+  # compare the input errors in the %input_err_H
+  # against what error codes are required, allowed and disallowed for 
+  # each feature table error exception
+  # 
+  # for each feature table error exception in @ftbl_err_exceptions_AHR:
+  #  - are all required errors in the input $err_str? 
+  #  - are zero disallowed errors in the input $err_str?
+  # if both are true, then this error string passes the relevant exception.
+  # if the error string passes two exceptions, we die, that's supposed to be impossible
+  # 
+  my $nerr_codes = scalar(@{$err_info_HAR->{"code"}});
+  my $pass = undef;
+  my $pass_idx = -1;
+  my $HR = undef; 
+  for(my $i = 0; $i < scalar(@{$ftbl_err_exceptions_AHR}); $i++) { 
+    $pass = 1; # set to 0 if we find an error code incompatibility with this exception
+    $HR = \%{$ftbl_err_exceptions_AHR->[$i]};
+    # make sure that it has all required errors:
+
+    for(my $err_idx = 0; $err_idx < $nerr_codes; $err_idx++) { 
+      if(! exists $HR->{$err_code}) { 
+        DNAORG_FAIL("ERROR in $sub_name, valid error code $err_code does not exist in feature table error exception array $i", 1, $FH_HR); 
+      }
+      if(($HR->{$err_code} eq "R") && (! exists $input_err_H{$err_code})) { 
+        # required but not present in input error string
+        $pass = 0;
+        $err_idx = $nerr_codes; # breaks loop
+      }
+      elsif(($HR->{$err_code} eq "D") && (exists $input_err_H{$err_code})) { 
+        # disallowed but present in input error string
+        $pass = 0;
+        $err_idx = $nerr_codes; # breaks loop
+      }
+    }
+    if($pass) { 
+      if($pass_idx != -1) { 
+        DNAORG_FAIL("ERROR in $sub_name, error string $err_str passed more than one error exception: $pass_idx and $i", 1, $FH_HR);
+      }
+      $pass_idx = $i;
+    }
+  }
+
+  return $pass_idx;
+}
+#################################################################
+
+#################################################################
 #################################################################
 #
 # Subroutines related to overlaps and adjacencies:
@@ -1526,7 +1676,6 @@ sub addFTableErrorException() {
 #   compareTwoOverlapOrAdjacencyIndexStrings()
 #   checkForIndexInOverlapOrAdjacencyIndexString()
 #
-
 #################################################################
 # Subroutine : overlapsAndAdjacenciesHelper()
 # Incept:      EPN, Sat Mar 12 10:27:59 2016
@@ -4400,7 +4549,6 @@ sub dumpArrayOfHashes {
     foreach my $key2 (sort keys %{$AHR->[$i1]}) { 
       printf("\tA*H* el %2d key: $key2 value: %s\n", ($i2+1), $AHR->[$i1]{$key2}); 
       $i2++;
-      printf $FH ("\n");
     }
     printf $FH ("\n");
   }
