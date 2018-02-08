@@ -110,6 +110,11 @@
 #   setIncompatibilityErrorInfoHash()
 #   setRequiredErrorInfoHash()
 #
+# Subroutines related to the feature table error exception array of hashes:
+#   initializeHardCodedFTableErrorExceptions()
+#   addFTableErrorException()
+#   validateFTableErrorExceptions()
+#
 # Subroutines related to overlaps and adjacencies:
 #   overlapsAndAdjacenciesHelper()
 #   getOverlap()
@@ -156,6 +161,7 @@
 # Subroutines for dumping data structures, usually for debugging:
 #   dumpInfoHashOfArrays()
 #   dumpArrayOfHashesOfHashes()
+#   dumpArrayOfHashes()
 #
 # Subroutines for validating the special data structures:
 #   validateExecutableHash()
@@ -1319,6 +1325,199 @@ sub setRequiredErrorInfoHash {
 }
 
 #################################################################
+#################################################################
+#
+# Subroutines related to the feature table error exception array of hashes:
+#   initializeHardCodedFTableErrorExceptions()
+#   addFTableErrorException()
+#   validateFTableErrorExceptions()
+#
+#################################################################
+# Subroutine: initializeHardCodedFTableErrorExceptions()
+# Incept:     EPN, Thu Feb  8 10:05:13 2018
+#
+# Purpose:    Set the initial values in the feature table 
+#             error exception array of hashes, using the 
+#             hardcoded information in this function.
+#
+# Arguments:
+#   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
+#                              exceptions, FILLED HERE 
+#   $err_info_HAR:             REF to hash of arrays of error information, PRE-FILLED
+#   $FH_HR:                    REF to hash of file handles, including "log" 
+#                              and "cmd"
+# 
+# Returns: void
+#
+# Dies:    if $ftbl_err_excpetions_AHR is non-empty upon entering this function
+#
+#################################################################
+sub initializeHardCodedFTableErrorExceptions { 
+  my $sub_name = "initializeHardCodedFTableErrorExceptions";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR) = (@_);
+
+  if(scalar (@{$ftbl_err_exceptions_AHR}) > 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, feature table error exception array of hashes already has at least one hash", 1, $FH_HR);
+  }
+
+  # add each exception, the addFTableErrorException() function will die if: 
+  # - it sees error code not in %err_info_HAR
+  #                                                                required   allowed    
+  #                                                                errors     errors                     misc_feature? start_carrot? stop_carrot?, note?
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, undef,     "olp,aja,ajb",             0,            0,            0,            undef, $FH_HR);
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e",     "olp,aja,ajb",             0,            1,            0,            undef, $FH_HR);
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b3e",     "olp,aja,ajb,stp,nst,nm3", 0,            0,            1,            undef, $FH_HR);
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e,b3e", "olp,aja,ajb,stp,nst,nm3", 0,            1,            1,            undef, $FH_HR);
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",             1,            0,            0,            "predicted star position is not beginning of ATG start codon []", $FH_HR);
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb",             1,            0,            0,            "COPY!trc", $FH_HR); # "COPY!trc" indicates we should use the trc error string to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",             0,            0,            0,            "COPY!ost", $FH_HR); # "COPY!ost" indicates we should use the ost error string to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",             0,            0,            0,            "COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
+  
+  # now validate the error exceptions by ensuring that exactly 0 or 1 exceptions applies
+  # to every possible error combination
+  # validateFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR);
+
+  exit 0;
+  return;
+}
+#################################################################
+#################################################################
+# Subroutine: addFTableErrorException()
+# Incept:     EPN, Thu Feb  8 10:32:52 2018
+#
+# Purpose:    Add a hash that represents a 'feature table error exception' 
+#             rule element to the array of such hashes 
+#             (@{$ftbl_err_exceptions_AHR}) and exit.
+#             Die if one of the required or allowed errors is not 
+#             a valid error (does not exist in %{$err_info_HAR}.
+#
+# Arguments:
+#   $ftbl_err_exceptions_AHR:  REF to array of hashes of error exception information, 
+#                              ADDED TO HERE
+#   $err_info_HAR:             REF to hash of arrays of error information, PRE-FILLED
+#   $required_err_str:         string of errors, separated by ",", which are required
+#                              (must be present) for a feature to match this exception
+#   $allowed_err_str:          string of errors, separated by ",", which are allowed
+#                              (can be present or not) for a feature to match this exception
+#   $misc_feature:             '1' if this exception rule turns the corresponding
+#                              feature to a 'misc_feature' in the feature table, else '0'
+#   $start_carrot:             '1' if this exception rule modifies the start position by 
+#                              prepending a less than sign ("<")
+#   $stop_carrot:              '1' if this exception rule modifies the stop position by 
+#                              prepending a greater than sign (">")
+#                              feature to a 'misc_feature' in the feature table, else '0'
+#   $note:                     string to use as a note for this exception, or undefined
+#                              for no note. As a special case if $note starts with:
+#                              "COPY!" followed by a string of comma-separated
+#                              errors, then the note will be constructed by concatenating
+#                              the error strings for the corresponding errors. Those
+#                              errors must be also in the 'required_err_str";
+#   $FH_HR:                    REF to hash of file handles, including "log" 
+#                              and "cmd"
+# 
+# Returns: void
+#
+# Dies:    - if any error code in either $required_err_str, $allowed_err_str, or $note
+#            after removing a "COPY!" prefix.
+#          - if any error code in $note that starts with "COPY!" is not also in $required_err_str
+#          - if any error code is in both $required_err_str and $allowed_err_str
+#
+#################################################################
+sub addFTableErrorException() { 
+  my $sub_name = "addFTableErrorException";
+  my $nargs_expected = 9;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $required_err_str, $allowed_err_str, $misc_feature, $start_carrot, $stop_carrot, $note, $FH_HR) = (@_);
+
+  my $nexc = scalar(@{$ftbl_err_exceptions_AHR});
+  %{$ftbl_err_exceptions_AHR->[$nexc]} = ();
+
+  my $HR = \%{$ftbl_err_exceptions_AHR->[$nexc]};
+
+  my @err_A = ();
+  my $errcode = undef;
+  my $idx; # index of code in $err_info_HAR->{"code"};
+  
+  # make sure that each error code in the required error string is valid (exists in @{$err_info_HAR->{"code"}}
+  if(defined $required_err_str) { 
+    @err_A = split(",", $required_err_str);
+    foreach $errcode (@err_A) { 
+      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $errcode, $FH_HR);
+      if($idx == -1) { 
+        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with required string $required_err_str, but error code $errcode is invalid", 1, $FH_HR);
+      }
+    }
+    $HR->{"required"} = $required_err_str;
+  }
+  else { # required string not defined
+    $HR->{"required"} = "";
+  }
+  # make sure that each error code in the allowed error string is valid (exists in @{$err_info_HAR->{"code"}}
+  if(defined $allowed_err_str) { 
+    @err_A = split(",", $allowed_err_str);
+    foreach $errcode (@err_A) { 
+      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $errcode, $FH_HR);
+      if($idx == -1) { 
+        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with allowed string $allowed_err_str, but error code $errcode is invalid", 1, $FH_HR);
+      }
+      if((defined $required_err_str) && ($required_err_str =~ m/$errcode/)) { 
+        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with allowed string $allowed_err_str, but error code $errcode exists in both allowed string and required string, this is not allowed", 1, $FH_HR);
+      }
+    }
+    $HR->{"allowed"} = $allowed_err_str;
+  }
+  else { # required string not defined
+    $HR->{"allowed"} = "";
+  }
+
+  if(($misc_feature ne "0") && ($misc_feature ne "1")) { 
+    DNAORG_FAIL("ERROR in $sub_name, misc_feature value of $misc_feature is not valid (must be 0 or 1)", 1, $FH_HR);
+  }
+  $HR->{"misc_feature"} = $misc_feature;
+
+  if(($start_carrot ne "0") && ($start_carrot ne "1")) { 
+    DNAORG_FAIL("ERROR in $sub_name, start_carrot value of $start_carrot is not valid (must be 0 or 1)", 1, $FH_HR);
+  }
+  $HR->{"start_carrot"} = $start_carrot;
+
+  if(($stop_carrot ne "0") && ($stop_carrot ne "1")) { 
+    DNAORG_FAIL("ERROR in $sub_name, stop_carrot value of $stop_carrot is not valid (must be 0 or 1)", 1, $FH_HR);
+  }
+  $HR->{"stop_carrot"} = $stop_carrot;
+
+  if(defined $note) { 
+    my $orig_note = $note;
+    if($note =~ s/^COPY\!//) { 
+      # we must have at least one required error for the note to use this COPY! mechanism
+      if(! defined $required_err_str) { 
+        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but there are no required errors for this exception", 1, $FH_HR);
+      }
+      @err_A = split(",", $note);
+      foreach $errcode (@err_A) { 
+        $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $errcode, $FH_HR);
+        if($idx == -1) { 
+          DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but error code $errcode is invalid", 1, $FH_HR);
+        }
+        if($required_err_str !~ m/$errcode/) { 
+          DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but error code $errcode is not a required error (required error string is $required_err_str)", 1, $FH_HR);
+        }
+      }          
+      $HR->{"note"} = $orig_note;
+    }
+    else { # note does not start with "COPY!"
+      $HR->{"note"} = $orig_note;
+    }
+  } # 
+  else { # $note is not defined
+    $HR->{"note"} = "";
+  }
+
+  return;
+}
 #################################################################
 #
 # Subroutines related to overlaps and adjacencies:
@@ -4063,6 +4262,7 @@ sub outputDividingLine {
 # Subroutines for dumping data structures, usually for debugging:
 #   dumpInfoHashOfArrays()
 #   dumpArrayOfHashesOfHashes()
+#   dumpArrayOfHashes()
 #
 #################################################################
 # Subroutine: dumpInfoHashOfArrays()
@@ -4123,6 +4323,7 @@ sub dumpInfoHashOfArrays {
   
   return;
 }
+
 #################################################################
 # Subroutine: dumpArrayOfHashesOfHashes()
 # Incept:     EPN, Fri Mar  4 16:02:28 2016
@@ -4160,6 +4361,45 @@ sub dumpArrayOfHashesOfHashes {
         printf("\tAH*H* el %2d key: $key3 value: %s\n", ($i3+1), $AHHR->[$i1]{$key2}{$key3}); 
         $i3++;
       }
+      printf $FH ("\n");
+    }
+    printf $FH ("\n");
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: dumpArrayOfHashes()
+# Incept:     EPN, Thu Feb  8 11:01:29 2018
+#
+# Purpose:    Dump the contents of an array of hashes,
+#             probably for debugging purposes.
+#
+# Args:       $name2print:  name of array of hashes of hashes
+#             $AHR:         ref of the array of hashes
+#             $FH:          file handle to print (often *STDOUT)
+#
+# Returns:    void
+# 
+#################################################################
+sub dumpArrayOfHashes { 
+  my $sub_name = "dumpArrayOfHashes()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($name2print, $AHR, $FH) = @_;
+
+  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
+
+  my $nel1 = scalar(@{$AHR});
+  for(my $i1 = 0; $i1 < $nel1; $i1++) { 
+    printf $FH ("*A*H el %2d\n", ($i1+1)); 
+    my $nel2 = scalar(keys %{$AHR->[$i1]}); 
+    my $i2 = 0;
+    foreach my $key2 (sort keys %{$AHR->[$i1]}) { 
+      printf("\tA*H* el %2d key: $key2 value: %s\n", ($i2+1), $AHR->[$i1]{$key2}); 
+      $i2++;
       printf $FH ("\n");
     }
     printf $FH ("\n");

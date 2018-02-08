@@ -689,13 +689,23 @@ $execs_H{"esl-ssplit"}        = $esl_ssplit;
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################
-# Step 0. Read the dnaorg_build.pl consopts file and make sure that it
-#         agrees with the options set here.
+# Step 0. Preliminaries:
+#         - Read the dnaorg_build.pl consopts file and make sure that it
+#           agrees with the options set here.
+#         - Initialize error-related data structures.
+#            
 ###########################################################################
 my $progress_w = 85; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = outputProgressPrior("Verifying options are consistent with options used for dnaorg_build.pl", $progress_w, $log_FH, *STDOUT);
 validate_options_are_consistent_with_dnaorg_build($build_root . ".consopts", \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+# initialize error related data structures
+my %err_info_HA = (); 
+initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
+
+my @ftbl_err_exceptions_AH = ();
+initializeHardCodedFTableErrorExceptions(\@ftbl_err_exceptions_AH, \%err_info_HA, $ofile_info_HH{"FH"});
 
 ###########################################################################
 # Step 1. Gather and process information on reference genome using Edirect.
@@ -798,6 +808,11 @@ if($nseq != validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $
   }
 }    
 
+# now that we have the ftr_info_HA filled, we can initialize the error data structures
+my @err_ftr_instances_AHH = ();
+my %err_seq_instances_HH = ();
+error_instances_initialize_AHH(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
+
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ##############################################################################
@@ -834,21 +849,12 @@ else {
   $start_secs = outputProgressPrior("Verifying CMs were created for current reference $ref_accn", $progress_w, $log_FH, *STDOUT);
   validate_cms_built_from_reference(\%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
 }
-
-
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 
 ###################################################################
 # Step 4. (OPTIONAL) Search for origin sequences, if --origin used
 ###################################################################
-# initialize error data structures
-my %err_info_HA = (); 
-initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
-
-my @err_ftr_instances_AHH = ();
-my %err_seq_instances_HH = ();
-error_instances_initialize_AHH(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
-
 if(opt_IsUsed("--origin", \%opt_HH)) { 
   $start_secs = outputProgressPrior("Identifying origin sequences", $progress_w, $log_FH, *STDOUT);
   find_origin_sequences($sqfile, $origin_seq, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
