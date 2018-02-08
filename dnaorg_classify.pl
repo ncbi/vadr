@@ -103,7 +103,7 @@ $opt_group_desc_H{"3"} = "basic options";
 opt_Add("-f",           "boolean", 0,                        3,    undef, undef,      "forcing directory overwrite",                                 "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                        3,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        3,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
-opt_Add("--nseq",       "integer", 10,                       3,    undef,"--local",   "number of sequences for each nhmmscan farm job",              "set number of sequences for each nhmmscan farm job to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 5,                        3,    undef,"--local",   "number of KB of sequence for each nhmmscan farm job",         "set target number of KB of sequences for each nhmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 500,                      1,    undef,"--local",   "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for nhmmscan jobs on farm",                 "allow <n> wall-clock minutes for nhmmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        3,    undef, undef,      "run nhmmscan locally instead of on farm",                     "run nhmmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
@@ -133,7 +133,7 @@ my $options_okay =
                 'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
                 'inlist=s'     => \$GetOptions_H{"--inlist"},
                 'infasta=s'    => \$GetOptions_H{"--infasta"},
-                'nseq=s'       => \$GetOptions_H{"--nseq"}, 
+                'nkb=s'        => \$GetOptions_H{"--nkb"}, 
                 'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
                 'local'        => \$GetOptions_H{"--local"}, 
@@ -472,8 +472,9 @@ else {
   my $tblout_file = $out_root . ".tblout"; # concatenated tblout file, created by concatenating all of the individual 
                                            # tblout files in cmscanOrNhmmscanWrapper()
   my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
-  
-  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $n_cls_seqs, $tblout_file, $progress_w, 
+
+  my $cls_tot_len_nt = sumHashValues(\%cls_fasta_seqlen_H);
+  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
                           \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
 
