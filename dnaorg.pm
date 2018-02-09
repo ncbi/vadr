@@ -477,9 +477,6 @@ sub determineFeatureTypes {
     }
   }
 
-  printf("in $sub_name() ncds: $ncds, nmp: $nmp\n");
-  dumpInfoHashOfArrays("In $sub_name, Feature information (%ftr_info_HA)", 0, $ftr_info_HAR, *STDOUT);
-
   return;
 }
 
@@ -555,6 +552,7 @@ sub getReferenceFeatureInfo {
   @{$ftr_info_HAR->{"ref_len"}}     = ();
   @{$ftr_info_HAR->{"ref_coords"}}  = ();
   @{$ftr_info_HAR->{"out_product"}} = ();
+  @{$ftr_info_HAR->{"out_gene"}}    = ();
   @{$ftr_info_HAR->{"type_fname"}}  = ();
   @{$ftr_info_HAR->{"type_ftable"}} = ();
 
@@ -566,26 +564,52 @@ sub getReferenceFeatureInfo {
   my $ref_xfeat_strand_cur_str  = "";
   my $ref_xfeat_strand_full_str = "";
   my $i; # ctr;
-  my $nadded; # number of elements just added to @{$ftr_info_HAR->{}}
+  my $nadded_strand;  # number of elements just added to @{$ftr_info_HAR->{"strand"}}
+  my $nadded_gene;    # number of elements just added to @{$ftr_info_HAR->{"gene"}}
+  my $nadded_product; # number of elements just added to @{$ftr_info_HAR->{"product"}}
 
   if($do_matpept) { 
     (undef, undef, undef, undef, undef, $ref_mp_strand_str) = getStrandStats($mp_tbl_HHAR, $ref_accn, $FH_HR);
     getLengthsAndCoords(\%{$mp_tbl_HHAR->{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-    getQualifierValues($mp_tbl_HHAR, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-    $nadded = length($ref_mp_strand_str);
-    for($i = 0; $i < $nadded; $i++) { 
+    $nadded_product = getQualifierValues($mp_tbl_HHAR, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
+    $nadded_gene    = getQualifierValues($mp_tbl_HHAR, $ref_accn, "gene",    \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
+    $nadded_strand  = length($ref_mp_strand_str);
+    for($i = 0; $i < $nadded_strand; $i++) { 
       push(@{$ftr_info_HAR->{"type_fname"}},  "mp"); 
       push(@{$ftr_info_HAR->{"type_ftable"}}, "mat_peptide"); 
+    }
+    if($nadded_product != $nadded_strand) { 
+      DNAORG_FAIL("ERROR in $sub_name, for mature peptides, did not product info for all mature peptides", 1, $FH_HR);
+    }
+    if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
+      DNAORG_FAIL("ERROR in $sub_name, for mature peptides, added gene info for $nadded_gene mature peptides (should be 0 or $nadded_strand)", 1, $FH_HR);
+    }
+    if($nadded_gene == 0) { 
+      for($i = 0; $i < $nadded_strand; $i++) { 
+        push(@{$ftr_info_HAR->{"out_gene"}}, "");
+      }
     }
   }
 
   (undef, undef, undef, undef, undef, $ref_cds_strand_str) = getStrandStats($cds_tbl_HHAR, $ref_accn, $FH_HR);
   getLengthsAndCoords(\%{$cds_tbl_HHAR->{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-  getQualifierValues($cds_tbl_HHAR, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-  $nadded = length($ref_cds_strand_str);
-  for($i = 0; $i < $nadded; $i++) { 
+  $nadded_product = getQualifierValues($cds_tbl_HHAR, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
+  $nadded_gene    = getQualifierValues($cds_tbl_HHAR, $ref_accn, "gene",    \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
+  $nadded_strand  = length($ref_cds_strand_str);
+  for($i = 0; $i < $nadded_strand; $i++) { 
     push(@{$ftr_info_HAR->{"type_fname"}},  "cds");
     push(@{$ftr_info_HAR->{"type_ftable"}}, "CDS");
+  }
+  if($nadded_product != $nadded_strand) { 
+    DNAORG_FAIL("ERROR in $sub_name, for CDS, did not product info for all CDS", 1, $FH_HR);
+  }
+  if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
+    DNAORG_FAIL("ERROR in $sub_name, for CDS, added gene info for $nadded_gene CDS (should be 0 or $nadded_strand)", 1, $FH_HR);
+  }
+  if($nadded_gene == 0) { 
+    for($i = 0; $i < $nadded_strand; $i++) { 
+      push(@{$ftr_info_HAR->{"out_gene"}}, "");
+    }
   }
 
   if($do_xfeat) {
@@ -593,14 +617,28 @@ sub getReferenceFeatureInfo {
       (undef, undef, undef, undef, undef, $ref_xfeat_strand_cur_str) = getStrandStats(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, $FH_HR);
       $ref_xfeat_strand_full_str .= $ref_xfeat_strand_cur_str;
       getLengthsAndCoords(\%{$xfeat_tbl_HHHAR->{$xfeat}{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-      # NOTE: this will probably only work for 'gene', because that feature has a qualifier of the same name
-      #       to generalize this in the future, you'll need to modify how the command line option is parsed, so it
-      #       contains the feature name and the qualifier of interest, e.g. "gene:gene" or "repeat_region:standard_name" (NC_002549 examples)
-      getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, $xfeat, \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-      $nadded = length($ref_xfeat_strand_cur_str);
-      for($i = 0; $i < $nadded; $i++) { 
+      $nadded_product = getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
+      $nadded_gene    = getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, "gene",    \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
+      $nadded_strand  = length($ref_xfeat_strand_cur_str);
+      for($i = 0; $i < $nadded_strand; $i++) { 
         push(@{$ftr_info_HAR->{"type_fname"}},  $xfeat);
         push(@{$ftr_info_HAR->{"type_ftable"}}, $xfeat);
+      }
+      if(($nadded_product != 0) && ($nadded_product != $nadded_strand)) {
+        DNAORG_FAIL("ERROR in $sub_name, for $xfeat features, added gene info for $nadded_product features (should be 0 or $nadded_strand)", 1, $FH_HR);
+      }
+      if($nadded_product == 0) { 
+        for($i = 0; $i < $nadded_strand; $i++) { 
+          push(@{$ftr_info_HAR->{"out_product"}}, "");
+        }
+      }
+      if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
+        DNAORG_FAIL("ERROR in $sub_name, for $xfeat features, added gene info for $nadded_gene mature peptides (should be 0 or $nadded_strand)", 1, $FH_HR);
+      }
+      if($nadded_gene == 0) { 
+        for($i = 0; $i < $nadded_strand; $i++) { 
+          push(@{$ftr_info_HAR->{"out_gene"}}, "");
+        }
       }
     }
   }
@@ -6668,7 +6706,7 @@ sub addNameAndBlankSsToStockholmAlignment {
 #               ADDED TO HERE
 #   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    void; fills @{$values_AR}
+# Returns:    number of values added; fills @{$values_AR}
 # 
 # Dies: if $accn doesn't exist in %{$tbl_HHAR}
 #################################################################
@@ -6681,7 +6719,10 @@ sub getQualifierValues {
 
   if(! exists $tbl_HHAR->{$accn}) { DNAORG_FAIL("ERROR in $sub_name, no data for accession: $accn", 1, $FH_HR); }
 
-  if(! @{$tbl_HHAR->{$accn}{$qualifier}}) { return; } # no annotation for $qualifier, do not update array
+  if((! defined $tbl_HHAR->{$accn}{$qualifier}) ||  
+     (scalar(@{$tbl_HHAR->{$accn}{$qualifier}}) == 0)) { 
+    return 0; # no annotation for $qualifier, do not update array
+  }
 
   my $nvalues = scalar(@{$tbl_HHAR->{$accn}{$qualifier}});
 
@@ -6691,7 +6732,7 @@ sub getQualifierValues {
     }
   }
 
-  return;
+  return $nvalues;
 }
 
 
@@ -7577,6 +7618,9 @@ sub featureInfoKeyToFeatureTableQualifierName {
 
   if($in_key eq "out_product") { 
     return "product";
+  }
+  elsif($in_key eq "out_gene") { 
+    return "gene";
   }
   else { 
     DNAORG_FAIL("ERROR in $sub_name, unrecognized input key string: $in_key.", 1, $FH_HR);

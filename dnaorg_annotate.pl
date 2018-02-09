@@ -6369,6 +6369,12 @@ sub output_feature_tbl_all_sequences {
   my $do_start_carrot; # '1' if this feature's start position gets prepended with a '<'
   my $do_stop_carrot;  # '1' if this feature's stop position gets prepended with a '>'
   my $note_value;      # value for the note in the feature table, "" for none
+  my $qval_sep = ";;"; # value separating multiple qualifier values in a single element of $ftr_info_HAR->{$key}[$ftr_idx]
+  # NOTE: $qval_sep == ';;' is hard-coded value for separating multiple qualifier values for the same 
+  # qualifier (see dnaorg.pm::edirectFtableOrMatPept2SingleFeatureTableInfo
+  my @qval_A = ();    # array of current qualifier values
+  my $qualifier_name; # name of current qualifier
+  my $qval;           # name of current qualifier value
 
   my $origin_offset = undef;
   if(opt_IsUsed("--origin", $opt_HHR)) { 
@@ -6495,12 +6501,17 @@ sub output_feature_tbl_all_sequences {
             if($do_short_ftable) { 
               print $sftbl_FH $cur_out_line;
             }
-            foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
-              my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-              $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-              print $lftbl_FH $cur_out_line;
-              if($do_short_ftable) { 
-                print $sftbl_FH $cur_out_line;
+            foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                foreach $qval (@qval_A) { 
+                  $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+                  print $lftbl_FH $cur_out_line;
+                  if($do_short_ftable) { 
+                    print $sftbl_FH $cur_out_line;
+                  }
+                }
               }
             }
             foreach my $err_line (@cur_err_output_A) { 
@@ -6541,12 +6552,17 @@ sub output_feature_tbl_all_sequences {
               }
             }
           }
-          foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
-            my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-            $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-            print $lftbl_FH $cur_out_line;
-            if($do_short_ftable) { 
-              print $sftbl_FH $cur_out_line;
+          foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+            if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+              $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+              @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+              foreach $qval (@qval_A) { 
+                $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval);
+                print $lftbl_FH $cur_out_line;
+                if($do_short_ftable) { 
+                  print $sftbl_FH $cur_out_line;
+                }
+              }
             }
           }
           foreach my $err_line (@cur_err_output_A) { 
