@@ -1125,12 +1125,12 @@ sub initializeHardCodedErrorInfoHash {
 
   # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
 # nop incompatibilities were set as in following line up until 05/16/16, when I realized that
-# a nop in one exon or segment of a multi-model segment (e.g. one exon of a 2-exon feature) 
+# a nop in one exon or segment of a multi-model feature (e.g. one exon of a 2-exon feature) 
 # could have a nop and the other could have the other errors. May want to revisit this
 # at some point.
 #  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,b5e,b5u,b3e,b3u,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "aji,int,inp", $FH_HR); 
-  setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext", $FH_HR);
+  setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext,b5e", $FH_HR);
   setIncompatibilityErrorInfoHash($err_info_HAR, "trc", "ext,nst,aji,inp,b5e", $FH_HR);
 
   # define the required combinations, these are one-sided, error code arg 2 requires error code arg 3, but error code arg 3 does not require err code arg 2
@@ -1374,7 +1374,8 @@ sub initializeHardCodedFTableErrorExceptions {
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e",     "olp,aja,ajb",             0,            1,            0,            undef, $FH_HR);
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b3e",     "olp,aja,ajb,stp,nst,nm3", 0,            0,            1,            undef, $FH_HR);
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e,b3e", "olp,aja,ajb,stp,nst,nm3", 0,            1,            1,            undef, $FH_HR);
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",             1,            0,            0,            "predicted star position is not beginning of ATG start codon []", $FH_HR);
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",             1,            0,            0,            "COPY!str", $FH_HR); # "COPY!str" indicates we should use the str error string to make the note
+# alternative note for the 'str' exception:  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",             1,            0,            0,            "predicted start position is not beginning of ATG start codon []", $FH_HR);
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb",             1,            0,            0,            "COPY!trc", $FH_HR); # "COPY!trc" indicates we should use the trc error string to make the note
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",             0,            0,            0,            "COPY!ost", $FH_HR); # "COPY!ost" indicates we should use the ost error string to make the note
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",             0,            0,            0,            "COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
@@ -1720,10 +1721,14 @@ sub populateFTableNote {
       }
       if(exists $err_ftr_instances_HHR->{$err_code}{$seq_name}) { 
         if($ret_note ne "") { $ret_note .= ";"; }
-        $ret_note .= sprintf("%4s error code: %s%s", 
-                             $err_code, 
+        $ret_note .= sprintf("%s%s", 
                              $err_info_HAR->{"msg"}[$idx], 
                              ($err_ftr_instances_HHR->{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_HHR->{$err_code}{$seq_name} . "]"); 
+        # to include the error code at the beginning of the note:
+        #$ret_note .= sprintf("%4s error code: %s%s", 
+        #$err_code, 
+        #$err_info_HAR->{"msg"}[$idx], 
+        #($err_ftr_instances_HHR->{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_HHR->{$err_code}{$seq_name} . "]"); 
       }        
     }
   }

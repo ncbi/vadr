@@ -959,7 +959,6 @@ mdl_results_add_b5e_b5u_errors(\%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH,
                                \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-
 #########################################################
 # Step 11. Examine each predicted feature to see if:
 #          - start codon is valid
@@ -6394,6 +6393,8 @@ sub output_feature_tbl_all_sequences {
         # we only print information on a feature if there is no 'nop' error
 
         my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
+        # replace with misc_feature if nec
+        if($do_misc_feature) { $type = "misc_feature"; }
         #####################################################################################
         # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
         #####################################################################################
@@ -6403,7 +6404,6 @@ sub output_feature_tbl_all_sequences {
           if(($ftr_results_HR->{"out_start"} ne "?") && 
              ($ftr_results_HR->{"out_stop"}  ne "?")) { 
             # we have a predicted start and stop for this feature
-            my $type = featureInfoTypeToFeatureTableType($ftr_info_HAR->{"type"}[$ftr_idx], $FH_HR);
             $cur_out_line = sprintf("%s%d\t%s%d\t%s\n", 
                                     $do_start_carrot ? "<" : "", $ftr_results_HR->{"out_start"}, 
                                     $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"out_stop"}, $type); 
@@ -6412,7 +6412,7 @@ sub output_feature_tbl_all_sequences {
               print $sftbl_FH $cur_out_line;
             }
             foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
-              my $qualifier_name = ($do_misc_feature) ? "misc_feature" : featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+              my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
               $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
               print $lftbl_FH $cur_out_line;
               if($do_short_ftable) { 
@@ -6458,7 +6458,7 @@ sub output_feature_tbl_all_sequences {
             }
           }
           foreach my $key ("out_product") { # done this way so we could expand to more feature info elements in the future
-            my $qualifier_name = ($do_misc_feature) ? "misc_feature" : featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+            my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
             $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
             print $lftbl_FH $cur_out_line;
             if($do_short_ftable) { 
