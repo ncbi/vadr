@@ -6369,7 +6369,6 @@ sub output_feature_tbl_all_sequences {
   my $do_start_carrot; # '1' if this feature's start position gets prepended with a '<'
   my $do_stop_carrot;  # '1' if this feature's stop position gets prepended with a '>'
   my $note_value;      # value for the note in the feature table, "" for none
->>>>>>> develop
 
   my $origin_offset = undef;
   if(opt_IsUsed("--origin", $opt_HHR)) { 
