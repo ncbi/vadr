@@ -1788,6 +1788,8 @@ sub exhaustiveSearchFTableErrorExceptions  {
       DNAORG_FAIL("ERROR in $sub_name, on off string is incorrect length: $b", 1, $FH_HR);
     }
 
+    # currently we don't skip sets of options that have incompatible pairs, although we could
+    # at a cost in running time
     my $err_str = "";
     for(my $j = 0; $j < $nerr; $j++) { 
       if($err_on_off_A[$j] == 1) { 
