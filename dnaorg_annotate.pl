@@ -5357,7 +5357,7 @@ sub output_tbl_get_headings {
           $tok5 = sprintf(" %10s", "----------");
           output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
           if($do_model_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s overlaps with $expl_str"), $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of features this feature overlaps with $expl_str"), $FH_HR);
             output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
             output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);
             $need_to_define_H{"overlap"} = 1;
@@ -6355,7 +6355,9 @@ sub output_feature_tbl_all_sequences {
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $sftbl_FH = $FH_HR->{"sftbl"};
   my $lftbl_FH = $FH_HR->{"lftbl"};
-  my $cur_out_line; # current output line to print
+  my $cur_out_str; # current output string to print
+  my $cur_long_out_str; # current output string to print to long file
+  my $cur_short_out_str; # current output string to print to short file
   my $nmdl = validateModelInfoHashIsComplete    ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
   my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
@@ -6376,6 +6378,15 @@ sub output_feature_tbl_all_sequences {
   my $qualifier_name; # name of current qualifier
   my $qval;           # name of current qualifier value
 
+
+  # define the type priority hash, which defines the order of types, lower is higher priority
+  my %type_priority_H = ();
+  $type_priority_H{"gene"}  = 0;
+  $type_priority_H{"CDS"}   = 1;
+  my $npriority = scalar(keys %type_priority_H);
+
+  #https://stackoverflow.com/questions/10395383/sorting-an-array-of-hash-by-multiple-keys-perl      
+
   my $origin_offset = undef;
   if(opt_IsUsed("--origin", $opt_HHR)) { 
     $origin_offset = validate_origin_seq(opt_Get("--origin", $opt_HHR));
@@ -6387,56 +6398,36 @@ sub output_feature_tbl_all_sequences {
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
     my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
 
-    $cur_out_line = (">Feature $accn_name\n");
-    print $sftbl_FH $cur_out_line;
-    print $lftbl_FH $cur_out_line;
+    my @short_AH = (); # array of hashes with output for short feature table, kept in a hash so we can sort before outputting
+    my @long_AH  = (); # array of hashes with output for long feature table, kept in a hash so we can sort before outputting
+    my $sidx     = 0;  # index in @short_AH
+    my $lidx     = 0;  # index in @long_AH
+    my $min_coord = -1;     # minimum coord in this feature
+    my $cur_min_coord = -1; # minimum coord in this segment
+    my $i;
+
+    $cur_out_str = (">Feature $accn_name\n");
+    print $sftbl_FH $cur_out_str;
+    print $lftbl_FH $cur_out_str;
 
     # placeholder for origin info?
 
-    # 5' UTR, if nec
-    if($do_matpept) { 
-      if(exists $mdl_results_AAHR->[0][$seq_idx]{"p_start"}) { 
-        # we know that $mdl_results_AAHR->[0][$seq_idx]{"p_start"} exists)
-        # determine output start and output stop
-        my ($cur_start, undef) = create_output_start_and_stop($mdl_results_AAHR->[0][$seq_idx]{"p_start"},
-                                                              $mdl_results_AAHR->[0][$seq_idx]{"p_stop"},
-                                                              $accn_len, $seq_len, $FH_HR);
-        if($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "+") { 
-          # positive strand, easy case
-          if($cur_start > 1) { 
-            $cur_out_line = sprintf("%d\t%d\t5'UTR\n", 1, $cur_start - 1);
-            print $sftbl_FH $cur_out_line;
-            print $lftbl_FH $cur_out_line;
-          }
-        }
-        elsif($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "-") { 
-          # negative strand, more complicated, slightly
-          if($cur_start < $accn_len) { 
-            # 1st feature does not start at nt $accn_len on negative strand
-            $cur_out_line = sprintf("%d\t%d\t5'UTR\n", $accn_len, $cur_start + 1);
-            print $sftbl_FH $cur_out_line;
-            print $lftbl_FH $cur_out_line;
-          }
-        }
-        else { # not + or - strand, weird...
-          DNAORG_FAIL("ERROR in $sub_name, trying to compute 5' UTR for prediction that exists but is not + or - strand", 1, $FH_HR);
-        }
-      }
-    }
+    # 5' UTR would go here, see commit e443e96 for example (I abandoned 5' UTRs after that commit)
 
-    # finished with 5' UTR, move on to features
+    # move on to features 
     my @cur_err_output_A = (); # will hold output error messages
-    my $any_error_flag = 0;          # set to '1' if this feature for this sequence has >= 1 errors (of any type)
     my $nop_error_flag = 0;          # set to '1' if this feature for this sequence has an 'nop' error
-    my $non_neighbor_error_flag = 0; # set to '1' if this feature for has any error *except* 'neighbor' errors: olp or aja or ajb
 
     # go through each feature and output information on it
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      $cur_out_str       = "";
+      $cur_short_out_str = "";
+      $cur_long_out_str  = "";
+
+      # get error info for this sequence/feature combo
       @cur_err_output_A = (); # will hold output error messages
-      $cur_err_str = "";      # we will add all errors below
-      $any_error_flag = 0;
-      $nop_error_flag = 0;
-      $non_neighbor_error_flag = 0;
+      $cur_err_str      = ""; # we will add all errors below
+      $nop_error_flag   = 0;
       # are there any errors for this feature? 
       for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
         if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
@@ -6451,10 +6442,6 @@ sub output_feature_tbl_all_sequences {
             if($err_code eq "nop") { 
               $nop_error_flag = 1;
             }
-            ###$any_error_flag = 1;
-            ###if($err_code ne "olp" && $err_code ne "aja" && $err_code ne "ajb") { 
-            ###  $non_neighbor_error_flag = 1;
-            ###}
           }
         }
       } # end of for loop over $err_idx 
@@ -6494,62 +6481,71 @@ sub output_feature_tbl_all_sequences {
           if(($ftr_results_HR->{"out_start"} ne "?") && 
              ($ftr_results_HR->{"out_stop"}  ne "?")) { 
             # we have a predicted start and stop for this feature
-            $cur_out_line = sprintf("%s%d\t%s%d\t%s\n", 
+            # create the output for the feature table
+            $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
                                     $do_start_carrot ? "<" : "", $ftr_results_HR->{"out_start"}, 
                                     $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"out_stop"}, $feature_type); 
-            print $lftbl_FH $cur_out_line;
-            if($do_short_ftable) { 
-              print $sftbl_FH $cur_out_line;
-            }
+            $min_coord = ($ftr_results_HR->{"out_start"} < $ftr_results_HR->{"out_stop"}) ? $ftr_results_HR->{"out_start"} : $ftr_results_HR->{"out_stop"};
             foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
               if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                 $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
                 @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
                 foreach $qval (@qval_A) { 
-                  $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-                  print $lftbl_FH $cur_out_line;
-                  if($do_short_ftable) { 
-                    print $sftbl_FH $cur_out_line;
-                  }
+                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
                 }
               }
             }
+            $cur_long_out_str  = $cur_out_str;
+            $cur_short_out_str = $cur_out_str;
             foreach my $err_line (@cur_err_output_A) { 
               # print all errors to long feature table output
-              $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", $err_line);
-              print $lftbl_FH $cur_out_line;
+              $cur_long_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $err_line);
             }
             if($do_short_ftable && $note_value ne "") { 
               # print note to short feature table output
-              $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", $note_value);
-              print $sftbl_FH $cur_out_line;
+              $cur_short_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
+            }
+
+            # now push that to the output hashes
+            %{$long_AH[$lidx]} = ();
+            $long_AH[$lidx]{"carrot"}        = $do_start_carrot;
+            $long_AH[$lidx]{"mincoord"}      = $min_coord;
+            $long_AH[$lidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+            $long_AH[$lidx]{"output"}        = $cur_long_out_str;
+            $lidx++;
+
+            if($do_short_ftable) { 
+              %{$short_AH[$sidx]} = ();
+              $short_AH[$sidx]{"carrot"}        = $do_start_carrot;
+              $short_AH[$sidx]{"mincoord"}      = $min_coord;
+              $short_AH[$sidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+              $short_AH[$sidx]{"output"}        = $cur_short_out_str;
+              $sidx++;
             }
           }
         }
         else { # not a multifeature cds-mp 
+          $min_coord = -1;
           for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
             my $is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx]; # is this the first model for feature $ftr_idx?
             my $is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx]; # is this the final model for feature $ftr_idx?
             my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
             my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-            
+
+            $cur_min_coord = ($mdl_results_HR->{"out_start"} < $mdl_results_HR->{"out_stop"}) ? $mdl_results_HR->{"out_start"} : $mdl_results_HR->{"out_stop"};
+            if(($mdl_idx == $ftr_info_HAR->{"first_mdl"}[$ftr_idx]) || ($cur_min_coord < $min_coord)) { 
+              $min_coord = $cur_min_coord;
+            }
+
             if($is_first) { 
-              $cur_out_line = sprintf("%s%d\t%s%d\t%s\n", 
+              $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
                                       $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
                                       ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"}, $feature_type); 
-              print $lftbl_FH $cur_out_line;
-              if($do_short_ftable) { 
-                print $sftbl_FH $cur_out_line;
-              }
             }
             else { 
-              $cur_out_line = sprintf("%d\t%s%d\n", 
+              $cur_out_str .= sprintf("%d\t%s%d\n", 
                                       $mdl_results_HR->{"out_start"}, 
                                       ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
-              print $lftbl_FH $cur_out_line;
-              if($do_short_ftable) { 
-                print $sftbl_FH $cur_out_line;
-              }
             }
           }
           foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
@@ -6557,72 +6553,64 @@ sub output_feature_tbl_all_sequences {
               $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
               @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
               foreach $qval (@qval_A) { 
-                $cur_out_line = sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval);
-                print $lftbl_FH $cur_out_line;
-                if($do_short_ftable) { 
-                  print $sftbl_FH $cur_out_line;
-                }
+                $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval);
               }
             }
           }
+
+          $cur_long_out_str  = $cur_out_str;
+          $cur_short_out_str = $cur_out_str;
           foreach my $err_line (@cur_err_output_A) { 
             # only print errors to long feature table output
-            $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", $err_line);
-            print $lftbl_FH $cur_out_line;
+            $cur_long_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $err_line);
           }
           if($do_short_ftable && $note_value ne "") { 
             # print note to short feature table output
-            $cur_out_line = sprintf("\t\t\t%s\t%s\n", "note", $note_value);
-            print $sftbl_FH $cur_out_line;
+            $cur_short_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
           }
-        }
+
+          # now push that to the output hashes
+          %{$long_AH[$lidx]} = ();
+          $long_AH[$lidx]{"carrot"}        = $do_start_carrot;
+          $long_AH[$lidx]{"mincoord"}      = $min_coord;
+          $long_AH[$lidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+          $long_AH[$lidx]{"output"}        = $cur_long_out_str;
+          $lidx++;
+          
+          if($do_short_ftable) { 
+            %{$short_AH[$sidx]} = ();
+            $short_AH[$sidx]{"carrot"}        = $do_start_carrot;
+            $short_AH[$sidx]{"mincoord"}      = $min_coord;
+            $short_AH[$sidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+            $short_AH[$sidx]{"output"}        = $cur_short_out_str;
+            $sidx++;
+          }
+        } # end of 'else' entered if feature is not a multifeature cds-mp
       } # end of 'if (! $nop_error_flag)'
     } # end of 'for(my $ftr_idx'      
 
-    # 3' UTR, if nec
-    if($do_matpept) { 
-      if(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}) { 
-        # we know that $mdl_results_AAHR->[0][$seq_idx]{"p_start"} exists) { 
-        # determine output start and output stop
-        my $cur_stop = undef; # final stop position
-        if(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"}) { 
-          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_start"}, 
-                                                            $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"},
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-        }
-        elsif(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"}) { 
-          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"},  # irrelevant due to the first undef arg
-                                                            $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"},
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-        }
-        else { 
-          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
-                                                            $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_stop"}, 
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-        }
-        if($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "+") { 
-          # positive strand, easy case
-          if($cur_stop < $accn_len) { # final model prediction stops at final nt
-            $cur_out_line = sprintf("%d\t%d\t3'UTR\n", $cur_stop + 1, $accn_len);
-            print $sftbl_FH $cur_out_line;
-            print $lftbl_FH $cur_out_line;
-          }
-        }
-        elsif($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "-") { 
-          # negative strand, more complicated, slightly
-          if($cur_stop > 1) { # final model prediction stops at first nt
-            # final feature does not stop at nt 1 on negative strand
-            $cur_out_line = sprintf("%d\t%d\t3'UTR\n", $cur_stop - 1, 1);
-            print $sftbl_FH $cur_out_line;
-            print $lftbl_FH $cur_out_line;
-          }
-        }
-        else { # not + or - strand, weird...
-          DNAORG_FAIL("ERROR in $sub_name, trying to compute 3' UTR for prediction that exists but is not + or - strand", 1, $FH_HR);
-        }
+    # 3' UTR would go here, see commit e443e96 for example (I abandoned 3' UTRs after that commit)
+
+    # now output, first sort the array of hashes
+    if(scalar(@short_AH) > 0) { 
+      @short_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
+                         $b->{"carrot"}        <=> $a->{"carrot"}   or
+                         $a->{"type_priority"} <=> $b->{"type_priority"} 
+      } @short_AH;
+      for($i = 0; $i < scalar(@short_AH); $i++) { 
+        print $sftbl_FH $short_AH[$i]{"output"};
       }
     }
-  }
+    if(scalar(@long_AH) > 0) { 
+      @long_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
+                        $b->{"carrot"}        <=> $a->{"carrot"}   or
+                        $a->{"type_priority"} <=> $b->{"type_priority"} 
+      } @long_AH;
+      for($i = 0; $i < scalar(@long_AH); $i++) { 
+        print $lftbl_FH $long_AH[$i]{"output"};
+      }
+    }
+  } # end of for loop over sequences
 
   return;
 }
