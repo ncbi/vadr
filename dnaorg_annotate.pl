@@ -1267,8 +1267,8 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",  $out_root . ".error.tbl",
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",  $out_root . ".peraccn.errors", 1, "List of errors, one line per sequence");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",  $out_root . ".all.errors",     1, "List of errors, one line per error");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",  $out_root . ".errors.summary", 1, "Summary of all errors");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "sftbl",   $out_root . ".short.ftable",   1, "Feature table output (minimal)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "lftbl",   $out_root . ".long.ftable",    1, "Feature table output (verbose)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "sftbl",   $out_root . ".sqtable",        1, "Sequin feature table output (minimal)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "lftbl",   $out_root . ".long.sqtable",   1, "Sequin feature table output (verbose)");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -8631,7 +8631,7 @@ sub validate_options_are_consistent_with_dnaorg_build {
   my $optfile;
   my $optfile_md5;
   my $optarg;
-  foreach $opt (sort keys (%{$consopts_used_HR})) { 
+  foreach $opt (sort keys (%consopts_used_H)) { 
     if(! opt_IsUsed($opt, $opt_HHR)) { 
       DNAORG_FAIL("ERROR, the $opt option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
     }
@@ -8639,21 +8639,23 @@ sub validate_options_are_consistent_with_dnaorg_build {
     # if it has a consmd5 value, check those are the same (in those 
     # cases we don't require argument is identical (files can have different names
     # as long as their md5s are identical)
-    if($consmd5_HR->{$opt} ne "") { 
+    if($consmd5_H{$opt} ne "") { 
       my $optfile = opt_Get($opt, $opt_HHR);
       if(! -s $optfile) { 
         DNAORG_FAIL("ERROR, the file $optfile specified with the $opt option does not exist.", 1, $FH_HR);
       }          
       $optfile_md5 = md5ChecksumOfFile($optfile, $sub_name, $opt_HHR, $FH_HR);
-      if($consmd5_HR->{$opt} ne $optfile_md5) { 
-        DNAORG_FAIL("ERROR, the file $optfile specified with the $opt option does not appear to be identical to the file used\nwith dnaorg_build.pl. The md5 checksums of the two files differ: dnaorg_build.pl: " . $consmd5_HR->{$opt} . " dnaorg_annotate.pl: " . $optfile_md5, 1, $FH_HR);
+      if($consmd5_H{$opt} ne $optfile_md5) { 
+        DNAORG_FAIL("ERROR, the file $optfile specified with the $opt option does not appear to be identical to the file used\nwith dnaorg_build.pl. The md5 checksums of the two files differ: dnaorg_build.pl: " . $consmd5_H{$opt} . " dnaorg_annotate.pl: " . $optfile_md5, 1, $FH_HR);
       }
     }
     else { 
-      # no md5 value, so we verify that option arguments are identical
-      $optarg = opt_Get($opt, $opt_HHR);
-      if($consopts_HR->{$opt} ne $optarg) { 
-        DNAORG_FAIL("ERROR, the option argument string $optarg specified with the $opt option does not appear to be identical to the argument string used\nwith the $opt option when dnaorg_build.pl was run, which was " . $consopts_HR->{$opt}, 1, $FH_HR);
+      # no md5 value, so we verify that option arguments are identical, if there is an argument
+      if($consopts_used_H{$opt} ne "") { 
+        $optarg = opt_Get($opt, $opt_HHR);
+        if($consopts_used_H{$opt} ne $optarg) { 
+          DNAORG_FAIL("ERROR, the option argument string $optarg specified with the $opt option does not appear to be identical to the argument string used\nwith the $opt option when dnaorg_build.pl was run, which was " . $consopts_used_H{$opt}, 1, $FH_HR);
+        }
       }
     }
   }
@@ -8661,7 +8663,7 @@ sub validate_options_are_consistent_with_dnaorg_build {
   # now check that all options NOT used by dnaorg_build were also not used
   # by dnaorg_annotate
 
-  foreach $opt (sort keys (%{$consopts_notused_HR})) { 
+  foreach $opt (sort keys (%consopts_notused_H)) { 
     if(opt_IsUsed($opt, $opt_HHR)) { 
       DNAORG_FAIL("ERROR, the $opt option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with -c.", 1, $FH_HR);
     }

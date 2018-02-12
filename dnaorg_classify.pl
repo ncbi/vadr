@@ -112,7 +112,7 @@ opt_Add("--errcheck",   "boolean", 0,                        3,    undef,"--loca
 
 $opt_group_desc_H{"4"} = "options for automatically running dnaorg_annotate.pl for classified sequences";
 #     option            type       default               group   requires       incompat          preamble-output                help-output    
-opt_Add("-A",           "string", undef,                    4,    undef,        "--onlybuild",    "annotate after classifying",  "annotate using dnaorg_build.pl build directories in <s> after classifying", \%opt_HH, \@opt_order_A);
+opt_Add("-A",           "string", undef,                    4,    undef,        "--onlybuild",    "annotate after classifying using build dirs in dir <s>",  "annotate using dnaorg_build.pl build directories in <s> after classifying", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -325,6 +325,11 @@ my $ref_fasta_list    = $build_root . ".ref.fa.list"; # fasta names (may include
 my $ref_fasta_seqname; # name of a sequence in the fasta file to classify
 my $ref_list_seqname;  # name of a sequence in the list file to classify (this is what we'll output)
 my %ref_list2fasta_seqname_H = (); # hash mapping a list sequence name (key) to a fasta sequence name (value)
+my $ntlist_file    = undef;
+my $dv_ntlist_file = undef;
+my $sub_fasta_file = undef; 
+my $cur_nseq = 0;
+my $nseq_above_zero = 0; # number of refseq accessions assigned > 0 sequences
 
 # copy the ref list to the build directory if --onlybuild
 if($onlybuild_mode) { 
@@ -341,15 +346,15 @@ my $n_ref = scalar(@ref_list_seqname_A);
 my %buildopts_used_HH = ();
 my $build_dir = undef;
 if($do_annotate) { 
+  $start_secs = outputProgressPrior("Verifying build directories exist (-A)", $progress_w, $log_FH, *STDOUT);
   $annotate_dir =~ s/\/*$//; # remove trailing '/'
   foreach $ref_list_seqname (@ref_list_seqname_A) { 
     $build_dir = $annotate_dir . "/" . $ref_list_seqname;
     %{$buildopts_used_HH{$ref_list_seqname}} = ();
-    printf("VALIDATING $ref_list_seqname ($build_dir)\n");
     validate_build_dir($build_dir, \%{$buildopts_used_HH{$ref_list_seqname}}, \%opt_HH, \%ofile_info_HH);
   }
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
-exit 0;
 
 if($onlybuild_mode) { 
   $start_secs = outputProgressPrior("Creating RefSeq HMM Library", $progress_w, $log_FH, *STDOUT);
@@ -697,7 +702,6 @@ else {
     
   # now we have everything stored in $hit_info_HAA
   # go through and for each sequence create the output
-
   for($i = 0; $i < $n_cls_seqs; $i++) { 
     $cls_list_seqname  = $cls_list_seqname_A[$i];
     $cls_fasta_seqname = $cls_list2fasta_seqname_H{$cls_list_seqname};
@@ -792,12 +796,13 @@ else {
   push(@tmp_output_A, sprintf("%-20s  %10s  %10s\n", "# RefSeq-accession", "num-seqs", "fract-seqs"));
   push(@tmp_output_A, sprintf("%-20s  %10s  %10s\n", "#-------------------", "----------", "----------"));
   foreach my $ref_list_seqname (@ref_list_seqname_A) {
-    my $ntlist_file    = $out_root . ".$ref_list_seqname.ntlist";
-    my $dv_ntlist_file = $out_root . ".$ref_list_seqname.deversioned.ntlist"; # same as $ntlist_file but accessions have been de-versioned
-    my $sub_fasta_file = $out_root . ".$ref_list_seqname.fa";
-    my $cur_nseq = scalar(@{$ntlist_HA{$ref_list_seqname}});
+    $ntlist_file    = $out_root . ".$ref_list_seqname.ntlist";
+    $dv_ntlist_file = $out_root . ".$ref_list_seqname.deversioned.ntlist"; # same as $ntlist_file but accessions have been de-versioned
+    $sub_fasta_file = $out_root . ".$ref_list_seqname.fa";
+    $cur_nseq = scalar(@{$ntlist_HA{$ref_list_seqname}});
     push(@tmp_output_A, sprintf("%-20s  %10d  %10.4f\n", $ref_list_seqname, $cur_nseq, $cur_nseq / $n_cls_seqs));
     if($cur_nseq > 0) { 
+      $nseq_above_zero++;
       open(NTLIST, "> $ntlist_file")  || fileOpenFailure($ntlist_file, $0, $!, "writing", $ofile_info_HH{"FH"});
       if(! $infasta_mode) { # only print ref accession if ! --infasta
         print NTLIST "$ref_list_seqname\n";
@@ -857,8 +862,65 @@ else {
   foreach my $tmp_line (@tmp_output_A) { 
     outputString($log_FH, 1, $tmp_line);
   }
-} # end of 'else' entered if $onlybuild_mode is FALSE
 ##########################################################################################################################################################
+
+#################################################################################
+# If -A, run dnaorg_annotate.pl for each model that had >0 seqs classified to it,
+# if not, 
+#################################################################################
+  if($do_annotate) { 
+    outputString($log_FH, 1, "#\n#\n");
+    $start_secs = outputProgressPrior("Running dnaorg_annotate.pl $nseq_above_zero time(s) to annotate sequences", $progress_w, $log_FH, *STDOUT);
+    outputString($log_FH, 1, "\n");
+    my $annotate_cmd = "";
+    my $annotate_consopts = "";
+    my $cur_out_dir  = "";
+    my $cur_out_root = "";
+    my $ctr = 1;
+    # for each family with >0 
+    foreach my $ref_list_seqname (@ref_list_seqname_A) {
+      $ntlist_file    = $out_root . ".$ref_list_seqname.ntlist";
+      $dv_ntlist_file = $out_root . ".$ref_list_seqname.deversioned.ntlist"; # same as $ntlist_file but accessions have been de-versioned
+      $sub_fasta_file = $out_root . ".$ref_list_seqname.fa";
+      $build_dir = $annotate_dir . "/" . $ref_list_seqname;
+      $cur_out_root = $dir_tail . "-" . $ref_list_seqname;
+      $cur_out_dir  = $dir . "/" . $cur_out_root;
+      $cur_nseq = scalar(@{$ntlist_HA{$ref_list_seqname}});
+      if($cur_nseq > 0) { 
+        $annotate_consopts = build_opts_hash_to_opts_string(\%{$buildopts_used_HH{$ref_list_seqname}});
+        $annotate_cmd = $execs_H{"dnaorg_annotate"} . " " . $annotate_consopts . " --dirbuild $build_dir --dirout $cur_out_dir";
+        if($infasta_mode) { 
+          $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
+        }
+        else { # not fasta mode
+          $annotate_cmd .= " $ntlist_file";
+        }
+        runCommand($annotate_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+        # now copy the sequin feature table to this top level directory:
+        my $src_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.sqtable";
+        my $dest_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.sqtable";
+        runCommand("cp $src_sqtable $dest_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+        addClosedFileToOutputInfo(\%ofile_info_HH, "sqtbl" . $ctr++, $dest_sqtable, 1, "annotation results for $ref_list_seqname");
+      }
+    }
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
+  else { 
+    if($inlist_mode) { 
+      outputString($log_FH, 1, "#\n");
+      outputString($log_FH, 1, "# *** The $out_root.dnaorg_classify.<s>.ntlist files\n");
+      outputString($log_FH, 1, "# *** can be used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'\n");
+      outputString($log_FH, 1, "# *** to create models for RefSeq <s>.\n#\n");
+    }
+    elsif($infasta_mode) { 
+      outputString($log_FH, 1, "#\n");
+      outputString($log_FH, 1, "# *** The $out_root.dnaorg_classify.<s>.deversioned.ntlist files or\n");
+      outputString($log_FH, 1, "# *** the $out_root.dnaorg_classify.<s>.fa files (with the --infasta option) can be\n");
+      outputString($log_FH, 1, "# *** used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'\n");
+      outputString($log_FH, 1, "# *** to create models for RefSeq <s>.\n#\n");
+    }
+  }
+} # end of 'else' entered if $onlybuild_mode is FALSE
 
 ##########
 # Conclude
@@ -872,19 +934,6 @@ foreach my $file2rm (@files2rm_A) {
   runCommand("rm $file2rm", 0, $ofile_info_HH{"FH"});
 }
 
-if($inlist_mode) { 
-  outputString($log_FH, 1, "#\n");
-  outputString($log_FH, 1, "# *** The $out_root.dnaorg_classify.<s>.ntlist files\n");
-  outputString($log_FH, 1, "# *** can be used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'\n");
-  outputString($log_FH, 1, "# *** to create models for RefSeq <s>.\n#\n");
-}
-elsif($infasta_mode) { 
-  outputString($log_FH, 1, "#\n");
-  outputString($log_FH, 1, "# *** The $out_root.dnaorg_classify.<s>.deversioned.ntlist files or\n");
-  outputString($log_FH, 1, "# *** the $out_root.dnaorg_classify.<s>.fa files (with the --infasta option) can be\n");
-  outputString($log_FH, 1, "# *** used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'\n");
-  outputString($log_FH, 1, "# *** to create models for RefSeq <s>.\n#\n");
-}
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
@@ -1076,10 +1125,52 @@ sub validate_build_dir {
       if($consmd5_H{$opt} ne $optfile_md5) { 
         DNAORG_FAIL("ERROR, the file $optfile required to run dnaorg_annotate.pl later for build directory $build_root\ndoes not appear to be identical to the file used with dnaorg_build.pl.\nThe md5 checksums of the two files differ: dnaorg_build.pl: " . $consmd5_H{$opt} . " $optfile: " . $optfile_md5, 1, $FH_HR);
       }
+      # update the $buildopts_used_HR to use the local file
+      $buildopts_used_HR->{$opt} = $optfile;
     }
   }
           
   return;
+}
+
+#################################################################
+# Subroutine: build_opts_hash_to_opts_string()
+# Incept:     EPN, Mon Feb 12 15:10:19 2018
+#
+# Purpose:   Given a hash of options, Validate that a build directory exists and has the files
+#            that we need to annotate with. This actually can't check
+#            that everything a downstream dnaorg_annotate.pl run needs
+#            in a build dir (e.g. number and names of models) is kosher, 
+#            but it can check for a few things that are required:
+#            directory exists and contains a .consopts file.
+#
+# Arguments:
+#  $buildopts_used_HR: REF to build options used when creating this build directory 
+#                      with dnaorg_build.pl, key is option (e.g. --matpept), value is
+#                      option argument, "" for none.
+# 
+# Returns:  string of options
+# 
+# Dies: Never
+#       
+#################################################################
+sub build_opts_hash_to_opts_string { 
+  my $sub_name  = "build_opts_hash_to_opts_string";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  
+  my ($buildopts_used_HR) = (@_);
+
+  my $ret_str = "";
+  foreach my $opt (sort keys (%{$buildopts_used_HR})) { 
+    if($ret_str ne "") { $ret_str .= " "; }
+    $ret_str .= $opt;
+    if($buildopts_used_HR->{$opt} ne "") { 
+      $ret_str .= " " . $buildopts_used_HR->{$opt};
+    }
+  }
+
+  return $ret_str;
 }
 
 #################################################################################
