@@ -136,6 +136,7 @@
 #   parseEdirectMatPeptideFile()
 #   parseListFile()
 #   parseSpecStartFile()
+#   parseConsOptsFile()
 #
 # Subroutines related to parsing NCBI coordinate strings:
 #   getStrandStats()
@@ -3128,6 +3129,7 @@ sub helperBreakdownFac {
 #   parseEdirectMatPeptideFile()
 #   parseListFile()
 #   parseSpecStartFile()
+#   parseConsOptsFile()
 #
 #################################################################
 # Subroutine:  parseMatPeptSpecFile()
@@ -3935,6 +3937,95 @@ sub parseSpecStartFile {
     DNAORG_FAIL("ERROR in $sub_name, no CDS start codon specifications read in matpept input file $infile", 1, $FH_HR); 
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine: parseConsOptsFile()
+# Incept:     EPN, Mon Feb 12 12:51:35 2018
+#
+# Purpose:   Parse the special .consopts file created by 
+#            dnaorg_build.pl, which lists options that need
+#            to be consistently used between dnaorg_build.pl and
+#            dnaorg_annotate.pl.
+#
+# Arguments:
+#  $consopts_file:       name of the dnaorg_build consopts file
+#  $consopts_used_HR:    REF to hash of options in the consopts file
+#                        key is option (e.g. --matpept), value is
+#                        option argument, "" for none FILLED HERE 
+#  $consopts_notused_HR: REF to options not used in the consopts file
+#                        that could have been used, key is option,
+#                        value is always 1.
+#  $consmd5_HR:          REF to hash of MD5 values for files in the 
+#                        consopts file, key is option (e.g. --matpept)
+#                        that was used in dnaorg_build.pl, value is
+#                        MD5 checksum value for the file associated 
+#                        with the option, "" if option has no file associated
+#                        with it. 
+#                        FILLED HERE 
+#  $FH_HR:               REF to hash of file handles
+# 
+# Returns:  void
+# 
+# Dies: If $consopts_file doesn't exist, or we can't parse it
+#       because it includes an option that we don't expect
+#       or is in an invalid format.
+#
+#################################################################
+sub parseConsOptsFile { 
+  my $sub_name = "parseConsOptsFile";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($consopts_file, $consopts_used_HR, $consopts_notused_HR, $consmd5_HR, $FH_HR) = @_;
+
+  # read the consopts file
+  if(! -e $consopts_file) { 
+    DNAORG_FAIL("ERROR in $sub_name, consopts file $consopts_file does not exist.\nThis file should have been created by dnaorg_build.pl.\nYou probably need to rerun dnaorg_build.pl if it was run before May 31, 2016.", 1, $FH_HR);
+  }
+  open(IN, $consopts_file) || fileOpenFailure($consopts_file, $sub_name, $!, "reading", $FH_HR);
+  my $line_ct = 0;
+
+  # initialize the hashes
+  %{$consopts_used_HR}    = (); 
+  %{$consopts_notused_HR} = (); 
+  %{$consmd5_HR}          = ();
+
+  while(my $line = <IN>) { 
+    chomp $line;
+    $line_ct++;
+    if(($line eq "none") && ($line_ct == 1)) { 
+      ; # this is fine, none of the options that need to be consistent were set by dnaorg_build.pl
+    }
+    elsif($line =~ /^\-c$/) { 
+      $consopts_used_HR->{"-c"} = "";
+      $consmd5_HR->{"-c"}  = "";
+    }
+    elsif($line =~ /^\-\-nomatpept$/) { 
+      $consopts_used_HR->{"--nomatpept"} = "";
+      $consmd5_HR->{"--nomatpept"}  = "";
+    }
+    elsif($line =~ /^\-\-matpept\s+(\S+)\s+(\S+)$/) { # first string is file name, second is md5 checksum (obtained with 'md5sum' executable)
+      ($consopts_used_HR->{"--matpept"}, $consmd5_HR->{"--matpept"}) = ($1, $2);
+    }
+    elsif($line =~ /^\-\-xfeat\s+(\S+)$/) { # first string is file name, second is argument
+      $consopts_used_HR->{"--xfeat"} = $1;
+    }
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, unable to parse line from consopts file $consopts_file:\n$line\n", 1, $FH_HR);
+    }
+  }
+  close(IN);
+
+  # fill %{$consopts_notused_HR}
+  foreach my $opt ("-c", "--nomatpept", "--matpept", "--xfeat") { 
+    if(! exists $consopts_used_HR->{$opt}) { 
+      $consopts_notused_HR->{$opt} = 1;
+    }
+  }
+
+  # if we get here, all options were recognized
   return;
 }
 
