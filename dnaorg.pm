@@ -2222,10 +2222,6 @@ sub compareTwoOverlapOrAdjacencyIndexStrings {
     $diff_AR->[$i] = 0;
   }
 
-  # HERE HERE HERE, just set diff_AR->[$el] to 0 if start_AR->[$i] is equal to -1 
-  # or have another function that takes start_AR and the diff_AR and sets the diff_AR elemetns to 0 if 
-  # start_AR is -1 
-
   foreach $el (@str1_A) { 
     if(! verify_integer($el)) { 
       DNAORG_FAIL("ERROR in $sub_name, element $el in $str1 is not an integer", 1, $FH_HR);
