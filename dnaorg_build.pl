@@ -286,7 +286,11 @@ foreach $cmd (@early_cmd_A) {
 my @cds2pmatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of primary matpept indices that comprise this CDS
 my @cds2amatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of all     matpept indices that comprise this CDS
 if($do_matpept) { 
-  parseMatPeptSpecFile(opt_Get("--matpept", \%opt_HH), \@cds2pmatpept_AA, \@cds2amatpept_AA, $ofile_info_HH{"FH"});
+  my $matpept_optfile = opt_Get("--matpept", \%opt_HH);
+  my $dest_matpept_optfile = $out_root . ".matpept";
+  parseMatPeptSpecFile($matpept_optfile, \@cds2pmatpept_AA, \@cds2amatpept_AA, $ofile_info_HH{"FH"});
+  # copy the matpept file to a special file name
+  runCommand("cp $matpept_optfile $dest_matpept_optfile", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
 }
 
 ###################################################
@@ -545,7 +549,7 @@ sub output_consopts_file {
     $printed_any_options = 1;
   }
   if(opt_IsUsed("--xfeat", $opt_HHR)) { 
-    printf OUT ("--xfeat %s\n", opt_Get("--xfeat", $opt_HHR);
+    printf OUT ("--xfeat %s\n", opt_Get("--xfeat", $opt_HHR));
     $printed_any_options = 1;
   }
   

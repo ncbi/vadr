@@ -247,39 +247,43 @@ $opt_group_desc_H{"2"} = "options for alternative modes";
 opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--skipedirect,--skipfetch",   "single cmdline argument is a fasta file of sequences, not a list of accessions", "single cmdline argument is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
 opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"3"} = "options that modify the tabular output file";
-#       option               type   default                group  requires incompat preamble-output                                               help-output    
-opt_Add("--tblfirst",    "boolean", 0,                      3,    undef,   undef,   "put first accession first on each .tbl page",               "include annotation for first accession on each page of .tbl output file", \%opt_HH, \@opt_order_A);
-opt_Add("--tblnocomp",   "boolean", 0,                      3,    undef,   undef,   "do not compare annotations to existing GenBank annotation", "do not include information comparing predicted annotations to existing GenBank annotations", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{"3"} = "options for modifying which errors are reported";
+#       option               type   default                group  requires incompat preamble-output                                  help-output    
+opt_Add("--allolp",     "boolean", 0,                       3,    undef,   undef,   "report all olp errors, do not skip due to nop", "report all olp errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
+opt_Add("--alladj",     "boolean", 0,                       3,    undef,   undef,   "report all adj errors, do not skip due to nop", "report all aja/ajb errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"4"} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
 opt_Add("--doalign",    "boolean", 0,                       4,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
 opt_Add("--checkftable","boolean", 0,                       4,    undef,   undef,   "exhaustively check feature table rules",   "exhastively check feature table error exception rules", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"5"} = "optional output files";
+$opt_group_desc_H{"5"} = "options that modify the tabular output file";
+#       option               type   default                group  requires incompat preamble-output                                               help-output    
+opt_Add("--tblfirst",    "boolean", 0,                      5,    undef,   undef,   "put first accession first on each .tbl page",               "include annotation for first accession on each page of .tbl output file", \%opt_HH, \@opt_order_A);
+opt_Add("--tblnocomp",   "boolean", 0,                      5,    undef,   undef,   "do not compare annotations to existing GenBank annotation", "do not include information comparing predicted annotations to existing GenBank annotations", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"6"} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                        5,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
-opt_Add("--ftrinfo",    "boolean", 0,                        5,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--seqinfo",    "boolean", 0,                        5,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
-opt_Add("--errinfo",    "boolean", 0,                        5,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
+opt_Add("--mdlinfo",    "boolean", 0,                        6,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--ftrinfo",    "boolean", 0,                        6,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--seqinfo",    "boolean", 0,                        6,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
+opt_Add("--errinfo",    "boolean", 0,                        6,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"6"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
+$opt_group_desc_H{"7"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
 #     option               type       default               group   requires    incompat                    preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       6,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                       6,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                       6,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                       6,"--skipscan",  undef,                      "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipedirect",   "boolean", 0,                       7,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                       7,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",      "boolean", 0,                       7,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skiptranslate", "boolean", 0,                       7,"--skipscan",  undef,                      "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
-
-$opt_group_desc_H{"7"} = "TEMPORARY options for the alternative method of identifying origin sequences";
+$opt_group_desc_H{"8"} = "TEMPORARY options for the alternative method of identifying origin sequences";
 #     option               type       default               group   requires                                   incompat     preamble-output                                                         help-output    
-opt_Add("--aorgmodel",     "string",  undef,                   7,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgstart",     "integer", 0,                       7,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
-opt_Add("--aorgoffset",    "integer", 0,                       7,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
-opt_Add("--aorglen",       "integer", 0,                       7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgethresh",   "real",    1.0,                     7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgppthresh",  "real",    0.6,                     7,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgmodel",     "string",  undef,                   8,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgstart",     "integer", 0,                       8,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
+opt_Add("--aorgoffset",    "integer", 0,                       8,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
+opt_Add("--aorglen",       "integer", 0,                       8,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgethresh",   "real",    1.0,                     8,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgppthresh",  "real",    0.6,                     8,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -316,12 +320,15 @@ my $options_okay =
 # options for alternative modes
                 'infasta'      => \$GetOptions_H{"--infasta"},
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
-# options that affect tabular output file
-                'tblfirst'     => \$GetOptions_H{"--tblfirst"},
-                'tblnocomp'    => \$GetOptions_H{"--tblnocomp"},
+# options for modifying which errors are reported
+                'allolp'       => \$GetOptions_H{"--allolp"},
+                'alladj'       => \$GetOptions_H{"--alladj"},
 # options for skipping/adding optional stages
                 'doalign'      => \$GetOptions_H{"--doalign"},
                 'checkftable'  => \$GetOptions_H{"--checkftable"},
+# options that affect tabular output file
+                'tblfirst'     => \$GetOptions_H{"--tblfirst"},
+                'tblnocomp'    => \$GetOptions_H{"--tblnocomp"},
 # optional output files
                 'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"}, 
@@ -1267,8 +1274,8 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",  $out_root . ".error.tbl",
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",  $out_root . ".peraccn.errors", 1, "List of errors, one line per sequence");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",  $out_root . ".all.errors",     1, "List of errors, one line per error");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",  $out_root . ".errors.summary", 1, "Summary of all errors");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "sftbl",   $out_root . ".short.ftable",   1, "Feature table output (minimal)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "lftbl",   $out_root . ".long.ftable",    1, "Feature table output (verbose)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "sftbl",   $out_root . ".sqtable",        1, "Sequin feature table output (minimal)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "lftbl",   $out_root . ".long.sqtable",   1, "Sequin feature table output (verbose)");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -3025,6 +3032,9 @@ sub results_calculate_overlaps_and_adjacencies {
   my $ftr_idx; # counter over features
   my $mdl_idx; # counter over models
   my $seq_idx; # counter over sequences
+
+  my $do_all_olp = opt_Get("--allolp", $opt_HHR);
+  my $do_all_adj = opt_Get("--allolp", $opt_HHR);
   
   # for each sequence, fill a temporary array with starts, stops and strands
   # then send it to overlapsAndAdjacenciesHelper() to get the adjacency and
@@ -3081,51 +3091,75 @@ sub results_calculate_overlaps_and_adjacencies {
       $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_olp_str"} = $out_olp_str_A[$mdl_idx];
 
       # construct ajb err message
-      if($idx_ajb_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx]) { 
-        my @diff_A = ();
-        compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx], 
-                                                 $idx_ajb_str_A[$mdl_idx], 
-                                                 $nmdl-1,
-                                                 \@diff_A, $FH_HR);
-        for(my $i = 0; $i < $nmdl; $i++) { 
-          if($diff_A[$i] != 0) { 
-            $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
-                                                    ($ftr_ajb_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
-                                                    ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
-                                                    $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
+      if(($start_A[$mdl_idx] != -1) || # this model has a prediction (does not have a 'nop' error)
+         ($do_all_adj)) {              # --alladj option used, report all aja/ajb errors for models without predictions (with 'nop')
+        if($idx_ajb_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx]) { 
+          my @diff_A = ();
+          compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx], 
+                                                   $idx_ajb_str_A[$mdl_idx], 
+                                                   $nmdl-1,
+                                                   \@diff_A, $FH_HR);
+          if(! $do_all_adj) { # --alladj option not used, so we ignore any aja/ajb errors with models without predictions (with 'nop' errors)
+            for(my $a = 0; $a < $nmdl; $a++) { 
+              if($start_A[$a] == -1) { $diff_A[$a] = 0; } # now, in next for($i) loop diff values for model $i where $i has no prediction won't be printed
+            }
+          }
+          for(my $i = 0; $i < $nmdl; $i++) { 
+            if($diff_A[$i] != 0) { 
+              $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
+                                                      ($ftr_ajb_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
+                                                      ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
+                                                      $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
+            }
           }
         }
       }
       # construct aja err message
-      if($idx_aja_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_aja_str"}[$mdl_idx]) { 
-        my @diff_A = ();
-        compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_aja_str"}[$mdl_idx], 
+      if(($start_A[$mdl_idx] != -1) || # this model has a prediction (does not have a 'nop' error)
+         ($do_all_adj)) {              # --alladj option used, report all aja/ajb errors for models without predictions (with 'nop')
+        if($idx_aja_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_aja_str"}[$mdl_idx]) { 
+          my @diff_A = ();
+          compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_aja_str"}[$mdl_idx], 
                                                  $idx_aja_str_A[$mdl_idx], 
                                                  $nmdl-1,
                                                  \@diff_A, $FH_HR);
-        for(my $i = 0; $i < $nmdl; $i++) { 
-          if($diff_A[$i] != 0) { 
-            $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
-                                                    ($ftr_aja_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
-                                                    ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
-                                                    $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
+          if(! $do_all_adj) { # --alladj option not used, so we ignore any aja/ajb errors with models without predictions (with 'nop' errors)
+            for(my $a = 0; $a < $nmdl; $a++) { 
+              if($start_A[$a] == -1) { $diff_A[$a] = 0; } # now, in next for($i) loop diff values for model $i where $i has no prediction won't be printed
+            }
+          }
+          for(my $i = 0; $i < $nmdl; $i++) { 
+            if($diff_A[$i] != 0) { 
+              $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
+                                                      ($ftr_aja_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
+                                                      ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
+                                                      $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
+            }
           }
         }
       }
 
       # construct olp err message
-      if($idx_olp_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_olp_str"}[$mdl_idx]) { 
-        my @diff_A = ();
-        compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_olp_str"}[$mdl_idx], 
-                                                 $idx_olp_str_A[$mdl_idx], 
-                                                 $nmdl-1,
-                                                 \@diff_A, $FH_HR);
-        for(my $i = 0; $i < $nmdl; $i++) { 
-          if($diff_A[$i] != 0) { 
+      if(($start_A[$mdl_idx] != -1) || # this model has a prediction (does not have a 'nop' error)
+         ($do_all_olp)) {              # --allolp option used, report all olp errors for models without predictions (with 'nop')
+        if($idx_olp_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_olp_str"}[$mdl_idx]) { 
+          my @diff_A = ();
+          compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_olp_str"}[$mdl_idx], 
+                                                   $idx_olp_str_A[$mdl_idx], 
+                                                   $nmdl-1,
+                                                   \@diff_A, $FH_HR);
+          if(! $do_all_olp) { # --allolp option not used, so we ignore any olp errors with models without predictions (with 'nop' errors)
+            for(my $a = 0; $a < $nmdl; $a++) { 
+              if($start_A[$a] == -1) { $diff_A[$a] = 0; } # now, in next for($i) loop diff values for model $i where $i has no prediction won't be printed
+            }
+          }
+          for(my $i = 0; $i < $nmdl; $i++) { 
+            if($diff_A[$i] != 0) { 
             $ftr_olp_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
                                                     ($ftr_olp_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
                                                     ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
                                                     $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
+            }
           }
         }
       }
@@ -5370,7 +5404,7 @@ sub output_tbl_get_headings {
           $tok5 = sprintf(" %10s", "----------");
           output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
           if($do_model_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of %s this %s is adjacent with $expl_str"), $FH_HR);
+            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of mat_peptides this mat_peptide is adjacent with $expl_str"), $FH_HR);
             output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
             output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);      
           }
@@ -8619,85 +8653,54 @@ sub validate_options_are_consistent_with_dnaorg_build {
 
   my ($consopts_file, $opt_HHR, $FH_HR) = @_;
 
-  # read the consopts file
-  if(! -e $consopts_file) { 
-    DNAORG_FAIL("ERROR in $sub_name, consopts file $consopts_file does not exist.\nThis file should have been created by dnaorg_build.pl.\nYou probably need to rerun dnaorg_build.pl if it was run before May 31, 2016.", 1, $FH_HR);
-  }
-  open(IN, $consopts_file) || fileOpenFailure($consopts_file, $sub_name, $!, "reading", $FH_HR);
-  my $line_ct = 0;
-  my $no_build_c_opt         = 1; # changed to 0 below if -c was used by dnaorg_build.pl
-  my $no_build_nomatpept_opt = 1; # changed to 0 below if --nomatpept was used by dnaorg_build.pl
-  my $no_build_matpept_opt   = 1; # changed to 0 below if --matpept was used by dnaorg_build.pl
-  my $no_build_xfeat_opt     = 1; # changed to 0 below if --xfeat was used by dnaorg_build.pl
 
-  while(my $line = <IN>) { 
-    chomp $line;
-    $line_ct++;
-    if(($line eq "none") && ($line_ct == 1)) { 
-      ; # this is fine, none of the options that need to be consistent were set by dnaorg_build.pl
+  # parse the consopts file
+  my %consopts_used_H    = (); # key option used in dnaorg_buid.pl from consopts file, value argument used in dnaorg_build.pl
+  my %consopts_notused_H = (); # key option in consopts file, value argument used in dnaorg_build.pl
+  my %consmd5_H  = ();         # key option used in dnaorg_build.pl in consopts file, md5 checksum value of the file name argument used in dnaorg_build.pl
+  parseConsOptsFile($consopts_file, \%consopts_used_H, \%consopts_notused_H, \%consmd5_H, $FH_HR);
+
+  # make sure options are consistent with what we read in the consopts file
+  my $opt;
+  my $optfile;
+  my $optfile_md5;
+  my $optarg;
+  foreach $opt (sort keys (%consopts_used_H)) { 
+    if(! opt_IsUsed($opt, $opt_HHR)) { 
+      DNAORG_FAIL("ERROR, the $opt option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
     }
-    elsif($line =~ /^\-c$/) { 
-      $no_build_c_opt = 0;
-      if((! defined (opt_Get("-c", $opt_HHR))) || (opt_Get("-c", $opt_HHR) != 1)) { 
-        DNAORG_FAIL("ERROR, the -c option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
-      }
-    }
-    elsif($line =~ /^\-\-nomatpept$/) { # first string is file name, second is md5 checksum (obtained with 'md5sum' executable)
-      $no_build_nomatpept_opt = 0;
-      if((! defined (opt_Get("--nomatpept", $opt_HHR))) || (opt_Get("--nomatpept", $opt_HHR) != 1)) { 
-        DNAORG_FAIL("ERROR, the --nomatpept option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
-      }
-    }
-    elsif($line =~ /^\-\-matpept\s+\S+\s+(\S+)$/) { # first string is file name, second is md5 checksum (obtained with 'md5sum' executable)
-      my $build_matpept_cksum = $1;
-      $no_build_matpept_opt = 0;
-      if(! opt_IsUsed("--matpept", $opt_HHR)) { 
-        DNAORG_FAIL("ERROR, the --matpept option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
-      }
-      else { # make sure checksum matches
-        my $annotate_matpept_file = opt_Get("--matpept", $opt_HHR);
-        if(! -s $annotate_matpept_file) { 
-          DNAORG_FAIL("ERROR, the file $annotate_matpept_file specified with the --matpept option does not exist.", 1, $FH_HR);
-        }          
-        my $annotate_matpept_cksum = md5ChecksumOfFile($annotate_matpept_file, $sub_name, $opt_HHR, $FH_HR);
-        if($build_matpept_cksum ne $annotate_matpept_cksum) { 
-          DNAORG_FAIL("ERROR, the file $annotate_matpept_file specified with the --matpept file does not appear to be identical to the file used\nwith dnaorg_build.pl. The md5 checksums of the two files differ: dnaorg_build.pl: $build_matpept_cksum, dnaorg_annotate.pl: $annotate_matpept_cksum", 1, $FH_HR);
-        }
-      }
-    }
-    elsif($line =~ /^\-\-xfeat\s+(\S+)$/) { # first string is file name, second is argument
-      my $build_xfeat_str = $1;
-      $no_build_xfeat_opt = 0;
-      if(! opt_IsUsed("--xfeat", $opt_HHR)) { 
-        DNAORG_FAIL("ERROR, the --xfeat option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
-      }
-      else { # make sure argument matches
-        my $xfeat_str = opt_Get("--xfeat", $opt_HHR);
-        if($xfeat_str ne $build_xfeat_str) { 
-          DNAORG_FAIL("ERROR, the option argument string $xfeat_str specified with the --xfeat option does not appear to be identical to the argument string used\nwith the --xfeat option when dnaorg_build.pl was run, which was $build_xfeat_str", 1, $FH_HR);
-        }
+    # option was used in both dnaorg_build.pl and dnaorg_annotate.pl, 
+    # if it has a consmd5 value, check those are the same (in those 
+    # cases we don't require argument is identical (files can have different names
+    # as long as their md5s are identical)
+    if($consmd5_H{$opt} ne "") { 
+      my $optfile = opt_Get($opt, $opt_HHR);
+      if(! -s $optfile) { 
+        DNAORG_FAIL("ERROR, the file $optfile specified with the $opt option does not exist.", 1, $FH_HR);
+      }          
+      $optfile_md5 = md5ChecksumOfFile($optfile, $sub_name, $opt_HHR, $FH_HR);
+      if($consmd5_H{$opt} ne $optfile_md5) { 
+        DNAORG_FAIL("ERROR, the file $optfile specified with the $opt option does not appear to be identical to the file used\nwith dnaorg_build.pl. The md5 checksums of the two files differ: dnaorg_build.pl: " . $consmd5_H{$opt} . " dnaorg_annotate.pl: " . $optfile_md5, 1, $FH_HR);
       }
     }
     else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse line from consopts file $consopts_file:\n$line\n", 1, $FH_HR);
+      # no md5 value, so we verify that option arguments are identical, if there is an argument
+      if($consopts_used_H{$opt} ne "") { 
+        $optarg = opt_Get($opt, $opt_HHR);
+        if($consopts_used_H{$opt} ne $optarg) { 
+          DNAORG_FAIL("ERROR, the option argument string $optarg specified with the $opt option does not appear to be identical to the argument string used\nwith the $opt option when dnaorg_build.pl was run, which was " . $consopts_used_H{$opt}, 1, $FH_HR);
+        }
+      }
     }
   }
-  close(IN);
+  # all options that were used by dnaorg_build were also used by dnaorg_annotate,
+  # now check that all options NOT used by dnaorg_build were also not used
+  # by dnaorg_annotate
 
-  # now for any options that were not read from $consopts_file, make sure they are also
-  # not enabled here for dnaorg_annotate.pl
-  if($no_build_c_opt && (opt_Get("-c", $opt_HHR))) { 
-    DNAORG_FAIL("ERROR, the -c option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with -c.", 1, $FH_HR);
-  }    
-  if($no_build_nomatpept_opt && (opt_Get("--nomatpept", $opt_HHR))) { 
-    DNAORG_FAIL("ERROR, the --nomatpept option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with --nomatpept.", 1, $FH_HR);
-  }    
-  if($no_build_matpept_opt && (opt_IsUsed("--matpept", $opt_HHR))) {  
-    DNAORG_FAIL("ERROR, the --matpept option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with --matpept.", 1, $FH_HR);
-  }    
-  if($no_build_xfeat_opt && (opt_IsUsed("--xfeat", $opt_HHR))) { 
-    my $xfeat_str = opt_Get("--xfeat", $opt_HHR);
-    DNAORG_FAIL("ERROR, the --xfeat option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with --xfeat $xfeat_str.", 1, $FH_HR);
+  foreach $opt (sort keys (%consopts_notused_H)) { 
+    if(opt_IsUsed($opt, $opt_HHR)) { 
+      DNAORG_FAIL("ERROR, the $opt option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with -c.", 1, $FH_HR);
+    }
   }    
 
   # if we get here, all options are consistent

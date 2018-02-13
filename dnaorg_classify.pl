@@ -8,14 +8,14 @@
 
 use strict;
 use warnings;
-use diagnostics;
+#use diagnostics;
 use Getopt::Long;
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
-use Data::Dumper;
-use File::Slurp;
+#use Data::Dumper;
+#use File::Slurp;
 
 require "dnaorg.pm"; 
 require "epn-options.pm";
@@ -57,6 +57,7 @@ if(! (-d $dnaorgdir)) {
 my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
 my $esl_exec_dir      = $dnaorgdir . "/infernal-1.1.2/easel/miniapps/";
 my $bioeasel_exec_dir = $dnaorgdir . "/Bio-Easel/scripts/";
+my $dnaorg_exec_dir   = $dnaorgdir . "/dnaorg_scripts/";
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -104,11 +105,15 @@ opt_Add("-f",           "boolean", 0,                        3,    undef, undef,
 opt_Add("-v",           "boolean", 0,                        3,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        3,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--nkb",        "integer", 5,                        3,    undef,"--local",   "number of KB of sequence for each nhmmscan farm job",         "set target number of KB of sequences for each nhmscan farm job to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--maxnjobs",   "integer", 500,                      1,    undef,"--local",   "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for nhmmscan jobs on farm",                 "allow <n> wall-clock minutes for nhmmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--maxnjobs",   "integer", 500,                      3,    undef,"--local",   "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 500,                      3,    undef,"--local",   "allow <n> minutes for nhmmscan jobs on farm",                 "allow <n> wall-clock minutes for nhmmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        3,    undef, undef,      "run nhmmscan locally instead of on farm",                     "run nhmmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
-opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
+opt_Add("--errcheck",   "boolean", 0,                        3,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{"4"} = "options for automatically running dnaorg_annotate.pl for classified sequences";
+#     option            type       default               group   requires       incompat          preamble-output                help-output    
+opt_Add("-A",           "string", undef,                    4,    undef,        "--onlybuild",    "annotate after classifying using build dirs in dir <s>",  "annotate using dnaorg_build.pl build directories in <s> after classifying", \%opt_HH, \@opt_order_A);
+opt_Add("--optsA",      "string", undef,                    4,    "-A",         "--onlybuild",    "read dnaorg_annotate.pl options from file <s>",           "read additional dnaorg_annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -138,6 +143,8 @@ my $options_okay =
                 'wait=s'       => \$GetOptions_H{"--wait"},
                 'local'        => \$GetOptions_H{"--local"}, 
                 'errcheck'     => \$GetOptions_H{"--errcheck"},  
+                'A=s'          => \$GetOptions_H{"-A"},
+                'optsA=s'      => \$GetOptions_H{"--optsA"},
                 );
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
@@ -179,6 +186,14 @@ my $inlist_mode    = opt_IsUsed("--inlist", \%opt_HH);
 my $infasta_mode   = opt_IsUsed("--infasta", \%opt_HH);
 if(($onlybuild_mode + $inlist_mode + $infasta_mode) != 1) { 
   die "ERROR exactly one of the options --onlybuild, --inlist, --infasta must be used.";
+}
+
+# determine if we are going to annotate after classifying
+my $do_annotate = opt_IsUsed("-A", \%opt_HH);
+my $annotate_dir = ($do_annotate) ? opt_Get("-A", \%opt_HH) : undef;
+my $annotate_non_cons_opts = ""; # filled below, after output file hashes set up, if --optsA used
+if((defined $annotate_dir) && (! -d $annotate_dir)) { 
+  die "ERROR with -A <s>, directory <s> must exist";
 }
 
 #############################
@@ -281,6 +296,9 @@ $execs_H{"esl-reformat"} = $esl_exec_dir   . "esl-reformat";
 $execs_H{"esl-seqstat"}  = $esl_exec_dir   . "esl-seqstat";
 $execs_H{"esl-sfetch"}   = $esl_exec_dir   . "esl-sfetch";
 $execs_H{"esl-ssplit"}   = $bioeasel_exec_dir . "esl-ssplit.pl";
+if($do_annotate) { 
+  $execs_H{"dnaorg_annotate"} = $dnaorg_exec_dir . "dnaorg_annotate.pl";
+}
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 #################################################################################
@@ -310,6 +328,11 @@ my $ref_fasta_list    = $build_root . ".ref.fa.list"; # fasta names (may include
 my $ref_fasta_seqname; # name of a sequence in the fasta file to classify
 my $ref_list_seqname;  # name of a sequence in the list file to classify (this is what we'll output)
 my %ref_list2fasta_seqname_H = (); # hash mapping a list sequence name (key) to a fasta sequence name (value)
+my $ntlist_file    = undef;
+my $dv_ntlist_file = undef;
+my $sub_fasta_file = undef; 
+my $cur_nseq = 0;
+my $nseq_above_zero = 0; # number of refseq accessions assigned > 0 sequences
 
 # copy the ref list to the build directory if --onlybuild
 if($onlybuild_mode) { 
@@ -320,6 +343,21 @@ if($onlybuild_mode) {
 fileLinesToArray($ref_list, 1, \@ref_list_seqname_A, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 my $n_ref = scalar(@ref_list_seqname_A);
+
+# if $do_annotate, we check here to make sure that all dnaorg_build.pl output 
+# directories we may need to annotate exist
+my %buildopts_used_HH = ();
+my $build_dir = undef;
+if($do_annotate) { 
+  $start_secs = outputProgressPrior("Verifying build directories exist (-A)", $progress_w, $log_FH, *STDOUT);
+  $annotate_dir =~ s/\/*$//; # remove trailing '/'
+  foreach $ref_list_seqname (@ref_list_seqname_A) { 
+    $build_dir = $annotate_dir . "/" . $ref_list_seqname;
+    %{$buildopts_used_HH{$ref_list_seqname}} = ();
+    validate_build_dir($build_dir, \%{$buildopts_used_HH{$ref_list_seqname}}, \%opt_HH, \%ofile_info_HH);
+  }
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
 
 if($onlybuild_mode) { 
   $start_secs = outputProgressPrior("Creating RefSeq HMM Library", $progress_w, $log_FH, *STDOUT);
@@ -390,6 +428,15 @@ else {
   my $cls_fasta_seqlen;  # length of $cls_fasta_seqname
   my $cls_list_seqname;  # name of a sequence in the list file to classify (this is what we'll output)
   my %cls_list2fasta_seqname_H = (); # hash mapping a list sequence name (key) to a fasta sequence name (value)
+
+  # if we're annotating, read the dnaorg_annotate.pl options file, if nec
+  if(($do_annotate) && (opt_IsUsed("--optsA", \%opt_HH))) { 
+    $start_secs = outputProgressPrior("Parsing additional dnaorg_annotate.pl options (--optsA)", $progress_w, $log_FH, *STDOUT);
+    my $failure_str   = "that option will automatically be set,\nas required, to be consistent with the relevant dnaorg_build.pl command used previously.";
+    my $auto_add_opts = "--dirout,--dirbuild,--infasta,--refaccn";
+    $annotate_non_cons_opts = parseNonConsOptsFile(opt_Get("--optsA", \%opt_HH), "--optsA", $auto_add_opts, $failure_str, $ofile_info_HH{"FH"});
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
 
   if($inlist_mode) { 
     $start_secs = outputProgressPrior("Fetching sequences to a fasta file", $progress_w, $log_FH, *STDOUT);
@@ -667,7 +714,6 @@ else {
     
   # now we have everything stored in $hit_info_HAA
   # go through and for each sequence create the output
-
   for($i = 0; $i < $n_cls_seqs; $i++) { 
     $cls_list_seqname  = $cls_list_seqname_A[$i];
     $cls_fasta_seqname = $cls_list2fasta_seqname_H{$cls_list_seqname};
@@ -762,12 +808,13 @@ else {
   push(@tmp_output_A, sprintf("%-20s  %10s  %10s\n", "# RefSeq-accession", "num-seqs", "fract-seqs"));
   push(@tmp_output_A, sprintf("%-20s  %10s  %10s\n", "#-------------------", "----------", "----------"));
   foreach my $ref_list_seqname (@ref_list_seqname_A) {
-    my $ntlist_file    = $out_root . ".$ref_list_seqname.ntlist";
-    my $dv_ntlist_file = $out_root . ".$ref_list_seqname.deversioned.ntlist"; # same as $ntlist_file but accessions have been de-versioned
-    my $sub_fasta_file = $out_root . ".$ref_list_seqname.fa";
-    my $cur_nseq = scalar(@{$ntlist_HA{$ref_list_seqname}});
+    $ntlist_file    = $out_root . ".$ref_list_seqname.ntlist";
+    $dv_ntlist_file = $out_root . ".$ref_list_seqname.deversioned.ntlist"; # same as $ntlist_file but accessions have been de-versioned
+    $sub_fasta_file = $out_root . ".$ref_list_seqname.fa";
+    $cur_nseq = scalar(@{$ntlist_HA{$ref_list_seqname}});
     push(@tmp_output_A, sprintf("%-20s  %10d  %10.4f\n", $ref_list_seqname, $cur_nseq, $cur_nseq / $n_cls_seqs));
     if($cur_nseq > 0) { 
+      $nseq_above_zero++;
       open(NTLIST, "> $ntlist_file")  || fileOpenFailure($ntlist_file, $0, $!, "writing", $ofile_info_HH{"FH"});
       if(! $infasta_mode) { # only print ref accession if ! --infasta
         print NTLIST "$ref_list_seqname\n";
@@ -827,8 +874,66 @@ else {
   foreach my $tmp_line (@tmp_output_A) { 
     outputString($log_FH, 1, $tmp_line);
   }
-} # end of 'else' entered if $onlybuild_mode is FALSE
 ##########################################################################################################################################################
+
+#################################################################################
+# If -A, run dnaorg_annotate.pl for each model that had >0 seqs classified to it,
+# if not, 
+#################################################################################
+  if($do_annotate) { 
+    outputString($log_FH, 1, "#\n#\n");
+    $start_secs = outputProgressPrior("Running dnaorg_annotate.pl $nseq_above_zero time(s) to annotate sequences", $progress_w, $log_FH, *STDOUT);
+    outputString($log_FH, 1, "\n");
+    my $annotate_cmd = "";
+    my $annotate_cons_opts = "";
+    my $cur_out_dir  = "";
+    my $cur_out_root = "";
+    my $ctr = 1;
+    # for each family with >0 
+    foreach my $ref_list_seqname (@ref_list_seqname_A) {
+      $ntlist_file    = $out_root . ".$ref_list_seqname.ntlist";
+      $dv_ntlist_file = $out_root . ".$ref_list_seqname.deversioned.ntlist"; # same as $ntlist_file but accessions have been de-versioned
+      $sub_fasta_file = $out_root . ".$ref_list_seqname.fa";
+      $build_dir = $annotate_dir . "/" . $ref_list_seqname;
+      $cur_out_root = $dir_tail . "-" . $ref_list_seqname;
+      $cur_out_dir  = $dir . "/" . $cur_out_root;
+      $cur_nseq = scalar(@{$ntlist_HA{$ref_list_seqname}});
+      if($cur_nseq > 0) { 
+        $annotate_cons_opts = build_opts_hash_to_opts_string(\%{$buildopts_used_HH{$ref_list_seqname}});
+        $annotate_cmd = $execs_H{"dnaorg_annotate"} . " " . $annotate_cons_opts . " --dirbuild $build_dir --dirout $cur_out_dir";
+        if($annotate_non_cons_opts ne "") { $annotate_cmd .= " " . $annotate_non_cons_opts; }
+        if($infasta_mode) { 
+          $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
+        }
+        else { # not fasta mode
+          $annotate_cmd .= " $ntlist_file";
+        }
+        runCommand($annotate_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+        # now copy the sequin feature table to this top level directory:
+        my $src_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.sqtable";
+        my $dest_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.sqtable";
+        runCommand("cp $src_sqtable $dest_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+        addClosedFileToOutputInfo(\%ofile_info_HH, "sqtbl" . $ctr++, $dest_sqtable, 1, "annotation results for $ref_list_seqname");
+      }
+    }
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
+  else { 
+    if($inlist_mode) { 
+      outputString($log_FH, 1, "#\n");
+      outputString($log_FH, 1, "# *** The $out_root.dnaorg_classify.<s>.ntlist files\n");
+      outputString($log_FH, 1, "# *** can be used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'\n");
+      outputString($log_FH, 1, "# *** to create models for RefSeq <s>.\n#\n");
+    }
+    elsif($infasta_mode) { 
+      outputString($log_FH, 1, "#\n");
+      outputString($log_FH, 1, "# *** The $out_root.dnaorg_classify.<s>.deversioned.ntlist files or\n");
+      outputString($log_FH, 1, "# *** the $out_root.dnaorg_classify.<s>.fa files (with the --infasta option) can be\n");
+      outputString($log_FH, 1, "# *** used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'\n");
+      outputString($log_FH, 1, "# *** to create models for RefSeq <s>.\n#\n");
+    }
+  }
+} # end of 'else' entered if $onlybuild_mode is FALSE
 
 ##########
 # Conclude
@@ -842,19 +947,6 @@ foreach my $file2rm (@files2rm_A) {
   runCommand("rm $file2rm", 0, $ofile_info_HH{"FH"});
 }
 
-if($inlist_mode) { 
-  outputString($log_FH, 1, "#\n");
-  outputString($log_FH, 1, "# *** The $out_root.dnaorg_classify.<s>.ntlist files\n");
-  outputString($log_FH, 1, "# *** can be used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'\n");
-  outputString($log_FH, 1, "# *** to create models for RefSeq <s>.\n#\n");
-}
-elsif($infasta_mode) { 
-  outputString($log_FH, 1, "#\n");
-  outputString($log_FH, 1, "# *** The $out_root.dnaorg_classify.<s>.deversioned.ntlist files or\n");
-  outputString($log_FH, 1, "# *** the $out_root.dnaorg_classify.<s>.fa files (with the --infasta option) can be\n");
-  outputString($log_FH, 1, "# *** used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'\n");
-  outputString($log_FH, 1, "# *** to create models for RefSeq <s>.\n#\n");
-}
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
@@ -976,6 +1068,131 @@ sub fasta_to_list_and_lengths {
   return;
 }
 
+#################################################################
+# Subroutine: validate_build_dir()
+# Incept:     EPN, Mon Feb 12 12:30:44 2018
+#
+# Purpose:   Validate that a build directory exists and has the files
+#            that we need to annotate with. This actually can't check
+#            that everything a downstream dnaorg_annotate.pl run needs
+#            in a build dir (e.g. number and names of models) is kosher, 
+#            but it can check for a few things that are required:
+#            directory exists and contains a .consopts file.
+#
+# Arguments:
+#  $build_dir:         the build directory we are validating
+#  $buildopts_used_HR: REF to build options used when creating this build directory 
+#                      with dnaorg_build.pl, key is option (e.g. --matpept), value is
+#                      option argument, "" for none.
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:    REF to output file hash
+# 
+# Returns:  void
+# 
+# Dies: If $build_dir doesn't exist or .consopts file does not
+#       exist or is unreadable or is in a bad format.
+#       
+#################################################################
+sub validate_build_dir { 
+  my $sub_name  = "validate_build_dir()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  
+  my ($build_dir, $buildopts_used_HR, $opt_HHR, $ofile_info_HHR) = (@_);
+
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+  
+  if(! -d $build_dir) { 
+    DNAORG_FAIL(sprintf("ERROR, the directory $build_dir should exist based on your -A option argument %s, but it does not.\nDid you run dnaorg_build.pl?\n", opt_Get("-A", $ofile_info_HHR)), 1, $FH_HR);
+  }
+
+  my $build_root         = removeDirPath($build_dir);
+  my $build_dir_and_root = $build_dir . "/" . $build_root;
+  my $consopts_file      = $build_dir_and_root . ".dnaorg_build.consopts";
+  if(! -e $consopts_file) { 
+    DNAORG_FAIL(sprintf("ERROR, required file $consopts_file should exist based on your -A option argument %s, but it does not.\nDid you run dnaorg_build.pl?\n", opt_Get("-A", $ofile_info_HHR)), 1, $FH_HR);
+  }
+
+  # parse the consopts file
+  my %consopts_notused_H = (); # key option in consopts file, value argument used in dnaorg_build.pl
+  my %consmd5_H  = ();         # key option used in dnaorg_build.pl in consopts file, md5 checksum value of the file name argument used in dnaorg_build.pl
+  # we pass in $buildopts_used_HR, because caller needs that, but not %consopts_notused_H nor %consmd5_H
+  parseConsOptsFile($consopts_file, $buildopts_used_HR, \%consopts_notused_H, \%consmd5_H, $FH_HR);
+
+  # for any option that takes a file name as its argument, 
+  # make sure that that file exists and its md5 matches what
+  # is expected in the build dir
+  my $opt;
+  my $optfile;
+  my $optfile_md5;
+  my $optroot;
+  foreach my $opt (sort keys (%consmd5_H)) { 
+    if($consmd5_H{$opt} ne "") { 
+      $optroot = $opt;
+      $optroot =~ s/^\-*//; # remove trailing '-' values
+      $optfile = $build_dir_and_root . ".dnaorg_build." . $optroot;
+      if(! -s $optfile) { 
+        DNAORG_FAIL("ERROR, the file $optfile required to run dnaorg_annotate.pl later for build directory $build_root does not exist.", 1, $FH_HR);
+      }
+      $optfile_md5 = md5ChecksumOfFile($optfile, $sub_name, $opt_HHR, $FH_HR);
+      if($consmd5_H{$opt} ne $optfile_md5) { 
+        DNAORG_FAIL("ERROR, the file $optfile required to run dnaorg_annotate.pl later for build directory $build_root\ndoes not appear to be identical to the file used with dnaorg_build.pl.\nThe md5 checksums of the two files differ: dnaorg_build.pl: " . $consmd5_H{$opt} . " $optfile: " . $optfile_md5, 1, $FH_HR);
+      }
+      # update the $buildopts_used_HR to use the local file
+      $buildopts_used_HR->{$opt} = $optfile;
+    }
+  }
+          
+  return;
+}
+
+#################################################################
+# Subroutine: build_opts_hash_to_opts_string()
+# Incept:     EPN, Mon Feb 12 15:10:19 2018
+#
+# Purpose:   Given a hash of options, Validate that a build directory exists and has the files
+#            that we need to annotate with. This actually can't check
+#            that everything a downstream dnaorg_annotate.pl run needs
+#            in a build dir (e.g. number and names of models) is kosher, 
+#            but it can check for a few things that are required:
+#            directory exists and contains a .consopts file.
+#
+# Arguments:
+#  $buildopts_used_HR: REF to build options used when creating this build directory 
+#                      with dnaorg_build.pl, key is option (e.g. --matpept), value is
+#                      option argument, "" for none.
+# 
+# Returns:  string of options
+# 
+# Dies: Never
+#       
+#################################################################
+sub build_opts_hash_to_opts_string { 
+  my $sub_name  = "build_opts_hash_to_opts_string";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  
+  my ($buildopts_used_HR) = (@_);
+
+  my $ret_str = "";
+  foreach my $opt (sort keys (%{$buildopts_used_HR})) { 
+    if($ret_str ne "") { $ret_str .= " "; }
+    $ret_str .= $opt;
+    if($buildopts_used_HR->{$opt} ne "") { 
+      $ret_str .= " " . $buildopts_used_HR->{$opt};
+    }
+  }
+
+  return $ret_str;
+}
+#################################################################################
+#################################################################################
+#################################################################################
+#################################################################################
+# OLD SUBROUTINES NO LONGER USED, KEPT HERE FOR REFERENCE
+#################################################################################
+#################################################################################
+#################################################################################
 #################################################################################
 # 
 # Sub name:  createFastas()

@@ -381,6 +381,17 @@ print MPIN "#\n";
 
 # for each cds
 for(my $cds=0; $cds < scalar(@cds_primary_AA); $cds++) {
+  my $nprimary = scalar(@{$cds_primary_AA[$cds]});
+  my $nall     = scalar(@{$cds_all_AA[$cds]});
+  # sanity check
+  if(($nprimary == 0) && ($nall != 0)) { 
+    die "Error nprimary is 0 but nall is not 0";
+  }
+  if(($nprimary != 0) && ($nall == 0)) { 
+    die "Error nprimary is not 0 but nall is 0";
+  }
+
+  if(($nprimary != 0) && ($nall != 0)) { 
     # print out list of primary matpepts
     print MPIN "" . $cds+1 . " primary\t";
     for (my $i=0; $i< scalar(@{$cds_primary_AA[$cds]}); $i++){
@@ -398,7 +409,7 @@ for(my $cds=0; $cds < scalar(@cds_primary_AA); $cds++) {
 	if($i != scalar(@{$cds_all_AA[$cds]})-1)  {print MPIN ":";};
     }
     print MPIN "\n";
-
+  }
 
 }
 close(MPIN);
