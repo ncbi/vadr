@@ -8,14 +8,14 @@
 
 use strict;
 use warnings;
-use diagnostics;
+#use diagnostics;
 use Getopt::Long;
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
-use Data::Dumper;
-use File::Slurp;
+#use Data::Dumper;
+#use File::Slurp;
 
 require "dnaorg.pm"; 
 require "epn-options.pm";
@@ -113,6 +113,7 @@ opt_Add("--errcheck",   "boolean", 0,                        3,    undef,"--loca
 $opt_group_desc_H{"4"} = "options for automatically running dnaorg_annotate.pl for classified sequences";
 #     option            type       default               group   requires       incompat          preamble-output                help-output    
 opt_Add("-A",           "string", undef,                    4,    undef,        "--onlybuild",    "annotate after classifying using build dirs in dir <s>",  "annotate using dnaorg_build.pl build directories in <s> after classifying", \%opt_HH, \@opt_order_A);
+opt_Add("--optsA",      "string", undef,                    4,    "-A",         "--onlybuild",    "read dnaorg_annotate.pl options from file <s>",           "read additional dnaorg_annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -143,6 +144,7 @@ my $options_okay =
                 'local'        => \$GetOptions_H{"--local"}, 
                 'errcheck'     => \$GetOptions_H{"--errcheck"},  
                 'A=s'          => \$GetOptions_H{"-A"},
+                'optsA=s'      => \$GetOptions_H{"--optsA"},
                 );
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
@@ -189,6 +191,7 @@ if(($onlybuild_mode + $inlist_mode + $infasta_mode) != 1) {
 # determine if we are going to annotate after classifying
 my $do_annotate = opt_IsUsed("-A", \%opt_HH);
 my $annotate_dir = ($do_annotate) ? opt_Get("-A", \%opt_HH) : undef;
+my $annotate_non_cons_opts = ""; # filled below, after output file hashes set up, if --optsA used
 if((defined $annotate_dir) && (! -d $annotate_dir)) { 
   die "ERROR with -A <s>, directory <s> must exist";
 }
@@ -425,6 +428,15 @@ else {
   my $cls_fasta_seqlen;  # length of $cls_fasta_seqname
   my $cls_list_seqname;  # name of a sequence in the list file to classify (this is what we'll output)
   my %cls_list2fasta_seqname_H = (); # hash mapping a list sequence name (key) to a fasta sequence name (value)
+
+  # if we're annotating, read the dnaorg_annotate.pl options file, if nec
+  if(($do_annotate) && (opt_IsUsed("--optsA", \%opt_HH))) { 
+    $start_secs = outputProgressPrior("Parsing additional dnaorg_annotate.pl options (--optsA)", $progress_w, $log_FH, *STDOUT);
+    my $failure_str   = "that option will automatically be set,\nas required, to be consistent with the relevant dnaorg_build.pl command used previously.";
+    my $auto_add_opts = "--dirout,--dirbuild,--infasta,--refaccn";
+    $annotate_non_cons_opts = parseNonConsOptsFile(opt_Get("--optsA", \%opt_HH), "--optsA", $auto_add_opts, $failure_str, $ofile_info_HH{"FH"});
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
 
   if($inlist_mode) { 
     $start_secs = outputProgressPrior("Fetching sequences to a fasta file", $progress_w, $log_FH, *STDOUT);
@@ -873,7 +885,7 @@ else {
     $start_secs = outputProgressPrior("Running dnaorg_annotate.pl $nseq_above_zero time(s) to annotate sequences", $progress_w, $log_FH, *STDOUT);
     outputString($log_FH, 1, "\n");
     my $annotate_cmd = "";
-    my $annotate_consopts = "";
+    my $annotate_cons_opts = "";
     my $cur_out_dir  = "";
     my $cur_out_root = "";
     my $ctr = 1;
@@ -887,8 +899,9 @@ else {
       $cur_out_dir  = $dir . "/" . $cur_out_root;
       $cur_nseq = scalar(@{$ntlist_HA{$ref_list_seqname}});
       if($cur_nseq > 0) { 
-        $annotate_consopts = build_opts_hash_to_opts_string(\%{$buildopts_used_HH{$ref_list_seqname}});
-        $annotate_cmd = $execs_H{"dnaorg_annotate"} . " " . $annotate_consopts . " --dirbuild $build_dir --dirout $cur_out_dir";
+        $annotate_cons_opts = build_opts_hash_to_opts_string(\%{$buildopts_used_HH{$ref_list_seqname}});
+        $annotate_cmd = $execs_H{"dnaorg_annotate"} . " " . $annotate_cons_opts . " --dirbuild $build_dir --dirout $cur_out_dir";
+        if($annotate_non_cons_opts ne "") { $annotate_cmd .= " " . $annotate_non_cons_opts; }
         if($infasta_mode) { 
           $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
         }
@@ -1074,7 +1087,7 @@ sub fasta_to_list_and_lengths {
 #  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to output file hash
 # 
-# Returns:  
+# Returns:  void
 # 
 # Dies: If $build_dir doesn't exist or .consopts file does not
 #       exist or is unreadable or is in a bad format.
@@ -1172,7 +1185,6 @@ sub build_opts_hash_to_opts_string {
 
   return $ret_str;
 }
-
 #################################################################################
 #################################################################################
 #################################################################################

@@ -137,6 +137,7 @@
 #   parseListFile()
 #   parseSpecStartFile()
 #   parseConsOptsFile()
+#   parseNonConsOptsFile()
 #
 # Subroutines related to parsing NCBI coordinate strings:
 #   getStrandStats()
@@ -2212,7 +2213,7 @@ sub compareTwoOverlapOrAdjacencyIndexStrings {
 
   my $el; # an array element
 
-  # turn them into strings
+  # turn them into arrays
   my @str1_A = split(",", $str1);
   my @str2_A = split(",", $str2);
   
@@ -2220,6 +2221,10 @@ sub compareTwoOverlapOrAdjacencyIndexStrings {
   for(my $i = 0; $i <= $max; $i++) { 
     $diff_AR->[$i] = 0;
   }
+
+  # HERE HERE HERE, just set diff_AR->[$el] to 0 if start_AR->[$i] is equal to -1 
+  # or have another function that takes start_AR and the diff_AR and sets the diff_AR elemetns to 0 if 
+  # start_AR is -1 
 
   foreach $el (@str1_A) { 
     if(! verify_integer($el)) { 
@@ -2934,8 +2939,9 @@ sub getSingleFeatureTableInfo {
                   }
                 }
               }
-              # if there's no value for this qualifier, put '<empty>'
-              if($save_str eq "") { $save_str = "<empty>"; }
+              # old behavior:
+              ## if there's no value for this qualifier, put '<empty>'
+              ##if($save_str eq "") { $save_str = "<empty>"; }
               push(@{$tbl_HHAR->{$accn}{$column}}, $save_str);
             }
           } 
@@ -3130,6 +3136,7 @@ sub helperBreakdownFac {
 #   parseListFile()
 #   parseSpecStartFile()
 #   parseConsOptsFile()
+#   parseNonConsOptsFile()
 #
 #################################################################
 # Subroutine:  parseMatPeptSpecFile()
@@ -4029,6 +4036,84 @@ sub parseConsOptsFile {
   return;
 }
 
+
+#################################################################
+# Subroutine: parseNonConsOptsFile()
+# Incept:     EPN, Tue Feb 13 05:29:04 2018
+#
+# Purpose:   Read a file that contains command line options 
+#            that are not required to be consistent between
+#            different dnaorg scripts, and die if any 
+#            options that are required to be consistent
+#            are included. Also die if any options included
+#            in the string $auto_opts are included. 
+#            Return a string of verified, compatible options. 
+# 
+#            Format of file is a single line of options.
+#
+# Arguments:
+#  $opts_file:      file with options
+#  $cmdline_opt:    command line option that triggered this 
+#                   subroutine call (e.g. "--Aopts")
+#  $auto_opts_str:  string of options, separated by commas, which will be
+#                   automatically added and so cannot listed in the file
+#  $failure_str:    failure message (e.g. "that option will automatically be set, as required 
+#                   to be consistent with relevant dnaorg_build.pl command used previously")
+#  $FH_HR:          REF to hash of file handles
+# 
+# Returns:  void
+# 
+# Dies: If any of the options in $opts_file are 
+#       those that are required to be consistent between
+#       dnaorg_scripts.pl.
+#       
+#################################################################
+sub parseNonConsOptsFile { 
+  my $sub_name = "parseNonConsOptsFile";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($opts_file, $cmdline_opt, $auto_opts_str, $failure_str, $FH_HR) = @_;
+
+  my $opts_str = "";
+
+  # read the opts file
+  if(! -e $opts_file) { 
+    DNAORG_FAIL("ERROR in $sub_name, options file $opts_file does not exist.", 1, $FH_HR);
+  }
+  open(IN, $opts_file) || fileOpenFailure($opts_file, $sub_name, $!, "reading", $FH_HR);
+  my $line_ct = 0;
+
+  while(my $line = <IN>) { 
+    if($line =~ m/\w/) { 
+      chomp $line;
+      $line_ct++;
+      $opts_str .= $line;
+    }
+  }
+  if($line_ct != 1) { 
+    DNAORG_FAIL("ERROR in $sub_name, file $opts_file is required to have a single line (multiple options separated by spaces), read $line_ct.", 1, $FH_HR);
+  }        
+  close(IN);
+
+  # check for the hard-coded illegal options that must be 
+  # consistent between dnaorg_annotate.pl and dnaorg_build.pl
+  if($opts_str =~ m/\s*\-c/)           { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include -c, $failure_str", 1, $FH_HR); }
+  if($opts_str =~ m/\s*\-\-nomatpept/) { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --nomatpept, $failure_str", 1, $FH_HR); }
+  if($opts_str =~ m/\s*\-\-matpept/)   { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --matpept, $failure_str", 1, $FH_HR); }
+  if($opts_str =~ m/\s*\-\-xfeat/)     { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --xfeat, $failure_str", 1, $FH_HR); }
+
+  # check for the options that are automatically set or not set, 
+  # these are illegal too
+  foreach my $auto_opt (split(",", $auto_opts_str)) { 
+    my $esc_auto_opt = quotemeta($auto_opt);
+    if($opts_str =~ m/\s*$esc_auto_opt/) { 
+      DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include $auto_opt, it will be automatically set by the program", 1, $FH_HR); 
+    }
+  }
+
+  return $opts_str;
+}
 #################################################################
 #################################################################
 #
