@@ -387,7 +387,7 @@ if($onlybuild_mode) {
     $ref_list_seqname  = $ref_list_seqname_A[$i];
     $ref_fasta_seqname = $ref_list2fasta_seqname_H{$ref_list_seqname};
     if(! defined $ref_fasta_seqname) { 
-      DNAORG_FAIL("ERROR in dnaorg_classify.pl::main(), could not find mapping fasta sequence name for list sequence name $ref_list_seqname", 1, $ofile_info_HH{"FH"});
+      DNAORG_FAIL("ERROR in dnaorg_classify.pl::main() 0, could not find mapping fasta sequence name for list sequence name $ref_list_seqname", 1, $ofile_info_HH{"FH"});
     }
     # build up the command, we'll fetch the sequence, pass it into esl-reformat to make a stockholm 'alignment', and pass that into hmmbuild
     $cmd  = $execs_H{"esl-sfetch"} . " $ref_fa $ref_fasta_seqname | "; # fetch the sequence
@@ -473,7 +473,7 @@ else {
     # make sure we have a valid mapping for all sequences in the list file
     foreach $cls_list_seqname (@cls_list_seqname_A) { 
       if(! defined $cls_list2fasta_seqname_H{$cls_list_seqname}) { 
-        DNAORG_FAIL("ERROR in dnaorg_classify.pl::main(), could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
+        DNAORG_FAIL("ERROR in dnaorg_classify.pl::main() 1, could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
       }
     }
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -718,7 +718,7 @@ else {
     $cls_list_seqname  = $cls_list_seqname_A[$i];
     $cls_fasta_seqname = $cls_list2fasta_seqname_H{$cls_list_seqname};
     if(! defined $cls_fasta_seqname) { 
-      DNAORG_FAIL("ERROR in dnaorg_classify.pl::main(), could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
+      DNAORG_FAIL("ERROR in dnaorg_classify.pl::main() 2, could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
     }
     if(exists($hit_info_HAA{$cls_fasta_seqname})) { 
       # there was at least one valid hit for this sequence

@@ -2699,17 +2699,16 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
       my ($seq_name, $seq_len) = $$sqfile_R->fetch_seq_name_and_length_given_ssi_number($sqfile_seq_idx);
       my $accn_name = undef;
       if($do_infasta && (! opt_Get("-c", $opt_HHR))) { 
-        # if --infasta and -c, then we are fetching directly from the --infasta file, else 
-        # we created the file we care fetching from, and so we need to determine the
+        # if --infasta and ! -c, then we are fetching directly from the --infasta file, else 
+        # we created the file we are fetching from, and so we need to determine the
         # accession from the sequence name using accn_name_from_seq_name().
         $accn_name = $seq_name;
-        stripVersion(\$accn_name);
       }
       else { 
         $accn_name = accn_name_from_seq_name($seq_name, $FH_HR);
       }
       if(! exists $accn_name_idx_H{$accn_name}) { 
-        DNAORG_FAIL("ERROR in $sub_name, accession $accn_name derived from sqfile seq name: $seq_name does not exist in seq_info_HAR", 1, $ofile_info_HHR->{"FH"});
+        DNAORG_FAIL("ERROR in $sub_name, accession $accn_name derived from sqfile seq name: $seq_name does not exist in accn_name_idx_H", 1, $ofile_info_HHR->{"FH"});
       }
       $seq_info_HAR->{"seq_name"}[$accn_name_idx_H{$accn_name}] = $seq_name;
       $seq_info_HAR->{"seq_len"}[$accn_name_idx_H{$accn_name}]  = $seq_len;
