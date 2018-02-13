@@ -2938,6 +2938,15 @@ sub getSingleFeatureTableInfo {
               # old behavior:
               ## if there's no value for this qualifier, put '<empty>'
               ##if($save_str eq "") { $save_str = "<empty>"; }
+
+              # do not save values that are '-', as far as I can tell these are just empty placeholders,
+              # as an example, see the first CDS in the feature table returned by this query (as of 02/13/18):
+              # esearch -db nuccore -query NC_031324 | efetch -format ft 
+              # It has a qualifier value of '-' for the 'gene' qualifier, which only occurs because the
+              # GenBank flat file does not list a gene name (gene qualifier) for the first gene (all 
+              # other genes have gene qualifiers and so their corresponding CDS features do not have 
+              # 'gene' qualifiers.
+              if($save_str eq "-") { $save_str = ""; } 
               push(@{$tbl_HHAR->{$accn}{$column}}, $save_str);
             }
           } 
