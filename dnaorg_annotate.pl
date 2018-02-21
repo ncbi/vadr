@@ -142,6 +142,7 @@ require "epn-options.pm";
 # 6. find_origin_sequences()
 # 7. MAIN (not a function but rather the main body of the script):
 # 8. mdl_results_add_b5e_b5u_errors()
+# 9. ftr_results_add_b5e_errors()
 #
 #              annot_type
 #          -------------------
@@ -149,7 +150,7 @@ require "epn-options.pm";
 # -------  -----  ------------ --------
 # nop      4      N/A          N/A
 # nm3      5      5            N/A
-# b5e      8      N/A          N/A
+# b5e      8,9    N/A          N/A
 # b5u      8      N/A          N/A
 # b3e      4      N/A          N/A
 # b3u      4      N/A          N/A
@@ -970,8 +971,6 @@ $start_secs = outputProgressPrior("Combining predicted mature peptides into CDS"
 combine_feature_hits("predicted", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-exit 0;
-
 #########################################################
 # Step 10b. Identify b5e, b5u, b3e, and b3u errors that occur when
 #           alignment does not extend to the model boundary. 
@@ -983,6 +982,8 @@ exit 0;
 $start_secs = outputProgressPrior("Identifying errors associated with incomplete alignment to the model", $progress_w, $log_FH, *STDOUT);
 mdl_results_add_b5e_b5u_errors(\%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
                                \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+ftr_results_add_b5e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                           \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
@@ -1009,9 +1010,9 @@ getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_H
 my $ftr_idx;  # counter over features
 for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
   foreach my $seq_name (keys %{$err_ftr_instances_AHH[$ftr_idx]{"ext"}}) { 
-    my $seq_idx = $seq_name_index_H{$seq_name};
-    my $seq_len       = $seq_info_HA{"seq_len"}[$seq_idx];   # differs from accn_len when the sequence is circular and dulicated
-    my $accn_len      = $seq_info_HA{"accn_len"}[$seq_idx];  # original length of the sequence without any duplication
+    my $seq_idx  = $seq_name_index_H{$seq_name};
+    my $seq_len  = $seq_info_HA{"seq_len"}[$seq_idx];   # differs from accn_len when the sequence is circular and dulicated
+    my $accn_len = $seq_info_HA{"accn_len"}[$seq_idx];  # original length of the sequence without any duplication
 
     # determine the model nearest to the end of the current feature, for which we have a prediction
     my $mdl_idx = undef;  
@@ -2089,7 +2090,7 @@ sub combine_sequences {
   # sequence from all the individual files into a new sequence in a new file ($multi_file)
   open(OUT, ">", $multi_file) || die "ERROR unable to open $multi_file for writing";
   for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
-    printf("HEYA in $sub_name creating $multi_file fetch me for sequence %s is %d\n", $seq_name_AR->[$seq_idx], $seq_name_fetch_me_A[$seq_idx]);
+    # printf("HEYA in $sub_name creating $multi_file fetch me for sequence %s is %d\n", $seq_name_AR->[$seq_idx], $seq_name_fetch_me_A[$seq_idx]);
     if($seq_name_fetch_me_A[$seq_idx]) { 
       my $seq_name = $seq_name_AR->[$seq_idx];
       print OUT ">" . $seq_name . "/" . $seq_name_coords_A[$seq_idx] . "\n";
@@ -2194,14 +2195,20 @@ sub parse_esl_epn_translate_startstop_outfile {
     #HQ693465/1-306 1 1 304
     if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
       my ($seq_name, $coords, $start_is_valid, $stop_is_valid, $first_stop_posn1) = ($1, $2, $3, $4, $5);
-      #print "HEYA esl-translate line $line";
+      print "HEYA esl-translate line $line";
 
       # skip this sequence IFF we have a b5e error already for it, this means 
       # that the alignment does not extend to the 5' boundary of the model but
       # it does extend to the 5' boundary of the sequence (first seq posn of 
       # alignment is 1 (on + strand) or L (on - strand)). In this case we 
       # don't search for a trc error.
+
+      if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) { 
+        print ("HEYA YES b5e for $seq_name ftr_idx: $ftr_idx\n");
+      }
+
       if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) { 
+        print ("HEYA no b5e for $seq_name ftr_idx: $ftr_idx\n");
         # determine if we have an early stop
         my $cds_len            = dashCoordsStringCommaDelimitedToLength($coords, $sub_name, $FH_HR);
         my $final_codon_posn1  = $cds_len - 2; # final codon position 1 
@@ -3212,7 +3219,6 @@ sub results_calculate_overlaps_and_adjacencies {
 #                    model end and not flush with sequence end on 5'
 #
 # Arguments: 
-#  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
 #  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
 #  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
 #  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
@@ -3265,6 +3271,108 @@ sub mdl_results_add_b5e_b5u_errors {
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop
   } # end of 'for($mdl_idx' loop
+
+  return;
+}
+
+#################################################################
+# Subroutine:  ftr_results_add_b5e_errors
+# Incept:      EPN, Wed Feb 21 12:19:14 2018
+#
+# Purpose:    Report 'b5e' for features with 'annot_type' of 'multifeature'
+#             and type of 'cds-mp.
+#             Uses mdl_results to do this. If the first (5'-most) primary
+#             child of a multifeature feature should have a 'b5e' error
+#             (by looking at p_5overhang and p_5seqflush values in mdl_results)
+#             then the parent multifeature should too.
+#
+#             Checks for and adds or updates the following error 
+#             codes for features with "annot_type" eq "multifeature' and
+#             type 'cds-mp':
+#             
+#             "b5e": adds this error, predicted hit of 5'-most model 
+#                    not flush with model end but flush with sequence end on 5'
+#                    OR predicted hit of 5'-most model *is* flush with model end
+#                    but also flush with sequence end on 5' and *is not* the first
+#                    model of the first child of this multifeature parent feature.
+#
+#
+# Arguments: 
+#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
+#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
+#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+################################################################# 
+sub ftr_results_add_b5e_errors { 
+  my $sub_name = "mdl_results_add_b5e_errors";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # total counts of things
+  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $ftr_idx;   # counter over features
+  my $mdl_idx;   # counter over models
+  my $seq_idx;   # counter over sequences
+  my $seq_name;  # name of one sequence
+
+  # foreach annot_type:multifeature and type:'cds-mp' feature, 
+  # determine if the first primary child model with a prediction has a 'b5e' error, if so add a 'b5e' error to its parent cds-mp feature
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
+       ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
+
+      # get the primary children array
+      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
+      my $np_children = scalar(@primary_children_idx_A);
+
+      for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+        my $seen_start  = 0;      # set to '1' once we've seen the first model with an annotated hit
+        $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+
+        # step through all primary children of this feature
+        for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
+          my $child_ftr_idx = $primary_children_idx_A[$child_idx];
+          for(my $child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $child_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $child_mdl_idx++) { 
+            my $mdl_results_HR = \%{$mdl_results_AAHR->[$child_mdl_idx][$seq_idx]}; # for convenience
+            # two scenarios in which we can get a b5e error for the cds-mp parent
+            # 1. first model with a prediction has p_5seqflush == 1 and p_5overhang != 0
+            # 2. first model with a prediction has p_5seqflush == 1 and p_5overhang == 0 
+            #    and is not the first model of the first child
+            if((! $seen_start) && # first model 
+               (exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) && # has a prediction (not 'nop')
+               ($mdl_results_HR->{"p_5seqflush"} == 1)) {  # prediction extends to 5' boundary of sequence
+              if($mdl_results_HR->{"p_5overhang"} != 0) {
+                # 1. first model with a prediction has p_5seqflush == 1 and p_5overhang != 0
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end of mature peptide \#" . ($child_idx+1) . " of $np_children", $FH_HR);
+                print ("HEYANOW 1 $seq_name");
+              }
+              elsif(($mdl_results_HR->{"p_5overhang"} == 0) && (($child_idx > 0) || ($child_mdl_idx > $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]))) { 
+                # 2. first model with a prediction has p_5seqflush == 1 and p_5overhang == 0 
+                #    and is not the first model of the first child
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, sprintf("$child_idx expected mature peptides not observed on 5' end", $FH_HR));
+                print ("HEYANOW 2 $seq_name");
+              }
+              $seen_start = 1;
+              $child_idx = $np_children; # breaks 'for(my $child_idx' loop;
+            }
+          }
+        }
+      } # end of 'for($seq_idx' loop
+    }
+  } # end of 'for($ftr_idx' loop
+
   return;
 }      
 
