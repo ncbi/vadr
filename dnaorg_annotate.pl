@@ -3355,14 +3355,14 @@ sub ftr_results_add_b5e_errors {
                ($mdl_results_HR->{"p_5seqflush"} == 1)) {  # prediction extends to 5' boundary of sequence
               if($mdl_results_HR->{"p_5overhang"} != 0) {
                 # 1. first model with a prediction has p_5seqflush == 1 and p_5overhang != 0
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end of mature peptide \#" . ($child_idx+1) . " of $np_children", $FH_HR);
                 print ("HEYANOW 1 $seq_name");
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end of mature peptide \#" . ($child_idx+1) . " of $np_children", $FH_HR);
               }
               elsif(($mdl_results_HR->{"p_5overhang"} == 0) && (($child_idx > 0) || ($child_mdl_idx > $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]))) { 
                 # 2. first model with a prediction has p_5seqflush == 1 and p_5overhang == 0 
                 #    and is not the first model of the first child
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, sprintf("$child_idx expected mature peptides not observed on 5' end", $FH_HR));
                 print ("HEYANOW 2 $seq_name");
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, "$child_idx expected mature peptides not observed on 5' end", $FH_HR);
               }
               $seen_start = 1;
               $child_idx = $np_children; # breaks 'for(my $child_idx' loop;
@@ -3792,6 +3792,13 @@ sub ftr_results_calculate {
                   $start_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"};
                   $set_start = 1;
                 }
+                # (as of v0.28: always update the stop, remove this to revert to pre-v0.28 behavior
+                #  in regards to stop output in tbl) 
+                $cds_out_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"};
+                $cds_fetch_stop    = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
+                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
+                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
+                $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
                 
                 # check if we have a trc in this child model, and deal with it if we do
                 if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"trc_err_flag"}) { 
@@ -4102,6 +4109,15 @@ sub ftr_results_calculate {
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start_codon"} = "?";
         }
         
+        if((defined $cds_out_start) && (defined $cds_out_stop)) { 
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_start"} = $cds_out_start;
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_stop"}  = $cds_out_stop;
+        }
+        else { 
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_start"}       = "?";
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_start_codon"} = "?";
+        }
+
         # for the stop and length attributes to be anything but "?" 
         # we require the following: 
         # - no aji error
@@ -4109,6 +4125,8 @@ sub ftr_results_calculate {
         # - $cds_out_start defined
         # - $cds_out_stop defined
         # 
+        printf("\n\nHEYAZ $seq_name cds_out_stop: $cds_out_stop\n\n");
+
         if(($aji_errmsg eq "") && ($inp_errmsg eq "") && (defined $cds_out_start) && (defined $cds_out_stop)) { 
           # an aji or inp error means we can't really say where the stop is
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop"}       = $cds_out_stop;
@@ -6633,14 +6651,14 @@ sub output_feature_tbl_all_sequences {
         if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
            ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
           my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
-          if(($ftr_results_HR->{"out_start"} ne "?") && 
-             ($ftr_results_HR->{"out_stop"}  ne "?")) { 
+          if(($ftr_results_HR->{"ftbl_out_start"} ne "?") && 
+             ($ftr_results_HR->{"ftbl_out_stop"}  ne "?")) { 
             # we have a predicted start and stop for this feature
             # create the output for the feature table
             $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
-                                    $do_start_carrot ? "<" : "", $ftr_results_HR->{"out_start"}, 
-                                    $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"out_stop"}, $feature_type); 
-            $min_coord = ($ftr_results_HR->{"out_start"} < $ftr_results_HR->{"out_stop"}) ? $ftr_results_HR->{"out_start"} : $ftr_results_HR->{"out_stop"};
+                                    $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
+                                    $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"}, $feature_type); 
+            $min_coord = ($ftr_results_HR->{"ftbl_out_start"} < $ftr_results_HR->{"ftbl_out_stop"}) ? $ftr_results_HR->{"ftbl_out_start"} : $ftr_results_HR->{"ftbl_out_stop"};
             foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
               if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                 $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
