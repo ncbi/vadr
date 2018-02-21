@@ -970,6 +970,8 @@ $start_secs = outputProgressPrior("Combining predicted mature peptides into CDS"
 combine_feature_hits("predicted", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
+exit 0;
+
 #########################################################
 # Step 10b. Identify b5e, b5u, b3e, and b3u errors that occur when
 #           alignment does not extend to the model boundary. 
@@ -1818,7 +1820,10 @@ sub combine_model_hits {
         }
         if($at_least_one_fafile) { 
           # combine the sequences into 1 file
-          combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"});
+          combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, 
+                            0, # do not require sequences be in a contiguous subset of files beginning with the first one to be combined, 
+                               # allow any contiguous subset of files
+                            $opt_HHR, $ofile_info_HHR->{"FH"});
           
           my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
           addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
@@ -1916,7 +1921,10 @@ sub combine_feature_hits {
 
       if($at_least_one_fafile) { 
         # combine the sequences into 1 file
-        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"}); 
+        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, 
+                          0, # do not require sequences be in a contiguous subset of files beginning with the first one to be combined, 
+                               # allow any contiguous subset of files
+                          $opt_HHR, $ofile_info_HHR->{"FH"}); 
 
         my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
         addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
@@ -1937,7 +1945,7 @@ sub combine_feature_hits {
 # Incept:      EPN, Wed Mar  2 16:11:40 2016
 #
 # Purpose:    Helper function for combine_model_hits() and
-#             combine_feature_hits().  Given an array of fasta files,
+#             combine_feature_hits(). Given an array of fasta files,
 #             each with a different subsequence from the same parent
 #             sequences, create a single new fasta file that has the
 #             subsequences concatenated together.  An example is
@@ -1945,9 +1953,11 @@ sub combine_feature_hits {
 #             sqfile module.
 #
 # Arguments: 
-#  $indi_file_AR: REF to array of fasta files to combine
-#  $seq_name_AR:  REF to array with order of sequence names
-#  $multi_file:   name of multi file to create
+#  $indi_file_AR:  REF to array of fasta files to combine
+#  $seq_name_AR:   REF to array with order of sequence names
+#  $multi_file:    name of multi file to create
+#  $require_first: '1' to require each sequence to keep be in a contiguous set starting with file 1
+#                  '0' to require each sequence to keep be in a contiguous set starting with any file
 #  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:        REF to hash of file handles
 #
@@ -1958,10 +1968,10 @@ sub combine_feature_hits {
 #################################################################
 sub combine_sequences {
   my $sub_name = "combine_sequences";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($indi_file_AR, $seq_name_AR, $multi_file, $opt_HHR, $FH_HR) = @_;
+  my ($indi_file_AR, $seq_name_AR, $multi_file, $require_first, $opt_HHR, $FH_HR) = @_;
   
   my @sqfile_A                      = (); # array of open Bio::Easel::SqFile objects, one per indi_file_AR element
   my @sqfile_sqname_AA              = (); # 2D array of SqFile sequence names, read from the indi files, [0..$nfiles-1][0..$nseq_in_file_f]
@@ -1969,16 +1979,23 @@ sub combine_sequences {
   my @seq_name2sqfile_sqname_map_AA = (); # 2D array, 1st dim: 0..$seq_idx..$nseq-1, 2nd dim 0..$file_idx..$nfiles, value: ssi index of $seq_idx subseq in file $f
   my @seq_name_exists_AA            = (); # 2D array, 1st dim: 0..$seq_idx..$nseq-1, 2nd dim: 0..$file_idx..$nfiles-1; value '1' if $seq_idx exists in file $f
   my @seq_name_coords_A             = (); # key: sequence name from @{$seq_name_AR}, value: concatenated set of coordinates of all subseqs in all $nfiles
-  my @seq_name_fetch_me_A           = (); # [0..$i..$nseq_name-1]: values differ between first part of function and 2nd part of function:
-                                          # in 'for($file_idx..' loop: value is either the most recent (highest) file idx for which seq $i existed 
-                                          #                            or -2 if we've determined it is not in a contiguous set of files beginning at 1
-                                          # after 'update values in @seq_name_fetch_AA' block: value is "0" if seq $i does not exist in a contiguous
-                                          #                                                    block of sequences starting at 1, and "1" if it does
+  my @seq_name_fetch_me_A           = (); # [0..$i..$nseq_name-1]: value is "0" if seq $i should be included in the $multi_file, '0' if not
+                                          # How we decide depends on value of $require_all input variable:
                                           #
-                                          # we fetch each sequence that exists in a contiguous set of files in @sqfile_A starting with the first one
-                                          # we don't fetch a sequence that doesn't exist in any of the sequences
-                                          # we don't fetch a sequence that exists in at least one file in the middle of @sqfile_A
-
+                                          # IF $require_first is '1':
+                                          # we only include sequences that exist in a contiguous set of files in @sqfile_A starting with the first one
+                                          #
+                                          # IF $require_first is '0':
+                                          # we fetch each sequence that exists only in a contiguous set of files in @sqfile_A starting with any file
+                                          #
+                                          # To determine this we use @seq_name_exists_AA to create a string of 0s and 1s indicating which
+                                          # files it is in.
+                                          # example A: 01110: sequence exists in files 2, 3, and 4 but not 1 and 5
+                                          # example B: 11110: sequence exists in files 1, 2, 3, and 4 but not 5
+                                          # example C: 11010: sequence exists in files 1, 2, and 4 but not 3 and 5
+                                          # If $require_first is '1', only example B would be included
+                                          # If $require_first is '0', examples A and B would be included
+            
   my @sqname_AA                     = (); # 2D array, 1st dim [0..$file_idx..$nfiles-1], 2nd dim: 0 to number of sequences in file $file_idx
 
   my $seq_idx;  # counter over seq_name values
@@ -1994,10 +2011,11 @@ sub combine_sequences {
   # initialize arrays
   for(my $seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
     $seq_name_coords_A[$seq_idx]   = "";
-    $seq_name_fetch_me_A[$seq_idx] = -1; # set to 0 or 1 in for($file_idx) loop below
+    $seq_name_fetch_me_A[$seq_idx] = 0;
     @{$seq_name2sqfile_sqname_map_AA[$seq_idx]} = ();
     for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
       $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = -1; # updated in block below if $seq_idx exists in $file_idx
+      $seq_name_exists_AA[$seq_idx][$file_idx] = 0;
     }
   }
 
@@ -2046,37 +2064,32 @@ sub combine_sequences {
         }
         $seq_name_coords_A[$seq_idx] .= $coords;
         $seq_name_exists_AA[$seq_idx][$file_idx] = 1;
-        
-        if($seq_name_fetch_me_A[$seq_idx] == ($file_idx-1)) { 
-          $seq_name_fetch_me_A[$seq_idx]++; # this can make $seq_name_fetch_me_A[$seq_idx] rise to as high as $nfiles-1,
-          # but it really only serves as a flag that this sequence exists in all files
-          # starting at the first file ($file_idx == 0) up to the current file, else
-          # we would have set this value to -2 in the iteration of the loop corresponding
-          # to the file $file_idx in which it doesn't exist
-        }
-        else { 
-          # if we get here, we went through at least one value for $file_idx 
-          # in which this sequence did not exist
-          $seq_name_fetch_me_A[$seq_idx] = -2; # we'll set this to 0 below
-        }
       }
     } # end of 'if($indi_file_AR->[$file_idx] ne "/dev/null")'
   } # end of 'for' loop over file indexes
 
-  # update values in @seq_name_fetch_me_A
+  # update values in @seq_name_fetch_me_A based on values in @seq_name_exists_AA
   for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
-    # 3 possibilities: 
-    #   $seq_name_fetch_me_A[$seq_idx] >=  0: if $seq_idx existed in >= 1 files, and did exist in a contiguous subset starting at file_idx 0
-    #   $seq_name_fetch_me_A[$seq_idx] == -2: if $seq_idx existed in >= 1 files, but not in a contiguous subset of files starting at file_idx 0
-    #   $seq_name_fetch_me_A[$seq_idx] == -1: if $seq_idx existed in    0 files
-    $seq_name_fetch_me_A[$seq_idx] = ($seq_name_fetch_me_A[$seq_idx] >= 0) ? 1 : 0;
+    my $seq_name_exists_str = join("", @{$seq_name_exists_AA[$seq_idx]});
+    # remove trailing 0s
+    $seq_name_exists_str =~ s/0+$//;
+    # remove leading 0s (only if (! $require_first))
+    if(! $require_first) { $seq_name_exists_str =~ s/^0+//; }
+    # determine if we have a string of >=1 '1' left, with zero zeroes
+    if((length($seq_name_exists_str) > 0) && ($seq_name_exists_str !~ m/0/)) { 
+      # sequence exists in a contiguous subset of the sequence files
+      $seq_name_fetch_me_A[$seq_idx] = 1;
+    }
+    else { 
+      $seq_name_fetch_me_A[$seq_idx] = 0;
+    }
   } 
 
   # now for each seq_name that we want to fetch, fetch all subsequences for that 
   # sequence from all the individual files into a new sequence in a new file ($multi_file)
   open(OUT, ">", $multi_file) || die "ERROR unable to open $multi_file for writing";
   for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
-    # printf("HEYA in $sub_name creating $multi_file fetch me for sequence %s is %d\n", $seq_name_AR->[$seq_idx], $seq_name_fetch_me_A[$seq_idx]);
+    printf("HEYA in $sub_name creating $multi_file fetch me for sequence %s is %d\n", $seq_name_AR->[$seq_idx], $seq_name_fetch_me_A[$seq_idx]);
     if($seq_name_fetch_me_A[$seq_idx]) { 
       my $seq_name = $seq_name_AR->[$seq_idx];
       print OUT ">" . $seq_name . "/" . $seq_name_coords_A[$seq_idx] . "\n";
