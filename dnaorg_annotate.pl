@@ -137,11 +137,12 @@ require "epn-options.pm";
 # 1. parse_esl_epn_translate_startstop_outfile()
 # 2. results_calculate_corrected_stops()
 # 3. results_calculate_overlaps_and_adjacencies() 
-# 4. mdl_results_add_stp_nop_ost_b3e_b3u_errors()
+# 4. mdl_results_add_str_nop_ost_b3e_b3u_errors()
 # 5. ftr_results_calculate()
 # 6. find_origin_sequences()
 # 7. MAIN (not a function but rather the main body of the script):
 # 8. mdl_results_add_b5e_b5u_errors()
+# 9. ftr_results_add_b5e_errors()
 #
 #              annot_type
 #          -------------------
@@ -149,7 +150,7 @@ require "epn-options.pm";
 # -------  -----  ------------ --------
 # nop      4      N/A          N/A
 # nm3      5      5            N/A
-# b5e      8      N/A          N/A
+# b5e      8,9    N/A          N/A
 # b5u      8      N/A          N/A
 # b3e      4      N/A          N/A
 # b3u      4      N/A          N/A
@@ -981,6 +982,8 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 $start_secs = outputProgressPrior("Identifying errors associated with incomplete alignment to the model", $progress_w, $log_FH, *STDOUT);
 mdl_results_add_b5e_b5u_errors(\%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
                                \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+ftr_results_add_b5e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                           \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
@@ -1007,9 +1010,9 @@ getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_H
 my $ftr_idx;  # counter over features
 for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
   foreach my $seq_name (keys %{$err_ftr_instances_AHH[$ftr_idx]{"ext"}}) { 
-    my $seq_idx = $seq_name_index_H{$seq_name};
-    my $seq_len       = $seq_info_HA{"seq_len"}[$seq_idx];   # differs from accn_len when the sequence is circular and dulicated
-    my $accn_len      = $seq_info_HA{"accn_len"}[$seq_idx];  # original length of the sequence without any duplication
+    my $seq_idx  = $seq_name_index_H{$seq_name};
+    my $seq_len  = $seq_info_HA{"seq_len"}[$seq_idx];   # differs from accn_len when the sequence is circular and dulicated
+    my $accn_len = $seq_info_HA{"accn_len"}[$seq_idx];  # original length of the sequence without any duplication
 
     # determine the model nearest to the end of the current feature, for which we have a prediction
     my $mdl_idx = undef;  
@@ -1181,6 +1184,10 @@ $start_secs = outputProgressPrior("Finalizing annotations and validating error c
 # report str, nop, b3e, b3u errors, we need to know these before we call ftr_results_calculate()
 mdl_results_add_str_nop_ost_b3e_b3u_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
                                            \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+
+# report b3e errors for cds-mp multifeature features
+ftr_results_add_b3e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                           \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # calculate out_start, out_stop and out_stop_codon values, we need to know some of these before we call ftr_results_calculate()
 mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, $ofile_info_HH{"FH"});
@@ -1818,7 +1825,10 @@ sub combine_model_hits {
         }
         if($at_least_one_fafile) { 
           # combine the sequences into 1 file
-          combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"});
+          combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, 
+                            0, # do not require sequences be in a contiguous subset of files beginning with the first one to be combined, 
+                               # allow any contiguous subset of files
+                            $opt_HHR, $ofile_info_HHR->{"FH"});
           
           my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
           addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
@@ -1916,7 +1926,10 @@ sub combine_feature_hits {
 
       if($at_least_one_fafile) { 
         # combine the sequences into 1 file
-        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, $opt_HHR, $ofile_info_HHR->{"FH"}); 
+        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, 
+                          0, # do not require sequences be in a contiguous subset of files beginning with the first one to be combined, 
+                               # allow any contiguous subset of files
+                          $opt_HHR, $ofile_info_HHR->{"FH"}); 
 
         my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
         addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
@@ -1937,7 +1950,7 @@ sub combine_feature_hits {
 # Incept:      EPN, Wed Mar  2 16:11:40 2016
 #
 # Purpose:    Helper function for combine_model_hits() and
-#             combine_feature_hits().  Given an array of fasta files,
+#             combine_feature_hits(). Given an array of fasta files,
 #             each with a different subsequence from the same parent
 #             sequences, create a single new fasta file that has the
 #             subsequences concatenated together.  An example is
@@ -1945,9 +1958,11 @@ sub combine_feature_hits {
 #             sqfile module.
 #
 # Arguments: 
-#  $indi_file_AR: REF to array of fasta files to combine
-#  $seq_name_AR:  REF to array with order of sequence names
-#  $multi_file:   name of multi file to create
+#  $indi_file_AR:  REF to array of fasta files to combine
+#  $seq_name_AR:   REF to array with order of sequence names
+#  $multi_file:    name of multi file to create
+#  $require_first: '1' to require each sequence to keep be in a contiguous set starting with file 1
+#                  '0' to require each sequence to keep be in a contiguous set starting with any file
 #  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:        REF to hash of file handles
 #
@@ -1958,10 +1973,10 @@ sub combine_feature_hits {
 #################################################################
 sub combine_sequences {
   my $sub_name = "combine_sequences";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($indi_file_AR, $seq_name_AR, $multi_file, $opt_HHR, $FH_HR) = @_;
+  my ($indi_file_AR, $seq_name_AR, $multi_file, $require_first, $opt_HHR, $FH_HR) = @_;
   
   my @sqfile_A                      = (); # array of open Bio::Easel::SqFile objects, one per indi_file_AR element
   my @sqfile_sqname_AA              = (); # 2D array of SqFile sequence names, read from the indi files, [0..$nfiles-1][0..$nseq_in_file_f]
@@ -1969,16 +1984,23 @@ sub combine_sequences {
   my @seq_name2sqfile_sqname_map_AA = (); # 2D array, 1st dim: 0..$seq_idx..$nseq-1, 2nd dim 0..$file_idx..$nfiles, value: ssi index of $seq_idx subseq in file $f
   my @seq_name_exists_AA            = (); # 2D array, 1st dim: 0..$seq_idx..$nseq-1, 2nd dim: 0..$file_idx..$nfiles-1; value '1' if $seq_idx exists in file $f
   my @seq_name_coords_A             = (); # key: sequence name from @{$seq_name_AR}, value: concatenated set of coordinates of all subseqs in all $nfiles
-  my @seq_name_fetch_me_A           = (); # [0..$i..$nseq_name-1]: values differ between first part of function and 2nd part of function:
-                                          # in 'for($file_idx..' loop: value is either the most recent (highest) file idx for which seq $i existed 
-                                          #                            or -2 if we've determined it is not in a contiguous set of files beginning at 1
-                                          # after 'update values in @seq_name_fetch_AA' block: value is "0" if seq $i does not exist in a contiguous
-                                          #                                                    block of sequences starting at 1, and "1" if it does
+  my @seq_name_fetch_me_A           = (); # [0..$i..$nseq_name-1]: value is "0" if seq $i should be included in the $multi_file, '0' if not
+                                          # How we decide depends on value of $require_all input variable:
                                           #
-                                          # we fetch each sequence that exists in a contiguous set of files in @sqfile_A starting with the first one
-                                          # we don't fetch a sequence that doesn't exist in any of the sequences
-                                          # we don't fetch a sequence that exists in at least one file in the middle of @sqfile_A
-
+                                          # IF $require_first is '1':
+                                          # we only include sequences that exist in a contiguous set of files in @sqfile_A starting with the first one
+                                          #
+                                          # IF $require_first is '0':
+                                          # we fetch each sequence that exists only in a contiguous set of files in @sqfile_A starting with any file
+                                          #
+                                          # To determine this we use @seq_name_exists_AA to create a string of 0s and 1s indicating which
+                                          # files it is in.
+                                          # example A: 01110: sequence exists in files 2, 3, and 4 but not 1 and 5
+                                          # example B: 11110: sequence exists in files 1, 2, 3, and 4 but not 5
+                                          # example C: 11010: sequence exists in files 1, 2, and 4 but not 3 and 5
+                                          # If $require_first is '1', only example B would be included
+                                          # If $require_first is '0', examples A and B would be included
+            
   my @sqname_AA                     = (); # 2D array, 1st dim [0..$file_idx..$nfiles-1], 2nd dim: 0 to number of sequences in file $file_idx
 
   my $seq_idx;  # counter over seq_name values
@@ -1994,10 +2016,11 @@ sub combine_sequences {
   # initialize arrays
   for(my $seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
     $seq_name_coords_A[$seq_idx]   = "";
-    $seq_name_fetch_me_A[$seq_idx] = -1; # set to 0 or 1 in for($file_idx) loop below
+    $seq_name_fetch_me_A[$seq_idx] = 0;
     @{$seq_name2sqfile_sqname_map_AA[$seq_idx]} = ();
     for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
       $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = -1; # updated in block below if $seq_idx exists in $file_idx
+      $seq_name_exists_AA[$seq_idx][$file_idx] = 0;
     }
   }
 
@@ -2046,30 +2069,25 @@ sub combine_sequences {
         }
         $seq_name_coords_A[$seq_idx] .= $coords;
         $seq_name_exists_AA[$seq_idx][$file_idx] = 1;
-        
-        if($seq_name_fetch_me_A[$seq_idx] == ($file_idx-1)) { 
-          $seq_name_fetch_me_A[$seq_idx]++; # this can make $seq_name_fetch_me_A[$seq_idx] rise to as high as $nfiles-1,
-          # but it really only serves as a flag that this sequence exists in all files
-          # starting at the first file ($file_idx == 0) up to the current file, else
-          # we would have set this value to -2 in the iteration of the loop corresponding
-          # to the file $file_idx in which it doesn't exist
-        }
-        else { 
-          # if we get here, we went through at least one value for $file_idx 
-          # in which this sequence did not exist
-          $seq_name_fetch_me_A[$seq_idx] = -2; # we'll set this to 0 below
-        }
       }
     } # end of 'if($indi_file_AR->[$file_idx] ne "/dev/null")'
   } # end of 'for' loop over file indexes
 
-  # update values in @seq_name_fetch_me_A
+  # update values in @seq_name_fetch_me_A based on values in @seq_name_exists_AA
   for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
-    # 3 possibilities: 
-    #   $seq_name_fetch_me_A[$seq_idx] >=  0: if $seq_idx existed in >= 1 files, and did exist in a contiguous subset starting at file_idx 0
-    #   $seq_name_fetch_me_A[$seq_idx] == -2: if $seq_idx existed in >= 1 files, but not in a contiguous subset of files starting at file_idx 0
-    #   $seq_name_fetch_me_A[$seq_idx] == -1: if $seq_idx existed in    0 files
-    $seq_name_fetch_me_A[$seq_idx] = ($seq_name_fetch_me_A[$seq_idx] >= 0) ? 1 : 0;
+    my $seq_name_exists_str = join("", @{$seq_name_exists_AA[$seq_idx]});
+    # remove trailing 0s
+    $seq_name_exists_str =~ s/0+$//;
+    # remove leading 0s (only if (! $require_first))
+    if(! $require_first) { $seq_name_exists_str =~ s/^0+//; }
+    # determine if we have a string of >=1 '1' left, with zero zeroes
+    if((length($seq_name_exists_str) > 0) && ($seq_name_exists_str !~ m/0/)) { 
+      # sequence exists in a contiguous subset of the sequence files
+      $seq_name_fetch_me_A[$seq_idx] = 1;
+    }
+    else { 
+      $seq_name_fetch_me_A[$seq_idx] = 0;
+    }
   } 
 
   # now for each seq_name that we want to fetch, fetch all subsequences for that 
@@ -2181,7 +2199,6 @@ sub parse_esl_epn_translate_startstop_outfile {
     #HQ693465/1-306 1 1 304
     if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
       my ($seq_name, $coords, $start_is_valid, $stop_is_valid, $first_stop_posn1) = ($1, $2, $3, $4, $5);
-      #print "HEYA esl-translate line $line";
 
       # skip this sequence IFF we have a b5e error already for it, this means 
       # that the alignment does not extend to the 5' boundary of the model but
@@ -3199,7 +3216,6 @@ sub results_calculate_overlaps_and_adjacencies {
 #                    model end and not flush with sequence end on 5'
 #
 # Arguments: 
-#  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
 #  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
 #  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
 #  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
@@ -3252,11 +3268,212 @@ sub mdl_results_add_b5e_b5u_errors {
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop
   } # end of 'for($mdl_idx' loop
+
+  return;
+}
+
+#################################################################
+# Subroutine:  ftr_results_add_b5e_errors
+# Incept:      EPN, Wed Feb 21 12:19:14 2018
+#
+# Purpose:    Report 'b5e' for features with 'annot_type' of 'multifeature'
+#             and type of 'cds-mp.
+#             Uses mdl_results to do this. If the first (5'-most) primary
+#             child of a multifeature feature should have a 'b5e' error
+#             (by looking at p_5overhang and p_5seqflush values in mdl_results)
+#             then the parent multifeature should too.
+#
+#             Checks for and adds or updates the following error 
+#             codes for features with "annot_type" eq "multifeature' and
+#             type 'cds-mp':
+#             
+#             "b5e": adds this error, predicted hit of 5'-most model 
+#                    not flush with model end but flush with sequence end on 5'
+#                    OR predicted hit of 5'-most model *is* flush with model end
+#                    but also flush with sequence end on 5' and *is not* the first
+#                    model of the first child of this multifeature parent feature.
+#
+#
+# Arguments: 
+#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
+#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
+#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+################################################################# 
+sub ftr_results_add_b5e_errors { 
+  my $sub_name = "ftr_results_add_b5e_errors";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # total counts of things
+  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $ftr_idx;   # counter over features
+  my $mdl_idx;   # counter over models
+  my $seq_idx;   # counter over sequences
+  my $seq_name;  # name of one sequence
+
+  # foreach annot_type:multifeature and type:'cds-mp' feature, 
+  # determine if the first primary child model with a prediction has a 'b5e' error, if so add a 'b5e' error to its parent cds-mp feature
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
+       ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
+
+      # get the primary children array
+      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
+      my $np_children = scalar(@primary_children_idx_A);
+
+      for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+        my $seen_hit = 0;      # set to '1' once we've seen the first model with an annotated hit
+        $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+
+        # step through all primary children of this feature
+        for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
+          my $child_ftr_idx = $primary_children_idx_A[$child_idx];
+          for(my $child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $child_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $child_mdl_idx++) { 
+            my $mdl_results_HR = \%{$mdl_results_AAHR->[$child_mdl_idx][$seq_idx]}; # for convenience
+            # two scenarios in which we can get a b5e error for the cds-mp parent
+            # 1. first model with a prediction has p_5seqflush == 1 and p_5overhang != 0
+            # 2. first model with a prediction has p_5seqflush == 1 and p_5overhang == 0 
+            #    and is not the first model of the first child
+            if((! $seen_hit) && # haven't seen a hit yet
+               (exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) && # has a prediction (not 'nop')
+               ($mdl_results_HR->{"p_5seqflush"} == 1)) {  # prediction extends to 5' boundary of sequence
+              if($mdl_results_HR->{"p_5overhang"} != 0) {
+                # 1. first model with a prediction has p_5seqflush == 1 and p_5overhang != 0
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end of mature peptide \#" . ($child_idx+1) . " of $np_children", $FH_HR);
+              }
+              elsif(($mdl_results_HR->{"p_5overhang"} == 0) && (($child_idx > 0) || ($child_mdl_idx > $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]))) { 
+                # 2. first model with a prediction has p_5seqflush == 1 and p_5overhang == 0 
+                #    and is not the first model of the first child
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, "$child_idx expected mature peptides not observed on 5' end", $FH_HR);
+              }
+              $seen_hit  = 1;
+              $child_idx = $np_children; # breaks 'for(my $child_idx' loop;
+            }
+          }
+        }
+      } # end of 'for($seq_idx' loop
+    }
+  } # end of 'for($ftr_idx' loop
+
   return;
 }      
 
 #################################################################
-# Subroutine:  mdl_results_add_str_nop_ost_errors
+# Subroutine:  ftr_results_add_b3e_errors
+# Incept:      EPN, Wed Feb 21 13:30:07 2018
+#
+# Purpose:    Report 'b3e' for features with 'annot_type' of 'multifeature'
+#             and type of 'cds-mp.
+#             Uses mdl_results to do this. If the final (3'-most) primary
+#             child of a multifeature feature should have a 'b3e' error
+#             (by looking at p_3overhang and p_3seqflush values in mdl_results)
+#             then the parent multifeature should too.
+#
+#             Checks for and adds or updates the following error 
+#             codes for features with "annot_type" eq "multifeature' and
+#             type 'cds-mp':
+#             
+#             "b3e": adds this error, predicted hit of 3'-most model 
+#                    not flush with model end but flush with sequence end on 3'
+#                    OR predicted hit of 3'-most model *is* flush with model end
+#                    but also flush with sequence end on 3' and *is not* the first
+#                    model of the first child of this multifeature parent feature.
+#
+#
+# Arguments: 
+#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
+#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
+#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+################################################################# 
+sub ftr_results_add_b3e_errors { 
+  my $sub_name = "ftr_results_add_b3e_errors";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # total counts of things
+  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $ftr_idx;   # counter over features
+  my $mdl_idx;   # counter over models
+  my $seq_idx;   # counter over sequences
+  my $seq_name;  # name of one sequence
+
+  # foreach annot_type:multifeature and type:'cds-mp' feature, 
+  # determine if the first primary child model with a prediction has a 'b5e' error, if so add a 'b5e' error to its parent cds-mp feature
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
+       ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
+
+      # get the primary children array
+      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
+      my $np_children = scalar(@primary_children_idx_A);
+
+      for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+        my $seen_hit = 0;      # set to '1' once we've seen the first model with an annotated hit
+        $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+
+        # step through all primary children of this feature
+        for(my $child_idx = $np_children-1; $child_idx >= 0; $child_idx--) { 
+          my $child_ftr_idx = $primary_children_idx_A[$child_idx];
+          for(my $child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $child_mdl_idx >= $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $child_mdl_idx--) { 
+            my $mdl_results_HR = \%{$mdl_results_AAHR->[$child_mdl_idx][$seq_idx]}; # for convenience
+            # two scenarios in which we can get a b3e error for the cds-mp parent
+            # 1. 3'-most model with a prediction has p_3seqflush == 1 and p_3overhang != 0 (and no trc or ext error)
+            # 2. 3'-most model with a prediction has p_3seqflush == 1 and p_3overhang == 0 (and no trc or ext error)
+            #    and is not the final model of the final child
+            if((! $seen_hit) && # haven't seen a hit yet
+               (exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) && # has a prediction (not 'nop')
+               (! exists $mdl_results_HR->{"trc_err_flag"}) && # no trc error for this model
+               (! exists $mdl_results_HR->{"ext_err_flag"}) && # no ext error for this model
+               ($mdl_results_HR->{"p_3seqflush"} == 1)) {  # prediction extends to 3' boundary of sequence
+              if($mdl_results_HR->{"p_3overhang"} != 0) {
+                # 1. first model with a prediction has p_3seqflush == 1 and p_3overhang != 0
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3e", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end of mature peptide \#" . ($child_idx+1) . " of $np_children", $FH_HR);
+              }
+              elsif(($mdl_results_HR->{"p_3overhang"} == 0) && (($child_idx < ($np_children-1)) || ($child_mdl_idx < $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]))) { 
+                # 2. first model with a prediction has p_3seqflush == 1 and p_3overhang == 0 
+                #    and is not the final model of the final child
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3e", $seq_name, ($np_children-1)-$child_idx . " expected mature peptides not observed on 3' end", $FH_HR);
+              }
+              $seen_hit = 1;
+              $child_idx = -1; # breaks 'for(my $child_idx' loop;
+            }
+          }
+        }
+      } # end of 'for($seq_idx' loop
+    }
+  } # end of 'for($ftr_idx' loop
+
+  return;
+}      
+
+#################################################################
+# Subroutine:  mdl_results_add_str_nop_ost_b3e_b3u_errors
 # Incept:      EPN, Thu Mar 31 13:43:58 2016
 #
 # Purpose:    Report 'str', 'nop', 'ost', 'b3e', and 'b3u' errors
@@ -3671,6 +3888,13 @@ sub ftr_results_calculate {
                   $start_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"};
                   $set_start = 1;
                 }
+                # (as of v0.28: always update the stop, remove this to revert to pre-v0.28 behavior
+                #  in regards to stop output in tbl) 
+                $cds_out_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"};
+                $cds_fetch_stop    = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
+                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
+                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
+                $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
                 
                 # check if we have a trc in this child model, and deal with it if we do
                 if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"trc_err_flag"}) { 
@@ -3981,6 +4205,15 @@ sub ftr_results_calculate {
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start_codon"} = "?";
         }
         
+        if((defined $cds_out_start) && (defined $cds_out_stop)) { 
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_start"} = $cds_out_start;
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_stop"}  = $cds_out_stop;
+        }
+        else { 
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_start"}       = "?";
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_start_codon"} = "?";
+        }
+
         # for the stop and length attributes to be anything but "?" 
         # we require the following: 
         # - no aji error
@@ -6512,14 +6745,14 @@ sub output_feature_tbl_all_sequences {
         if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
            ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
           my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
-          if(($ftr_results_HR->{"out_start"} ne "?") && 
-             ($ftr_results_HR->{"out_stop"}  ne "?")) { 
+          if(($ftr_results_HR->{"ftbl_out_start"} ne "?") && 
+             ($ftr_results_HR->{"ftbl_out_stop"}  ne "?")) { 
             # we have a predicted start and stop for this feature
             # create the output for the feature table
             $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
-                                    $do_start_carrot ? "<" : "", $ftr_results_HR->{"out_start"}, 
-                                    $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"out_stop"}, $feature_type); 
-            $min_coord = ($ftr_results_HR->{"out_start"} < $ftr_results_HR->{"out_stop"}) ? $ftr_results_HR->{"out_start"} : $ftr_results_HR->{"out_stop"};
+                                    $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
+                                    $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"}, $feature_type); 
+            $min_coord = ($ftr_results_HR->{"ftbl_out_start"} < $ftr_results_HR->{"ftbl_out_stop"}) ? $ftr_results_HR->{"ftbl_out_start"} : $ftr_results_HR->{"ftbl_out_stop"};
             foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
               if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                 $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
