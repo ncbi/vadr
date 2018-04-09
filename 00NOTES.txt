@@ -165,7 +165,7 @@ source ~/.cshrc
 # scripts and code:
 #
 # esl-fetch-cds.pl v0.01        (https://github.com/nawrockie/esl-fetch-cds)
-# esl-epn-translate.pl v0.04    (https://github.com/nawrockie/esl-epn-translate)
+# esl-epn-translate.pl v0.05    (https://github.com/nawrockie/esl-epn-translate)
 # Bio-Easel v0.05               (https://github.com/nawrockie/Bio-Easel)
 # epn-options v0.03             (https://github.com/nawrockie/epn-options)
 #
