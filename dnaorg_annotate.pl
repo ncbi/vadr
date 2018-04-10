@@ -6724,7 +6724,7 @@ sub output_feature_tbl_all_sequences {
         $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
         $do_start_carrot = $ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"};
         $do_stop_carrot  = $ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"};
-        $note_value      = populateFTableNote($ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+        $note_value      = populateFTableNote($ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
       }
       else { 
         $do_short_ftable = 0;
@@ -6753,12 +6753,14 @@ sub output_feature_tbl_all_sequences {
                                     $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
                                     $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"}, $feature_type); 
             $min_coord = ($ftr_results_HR->{"ftbl_out_start"} < $ftr_results_HR->{"ftbl_out_stop"}) ? $ftr_results_HR->{"ftbl_out_start"} : $ftr_results_HR->{"ftbl_out_stop"};
-            foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
-              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
-                foreach $qval (@qval_A) { 
-                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+            if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
+              foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+                if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                  $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                  @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                  foreach $qval (@qval_A) { 
+                    $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+                  }
                 }
               }
             }
@@ -6815,12 +6817,14 @@ sub output_feature_tbl_all_sequences {
                                       ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
             }
           }
-          foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
-            if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-              $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-              @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
-              foreach $qval (@qval_A) { 
-                $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval);
+          if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
+            foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                foreach $qval (@qval_A) { 
+                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval);
+                }
               }
             }
           }

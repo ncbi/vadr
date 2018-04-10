@@ -1488,11 +1488,12 @@ sub initializeHardCodedFTableErrorExceptions {
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e",     "olp,aja,ajb,nm3,inp",             0,            1,            0,            undef, $FH_HR);
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b3e",     "olp,aja,ajb,stp,nst,nm3,inp,aji", 0,            0,            1,            undef, $FH_HR);
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e,b3e", "olp,aja,ajb,stp,nst,nm3,inp,aji", 0,            1,            1,            undef, $FH_HR);
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",                     1,            0,            0,            "COPY!str", $FH_HR); # "COPY!str" indicates we should use the str error string to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",                     1,            0,            0,            "!COPY!str", $FH_HR); # "COPY!str" indicates we should use the str error string to make the note
 # alternative note for the 'str' exception:  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",             1,            0,            0,            "predicted start position is not beginning of ATG start codon []", $FH_HR);
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb",                     1,            0,            0,            "COPY!trc", $FH_HR); # "COPY!trc" indicates we should use the trc error string to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",                     0,            0,            0,            "COPY!ost", $FH_HR); # "COPY!ost" indicates we should use the ost error string to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",                     0,            0,            0,            "COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb",                     1,            0,            0,            "!COPY!trc", $FH_HR); # "COPY!trc" indicates we should use the trc error string to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",                     0,            0,            0,            "!COPY!ost",     $FH_HR); # "COPY!ost" indicates we should use the ost error string to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",                     0,            0,            0,            "!COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ntr",     "olp,aja,ajb",                     1,            0,            0,            "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
   
   return;
 }
@@ -1524,7 +1525,7 @@ sub initializeHardCodedFTableErrorExceptions {
 #                              feature to a 'misc_feature' in the feature table, else '0'
 #   $note:                     string to use as a note for this exception, or undefined
 #                              for no note. As a special case if $note starts with:
-#                              "COPY!" followed by a string of comma-separated
+#                              "!COPY!" followed by a string of comma-separated
 #                              errors, then the note will be constructed by concatenating
 #                              the error strings for the corresponding errors. Those
 #                              errors must be also in the 'required_err_str";
@@ -1534,8 +1535,8 @@ sub initializeHardCodedFTableErrorExceptions {
 # Returns: void
 #
 # Dies:    - if any error code in either $required_err_str, $allowed_err_str, or $note
-#            after removing a "COPY!" prefix.
-#          - if any error code in $note that starts with "COPY!" is not also in $required_err_str
+#            after removing a "!COPY!" prefix.
+#          - if any error code in $note that starts with "!COPY!" is not also in $required_err_str
 #          - if any error code is in both $required_err_str and $allowed_err_str
 #
 #################################################################
@@ -1607,7 +1608,7 @@ sub addFTableErrorException() {
   if(defined $note) { 
     my $orig_note = $note;
     if($note =~ s/^COPY\!//) { 
-      # we must have at least one required error for the note to use this COPY! mechanism
+      # we must have at least one required error for the note to use this !COPY! mechanism
       if(! defined $required_err_str) { 
         DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but there are no required errors for this exception", 1, $FH_HR);
       }
@@ -1623,7 +1624,7 @@ sub addFTableErrorException() {
       }          
       $HR->{"note"} = $orig_note;
     }
-    else { # note does not start with "COPY!"
+    else { # note does not start with "!COPY!"
       $HR->{"note"} = $orig_note;
     }
   } # 
@@ -1792,6 +1793,8 @@ sub checkErrorsAgainstFTableErrorExceptions {
 #             impossible.
 #
 # Arguments:
+#   $ftr_info_HAR:             REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:                  relevant feature index for 2nd dim of %ftr_info_HAR
 #   $ftbl_err_exceptions_HR:   REF to hash with exception info, PRE-FILLED
 #   $err_info_HAR:             REF to the error info hash of arrays, PRE-FILLED
 #   $err_ftr_instances_HHR:    REF to 2D hash with per-feature errors, PRE-FILLED
@@ -1807,10 +1810,10 @@ sub checkErrorsAgainstFTableErrorExceptions {
 #################################################################
 sub populateFTableNote { 
   my $sub_name = "populateFTableNote";
-  my $nargs_expected = 5;
+  my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftbl_err_exceptions_HR, $err_info_HAR, $err_ftr_instances_HHR, $seq_name, $FH_HR) = (@_);
+  my ($ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_HR, $err_info_HAR, $err_ftr_instances_HHR, $seq_name, $FH_HR) = (@_);
   
   my $note = $ftbl_err_exceptions_HR->{"note"};
   if(! defined $note) { 
@@ -1821,12 +1824,13 @@ sub populateFTableNote {
     return "";
   }
   
-  # if $note starts with COPY!<s>, then return the error messages for all errcodes that 
+  # if $note starts with !COPY!<s>, then return the error messages for all errcodes that 
   # compose <s> (separated by commas)
+  # if not, it may still contain !$key! which gets replaced with $ftr_info_HAR->{$key}[$ftr_idx];
   my $orig_note = $note;
   my $ret_note  = "";
   my $idx;
-  if($note =~ s/^COPY!//) { 
+  if($note =~ s/^!COPY!//) { 
     my @err_A = split(",", $note);
     foreach my $err_code (@err_A) { 
       $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
@@ -1846,8 +1850,17 @@ sub populateFTableNote {
       }        
     }
   }
-  else { # note does not start with COPY!
-    $ret_note = $orig_note;
+  else {  # note does not start with !COPY!
+    # check if there is an internal !$key! string, which is replaced by the value: $ftr_info_HAR->{$key}[$ftr_idx]);
+    if($note =~ /\!([^\!]*)\!/) {
+      my $key = $1; 
+      my $value = "?";
+      if(exists $ftr_info_HAR->{$key}[$ftr_idx]) { 
+        $value = $ftr_info_HAR->{$key}[$ftr_idx];
+      }
+      $note =~ s/\![^\!]*\!/$value/;
+    }
+    $ret_note = $note;
   }
 
   return $ret_note;
