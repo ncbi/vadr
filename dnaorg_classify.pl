@@ -150,7 +150,7 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.29";
+my $version       = "0.30";
 my $releasedate   = "Apr 2018";
 
 # print help and exit if necessary
@@ -1354,9 +1354,9 @@ sub nhmmscanSeqs {
     print SCRIPT "\#\$ -P unified\n";
     print SCRIPT "\n";
     print SCRIPT "\# list resource request options\n";
-    print SCRIPT "\#\$  -l h_rt=288000,h_vmem=32G,mem_free=32G,reserve_mem=32G  \n";
+    print SCRIPT "\#\$  -l h_rt=288000,h_vmem=32G,mem_free=32G,reserve_mem=32G,m_mem_free=32G  \n";
     # old version of above line: -l h_vmem=32G,reserve_mem=32G,mem_free=32G
-    # new version of above line: -l h_rt=288000,h_vmem=32G,mem_free=32G,reserve_mem=32G
+    # new version of above line: -l h_rt=288000,h_vmem=32G,mem_free=32G,reserve_mem=32G,m_mem_free=32G
     print SCRIPT "\n";
     print SCRIPT "\# split stdout and stderr files (default is they are joined into one file)\n";
     print SCRIPT "\#\$ -j n\n";

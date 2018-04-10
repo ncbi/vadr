@@ -163,7 +163,7 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.29";
+my $version       = "0.30";
 my $releasedate   = "Apr 2018";
 
 # print help and exit if necessary
@@ -788,13 +788,13 @@ sub run_cmcalibrate_and_cmpress {
   my $df_ncpu         = opt_Get("-n", $opt_HHR);
   my $df_gb_per_core  = 8;
   my $df_gb_tot       = opt_Get("--rammult", $opt_HHR) ? $df_gb_per_core * $df_ncpu : $df_gb_per_core;
-  my $df_time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%sG,mem_free=%sG,reserve_mem=%sG", $df_gb_tot, $df_gb_tot, $df_gb_per_core);
+  my $df_time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%sG,mem_free=%sG,reserve_mem=%sG,m_mem_free=%sG", $df_gb_tot, $df_gb_tot, $df_gb_per_core, $df_gb_tot);
   my $big_ncpu        = opt_Get("--bigncpu", $opt_HHR);
   my $big_gb_per_core = opt_Get("--bigram", $opt_HHR);
   my $big_gb_tot      = opt_Get("--rammult", $opt_HHR) ? $big_gb_per_core * $big_ncpu : $big_gb_per_core;
 
   my $big_thresh      = opt_Get("--bigthresh", $opt_HHR);
-  my $big_time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%sG,mem_free=%sG,reserve_mem=%sG", $big_gb_tot, $big_gb_tot, $big_gb_per_core);
+  my $big_time_and_mem_req = sprintf("-l h_rt=576000,h_vmem=%sG,mem_free=%sG,reserve_mem=%sG,m_mem_free=%sG", $big_gb_tot, $big_gb_tot, $big_gb_per_core, $big_gb_tot);
 
   $df_cmcalibrate_opts  = ($df_ncpu == 1) ? " --cpu 0 " : " --cpu $df_ncpu ";
   $big_cmcalibrate_opts = " --cpu $big_ncpu ";
