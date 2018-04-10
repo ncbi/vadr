@@ -1354,9 +1354,9 @@ sub nhmmscanSeqs {
     print SCRIPT "\#\$ -P unified\n";
     print SCRIPT "\n";
     print SCRIPT "\# list resource request options\n";
-    print SCRIPT "\#\$  -l h_rt=288000,h_vmem=32G,mem_free=32G,reserve_mem=32G  \n";
+    print SCRIPT "\#\$  -l h_rt=288000,h_vmem=32G,mem_free=32G,reserve_mem=32G,m_mem_free=32G  \n";
     # old version of above line: -l h_vmem=32G,reserve_mem=32G,mem_free=32G
-    # new version of above line: -l h_rt=288000,h_vmem=32G,mem_free=32G,reserve_mem=32G
+    # new version of above line: -l h_rt=288000,h_vmem=32G,mem_free=32G,reserve_mem=32G,m_mem_free=32G
     print SCRIPT "\n";
     print SCRIPT "\# split stdout and stderr files (default is they are joined into one file)\n";
     print SCRIPT "\#\$ -j n\n";

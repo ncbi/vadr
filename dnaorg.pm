@@ -7763,7 +7763,7 @@ sub runCmscanOrNhmmscan {
     my $jobname = "s" . removeDirPath($seq_file);
     my $errfile = $tblout_file . ".err";
     if(-e $errfile) { removeFileUsingSystemRm($errfile, $sub_name, $opt_HHR, $ofile_info_HHR); }
-    my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G,reserve_mem=8G " . "\"" . $cmd . "\" > /dev/null\n";
+    my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G,reserve_mem=8G,m_mem_free=8G " . "\"" . $cmd . "\" > /dev/null\n";
     runCommand($farm_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
   }
 
