@@ -1483,16 +1483,16 @@ sub initializeHardCodedFTableErrorExceptions {
   # add each exception, the addFTableErrorException() function will die if: 
   # - it sees error code not in %err_info_HAR
   #                                                                required   allowed    
-  #                                                                errors     errors                             misc_feature? start_carrot? stop_carrot?, note?
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, undef,     "olp,aja,ajb",                     0,            0,            0,            undef, $FH_HR);
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e",     "olp,aja,ajb,nm3,inp",             0,            1,            0,            undef, $FH_HR);
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b3e",     "olp,aja,ajb,stp,nst,nm3,inp,aji", 0,            0,            1,            undef, $FH_HR);
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e,b3e", "olp,aja,ajb,stp,nst,nm3,inp,aji", 0,            1,            1,            undef, $FH_HR);
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",                     1,            0,            0,            "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb",                     1,            0,            0,            "!COPY!trc", $FH_HR); # "COPY!trc" indicates we should use the trc error string to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",                     1,            0,            0,            "similar to !out_product!", $FH_HR); # "COPY!ost" indicates we should use the ost error string to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",                     0,            0,            0,            "!COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ntr",     "olp,aja,ajb",                     1,            0,            0,            "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  #                                                                errors     errors                                 misc_feature? start_carrot? stop_carrot?, note?
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, undef,     "olp,aja,ajb",                         0,            0,            0,            undef, $FH_HR);
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e",     "olp,aja,ajb,nm3,inp,nop",             0,            1,            0,            undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b3e",     "olp,aja,ajb,stp,nst,nm3,inp,aji,nop", 0,            0,            1,            undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e,b3e", "olp,aja,ajb,stp,nst,nm3,inp,aji,nop", 0,            1,            1,            undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",                         1,            0,            0,            "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb",                         1,            0,            0,            "!COPY!trc", $FH_HR); # "COPY!trc" indicates we should use the trc error string to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",                         1,            0,            0,            "similar to !out_product!", $FH_HR); # "COPY!ost" indicates we should use the ost error string to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",                         0,            0,            0,            "!COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ntr",     "olp,aja,ajb",                         1,            0,            0,            "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
   
   return;
 }
