@@ -1,5 +1,6 @@
 # EPN, Wed Nov 29 06:40:21 2017
 # git repository url: https://github.com/nawrockie/dnaorg_scripts.git
+# v0.31 May 2018
 #
 # This file is organized into the following sections: 
 # -----------
@@ -166,7 +167,7 @@ source ~/.cshrc
 #
 # esl-fetch-cds.pl v0.01        (https://github.com/nawrockie/esl-fetch-cds)
 # esl-epn-translate.pl v0.05    (https://github.com/nawrockie/esl-epn-translate)
-# Bio-Easel v0.05               (https://github.com/nawrockie/Bio-Easel)
+# Bio-Easel v0.06               (https://github.com/nawrockie/Bio-Easel)
 # epn-options v0.03             (https://github.com/nawrockie/epn-options)
 #
 # Infernal v1.1.2               (http://eddylab.org/infernal/)

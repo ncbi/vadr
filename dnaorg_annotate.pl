@@ -351,8 +351,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.30";
-my $releasedate   = "Apr 2018";
+my $version       = "0.31";
+my $releasedate   = "May 2018";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -2054,8 +2054,9 @@ sub combine_sequences {
         $sqname_AA[$file_idx][$sqfile_seq_idx] = $sqfile_A[$file_idx]->fetch_seq_name_given_ssi_number($sqfile_seq_idx);
         
         # break down this name into the $seq_name and $coords
-        my ($seq_name, $coords) = split("/", $sqname_AA[$file_idx][$sqfile_seq_idx]);
-        if(! defined $coords || $coords !~ m/\-/) { 
+        my ($is_nse, $seq_name, $start, $end, $str) = nseBreakdown($sqname_AA[$file_idx][$sqfile_seq_idx]);
+        my $coords = $start . "-" . $end;
+        if((! $is_nse) || $coords !~ m/\-/) { 
           DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$file_idx][$sqfile_seq_idx] into accession and coordinates", 1, $FH_HR);
         }
         if(! exists $seq_name_idx_H{$seq_name}) { 

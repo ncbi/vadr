@@ -206,6 +206,7 @@
 #   validateFileExistsAndIsNonEmpty()
 #   concatenateListOfFiles()
 #   md5ChecksumOfFile()
+#   nseBreakdown()
 #
 # Miscellaneous subroutines that don't fall into one of the above
 # categories:
@@ -5901,6 +5902,7 @@ sub formatTimeString {
 #   findValueInArray()
 #   sumArray()
 #   sumHashValues()
+
 #
 #################################################################
 # Subroutine : findNonNumericValueInArray()
@@ -6144,6 +6146,7 @@ sub sumHashValues {
 #   validateFileExistsAndIsNonEmpty()
 #   concatenateListOfFiles()
 #   md5ChecksumOfFile()
+#   nseBreakdown()
 #
 #################################################################
 # Subroutine : DNAORG_FAIL()
@@ -6685,6 +6688,45 @@ sub md5ChecksumOfFile {
   return $md5sum;
 }
 
+#################################################################
+# Subroutine : nseBreakdown()
+# Incept:      EPN, Wed Jan 30 09:50:07 2013 [rfam-family-pipeline:Utils.pm]
+#
+# Purpose  : Checks if $nse is of format "name/start-end" and if so
+#          : breaks it down into $n, $s, $e, $str (see 'Returns' section)
+# 
+# Arguments: 
+#   $seqname:  sequence name, possibly in "name/start-end" format
+# 
+# Returns:     5 values:
+#              '1' if seqname was of "name/start-end" format, else '0'
+#              $n:   name ("" if seqname does not match "name/start-end")
+#              $s:   start, maybe <= or > than $e (0 if seqname does not match "name/start-end")
+#              $e:   end,   maybe <= or > than $s (0 if seqname does not match "name/start-end")
+#              $str: strand, 1 if $s <= $e, else -1
+# 
+# Dies:        Never
+#
+################################################################# 
+sub nseBreakdown {
+  my $nargs_expected = 1;
+  my $sub_name = "nseBreakdown()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($sqname) = $_[0];
+
+  my $n;       # sqacc
+  my $s;       # start, from seq name (can be > $end)
+  my $e;       # end,   from seq name (can be < $start)
+  my $str;     # strand, 1 if $start <= $end, else -1
+
+  if($sqname =~ m/^(\S+)\/(\d+)\-(\d+)\s*/) {
+    ($n, $s, $e) = ($1,$2,$3);
+    $str = ($s <= $e) ? 1 : -1; 
+    return (1, $n, $s, $e, $str);
+  }
+  return (0, "", 0, 0, 0); # if we get here, $sqname is not in name/start-end format
+}
 
 #################################################################
 #
@@ -7928,6 +7970,8 @@ sub featureTypeIsExtraFeature() {
 
   return ""; # NEVERREACHED
 }
+
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;
