@@ -351,8 +351,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.30";
-my $releasedate   = "Apr 2018";
+my $version       = "0.31";
+my $releasedate   = "May 2018";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -2054,8 +2054,9 @@ sub combine_sequences {
         $sqname_AA[$file_idx][$sqfile_seq_idx] = $sqfile_A[$file_idx]->fetch_seq_name_given_ssi_number($sqfile_seq_idx);
         
         # break down this name into the $seq_name and $coords
-        my ($seq_name, $coords) = split("/", $sqname_AA[$file_idx][$sqfile_seq_idx]);
-        if(! defined $coords || $coords !~ m/\-/) { 
+        my ($is_nse, $seq_name, $start, $end, $str) = nseBreakdown($sqname_AA[$file_idx][$sqfile_seq_idx]);
+        my $coords = $start . "-" . $end;
+        if((! $is_nse) || $coords !~ m/\-/) { 
           DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$file_idx][$sqfile_seq_idx] into accession and coordinates", 1, $FH_HR);
         }
         if(! exists $seq_name_idx_H{$seq_name}) { 
@@ -6682,8 +6683,12 @@ sub output_feature_tbl_all_sequences {
     # 5' UTR would go here, see commit e443e96 for example (I abandoned 5' UTRs after that commit)
 
     # move on to features 
-    my @cur_err_output_A = (); # will hold output error messages
-    my $nop_error_flag = 0;          # set to '1' if this feature for this sequence has an 'nop' error
+    my @cur_err_output_A   = (); # will hold output error messages
+    my $ftr_nop_error_flag = 0;  # set to '1' if this feature for this sequence has an 'nop' error
+    my $all_mdl_nop_error_flag = 0; # set to '1' if all models for this feature have nop errors
+    my $mdl_idx; 
+    my $first_mdl_idx_w_pred = -1; # mdl idx of first model for this feature with a prediction (! nop)
+    my $final_mdl_idx_w_pred = -1; # mdl idx of final model for this feature with a prediction (! nop)
 
     # go through each feature and output information on it
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -6694,12 +6699,13 @@ sub output_feature_tbl_all_sequences {
       # get error info for this sequence/feature combo
       @cur_err_output_A = (); # will hold output error messages
       $cur_err_str      = ""; # we will add all errors below
-      $nop_error_flag   = 0;
+      $ftr_nop_error_flag     = 0;
       # are there any errors for this feature? 
       for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
         if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
           my $err_code = $err_info_HAR->{"code"}[$err_idx];
           if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
+            printf("HEYA exists err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}\n");
             if($cur_err_str ne "") { $cur_err_str .= ","; }
             $cur_err_str .= $err_code;
             push(@cur_err_output_A, sprintf("%4s error code: %s%s", 
@@ -6707,11 +6713,12 @@ sub output_feature_tbl_all_sequences {
                                             $err_info_HAR->{"msg"}[$err_idx], 
                                             ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]")); 
             if($err_code eq "nop") { 
-              $nop_error_flag = 1;
+              $ftr_nop_error_flag = 1;
             }
           }
         }
       } # end of for loop over $err_idx 
+
 
       # determine if this sequence/feature combo satisfies any of the feature 
       # table exceptions, allowing it to be output to the short feature table
@@ -6724,7 +6731,7 @@ sub output_feature_tbl_all_sequences {
         $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
         $do_start_carrot = $ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"};
         $do_stop_carrot  = $ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"};
-        $note_value      = populateFTableNote($ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+        $note_value      = populateFTableNote($ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
       }
       else { 
         $do_short_ftable = 0;
@@ -6734,16 +6741,15 @@ sub output_feature_tbl_all_sequences {
         $note_value      = "";
       }
 
-      if(! $nop_error_flag) { 
-        # we only print information on a feature if there is no 'nop' error
-
-        my $feature_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
-        if($do_misc_feature) { $feature_type = "misc_feature"; }
-        #####################################################################################
-        # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
-        #####################################################################################
-        if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
-           ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
+      my $feature_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
+      if($do_misc_feature) { $feature_type = "misc_feature"; }
+      #####################################################################################
+      # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
+      #####################################################################################
+      if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
+         ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
+        if(! $ftr_nop_error_flag) { 
+          # we only print feature information for features with predictions
           my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
           if(($ftr_results_HR->{"ftbl_out_start"} ne "?") && 
              ($ftr_results_HR->{"ftbl_out_stop"}  ne "?")) { 
@@ -6753,12 +6759,14 @@ sub output_feature_tbl_all_sequences {
                                     $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
                                     $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"}, $feature_type); 
             $min_coord = ($ftr_results_HR->{"ftbl_out_start"} < $ftr_results_HR->{"ftbl_out_stop"}) ? $ftr_results_HR->{"ftbl_out_start"} : $ftr_results_HR->{"ftbl_out_stop"};
-            foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
-              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
-                foreach $qval (@qval_A) { 
-                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+            if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
+              foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+                if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                  $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                  @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                  foreach $qval (@qval_A) { 
+                    $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+                  }
                 }
               }
             }
@@ -6790,37 +6798,60 @@ sub output_feature_tbl_all_sequences {
               $sidx++;
             }
           }
+        } # end of if(! $ftr_nop_error_flag) { 
+      }
+      else { # not a multifeature cds-mp 
+        # if this feature is of annot_type 'model' determine if all models for it have no prediction or not
+        $all_mdl_nop_error_flag = 0;
+        $first_mdl_idx_w_pred = -1;
+        $final_mdl_idx_w_pred = -1;
+        if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
+          $all_mdl_nop_error_flag = 1; # set to 0 below if any of the models have a predicted start
+          for($mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
+            if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]->{"p_start"}) { 
+              if($first_mdl_idx_w_pred == -1) { $first_mdl_idx_w_pred = $mdl_idx; }
+              $final_mdl_idx_w_pred = $mdl_idx;
+              $all_mdl_nop_error_flag = 0;
+            }
+          }
         }
-        else { # not a multifeature cds-mp 
+
+        if(! $all_mdl_nop_error_flag) { 
+          # we only print feature information for features with predictions
           $min_coord = -1;
-          for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-            my $is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx]; # is this the first model for feature $ftr_idx?
-            my $is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx]; # is this the final model for feature $ftr_idx?
+          for($mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
+            my $is_first = ($mdl_idx == $first_mdl_idx_w_pred) ? 1 : 0;
+            my $is_final = ($mdl_idx == $final_mdl_idx_w_pred) ? 1 : 0;
             my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
             my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
 
-            $cur_min_coord = ($mdl_results_HR->{"out_start"} < $mdl_results_HR->{"out_stop"}) ? $mdl_results_HR->{"out_start"} : $mdl_results_HR->{"out_stop"};
-            if(($mdl_idx == $ftr_info_HAR->{"first_mdl"}[$ftr_idx]) || ($cur_min_coord < $min_coord)) { 
-              $min_coord = $cur_min_coord;
-            }
+            if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]->{"p_start"}) { 
+              $cur_min_coord = ($mdl_results_HR->{"out_start"} < $mdl_results_HR->{"out_stop"}) ? $mdl_results_HR->{"out_start"} : $mdl_results_HR->{"out_stop"};
+              if(($mdl_idx == $ftr_info_HAR->{"first_mdl"}[$ftr_idx]) || ($cur_min_coord < $min_coord)) { 
+                $min_coord = $cur_min_coord;
+              }
 
-            if($is_first) { 
-              $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
-                                      $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
-                                      ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"}, $feature_type); 
-            }
-            else { 
-              $cur_out_str .= sprintf("%d\t%s%d\n", 
-                                      $mdl_results_HR->{"out_start"}, 
-                                      ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
+              if($is_first) { 
+                $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
+                                        $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
+                                        ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"}, $feature_type); 
+              }
+              else { 
+                $cur_out_str .= sprintf("%d\t%s%d\n", 
+                                        $mdl_results_HR->{"out_start"}, 
+                                        ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
+              }
             }
           }
-          foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
-            if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-              $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-              @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
-              foreach $qval (@qval_A) { 
-                $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval);
+          if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
+            foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                foreach $qval (@qval_A) { 
+                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval);
+                  printf("HEYA added %s\n", sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval));
+                }
               }
             }
           }
@@ -6852,8 +6883,8 @@ sub output_feature_tbl_all_sequences {
             $short_AH[$sidx]{"output"}        = $cur_short_out_str;
             $sidx++;
           }
-        } # end of 'else' entered if feature is not a multifeature cds-mp
-      } # end of 'if (! $nop_error_flag)'
+        } # end of if(! $all_mdl_nop_error_flag)
+      }  # end of 'else' entered if feature is not a multifeature cds-mp
     } # end of 'for(my $ftr_idx'      
 
     # 3' UTR would go here, see commit e443e96 for example (I abandoned 3' UTRs after that commit)
