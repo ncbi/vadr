@@ -61,8 +61,12 @@ my %opt_group_desc_H = ();
 $opt_group_desc_H{"1"} = "basic options";
 #     option            type       default               group   requires incompat    preamble-output                          help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                   "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",  "force; if dir <output directory> exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                            "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",           "force; if dir <output directory> exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-s",           "boolean", 0,                        1,    undef, undef,      "skip commands, they were already run, just compare files",  "skip commands, they were already run, just compare files",   \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{"2"} = "options for defining variables in testing files";
+#       option       type        default                group  requires incompat          preamble-output                                              help-output    
+opt_Add("--dirbuild",   "string",  undef,                    2,   undef, undef,       "build directory, replaces !dirbuild! in test file with <s>", "build directory, replaces !dirbuild! in test file with <s>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -72,7 +76,9 @@ my $synopsis = "dnaorg_test.pl :: test dnaorg scripts [TEST SCRIPT]";
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"},
                 'v'            => \$GetOptions_H{"-v"},
-                'f'            => \$GetOptions_H{"-f"}); 
+                'f'            => \$GetOptions_H{"-f"},
+                's'            => \$GetOptions_H{"-s"},
+                'dirbuild=s'   => \$GetOptions_H{"--dirbuild"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -173,19 +179,28 @@ my @desc_A     = (); # array of the descriptions for the commands
 my @outfile_AA = (); # array of arrays of output files to compare for each command
 my @expfile_AA = (); # array of arrays of expected files to compare output to for each command
 my @rmdir_AA   = (); # array of directories to remove after each command is completed
-my $ncmd = parse_test_file($test_file, \@cmd_A, \@desc_A, \@outfile_AA, \@expfile_AA, \@rmdir_AA, $ofile_info_HH{"FH"});
+my $ncmd = parse_test_file($test_file, \@cmd_A, \@desc_A, \@outfile_AA, \@expfile_AA, \@rmdir_AA, \%opt_HH, $ofile_info_HH{"FH"});
 
 my $npass = 0;
 my $nfail = 0;
+my $start_secs = undef;
 for(my $i = 1; $i <= $ncmd; $i++) { 
   my $cmd  = $cmd_A[($i-1)];
   my $desc = $desc_A[($i-1)];
   my $outfile_AR = \@{$outfile_AA[($i-1)]};
   my $expfile_AR = \@{$expfile_AA[($i-1)]};
   my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
-  my $start_secs = outputProgressPrior(sfprintf("Running command %2d [%20s] ...", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
-#  runCommand($cmd, 0, $ofile_info_HHR->{"FH"});
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  if((opt_IsUsed("-s", \%opt_HH)) && (opt_Get("-s", \%opt_HH))) { 
+    # -s used, we aren't running commands, just comparing files
+    $start_secs = outputProgressPrior(sprintf("Skipping command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
+  else { 
+    # -s not used, run command
+    $start_secs = outputProgressPrior(sprintf("Running command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
+    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
 
   my $nout = scalar(@{$outfile_AR});
   for(my $j = 0; $j < $nout; $j++) { 
@@ -228,7 +243,8 @@ exit 0;
 #   $outfile_AAR: ref to 2D array of output files to fill here
 #   $expfile_AAR: ref to 2D array of expected files to fill here
 #   $rmdir_AAR:   ref to 2D array of directories to remove after calling each command
-#   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#   $opt_HHR:     ref to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:       ref to hash of file handles, including "log" and "cmd"
 #
 # Returns:    number of commands read in $testfile
 #
@@ -240,10 +256,10 @@ exit 0;
 #################################################################
 sub parse_test_file { 
   my $sub_name = "parse_test_file";
-  my $nargs_expected = 7;
+  my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($testfile, $cmd_AR, $desc_AR, $outfile_AAR, $expfile_AAR, $rmdir_AAR, $FH_HR) = @_;
+  my ($testfile, $cmd_AR, $desc_AR, $outfile_AAR, $expfile_AAR, $rmdir_AAR, $opt_HHR, $FH_HR) = @_;
 
   open(IN, $testfile) || fileOpenFailure($testfile, $sub_name, $!, "reading", $FH_HR);
   my $ncmd = 0;
@@ -253,7 +269,7 @@ sub parse_test_file {
   my $rmdir;
 
   while(my $line = <IN>) { 
-    if($line !~ m/^\#/) { 
+    if(($line !~ m/^\#/) && ($line =~ m/\w/)) { 
       # example input file:
       # # comment line (ignored)
       # command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl -f -A /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds --infasta testfiles/noro.9.fa --dirbuild /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds --dirout test-noro.9
@@ -274,6 +290,19 @@ sub parse_test_file {
             DNAORG_FAIL("ERROR different number of output and expected lines for command " . ($ncmd+1), 1, $FH_HR);
           }
         }
+        # replace !<s>! with value of --<s> from options, die if it wasn't set or doesn't exist
+        while($cmd =~ /\!(\w+)\!/) { 
+          my $var = $1;
+          my $varopt = "--" . $var;
+          if(! opt_Exists($varopt, $opt_HHR)) { 
+            DNAORG_FAIL("ERROR trying to replace !$var! in test file but option --$var does not exist in command line options", 1, $FH_HR); 
+          }
+          if(! opt_IsUsed($varopt, $opt_HHR)) { 
+            DNAORG_FAIL("ERROR trying to replace !$var! in test file but option --$var was not specified on the command line, please rerun with --$var", 1, $FH_HR); 
+          }
+          my $replacevalue = opt_Get($varopt, $opt_HHR);
+          $cmd =~ s/\!$var\!/$replacevalue/g;
+        }
         push(@{$cmd_AR}, $cmd); 
         $ncmd++;
       }
@@ -291,7 +320,14 @@ sub parse_test_file {
           @{$outfile_AAR->[($ncmd-1)]} = ();
         }
         push(@{$outfile_AAR->[($ncmd-1)]}, $outfile);
-        #TMPif(-e $outfile) { DNAORG_FAIL("ERROR, output file $outfile already exists", 1, $FH_HR); }
+        if((opt_IsUsed("-s", $opt_HHR)) && (opt_Get("-s", $opt_HHR))) { 
+          # -s used, we aren't running commands, just comparing files, output files must already exist
+          if(! -e $outfile) { DNAORG_FAIL("ERROR, output file $outfile does not already exist (and -s used)", 1, $FH_HR); }
+        }
+        else { 
+          # -s not used
+          if(-e $outfile) { DNAORG_FAIL("ERROR, output file $outfile already exists (and -s not used)", 1, $FH_HR); }
+        }
       }
       elsif($line =~ s/^exp\:\s+//) { 
         $expfile = $line;
@@ -373,7 +409,7 @@ sub diff_two_files {
     DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty");
   }
     
-  outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking $out_file ... "));
+  outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-80s ... ", $out_file));
 
   if($out_file_nonempty) { 
     my $cmd = "diff $out_file $exp_file > $diff_file";

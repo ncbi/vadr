@@ -12,7 +12,31 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl -f -A /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds --infasta testfiles/noro.9.fa --dirbuild /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds --dirout test-noro.9
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl -f -A !dirbuild! --infasta testfiles/noro.9.fa --dirbuild !dirbuild! --dirout test-noro.9
 desc: classify-noro-1
-out: test-noro.9/test-noro.9-NC_001959.dnaorg_annotate.sqtable 
+out: test-noro.9/test-noro.9-NC_001959/test-noro.9-NC_001959.dnaorg_annotate.sqtable 
+out: test-noro.9/test-noro.9-NC_001959/test-noro.9-NC_001959.dnaorg_annotate.tbl
+out: test-noro.9/test-noro.9-NC_008311/test-noro.9-NC_008311.dnaorg_annotate.sqtable 
+out: test-noro.9/test-noro.9-NC_008311/test-noro.9-NC_008311.dnaorg_annotate.tbl
+out: test-noro.9/test-noro.9-NC_029645/test-noro.9-NC_029645.dnaorg_annotate.sqtable 
+out: test-noro.9/test-noro.9-NC_029645/test-noro.9-NC_029645.dnaorg_annotate.tbl
+out: test-noro.9/test-noro.9-NC_029646/test-noro.9-NC_029646.dnaorg_annotate.sqtable 
+out: test-noro.9/test-noro.9-NC_029646/test-noro.9-NC_029646.dnaorg_annotate.tbl
+out: test-noro.9/test-noro.9-NC_029647/test-noro.9-NC_029647.dnaorg_annotate.sqtable 
+out: test-noro.9/test-noro.9-NC_029647/test-noro.9-NC_029647.dnaorg_annotate.tbl
+out: test-noro.9/test-noro.9-NC_031324/test-noro.9-NC_031324.dnaorg_annotate.sqtable 
+out: test-noro.9/test-noro.9-NC_031324/test-noro.9-NC_031324.dnaorg_annotate.tbl
 exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_001959.dnaorg_annotate.sqtable 
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_001959.dnaorg_annotate.tbl
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_008311.dnaorg_annotate.sqtable 
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_008311.dnaorg_annotate.tbl
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_029645.dnaorg_annotate.sqtable 
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_029645.dnaorg_annotate.tbl
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_029646.dnaorg_annotate.sqtable 
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_029646.dnaorg_annotate.tbl
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_029647.dnaorg_annotate.sqtable 
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_029647.dnaorg_annotate.tbl
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_031324.dnaorg_annotate.sqtable 
+exp: testfiles/expected-files/test-noro.9/test-noro.9-NC_031324.dnaorg_annotate.tbl
+
+
