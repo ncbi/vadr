@@ -6705,7 +6705,6 @@ sub output_feature_tbl_all_sequences {
         if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
           my $err_code = $err_info_HAR->{"code"}[$err_idx];
           if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-            printf("HEYA exists err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}\n");
             if($cur_err_str ne "") { $cur_err_str .= ","; }
             $cur_err_str .= $err_code;
             push(@cur_err_output_A, sprintf("%4s error code: %s%s", 
@@ -6850,7 +6849,6 @@ sub output_feature_tbl_all_sequences {
                 @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
                 foreach $qval (@qval_A) { 
                   $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval);
-                  printf("HEYA added %s\n", sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval));
                 }
               }
             }
