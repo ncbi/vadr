@@ -4804,23 +4804,25 @@ sub outputString {
 #    $releasedate:       month/year of version (e.g. "Feb 2016")
 #    $synopsis:          string reporting the date
 #    $date:              date information to print
+#    $dnaorgdir:         dnaorg directory
 #
 # Returns:    Nothing, if it returns, everything is valid.
 # 
 # Dies: never
 ####################################################################
 sub outputBanner {
-  my $nargs_expected = 5;
+  my $nargs_expected = 6;
   my $sub_name = "outputBanner()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($FH, $version, $releasedate, $synopsis, $date) = @_;
+  my ($FH, $version, $releasedate, $synopsis, $date, $dnaorgdir) = @_;
 
   print $FH ("\# $synopsis\n");
   print $FH ("\# dnaorg $version ($releasedate)\n");
 #  print $FH ("\# Copyright (C) 2014 HHMI Janelia Research Campus\n");
 #  print $FH ("\# Freely distributed under the GNU General Public License (GPLv3)\n");
   print $FH ("\# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
-  if(defined $date)    { print $FH ("# date:    $date\n"); }
+  if(defined $date)      { print $FH ("# date:       $date\n"); }
+  if(defined $dnaorgdir) { print $FH ("# \$DNAORGDIR: $dnaorgdir\n"); }
   printf $FH ("#\n");
 
   return;

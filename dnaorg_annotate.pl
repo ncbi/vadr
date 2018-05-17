@@ -361,7 +361,7 @@ $| = 1;
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
+  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
@@ -613,7 +613,7 @@ else {
   DNAORG_FAIL("ERROR, both listfile and infasta_file are undefined...", 1, undef);
 }
 
-outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
+outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
@@ -663,7 +663,7 @@ if(opt_Get("--errinfo", \%opt_HH)) {
 }
 
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
+outputBanner($log_FH, $version, $releasedate, $synopsis, $date, $dnaorgdir);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
