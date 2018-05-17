@@ -169,26 +169,50 @@ foreach $cmd (@early_cmd_A) {
 
 # read in the test file
 my @cmd_A      = (); # array of the commands to run
+my @desc_A     = (); # array of the descriptions for the commands
 my @outfile_AA = (); # array of arrays of output files to compare for each command
 my @expfile_AA = (); # array of arrays of expected files to compare output to for each command
 my @rmdir_AA   = (); # array of directories to remove after each command is completed
-my $ncmd = parse_test_file($test_file, \@cmd_A, \@outfile_AA, \@expfile_AA, \@rmdir_AA, $ofile_info_HH{"FH"});
+my $ncmd = parse_test_file($test_file, \@cmd_A, \@desc_A, \@outfile_AA, \@expfile_AA, \@rmdir_AA, $ofile_info_HH{"FH"});
 
+my $npass = 0;
+my $nfail = 0;
 for(my $i = 1; $i <= $ncmd; $i++) { 
-  my $cmd = $cmd_A[($i-1)];
+  my $cmd  = $cmd_A[($i-1)];
+  my $desc = $desc_A[($i-1)];
   my $outfile_AR = \@{$outfile_AA[($i-1)]};
   my $expfile_AR = \@{$expfile_AA[($i-1)]};
   my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
-  my $start_secs = outputProgressPrior("Running cmd $i ...\n" . $cmd_A[($i-1)], $progress_w, $log_FH, *STDOUT);
-  #runCommand($cmd, 0, $ofile_info_HHR->{"FH"});
+  my $start_secs = outputProgressPrior(sfprintf("Running command %2d [%20s] ...", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
+#  runCommand($cmd, 0, $ofile_info_HHR->{"FH"});
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   my $nout = scalar(@{$outfile_AR});
   for(my $j = 0; $j < $nout; $j++) { 
-    #diff_files($outfile_AR->[$j], $expfile_AR->[$j]);
-    printf("diff_files($outfile_AR->[$j], $expfile_AR->[$j]);\n");
+    my $diff_file = $out_root . "." . $i . "." . ($j+1) . ".diff";
+    my $pass = diff_two_files($outfile_AR->[$j], $expfile_AR->[$j], $diff_file, $ofile_info_HH{"FH"});
+    if($pass) { $npass++; }
+    else      { $nfail++; }
   }
 }
+
+##########
+# Conclude
+##########
+# summarize number of files checked and passed
+my $overall_pass = ($nfail == 0) ? 1 : 0;
+outputString($log_FH, 1, "#\n#\n");
+if($overall_pass) { 
+  outputString($log_FH, 1, "# PASS: all $npass files were created correctly.\n");
+}
+else { 
+  outputString($log_FH, 1, sprintf("# FAIL: %d of %d files were not created correctly.\n", $nfail, $npass+$nfail));
+}
+outputString($log_FH, 1, sprintf("#\n"));
+
+$total_seconds += secondsSinceEpoch();
+outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
+exit 0;
 
 #################################################################
 # Subroutine:  parse_test_file()
@@ -200,6 +224,7 @@ for(my $i = 1; $i <= $ncmd; $i++) {
 # Arguments:
 #   $testfile:    name of file to parse
 #   $cmd_AR:      ref to array of commands to fill here
+#   $desc_AR:     ref to array of descriptions to fill here
 #   $outfile_AAR: ref to 2D array of output files to fill here
 #   $expfile_AAR: ref to 2D array of expected files to fill here
 #   $rmdir_AAR:   ref to 2D array of directories to remove after calling each command
@@ -215,13 +240,14 @@ for(my $i = 1; $i <= $ncmd; $i++) {
 #################################################################
 sub parse_test_file { 
   my $sub_name = "parse_test_file";
-  my $nargs_expected = 6;
+  my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($testfile, $cmd_AR, $outfile_AAR, $expfile_AAR, $rmdir_AAR, $FH_HR) = @_;
+  my ($testfile, $cmd_AR, $desc_AR, $outfile_AAR, $expfile_AAR, $rmdir_AAR, $FH_HR) = @_;
 
   open(IN, $testfile) || fileOpenFailure($testfile, $sub_name, $!, "reading", $FH_HR);
   my $ncmd = 0;
+  my $ndesc = 0;
   my $outfile;
   my $expfile;
   my $rmdir;
@@ -239,7 +265,7 @@ sub parse_test_file {
       if($line =~ s/^command\:\s+//) { 
         my $cmd = $line;
         if($ncmd > 0) { 
-          # make sure we have 
+          # make sure we have read >= 1 outfiles and expfiles for previous command
           if(! (@{$outfile_AAR->[($ncmd-1)]})) { DNAORG_FAIL("ERROR did not read any out: lines for command " . ($ncmd+1), 1, $FH_HR); }
           if(! (@{$expfile_AAR->[($ncmd-1)]})) { DNAORG_FAIL("ERROR did not read any exp: lines for command " . ($ncmd+1), 1, $FH_HR); }
           my $nout_prv = scalar(@{$outfile_AAR->[($ncmd-1)]});
@@ -251,6 +277,11 @@ sub parse_test_file {
         push(@{$cmd_AR}, $cmd); 
         $ncmd++;
       }
+      elsif($line =~ s/^desc\:\s+//) { 
+        my $desc = $line;
+        push(@{$desc_AR}, $desc); 
+        $ndesc++;
+      }
       elsif($line =~ s/^out\:\s+//) { 
         $outfile = $line;
         $outfile =~ s/^\s+//;
@@ -260,7 +291,7 @@ sub parse_test_file {
           @{$outfile_AAR->[($ncmd-1)]} = ();
         }
         push(@{$outfile_AAR->[($ncmd-1)]}, $outfile);
-        if(-e $outfile) { DNAORG_FAIL("ERROR, output file $outfile already exists", 1, $FH_HR); }
+        #TMPif(-e $outfile) { DNAORG_FAIL("ERROR, output file $outfile already exists", 1, $FH_HR); }
       }
       elsif($line =~ s/^exp\:\s+//) { 
         $expfile = $line;
@@ -289,6 +320,8 @@ sub parse_test_file {
   }
   close(IN);
 
+  if($ndesc != $ncmd) { DNAORG_FAIL("ERROR did not read same number of descriptions and commands"); }
+
   # for final command, check that number of exp and out files is equal
   if(! (@{$outfile_AAR->[($ncmd-1)]})) { DNAORG_FAIL("ERROR did not read any out: lines for command " . ($ncmd+1), 1, $FH_HR); }
   if(! (@{$expfile_AAR->[($ncmd-1)]})) { DNAORG_FAIL("ERROR did not read any exp: lines for command " . ($ncmd+1), 1, $FH_HR); }
@@ -300,3 +333,68 @@ sub parse_test_file {
 
   return $ncmd;
 }
+
+#################################################################
+# Subroutine:  diff_two_files()
+# Incept:      EPN, Thu May 17 14:24:06 2018
+#
+# Purpose:     Diff two files, and output whether they are identical or not.
+#
+# Arguments:
+#   $out_file:    name of output file
+#   $exp_file:    name of expected file
+#   $diff_file:   output file for diff command
+#   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    '1' if $outfile is identical to $expfile as determined by diff
+#
+# Dies:       If an expected file does not exist or is empty.
+#
+#################################################################
+sub diff_two_files { 
+  my $sub_name = "diff_files";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_file, $exp_file, $diff_file, $FH_HR) = @_;
+
+  my $out_file_exists   = (-e $out_file) ? 1 : 0;
+  my $exp_file_exists   = (-e $exp_file) ? 1 : 0;
+  my $out_file_nonempty = (-s $out_file) ? 1 : 0;
+  my $exp_file_nonempty = (-s $exp_file) ? 1 : 0;
+
+  my $conclusion = "";
+  my $pass = 0;
+
+  if(! $exp_file_exists) { 
+    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file does not exist") ;
+  }
+  if(! $exp_file_nonempty) { 
+    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty");
+  }
+    
+  outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking $out_file ... "));
+
+  if($out_file_nonempty) { 
+    my $cmd = "diff $out_file $exp_file > $diff_file";
+    runCommand($cmd, 0, $FH_HR);
+    if(-s $diff_file) { 
+      $conclusion = "FAIL [files differ, see $diff_file]";
+    }
+    else { 
+      $conclusion = "pass";
+      $pass = 1;
+    }
+  }
+  else { 
+    $conclusion = ($out_file_exists) ? "FAIL [output file does not exist]" : "FAIL [output file exists but is empty]";
+  }
+
+  outputString($FH_HR->{"log"}, 1, "$conclusion\n");
+
+  return $pass;
+}
+  
+    
+    
+
