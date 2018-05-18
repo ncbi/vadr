@@ -1103,14 +1103,14 @@ sub validate_build_dir {
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   
   if(! -d $build_dir) { 
-    DNAORG_FAIL(sprintf("ERROR, the directory $build_dir should exist based on your -A option argument %s, but it does not.\nDid you run dnaorg_build.pl?\n", opt_Get("-A", $ofile_info_HHR)), 1, $FH_HR);
+    DNAORG_FAIL(sprintf("ERROR, the directory $build_dir should exist based on your -A option argument %s, but it does not.\nDid you run dnaorg_build.pl?\n", opt_Get("-A", $opt_HHR)), 1, $FH_HR);
   }
 
   my $build_root         = removeDirPath($build_dir);
   my $build_dir_and_root = $build_dir . "/" . $build_root;
   my $consopts_file      = $build_dir_and_root . ".dnaorg_build.consopts";
   if(! -e $consopts_file) { 
-    DNAORG_FAIL(sprintf("ERROR, required file $consopts_file should exist based on your -A option argument %s, but it does not.\nDid you run dnaorg_build.pl?\n", opt_Get("-A", $ofile_info_HHR)), 1, $FH_HR);
+    DNAORG_FAIL(sprintf("ERROR, required file $consopts_file should exist based on your -A option argument %s, but it does not.\nDid you run dnaorg_build.pl?\n", opt_Get("-A", $opt_HHR)), 1, $FH_HR);
   }
 
   # parse the consopts file
