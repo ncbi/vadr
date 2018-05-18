@@ -413,7 +413,9 @@ sub diff_two_files {
 
   if($out_file_nonempty) { 
     my $cmd = "diff $out_file $exp_file > $diff_file";
-    runCommand($cmd, 0, $FH_HR);
+    # don't use runCommand() because diff 'fails' if files are not identical
+    outputString($FH_HR->{"cmd"}, 0, "$cmd\n");
+    system($cmd);
     if(-s $diff_file) { 
       $conclusion = "FAIL [files differ, see $diff_file]";
     }
