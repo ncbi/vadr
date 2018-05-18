@@ -409,7 +409,7 @@ sub diff_two_files {
     DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty");
   }
     
-  outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-80s ... ", $out_file));
+  outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-100s ... ", $out_file));
 
   if($out_file_nonempty) { 
     my $cmd = "diff $out_file $exp_file > $diff_file";
