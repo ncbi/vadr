@@ -282,8 +282,9 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-my $do_keep = opt_Get("--keep", \%opt_HH); # should we leave intermediates files on disk, instead of removing them?
-my @files2rm_A = ();                       # will be filled with files to remove, --keep was not enabled
+my $be_verbose = opt_Get("-v", \%opt_HH);     # is -v used?
+my $do_keep    = opt_Get("--keep", \%opt_HH); # should we leave intermediates files on disk, instead of removing them?
+my @files2rm_A = ();                          # will be filled with files to remove, --keep was not enabled
 
 ###################################################
 # make sure the required executables are executable
@@ -434,6 +435,8 @@ else {
     $start_secs = outputProgressPrior("Parsing additional dnaorg_annotate.pl options (--optsA)", $progress_w, $log_FH, *STDOUT);
     my $failure_str   = "that option will automatically be set,\nas required, to be consistent with the relevant dnaorg_build.pl command used previously.";
     my $auto_add_opts = "--dirout,--dirbuild,--infasta,--refaccn";
+    if($do_keep)    { $auto_add_opts .= ",--keep"; }
+    if($be_verbose) { $auto_add_opts .= ",-v"; }
     $annotate_non_cons_opts = parseNonConsOptsFile(opt_Get("--optsA", \%opt_HH), "--optsA", $auto_add_opts, $failure_str, $ofile_info_HH{"FH"});
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
@@ -902,6 +905,8 @@ else {
         $annotate_cons_opts = build_opts_hash_to_opts_string(\%{$buildopts_used_HH{$ref_list_seqname}});
         $annotate_cmd = $execs_H{"dnaorg_annotate"} . " " . $annotate_cons_opts . " --dirbuild $build_dir --dirout $cur_out_dir";
         if($annotate_non_cons_opts ne "") { $annotate_cmd .= " " . $annotate_non_cons_opts; }
+        if($do_keep)    { $annotate_cmd .= " --keep"; }
+        if($be_verbose) { $annotate_cmd .= " -v"; }
         if($infasta_mode) { 
           $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
         }
