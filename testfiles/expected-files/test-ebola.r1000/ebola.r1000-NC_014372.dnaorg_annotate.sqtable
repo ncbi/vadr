@@ -1,0 +1,54 @@
+>Feature gi|1216437528|emb|MS811583.1|
+<1	>6633	gene
+			gene	L
+1	6633	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|298226055|emb|HC874679.1|
+4415	5327	gene
+			gene	VP40
+8869	9714	CDS
+			product	minor nucleoprotein
+			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [GTG ending at position 9660 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 8869..9660 revised to 8869..9714 (stop shifted 54 nt)]
+10207	10968	CDS
+			product	membrane-associated protein
+>Feature gi|152013738|gb|EF490233.1|
+<1	>724	gene
+			gene	L
+<1	>724	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|115490856|gb|DQ978379.1|
+>Feature gi|208436395|gb|FJ217162.1|
+56	3020	gene
+			gene	NP
+464	2683	CDS
+			product	nucleoprotein
+3026	4395	gene
+			gene	VP35
+3114	4139	CDS
+			product	polymerase complex protein
+4378	5881	gene
+			gene	VP40
+4467	5447	CDS
+			product	matrix protein
+5888	8293	gene
+			gene	GP
+6027	6911	CDS
+6911	8056
+			product	spike glycoprotein
+6027	7124	CDS
+			product	small secreted glycoprotein
+6027	6911	CDS
+6913	6936
+			product	second secreted glycoprotein
+8276	9733	gene
+			gene	VP30
+8503	9372	CDS
+			product	minor nucleoprotein
+9873	11503	gene
+			gene	VP24
+10339	11094	CDS
+			product	membrane-associated protein
+11486	18461	gene
+			gene	L
+11566	18198	CDS
+			product	RNA-dependent RNA polymerase
