@@ -235,8 +235,10 @@
 6707	7513	CDS
 			product	VP2
 >Feature gi|311691692|dbj|AB545433.1|
-1	>278	gene
+<1	>278	gene
 			gene	ORF2
+<1	>278	CDS
+			product	VP1
 >Feature gi|1153066534|gb|KX657733.1|
 <1	1725	gene
 			gene	ORF1
@@ -270,8 +272,10 @@
 9	>277	CDS
 			product	VP1
 >Feature gi|1339273835|gb|MG746117.1|
-1	1626	gene
+1	>1626	gene
 			gene	ORF2
+1	>1626	CDS
+			product	VP1
 >Feature gi|512126141|gb|KC752537.1|
 1	>281	gene
 			gene	ORF2
@@ -332,8 +336,10 @@
 6701	7480	CDS
 			product	VP2
 >Feature gi|1215708385|gb|KY594653.1|
-1	>301	gene
+<1	>301	gene
 			gene	ORF2
+<1	>301	CDS
+			product	VP1
 >Feature gi|1270245342|gb|MF422707.1|
 <1	>464	gene
 			gene	ORF1
