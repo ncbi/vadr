@@ -421,6 +421,11 @@ sub diff_two_files {
     system($cmd);
     if(-s $diff_file) { 
       $conclusion = "FAIL [files differ, see $diff_file]";
+      # copy the two files here:
+      my $copy_of_out_file = $diff_file . ".out";
+      my $copy_of_exp_file = $diff_file . ".exp";
+      runCommand("cp $out_file $copy_of_out_file", 0, $FH_HR);
+      runCommand("cp $exp_file $copy_of_exp_file", 0, $FH_HR);
     }
     else { 
       $conclusion = "pass";

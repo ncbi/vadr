@@ -7795,8 +7795,7 @@ sub runCmscanOrNhmmscan {
       $opts .= " --FZ 30 "; # do search with filters set up as if database was 30Mb.
     }
     else { 
-#      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --onepass ";
-      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 ";
+      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --onepass ";
     }
     # finally add --nohmmonly if we're not a big model
     if(! $do_big) { # do not use hmm unless model is big
