@@ -7561,7 +7561,6 @@ sub cmscanOrNhmmscanWrapper {
   # filter threshold settings relevant only if $do_cmscan is TRUE
   my $do_max = 0; # if $do_cmscan, possibly set to true based on model length
   my $do_mid = 0; # if $do_cmscan, possibly set to true based on model length
-  my $do_df  = 0; # if $do_cmscan, possibly set to true based on model length
   my $do_big = 0; # if $do_cmscan, possibly set to true based on model length
   my $start_secs; # timing start
   my $nmdl = scalar(@{$mdl_filename_AR});
@@ -7590,9 +7589,9 @@ sub cmscanOrNhmmscanWrapper {
       $mdl_filename = $mdl_filename_AR->[$m];
       $mdl_len      = (defined $mdl_len_AR) ? $mdl_len_AR->[$m] : 0;
       if($do_cmscan) { 
-        ($do_max, $do_mid, $do_df, $do_big) = determineCmscanFilterSettings($mdl_len, $opt_HHR);
+        ($do_max, $do_mid, $do_big) = determineCmscanFilterSettings($mdl_len, $opt_HHR);
       }
-      runCmscanOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmscan, 1, $do_max, $do_mid, $do_df, $do_big, $mdl_filename,
+      runCmscanOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmscan, 1, $do_max, $do_mid, $do_big, $mdl_filename,
                           $seq_file, $tmp_stdout_file, $tmp_tblout_file, $opt_HHR, $ofile_info_HHR); # 1: run locally
       push(@tmp_tblout_file_A, $tmp_tblout_file);
       push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
@@ -7618,9 +7617,9 @@ sub cmscanOrNhmmscanWrapper {
         $mdl_filename = $mdl_filename_AR->[$m];
         $mdl_len      = (defined $mdl_len_AR) ? $mdl_len_AR->[$m] : 0;
         if($do_cmscan) { 
-          ($do_max, $do_mid, $do_df, $do_big) = determineCmscanFilterSettings($mdl_len, $opt_HHR);
+          ($do_max, $do_mid, $do_big) = determineCmscanFilterSettings($mdl_len, $opt_HHR);
         }
-        runCmscanOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmscan, 0, $do_max, $do_mid, $do_df, $do_big, $mdl_filename,
+        runCmscanOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmscan, 0, $do_max, $do_mid, $do_big, $mdl_filename,
                             $tmp_seq_file, $tmp_stdout_file, $tmp_tblout_file, $opt_HHR, $ofile_info_HHR);   # 0: do not run locally
         push(@tmp_tblout_file_A, $tmp_tblout_file);
         push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
@@ -7667,11 +7666,10 @@ sub cmscanOrNhmmscanWrapper {
 #  $model_len:       length of model
 #  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
 #
-# Returns:     4 values, exactly 0 or 1 of which will be '1'
+# Returns:     3 values, exactly 0 or 1 of which will be '1'
 #              others will be '0'
 #              $do_max: '1' to run in max sensitivity mode
 #              $do_mid: '1' to run in mid sensitivity mode
-#              $do_df:  '1' to run in default sensitivity mode
 #              $do_big: '1' to run in fast (min sensitivity) mode
 # 
 # Dies: Never
@@ -7685,7 +7683,6 @@ sub determineCmscanFilterSettings {
 
   my $do_max = 0;
   my $do_mid = 0;
-  my $do_df  = 0;
   my $do_big = 0;
 
   if($model_len <= (opt_Get("--smallthresh", $opt_HHR))) { 
@@ -7697,17 +7694,12 @@ sub determineCmscanFilterSettings {
     } 
   }
   if((! $do_max) && (! $do_mid)) { 
-    if($model_len <= (opt_Get("--dfthresh", $opt_HHR))) { 
-      $do_df = 1; # set filter thresholds to --FZ 30 for middle sized models
-    } 
-  }
-  if((! $do_max) && (! $do_mid) && (! $do_df)) { 
     if($model_len >= (opt_Get("--bigthresh",   $opt_HHR))) { 
       $do_big = 1; # use HMM mode for big models
     }
   }
 
-  return ($do_max, $do_mid, $do_df, $do_big);
+  return ($do_max, $do_mid, $do_big);
 }
 
 #################################################################
@@ -7726,7 +7718,6 @@ sub determineCmscanFilterSettings {
 #                    '1' is usually used only when $model_file contains a single 
 #                    very short model
 #  $do_mid:          '1' to run with --mid option, '0' to not
-#  $do_df:           '1' to run with --FZ 30 option, '0' to not
 #  $do_big:          '1' to run with --mxsize 6144 option, '0' to run with default options
 #  $model_file:      path to the CM file
 #  $seq_file:        path to the sequence file
@@ -7742,10 +7733,10 @@ sub determineCmscanFilterSettings {
 ################################################################# 
 sub runCmscanOrNhmmscan { 
   my $sub_name = "runCmscanOrNhmmscan()";
-  my $nargs_expected = 13;
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($executable, $do_cmscan, $do_local, $do_max, $do_mid, $do_df, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($executable, $do_cmscan, $do_local, $do_max, $do_mid, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
@@ -7759,15 +7750,6 @@ sub runCmscanOrNhmmscan {
   }
   if($do_max && $do_mid) { 
     DNAORG_FAIL("ERROR in $sub_name, do_max and do_mid are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_max && $do_df) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_max and do_df are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_mid && $do_df) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_mid and do_df are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_big && $do_df) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_big and do_df are both true, only one should be.", 1, $FH_HR);
   }
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
@@ -7790,9 +7772,6 @@ sub runCmscanOrNhmmscan {
     elsif($do_mid) { 
 #      $opts .= " --mid -E 1"; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
       $opts .= " --mid -E 0.1"; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
-    }
-    elsif($do_df) { 
-      $opts .= " --FZ 30 "; # do search with filters set up as if database was 30Mb.
     }
     else { 
       $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --onepass ";

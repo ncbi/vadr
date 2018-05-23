@@ -238,7 +238,6 @@ opt_Add("--nkb",        "integer", 5,                        1,    undef,"--loca
 opt_Add("--maxnjobs",   "integer", 2500,                     1,    undef,"--local",   "maximum allowed number of jobs for compute farm", "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--dfthresh",   "integer", 250,                      1,    undef, undef,      "set max model length for using default sensitivity mode to <n>", "set max model length for using default sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--midthresh",  "integer", 75,                       1,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",     "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>",     "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--mxsize",     "integer", 2048,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
@@ -314,7 +313,6 @@ my $options_okay =
                 'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
                 'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
-                'dfthresh=s'   => \$GetOptions_H{"--dfthresh"},
                 'midthresh=s'  => \$GetOptions_H{"--midthresh"},
                 'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
@@ -425,16 +423,12 @@ if(opt_Get("--infasta", \%opt_HH)) {
   $do_infasta = 1;
 }
 
-# if --smallthresh or --midthresh or --dfthresh or --bigthresh used, validate that the thresholds make sense:
+# if --smallthresh or --midthresh or --bigthresh used, validate that the thresholds make sense:
 # small < mid < df < big
 if(opt_IsUsed("--smallthresh", \%opt_HH)) { 
   if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--midthresh", \%opt_HH)) { 
     die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
                 opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
-  }
-  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--dfthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
   }
   if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
     die sprintf("ERROR, with --smallthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
@@ -446,27 +440,9 @@ if(opt_IsUsed("--midthresh", \%opt_HH)) {
     die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
                 opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
   }
-  if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--dfthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --midthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--midthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
-  }
   if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
     die sprintf("ERROR, with --midthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
                 opt_Get("--midthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
-  }
-}
-if(opt_IsUsed("--dfthresh", \%opt_HH)) { 
-  if(opt_Get("--dfthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
-  }
-  if(opt_Get("--dfthresh", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --midthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--midthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
-  }
-  if(opt_Get("--dfthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --dfthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--dfthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
   }
 }
 if(opt_IsUsed("--bigthresh", \%opt_HH)) { 
@@ -477,10 +453,6 @@ if(opt_IsUsed("--bigthresh", \%opt_HH)) {
   if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
     die sprintf("ERROR, with --midthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
                 opt_Get("--midthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
-  }
-  if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--dfthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --dfthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--dfthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
   }
 }
 
