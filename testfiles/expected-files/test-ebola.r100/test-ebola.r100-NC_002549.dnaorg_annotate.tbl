@@ -463,14 +463,14 @@ CDS #8 [single exon; +]:membrane-associated protein:length                      
 CDS #8 [single exon; +]:membrane-associated protein:ss3                                   ...                          ...                          ...                          ...                            ...
 CDS #8 [single exon; +]:membrane-associated protein:stp                                   TAA                          TAA                          TAA                          TAA                            TAG
 CDS #8 [single exon; +]:membrane-associated protein:PF                                      P                            P                            P                            P                              P
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:start1                             11540                        11581                        11571                        11480                          11533
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:start1                             11540                        11581                        11571                        11480                          11532
 CDS #9 [single exon; +]:RNA-dependent RNA polymerase:stop1                              18178                        18219                        18209                        18211                          18170
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:md1                                   ..                           ..                           ..                           .e                             1.
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:md1                                   ..                           ..                           ..                           .e                             ..
 CDS #9 [single exon; +]:RNA-dependent RNA polymerase:overlaps1                         P:16.1                       P:16.1                       P:16.1                       P:16.1                         P:16.1
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:length                              6639                         6639                         6639                         6732                           6638
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:ss3                                  ...                          ...                          ...                          ...                            !..
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:length                              6639                         6639                         6639                         6732                           6639
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:ss3                                  ...                          ...                          ...                          ...                            ...
 CDS #9 [single exon; +]:RNA-dependent RNA polymerase:stp                                  TGA                          TGA                          TGA                          TGA                            TGA
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:PF                                     P                            P                            P                            P                              F
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:PF                                     P                            P                            P                            P                              P
 gene #1 [single segment; +]::start1                                                        18                           56                           46                            1                              7
 gene #1 [single segment; +]::stop1                                                       2988                         3026                         3016                         2925                           2977
 gene #1 [single segment; +]::md1                                                           ..                           ..                           ..                           +.                             ..
@@ -507,14 +507,14 @@ gene #6 [single segment; +]::md1                                                
 gene #6 [single segment; +]::overlaps1                                             P:8.1,16.1                   P:8.1,16.1                   P:8.1,16.1                   P:8.1,16.1                     P:8.1,16.1
 gene #6 [single segment; +]::length                                                      1634                         1634                         1634                         1634                           1634
 gene #6 [single segment; +]::PF                                                             F                            F                            F                            F                              F
-gene #7 [single segment; +]::start1                                                     11460                        11501                        11491                        11400                          11454
-gene #7 [single segment; +]::stop1                                                      18241                        18282                        18272                        18180                          18233
-gene #7 [single segment; +]::md1                                                           ..                           ..                           ..                           .1                             2.
+gene #7 [single segment; +]::start1                                                     11460                        11501                        11491                        11400                          11452
+gene #7 [single segment; +]::stop1                                                      18241                        18282                        18272                        18181                          18233
+gene #7 [single segment; +]::md1                                                           ..                           ..                           ..                           ..                             ..
 gene #7 [single segment; +]::overlaps1                                             P:9.1,15.1                   P:9.1,15.1                   P:9.1,15.1                   P:9.1,15.1                     P:9.1,15.1
-gene #7 [single segment; +]::length                                                      6782                         6782                         6782                         6781                           6780
+gene #7 [single segment; +]::length                                                      6782                         6782                         6782                         6782                           6782
 gene #7 [single segment; +]::PF                                                             F                            F                            F                            F                              F
 totlen                                                                                  18885                        18958                        18948                        18745                          18251
-result                                                                  FAIL PPPFFPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF          FAIL PPPPPPPPFFFFPFFF
+result                                                                  FAIL PPPFFPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF          FAIL PPPPPPPPPFFFPFFF
 #
 # end of page 4
 #
@@ -764,14 +764,14 @@ gene #5 [single segment; +]::PF                                                 
 gene #6 [single segment; +]::start1                                                      9769                         9885                         9854                         9857                             NP
 gene #6 [single segment; +]::stop1                                                      11402                        11518                        11487                        11490                             NP
 gene #6 [single segment; +]::md1                                                           ..                           ..                           ..                           ..                             NP
-gene #6 [single segment; +]::overlaps1                                                  F:8.1                   P:8.1,16.1                   P:8.1,16.1                   P:8.1,16.1                             NP
+gene #6 [single segment; +]::overlaps1                                             P:8.1,16.1                   P:8.1,16.1                   P:8.1,16.1                   P:8.1,16.1                             NP
 gene #6 [single segment; +]::length                                                      1634                         1634                         1634                         1634                             NP
 gene #6 [single segment; +]::PF                                                             F                            F                            F                            F                              F
-gene #7 [single segment; +]::start1                                                     11433                        11501                        11470                        11473                             NP
+gene #7 [single segment; +]::start1                                                     11385                        11501                        11470                        11473                             NP
 gene #7 [single segment; +]::stop1                                                      18166                        18282                        18251                        18254                             NP
-gene #7 [single segment; +]::md1                                                           +.                           ..                           ..                           ..                             NP
-gene #7 [single segment; +]::overlaps1                                                  F:9.1                   P:9.1,15.1                   P:9.1,15.1                   P:9.1,15.1                             NP
-gene #7 [single segment; +]::length                                                      6734                         6782                         6782                         6782                             NP
+gene #7 [single segment; +]::md1                                                           ..                           ..                           ..                           ..                             NP
+gene #7 [single segment; +]::overlaps1                                             P:9.1,15.1                   P:9.1,15.1                   P:9.1,15.1                   P:9.1,15.1                             NP
+gene #7 [single segment; +]::length                                                      6782                         6782                         6782                         6782                             NP
 gene #7 [single segment; +]::PF                                                             F                            F                            F                            F                              F
 totlen                                                                                  18794                        18958                        18925                        18881                             37
 result                                                                  FAIL PPPPPPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF        FAIL PPPFFPPPPFFFFFFF          FAIL FFFFFFFFFFFFFFFF
@@ -1808,10 +1808,10 @@ gene #6 [single segment; +]::overlaps1                                          
 gene #6 [single segment; +]::length                                                      1634                         1634                          1634                         1634                         1633
 gene #6 [single segment; +]::PF                                                             F                            F                             F                            F                            F
 gene #7 [single segment; +]::start1                                                     11340                        11338                         11458                        11501                        11459
-gene #7 [single segment; +]::stop1                                                      18076                        18119                         18239                        18282                        18240
+gene #7 [single segment; +]::stop1                                                      18078                        18119                         18239                        18282                        18240
 gene #7 [single segment; +]::md1                                                           .+                           ..                            ..                           ..                           ..
 gene #7 [single segment; +]::overlaps1                                             P:9.1,15.1                   P:9.1,15.1                    P:9.1,15.1                   P:9.1,15.1                   P:9.1,15.1
-gene #7 [single segment; +]::length                                                      6737                         6782                          6782                         6782                         6782
+gene #7 [single segment; +]::length                                                      6739                         6782                          6782                         6782                         6782
 gene #7 [single segment; +]::PF                                                             F                            F                             F                            F                            F
 totlen                                                                                  18078                        18748                         18913                        18958                        18869
 result                                                                  FAIL PPPPPPPPPFFFPFFF        FAIL PPPFFPPPPFFFFFFF         FAIL PPPPPPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF        FAIL PPPFFPPPPFFFPFFF
@@ -1920,16 +1920,16 @@ gene #3 [single segment; +]::overlaps1                                          
 gene #3 [single segment; +]::length                                                      1505                         1505                         1505                         1505                           NP
 gene #3 [single segment; +]::PF                                                             F                            F                            F                            F                            F
 gene #4 [single segment; +]::start1                                                      5723                         5864                         5900                         5874                           NP
-gene #4 [single segment; +]::stop1                                                       8129                         8192                         8305                         8279                           NP
+gene #4 [single segment; +]::stop1                                                       8129                         8269                         8305                         8279                           NP
 gene #4 [single segment; +]::md1                                                           ..                           ..                           ..                           ..                           NP
-gene #4 [single segment; +]::overlaps1                             P:4.1,4.2,5.1,6.1,6.2,14.1        F:4.1,4.2,5.1,6.1,6.2   P:4.1,4.2,5.1,6.1,6.2,14.1   P:4.1,4.2,5.1,6.1,6.2,14.1                           NP
-gene #4 [single segment; +]::length                                                      2407                         2329                         2406                         2406                           NP
-gene #4 [single segment; +]::PF                                                             F                            F                            P                            P                            F
-gene #5 [single segment; +]::start1                                                      8112                         8308                         8288                         8262                           NP
+gene #4 [single segment; +]::overlaps1                             P:4.1,4.2,5.1,6.1,6.2,14.1   P:4.1,4.2,5.1,6.1,6.2,14.1   P:4.1,4.2,5.1,6.1,6.2,14.1   P:4.1,4.2,5.1,6.1,6.2,14.1                           NP
+gene #4 [single segment; +]::length                                                      2407                         2406                         2406                         2406                           NP
+gene #4 [single segment; +]::PF                                                             F                            P                            P                            P                            F
+gene #5 [single segment; +]::start1                                                      8112                         8252                         8288                         8262                           NP
 gene #5 [single segment; +]::stop1                                                       9564                         9704                         9740                         9714                           NP
-gene #5 [single segment; +]::md1                                                           ..                           +.                           ..                           ..                           NP
-gene #5 [single segment; +]::overlaps1                                             P:7.1,13.1                        F:7.1                   P:7.1,13.1                   P:7.1,13.1                           NP
-gene #5 [single segment; +]::length                                                      1453                         1397                         1453                         1453                           NP
+gene #5 [single segment; +]::md1                                                           ..                           ..                           ..                           ..                           NP
+gene #5 [single segment; +]::overlaps1                                             P:7.1,13.1                   P:7.1,13.1                   P:7.1,13.1                   P:7.1,13.1                           NP
+gene #5 [single segment; +]::length                                                      1453                         1453                         1453                         1453                           NP
 gene #5 [single segment; +]::PF                                                             F                            F                            F                            F                            F
 gene #6 [single segment; +]::start1                                                      9709                         9849                         9885                         9859                            1
 gene #6 [single segment; +]::stop1                                                      11342                        11482                        11518                        11492                         1139
@@ -1944,7 +1944,7 @@ gene #7 [single segment; +]::overlaps1                                          
 gene #7 [single segment; +]::length                                                      6782                         6782                         6782                         6782                         6782
 gene #7 [single segment; +]::PF                                                             F                            F                            F                            F                            F
 totlen                                                                                  18735                        18850                        18958                        18932                         8127
-result                                                                  FAIL PPPPPPPPPFFFFFFF        FAIL PPPPPPPPPFFFFFFF        FAIL PPPPPPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF        FAIL FFFFFFFFPFFFFFFF
+result                                                                  FAIL PPPPPPPPPFFFFFFF        FAIL PPPPPPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF        FAIL PPPPPPPPPFFFPFFF        FAIL FFFFFFFFPFFFFFFF
 #
 # end of page 15
 #
@@ -2163,7 +2163,7 @@ CDS #9 [single exon; +]:RNA-dependent RNA polymerase:stp                        
 CDS #9 [single exon; +]:RNA-dependent RNA polymerase:PF                                     P                            P                            P                             F                            P
 gene #1 [single segment; +]::start1                                                        56                            1                            1                            NP                           56
 gene #1 [single segment; +]::stop1                                                       3026                         2969                         2922                            NP                         3026
-gene #1 [single segment; +]::md1                                                           ..                           ..                           +.                            NP                           ..
+gene #1 [single segment; +]::md1                                                           ..                           2.                           +.                            NP                           ..
 gene #1 [single segment; +]::overlaps1                                                  P:1.1                        P:1.1                        P:1.1                            NP                        P:1.1
 gene #1 [single segment; +]::length                                                      2971                         2969                         2922                            NP                         2971
 gene #1 [single segment; +]::PF                                                             F                            F                            F                             F                            F
@@ -2179,11 +2179,11 @@ gene #3 [single segment; +]::md1                                                
 gene #3 [single segment; +]::overlaps1                                             P:3.1,11.1                   P:3.1,11.1                   P:3.1,11.1                            NP                   P:3.1,11.1
 gene #3 [single segment; +]::length                                                      1505                         1505                         1505                            NP                         1505
 gene #3 [single segment; +]::PF                                                             F                            F                            F                             F                            F
-gene #4 [single segment; +]::start1                                                      5900                         5843                         5796                            60                         5900
+gene #4 [single segment; +]::start1                                                      5900                         5843                         5796                             1                         5900
 gene #4 [single segment; +]::stop1                                                       8305                         8248                         8201                          2302                         8305
 gene #4 [single segment; +]::md1                                                           ..                           ..                           ..                            ++                           ..
 gene #4 [single segment; +]::overlaps1                             P:4.1,4.2,5.1,6.1,6.2,14.1   P:4.1,4.2,5.1,6.1,6.2,14.1   P:4.1,4.2,5.1,6.1,6.2,14.1         F:4.1,4.2,5.1,6.1,6.2   P:4.1,4.2,5.1,6.1,6.2,14.1
-gene #4 [single segment; +]::length                                                      2406                         2406                         2406                          2243                         2406
+gene #4 [single segment; +]::length                                                      2406                         2406                         2406                          2302                         2406
 gene #4 [single segment; +]::PF                                                             P                            P                            P                             F                            P
 gene #5 [single segment; +]::start1                                                      8288                         8231                         8184                            NP                         8288
 gene #5 [single segment; +]::stop1                                                       9740                         9683                         9636                            NP                         9740

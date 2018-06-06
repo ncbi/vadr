@@ -415,7 +415,7 @@ sub diff_two_files {
   outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-100s ... ", $out_file));
 
   if($out_file_nonempty) { 
-    my $cmd = "diff $out_file $exp_file > $diff_file";
+    my $cmd = "diff -U 0 $out_file $exp_file > $diff_file";
     # don't use runCommand() because diff 'fails' if files are not identical
     outputString($FH_HR->{"cmd"}, 0, "$cmd\n");
     system($cmd);
@@ -426,6 +426,7 @@ sub diff_two_files {
       my $copy_of_exp_file = $diff_file . ".exp";
       runCommand("cp $out_file $copy_of_out_file", 0, $FH_HR);
       runCommand("cp $exp_file $copy_of_exp_file", 0, $FH_HR);
+      # analyze the diff file and print out how many lines 
     }
     else { 
       $conclusion = "pass";

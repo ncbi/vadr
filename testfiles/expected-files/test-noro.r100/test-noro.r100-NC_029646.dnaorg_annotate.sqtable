@@ -1,10 +1,18 @@
 >Feature gi|160347568|gb|EU169429.1|
+<1	>290	gene
+			gene	ORF1
+<1	>290	CDS
+			product	nonstructural polyprotein
+<1	>290	mat_peptide
+			product	RdRp
 >Feature gi|1203184899|gb|KX722332.1|
 <1	>640	gene
 			gene	ORF2
 <1	>640	CDS
 			product	VP1
 >Feature gi|959141925|gb|KR107577.1|
+<1	102	gene
+			gene	ORF1
 <1	102	CDS
 			product	nonstructural polyprotein
 <1	99	mat_peptide
@@ -14,11 +22,19 @@
 83	>387	CDS
 			product	VP1
 >Feature gi|156139853|gb|EU072289.1|
+<1	>274	gene
+			gene	ORF1
 <1	>274	CDS
 			product	nonstructural polyprotein
 <1	>274	mat_peptide
 			product	RdRp
 >Feature gi|946599839|gb|KT970472.1|
+<1	168	gene
+			gene	ORF1
+<1	168	CDS
+			product	nonstructural polyprotein
+<1	165	mat_peptide
+			product	RdRp
 149	>368	gene
 			gene	ORF2
 149	>368	CDS
@@ -49,11 +65,15 @@
 <1	>266	CDS
 			product	VP1
 >Feature gi|50299643|emb|AJ626599.1|
+<1	>327	gene
+			gene	ORF1
 <1	>327	CDS
 			product	nonstructural polyprotein
 <1	>327	mat_peptide
 			product	RdRp
 >Feature gi|407879400|emb|HE716655.1|
+<1	93	gene
+			gene	ORF1
 <1	93	CDS
 			product	nonstructural polyprotein
 <1	90	mat_peptide
@@ -63,6 +83,8 @@
 74	>357	CDS
 			product	VP1
 >Feature gi|507309522|gb|JX439803.1|
+<1	810	gene
+			gene	ORF1
 <1	810	CDS
 			product	nonstructural polyprotein
 <1	807	mat_peptide
@@ -72,6 +94,8 @@
 791	>1336	CDS
 			product	VP1
 >Feature gi|953939906|emb|LN612560.1|
+<1	>285	gene
+			gene	ORF1
 <1	>285	CDS
 			product	nonstructural polyprotein
 <1	>285	mat_peptide
@@ -88,7 +112,13 @@
 779	>1345	CDS
 			product	VP1
 >Feature gi|1203184739|gb|KX722252.1|
+<1	>601	gene
+			gene	ORF2
+<1	>601	CDS
+			product	VP1
 >Feature gi|189061175|dbj|AB279559.1|
+<1	720	gene
+			gene	ORF1
 <1	720	CDS
 			product	nonstructural polyprotein
 <1	717	mat_peptide
@@ -109,11 +139,15 @@
 35	>229	CDS
 			product	VP1
 >Feature gi|387934737|gb|JQ692893.1|
+<1	>285	gene
+			gene	ORF1
 <1	>285	CDS
 			product	nonstructural polyprotein
 <1	>285	mat_peptide
 			product	RdRp
 >Feature gi|209980347|gb|EU794878.1|
+<1	40	gene
+			gene	ORF1
 <1	40	CDS
 			product	nonstructural polyprotein
 <1	37	mat_peptide
@@ -154,6 +188,10 @@
 35	>229	CDS
 			product	VP1
 >Feature gi|1089705875|gb|KU860552.1|
+<1	>744	gene
+			gene	ORF2
+<1	>744	CDS
+			product	VP1
 >Feature gi|410993664|gb|JX629772.1|
 <1	>254	gene
 			gene	ORF2
@@ -165,21 +203,33 @@
 <1	>230	CDS
 			product	VP1
 >Feature gi|189342683|gb|EU703650.1|
+<1	>319	gene
+			gene	ORF1
 <1	>319	CDS
 			product	nonstructural polyprotein
 <1	>319	mat_peptide
 			product	RdRp
 >Feature gi|307574518|dbj|AB525810.1|
+<1	76	gene
+			gene	ORF1
+<1	76	CDS
+			product	nonstructural polyprotein
+<1	73	mat_peptide
+			product	RdRp
 57	>338	gene
 			gene	ORF2
 57	>338	CDS
 			product	VP1
 >Feature gi|125971647|gb|EF141133.1|
+<1	>285	gene
+			gene	ORF1
 <1	>285	CDS
 			product	nonstructural polyprotein
 <1	>285	mat_peptide
 			product	RdRp
 >Feature gi|929723720|gb|KR074181.1|
+<1	251	gene
+			gene	ORF1
 <1	251	CDS
 			product	nonstructural polyprotein
 <1	248	mat_peptide
@@ -194,6 +244,8 @@
 1	>282	CDS
 			product	VP1
 >Feature gi|1243456106|gb|KY210959.1|
+<1	825	gene
+			gene	ORF1
 <1	825	CDS
 			product	nonstructural polyprotein
 <1	822	mat_peptide
@@ -203,6 +255,8 @@
 806	>1404	CDS
 			product	VP1
 >Feature gi|260065901|gb|FJ913994.1|
+<1	810	gene
+			gene	ORF1
 <1	810	CDS
 			product	nonstructural polyprotein
 <1	807	mat_peptide
@@ -212,6 +266,8 @@
 791	>1075	CDS
 			product	VP1
 >Feature gi|401021915|gb|JX126912.1|
+5	5104	gene
+			gene	ORF1
 5	5104	CDS
 			product	nonstructural polyprotein
 5	994	mat_peptide
@@ -258,6 +314,8 @@
 1	>282	CDS
 			product	VP1
 >Feature gi|189052952|dbj|AB279565.1|
+<1	720	gene
+			gene	ORF1
 <1	720	CDS
 			product	nonstructural polyprotein
 <1	717	mat_peptide
@@ -287,13 +345,19 @@
 1	1623	CDS
 			product	VP1
 >Feature gi|1102610558|gb|KT224483.2|
+<1	825	gene
+			gene	ORF1
 <1	825	CDS
 			product	nonstructural polyprotein
 <1	822	mat_peptide
 			product	RdRp
-806	1407	gene
+806	>2389	gene
 			gene	ORF2
+806	>2389	CDS
+			product	VP1
 >Feature gi|1120783230|gb|KT224475.2|
+<1	825	gene
+			gene	ORF1
 <1	825	CDS
 			product	nonstructural polyprotein
 <1	822	mat_peptide
@@ -313,9 +377,9 @@
 <1	>225	CDS
 			product	VP1
 >Feature gi|1313740698|dbj|LC209472.1|
-<1	5092	CDS
-			product	nonstructural polyprotein
-<1	982	mat_peptide
+<1	5092	gene
+			gene	ORF1
+<1	983	mat_peptide
 			product	p48
 983	2080	mat_peptide
 			product	NTPase
@@ -348,6 +412,8 @@
 <1	>464	mat_peptide
 			product	RdRp
 >Feature gi|1090628012|gb|KX446527.1|
+<1	732	gene
+			gene	ORF1
 <1	732	CDS
 			product	nonstructural polyprotein
 <1	729	mat_peptide
@@ -367,6 +433,8 @@
 <1	>253	CDS
 			product	VP1
 >Feature gi|1064262821|gb|KT732276.1|
+<1	1700	gene
+			gene	ORF1
 <1	1700	CDS
 			product	nonstructural polyprotein
 <1	167	mat_peptide
@@ -378,6 +446,8 @@
 1681	>3268	CDS
 			product	VP1
 >Feature gi|47156042|gb|AY579408.1|
+<1	>134	gene
+			gene	ORF1
 <1	>134	CDS
 			product	nonstructural polyprotein
 <1	>134	mat_peptide
@@ -416,6 +486,8 @@
 1	>747	gene
 			gene	ORF2
 >Feature gi|526264986|gb|KC820430.1|
+<1	82	gene
+			gene	ORF1
 <1	82	CDS
 			product	nonstructural polyprotein
 <1	79	mat_peptide
@@ -430,6 +502,8 @@
 1	>281	CDS
 			product	VP1
 >Feature gi|1143273577|gb|KX061540.1|
+<1	612	gene
+			gene	ORF1
 <1	612	CDS
 			product	nonstructural polyprotein
 <1	609	mat_peptide

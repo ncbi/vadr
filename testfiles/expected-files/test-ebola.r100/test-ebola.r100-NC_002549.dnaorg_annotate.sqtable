@@ -579,9 +579,11 @@
 			gene	VP24
 10244	10999	CDS
 			product	membrane-associated protein
+11400	18181	gene
+			gene	L
 11480	18211	CDS
 			product	RNA-dependent RNA polymerase
-			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [NTG ending at position 18117 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 11480..18117 revised to 11480..18211 (stop shifted 94 nt)]
+			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [TGN ending at position 18118 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 11480..18118 revised to 11480..18211 (stop shifted 93 nt)]
 >Feature gi|1101477787|emb|LT630551.1|
 7	2977	gene
 			gene	NP
@@ -614,6 +616,10 @@
 10296	11102	CDS
 			product	membrane-associated protein
 			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [NAA ending at position 11051 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 10296..11051 revised to 10296..11102 (stop shifted 51 nt)]
+11452	18233	gene
+			gene	L
+11532	18170	CDS
+			product	RNA-dependent RNA polymerase
 >Feature gi|820905377|gb|KR653244.1|
 50	3020	gene
 			gene	NP
@@ -820,6 +826,8 @@
 			gene	VP24
 10229	10984	CDS
 			product	membrane-associated protein
+11385	18166	gene
+			gene	L
 11465	18103	CDS
 			product	RNA-dependent RNA polymerase
 >Feature gi|732464108|gb|KP260802.1|
@@ -2084,6 +2092,8 @@
 			gene	VP24
 10184	10939	CDS
 			product	membrane-associated protein
+11340	>18078	gene
+			gene	L
 11420	18058	CDS
 			product	RNA-dependent RNA polymerase
 >Feature gi|973432265|gb|KU296453.1|
@@ -2274,7 +2284,7 @@
 			gene	VP40
 4443	5423	CDS
 			product	matrix protein
-5864	8192	gene
+5864	8269	gene
 			gene	GP
 6003	6887	CDS
 6887	8032
@@ -2284,6 +2294,8 @@
 6003	6886	CDS
 6888	6897
 			product	second secreted glycoprotein
+8252	9704	gene
+			gene	VP30
 8473	9339	CDS
 			product	minor nucleoprotein
 9849	11482	gene
@@ -2584,7 +2596,7 @@
 11581	18219	CDS
 			product	RNA-dependent RNA polymerase
 >Feature gi|820905397|gb|KR653246.1|
-1	2969	gene
+<1	2969	gene
 			gene	NP
 413	2632	CDS
 			product	nucleoprotein
@@ -2654,6 +2666,8 @@
 11477	18115	CDS
 			product	RNA-dependent RNA polymerase
 >Feature gi|658147295|dbj|HW505608.1|
+<1	>2302	gene
+			gene	GP
 70	954	CDS
 955	2100
 			product	spike glycoprotein

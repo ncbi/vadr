@@ -7770,15 +7770,17 @@ sub runCmscanOrNhmmscan {
 #      $opts .= " --max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
     }
     elsif($do_mid) { 
-      $opts .= " --mid -E 0.1 --noF6 --onepass --tau 0.001 --cyk --acyk "; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
+#      $opts .= " --mid -E 0.1 --noF6 --olonepass --tau 0.001 --cyk --acyk  "; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
+      $opts .= " --mid -E 0.1 --noF6 --olonepass --tau 0.001 --cyk --acyk -g --mxsize 1028."; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
     }
     else { 
-      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --onepass --tau 0.001 --cyk --acyk ";
+#      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --tau 0.001 --cyk --acyk ";
+      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --tau 0.001 --cyk --acyk -g --mxsize 1028. ";
     }
     # finally add --nohmmonly if we're not a big model
-    if(! $do_big) { # do not use hmm unless model is big
+#    if(! $do_big) { # do not use hmm unless model is big
       $opts .= " --nohmmonly ";
-    }
+#    }
   }
 
   my $cmd = "$executable $opts $model_file $seq_file > $stdout_file";
