@@ -914,11 +914,15 @@ else {
           $annotate_cmd .= " $ntlist_file";
         }
         runCommand($annotate_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-        # now copy the sequin feature table to this top level directory:
+        # now copy the sequin feature tables to this top level directory:
         my $src_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.sqtable";
         my $dest_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.sqtable";
+        my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
+        my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
         runCommand("cp $src_sqtable $dest_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+        runCommand("cp $src_long_sqtable $dest_long_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
         addClosedFileToOutputInfo(\%ofile_info_HH, "sqtbl" . $ctr++, $dest_sqtable, 1, "annotation results for $ref_list_seqname");
+        addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl" . $ctr++, $dest_long_sqtable, 1, "verbose annotation results for $ref_list_seqname");
       }
     }
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
