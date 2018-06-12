@@ -137,7 +137,7 @@ require "epn-options.pm";
 # 1. parse_esl_epn_translate_startstop_outfile()
 # 2. results_calculate_corrected_stops()
 # 3. results_calculate_overlaps_and_adjacencies() 
-# 4. mdl_results_add_str_nop_ost_b3e_b3u_errors()
+# 4. mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
 # 5. ftr_results_calculate()
 # 6. find_origin_sequences()
 # 7. MAIN (not a function but rather the main body of the script):
@@ -1156,8 +1156,8 @@ initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH
 
 $start_secs = outputProgressPrior("Finalizing annotations and validating error combinations", $progress_w, $log_FH, *STDOUT);
 # report str, nop, b3e, b3u errors, we need to know these before we call ftr_results_calculate()
-mdl_results_add_str_nop_ost_b3e_b3u_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                                           \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # report b3e errors for cds-mp multifeature features
 ftr_results_add_b3e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
@@ -1378,7 +1378,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_ost_b3e_b3u_errors()
+#    mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate() ***
@@ -1569,7 +1569,7 @@ sub parse_cmscan_tblout {
                                                            # which can occur in circular genomes, where we've duplicated the sequence
       my $seq_len  = $seq_info_HAR->{"seq_len"}[$seqidx]; # total length of sequence searched, could be $accn_len or two times $accn_len if -c used
 
-      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $FH_HR);
+      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $score, $FH_HR);
     }
   }
   close(IN);
@@ -2438,7 +2438,7 @@ sub wrapper_esl_epn_translate_startstop {
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_ost_b3e_b3u_errors()
+#    mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate
@@ -2628,6 +2628,7 @@ sub results_calculate_predicted_lengths {
 #  $seqto:             stop position of hit
 #  $strand:            strand of hit
 #  $evalue:            E-value of hit
+#  $score:             bit score of hit
 #  $FH_HR:             REF to hash of file handles
 #
 # Returns:    void
@@ -2637,10 +2638,10 @@ sub results_calculate_predicted_lengths {
 ################################################################# 
 sub store_hit { 
   my $sub_name = "store_hit()";
-  my $nargs_exp = 13;
+  my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $FH_HR) = @_;
+  my ($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $score, $FH_HR) = @_;
 
   # only consider hits where either the start or end are less than the total length
   # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
@@ -2694,6 +2695,7 @@ sub store_hit {
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5seqflush"} = $p_5seqflush;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3seqflush"} = $p_3seqflush;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"}    = $evalue;
+      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_score"}     = $score;
     }
   }
 
@@ -3448,10 +3450,10 @@ sub ftr_results_add_b3e_errors {
 }      
 
 #################################################################
-# Subroutine:  mdl_results_add_str_nop_ost_b3e_b3u_errors
+# Subroutine:  mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors
 # Incept:      EPN, Thu Mar 31 13:43:58 2016
 #
-# Purpose:    Report 'str', 'nop', 'ost', 'b3e', and 'b3u' errors
+# Purpose:    Report 'str', 'nop', 'ost', 'lsc', 'b3e', and 'b3u' errors
 #             and fill in the following keys in $mdl_results_AAHR:
 #             "out_5boundary" and "out_3boundary".
 #
@@ -3483,8 +3485,8 @@ sub ftr_results_add_b3e_errors {
 #       given the lengths of the accession and the sequence we searched.
 #
 ################################################################# 
-sub mdl_results_add_str_nop_ost_b3e_b3u_errors { 
-  my $sub_name = "mdl_results_add_str_nop_ost_b3e_b3u_errors()";
+sub mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors { 
+  my $sub_name = "mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()";
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -3578,6 +3580,17 @@ sub mdl_results_add_str_nop_ost_b3e_b3u_errors {
           # ost error (incorrect strand) #
           ################################
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ost", $seq_name, "", $FH_HR);
+        }
+        if($mdl_results_HR->{"p_score"} < 0.) { 
+          #########################
+          # lsc error (low score) #
+          #########################
+          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"lsc"}{$seq_name}) { # lsc error already exists, update it
+            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"lsc"}{$seq_name} . ", " . $mdl_results_HR->{"p_score"} . " bits", $FH_HR);
+          }
+          else { # first lsc error
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, $mdl_results_HR->{"p_score"} . " bits", $FH_HR);
+          }
         }
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop
