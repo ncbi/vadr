@@ -221,28 +221,28 @@ my %opt_group_desc_H = ();
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 $opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                                 help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                          "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is closed (a.k.a. circular)",           "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,"--dirout",undef,      "forcing directory overwrite (with --dirout)",  "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                   "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,   "output directory specified as",                "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--dirbuild",   "string",  undef,                    1,"--dirout",   undef,   "output directory used for dnaorg_build.pl",    "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,      "identify origin seq <s> in genomes",           "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
-opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",         "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
-opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "use models of additional qualifiers",          "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
-opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",   "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
-opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",        "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                                                help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                                         "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is closed (a.k.a. circular)",                          "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                        1,"--dirout",undef,      "forcing directory overwrite (with --dirout)",                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,   "output directory specified as",                                  "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirbuild",   "string",  undef,                    1,"--dirout",   undef,   "output directory used for dnaorg_build.pl",                   "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,      "identify origin seq <s> in genomes",                          "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
+opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
+opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
+opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "use models of additional qualifiers",                         "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
+opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",                  "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",                       "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 5,                        1,    undef,"--local",   "number of KB of sequence for each cmscan farm job", "set target number of KB of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--maxnjobs",   "integer", 2500,                     1,    undef,"--local",   "maximum allowed number of jobs for compute farm", "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
-opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--midthresh",  "integer", 75,                       1,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",     "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>",     "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--mxsize",     "integer", 2048,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 5,                        1,    undef,"--local",   "number of KB of sequence for each cmscan farm job",           "set target number of KB of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--maxnjobs",   "integer", 2500,                     1,    undef,"--local",   "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",                   "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--midthresh",  "integer", 75,                       1,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",  "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>",  "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--mxsize",     "integer", 2048,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",                     "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--hmmonly",    "integer", 0,                        1,    undef, undef,      "run in HMM-only mode for models with len >= <n>",             "run in HMM-only mode for models with >= <n> positions", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for alternative modes";
  #       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
@@ -314,9 +314,9 @@ my $options_okay =
                 'nkb=s'        => \$GetOptions_H{"--nkb"}, 
                 'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
-                'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
                 'midthresh=s'  => \$GetOptions_H{"--midthresh"},
                 'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
+                'hmmonly=s'    => \$GetOptions_H{"--hmmonly"},
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
 # options for alternative modes
                 'infasta'      => \$GetOptions_H{"--infasta"},
@@ -425,16 +425,18 @@ if(opt_Get("--infasta", \%opt_HH)) {
   $do_infasta = 1;
 }
 
-# if --smallthresh or --midthresh or --bigthresh used, validate that the thresholds make sense:
-# small < mid < df < big
+# if --smallthresh or --midthresh or --hmmonly used, validate that the thresholds make sense:
+# small < mid < df < hmmonly
 if(opt_IsUsed("--smallthresh", \%opt_HH)) { 
   if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--midthresh", \%opt_HH)) { 
     die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
                 opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
   }
-  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
+    if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--hmmonly", \%opt_HH)) { 
+      die sprintf("ERROR, with --smallthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                  opt_Get("--smallthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
+    }
   }
 }
 if(opt_IsUsed("--midthresh", \%opt_HH)) { 
@@ -442,19 +444,21 @@ if(opt_IsUsed("--midthresh", \%opt_HH)) {
     die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
                 opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
   }
-  if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --midthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--midthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
+    if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--hmmonly", \%opt_HH)) { 
+      die sprintf("ERROR, with --midthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                  opt_Get("--midthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
+    }
   }
 }
-if(opt_IsUsed("--bigthresh", \%opt_HH)) { 
-  if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
+  if(opt_Get("--hmmonly", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --smallthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--smallthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
   }
-  if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --midthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--midthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
+  if(opt_Get("--hmmonly", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
+    die sprintf("ERROR, with --midthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
+                opt_Get("--midthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
   }
 }
 

@@ -7695,8 +7695,8 @@ sub determineCmscanFilterSettings {
       $do_mid = 1; # set filter thresholds to --mid for kind of small models
     } 
   }
-  if((! $do_max) && (! $do_mid)) { 
-    if($model_len >= (opt_Get("--bigthresh",   $opt_HHR))) { 
+  if((opt_IsUsed("--hmmonly", $opt_HHR)) && (! $do_max) && (! $do_mid)) {
+    if($model_len >= (opt_Get("--hmmonly", $opt_HHR))) { 
       $do_big = 1; # use HMM mode for big models
     }
   }
@@ -7780,9 +7780,9 @@ sub runCmscanOrNhmmscan {
       $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --tau 0.001 --cyk --acyk -g --mxsize 1028. ";
     }
     # finally add --nohmmonly if we're not a big model
-#    if(! $do_big) { # do not use hmm unless model is big
+    if(! $do_big) { # do not use hmm unless model is big
       $opts .= " --nohmmonly ";
-#    }
+    }
   }
 
   my $cmd = "$executable $opts $model_file $seq_file > $stdout_file";
