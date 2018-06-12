@@ -1234,6 +1234,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,             "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,             "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ost", "feature",  0,             "predicted feature is on opposite strand from reference", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "lsc", "feature",  0,             "low homology score", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between primary 2 mat_peptides", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (ntr)", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", $FH_HR);
@@ -1491,7 +1492,8 @@ sub initializeHardCodedFTableErrorExceptions {
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e,b3e", "olp,aja,ajb,stp,nst,nm3,inp,aji,nop", 0,            1,            1,            undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",                         1,            0,            0,            "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb",                         1,            0,            0,            "!COPY!trc", $FH_HR); # "COPY!trc" indicates we should use the trc error string to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",                         1,            0,            0,            "similar to !out_product!", $FH_HR); # "COPY!ost" indicates we should use the ost error string to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",                         1,            0,            0,            "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "lsc",     "olp,aja,ajb",                         0,            0,            0,            "!COPY!lsc", $FH_HR); # "COPY!lsc" indicates we should use the lsc error string to make the note
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",                         0,            0,            0,            "!COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ntr",     "olp,aja,ajb",                         1,            0,            0,            "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
   
@@ -4804,23 +4806,25 @@ sub outputString {
 #    $releasedate:       month/year of version (e.g. "Feb 2016")
 #    $synopsis:          string reporting the date
 #    $date:              date information to print
+#    $dnaorgdir:         dnaorg directory
 #
 # Returns:    Nothing, if it returns, everything is valid.
 # 
 # Dies: never
 ####################################################################
 sub outputBanner {
-  my $nargs_expected = 5;
+  my $nargs_expected = 6;
   my $sub_name = "outputBanner()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($FH, $version, $releasedate, $synopsis, $date) = @_;
+  my ($FH, $version, $releasedate, $synopsis, $date, $dnaorgdir) = @_;
 
   print $FH ("\# $synopsis\n");
   print $FH ("\# dnaorg $version ($releasedate)\n");
 #  print $FH ("\# Copyright (C) 2014 HHMI Janelia Research Campus\n");
 #  print $FH ("\# Freely distributed under the GNU General Public License (GPLv3)\n");
   print $FH ("\# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
-  if(defined $date)    { print $FH ("# date:    $date\n"); }
+  if(defined $date)      { print $FH ("# date:       $date\n"); }
+  if(defined $dnaorgdir) { print $FH ("# \$DNAORGDIR: $dnaorgdir\n"); }
   printf $FH ("#\n");
 
   return;
@@ -7559,7 +7563,6 @@ sub cmscanOrNhmmscanWrapper {
   # filter threshold settings relevant only if $do_cmscan is TRUE
   my $do_max = 0; # if $do_cmscan, possibly set to true based on model length
   my $do_mid = 0; # if $do_cmscan, possibly set to true based on model length
-  my $do_df  = 0; # if $do_cmscan, possibly set to true based on model length
   my $do_big = 0; # if $do_cmscan, possibly set to true based on model length
   my $start_secs; # timing start
   my $nmdl = scalar(@{$mdl_filename_AR});
@@ -7588,9 +7591,9 @@ sub cmscanOrNhmmscanWrapper {
       $mdl_filename = $mdl_filename_AR->[$m];
       $mdl_len      = (defined $mdl_len_AR) ? $mdl_len_AR->[$m] : 0;
       if($do_cmscan) { 
-        ($do_max, $do_mid, $do_df, $do_big) = determineCmscanFilterSettings($mdl_len, $opt_HHR);
+        ($do_max, $do_mid, $do_big) = determineCmscanFilterSettings($mdl_len, $opt_HHR);
       }
-      runCmscanOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmscan, 1, $do_max, $do_mid, $do_df, $do_big, $mdl_filename,
+      runCmscanOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmscan, 1, $do_max, $do_mid, $do_big, $mdl_filename,
                           $seq_file, $tmp_stdout_file, $tmp_tblout_file, $opt_HHR, $ofile_info_HHR); # 1: run locally
       push(@tmp_tblout_file_A, $tmp_tblout_file);
       push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
@@ -7616,9 +7619,9 @@ sub cmscanOrNhmmscanWrapper {
         $mdl_filename = $mdl_filename_AR->[$m];
         $mdl_len      = (defined $mdl_len_AR) ? $mdl_len_AR->[$m] : 0;
         if($do_cmscan) { 
-          ($do_max, $do_mid, $do_df, $do_big) = determineCmscanFilterSettings($mdl_len, $opt_HHR);
+          ($do_max, $do_mid, $do_big) = determineCmscanFilterSettings($mdl_len, $opt_HHR);
         }
-        runCmscanOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmscan, 0, $do_max, $do_mid, $do_df, $do_big, $mdl_filename,
+        runCmscanOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmscan, 0, $do_max, $do_mid, $do_big, $mdl_filename,
                             $tmp_seq_file, $tmp_stdout_file, $tmp_tblout_file, $opt_HHR, $ofile_info_HHR);   # 0: do not run locally
         push(@tmp_tblout_file_A, $tmp_tblout_file);
         push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
@@ -7665,11 +7668,10 @@ sub cmscanOrNhmmscanWrapper {
 #  $model_len:       length of model
 #  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
 #
-# Returns:     4 values, exactly 0 or 1 of which will be '1'
+# Returns:     3 values, exactly 0 or 1 of which will be '1'
 #              others will be '0'
 #              $do_max: '1' to run in max sensitivity mode
 #              $do_mid: '1' to run in mid sensitivity mode
-#              $do_df:  '1' to run in default sensitivity mode
 #              $do_big: '1' to run in fast (min sensitivity) mode
 # 
 # Dies: Never
@@ -7683,7 +7685,6 @@ sub determineCmscanFilterSettings {
 
   my $do_max = 0;
   my $do_mid = 0;
-  my $do_df  = 0;
   my $do_big = 0;
 
   if($model_len <= (opt_Get("--smallthresh", $opt_HHR))) { 
@@ -7695,17 +7696,12 @@ sub determineCmscanFilterSettings {
     } 
   }
   if((! $do_max) && (! $do_mid)) { 
-    if($model_len <= (opt_Get("--dfthresh", $opt_HHR))) { 
-      $do_df = 1; # set filter thresholds to --FZ 30 for middle sized models
-    } 
-  }
-  if((! $do_max) && (! $do_mid) && (! $do_df)) { 
     if($model_len >= (opt_Get("--bigthresh",   $opt_HHR))) { 
       $do_big = 1; # use HMM mode for big models
     }
   }
 
-  return ($do_max, $do_mid, $do_df, $do_big);
+  return ($do_max, $do_mid, $do_big);
 }
 
 #################################################################
@@ -7724,7 +7720,6 @@ sub determineCmscanFilterSettings {
 #                    '1' is usually used only when $model_file contains a single 
 #                    very short model
 #  $do_mid:          '1' to run with --mid option, '0' to not
-#  $do_df:           '1' to run with --FZ 30 option, '0' to not
 #  $do_big:          '1' to run with --mxsize 6144 option, '0' to run with default options
 #  $model_file:      path to the CM file
 #  $seq_file:        path to the sequence file
@@ -7740,10 +7735,10 @@ sub determineCmscanFilterSettings {
 ################################################################# 
 sub runCmscanOrNhmmscan { 
   my $sub_name = "runCmscanOrNhmmscan()";
-  my $nargs_expected = 13;
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($executable, $do_cmscan, $do_local, $do_max, $do_mid, $do_df, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($executable, $do_cmscan, $do_local, $do_max, $do_mid, $do_big, $model_file, $seq_file, $stdout_file, $tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
@@ -7757,15 +7752,6 @@ sub runCmscanOrNhmmscan {
   }
   if($do_max && $do_mid) { 
     DNAORG_FAIL("ERROR in $sub_name, do_max and do_mid are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_max && $do_df) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_max and do_df are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_mid && $do_df) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_mid and do_df are both true, only one should be.", 1, $FH_HR);
-  }
-  if($do_big && $do_df) { 
-    DNAORG_FAIL("ERROR in $sub_name, do_big and do_df are both true, only one should be.", 1, $FH_HR);
   }
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
@@ -7786,19 +7772,17 @@ sub runCmscanOrNhmmscan {
 #      $opts .= " --max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
     }
     elsif($do_mid) { 
-#      $opts .= " --mid -E 1"; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
-      $opts .= " --mid -E 0.1"; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
-    }
-    elsif($do_df) { 
-      $opts .= " --FZ 30 "; # do search with filters set up as if database was 30Mb.
+#      $opts .= " --mid -E 0.1 --noF6 --olonepass --tau 0.001 --cyk --acyk  "; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
+      $opts .= " --mid -E 0.1 --noF6 --olonepass --tau 0.001 --cyk --acyk -g --mxsize 1028."; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
     }
     else { 
-      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 ";
+#      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --tau 0.001 --cyk --acyk ";
+      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --tau 0.001 --cyk --acyk -g --mxsize 1028. ";
     }
     # finally add --nohmmonly if we're not a big model
-    if(! $do_big) { # do not use hmm unless model is big
+#    if(! $do_big) { # do not use hmm unless model is big
       $opts .= " --nohmmonly ";
-    }
+#    }
   }
 
   my $cmd = "$executable $opts $model_file $seq_file > $stdout_file";
@@ -7818,7 +7802,7 @@ sub runCmscanOrNhmmscan {
     my $jobname = "s" . removeDirPath($seq_file);
     my $errfile = $tblout_file . ".err";
     if(-e $errfile) { removeFileUsingSystemRm($errfile, $sub_name, $opt_HHR, $ofile_info_HHR); }
-    my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=8G,mem_free=8G,reserve_mem=8G,m_mem_free=8G " . "\"" . $cmd . "\" > /dev/null\n";
+    my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=16G,mem_free=16G,reserve_mem=16G,m_mem_free=16G " . "\"" . $cmd . "\" > /dev/null\n";
     runCommand($farm_cmd, opt_Get("-v", $opt_HHR), $FH_HR);
   }
 

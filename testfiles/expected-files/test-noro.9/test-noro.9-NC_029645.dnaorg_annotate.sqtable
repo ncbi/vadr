@@ -1,0 +1,16 @@
+>Feature DQ288307.1
+<1	210	gene
+			gene	ORF1
+<1	210	CDS
+			product	nonstructural polyprotein
+<1	207	mat_peptide
+			product	RdRp
+197	>1094	gene
+			gene	ORF2
+197	>1094	CDS
+			product	VP1
+>Feature JN585032.1
+<1	>286	CDS
+			product	nonstructural polyprotein
+<1	>286	mat_peptide
+			product	RdRp

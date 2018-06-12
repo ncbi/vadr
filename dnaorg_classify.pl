@@ -155,7 +155,7 @@ my $releasedate   = "May 2018";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
+  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
@@ -243,7 +243,7 @@ my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_classify";
 # output preamble
 my @arg_desc_A = ();
 my @arg_A      = ();
-outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
+outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
@@ -274,7 +274,7 @@ my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 
 
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
+outputBanner($log_FH, $version, $releasedate, $synopsis, $date, $dnaorgdir);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $cmd_FH
@@ -282,8 +282,9 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-my $do_keep = opt_Get("--keep", \%opt_HH); # should we leave intermediates files on disk, instead of removing them?
-my @files2rm_A = ();                       # will be filled with files to remove, --keep was not enabled
+my $be_verbose = opt_Get("-v", \%opt_HH);     # is -v used?
+my $do_keep    = opt_Get("--keep", \%opt_HH); # should we leave intermediates files on disk, instead of removing them?
+my @files2rm_A = ();                          # will be filled with files to remove, --keep was not enabled
 
 ###################################################
 # make sure the required executables are executable
@@ -434,6 +435,8 @@ else {
     $start_secs = outputProgressPrior("Parsing additional dnaorg_annotate.pl options (--optsA)", $progress_w, $log_FH, *STDOUT);
     my $failure_str   = "that option will automatically be set,\nas required, to be consistent with the relevant dnaorg_build.pl command used previously.";
     my $auto_add_opts = "--dirout,--dirbuild,--infasta,--refaccn";
+    if($do_keep)    { $auto_add_opts .= ",--keep"; }
+    if($be_verbose) { $auto_add_opts .= ",-v"; }
     $annotate_non_cons_opts = parseNonConsOptsFile(opt_Get("--optsA", \%opt_HH), "--optsA", $auto_add_opts, $failure_str, $ofile_info_HH{"FH"});
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
@@ -902,6 +905,8 @@ else {
         $annotate_cons_opts = build_opts_hash_to_opts_string(\%{$buildopts_used_HH{$ref_list_seqname}});
         $annotate_cmd = $execs_H{"dnaorg_annotate"} . " " . $annotate_cons_opts . " --dirbuild $build_dir --dirout $cur_out_dir";
         if($annotate_non_cons_opts ne "") { $annotate_cmd .= " " . $annotate_non_cons_opts; }
+        if($do_keep)    { $annotate_cmd .= " --keep"; }
+        if($be_verbose) { $annotate_cmd .= " -v"; }
         if($infasta_mode) { 
           $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
         }
@@ -909,11 +914,15 @@ else {
           $annotate_cmd .= " $ntlist_file";
         }
         runCommand($annotate_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-        # now copy the sequin feature table to this top level directory:
+        # now copy the sequin feature tables to this top level directory:
         my $src_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.sqtable";
         my $dest_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.sqtable";
+        my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
+        my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
         runCommand("cp $src_sqtable $dest_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+        runCommand("cp $src_long_sqtable $dest_long_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
         addClosedFileToOutputInfo(\%ofile_info_HH, "sqtbl" . $ctr++, $dest_sqtable, 1, "annotation results for $ref_list_seqname");
+        addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl" . $ctr++, $dest_long_sqtable, 1, "verbose annotation results for $ref_list_seqname");
       }
     }
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -1103,14 +1112,14 @@ sub validate_build_dir {
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   
   if(! -d $build_dir) { 
-    DNAORG_FAIL(sprintf("ERROR, the directory $build_dir should exist based on your -A option argument %s, but it does not.\nDid you run dnaorg_build.pl?\n", opt_Get("-A", $ofile_info_HHR)), 1, $FH_HR);
+    DNAORG_FAIL(sprintf("ERROR, the directory $build_dir should exist based on your -A option argument %s, but it does not.\nDid you run dnaorg_build.pl?\n", opt_Get("-A", $opt_HHR)), 1, $FH_HR);
   }
 
   my $build_root         = removeDirPath($build_dir);
   my $build_dir_and_root = $build_dir . "/" . $build_root;
   my $consopts_file      = $build_dir_and_root . ".dnaorg_build.consopts";
   if(! -e $consopts_file) { 
-    DNAORG_FAIL(sprintf("ERROR, required file $consopts_file should exist based on your -A option argument %s, but it does not.\nDid you run dnaorg_build.pl?\n", opt_Get("-A", $ofile_info_HHR)), 1, $FH_HR);
+    DNAORG_FAIL(sprintf("ERROR, required file $consopts_file should exist based on your -A option argument %s, but it does not.\nDid you run dnaorg_build.pl?\n", opt_Get("-A", $opt_HHR)), 1, $FH_HR);
   }
 
   # parse the consopts file

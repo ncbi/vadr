@@ -137,7 +137,7 @@ require "epn-options.pm";
 # 1. parse_esl_epn_translate_startstop_outfile()
 # 2. results_calculate_corrected_stops()
 # 3. results_calculate_overlaps_and_adjacencies() 
-# 4. mdl_results_add_str_nop_ost_b3e_b3u_errors()
+# 4. mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
 # 5. ftr_results_calculate()
 # 6. find_origin_sequences()
 # 7. MAIN (not a function but rather the main body of the script):
@@ -184,9 +184,11 @@ if(! (-d $dnaorgdir)) {
 }    
  
 # determine other required paths to executables relative to $dnaorgdir
-my $inf_exec_dir      = $dnaorgdir . "/infernal-1.1.2/src/";
+#my $inf_exec_dir      = $dnaorgdir . "/infernal-1.1.2/src/";
+my $inf_exec_dir      = $dnaorgdir . "/infernal-dev/src/";
 my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
-my $esl_exec_dir      = $dnaorgdir . "/infernal-1.1.2/easel/miniapps/";
+#my $esl_exec_dir      = $dnaorgdir . "/infernal-1.1.2/easel/miniapps/";
+my $esl_exec_dir      = $dnaorgdir . "/infernal-dev/easel/miniapps/";
 my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
 my $esl_epn_translate = $dnaorgdir . "/esl-epn-translate/esl-epn-translate.pl";
 my $esl_ssplit        = $dnaorgdir . "/Bio-Easel/scripts/esl-ssplit.pl";
@@ -238,7 +240,6 @@ opt_Add("--nkb",        "integer", 5,                        1,    undef,"--loca
 opt_Add("--maxnjobs",   "integer", 2500,                     1,    undef,"--local",   "maximum allowed number of jobs for compute farm", "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",    "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--bigthresh",  "integer", 4000,                     1,    undef, undef,      "set minimum model length for using HMM mode to <n>", "set minimum model length for using HMM mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--dfthresh",   "integer", 250,                      1,    undef, undef,      "set max model length for using default sensitivity mode to <n>", "set max model length for using default sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--midthresh",  "integer", 75,                       1,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",     "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>",     "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--mxsize",     "integer", 2048,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",      "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
@@ -314,7 +315,6 @@ my $options_okay =
                 'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
                 'bigthresh=s'  => \$GetOptions_H{"--bigthresh"},
-                'dfthresh=s'   => \$GetOptions_H{"--dfthresh"},
                 'midthresh=s'  => \$GetOptions_H{"--midthresh"},
                 'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
@@ -361,7 +361,7 @@ $| = 1;
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
+  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
@@ -425,16 +425,12 @@ if(opt_Get("--infasta", \%opt_HH)) {
   $do_infasta = 1;
 }
 
-# if --smallthresh or --midthresh or --dfthresh or --bigthresh used, validate that the thresholds make sense:
+# if --smallthresh or --midthresh or --bigthresh used, validate that the thresholds make sense:
 # small < mid < df < big
 if(opt_IsUsed("--smallthresh", \%opt_HH)) { 
   if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--midthresh", \%opt_HH)) { 
     die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
                 opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
-  }
-  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--dfthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
   }
   if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
     die sprintf("ERROR, with --smallthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
@@ -446,27 +442,9 @@ if(opt_IsUsed("--midthresh", \%opt_HH)) {
     die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
                 opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
   }
-  if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--dfthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --midthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--midthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
-  }
   if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
     die sprintf("ERROR, with --midthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
                 opt_Get("--midthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
-  }
-}
-if(opt_IsUsed("--dfthresh", \%opt_HH)) { 
-  if(opt_Get("--dfthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
-  }
-  if(opt_Get("--dfthresh", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --midthresh <x> and --dfthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--midthresh", \%opt_HH), opt_Get("--dfthresh", \%opt_HH));
-  }
-  if(opt_Get("--dfthresh", \%opt_HH) >= opt_Get("--bigthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --dfthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--dfthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
   }
 }
 if(opt_IsUsed("--bigthresh", \%opt_HH)) { 
@@ -477,10 +455,6 @@ if(opt_IsUsed("--bigthresh", \%opt_HH)) {
   if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
     die sprintf("ERROR, with --midthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
                 opt_Get("--midthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
-  }
-  if(opt_Get("--bigthresh", \%opt_HH) < opt_Get("--dfthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --dfthresh <x> and --bigthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--dfthresh", \%opt_HH), opt_Get("--bigthresh", \%opt_HH));
   }
 }
 
@@ -613,7 +587,7 @@ else {
   DNAORG_FAIL("ERROR, both listfile and infasta_file are undefined...", 1, undef);
 }
 
-outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
+outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
@@ -663,7 +637,7 @@ if(opt_Get("--errinfo", \%opt_HH)) {
 }
 
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
+outputBanner($log_FH, $version, $releasedate, $synopsis, $date, $dnaorgdir);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
@@ -1182,8 +1156,8 @@ initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH
 
 $start_secs = outputProgressPrior("Finalizing annotations and validating error combinations", $progress_w, $log_FH, *STDOUT);
 # report str, nop, b3e, b3u errors, we need to know these before we call ftr_results_calculate()
-mdl_results_add_str_nop_ost_b3e_b3u_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                                           \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # report b3e errors for cds-mp multifeature features
 ftr_results_add_b3e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
@@ -1404,7 +1378,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_ost_b3e_b3u_errors()
+#    mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate() ***
@@ -1595,7 +1569,7 @@ sub parse_cmscan_tblout {
                                                            # which can occur in circular genomes, where we've duplicated the sequence
       my $seq_len  = $seq_info_HAR->{"seq_len"}[$seqidx]; # total length of sequence searched, could be $accn_len or two times $accn_len if -c used
 
-      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $FH_HR);
+      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $score, $FH_HR);
     }
   }
   close(IN);
@@ -2464,7 +2438,7 @@ sub wrapper_esl_epn_translate_startstop {
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_ost_b3e_b3u_errors()
+#    mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate
@@ -2654,6 +2628,7 @@ sub results_calculate_predicted_lengths {
 #  $seqto:             stop position of hit
 #  $strand:            strand of hit
 #  $evalue:            E-value of hit
+#  $score:             bit score of hit
 #  $FH_HR:             REF to hash of file handles
 #
 # Returns:    void
@@ -2663,10 +2638,10 @@ sub results_calculate_predicted_lengths {
 ################################################################# 
 sub store_hit { 
   my $sub_name = "store_hit()";
-  my $nargs_exp = 13;
+  my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $FH_HR) = @_;
+  my ($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $score, $FH_HR) = @_;
 
   # only consider hits where either the start or end are less than the total length
   # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
@@ -2720,6 +2695,7 @@ sub store_hit {
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5seqflush"} = $p_5seqflush;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3seqflush"} = $p_3seqflush;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"}    = $evalue;
+      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_score"}     = $score;
     }
   }
 
@@ -3474,10 +3450,10 @@ sub ftr_results_add_b3e_errors {
 }      
 
 #################################################################
-# Subroutine:  mdl_results_add_str_nop_ost_b3e_b3u_errors
+# Subroutine:  mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors
 # Incept:      EPN, Thu Mar 31 13:43:58 2016
 #
-# Purpose:    Report 'str', 'nop', 'ost', 'b3e', and 'b3u' errors
+# Purpose:    Report 'str', 'nop', 'ost', 'lsc', 'b3e', and 'b3u' errors
 #             and fill in the following keys in $mdl_results_AAHR:
 #             "out_5boundary" and "out_3boundary".
 #
@@ -3509,8 +3485,8 @@ sub ftr_results_add_b3e_errors {
 #       given the lengths of the accession and the sequence we searched.
 #
 ################################################################# 
-sub mdl_results_add_str_nop_ost_b3e_b3u_errors { 
-  my $sub_name = "mdl_results_add_str_nop_ost_b3e_b3u_errors()";
+sub mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors { 
+  my $sub_name = "mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()";
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -3604,6 +3580,17 @@ sub mdl_results_add_str_nop_ost_b3e_b3u_errors {
           # ost error (incorrect strand) #
           ################################
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ost", $seq_name, "", $FH_HR);
+        }
+        if($mdl_results_HR->{"p_score"} < 0.) { 
+          #########################
+          # lsc error (low score) #
+          #########################
+          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"lsc"}{$seq_name}) { # lsc error already exists, update it
+            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"lsc"}{$seq_name} . ", " . $mdl_results_HR->{"p_score"} . " bits", $FH_HR);
+          }
+          else { # first lsc error
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, $mdl_results_HR->{"p_score"} . " bits", $FH_HR);
+          }
         }
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop

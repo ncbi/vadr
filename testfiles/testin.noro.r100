@@ -1,0 +1,34 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --keep -v -f -A !dirbuild! --infasta testfiles/noro.r100.fa --dirbuild !dirbuild! --dirout test-noro.r100
+desc: classify-noro-1
+out: test-noro.r100/test-noro.r100-NC_001959/test-noro.r100-NC_001959.dnaorg_annotate.sqtable 
+out: test-noro.r100/test-noro.r100-NC_001959/test-noro.r100-NC_001959.dnaorg_annotate.tbl
+out: test-noro.r100/test-noro.r100-NC_008311/test-noro.r100-NC_008311.dnaorg_annotate.sqtable 
+out: test-noro.r100/test-noro.r100-NC_008311/test-noro.r100-NC_008311.dnaorg_annotate.tbl
+out: test-noro.r100/test-noro.r100-NC_029646/test-noro.r100-NC_029646.dnaorg_annotate.sqtable 
+out: test-noro.r100/test-noro.r100-NC_029646/test-noro.r100-NC_029646.dnaorg_annotate.tbl
+out: test-noro.r100/test-noro.r100-NC_029647/test-noro.r100-NC_029647.dnaorg_annotate.sqtable 
+out: test-noro.r100/test-noro.r100-NC_029647/test-noro.r100-NC_029647.dnaorg_annotate.tbl
+exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_001959.dnaorg_annotate.sqtable 
+exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_001959.dnaorg_annotate.tbl
+exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_008311.dnaorg_annotate.sqtable 
+exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_008311.dnaorg_annotate.tbl
+exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029646.dnaorg_annotate.sqtable 
+exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029646.dnaorg_annotate.tbl
+exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029647.dnaorg_annotate.sqtable 
+exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029647.dnaorg_annotate.tbl
+
+

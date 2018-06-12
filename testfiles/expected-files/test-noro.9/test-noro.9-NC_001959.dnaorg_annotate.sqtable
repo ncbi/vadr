@@ -1,0 +1,8 @@
+>Feature KT818729.1
+<1	>243	CDS
+			product	nonstructural polyprotein
+<1	>243	mat_peptide
+			product	RdRp
+>Feature EU437710.1
+1	>291	gene
+			gene	ORF2
