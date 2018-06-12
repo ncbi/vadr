@@ -1,0 +1,309 @@
+>Feature gi|1216437532|emb|MS811587.1|
+<1	>6633	gene
+			gene	L
+1	6633	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|499104205|gb|KC545390.1|
+56	3007	gene
+			gene	NP
+458	2674	CDS
+			product	nucleoprotein
+3013	4382	gene
+			gene	VP35
+3138	4127	CDS
+			product	polymerase complex protein
+4365	5875	gene
+			gene	VP40
+4454	5434	CDS
+			product	matrix protein
+5883	8241	gene
+			gene	GP
+5998	6882	CDS
+6882	8027
+			product	spike glycoprotein
+5998	7116	CDS
+			product	small secreted glycoprotein
+5998	6881	CDS
+6883	6955
+			product	second secreted glycoprotein
+8224	9697	gene
+			gene	VP30
+8441	9307	CDS
+			product	minor nucleoprotein
+9826	11474	gene
+			gene	VP24
+10299	11054	CDS
+			product	membrane-associated protein
+11457	18494	gene
+			gene	L
+11535	18167	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|52352969|gb|AY729654.1|
+56	3007	gene
+			gene	NP
+458	2674	CDS
+			product	nucleoprotein
+3013	4382	gene
+			gene	VP35
+3138	4127	CDS
+			product	polymerase complex protein
+4365	5875	gene
+			gene	VP40
+4454	5434	CDS
+			product	matrix protein
+5883	8241	gene
+			gene	GP
+5998	6882	CDS
+6882	8027
+			product	spike glycoprotein
+5998	7116	CDS
+			product	small secreted glycoprotein
+5998	6881	CDS
+6883	6955
+			product	second secreted glycoprotein
+8224	9697	gene
+			gene	VP30
+8441	9307	CDS
+			product	minor nucleoprotein
+9826	11474	gene
+			gene	VP24
+10299	11054	CDS
+			product	membrane-associated protein
+11457	18494	gene
+			gene	L
+11535	18167	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|1041213|gb|U23458.1|EVU23458
+1	7038	gene
+			gene	L
+79	6711	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|32815054|gb|AY316199.1|
+5	2363	gene
+			gene	GP
+120	1004	CDS
+1004	2149
+			product	spike glycoprotein
+120	1238	CDS
+			product	small secreted glycoprotein
+120	1003	CDS
+1005	1077
+			product	second secreted glycoprotein
+>Feature gi|291212850|dbj|FV537275.1|
+56	3007	gene
+			gene	NP
+458	499	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 458..2674 revised to 458..499 (stop shifted 2175 nt)]
+3013	4382	gene
+			gene	VP35
+3138	3143	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3138..4127 revised to 3138..3143 (stop shifted 984 nt)]
+4365	5875	gene
+			gene	VP40
+4454	4558	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4454..5434 revised to 4454..4558 (stop shifted 876 nt)]
+5883	8241	gene
+			gene	GP
+5998	6021	misc_feature
+6882	8027
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5998..6882 exon 1 of 2 revised to 5998..6021 (stop shifted 861 nt)]
+5998	6021	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5998..7116 revised to 5998..6021 (stop shifted 1095 nt)]
+5998	6021	misc_feature
+6883	6955
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5998..6881 exon 1 of 2 revised to 5998..6021 (stop shifted 860 nt)]
+8224	9697	gene
+			gene	VP30
+8441	8491	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 8441..9307 revised to 8441..8491 (stop shifted 816 nt)]
+9826	11474	gene
+			gene	VP24
+10299	10355	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 10299..11054 revised to 10299..10355 (stop shifted 699 nt)]
+11457	18494	gene
+			gene	L
+11535	11549	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 11535..18167 revised to 11535..11549 (stop shifted 6618 nt)]
+>Feature gi|499104213|gb|KC545391.1|
+56	3007	gene
+			gene	NP
+458	2674	CDS
+			product	nucleoprotein
+3013	4382	gene
+			gene	VP35
+3138	4127	CDS
+			product	polymerase complex protein
+4365	5875	gene
+			gene	VP40
+4454	5434	CDS
+			product	matrix protein
+5883	8241	gene
+			gene	GP
+5998	6882	CDS
+6882	8027
+			product	spike glycoprotein
+5998	7116	CDS
+			product	small secreted glycoprotein
+5998	6881	CDS
+6883	6955
+			product	second secreted glycoprotein
+8224	9697	gene
+			gene	VP30
+8441	9307	CDS
+			product	minor nucleoprotein
+9826	11474	gene
+			gene	VP24
+10299	11054	CDS
+			product	membrane-associated protein
+11457	18494	gene
+			gene	L
+11535	18167	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|291212851|dbj|FV537276.1|
+7419	382	misc_feature
+			note	similar to 
+9050	7402	misc_feature
+			note	similar to 
+10652	9179	misc_feature
+			note	similar to 
+12993	10635	misc_feature
+			note	similar to 
+14511	13001	misc_feature
+			note	similar to 
+15863	14494	misc_feature
+			note	similar to 
+18820	15869	misc_feature
+			note	similar to 
+>Feature gi|724446655|dbj|DI389182.1|
+<1	>2028	gene
+			gene	GP
+1	885	CDS
+886	>2028
+			product	spike glycoprotein
+1	884	CDS
+887	959
+			product	second secreted glycoprotein
+>Feature gi|658147297|dbj|HW505610.1|
+<1	>2028	gene
+			gene	GP
+1	885	CDS
+886	>2028
+			product	spike glycoprotein
+1	884	CDS
+887	959
+			product	second secreted glycoprotein
+>Feature gi|126567072|gb|EF183508.1|
+<1	>343	gene
+			gene	L
+<1	>343	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|126567068|gb|EF183506.1|
+<1	>343	gene
+			gene	L
+<1	>343	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|942473142|gb|KT878488.1|
+56	3007	gene
+			gene	NP
+458	2674	CDS
+			product	nucleoprotein
+3013	4382	gene
+			gene	VP35
+3138	4127	CDS
+			product	polymerase complex protein
+4365	5875	gene
+			gene	VP40
+4454	5434	CDS
+			product	matrix protein
+5883	8241	gene
+			gene	GP
+5998	6882	CDS
+6882	8027
+			product	spike glycoprotein
+5998	7116	CDS
+			product	small secreted glycoprotein
+5998	6881	CDS
+6883	6955
+			product	second secreted glycoprotein
+8224	9697	gene
+			gene	VP30
+8441	9307	CDS
+			product	minor nucleoprotein
+9826	11474	gene
+			gene	VP24
+10299	11054	CDS
+			product	membrane-associated protein
+11457	18494	gene
+			gene	L
+11535	18167	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|499104221|gb|KC545392.1|
+56	3007	gene
+			gene	NP
+458	2674	CDS
+			product	nucleoprotein
+3013	4382	gene
+			gene	VP35
+3138	4127	CDS
+			product	polymerase complex protein
+4365	5875	gene
+			gene	VP40
+4454	5434	CDS
+			product	matrix protein
+5883	8241	gene
+			gene	GP
+5998	6882	CDS
+6882	8027
+			product	spike glycoprotein
+5998	7116	CDS
+			product	small secreted glycoprotein
+5998	6881	CDS
+6883	6955
+			product	second secreted glycoprotein
+8224	9697	gene
+			gene	VP30
+8441	9307	CDS
+			product	minor nucleoprotein
+9826	11474	gene
+			gene	VP24
+10299	11054	CDS
+			product	membrane-associated protein
+11457	18494	gene
+			gene	L
+11535	18167	CDS
+			product	RNA-dependent RNA polymerase
+>Feature gi|291212849|dbj|FV537274.1|
+56	3007	gene
+			gene	NP
+458	499	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 458..2674 revised to 458..499 (stop shifted 2175 nt)]
+3013	4382	gene
+			gene	VP35
+3138	3143	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3138..4127 revised to 3138..3143 (stop shifted 984 nt)]
+4365	5875	gene
+			gene	VP40
+4454	4558	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4454..5434 revised to 4454..4558 (stop shifted 876 nt)]
+5883	8241	gene
+			gene	GP
+5998	6021	misc_feature
+6882	8027
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5998..6882 exon 1 of 2 revised to 5998..6021 (stop shifted 861 nt)]
+5998	6021	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5998..7116 revised to 5998..6021 (stop shifted 1095 nt)]
+5998	6021	misc_feature
+6883	6955
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5998..6881 exon 1 of 2 revised to 5998..6021 (stop shifted 860 nt)]
+8224	9697	gene
+			gene	VP30
+8441	8491	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 8441..9307 revised to 8441..8491 (stop shifted 816 nt)]
+9826	11474	gene
+			gene	VP24
+10299	10355	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 10299..11054 revised to 10299..10355 (stop shifted 699 nt)]
+11457	18494	gene
+			gene	L
+11535	11549	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 11535..18167 revised to 11535..11549 (stop shifted 6618 nt)]
