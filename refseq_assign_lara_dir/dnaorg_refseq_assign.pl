@@ -108,12 +108,12 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.31";
-my $releasedate   = "May 2018";
+my $version       = "0.32";
+my $releasedate   = "Jun 2018";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
+  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
@@ -176,7 +176,7 @@ my $out_root = $dir . "/" . $dir_tail;
 # output preamble
 my @arg_desc_A = ("list of refseqs", "list of sequences");
 my @arg_A      = ($ref_list, $seq_list);
-outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date);
+outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
@@ -207,7 +207,7 @@ my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 
 
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $version, $releasedate, $synopsis, $date);
+outputBanner($log_FH, $version, $releasedate, $synopsis, $date, $dnaorgdir);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $cmd_FH
