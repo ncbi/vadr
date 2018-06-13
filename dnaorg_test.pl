@@ -336,12 +336,18 @@ sub parse_test_file {
         $expfile = $line;
         $expfile =~ s/^\s+//;
         $expfile =~ s/\s+$//;
+        # replace @<s>@ with value of $ENV{'<s>'}
+        while($expfile =~ /\@(\w+)\@/) { 
+          my $envvar = $1;
+          my $replacevalue = $ENV{"$envvar"};
+          $expfile =~ s/\@$envvar\@/$replacevalue/g;
+        }
         if($expfile =~ m/\s/) { DNAORG_FAIL("ERROR expected file has spaces: $expfile", 1, $FH_HR) }
         if(scalar(@{$expfile_AAR}) < $ncmd) { 
           @{$expfile_AAR->[($ncmd-1)]} = ();
         }
         push(@{$expfile_AAR->[($ncmd-1)]}, $expfile);
-        # TEMP if(! -e $expfile) { DNAORG_FAIL("ERROR, expected file $expfile does not exist", 1, $FH_HR); }
+        if(! -e $expfile) { DNAORG_FAIL("ERROR, expected file $expfile does not exist", 1, $FH_HR); }
       }
       elsif($line =~ s/^rmdir\:\s+//) { 
         $rmdir = $line;
