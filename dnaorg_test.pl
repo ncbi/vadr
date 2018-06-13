@@ -359,7 +359,7 @@ sub parse_test_file {
   }
   close(IN);
 
-  if($ndesc != $ncmd) { DNAORG_FAIL("ERROR did not read same number of descriptions and commands"); }
+  if($ndesc != $ncmd) { DNAORG_FAIL("ERROR did not read same number of descriptions and commands", 1, $FH_HR); }
 
   # for final command, check that number of exp and out files is equal
   if(! (@{$outfile_AAR->[($ncmd-1)]})) { DNAORG_FAIL("ERROR did not read any out: lines for command " . ($ncmd+1), 1, $FH_HR); }
@@ -406,10 +406,10 @@ sub diff_two_files {
   my $pass = 0;
 
   if(! $exp_file_exists) { 
-    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file does not exist") ;
+    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file does not exist", 1, $FH_HR) ;
   }
   if(! $exp_file_nonempty) { 
-    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty");
+    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty", 1, $FH_HR);
   }
     
   outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-100s ... ", $out_file));

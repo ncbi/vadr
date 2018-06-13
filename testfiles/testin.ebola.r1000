@@ -24,15 +24,13 @@ out: test-ebola.r1000/test-ebola.r1000-NC_014372/test-ebola.r1000-NC_014372.dnao
 out: test-ebola.r1000/test-ebola.r1000-NC_014372/test-ebola.r1000-NC_014372.dnaorg_annotate.tbl
 out: test-ebola.r1000/test-ebola.r1000-NC_014373/test-ebola.r1000-NC_014373.dnaorg_annotate.sqtable 
 out: test-ebola.r1000/test-ebola.r1000-NC_014373/test-ebola.r1000-NC_014373.dnaorg_annotate.tbl
-exp: testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_002549.dnaorg_annotate.sqtable 
-exp: testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_002549.dnaorg_annotate.tbl
-exp: testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_004161.dnaorg_annotate.sqtable 
-exp: testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_004161.dnaorg_annotate.tbl
-exp: testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_006432.dnaorg_annotate.sqtable 
-exp: testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_006432.dnaorg_annotate.tbl
-exp: testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_014372.dnaorg_annotate.sqtable 
-exp: testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_014372.dnaorg_annotate.tbl
-exp: testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_014373.dnaorg_annotate.sqtable 
-exp: testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_014373.dnaorg_annotate.tbl
-
-
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_002549.dnaorg_annotate.sqtable 
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_002549.dnaorg_annotate.tbl
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_004161.dnaorg_annotate.sqtable 
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_004161.dnaorg_annotate.tbl
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_006432.dnaorg_annotate.sqtable 
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_006432.dnaorg_annotate.tbl
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_014372.dnaorg_annotate.sqtable 
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_014372.dnaorg_annotate.tbl
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_014373.dnaorg_annotate.sqtable 
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_014373.dnaorg_annotate.tbl

@@ -22,13 +22,11 @@ out: test-noro.r100/test-noro.r100-NC_029646/test-noro.r100-NC_029646.dnaorg_ann
 out: test-noro.r100/test-noro.r100-NC_029646/test-noro.r100-NC_029646.dnaorg_annotate.tbl
 out: test-noro.r100/test-noro.r100-NC_029647/test-noro.r100-NC_029647.dnaorg_annotate.sqtable 
 out: test-noro.r100/test-noro.r100-NC_029647/test-noro.r100-NC_029647.dnaorg_annotate.tbl
-exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_001959.dnaorg_annotate.sqtable 
-exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_001959.dnaorg_annotate.tbl
-exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_008311.dnaorg_annotate.sqtable 
-exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_008311.dnaorg_annotate.tbl
-exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029646.dnaorg_annotate.sqtable 
-exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029646.dnaorg_annotate.tbl
-exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029647.dnaorg_annotate.sqtable 
-exp: testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029647.dnaorg_annotate.tbl
-
-
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-noro.r100/test-noro.r100-NC_001959.dnaorg_annotate.sqtable 
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-noro.r100/test-noro.r100-NC_001959.dnaorg_annotate.tbl
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-noro.r100/test-noro.r100-NC_008311.dnaorg_annotate.sqtable 
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-noro.r100/test-noro.r100-NC_008311.dnaorg_annotate.tbl
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029646.dnaorg_annotate.sqtable 
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029646.dnaorg_annotate.tbl
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029647.dnaorg_annotate.sqtable 
+exp: $DNAORGDIR/dnaorg_scripts/testfiles/expected-files/test-noro.r100/test-noro.r100-NC_029647.dnaorg_annotate.tbl
