@@ -110,10 +110,18 @@ opt_Add("--wait",       "integer", 500,                      3,    undef,"--loca
 opt_Add("--local",      "boolean", 0,                        3,    undef, undef,      "run nhmmscan locally instead of on farm",                     "run nhmmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,                        3,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"4"} = "options for automatically running dnaorg_annotate.pl for classified sequences";
+$opt_group_desc_H{"4"} = "options for controlling reporting of unexpected features";
+#     option                type         default            group   requires incompat    preamble-output                                              help-output    
+opt_Add("--biasfract",      "real",    0.25,                  4,   undef,   undef,      "fractional threshold for HighBias is <x>",                   "fractional threshold for HighBias unexpected feature is <x>",                  \%opt_HH, \@opt_order_A);
+opt_Add("--lowscthresh",    "real",    0.3,                   4,   undef,   undef,      "bits per nucleotide threshold for LowScore is <x>",          "bits per nucleotide threshold for LowScore unexpected feature is <x>",         \%opt_HH, \@opt_order_A);
+opt_Add("--vlowscthresh",   "real",    0.2,                   4,   undef,   undef,      "bits per nucleotide threshold for VeryLowScore is <x>",      "bits per nucleotide threshold for VeryLowScore unexpected feature is <x>",     \%opt_HH, \@opt_order_A);
+opt_Add("--lowdiffthresh",  "real",    0.06,                  4,   undef,   undef,      "bits per nucleotide diff threshold for LowDiff is <x>",      "bits per nucleotide diff threshold for LowDiff unexpected feature is <x>",     \%opt_HH, \@opt_order_A);
+opt_Add("--vlowdiffthresh", "real",    0.006,                 4,   undef,   undef,      "bits per nucleotide diff threshold for VeryLowDiff is <x>",  "bits per nucleotide diff threshold for VeryLowDiff unexpected feature is <x>", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"5"} = "options for automatically running dnaorg_annotate.pl for classified sequences";
 #     option            type       default               group   requires       incompat          preamble-output                help-output    
-opt_Add("-A",           "string", undef,                    4,    undef,        "--onlybuild",    "annotate after classifying using build dirs in dir <s>",  "annotate using dnaorg_build.pl build directories in <s> after classifying", \%opt_HH, \@opt_order_A);
-opt_Add("--optsA",      "string", undef,                    4,    "-A",         "--onlybuild",    "read dnaorg_annotate.pl options from file <s>",           "read additional dnaorg_annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("-A",           "string", undef,                    5,    undef,        "--onlybuild",    "annotate after classifying using build dirs in dir <s>",  "annotate using dnaorg_build.pl build directories in <s> after classifying", \%opt_HH, \@opt_order_A);
+opt_Add("--optsA",      "string", undef,                    5,    "-A",         "--onlybuild",    "read dnaorg_annotate.pl options from file <s>",           "read additional dnaorg_annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -128,23 +136,28 @@ my $script_name = "dnaorg_classify.pl";
 my $synopsis = "$script_name :: classify sequences using an HMM library of RefSeqs";
 
 my $options_okay = 
-    &GetOptions('h'            => \$GetOptions_H{"-h"}, 
+    &GetOptions('h'                => \$GetOptions_H{"-h"}, 
 # basic options
-                'f'            => \$GetOptions_H{"-f"},
-                'v'            => \$GetOptions_H{"-v"},
-                'keep'         => \$GetOptions_H{"--keep"},
-                'dirout=s'     => \$GetOptions_H{"--dirout"},
-                'onlybuild=s'  => \$GetOptions_H{"--onlybuild"},
-                'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
-                'inlist=s'     => \$GetOptions_H{"--inlist"},
-                'infasta=s'    => \$GetOptions_H{"--infasta"},
-                'nkb=s'        => \$GetOptions_H{"--nkb"}, 
-                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
-                'wait=s'       => \$GetOptions_H{"--wait"},
-                'local'        => \$GetOptions_H{"--local"}, 
-                'errcheck'     => \$GetOptions_H{"--errcheck"},  
-                'A=s'          => \$GetOptions_H{"-A"},
-                'optsA=s'      => \$GetOptions_H{"--optsA"},
+                'f'                => \$GetOptions_H{"-f"},
+                'v'                => \$GetOptions_H{"-v"},
+                'keep'             => \$GetOptions_H{"--keep"},
+                'dirout=s'         => \$GetOptions_H{"--dirout"},
+                'onlybuild=s'      => \$GetOptions_H{"--onlybuild"},
+                'dirbuild=s'       => \$GetOptions_H{"--dirbuild"},
+                'inlist=s'         => \$GetOptions_H{"--inlist"},
+                'infasta=s'        => \$GetOptions_H{"--infasta"},
+                'nkb=s'            => \$GetOptions_H{"--nkb"}, 
+                'maxnjobs=s'       => \$GetOptions_H{"--maxnjobs"}, 
+                'wait=s'           => \$GetOptions_H{"--wait"},
+                'local'            => \$GetOptions_H{"--local"}, 
+                'errcheck'         => \$GetOptions_H{"--errcheck"},       
+                'biasfract=s'      => \$GetOptions_H{"--biasfract"},  
+                "lowscthresh=s"    => \$GetOptions_H{"--lowscthresh"},
+                "vlowscthresh=s"   => \$GetOptions_H{"--vlowscthresh"},
+                "lowdiffthresh=s"  => \$GetOptions_H{"--lowdiffthresh"},
+                "vlowdiffthresh=s" => \$GetOptions_H{"--vlowdiffthresh"},
+                'A=s'              => \$GetOptions_H{"-A"},
+                'optsA=s'          => \$GetOptions_H{"--optsA"},
                 );
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
@@ -194,6 +207,21 @@ my $annotate_dir = ($do_annotate) ? opt_Get("-A", \%opt_HH) : undef;
 my $annotate_non_cons_opts = ""; # filled below, after output file hashes set up, if --optsA used
 if((defined $annotate_dir) && (! -d $annotate_dir)) { 
   die "ERROR with -A <s>, directory <s> must exist";
+}
+
+# enforce that lowscthresh >= vlowscthresh
+if(opt_IsUsed("--lowscthresh",\%opt_HH) || opt_IsUsed("--vlowscthresh",\%opt_HH)) { 
+  if(opt_Get("--lowscthresh",\%opt_HH) < opt_Get("--vlowscthresh",\%opt_HH)) { 
+    die sprintf("ERROR, with --lowscthresh <x> and --vlowscthresh <y>, <x> must be less than <y> (got <x>: %f, <y>: %f)\n", 
+                opt_Get("--lowscthresh",\%opt_HH), opt_Get("--vlowscthresh",\%opt_HH)); 
+  }
+}
+# enforce that lowdiffthresh >= vlowdiffthresh
+if(opt_IsUsed("--lowdiffthresh",\%opt_HH) || opt_IsUsed("--vlowdiffthresh",\%opt_HH)) { 
+  if(opt_Get("--lowdiffthresh",\%opt_HH) < opt_Get("--vlowdiffthresh",\%opt_HH)) { 
+    die sprintf("ERROR, with --lowdiffthresh <x> and --vlowdiffthresh <y>, <x> must be less than <y> (got <x>: %f, <y>: %f)\n", 
+                opt_Get("--lowdiffthresh",\%opt_HH), opt_Get("--vlowdiffthresh",\%opt_HH)); 
+  }
 }
 
 #############################
@@ -545,29 +573,55 @@ else {
   # Generate match information file header                                                                               
   my $match_file = $out_root . ".matches.info";
   open(MATCH_INFO, ">", $match_file) || fileOpenFailure($match_file, $0, $!, "writing", $ofile_info_HH{"FH"});
-  print MATCH_INFO "########################################################################################################################################\n";
-  print MATCH_INFO "#\n";
-  print MATCH_INFO "# Query:       Accession number of the sequence \n";
-  print MATCH_INFO "# RefSeq:      The RefSeq that the sequence was assigned to\n";
-  print MATCH_INFO "# Bit score:   Bit score of hit to 'RefSeq'\n";
-  print MATCH_INFO "# E-val:       E-val of hit to 'RefSeq'\n";
-  print MATCH_INFO "# Coverage:    The percentage of the query that the hit to 'RefSeq' covers (Hit length)/(Query length)\n";
-  print MATCH_INFO "# Bias:        TODO\n";
-  print MATCH_INFO "# # Hits:      The number of individual hits to this RefSeq (the program combines stats such as bit score and covg. from separate hits)\n";
-  print MATCH_INFO "# H2: RefSeq:  The RefSeq that had the second strongest hit\n";
-  print MATCH_INFO "# Bit Diff:    The amount by which the bit score of the 'RefSeq' hit is greater than that of the 'H2: RefSeq' hit\n";
-  print MATCH_INFO "# Covg. Diff:  The amount by which the coverage of the 'RefSeq' hit is greater than that of the 'H2: RefSeq' hit\n";
-#  print MATCH_INFO "# Num. Correct Hits: The amount of times 'Exp. RefSeq' produced a hit\n";
-  print MATCH_INFO "#\n";
-  print MATCH_INFO "########################################################################################################################################\n";
-  print MATCH_INFO "\n";
-  print MATCH_INFO "\n";
-  print MATCH_INFO "#H ";
-  my @header = ("Query   ","RefSeq   ","Bit score","E-val","Coverage","Bias","# Hits","H2: RefSeq","Bit Diff","Covg. Diff \n");
-  print MATCH_INFO join("\t\t", @header);
-  print MATCH_INFO "# ";
-  print MATCH_INFO "--------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
-  print MATCH_INFO "\n";
+  print  MATCH_INFO "########################################################################################################################################\n";
+  print  MATCH_INFO  "#\n";
+  print  MATCH_INFO  "# query:       Accession number of the sequence\n";
+  print  MATCH_INFO  "# qlen:        length of this sequence\n";
+  print  MATCH_INFO  "# RefSeq:      RefSeq that the sequence was assigned to\n";
+  print  MATCH_INFO  "# score:       (summed) bit score(s) of all hits to 'RefSeq'\n";
+  print  MATCH_INFO  "# sc/nt:       'score' divided by 'qlen'\n";
+  print  MATCH_INFO  "# E-val:       E-value of hit to 'RefSeq'\n";
+  print  MATCH_INFO  "# coverage:    the percentage of the query that the hit to 'RefSeq' covers (Hit length)/(Query length)\n";
+  print  MATCH_INFO  "# bias:        correction in bits for biased composition sequences\n";
+  print  MATCH_INFO  "# #hits:       number of individual hits to this RefSeq (the program combines stats such as bit score and covg. from separate hits)\n";
+  print  MATCH_INFO  "# strand:      strand of top hit to 'RefSeq'\n";
+  print  MATCH_INFO  "# H2:RefSeq:   RefSeq that had the second strongest hit\n";
+  print  MATCH_INFO  "# scdiff:      difference in bit score b/t 'RefSeq' hit(s) and 'H2:RefSeq' hit(s)\n";
+  print  MATCH_INFO  "# scdiff/nt:   'scdiff' divided by 'qlen'\n";
+  print  MATCH_INFO  "# covdiff:     amount by which the coverage of the 'RefSeq' hit is greater than that of the 'H2: RefSeq' hit\n";
+  printf MATCH_INFO ("# CC:          'confidence class', first letter based on sc/nt: A: if sc/nt >= %.3f, B: if %.3f > sc/nt >= %.3f, C: if %.3f > sc_nt\n", opt_Get("--lowscthresh", \%opt_HH), opt_Get("--lowscthresh", \%opt_HH), opt_Get("--vlowscthresh", \%opt_HH), opt_Get("--vlowscthresh", \%opt_HH));
+  printf MATCH_INFO ("#              second letter based on diff/nt: A: if diff/nt >= %.3f, B: if %.3f > diff/nt >= %.3f, C: if %.3f > diff_nt\n", opt_Get("--lowdiffthresh", \%opt_HH), opt_Get("--lowdiffthresh", \%opt_HH), opt_Get("--vlowdiffthresh", \%opt_HH), opt_Get("--vlowdiffthresh", \%opt_HH));
+  print  MATCH_INFO  "# unexpected   \n";
+  print  MATCH_INFO  "# features:    unexpected features for this sequence\n";
+  print  MATCH_INFO  "#              Possible values in unexpected features column:\n";
+  printf MATCH_INFO ("#              LowScore:     'sc/nt'   < %.3f (threshold settable with --lowscthresh)\n", opt_Get("--lowscthresh", \%opt_HH));
+  printf MATCH_INFO ("#              VeryLowScore: 'sc/nt'   < %.3f (threshold settable with --vlowscthresh)\n", opt_Get("--vlowscthresh", \%opt_HH));
+  printf MATCH_INFO ("#              LowDiff:      'diff/nt' < %.3f (threshold settable with --lowdiffthresh)\n", opt_Get("--lowdiffthresh", \%opt_HH));
+  printf MATCH_INFO ("#              VeryLowDiff:  'diff/nt' < %.3f (threshold settable with --vlowdiffthresh)\n", opt_Get("--vlowdiffthresh", \%opt_HH));
+  printf MATCH_INFO ("#              MinusStrand:  top hit is on minus strand\n");
+  printf MATCH_INFO ("#              HighBias:     'bias' > (%.3f * ('bias' + 'score')) (threshold settable with --biasfract)\n", opt_Get("--biasfract", \%opt_HH));
+  print  MATCH_INFO  "#\n";
+  print  MATCH_INFO  "########################################################################################################################################\n";
+  print  MATCH_INFO "#\n";
+  printf MATCH_INFO ("%-20s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %5s  %9s  %7s  %7s  %7s  %2s  %s\n", 
+                     "#query", "qlen", "RefSeq", "score", "sc/nt", "E-val", "coverage", "bias", "#hits", "strand", "H2:RefSeq", "scdiff", "diff/nt", "covdiff", "CC", "unexpected-features");
+  printf MATCH_INFO ("%-20s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %s\n", 
+                     "#===================", 
+                     "======",
+                     "=========",
+                     "=======",
+                     "=====",
+                     "========",
+                     "========",
+                     "=======",
+                     "=====",
+                     "======",
+                     "=========",
+                     "=======",
+                     "=======",
+                     "=======",
+                     "==",
+                     "===================");
   
   # Generate data structures to build ntlists from
   my %ntlist_HA = (); # Hash of arrays containing each RefSeq's ntlist
@@ -590,6 +644,22 @@ else {
   my %counter_H    = (); # key is sequence name, value is number of hits for this sequence
   my $h;                 # counter over hits
   my $i;                 # counter over sequences
+
+  # indices in @hit_output_A:
+  my $HOIDX_QUERY      = 0;
+  my $HOIDX_QLEN       = 1;
+  my $HOIDX_REFSEQ     = 2;
+  my $HOIDX_BITSC      = 3;
+  my $HOIDX_BITSCPNT   = 4;
+  my $HOIDX_EVALUE     = 5;
+  my $HOIDX_COVERAGE   = 6;
+  my $HOIDX_BIAS       = 7;
+  my $HOIDX_NUMHITS    = 8;
+  my $HOIDX_STRAND     = 9;
+  my $HOIDX_REFSEQ2    = 10;
+  my $HOIDX_BITDIFF    = 11;
+  my $HOIDX_BITDIFFPNT = 12;
+  my $HOIDX_COVDIFF    = 13;
 
   open(NHMMSCANTBL, $tblout_file) || fileOpenFailure($tblout_file, $0, $!, "reading", $ofile_info_HH{"FH"});
   while(my $line = <NHMMSCANTBL>) {
@@ -628,16 +698,19 @@ else {
       # ########################################################################
       # In @hit_output_A - array containing all the output for this hit
       #
-      # index         feature
-      #--------------------------
-      # 0             Query accn
-      # 1             RefSeq accn
-      # 2             Bit-score
-      # 3             E-value
-      # 4             Coverage (Hit length)/(Query length)
-      # 5             Bias
-      # 6             Number of hits to this RefSeq
-      # 7             strand of top hit (and all hits that combine to make-up coverage -- we skip any hits on the other strand)
+      # index variable     feature
+      #----------------------------
+      # 0 $HOIDX_QUERY     Query accn
+      # 1 $HOIDX_QLEN      Query accn sequence length
+      # 2 $HOIDX_REFSEQ    RefSeq accn
+      # 3 $HOIDX_BITSC     Bit-score
+      # 4 $HOIDX_BITSCPNT  bits per nucleotide (Bit-score / sequence length)
+      # 5 $HOIDX_EVALUE    E-value
+      # 6 $HOIDX_COVERAGE  Coverage (Hit length / Query length)
+      # 7 $HOIDX_BIAS      Bias
+      # 8 $HOIDX_NUMHITS   Number of hits to this RefSeq
+      # 9 $HODIX_STRAND    Strand of top hit (and all hits that combine to make-up coverage -- we skip any hits on the other strand)
+      # 10-13 added below
       ###########################################################################
       # check if this RefSeq has appeared in a previous hit for this sequence                                              
 
@@ -660,29 +733,40 @@ else {
     
       # Deciding hit length from alito alifrom - will be used to find Coverage
       my $hit_len = abs($hit_specs_A[7] - $hit_specs_A[6]) + 1;
-      printf("HEYA ref:$ref_list_seqname seq:$cls_fasta_seqname seqlen:$cls_fasta_seqlen hitlen:$hit_len\n");        
 
       # if this is the first hit to this RefSeq
       if(! defined($first_index)) {
         #debug
         #print "\tfirst occurence of $cls_fasta_seqname \n";
-          
-        @hit_output_A = (); # Array to be outputed to match info file                                                                                                                          
+        
+        @hit_output_A = (); # Array to be outputed to match info file
         push(@hit_output_A, $cls_fasta_seqname);
+        push(@hit_output_A, sprintf("%d", $cls_fasta_seqlen));
         push(@hit_output_A, $ref_list_seqname);
-          
-        push(@hit_output_A, $hit_specs_A[13]); # add bit score
-        my $e_val = sprintf("%.7f", $hit_specs_A[12]);
-        push(@hit_output_A, $e_val); # add E-val                                                                                                            
-          
-        # add coverage				
-        my $coverage = $hit_len/$cls_fasta_seqlen;
-        $coverage = sprintf("%.7f", $coverage);
-        push(@hit_output_A, $coverage);
-          
-        push(@hit_output_A, $hit_specs_A[14]);  # add bias                                                                                                                            
-        push(@hit_output_A, 1);                 # initialize 'Number of hits' to 1
+        
+        my $bitsc = $hit_specs_A[13];
+        push(@hit_output_A, sprintf("%7.1f", $bitsc)); # add bit score
 
+        my $bitsc_per_nt = $bitsc / $cls_fasta_seqlen;
+        push(@hit_output_A, sprintf("%5.3f", $bitsc_per_nt)); # add bit score per nucleotide
+        
+        my $e_val = $hit_specs_A[12];
+        push(@hit_output_A, $e_val); # add E-val                                                                                                            
+        
+        # add coverage				
+        my $coverage = $hit_len / $cls_fasta_seqlen;
+        $coverage = sprintf("%5.3f", $coverage);
+        push(@hit_output_A, $coverage);
+        
+        # add bias
+        my $bias = $hit_specs_A[14];
+        push(@hit_output_A, $bias); # initialize 'Number of hits' to 1
+
+        # initialize number of hits
+        push(@hit_output_A, 1); # initialize 'Number of hits' to 1
+
+        # add strand
+        my $strand = $hit_specs_A[11];
         push(@hit_output_A, $hit_specs_A[11]);  # add strand
                     
         @{$hit_info_HAA{$cls_fasta_seqname}}[$counter_H{$cls_fasta_seqname}] = ();
@@ -699,10 +783,11 @@ else {
         # TODO - check with Eric!
         if(($hit_specs_A[13] > 0) && # only add hits with positive bit scores 
            ($hit_specs_A[11] eq $hit_info_HAA{$cls_fasta_seqname}[$first_index][7])) { # only add hits on the same strand as the top hit
-          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[2] += $hit_specs_A[13]; # Add bit score
-###        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[3] += $hit_specs_A[12]; # Add E-val
-          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[5] += $hit_specs_A[14]; # Add bias
-          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[6] ++;                  # increase 'Number of hits' by 1
+          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[$HOIDX_BITSC] += $hit_specs_A[13]; # Add bit score
+          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[$HOIDX_BIAS]  += $hit_specs_A[14]; # Add bias
+          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[$HOIDX_NUMHITS] ++;                # increase 'Number of hits' by 1
+          # recalculate bits per nucleotide
+          @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[$HOIDX_BITSCPNT] = @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[$HOIDX_BITSC] / $cls_fasta_seqlen;
 
           ##############################################
           # Calculate and add coverage
@@ -725,14 +810,14 @@ else {
     $cls_list_seqname  = $cls_list_seqname_A[$i];
     $cls_fasta_seqname = $cls_list2fasta_seqname_H{$cls_list_seqname};
     if(! defined $cls_fasta_seqname) { 
-      DNAORG_FAIL("ERROR in dnaorg_classify.pl::main() 2, could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
+n      DNAORG_FAIL("ERROR in dnaorg_classify.pl::main() 2, could not find mapping fasta sequence name for list sequence name $cls_list_seqname", 1, $ofile_info_HH{"FH"});
     }
     if(exists($hit_info_HAA{$cls_fasta_seqname})) { 
       # there was at least one valid hit for this sequence
       # parse and output the best hit's info
 
       # sort order of hits by bit score
-      @{$hit_info_HAA{$cls_fasta_seqname}} = sort { $a->[2] <=> $b->[2] } @{$hit_info_HAA{$cls_fasta_seqname}};
+      @{$hit_info_HAA{$cls_fasta_seqname}} = sort { $a->[$HOIDX_BITSC] <=> $b->[$HOIDX_BITSC] } @{$hit_info_HAA{$cls_fasta_seqname}};
       
       # Assigns the sequence to the refseq hit with the the highest combined bit score of all hits to that refseq
       #my $max_index = 0; # contains the index of the hit with the highest bit score - initialized at index 0
@@ -745,48 +830,121 @@ else {
       
       # assign hit_output_A to the assigned refseq hit's info, assign $ref_list_seqname to the assigned refseq
       @hit_output_A = @{@{$hit_info_HAA{$cls_fasta_seqname}}[-1]}; 
-      $ref_list_seqname = $hit_output_A[1];
+      $ref_list_seqname = $hit_output_A[$HOIDX_REFSEQ];
       
       ##############################################################################
       # Add comparison indicies to @hit_output_A
       #
-      # index        feature
-      # ----------------------
-      # 7            RefSeq accn # for hit 2
-      # 8            difference between bit scores of hit 1 and hit 2
-      # 9            difference between coverage of hit 1 and hit 2
+      # index variable        feature
+      #--------------------------------
+      # 10 $HOIDX_REFSEQ2     RefSeq accn # for hit 2
+      # 11 $HOIDX_BITDIFF     difference between bit scores of hit 1 and hit 2
+      # 12 $HOIDX_BITDIFFPNT  bit difference per nucleotide (bitdiff / sequence length)
+      # 13 $HOIDX_COVDIFF     difference between coverage of hit 1 and hit 2
       ##############################################################################
       
       # TODO - hardcode-y 
+      my $bit_diff_per_nt = undef;
       if( scalar(@{$hit_info_HAA{$cls_fasta_seqname}}) >= 2) {     # if there is more than one hit  
-        push(@hit_output_A, @{@{$hit_info_HAA{$cls_fasta_seqname}}[-2]}[1]);
+        push(@hit_output_A, @{@{$hit_info_HAA{$cls_fasta_seqname}}[-2]}[$HOIDX_REFSEQ]);
 	
-        my $bit_diff = $hit_info_HAA{$cls_fasta_seqname}[-1][2] - $hit_info_HAA{$cls_fasta_seqname}[-2][2];
-        $bit_diff = sprintf("%9.1f", $bit_diff);
-        my $cov_diff = $hit_info_HAA{$cls_fasta_seqname}[-1][4] - $hit_info_HAA{$cls_fasta_seqname}[-2][4];
-        $cov_diff = sprintf("%.7f", $cov_diff);
+        my $bit_diff = $hit_info_HAA{$cls_fasta_seqname}[-1][$HOIDX_BITSC] - $hit_info_HAA{$cls_fasta_seqname}[-2][$HOIDX_BITSC];
+        $bit_diff = sprintf("%7.1f", $bit_diff);
+        $bit_diff_per_nt = sprintf("%5.3f", ($bit_diff / $cls_fasta_seqlen_H{$cls_fasta_seqname}));
+        my $cov_diff = $hit_info_HAA{$cls_fasta_seqname}[-1][$HOIDX_COVERAGE] - $hit_info_HAA{$cls_fasta_seqname}[-2][$HOIDX_COVERAGE];
+        $cov_diff = sprintf("%5.3f", $cov_diff);
         push(@hit_output_A, $bit_diff);
+        push(@hit_output_A, $bit_diff_per_nt);
         push(@hit_output_A, $cov_diff);
-	
+ 	
       } else { # if there was only one hit, there's no comparison
         push(@hit_output_A, "-----");
         push(@hit_output_A, "-----");
         push(@hit_output_A, "-----");
+        push(@hit_output_A, "-----");
       }
+
+      # determine ufeature string
+      my $ufeature_str = "";
+      my $top_bitsc      = $hit_info_HAA{$cls_fasta_seqname}[-1][$HOIDX_BITSC];
+      my $top_bias       = $hit_info_HAA{$cls_fasta_seqname}[-1][$HOIDX_BIAS];
+      my $top_strand     = $hit_info_HAA{$cls_fasta_seqname}[-1][$HOIDX_STRAND];
+      my $top_bit_per_nt = $hit_info_HAA{$cls_fasta_seqname}[-1][$HOIDX_BITSCPNT];
+      my $score_class = "A"; # set to 'B' or 'C' below if below threshold
+      my $diff_class  = "A"; # set to 'B' or 'C' below if below threshold
       
+      if($top_bit_per_nt < (opt_Get("--lowscthresh", \%opt_HH))) { 
+        $ufeature_str .= "LowScore(" . $top_bit_per_nt . "<" . sprintf("%.3f", opt_Get("--lowscthresh", \%opt_HH)) . ");"; 
+        $score_class = "B";
+      }
+      elsif($top_bit_per_nt < (opt_Get("--vlowscthresh", \%opt_HH))) { 
+        $ufeature_str .= "VeryLowScore(" . $top_bit_per_nt . "<" . sprintf("%.3f", opt_Get("--vlowscthresh", \%opt_HH)) . ");"; 
+        $score_class = "C";
+      }
+      if(defined $bit_diff_per_nt) { 
+        if($bit_diff_per_nt < (opt_Get("--lowdiffthresh", \%opt_HH))) { 
+          $ufeature_str .= "LowDiff(" . $bit_diff_per_nt . "<" . sprintf("%.3f", opt_Get("--lowdiffthresh", \%opt_HH)) . ");"; 
+          $diff_class = "B";
+        }
+        elsif($top_bit_per_nt < (opt_Get("--vlowdiffthresh", \%opt_HH))) { 
+          $ufeature_str .= "VeryLowDiff(" . $bit_diff_per_nt . "<" . sprintf("%.3f", opt_Get("--vlowdiffthresh", \%opt_HH)) . ");"; 
+          $diff_class = "C";
+        }
+      }
+      if($top_strand eq "-") { 
+        $ufeature_str .= "MinusStrand;";
+      }
+      if($top_bias > ((opt_Get("--biasfract", \%opt_HH)) * ($top_bitsc + $top_bias))) { 
+        # $top_bitsc has already had bias subtracted from it so we need to add it back in before we compare with biasfract
+        $ufeature_str .= "HighBias;";
+      }
+      if($ufeature_str eq "") { 
+        $ufeature_str = "-";
+      }
+
       # add hit info to .matches.info file
-      print MATCH_INFO join("\t\t", @hit_output_A);
-      print MATCH_INFO "\n";
+      #print MATCH_INFO join("\t", (@hit_output_A, $ufeature_str));
+      printf MATCH_INFO ("%-20s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %s\n", 
+                         $hit_output_A[$HOIDX_QUERY], 
+                         $hit_output_A[$HOIDX_QLEN], 
+                         $hit_output_A[$HOIDX_REFSEQ], 
+                         $hit_output_A[$HOIDX_BITSC], 
+                         $hit_output_A[$HOIDX_BITSCPNT], 
+                         $hit_output_A[$HOIDX_EVALUE], 
+                         $hit_output_A[$HOIDX_COVERAGE],
+                         $hit_output_A[$HOIDX_BIAS],
+                         $hit_output_A[$HOIDX_NUMHITS],
+                         ($hit_output_A[$HOIDX_STRAND] eq "+") ? "plus" : "minus",
+                         $hit_output_A[$HOIDX_REFSEQ2],
+                         $hit_output_A[$HOIDX_BITDIFF],
+                         $hit_output_A[$HOIDX_BITDIFFPNT],
+                         $hit_output_A[$HOIDX_COVDIFF], 
+                         $score_class . $diff_class,
+                         $ufeature_str);
       
       # Add this seq to the hash key that corresponds to its RefSeq
       push(@{$ntlist_HA{$ref_list_seqname}}, $cls_list_seqname);
       # IMPORTANT: push $cls_list_seqname, and not $cls_fasta_seqname (cls_list_seqname is from the input list 
       # (unless --infasta) and may not include the version
     } else { # if there were no eligible hits
-      @hit_output_A = ($cls_fasta_seqname,"--------","--------","--------","--------","--------","--------","--------","--------","--------");
-      print MATCH_INFO join("\t\t", @hit_output_A);
-      print MATCH_INFO "\n";
-      
+      printf MATCH_INFO ("%-20s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %s\n", 
+                         $cls_fasta_seqname,
+                         $cls_fasta_seqlen_H{$cls_fasta_seqname},
+                         "-",
+                         "-",
+                         "-",
+                         "-",
+                         "-",
+                         "-",
+                         "-", 
+                         "-", 
+                         "-", 
+                         "-",
+                         "-",
+                         "-",
+                         "--",
+                         "NoHits;");
+
       # add this sequence to the file that lists non-assigned sequences
       push(@{$ntlist_HA{"non-assigned"}}, $cls_list_seqname); 
       # IMPORTANT: push $cls_list_seqname, and not $cls_fasta_seqname (cls_list_seqname is from the input list 
