@@ -637,6 +637,7 @@ else {
       # 4             Coverage (Hit length)/(Query length)
       # 5             Bias
       # 6             Number of hits to this RefSeq
+      # 7             strand of top hit (and all hits that combine to make-up coverage -- we skip any hits on the other strand)
       ###########################################################################
       # check if this RefSeq has appeared in a previous hit for this sequence                                              
 
@@ -658,8 +659,8 @@ else {
       }
     
       # Deciding hit length from alito alifrom - will be used to find Coverage
-      my $hit_len = $hit_specs_A[7] - $hit_specs_A[6];
-      #printf("HEYA ref:$ref_list_seqname seq:$cls_fasta_seqname seqlen:$cls_fasta_seqlen hitlen:$hit_len\n");        
+      my $hit_len = abs($hit_specs_A[7] - $hit_specs_A[6]) + 1;
+      printf("HEYA ref:$ref_list_seqname seq:$cls_fasta_seqname seqlen:$cls_fasta_seqlen hitlen:$hit_len\n");        
 
       # if this is the first hit to this RefSeq
       if(! defined($first_index)) {
@@ -681,8 +682,9 @@ else {
           
         push(@hit_output_A, $hit_specs_A[14]);  # add bias                                                                                                                            
         push(@hit_output_A, 1);                 # initialize 'Number of hits' to 1
-          
-          
+
+        push(@hit_output_A, $hit_specs_A[11]);  # add strand
+                    
         @{$hit_info_HAA{$cls_fasta_seqname}}[$counter_H{$cls_fasta_seqname}] = ();
         @{$hit_info_HAA{$cls_fasta_seqname}[$counter_H{$cls_fasta_seqname}]} = @hit_output_A;
           
@@ -695,7 +697,8 @@ else {
         #print "\tsecond, third, etc hit of $cls_fasta_seqname \n";
           
         # TODO - check with Eric!
-        if($hit_specs_A[13] > 0) { # only add hits with positive bit scores
+        if(($hit_specs_A[13] > 0) && # only add hits with positive bit scores 
+           ($hit_specs_A[11] eq $hit_info_HAA{$cls_fasta_seqname}[$first_index][7])) { # only add hits on the same strand as the top hit
           @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[2] += $hit_specs_A[13]; # Add bit score
 ###        @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[3] += $hit_specs_A[12]; # Add E-val
           @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[5] += $hit_specs_A[14]; # Add bias
@@ -705,6 +708,7 @@ else {
           # Calculate and add coverage
           my $prev_covg = @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[4];
           my $prev_hit_len = $prev_covg*$cls_fasta_seqlen;
+          printf("$cls_fasta_seqname prev_covg: $prev_covg prev_hit_len: $prev_hit_len\n");
           my $coverage = ($prev_hit_len + $hit_len) / $cls_fasta_seqlen;
           $coverage = sprintf("%.7f", $coverage);
           @{$hit_info_HAA{$cls_fasta_seqname}[$first_index]}[4] = $coverage;
@@ -774,7 +778,7 @@ else {
       print MATCH_INFO join("\t\t", @hit_output_A);
       print MATCH_INFO "\n";
       
-      # Add this seq to the hash key that corresponds to it's RefSeq
+      # Add this seq to the hash key that corresponds to its RefSeq
       push(@{$ntlist_HA{$ref_list_seqname}}, $cls_list_seqname);
       # IMPORTANT: push $cls_list_seqname, and not $cls_fasta_seqname (cls_list_seqname is from the input list 
       # (unless --infasta) and may not include the version
