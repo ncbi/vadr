@@ -260,20 +260,20 @@ my @early_cmd_A = (); # array of commands we run before our log file is opened
 # check if our output dir $symbol exists
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
-## ##  $cmd = "rm -rf $dir";
-## ##  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-## ##  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+  $cmd = "rm -rf $dir";
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
-## ##  $cmd = "rm $dir";
-## ##  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-## ##  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
+  $cmd = "rm $dir";
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
-## ##$cmd = "mkdir $dir";
-## ##runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
-## ##push(@early_cmd_A, $cmd);
+$cmd = "mkdir $dir";
+runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
+push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir
@@ -605,8 +605,8 @@ else {
   my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
 
   my $cls_tot_len_nt = sumHashValues(\%cls_fasta_seqlen_H);
-## ##  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
-## ##                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
+  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
+                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
 
   ########################################################################################################################################################
