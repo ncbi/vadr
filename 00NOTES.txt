@@ -1,6 +1,6 @@
 # EPN, Wed Nov 29 06:40:21 2017
 # git repository url: https://github.com/nawrockie/dnaorg_scripts.git
-# v0.32 Jun 2018
+# v0.33 Jun 2018
 #
 # This file is organized into the following sections: 
 # -----------
@@ -189,10 +189,10 @@ source ~/.cshrc
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -h
 ## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-## dnaorg 0.32 (Jun 2018)
+## dnaorg 0.33 (Jun 2018)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:       Wed Jun 13 09:13:43 2018
-## $DNAORGDIR: /panfs/pan1/dnaorg/virseqannot/code
+## date:       Tue Jun 19 20:37:42 2018
+## $DNAORGDIR: /panfs/pan1/infernal/notebook/18_0613_virus_classify_weirdos
 ##
 #Usage: This script must be run in 1 of 3 modes:
 #
@@ -227,9 +227,30 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -h
 #  --local        : run nhmmscan locally instead of on farm
 #  --errcheck     : consider any farm stderr output as indicating a job failure
 #
+#options for controlling what unexpected features cause sequences to PASS/FAIL:
+#  --allpass      : all assigned sequences pass, only non-assigned seqs fail
+#  --lowscpass    : sequences with LowScore     unexpected feature can PASS
+#  --vlowscpass   : sequences with VeryLowScore unexpected feature can PASS
+#  --lowdiffpass  : sequences with LowDiff      unexpected feature can PASS
+#  --vlowdiffpass : sequences with VeryLowDiff  unexpected feature can PASS
+#  --biaspass     : sequences with HighBias     unexpected feature can PASS
+#  --minusfail    : sequences with MinusStrand  unexpected feature FAIL
+#
+#options for controlling reporting of unexpected features:
+#  --lowscthresh <x>    : bits per nucleotide threshold for LowScore unexpected feature is <x> [0.3]
+#  --vlowscthresh <x>   : bits per nucleotide threshold for VeryLowScore unexpected feature is <x> [0.2]
+#  --lowdiffthresh <x>  : bits per nucleotide diff threshold for LowDiff unexpected feature is <x> [0.06]
+#  --vlowdiffthresh <x> : bits per nucleotide diff threshold for VeryLowDiff unexpected feature is <x> [0.006]
+#  --biasfract <x>      : fractional threshold for HighBias unexpected feature is <x> [0.25]
+#  --lowscminlen <n>    : set minimum length for which LowScore causes FAILure to <n> [501]
+#  --lowdiffminlen <n>  : set minimum length for which LowDiff causes FAILure to <n> [1001]
+#  --nolowscminlen      : no minimum length for which LowScore causes a seq to FAIL
+#  --nolowdiffminlen    : no minimum length for which LowDiff causes a seq to FAIL
+#
 #options for automatically running dnaorg_annotate.pl for classified sequences:
-#  -A <s>      : annotate using dnaorg_build.pl build directories in <s> after classifying
-#  --optsA <s> : read additional dnaorg_annotate.pl options from file <s>
+#  -A <s>         : annotate using dnaorg_build.pl build directories in <s> after classifying
+#  --optsA <s>    : read additional dnaorg_annotate.pl options from file <s>
+#  --reflistA <s> : only annotate seqs that match to RefSeqs listed in <s>
 #
 ############
 #
@@ -526,16 +547,16 @@ cat testfiles/test.refseq.ntlist
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --onlybuild testfiles/test.refseq.ntlist --dirout test-build
 ## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-## dnaorg 0.32 (Jun 2018)
+## dnaorg 0.33 (Jun 2018)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:       Wed Jun 13 09:18:18 2018
-## $DNAORGDIR: /home/nawrocke/src/dnaorg_install_script
+## date:       Tue Jun 19 20:41:24 2018
+## $DNAORGDIR: /panfs/pan1/infernal/notebook/18_0613_virus_classify_weirdos
 ##
 ## REQUIRED name for output directory to create is <s>:  test-build [--dirout]
 ## build an HMM library for seqs in <s>, then exit:      testfiles/test.refseq.ntlist [--onlybuild]
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## Parsing RefSeq list                                                    ... done. [0.1 seconds]
-## Creating RefSeq HMM Library                                            ... done. [6.7 seconds]
+## Parsing RefSeq list                                                    ... done. [0.0 seconds]
+## Creating RefSeq HMM Library                                            ... done. [4.9 seconds]
 ##
 ## Output printed to screen saved in:                                     test-build.dnaorg_classify.log
 ## List of executed commands saved in:                                    test-build.dnaorg_classify.cmd
@@ -547,7 +568,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --onl
 ##
 ## All output files created in directory ./test-build/
 ##
-## CPU time:  00:00:06.82
+## CPU time:  00:00:04.90
 ##            hh:mm:ss
 ## 
 ## DNAORG-SUCCESS
@@ -592,31 +613,34 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --onl
 # To execute the program:
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dirbuild test-build --dirout test-classify --inlist testfiles/test.toclassify.ntlist
 ## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-## dnaorg 0.32 (Jun 2018)
+## dnaorg 0.33 (Jun 2018)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:       Wed Jun 13 09:21:57 2018
-## $DNAORGDIR: /home/nawrocke/src/dnaorg_install_script
+## date:       Tue Jun 19 20:56:30 2018
+## $DNAORGDIR: /panfs/pan1/infernal/notebook/18_0613_virus_classify_weirdos
 ##
 ## REQUIRED name for output directory to create is <s>:  test-classify [--dirout]
 ## list of sequence accessions to classify is <s>:       testfiles/test.toclassify.ntlist [--inlist]
 ## specify directory with HMM library is <s>:            test-build [--dirbuild]
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## Parsing RefSeq list                                                    ... done. [0.0 seconds]
-## Fetching sequences to a fasta file                                     ... done. [3.0 seconds]
+## Fetching sequences to a fasta file                                     ... done. [1.6 seconds]
 ## Processing fasta file to get sequence lengths                          ... done. [0.0 seconds]
 ## Submitting 3 nhmmscan jobs to the farm                                 ... done. [0.2 seconds]
 ## Waiting a maximum of 500 minutes for all farm jobs to finish           ... 
-##	   3 of    3 jobs finished (0.2 minutes spent waiting)
-## Creating match info file                                               ... done. [0.0 seconds]
-## Creating ntlists and other output files                                ... done. [0.0 seconds]
+##	   1 of    3 jobs finished (0.2 minutes spent waiting)
+##	   3 of    3 jobs finished (0.5 minutes spent waiting)
+## Creating tabular output file                                           ... done. [0.0 seconds]
+## Creating ntlists and other output files                                ... done. [0.1 seconds]
 ##
 ## Number of input sequences assigned to each RefSeq:
 ##
-## RefSeq-accession      num-seqs  fract-seqs
-##-------------------  ----------  ----------
-#NC_001346                      4      0.5000
-#NC_001477                      2      0.2500
-#NON-ASSIGNED                   2      0.2500
+## RefSeq-acc    num-PASS  fract-PASS      num-FAIL  fract-FAIL
+##-----------  ----------  ----------    ----------  ----------
+#NC_001346              4      0.5000             0      0.0000
+#NC_001477              2      0.2500             0      0.0000
+#NON-ASSIGNED           2      0.2500             2      0.2500
+##-----------  ----------  ----------    ----------  ----------
+#SUM-ASSIGNED           6      0.7500             0      0.0000
 ##
 ## *** The test-classify/test-classify.dnaorg_classify.dnaorg_classify.<s>.ntlist files
 ## *** can be used as input to dnaorg_annotate.pl once you've run 'dnaorg_build.pl <s>'
@@ -628,32 +652,34 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dir
 ## List and description of all output files saved in:                                          test-classify.dnaorg_classify.list
 ## List file with sequences to classify (copy of testfiles/test.toclassify.ntlist) saved in:   test-classify.dnaorg_classify.seqlist
 ## Fasta file with sequences to classify saved in:                                             test-classify.dnaorg_classify.fa
-## Table with statistics for each match saved in:                                              test-classify.dnaorg_classify.matches.info
-## ntlist for NC_001346 saved in:                                                              test-classify.dnaorg_classify.NC_001346.ntlist
-## ntlist for NC_001477 saved in:                                                              test-classify.dnaorg_classify.NC_001477.ntlist
+## Table with statistics for each match saved in:                                              test-classify.dnaorg_classify.infotbl
+## ntlist with PASSing seqs for NC_001346 saved in:                                            test-classify.dnaorg_classify.NC_001346.pass.ntlist
+## ntlist with PASSing seqs for NC_001477 saved in:                                            test-classify.dnaorg_classify.NC_001477.pass.ntlist
 ## List of sequences not assigned to a RefSeq saved in:                                        test-classify.dnaorg_classify.non-assigned
 ## List of RefSeqs in the HMM library saved in:                                                test-classify.dnaorg_classify.all.refseqs
 ## List of sequences that were sorted into ntlists saved in:                                   test-classify.dnaorg_classify.all.seqs
 ##
 ## All output files created in directory ./test-classify/
 ##
-## CPU time:  00:00:19.48
+## CPU time:  00:00:32.93
 ##            hh:mm:ss
 ## 
 ## DNAORG-SUCCESS
+##
 #
 # This time, the script performs different steps than it did with the
 # --onlybuild option. From the output:
 # 
 ######### chunk of dnaorg_classify.pl output ###########################
 ## Parsing RefSeq list                                                    ... done. [0.0 seconds]
-## Fetching sequences to a fasta file                                     ... done. [3.0 seconds]
+## Fetching sequences to a fasta file                                     ... done. [1.6 seconds]
 ## Processing fasta file to get sequence lengths                          ... done. [0.0 seconds]
 ## Submitting 3 nhmmscan jobs to the farm                                 ... done. [0.2 seconds]
 ## Waiting a maximum of 500 minutes for all farm jobs to finish           ... 
-##	   3 of    3 jobs finished (0.2 minutes spent waiting)
-## Creating match info file                                               ... done. [0.0 seconds]
-## Creating ntlists and other output files                                ... done. [0.0 seconds]
+##	   1 of    3 jobs finished (0.2 minutes spent waiting)
+##	   3 of    3 jobs finished (0.5 minutes spent waiting)
+## Creating tabular output file                                           ... done. [0.0 seconds]
+## Creating ntlists and other output files                                ... done. [0.1 seconds]
 ######### End of chunk of dnaorg_classify.pl output ###################
 #
 # First, the RefSeq list is parsed and sequences to be classified are
@@ -672,9 +698,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dir
 # As before, the script outputs a list of the output files that it
 # creates. Of importance here are
 # 
-# test-classify.dnaorg_classify.NC_001346.ntlist
+# test-classify.dnaorg_classify.NC_001346.pass.ntlist
 # and
-# test-classify.dnaorg_classify.NC_001477.ntlist
+# test-classify.dnaorg_classify.NC_001477.pass.ntlist
 #
 # These files list the accessions from
 # testfiles/test.toclassify.ntlist that were assigned to NC_001346 and
@@ -715,10 +741,10 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dir
 # So, to execute dnaorg_classify.pl:
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dirbuild test-build --dirout test-classify2 --infasta testfiles/test.toclassify.fa
 ## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-## dnaorg 0.32 (Jun 2018)
+## dnaorg 0.33 (Jun 2018)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:       Wed Jun 13 09:24:40 2018
-## $DNAORGDIR: /home/nawrocke/src/dnaorg_install_script
+## date:       Tue Jun 19 21:00:29 2018
+## $DNAORGDIR: /panfs/pan1/infernal/notebook/18_0613_virus_classify_weirdos
 ##
 ## REQUIRED name for output directory to create is <s>:  test-classify2 [--dirout]
 ## fasta file with sequences to classify is <s>:         testfiles/test.toclassify.fa [--infasta]
@@ -729,16 +755,18 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dir
 ## Submitting 3 nhmmscan jobs to the farm                                 ... done. [0.2 seconds]
 ## Waiting a maximum of 500 minutes for all farm jobs to finish           ... 
 ##	   3 of    3 jobs finished (0.2 minutes spent waiting)
-## Creating match info file                                               ... done. [0.0 seconds]
+## Creating tabular output file                                           ... done. [0.0 seconds]
 ## Creating ntlists and other output files                                ... done. [0.1 seconds]
 ##
 ## Number of input sequences assigned to each RefSeq:
 ##
-## RefSeq-accession      num-seqs  fract-seqs
-##-------------------  ----------  ----------
-#NC_001346                      4      0.5000
-#NC_001477                      2      0.2500
-#NON-ASSIGNED                   2      0.2500
+## RefSeq-acc    num-PASS  fract-PASS      num-FAIL  fract-FAIL
+##-----------  ----------  ----------    ----------  ----------
+#NC_001346              4      0.5000             0      0.0000
+#NC_001477              2      0.2500             0      0.0000
+#NON-ASSIGNED           2      0.2500             2      0.2500
+##-----------  ----------  ----------    ----------  ----------
+#SUM-ASSIGNED           6      0.7500             0      0.0000
 ##
 ## *** The test-classify2/test-classify2.dnaorg_classify.dnaorg_classify.<s>.deversioned.ntlist files or
 ## *** the test-classify2/test-classify2.dnaorg_classify.dnaorg_classify.<s>.fa files (with the --infasta option) can be
@@ -750,20 +778,20 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl --dir
 ## List of executed commands saved in:                                                      test-classify2.dnaorg_classify.cmd
 ## List and description of all output files saved in:                                       test-classify2.dnaorg_classify.list
 ## Fasta file with sequences to classify (copy of testfiles/test.toclassify.fa) saved in:   test-classify2.dnaorg_classify.fa
-## Table with statistics for each match saved in:                                           test-classify2.dnaorg_classify.matches.info
-## ntlist for NC_001346 saved in:                                                           test-classify2.dnaorg_classify.NC_001346.ntlist
-## De-versioned ntlist for NC_001346 saved in:                                              test-classify2.dnaorg_classify.NC_001346.deversioned.ntlist
-## Fasta file with sequences assigned to NC_001346 saved in:                                test-classify2.dnaorg_classify.NC_001346.fa
-## ntlist for NC_001477 saved in:                                                           test-classify2.dnaorg_classify.NC_001477.ntlist
-## De-versioned ntlist for NC_001477 saved in:                                              test-classify2.dnaorg_classify.NC_001477.deversioned.ntlist
-## Fasta file with sequences assigned to NC_001477 saved in:                                test-classify2.dnaorg_classify.NC_001477.fa
+## Table with statistics for each match saved in:                                           test-classify2.dnaorg_classify.infotbl
+## ntlist with PASSing seqs for NC_001346 saved in:                                         test-classify2.dnaorg_classify.NC_001346.pass.ntlist
+## De-versioned ntlist of PASSing sequences for NC_001346 saved in:                         test-classify2.dnaorg_classify.NC_001346.pass.deversioned.ntlist
+## Fasta file with PASSing sequences assigned to NC_001346 saved in:                        test-classify2.dnaorg_classify.NC_001346.pass.fa
+## ntlist with PASSing seqs for NC_001477 saved in:                                         test-classify2.dnaorg_classify.NC_001477.pass.ntlist
+## De-versioned ntlist of PASSing sequences for NC_001477 saved in:                         test-classify2.dnaorg_classify.NC_001477.pass.deversioned.ntlist
+## Fasta file with PASSing sequences assigned to NC_001477 saved in:                        test-classify2.dnaorg_classify.NC_001477.pass.fa
 ## List of sequences not assigned to a RefSeq saved in:                                     test-classify2.dnaorg_classify.non-assigned
 ## List of RefSeqs in the HMM library saved in:                                             test-classify2.dnaorg_classify.all.refseqs
 ## List of sequences that were sorted into ntlists saved in:                                test-classify2.dnaorg_classify.all.seqs
 ##
 ## All output files created in directory ./test-classify2/
 ##
-## CPU time:  00:00:16.47
+## CPU time:  00:00:15.77
 ##            hh:mm:ss
 ## 
 ## DNAORG-SUCCESS
@@ -1735,10 +1763,10 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl --inf
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -A /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds --infasta testfiles/noro.9.fa --dirbuild /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds --dirout noro.9
 ## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-## dnaorg 0.32 (Jun 2018)
+## dnaorg 0.33 (Jun 2018)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:       Wed Jun 13 12:33:14 2018
-## $DNAORGDIR: /home/nawrocke/src/dnaorg_install_script
+## date:       Tue Jun 19 21:02:21 2018
+## $DNAORGDIR: /panfs/pan1/infernal/notebook/18_0613_virus_classify_weirdos
 ##
 ## REQUIRED name for output directory to create is <s>:     noro.9 [--dirout]
 ## fasta file with sequences to classify is <s>:            testfiles/noro.9.fa [--infasta]
@@ -1746,32 +1774,35 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -A /p
 ## annotate after classifying using build dirs in dir <s>:  /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds [-A]
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## Parsing RefSeq list                                                    ... done. [0.0 seconds]
-## Verifying build directories exist (-A)                                 ... done. [0.2 seconds]
+## Verifying build directories exist (-A)                                 ... done. [0.4 seconds]
 ## Processing fasta file to get sequence lengths                          ... done. [0.1 seconds]
 ## Submitting 2 nhmmscan jobs to the farm                                 ... done. [0.1 seconds]
 ## Waiting a maximum of 500 minutes for all farm jobs to finish           ... 
 ##	   0 of    2 jobs finished (0.2 minutes spent waiting)
-##	   1 of    2 jobs finished (0.5 minutes spent waiting)
-##	   2 of    2 jobs finished (0.8 minutes spent waiting)
-## # Creating match info file                                               ... done. [0.0 seconds]
+##	   2 of    2 jobs finished (0.5 minutes spent waiting)
+## Creating tabular output file                                           ... done. [0.0 seconds]
 ## Creating ntlists and other output files                                ... done. [0.2 seconds]
 ##
 ## Number of input sequences assigned to each RefSeq:
 ##
-## RefSeq-accession      num-seqs  fract-seqs
-##-------------------  ----------  ----------
-#NC_001959                      2      0.2222
-#NC_008311                      2      0.2222
-#NC_029645                      2      0.2222
-#NC_029646                      1      0.1111
-#NC_029647                      1      0.1111
-#NC_031324                      1      0.1111
-#NON-ASSIGNED                   0      0.0000
+## RefSeq-acc    num-PASS  fract-PASS      num-FAIL  fract-FAIL    annotating?
+##-----------  ----------  ----------    ----------  ----------    -----------
+#NC_001959              2      0.2222             0      0.0000            yes
+#NC_008311              2      0.2222             0      0.0000            yes
+#NC_029645              2      0.2222             0      0.0000            yes
+#NC_029646              1      0.1111             0      0.0000            yes
+#NC_029647              1      0.1111             0      0.0000            yes
+#NC_031324              1      0.1111             0      0.0000            yes
+#NON-ASSIGNED           0      0.0000             0      0.0000             no
+##-----------  ----------  ----------    ----------  ----------    -----------
+#SUM-ASSIGNED           9      1.0000             0      0.0000            yes
+#SUM-ASSIGNED           0      0.0000             0      0.0000             no
+#SUM-ASSIGNED           9      1.0000             0      0.0000           both
 ##
 ##
 ## Running dnaorg_annotate.pl 6 time(s) to annotate sequences             ... 
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.32 (Jun 2018)
+## dnaorg 0.33 (Jun 2018)
 ############################
 # TRUNCATED OUTPUT
 # 
@@ -1782,49 +1813,50 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -A /p
 # sequences". The output of the six runs of dnaorg_annotate.pl is not
 # shown. After they are all finished, the output is:
 ###########################
-#done. [126.8 seconds]
+## DNAORG-SUCCESS
+#done. [72.4 seconds]
 ##
 ## Output printed to screen saved in:                                              noro.9.dnaorg_classify.log
 ## List of executed commands saved in:                                             noro.9.dnaorg_classify.cmd
 ## List and description of all output files saved in:                              noro.9.dnaorg_classify.list
 ## Fasta file with sequences to classify (copy of testfiles/noro.9.fa) saved in:   noro.9.dnaorg_classify.fa
-## Table with statistics for each match saved in:                                  noro.9.dnaorg_classify.matches.info
-## ntlist for NC_001959 saved in:                                                  noro.9.dnaorg_classify.NC_001959.ntlist
-## De-versioned ntlist for NC_001959 saved in:                                     noro.9.dnaorg_classify.NC_001959.deversioned.ntlist
-## Fasta file with sequences assigned to NC_001959 saved in:                       noro.9.dnaorg_classify.NC_001959.fa
-## ntlist for NC_008311 saved in:                                                  noro.9.dnaorg_classify.NC_008311.ntlist
-## De-versioned ntlist for NC_008311 saved in:                                     noro.9.dnaorg_classify.NC_008311.deversioned.ntlist
-## Fasta file with sequences assigned to NC_008311 saved in:                       noro.9.dnaorg_classify.NC_008311.fa
-## ntlist for NC_029645 saved in:                                                  noro.9.dnaorg_classify.NC_029645.ntlist
-## De-versioned ntlist for NC_029645 saved in:                                     noro.9.dnaorg_classify.NC_029645.deversioned.ntlist
-## Fasta file with sequences assigned to NC_029645 saved in:                       noro.9.dnaorg_classify.NC_029645.fa
-## ntlist for NC_029646 saved in:                                                  noro.9.dnaorg_classify.NC_029646.ntlist
-## De-versioned ntlist for NC_029646 saved in:                                     noro.9.dnaorg_classify.NC_029646.deversioned.ntlist
-## Fasta file with sequences assigned to NC_029646 saved in:                       noro.9.dnaorg_classify.NC_029646.fa
-## ntlist for NC_029647 saved in:                                                  noro.9.dnaorg_classify.NC_029647.ntlist
-## De-versioned ntlist for NC_029647 saved in:                                     noro.9.dnaorg_classify.NC_029647.deversioned.ntlist
-## Fasta file with sequences assigned to NC_029647 saved in:                       noro.9.dnaorg_classify.NC_029647.fa
-## ntlist for NC_031324 saved in:                                                  noro.9.dnaorg_classify.NC_031324.ntlist
-## De-versioned ntlist for NC_031324 saved in:                                     noro.9.dnaorg_classify.NC_031324.deversioned.ntlist
-## Fasta file with sequences assigned to NC_031324 saved in:                       noro.9.dnaorg_classify.NC_031324.fa
+## Table with statistics for each match saved in:                                  noro.9.dnaorg_classify.infotbl
+## ntlist with PASSing seqs for NC_001959 saved in:                                noro.9.dnaorg_classify.NC_001959.pass.ntlist
+## De-versioned ntlist of PASSing sequences for NC_001959 saved in:                noro.9.dnaorg_classify.NC_001959.pass.deversioned.ntlist
+## Fasta file with PASSing sequences assigned to NC_001959 saved in:               noro.9.dnaorg_classify.NC_001959.pass.fa
+## ntlist with PASSing seqs for NC_008311 saved in:                                noro.9.dnaorg_classify.NC_008311.pass.ntlist
+## De-versioned ntlist of PASSing sequences for NC_008311 saved in:                noro.9.dnaorg_classify.NC_008311.pass.deversioned.ntlist
+## Fasta file with PASSing sequences assigned to NC_008311 saved in:               noro.9.dnaorg_classify.NC_008311.pass.fa
+## ntlist with PASSing seqs for NC_029645 saved in:                                noro.9.dnaorg_classify.NC_029645.pass.ntlist
+## De-versioned ntlist of PASSing sequences for NC_029645 saved in:                noro.9.dnaorg_classify.NC_029645.pass.deversioned.ntlist
+## Fasta file with PASSing sequences assigned to NC_029645 saved in:               noro.9.dnaorg_classify.NC_029645.pass.fa
+## ntlist with PASSing seqs for NC_029646 saved in:                                noro.9.dnaorg_classify.NC_029646.pass.ntlist
+## De-versioned ntlist of PASSing sequences for NC_029646 saved in:                noro.9.dnaorg_classify.NC_029646.pass.deversioned.ntlist
+## Fasta file with PASSing sequences assigned to NC_029646 saved in:               noro.9.dnaorg_classify.NC_029646.pass.fa
+## ntlist with PASSing seqs for NC_029647 saved in:                                noro.9.dnaorg_classify.NC_029647.pass.ntlist
+## De-versioned ntlist of PASSing sequences for NC_029647 saved in:                noro.9.dnaorg_classify.NC_029647.pass.deversioned.ntlist
+## Fasta file with PASSing sequences assigned to NC_029647 saved in:               noro.9.dnaorg_classify.NC_029647.pass.fa
+## ntlist with PASSing seqs for NC_031324 saved in:                                noro.9.dnaorg_classify.NC_031324.pass.ntlist
+## De-versioned ntlist of PASSing sequences for NC_031324 saved in:                noro.9.dnaorg_classify.NC_031324.pass.deversioned.ntlist
+## Fasta file with PASSing sequences assigned to NC_031324 saved in:               noro.9.dnaorg_classify.NC_031324.pass.fa
 ## List of RefSeqs in the HMM library saved in:                                    noro.9.dnaorg_classify.all.refseqs
 ## List of sequences that were sorted into ntlists saved in:                       noro.9.dnaorg_classify.all.seqs
-## annotation results for NC_001959 saved in:                                      noro.9-NC_001959.dnaorg_annotate.sqtable
-## verbose annotation results for NC_001959 saved in:                              noro.9-NC_001959.dnaorg_annotate.long.sqtable
-## annotation results for NC_008311 saved in:                                      noro.9-NC_008311.dnaorg_annotate.sqtable
-## verbose annotation results for NC_008311 saved in:                              noro.9-NC_008311.dnaorg_annotate.long.sqtable
-## annotation results for NC_029645 saved in:                                      noro.9-NC_029645.dnaorg_annotate.sqtable
-## verbose annotation results for NC_029645 saved in:                              noro.9-NC_029645.dnaorg_annotate.long.sqtable
-## annotation results for NC_029646 saved in:                                      noro.9-NC_029646.dnaorg_annotate.sqtable
-## verbose annotation results for NC_029646 saved in:                              noro.9-NC_029646.dnaorg_annotate.long.sqtable
-## annotation results for NC_029647 saved in:                                      noro.9-NC_029647.dnaorg_annotate.sqtable
-## verbose annotation results for NC_029647 saved in:                              noro.9-NC_029647.dnaorg_annotate.long.sqtable
-## annotation results for NC_031324 saved in:                                      noro.9-NC_031324.dnaorg_annotate.sqtable
-## verbose annotation results for NC_031324 saved in:                              noro.9-NC_031324.dnaorg_annotate.long.sqtable
+## annotation results for NC_001959 saved in:                                      noro.9-NC_001959.pass.dnaorg_annotate.sqtable
+## verbose annotation results for NC_001959 saved in:                              noro.9-NC_001959.pass.dnaorg_annotate.long.sqtable
+## annotation results for NC_008311 saved in:                                      noro.9-NC_008311.pass.dnaorg_annotate.sqtable
+## verbose annotation results for NC_008311 saved in:                              noro.9-NC_008311.pass.dnaorg_annotate.long.sqtable
+## annotation results for NC_029645 saved in:                                      noro.9-NC_029645.pass.dnaorg_annotate.sqtable
+## verbose annotation results for NC_029645 saved in:                              noro.9-NC_029645.pass.dnaorg_annotate.long.sqtable
+## annotation results for NC_029646 saved in:                                      noro.9-NC_029646.pass.dnaorg_annotate.sqtable
+## verbose annotation results for NC_029646 saved in:                              noro.9-NC_029646.pass.dnaorg_annotate.long.sqtable
+## annotation results for NC_029647 saved in:                                      noro.9-NC_029647.pass.dnaorg_annotate.sqtable
+## verbose annotation results for NC_029647 saved in:                              noro.9-NC_029647.pass.dnaorg_annotate.long.sqtable
+## annotation results for NC_031324 saved in:                                      noro.9-NC_031324.pass.dnaorg_annotate.sqtable
+## verbose annotation results for NC_031324 saved in:                              noro.9-NC_031324.pass.dnaorg_annotate.long.sqtable
 ##
 ## All output files created in directory ./noro.9/
 ##
-## CPU time:  00:02:53.46
+## CPU time:  00:01:43.90
 ##            hh:mm:ss
 ## 
 ## DNAORG-SUCCESS
@@ -1836,11 +1868,11 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -A /p
 #
 # The output directories created by dnaorg_annotate.pl with all of the
 # output files from that script are within the noro.9 output
-# directory, e.g. noro.9/noro.9-NC_001959/.
+# directory, e.g. noro.9/noro.9-NC_001959.pass/.
 #
 # You can view the output of the six dnaorg_annotate.pl runs in the
 # files that end in .log in those directories,
-# e.g. noro.9/noro.9-NC_001959/noro.9-NC_001959.dnaorg_annotate.log
+# e.g. noro.9/noro.9-NC_001959.pass/noro.9-NC_001959.pass.dnaorg_annotate.log
 #
 # The dnaorg_classify.pl command in step 4 above could have been
 # repeated with a list of accessions instead of an input fasta file. 
@@ -1942,36 +1974,50 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -A /p
 # NC_001346/150-455-translated
 # NC_001346/2527-1886,1793-1353-translated
 # 
-#######################################################
-### EXAMPLE OF dnaorg_classify.pl's MATCH INFO FILE ###
-#######################################################
+############################################################
+### EXAMPLE OF dnaorg_classify.pl's .infotbl OUTPUT FILE ###
+############################################################
+########################################################################################################################################
+#
+## query:       Accession number of the sequence
+## qlen:        length of this sequence
+## RefSeq:      RefSeq that the sequence was assigned to
+## score:       (summed) bit score(s) of all hits to 'RefSeq'
+## sc/nt:       'score' divided by 'qlen'
+## E-val:       E-value of hit to 'RefSeq'
+## coverage:    the percentage of the query that the hit to 'RefSeq' covers (Hit length)/(Query length)
+## bias:        correction in bits for biased composition sequences
+## #hits:       number of individual hits to this RefSeq (the program combines stats such as bit score and covg. from separate hits)
+## strand:      strand of top hit to 'RefSeq'
+## H2:RefSeq:   RefSeq that had the second strongest hit
+## scdiff:      difference in bit score b/t 'RefSeq' hit(s) and 'H2:RefSeq' hit(s)
+## scdiff/nt:   'scdiff' divided by 'qlen'
+## covdiff:     amount by which the coverage of the 'RefSeq' hit is greater than that of the 'H2: RefSeq' hit
+## CC:          'confidence class', first letter based on sc/nt: A: if sc/nt >= 0.300, B: if 0.300 > sc/nt >= 0.200, C: if 0.200 > sc_nt
+##              second letter based on diff/nt: A: if diff/nt >= 0.060, B: if 0.060 > diff/nt >= 0.006, C: if 0.006 > diff_nt
+## p/f:         'PASS' if sequence passes, 'FAIL' if it fails
+## unexpected   
+## features:    unexpected features for this sequence
+##              Possible values in unexpected features column:
+##              LowScore:     'sc/nt'   < 0.300 (threshold settable with --lowscthresh)
+##              VeryLowScore: 'sc/nt'   < 0.200 (threshold settable with --vlowscthresh)
+##              LowDiff:      'diff/nt' < 0.060 (threshold settable with --lowdiffthresh)
+##              VeryLowDiff:  'diff/nt' < 0.006 (threshold settable with --vlowdiffthresh)
+##              MinusStrand:  top hit is on minus strand
+##              HighBias:     'bias' > (0.250 * ('bias' + 'score')) (threshold settable with --biasfract)
 #########################################################################################################################################
 ##
-## Query:       Accession number of the sequence 
-## RefSeq:      The RefSeq that the sequence was assigned to
-## Bit score:   Bit score of hit to 'RefSeq'
-## E-val:       E-val of hit to 'RefSeq'
-## Coverage:    The percentage of the query that the hit to 'RefSeq' covers (Hit length)/(Query length)
-## Bias:        TODO
-## # Hits:      The number of individual hits to this RefSeq (the program combines stats such as bit score and covg. from separate hits)
-## H2: RefSeq:  The RefSeq that had the second strongest hit
-## Bit Diff:    The amount by which the bit score of the 'RefSeq' hit is greater than that of the 'H2: RefSeq' hit
-## Covg. Diff:  The amount by which the coverage of the 'RefSeq' hit is greater than that of the 'H2: RefSeq' hit
-##
-##########################################################################################################################################
-#
-#
-##H Query   		RefSeq   		Bit score		E-val		Coverage		Bias		# Hits		H2: RefSeq		Bit Diff		Covg. Diff 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#
-#KJ699341.1		NC_001346		2853		0.0000000		0.9985125		3.1		2		-----		-----		-----
-#AB541278.1		--------		--------		--------		--------		--------		--------		--------		--------		--------
-#KJ437659.1		NC_001346		2833.8		0.0000000		0.9985125		3		2		-----		-----		-----
-#HQ693446.1		NC_001346		2764.9		0.0000000		0.9985130		3		2		-----		-----		-----
-#HQ693435.1		NC_001346		2764.8		0.0000000		0.9985130		3.5		2		-----		-----		-----
-#KX255588.1		--------		--------		--------		--------		--------		--------		--------		--------		--------
-#FJ461323.1		NC_001477		10196.0		0.0000000		0.9998127		230.5		1		-----		-----		-----
-#KF973468.1		NC_001477		10005.3		0.0000000		0.9999057		225.2		1		-----		-----		-----
+##query                  qlen     RefSeq    score  sc/nt     E-val  coverage     bias  #hits  strand  H2:RefSeq   scdiff  diff/nt  covdiff  CC   p/f  unexpected-features
+##===================  ======  =========  =======  =====  ========  ========  =======  =====  ======  =========  =======  =======  =======  ==  ====  ===================
+#KY887602.1              7547  NC_029646   4175.5  0.553         0     0.999     53.5      1    plus  NC_029647   1915.8    0.254    0.031  AA  PASS  -
+#KT818729.1               243  NC_001959    119.0  0.490   1.1e-39     0.988      3.7      1    plus  NC_031324     17.6    0.072    0.000  AA  PASS  -
+#EU437710.1               291  NC_001959    237.8  0.817     2e-75     0.997      3.8      1    plus  NC_031324     96.0    0.330    0.007  AA  PASS  -
+#DQ288307.1              1094  NC_029645    941.9  0.861  6.5e-287     0.998     26.0      1    plus  NC_001959    666.7    0.609    0.074  AA  PASS  -
+#AY237464.1               255  NC_029647     78.9  0.309   1.2e-27     0.878      0.6      1    plus  NC_029646      2.4    0.009   -0.095  AB  PASS  LowDiff(0.009<0.060);
+#KF475958.1               275  NC_031324    154.3  0.561   2.5e-50     0.993      0.9      1    plus  NC_001959      1.1    0.004    0.033  AB  PASS  LowDiff(0.004<0.060);
+#AB713840.1               347  NC_008311    311.3  0.897   1.9e-97     0.997     11.8      1    plus  NC_029645    245.7    0.708    0.181  AA  PASS  -
+#JN585032.1               286  NC_029645    226.6  0.792   5.3e-72     0.993      8.0      1    plus  NC_031324    157.2    0.550    0.003  AA  PASS  -
+#JN975492.1              7286  NC_008311   4625.9  0.635         0     1.000     39.6      1    plus  NC_029647   3482.8    0.478    0.122  AA  PASS  -
 #
 ##############
 ### TODOS ###
@@ -1991,3 +2037,5 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -A /p
 # https://github.com/nawrockie/dnaorg_scripts.git
 #
 ############################################
+
+
