@@ -111,21 +111,25 @@ opt_Add("--local",      "boolean", 0,                        3,    undef, undef,
 opt_Add("--errcheck",   "boolean", 0,                        3,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"4"} = "options for controlling what unexpected features cause sequences to PASS/FAIL";
-#     option                type       default            group   requires incompat    preamble-output                                              help-output    
-opt_Add("--allpass"  ,     "boolean",  0,                    4,   undef,   undef,      "all assigned seqs pass, only non-assigned seqs fail",        "all assigned sequences pass, only non-assigned seqs fail", \%opt_HH, \@opt_order_A);
-opt_Add("--lowscpass",     "boolean",  0,                    4,   undef,"--allpass",   "seqs with LowScore     unexpected feature can PASS",         "sequences with LowScore     unexpected feature can PASS",  \%opt_HH, \@opt_order_A);
-opt_Add("--vlowscpass",    "boolean",  0,                    4,   undef,"--allpass",   "seqs with VeryLowScore unexpected feature can PASS",         "sequences with VeryLowScore unexpected feature can PASS",  \%opt_HH, \@opt_order_A);
-opt_Add("--lowdiffpass",   "boolean",  0,                    4,   undef,"--allpass",   "seqs with LowDiff      unexpected feature can PASS",         "sequences with LowDiff      unexpected feature can PASS",  \%opt_HH, \@opt_order_A);
-opt_Add("--vlowdiffpass",  "boolean",  0,                    4,   undef,"--allpass",   "seqs with VeryLowDiff  unexpected feature can PASS",         "sequences with VeryLowDiff  unexpected feature can PASS",  \%opt_HH, \@opt_order_A);
-opt_Add("--biaspass",      "boolean",  0,                    4,   undef,"--allpass",   "seqs with HighBias     unexpected feature can PASS",         "sequences with HighBias     unexpected feature can PASS",  \%opt_HH, \@opt_order_A);
-opt_Add("--minusfail",     "boolean",  0,                    4,   undef,"--allpass",   "seqs with MinusStrand  unexpected feature FAIL",             "sequences with MinusStrand  unexpected feature FAIL",      \%opt_HH, \@opt_order_A);
+#     option                type       default            group   requires incompat         preamble-output                                              help-output    
+opt_Add("--allpass"  ,     "boolean",  0,                    4,   undef,   undef,           "all assigned seqs pass, only non-assigned seqs fail",        "all assigned sequences pass, only non-assigned seqs fail", \%opt_HH, \@opt_order_A);
+opt_Add("--lowscpass",     "boolean",  0,                    4,   undef,"--allpass",        "seqs with LowScore     unexpected feature can PASS",         "sequences with LowScore     unexpected feature can PASS",  \%opt_HH, \@opt_order_A);
+opt_Add("--vlowscpass",    "boolean",  0,                    4,"--lowscpass","--allpass",   "seqs with VeryLowScore unexpected feature can PASS",         "sequences with VeryLowScore unexpected feature can PASS",  \%opt_HH, \@opt_order_A);
+opt_Add("--lowdiffpass",   "boolean",  0,                    4,   undef,"--allpass",        "seqs with LowDiff      unexpected feature can PASS",         "sequences with LowDiff      unexpected feature can PASS",  \%opt_HH, \@opt_order_A);
+opt_Add("--vlowdiffpass",  "boolean",  0,                    4,"--lowdiffpass","--allpass", "seqs with VeryLowDiff  unexpected feature can PASS",         "sequences with VeryLowDiff  unexpected feature can PASS",  \%opt_HH, \@opt_order_A);
+opt_Add("--biaspass",      "boolean",  0,                    4,   undef,"--allpass",        "seqs with HighBias     unexpected feature can PASS",         "sequences with HighBias     unexpected feature can PASS",  \%opt_HH, \@opt_order_A);
+opt_Add("--minusfail",     "boolean",  0,                    4,   undef,"--allpass",        "seqs with MinusStrand  unexpected feature FAIL",             "sequences with MinusStrand  unexpected feature FAIL",      \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"5"} = "options for controlling reporting of unexpected features";
-#     option                type         default            group   requires incompat    preamble-output                                              help-output    
-opt_Add("--lowscthresh",    "real",    0.3,                   5,   undef,   undef,      "bits per nucleotide threshold for LowScore is <x>",          "bits per nucleotide threshold for LowScore unexpected feature is <x>",         \%opt_HH, \@opt_order_A);
-opt_Add("--vlowscthresh",   "real",    0.2,                   5,   undef,   undef,      "bits per nucleotide threshold for VeryLowScore is <x>",      "bits per nucleotide threshold for VeryLowScore unexpected feature is <x>",     \%opt_HH, \@opt_order_A);
-opt_Add("--lowdiffthresh",  "real",    0.06,                  5,   undef,   undef,      "bits per nucleotide diff threshold for LowDiff is <x>",      "bits per nucleotide diff threshold for LowDiff unexpected feature is <x>",     \%opt_HH, \@opt_order_A);
-opt_Add("--vlowdiffthresh", "real",    0.006,                 5,   undef,   undef,      "bits per nucleotide diff threshold for VeryLowDiff is <x>",  "bits per nucleotide diff threshold for VeryLowDiff unexpected feature is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--biasfract",      "real",    0.25,                  5,   undef,   undef,      "fractional threshold for HighBias is <x>",                   "fractional threshold for HighBias unexpected feature is <x>",                  \%opt_HH, \@opt_order_A);
+#     option                type         default            group   requires incompat     preamble-output                                                    help-output    
+opt_Add("--lowscthresh",    "real",    0.3,                   5,   undef,   undef,        "bits per nucleotide threshold for LowScore is <x>",               "bits per nucleotide threshold for LowScore unexpected feature is <x>",         \%opt_HH, \@opt_order_A);
+opt_Add("--vlowscthresh",   "real",    0.2,                   5,   undef,   undef,        "bits per nucleotide threshold for VeryLowScore is <x>",           "bits per nucleotide threshold for VeryLowScore unexpected feature is <x>",     \%opt_HH, \@opt_order_A);
+opt_Add("--lowdiffthresh",  "real",    0.06,                  5,   undef,   undef,        "bits per nucleotide diff threshold for LowDiff is <x>",           "bits per nucleotide diff threshold for LowDiff unexpected feature is <x>",     \%opt_HH, \@opt_order_A);
+opt_Add("--vlowdiffthresh", "real",    0.006,                 5,   undef,   undef,        "bits per nucleotide diff threshold for VeryLowDiff is <x>",       "bits per nucleotide diff threshold for VeryLowDiff unexpected feature is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--biasfract",      "real",    0.25,                  5,   undef,   undef,        "fractional threshold for HighBias is <x>",                        "fractional threshold for HighBias unexpected feature is <x>",                  \%opt_HH, \@opt_order_A);
+opt_Add("--lowscminlen",    "integer",  500,                   5,   undef,"--lowscpass",  "minimum seq len for which LowScore causes FAILure is <n>",        "set minimum length for which LowScore causes FAILure to <n>",                  \%opt_HH, \@opt_order_A);
+opt_Add("--lowdiffminlen",  "integer", 1000,                  5,   undef,"--lowdiffpass", "minimum seq len for which LowDiff causes FAILure is <n>",         "set minimum length for which LowDiff causes FAILure to <n>",                   \%opt_HH, \@opt_order_A);
+opt_Add("--nolowscminlen",  "boolean", 0,                     5,   undef,"--lowscpass",   "no minimum length for which LowScore causes a seq to FAIL",       "no minimum length for which LowScore causes a seq to FAIL",                    \%opt_HH, \@opt_order_A);
+opt_Add("--nolowdiffminlen","boolean", 0,                     5,   undef,"--lowdiffpass", "no minimum length for which LowDiff causes a seq to FAIL",        "no minimum length for which LowDiff causes a seq to FAIL",                     \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"6"} = "options for automatically running dnaorg_annotate.pl for classified sequences";
 #     option            type       default               group   requires       incompat          preamble-output                help-output    
@@ -173,6 +177,10 @@ my $options_okay =
                 "lowdiffthresh=s"  => \$GetOptions_H{"--lowdiffthresh"},
                 "vlowdiffthresh=s" => \$GetOptions_H{"--vlowdiffthresh"},
                 'biasfract=s'      => \$GetOptions_H{"--biasfract"},  
+                'lowscminlen=s'    => \$GetOptions_H{"--lowscminlen"},  
+                'lowdiffminlen=s'  => \$GetOptions_H{"--lowdiffminlen"},  
+                'nolowscminlen'    => \$GetOptions_H{"--nolowscminlen"},  
+                'nolowdiffminlen'  => \$GetOptions_H{"--nolowdiffminlen"},  
                 'A=s'              => \$GetOptions_H{"-A"},
                 'optsA=s'          => \$GetOptions_H{"--optsA"},
                 'reflistA=s'       => \$GetOptions_H{"--reflistA"},
@@ -631,6 +639,18 @@ else {
   my $bias_fails      = (opt_Get("--allpass", \%opt_HH)) || (  opt_Get("--biaspass",     \%opt_HH)) ? 0 : 1;
   my $minus_fails     = (opt_Get("--allpass", \%opt_HH)) || (! opt_Get("--minusfail",    \%opt_HH)) ? 0 : 1;
 
+  my $lowsc_minlen    = opt_Get("--lowscminlen", \%opt_HH); 
+  my $lowdiff_minlen  = opt_Get("--lowdiffminlen", \%opt_HH); 
+  if(opt_Get("--nolowscminlen",   \%opt_HH)) { $lowsc_minlen   = 0; }
+  if(opt_Get("--nolowdiffminlen", \%opt_HH)) { $lowdiff_minlen = 0; }
+
+  my $query_width = 20;
+  foreach $cls_fasta_seqname (keys %cls_fasta_seqlen_H) { 
+    if(length($cls_fasta_seqname) > $query_width) { 
+      $query_width = length($cls_fasta_seqname); 
+    }
+  }
+
   # Generate match information file header                                                                               
   my $match_file = $out_root . ".infotbl";
   open(MATCH_INFO, ">", $match_file) || fileOpenFailure($match_file, $0, $!, "writing", $ofile_info_HH{"FH"});
@@ -655,19 +675,19 @@ else {
   printf MATCH_INFO ("# p/f:         'PASS' if sequence passes, 'FAIL' if it fails\n");
   print  MATCH_INFO  "# unexpected   \n";
   print  MATCH_INFO  "# features:    unexpected features for this sequence\n";
-  print  MATCH_INFO  "#              Possible values in unexpected features column: ('*' after a value indicates that unexpected feature causes sequence to FAIL)\n";
-  printf MATCH_INFO ("#              LowScore%s     'sc/nt'   < %.3f (threshold settable with --lowscthresh)\n",    $lowsc_fails    ? "*:" : ": ", opt_Get("--lowscthresh", \%opt_HH));
-  printf MATCH_INFO ("#              VeryLowScore%s 'sc/nt'   < %.3f (threshold settable with --vlowscthresh)\n",   $vlowsc_fails   ? "*:" : ": ", opt_Get("--vlowscthresh", \%opt_HH));
-  printf MATCH_INFO ("#              LowDiff%s      'diff/nt' < %.3f (threshold settable with --lowdiffthresh)\n",  $lowdiff_fails  ? "*:" : ": ", opt_Get("--lowdiffthresh", \%opt_HH));
-  printf MATCH_INFO ("#              VeryLowDiff%s  'diff/nt' < %.3f (threshold settable with --vlowdiffthresh)\n", $vlowdiff_fails ? "*:" : ": ", opt_Get("--vlowdiffthresh", \%opt_HH));
-  printf MATCH_INFO ("#              MinusStrand%s  top hit is on minus strand\n", $minus_fails ? "*:" : ": ");
-  printf MATCH_INFO ("#              HighBias%s     'bias' > (%.3f * ('bias' + 'score')) (threshold settable with --biasfract)\n", $bias_fails ? "*:" : ": ", opt_Get("--biasfract", \%opt_HH));
-  print  MATCH_INFO  "#\n";
+  print  MATCH_INFO  "#              Possible values in unexpected features column:\n";
+  printf MATCH_INFO ("#              LowScore:     'sc/nt'   < %.3f (threshold settable with --lowscthresh)\n",    opt_Get("--lowscthresh", \%opt_HH));
+  printf MATCH_INFO ("#              VeryLowScore: 'sc/nt'   < %.3f (threshold settable with --vlowscthresh)\n",   opt_Get("--vlowscthresh", \%opt_HH));
+  printf MATCH_INFO ("#              LowDiff:      'diff/nt' < %.3f (threshold settable with --lowdiffthresh)\n",  opt_Get("--lowdiffthresh", \%opt_HH));
+  printf MATCH_INFO ("#              VeryLowDiff:  'diff/nt' < %.3f (threshold settable with --vlowdiffthresh)\n", opt_Get("--vlowdiffthresh", \%opt_HH));
+  printf MATCH_INFO ("#              MinusStrand:  top hit is on minus strand\n");
+  printf MATCH_INFO ("#              HighBias:     'bias' > (%.3f * ('bias' + 'score')) (threshold settable with --biasfract)\n", opt_Get("--biasfract", \%opt_HH));
   print  MATCH_INFO  "########################################################################################################################################\n";
   print  MATCH_INFO "#\n";
-  printf MATCH_INFO ("%-20s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %5s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
-                     "#query", "qlen", "RefSeq", "score", "sc/nt", "E-val", "coverage", "bias", "#hits", "strand", "H2:RefSeq", "scdiff", "diff/nt", "covdiff", "CC", "p/f", "unexpected-features");
-  printf MATCH_INFO ("%-20s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+  printf MATCH_INFO ("%-*s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %5s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+                     $query_width, "#query", "qlen", "RefSeq", "score", "sc/nt", "E-val", "coverage", "bias", "#hits", "strand", "H2:RefSeq", "scdiff", "diff/nt", "covdiff", "CC", "p/f", "unexpected-features");
+  printf MATCH_INFO ("%-*s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+                     $query_width,
                      "#===================", 
                      "======",
                      "=========",
@@ -940,6 +960,7 @@ else {
       my $top_bit_per_nt = $hit_info_HAA{$cls_fasta_seqname}[-1][$HOIDX_BITSCPNT];
       my $score_class = "A"; # set to 'B' or 'C' below if below threshold
       my $diff_class  = "A"; # set to 'B' or 'C' below if below threshold
+      my $seqlen = $cls_fasta_seqlen_H{$cls_fasta_seqname};
 
       $pass_fail_H{$cls_fasta_seqname} = "PASS"; # will change to FAIL below if necessary
       
@@ -951,7 +972,7 @@ else {
       elsif($top_bit_per_nt < (opt_Get("--lowscthresh", \%opt_HH))) { 
         $ufeature_str .= "LowScore(" . $top_bit_per_nt . "<" . sprintf("%.3f", opt_Get("--lowscthresh", \%opt_HH)) . ");"; 
         $score_class = "B";
-        if($lowsc_fails) { $pass_fail_H{$cls_fasta_seqname} = "FAIL"; }
+        if(($lowsc_fails) && ($seqlen > $lowsc_minlen)) { $pass_fail_H{$cls_fasta_seqname} = "FAIL"; }
       }
       if(defined $bit_diff_per_nt) { 
         if($top_bit_per_nt < (opt_Get("--vlowdiffthresh", \%opt_HH))) { 
@@ -962,7 +983,7 @@ else {
         elsif($bit_diff_per_nt < (opt_Get("--lowdiffthresh", \%opt_HH))) { 
           $ufeature_str .= "LowDiff(" . $bit_diff_per_nt . "<" . sprintf("%.3f", opt_Get("--lowdiffthresh", \%opt_HH)) . ");"; 
           $diff_class = "B";
-          if($lowdiff_fails) { $pass_fail_H{$cls_fasta_seqname} = "FAIL"; }
+          if($lowdiff_fails && ($seqlen > $lowdiff_minlen)) { $pass_fail_H{$cls_fasta_seqname} = "FAIL"; }
         }
       }
       if($top_strand eq "-") { 
@@ -980,7 +1001,8 @@ else {
 
       # add hit info to .infotbl file
       #print MATCH_INFO join("\t", (@hit_output_A, $ufeature_str));
-      printf MATCH_INFO ("%-20s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+      printf MATCH_INFO ("%-*s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+                         $query_width,
                          $hit_output_A[$HOIDX_QUERY], 
                          $hit_output_A[$HOIDX_QLEN], 
                          $hit_output_A[$HOIDX_REFSEQ], 
@@ -1005,7 +1027,8 @@ else {
       # IMPORTANT: push $cls_list_seqname, and not $cls_fasta_seqname (cls_list_seqname is from the input list 
       # (unless --infasta) and may not include the version
     } else { # if there were no eligible hits
-      printf MATCH_INFO ("%-20s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+      printf MATCH_INFO ("%-*s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+                         $query_width,
                          $cls_fasta_seqname,
                          $cls_fasta_seqlen_H{$cls_fasta_seqname},
                          "-",
