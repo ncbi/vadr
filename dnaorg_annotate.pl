@@ -232,6 +232,7 @@ opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "use models of additional qualifiers",                         "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
+opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "duplicate features, e.g. gene:CDS",                           "duplicate features, e.g. gene:CDS", \%opt_HH, \@opt_order_A);  
 opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",                  "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",                       "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
@@ -307,6 +308,7 @@ my $options_okay =
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
                 'nomatpept'    => \$GetOptions_H{"--nomatpept"},
                 'xfeat=s'      => \$GetOptions_H{"--xfeat"},
+                'dfeat=s'      => \$GetOptions_H{"--dfeat"},
                 'specstart=s'  => \$GetOptions_H{"--specstart"},
                 'keep'         => \$GetOptions_H{"--keep"},
                 'local'        => \$GetOptions_H{"--local"}, 
@@ -725,7 +727,12 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
                         # 1D: key: accession
                         # 2D: key: column name in gene ftable file
                         # 3D: per-row values for each column
-my %xfeat_tbl_HHHA = (); # xfeat data from feature table file, hash of hash of hashes of arrays
+my %xfeat_tbl_HHHA = (); # xfeat (eXtra feature) data from feature table file, hash of hash of hashes of arrays
+                         # 1D: qualifier name, e.g. 'gene'
+                         # 2D: key: accession
+                         # 3D: key: column name in gene ftable file
+                         # 4D: per-row values for each column
+my %dfeat_tbl_HHHA = (); # dfeat (Duplicate feature) data from feature table file, hash of hash of hashes of arrays
                          # 1D: qualifier name, e.g. 'gene'
                          # 2D: key: accession
                          # 3D: key: column name in gene ftable file
@@ -733,11 +740,31 @@ my %xfeat_tbl_HHHA = (); # xfeat data from feature table file, hash of hash of h
 
 # parse --xfeat option if necessary and initiate hash of hash of arrays for each comma separated value
 my $do_xfeat = 0;
+my $do_dfeat = 0;
 if(opt_IsUsed("--xfeat", \%opt_HH)) { 
   $do_xfeat = 1;
   my $xfeat_str = opt_Get("--xfeat", \%opt_HH);
   foreach my $xfeat (split(",", $xfeat_str)) { 
     %{$xfeat_tbl_HHHA{$xfeat}} = ();
+  }
+}
+# parse --dfeat option if necessary
+my %dfeat_H = (); # dfeat data from command line option argument for --dfeat
+                  # key:   qualifier name, e.g. 'gene'
+                  # value: qualifier name that key will be a duplicate, e.g. 'CDS'
+my $do_dfeat = 0; # set to TRUE if --dfeat is used
+if(opt_IsUsed("--dfeat", \%opt_HH)) { 
+  $do_dfeat = 1;
+  my $dfeat_str = opt_Get("--dfeat", \%opt_HH);
+  foreach my $dfeat (split(",", $dfeat_str)) { 
+    if($dfeat =~ /^[\w+]\:[\w+]$/) {
+      my ($dest_feature, $src_feature) = ($1, $2);
+      $dfeat_H{$dest_feature} = $src_feature;
+      %{$dfeat_tbl_HHHA{$dest_feature}} = ();
+    }
+    else {
+      die "ERROR, with --dfeat <s>, <s> must be in format <s> = <s1>:<s2> (or multiple <s1>:<s2> separated by commans)\n to create feature <s1> as a duplicate of <s2> with the same Reference coordinates.\ne.g. \"--dfeat gene:CDS\""
+    }
   }
 }
 
@@ -755,7 +782,7 @@ if(defined $infasta_file) {
   # note that we pass in a reference to %ref_seq_info_HA to wrapperGetInfoUsingEdirect()
   # and *not* a reference to %seq_info_HA. We will use %infasta_ref_seq_info_HA to 
   # store information on the reference sequence only.
-  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
+  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
                              \%opt_HH, $ofile_info_HH{"FH"}); 
   $nseq = process_input_fasta_file($infasta_file, $outfasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
   if(defined $outfasta_file) { # this will be true if -c
@@ -763,7 +790,7 @@ if(defined $infasta_file) {
   }
 }
 else { # --infasta not used (default)
-  wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%seq_info_HA, \%ofile_info_HH,
+  wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%seq_info_HA, \%ofile_info_HH,
                              \%opt_HH, $ofile_info_HH{"FH"}); 
 }
 
@@ -800,6 +827,7 @@ wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_ro
                                                     \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
+                                                    ($do_dfeat)   ? \%dfeat_tbl_HHHA  : undef,
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
                                                     ($do_matpept) ? \@cds2amatpept_AA : undef, 
                                                     \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, 
@@ -1182,6 +1210,7 @@ mdl_results_compare_to_genbank_annotations(\%mdl_info_HA, \%ftr_info_HA, \%seq_i
                                            \%cds_tbl_HHA, 
                                            ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                            ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
+                                           ($do_dfeat)   ? \%dfeat_tbl_HHHA  : undef,
                                            \%opt_HH, $ofile_info_HH{"FH"});
 
 # validate all of our error instances by checking for incompatibilities
@@ -2216,8 +2245,8 @@ sub parse_esl_epn_translate_startstop_outfile {
         # outcome of each possibility.
         #
         # Variables we know from earlier processing:
-        # $is_cds:     '1' if current feature is a CDS, '0' if it is not (e.g. mature peptide or $xfeat)
-        # $is_matpept: '1' if current feature is a CDS, '0' if it is not (e.g. mature peptide or $xfeat)
+        # $is_cds:     '1' if current feature is a CDS, '0' if it is not (e.g. mature peptide, $xfeat, or $dfeat)
+        # $is_matpept: '1' if current feature is a CDS, '0' if it is not (e.g. mature peptide, $xfeat, or $dfeat)
         #
         # Variables derived from esl-epn-translate output we're currently parsing
         # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
@@ -3686,6 +3715,7 @@ sub mdl_results_calculate_out_starts_and_stops {
 #  $cds_tbl_HHAR:       REF to CDS hash of hash of arrays, PRE-FILLED
 #  $mp_tbl_HHAR:        REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
 #  $xfeat_tbl_HHAR:     REF to extra feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
+#  $dfeat_tbl_HHAR:     REF to duplicate feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
 #  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:              REF to hash of file handles
 #
@@ -3696,10 +3726,10 @@ sub mdl_results_calculate_out_starts_and_stops {
 ################################################################# 
 sub mdl_results_compare_to_genbank_annotations { 
   my $sub_name = "mdl_results_compare_to_genbank_annotations()";
-  my $nargs_exp = 9;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $opt_HHR, $FH_HR) = @_;
+  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $opt_HHR, $FH_HR) = @_;
   
   # total counts of things
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
@@ -3723,6 +3753,7 @@ sub mdl_results_compare_to_genbank_annotations {
     my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
     my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
     my $is_xfeat   = featureTypeIsExtraFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
+    my $is_dfeat   = featureTypeIsDuplicateFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
     for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
       my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
       my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
@@ -3738,6 +3769,7 @@ sub mdl_results_compare_to_genbank_annotations {
         if($is_matpept) { $tbl_HAR = $mp_tbl_HHAR->{$accn_name}; }
         if($is_cds)     { $tbl_HAR = $cds_tbl_HHAR->{$accn_name}; }
         if($is_xfeat)   { $tbl_HAR = $xfeat_tbl_HHHAR->{$ftr_info_HAR->{"type_ftable"}[$ftr_idx]}{$accn_name}; }
+        if($is_dfeat)   { $tbl_HAR = $dfeat_tbl_HHHAR->{$ftr_info_HAR->{"type_ftable"}[$ftr_idx]}{$accn_name}; }
         # TODO: if we get into viruses with many features, will want to do the comparison 
         # in sorted order by start to avoid quadratic time behavior
         if(defined $tbl_HAR) { # if there was annotation for this sequence 
@@ -5214,6 +5246,7 @@ sub output_tbl_get_headings {
   my $do_matpept   = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
   my $do_cds_notmp = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "cds-notmp", $FH_HR) > 0) ? 1 : 0;
   my $do_xfeat     = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "xfeat", $FH_HR) > 0) ? 1 : 0;
+  my $do_dfeat     = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "dfeat", $FH_HR) > 0) ? 1 : 0;
 
   # miscellaneous variables
   my $width_result = 5 + $nmdl + 2; # an important width 
@@ -5485,6 +5518,7 @@ sub output_tbl_get_headings {
         my $is_matpept   = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
         my $is_cds       = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
         my $is_xfeat     = featureTypeIsExtraFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
+        my $is_dfeat     = featureTypeIsDuplicateFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
         if($do_fid)  { $width += 6;  }
         if($do_mdlb) { $width += 4;  }
         if($do_olap) { $width += 11; }
@@ -5495,19 +5529,19 @@ sub output_tbl_get_headings {
           if($do_stop) { $width += 4; }
           $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int(($width-length($ftr_out_short))/2), " ", $FH_HR));
           $exp_tok1 = "";
-          if($do_matpept && $do_cds_notmp && $do_xfeat) { 
+          if($do_matpept && $do_cds_notmp && ($do_xfeat || $do_dfeat)) { 
             $exp_tok1 = "{MP,CDS,other} #<i>";
           }
           elsif($do_matpept && $do_cds_notmp) { 
             $exp_tok1 = "{MP,CDS} #<i>";
           }
-          elsif($do_matpept && (! $do_cds_notmp) && $do_xfeat) { 
+          elsif($do_matpept && (! $do_cds_notmp) && ($do_xfeat || $do_dfeat)) { 
             $exp_tok1 = "{MP,other} #<i>";
           }
           elsif($do_matpept && (! $do_cds_notmp)) { 
             $exp_tok1 = "MP #<i>";
           }
-          elsif($do_cds_notmp && $do_xfeat) { 
+          elsif($do_cds_notmp && ($do_xfeat || $do_dfeat)) { 
             $exp_tok1 = "{CDS,other} #<i>";
           }
           else { 
@@ -5531,7 +5565,7 @@ sub output_tbl_get_headings {
           output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
         }
         my $exp_substr = "";
-        if(! $do_xfeat) { 
+        if((! $do_xfeat) && (! $do_dfeat)) { 
           if($do_matpept && $do_cds_notmp) { 
             $exp_substr = "coding sequence part (or exon) <j> of mat_peptide (or CDS)";
           }
@@ -5542,7 +5576,7 @@ sub output_tbl_get_headings {
             $exp_substr = "exon <j> of CDS";
           }
         }
-        else { # $do_xfeat is TRUE
+        else { # $do_xfeat or $do_dfeat is TRUE
           if($do_matpept && $do_cds_notmp) { 
             $exp_substr = "coding sequence part (or exon or segment) <j> of mat_peptide (or CDS or other feature)";
           }

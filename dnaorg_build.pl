@@ -86,6 +86,7 @@ opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",      "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",             "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "build models of additional qualifiers",     "build models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
+opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "duplicate features, e.g. cds:gene",         "duplicate features, e.g. cds:gene", \%opt_HH, \@opt_order_A);  
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",        "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options affecting calibration of models";
@@ -135,6 +136,7 @@ my $options_okay =
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
                 'nomatpept'    => \$GetOptions_H{"--nomatpept"},
                 'xfeat=s'      => \$GetOptions_H{"--xfeat"},
+                'dfeat=s'      => \$GetOptions_H{"--dfeat"},
                 'keep'         => \$GetOptions_H{"--keep"},
 # calibration related options
                 'slow'         => \$GetOptions_H{"--slow"},
@@ -339,7 +341,7 @@ my %mp_tbl_HHA = ();     # mat_peptide data from .matpept.tbl file, hash of hash
                          # 1D: key: accession
                          # 2D: key: column name in gene ftable file
                          # 3D: per-row values for each column
-my %xfeat_tbl_HHHA = (); # xfeat data from feature table file, hash of hash of hashes of arrays
+my %afeat_tbl_HHHA = (); # afeat (additional feature) data from feature table file, hash of hash of hashes of arrays
                          # 1D: qualifier name, e.g. 'gene'
                          # 2D: key: accession
                          # 3D: key: column name in gene ftable file
@@ -350,12 +352,36 @@ my %seq_info_HA = ();    # hash of arrays, avlues are arrays [0..$nseq-1];
 @{$seq_info_HA{"accn_name"}} = ($ref_accn);
 
 # parse --xfeat option if necessary and initiate hash of hash of arrays for each comma separated value
+my $do_afeat = 0;
 my $do_xfeat = 0;
+my $do_dfeat = 0;
 if(opt_IsUsed("--xfeat", \%opt_HH)) { 
+  $do_afeat = 1;
   $do_xfeat = 1;
   my $xfeat_str = opt_Get("--xfeat", \%opt_HH);
   foreach my $xfeat (split(",", $xfeat_str)) { 
-    %{$xfeat_tbl_HHHA{$xfeat}} = ();
+    %{$afeat_tbl_HHHA{$xfeat}} = ();
+  }
+}
+# parse --dfeat option if necessary
+my %dfeat_H = (); # dfeat data from command line option argument for --dfeat
+                  # key:   qualifier name, e.g. 'gene'
+                  # value: qualifier name that key will be a duplicate, e.g. 'CDS'
+my $do_afeat = 0; # set to TRUE if either --xfeat or --dfeat is used
+my $do_dfeat = 0; # set to TRUE if --dfeat is used
+if(opt_IsUsed("--dfeat", \%opt_HH)) { 
+  $do_afeat = 1;
+  $do_dfeat = 1;
+  my $dfeat_str = opt_Get("--dfeat", \%opt_HH);
+  foreach my $dfeat (split(",", $dfeat_str)) { 
+    if($dfeat =~ /^[\w+]\:[\w+]$/) {
+      my ($dest_feature, $src_feature) = ($1, $2);
+      $dfeat_H{$dest_feature} = $src_feature;
+      %{$afeat_tbl_HHHA{$dest_feature}} = ();
+    }
+    else {
+      die "ERROR, with --dfeat <s>, <s> must be in format <s> = <s1>:<s2> (or multiple <s1>:<s2> separated by commans)\n to create feature <s1> as a duplicate of <s2> with the same Reference coordinates.\ne.g. \"--dfeat gene:CDS\""
+    }
   }
 }
 
@@ -366,7 +392,7 @@ if(opt_IsUsed("--xfeat", \%opt_HH)) {
 #  4) parses the edirect .mat_peptide file, if necessary
 #  5) parses the edirect .ftable file
 #  6) parses the length file
-wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA,
+wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%afeat_tbl_HHHA,
                            \%seq_info_HA, \%ofile_info_HH, 
                            \%opt_HH, $ofile_info_HH{"FH"}); # 1st argument is undef because we are only getting info for $ref_accn
 
@@ -399,7 +425,7 @@ wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_ro
                                                     undef, undef, undef, undef,  # 4 variables used only if --infasta enabled in dnaorg_annotate.pl (irrelevant here)
                                                     \%cds_tbl_HHA, 
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
-                                                    ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
+                                                    ($do_afeat)   ? \%afeat_tbl_HHHA  : undef,
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
                                                     ($do_matpept) ? \@cds2amatpept_AA : undef, 
                                                     \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA,
@@ -504,7 +530,7 @@ exit 0;
 #            information on options that must be kept consistent
 #            between dnaorg_build.pl and dnaorg_annotate.pl.
 #            Currently this is only "--matpept", "--nomatpept",
-#            "--xfeat" and "-c".
+#            "--xfeat", "--dfeat", and "-c".
 #
 # Arguments:
 #  $consopts_file:     name of the file to create
@@ -550,6 +576,10 @@ sub output_consopts_file {
   }
   if(opt_IsUsed("--xfeat", $opt_HHR)) { 
     printf OUT ("--xfeat %s\n", opt_Get("--xfeat", $opt_HHR));
+    $printed_any_options = 1;
+  }
+  if(opt_IsUsed("--dfeat", $opt_HHR)) { 
+    printf OUT ("--dfeat %s\n", opt_Get("--dfeat", $opt_HHR));
     $printed_any_options = 1;
   }
   

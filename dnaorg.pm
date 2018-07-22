@@ -302,11 +302,12 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #             'cds-notmp': CDS not comprised of mature peptides
 #             'cds-mp':    CDS comprised of mature peptides
 #             'mp':        mature peptide
-#             'xfeat'      extra feature (e.g. gene)
+#             'xfeat'      extra feature annotated by its own model (e.g. gene)
+#             'dfeat'      extra feature annotated as a duplicate of another feature (e.g. gene)
 # 
 #              And populate the %{$ftr_info_HAR} with the following
 #              information (1D keys):
-#              "type"        values are one of: "cds-notmp", "cds-mp", "mp", or 'xfeat'
+#              "type"        values are one of: "cds-notmp", "cds-mp", "mp", 'xfeat', or 'dfeat'
 #              "type_idx"    values are indices of each feature for its type
 #                            so a '2' means it's the 2nd of its type.
 #              "annot_type": annotation type, either "model" or "multifeature",
@@ -337,6 +338,8 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 # Arguments:
 #   $nmp:              number of mature peptides, may be 0
 #   $ncds:             number of CDS features, may be 0
+#   $nxfeat:           number of extra features, modeled independently
+#   $ndfeat:           number of duplicate features, modeled by other features
 #   $cds2pmatpept_AAR: 1st dim: cds index (-1, off-by-one), 
 #                      2nd dim: value array of primary matpept indices that comprise this CDS, 
 #                      OR undefined if all features are CDS and there are no mature peptides; 
@@ -354,15 +357,14 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #################################################################
 sub determineFeatureTypes {
   my $sub_name  = "determineFeatureTypes()";
-  my $nargs_expected = 6;
+  my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ncds, $nmp, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR) = (@_);
+  my ($ncds, $nmp, $nxfeat, $ndfeat, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR) = (@_);
 
   my $c; # counter
 
   my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, undef, $FH_HR);
-  my $nxfeat = $nftr - ($nmp + $ncds); 
 
   # initialize arrays
   @{$ftr_info_HAR->{"type"}}                     = ();
@@ -375,7 +377,7 @@ sub determineFeatureTypes {
   @{$ftr_info_HAR->{"parent_ftr"}}               = ();
 
   if(! defined $cds2pmatpept_AAR) { 
-    # first $ncds features are CDS, remainder (if any) are xfeat features
+    # first $ncds features are CDS, remainder (if any) are afeat features
     for($c = 0; $c < $ncds; $c++) { 
       $ftr_info_HAR->{"type"}[$c]                     = "cds-notmp";
       $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
@@ -391,6 +393,17 @@ sub determineFeatureTypes {
       $ftr_info_HAR->{"type"}[$c]                     = "xfeat";
       $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
       $ftr_info_HAR->{"type_idx"}[$c]                 = $xfeat_idx+1;
+      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+    }
+    for(my $dfeat_idx = 0; $dfeat_idx < $ndfeat; $dfeat_idx++) { 
+      $c = $ncds + $nxfeat + $dfeat_idx;
+      $ftr_info_HAR->{"type"}[$c]                     = "dfeat";
+      $ftr_info_HAR->{"annot_type"}[$c]               = "duplicate"; # this feature is modeled as a duplicate of another feature
+      $ftr_info_HAR->{"type_idx"}[$c]                 = $dfeat_idx+1;
       $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
       $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
       $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
@@ -478,6 +491,18 @@ sub determineFeatureTypes {
       $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
       $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
     }
+    # add 'dfeat' features, if any
+    for(my $dfeat_idx = 0; $dfeat_idx < $ndfeat; $dfeat_idx++) { 
+      $c = $nmp + $ncds + $nxfeat + $dfeat_idx;
+      $ftr_info_HAR->{"type"}[$c]                     = "dfeat";
+      $ftr_info_HAR->{"annot_type"}[$c]               = "duplicate"; # this feature is modeled as a duplicate of another feature
+      $ftr_info_HAR->{"type_idx"}[$c]                 = $dfeat_idx+1;
+      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
+      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+    }
   }
 
   return;
@@ -526,14 +551,15 @@ sub getNumFeaturesAnnotatedByModels {
 #             "ref_strand":   strand of this feature in the reference
 #             "ref_len":      length (in nt) of this feature in the reference
 #             "ref_coords":   coordinates for this feature in the reference in NCBI format
-#             "out_product":  'product' value or type_ftable value (if xfeat) for this feature, in NCBI annotation
-#             "type_fname":   string for naming output files related to this feature, e.g. "mp", "cds" or "$xfeat"
-#             "type_ftable":  output feature table feature name, e.g. "mat_peptide", "CDS" or "$xfeat"
+#             "out_product":  'product' value or type_ftable value (if xfeat or dfeat) for this feature, in NCBI annotation
+#             "type_fname":   string for naming output files related to this feature, e.g. "mp", "cds", "$xfeat" or "$dfeat"
+#             "type_ftable":  output feature table feature name, e.g. "mat_peptide", "CDS", "$xfeat" or "$dfeat"
 # 
 # Arguments:
 #   $cds_tbl_HHAR:   ref to CDS hash of hash of arrays, PRE-FILLED
 #   $mp_tbl_HHAR:    ref to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
 #   $xfeat_tbl_HHAR: ref to extra feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
+#   $dfeat_tbl_HHAR: ref to extra feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
 #   $ftr_info_HAR:   ref to hash of arrays with feature information, FILLED HERE
 #   $ref_accn:       reference accession
 #   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
@@ -545,10 +571,10 @@ sub getNumFeaturesAnnotatedByModels {
 #################################################################
 sub getReferenceFeatureInfo { 
   my $sub_name = "getReferenceFeatureInfo()";
-  my $nargs_expected = 6;
+  my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
  
-  my ($cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $ftr_info_HAR, $ref_accn, $FH_HR) = @_;
+  my ($cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $ftr_info_HAR, $ref_accn, $FH_HR) = @_;
 
   # initialize the arrays we are about to fill
   @{$ftr_info_HAR->{"ref_strand"}}  = ();
@@ -561,11 +587,14 @@ sub getReferenceFeatureInfo {
 
   my $do_matpept = (defined $mp_tbl_HHAR)     ? 1 : 0;
   my $do_xfeat   = (defined $xfeat_tbl_HHHAR) ? 1 : 0;
+  my $do_dfeat   = (defined $dfeat_tbl_HHHAR) ? 1 : 0;
 
   my $ref_mp_strand_str         = ""; 
   my $ref_cds_strand_str        = "";
   my $ref_xfeat_strand_cur_str  = "";
   my $ref_xfeat_strand_full_str = "";
+  my $ref_dfeat_strand_cur_str  = "";
+  my $ref_dfeat_strand_full_str = "";
   my $i; # ctr;
   my $nadded_strand;  # number of elements just added to @{$ftr_info_HAR->{"strand"}}
   my $nadded_gene;    # number of elements just added to @{$ftr_info_HAR->{"gene"}}
@@ -646,8 +675,39 @@ sub getReferenceFeatureInfo {
     }
   }
 
+  if($do_dfeat) {
+    foreach my $dfeat (sort keys (%{$dfeat_tbl_HHHAR})) { 
+      (undef, undef, undef, undef, undef, $ref_dfeat_strand_cur_str) = getStrandStats(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, $FH_HR);
+      $ref_dfeat_strand_full_str .= $ref_dfeat_strand_cur_str;
+      getLengthsAndCoords(\%{$dfeat_tbl_HHHAR->{$dfeat}{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
+      $nadded_product = getQualifierValues(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
+      $nadded_gene    = getQualifierValues(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, "gene",    \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
+      $nadded_strand  = length($ref_dfeat_strand_cur_str);
+      for($i = 0; $i < $nadded_strand; $i++) { 
+        push(@{$ftr_info_HAR->{"type_fname"}},  $dfeat);
+        push(@{$ftr_info_HAR->{"type_ftable"}}, $dfeat);
+      }
+      if(($nadded_product != 0) && ($nadded_product != $nadded_strand)) {
+        DNAORG_FAIL("ERROR in $sub_name, for $dfeat features, added gene info for $nadded_product features (should be 0 or $nadded_strand)", 1, $FH_HR);
+      }
+      if($nadded_product == 0) { 
+        for($i = 0; $i < $nadded_strand; $i++) { 
+          push(@{$ftr_info_HAR->{"out_product"}}, "");
+        }
+      }
+      if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
+        DNAORG_FAIL("ERROR in $sub_name, for $dfeat features, added gene info for $nadded_gene mature peptides (should be 0 or $nadded_strand)", 1, $FH_HR);
+      }
+      if($nadded_gene == 0) { 
+        for($i = 0; $i < $nadded_strand; $i++) { 
+          push(@{$ftr_info_HAR->{"out_gene"}}, "");
+        }
+      }
+    }
+  }
 
-  @{$ftr_info_HAR->{"ref_strand"}} = split("", $ref_mp_strand_str . $ref_cds_strand_str . $ref_xfeat_strand_full_str);
+
+  @{$ftr_info_HAR->{"ref_strand"}} = split("", $ref_mp_strand_str . $ref_cds_strand_str . $ref_xfeat_strand_full_str . $ref_dfeat_strand_full_str);
 
   return;
 }
@@ -2358,6 +2418,7 @@ sub checkForIndexInOverlapOrAdjacencyIndexString {
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, FILLED HERE
 #   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else FILLED HERE
 #   $xfeat_tbl_HHHAR:       REF to hash of hash of hash of arrays for extra qualifier info, can be undef, else FILLED HERE
+#   $dfeat_tbl_HHHAR:       REF to hash of hash of hash of arrays for duplicate qualifier info, can be undef, else FILLED HERE
 #   $seq_info_HAR:          REF to 2D hash with sequence information, ADDED TO HERE
 #   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
 #   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
@@ -2371,10 +2432,10 @@ sub checkForIndexInOverlapOrAdjacencyIndexString {
 ################################################################# 
 sub wrapperGetInfoUsingEdirect {
   my $sub_name = "wrapperGetInfoUsingEdirect";
-  my $nargs_expected = 10;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $seq_info_HAR, $ofile_info_HHR, $opt_HHR, $FH_HR) = @_;
+  my ($listfile, $ref_accn, $out_root, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $seq_info_HAR, $ofile_info_HHR, $opt_HHR, $FH_HR) = @_;
 
   my $cmd; # a command to be run by runCommand()
   my $do_matpept = opt_IsOn("--matpept", $opt_HHR);
@@ -2497,6 +2558,13 @@ sub wrapperGetInfoUsingEdirect {
     }
   }    
 
+  foreach my $dfeat (keys (%{$dfeat_tbl_HHHAR})) { 
+    edirectFtableOrMatPept2SingleFeatureTableInfo($ft_file, 0, $dfeat, \%{$dfeat_tbl_HHHAR->{$dfeat}}, $FH_HR); # 0: it's not a mat_peptide file
+    if(! exists ($dfeat_tbl_HHHAR->{$dfeat}{$ref_accn})) { 
+      DNAORG_FAIL("ERROR in $sub_name, no $dfeat information stored for reference accession", 1, $FH_HR); 
+    }
+  }    
+
   # 6) parse the length file, and store accession lengths in $seq_info_HAR
   #    if --infasta was enabled, caller will likely have passed in a special $seq_info_HAR
   #    here (something like $ref_seq_info_HAR) which will only hold information on 
@@ -2585,6 +2653,7 @@ sub wrapperGetInfoUsingEdirect {
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
 #   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
 #   $xfeat_tbl_HHHAR:       REF to eXtra feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
+#   $dfeat_tbl_HHHAR:       REF to Duplicate feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
 #   $cds2pmatpept_AAR:      REF to 2D array, 1st dim: cds index (-1, off-by-one), 
 #                           2nd dim: value array of primary matpept indices that comprise this CDS, 
 #                           may be undef if $mp_tbl_HHAR is undef
@@ -2606,10 +2675,10 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAllSequencesAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAllSequencesAndProcessReferenceSequence()";
-  my $nargs_expected = 18;
+  my $nargs_expected = 19;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $sqfile_R, $out_root, $build_root, $in_ref_accn, $in_ref_accnlen, $in_ref_seqlen, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $sqfile_R, $out_root, $build_root, $in_ref_accn, $in_ref_accnlen, $in_ref_seqlen, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
   
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -2731,17 +2800,17 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   }
 
   # 2) determine reference information for each feature (strand, length, coordinates, product)
-  getReferenceFeatureInfo($cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $ftr_info_HAR, $ref_accn, $FH_HR); # $mp_tbl_HHAR may be undefined and that's okay
+  getReferenceFeatureInfo($cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $ftr_info_HAR, $ref_accn, $FH_HR); # $mp_tbl_HHAR may be undefined and that's okay
   my @reqd_keys_A = ("ref_strand", "ref_len", "ref_coords", "out_product", "type_fname", "type_ftable");
   validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_keys_A, $FH_HR);
 
-  # 3) determine type of each reference feature ('cds-mp', 'cds-notmp', 'mp', or 'xfeat')
+  # 3) determine type of each reference feature ('cds-mp', 'cds-notmp', 'mp', 'xfeat', or 'dfeat')
   my $ncds = (defined $cds_tbl_HHAR) ? scalar(@{$cds_tbl_HHAR->{$ref_accn}{"coords"}}) : 0; # number of CDS features
   my $nmp  = (defined $mp_tbl_HHAR)  ? scalar(@{$mp_tbl_HHAR->{$ref_accn}{"coords"}})  : 0; # number of mature peptides
   determineFeatureTypes($ncds, $nmp, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR); # $cds2pmatpept_AAR may be undef and that's okay
 
   # 4) fetch the reference feature sequences and populate information on the models and features
-  #    we won't actually fetch the referecne sequence if --infasta is used (which is why $ref_seqname is undef if --infasta)
+  #    we won't actually fetch the reference sequence if --infasta is used (which is why $ref_seqname is undef if --infasta)
   my $ref_seqname  = ($do_infasta) ? undef          : $seq_info_HAR->{"seq_name"}[0]; # the reference sequence name the fetched sequence file $fasta_file
   my $all_stk_file = $out_root . ".ref.all.stk";     # name of output alignment file we are about to create, each single reference feature 
                                                      # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
@@ -4039,6 +4108,10 @@ sub parseConsOptsFile {
       $consopts_used_HR->{"--xfeat"} = $1;
       $consmd5_HR->{"--xfeat"}  = "";
     }
+    elsif($line =~ /^\-\-dfeat\s+(\S+)$/) { # first string is file name, second is argument
+      $consopts_used_HR->{"--dfeat"} = $1;
+      $consmd5_HR->{"--dfeat"}  = "";
+    }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unable to parse line from consopts file $consopts_file:\n$line\n", 1, $FH_HR);
     }
@@ -4046,7 +4119,7 @@ sub parseConsOptsFile {
   close(IN);
 
   # fill %{$consopts_notused_HR}
-  foreach my $opt ("-c", "--nomatpept", "--matpept", "--xfeat") { 
+  foreach my $opt ("-c", "--nomatpept", "--matpept", "--xfeat", "--dfeat") { 
     if(! exists $consopts_used_HR->{$opt}) { 
       $consopts_notused_HR->{$opt} = 1;
     }
@@ -4122,6 +4195,7 @@ sub parseNonConsOptsFile {
   if($opts_str =~ m/\s*\-\-nomatpept/) { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --nomatpept, $failure_str", 1, $FH_HR); }
   if($opts_str =~ m/\s*\-\-matpept/)   { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --matpept, $failure_str", 1, $FH_HR); }
   if($opts_str =~ m/\s*\-\-xfeat/)     { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --xfeat, $failure_str", 1, $FH_HR); }
+  if($opts_str =~ m/\s*\-\-dfeat/)     { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --dfeat, $failure_str", 1, $FH_HR); }
 
   # check for the options that are automatically set or not set, 
   # these are illegal too
@@ -5103,9 +5177,9 @@ sub validateExecutableHash {
 #                "ref_coords":    coordinates for this feature in the reference
 #                "ref_len":       length of this feature in the reference
 #                "ref_strand":    strand for this feature in the reference
-#                "type":          type of feature: "mp", "cds-notmp", "cds-mp", or "xfeat"
-#                "type_fname":    string for naming output files related to this feature, e.g. "mp", "cds" or "$xfeat"
-#                "type_ftable":   output feature table feature name, e.g. "mat_peptide", "CDS" or "$xfeat"
+#                "type":          type of feature: "mp", "cds-notmp", "cds-mp", "xfeat", or "dfeat"
+#                "type_fname":    string for naming output files related to this feature, e.g. "mp", "cds", "$xfeat", or "$dfeat"
+#                "type_ftable":   output feature table feature name, e.g. "mat_peptide", "CDS", "$xfeat", or "$dfeat"
 #                "type_idx":      index for the type that this feature is (e.g. 4, if this is the 4th "cds-notmp" feature
 #              
 #             If @{exceptions_AR} is non-empty, then keys in 
@@ -7927,6 +8001,7 @@ sub featureTypeIsMaturePeptide() {
 #
 #             Input        Return value
 #             'xfeat':     1
+#             'dfeat':     0
 #             'mp':        0
 #             'cds-notmp'  0
 #             'cds-mp'     0
@@ -7946,6 +8021,43 @@ sub featureTypeIsExtraFeature() {
   my ($in_feature) = (@_);
 
   if($in_feature eq "xfeat") { 
+    return 1;
+  }
+  else { 
+    return 0;
+  }
+
+  return ""; # NEVERREACHED
+}
+
+#################################################################
+# Subroutine: featureTypeIsDuplicateFeature()
+# Incept:     EPN, Sun Jul 22 18:38:57 2018
+#
+# Purpose:    Is a feature type a 'duplicate feature'?
+#
+#             Input        Return value
+#             'xfeat':     0
+#             'dfeat':     1
+#             'mp':        0
+#             'cds-notmp'  0
+#             'cds-mp'     0
+#             other:       0
+#
+# Arguments:
+#   $feature_type:  input feature
+#             
+# Returns:    1 or 0
+#
+#################################################################
+sub featureTypeIsDuplicateFeature() { 
+  my $sub_name  = "featureTypeIsDuplicateFeature";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_feature) = (@_);
+
+  if($in_feature eq "dfeat") { 
     return 1;
   }
   else { 
