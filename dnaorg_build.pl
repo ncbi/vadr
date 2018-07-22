@@ -441,6 +441,14 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #dumpInfoHashOfArrays("ftr_info", 0, \%ftr_info_HA, *STDOUT);
 
+if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
+  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
+}
+if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
+  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
+}
+
+exit 0;
 ####################################
 # Step 5. Build and calibrate models 
 ####################################
