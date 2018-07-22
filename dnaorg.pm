@@ -8087,20 +8087,35 @@ sub featureTypeIsDuplicateFeature() {
 #
 #################################################################
 sub getNumExtraOrDuplicateFeatures() { 
-  my $sub_name  = "featureTypeIsDuplicateFeature";
-  my $nargs_expected = 1;
+  my $sub_name  = "getNumExtraOrDuplicateFeatures()";
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($in_feature) = (@_);
+  my ($tbl_HHHAR, $FH_HR) = (@_);
 
-  if($in_feature eq "dfeat") { 
-    return 1;
-  }
-  else { 
-    return 0;
+  my $ret_size      = undef;
+  my $ret_size_key1 = undef;
+  my $ret_size_key2 = undef;
+  my $ret_size_key3 = undef;
+  my $size          = undef;
+  foreach my $key1 (sort keys %{$tbl_HHHAR}) { 
+    foreach my $key2 (sort keys %{$tbl_HHHAR->{$key1}}) { 
+      foreach my $key3 (sort keys %{$tbl_HHHAR->{$key1}{$key2}}) {
+        $size = scalar(@{$tbl_HHHAR->{$key1}{$key2}{$key3}});
+        if(! defined $ret_size) {
+          $size = scalar(@{$tbl_HHHAR->{$key1}{$key2}{$key3}});
+          $size_key1 = $key1;
+          $size_key2 = $key2;
+          $size_key3 = $key3;
+        }
+        elsif($size != $ret_size) {
+          DNAORG_FAIL("ERROR in $sub_name, not all arrays have the same number of elements.\ntbl_HHHAR->{$ret_key1}{$ret_key2}{$ret3_key} has $ret_size elements but tbl_HHHAR->{$key1}{$key2}{$key3} had $size elements", 1, $FH_HR);
+        }
+      }
+    }
   }
 
-  return ""; # NEVERREACHED
+  return $ret_size;
 }
 
 
