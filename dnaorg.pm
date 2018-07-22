@@ -1020,6 +1020,64 @@ sub annotateAppendFeatures {
   return;
 }
 
+
+#################################################################
+# Subroutine : findSourcesOfDuplicateFeatures()
+# Incept:      EPN, Sun Jul 22 19:51:24 2018
+#
+# Purpose:     For any features of type 'duplicate', find the
+#              other features that will be the source of their
+#              annotation boundaries.
+#              
+#              Fills for %{$ftr_info_HAR}:
+#                "dupsource": feature index of the feature that this feature will use
+#                             as the source of its annotation boundaries. It will simply
+#                             copy those boundaries.
+#
+# Arguments: 
+#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
+#   $FH_HR:        REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: 
+################################################################# 
+sub findSourcesOfDuplicateFeatures { 
+  my $nargs_expected = 2;
+  my $sub_name = "findSourcesOfDuplicateFeatures"
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $FH_HR) = @_;
+
+  my $nftr = getConsistentSizeOfInfoHashOfArrays($ftr_info_HAR, $FH_HR);
+  my $match_idx = undef;
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_HAR->{"type"}[$ftr_idx]       eq "dfeat" && 
+       $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") { 
+      # find match to set as the source for this feature's boundary annotation
+      $match_idx = undef;
+      for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) {
+        if(($ftr_info_HAR->{"type"}[$ftr_idx2] ne "dfeat") && 
+           ($ftr_info_HAR->{"ref_coords"}[$ftr_idx2] eq $ftr_info_HAR->{"ref_coords"}[$ftr_idx])) {
+          if(defined $match_idx) {
+            DNAORG_FAIL("ERROR in $sub_name, more than one feature has identical coordinates (" . $ftr_info_HAR->{"ref_coords"}[$ftr_idx] . ") to a " $ftr_info_HAR->{"type_ftable"}{$ftr_idx} " feature", 1, $FH_HR);
+          }
+          $match_idx = $ftr_idx2;
+        }
+      }
+      if(! defined $match_idx) {
+        DNAORG_FAIL("ERROR in $sub_name, zero other features have the same coordinates as the " . $ftr_info_HAR->{"type_ftable"}{$ftr_idx} . " feature requiring a duplicate, with coordinates " . $ftr_info_HAR->{"ref_coords"}[$ftr_idx], 1, $FH_HR);
+      }
+      $ftr_info_HAR->{"dupsource"} = $match_idx;
+    }
+    else { 
+      $ftr_info_HAR->{"dupsource"} = "";
+    }
+  }
+
+  return;
+}
+
 #################################################################
 # Subroutine : annotateOverlapsAndAdjacencies()
 # Incept:      EPN, Fri Mar 11 20:24:46 2016
@@ -2829,6 +2887,12 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   my $ref_seqlen = ($do_infasta) ? $in_ref_seqlen : $seq_info_HAR->{"seq_len"}[0]; # length of the sequence
   annotateOverlapsAndAdjacencies($ref_accnlen, $ref_seqlen, $mdl_info_HAR, $opt_HHR, $FH_HR);
 
+  # 6) determine the source "dupsource" of any duplicate feature annotations, for
+  #    all other non 'duplicate' features the "dupsource" will be ""
+    findTemplatesOfDuplicateFeatures($ftr_info_HAR, $FH_HR);
+  if($ndfeat > 0) { 
+  }
+  
   return 0;
 }
 
