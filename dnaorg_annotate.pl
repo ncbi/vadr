@@ -232,7 +232,7 @@ opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "use models of additional qualifiers",                         "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
-opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "duplicate features, e.g. gene:CDS",                           "duplicate features, e.g. gene:CDS", \%opt_HH, \@opt_order_A);  
+opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "duplicate features, e.g. gene:CDS",                           "create feature <s1> as a duplicate of <s2> in <s>=<s1>:<s2>, e.g. gene:CDS", \%opt_HH, \@opt_order_A);  
 opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",                  "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",                       "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
@@ -740,7 +740,6 @@ my %dfeat_tbl_HHHA = (); # dfeat (Duplicate feature) data from feature table fil
 
 # parse --xfeat option if necessary and initiate hash of hash of arrays for each comma separated value
 my $do_xfeat = 0;
-my $do_dfeat = 0;
 if(opt_IsUsed("--xfeat", \%opt_HH)) { 
   $do_xfeat = 1;
   my $xfeat_str = opt_Get("--xfeat", \%opt_HH);

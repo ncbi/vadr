@@ -2805,9 +2805,11 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_keys_A, $FH_HR);
 
   # 3) determine type of each reference feature ('cds-mp', 'cds-notmp', 'mp', 'xfeat', or 'dfeat')
-  my $ncds = (defined $cds_tbl_HHAR) ? scalar(@{$cds_tbl_HHAR->{$ref_accn}{"coords"}}) : 0; # number of CDS features
-  my $nmp  = (defined $mp_tbl_HHAR)  ? scalar(@{$mp_tbl_HHAR->{$ref_accn}{"coords"}})  : 0; # number of mature peptides
-  determineFeatureTypes($ncds, $nmp, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR); # $cds2pmatpept_AAR may be undef and that's okay
+  my $ncds   = (defined $cds_tbl_HHAR) ? scalar(@{$cds_tbl_HHAR->{$ref_accn}{"coords"}}) : 0; # number of CDS features
+  my $nmp    = (defined $mp_tbl_HHAR)  ? scalar(@{$mp_tbl_HHAR->{$ref_accn}{"coords"}})  : 0; # number of mature peptides
+  my $nxfeat = (defined $xfeat_tbl_HHHAR) ? getNumExtraOrDuplicateFeatures($xfeat_tbl_HHHAR, $FH_HR);
+  my $ndfeat = (defined $dfeat_tbl_HHHAR) ? getNumExtraOrDuplicateFeatures($dfeat_tbl_HHHAR, $FH_HR);
+  determineFeatureTypes($ncds, $nmp, $nxfeat, $ndfeat, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR); # $cds2pmatpept_AAR may be undef and that's okay
 
   # 4) fetch the reference feature sequences and populate information on the models and features
   #    we won't actually fetch the reference sequence if --infasta is used (which is why $ref_seqname is undef if --infasta)
@@ -8051,6 +8053,40 @@ sub featureTypeIsExtraFeature() {
 #
 #################################################################
 sub featureTypeIsDuplicateFeature() { 
+  my $sub_name  = "featureTypeIsDuplicateFeature";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_feature) = (@_);
+
+  if($in_feature eq "dfeat") { 
+    return 1;
+  }
+  else { 
+    return 0;
+  }
+
+  return ""; # NEVERREACHED
+}
+
+#################################################################
+# Subroutine: getNumExtraOrDuplicateFeatures()
+# Incept:     EPN, Sun Jul 22 13:10:33 2018
+#
+# Purpose:    Given a reference to a 3D hash of arrays, return
+#             the number of elements in each of the arrays. 
+#             (This will be the same number for all such arrays.)
+#
+# Arguments:
+#   $tbl_HHHAR: 3D hash of arrays
+#   $FH_HR:     ref to hash of file handles, including 'log'
+#             
+# Returns:    Number of elements in all arrays
+#
+# Dies: If not all arrays have the same number of elements.
+#
+#################################################################
+sub getNumExtraOrDuplicateFeatures() { 
   my $sub_name  = "featureTypeIsDuplicateFeature";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
