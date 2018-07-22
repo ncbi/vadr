@@ -2807,8 +2807,8 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   # 3) determine type of each reference feature ('cds-mp', 'cds-notmp', 'mp', 'xfeat', or 'dfeat')
   my $ncds   = (defined $cds_tbl_HHAR) ? scalar(@{$cds_tbl_HHAR->{$ref_accn}{"coords"}}) : 0; # number of CDS features
   my $nmp    = (defined $mp_tbl_HHAR)  ? scalar(@{$mp_tbl_HHAR->{$ref_accn}{"coords"}})  : 0; # number of mature peptides
-  my $nxfeat = (defined $xfeat_tbl_HHHAR) ? getNumExtraOrDuplicateFeatures($xfeat_tbl_HHHAR, $FH_HR);
-  my $ndfeat = (defined $dfeat_tbl_HHHAR) ? getNumExtraOrDuplicateFeatures($dfeat_tbl_HHHAR, $FH_HR);
+  my $nxfeat = (defined $xfeat_tbl_HHHAR) ? getNumExtraOrDuplicateFeatures($xfeat_tbl_HHHAR, $FH_HR) : 0;
+  my $ndfeat = (defined $dfeat_tbl_HHHAR) ? getNumExtraOrDuplicateFeatures($dfeat_tbl_HHHAR, $FH_HR) : 0;
   determineFeatureTypes($ncds, $nmp, $nxfeat, $ndfeat, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR); # $cds2pmatpept_AAR may be undef and that's okay
 
   # 4) fetch the reference feature sequences and populate information on the models and features
@@ -8103,13 +8103,13 @@ sub getNumExtraOrDuplicateFeatures() {
       foreach my $key3 (sort keys %{$tbl_HHHAR->{$key1}{$key2}}) {
         $size = scalar(@{$tbl_HHHAR->{$key1}{$key2}{$key3}});
         if(! defined $ret_size) {
-          $size = scalar(@{$tbl_HHHAR->{$key1}{$key2}{$key3}});
-          $size_key1 = $key1;
-          $size_key2 = $key2;
-          $size_key3 = $key3;
+          $ret_size = scalar(@{$tbl_HHHAR->{$key1}{$key2}{$key3}});
+          $ret_size_key1 = $key1;
+          $ret_size_key2 = $key2;
+          $ret_size_key3 = $key3;
         }
         elsif($size != $ret_size) {
-          DNAORG_FAIL("ERROR in $sub_name, not all arrays have the same number of elements.\ntbl_HHHAR->{$ret_key1}{$ret_key2}{$ret3_key} has $ret_size elements but tbl_HHHAR->{$key1}{$key2}{$key3} had $size elements", 1, $FH_HR);
+          DNAORG_FAIL("ERROR in $sub_name, not all arrays have the same number of elements.\ntbl_HHHAR->{$ret_size_key1}{$ret_size_key2}{$ret_size_key3} has $ret_size elements but tbl_HHHAR->{$key1}{$key2}{$key3} has $size elements", 1, $FH_HR);
         }
       }
     }
