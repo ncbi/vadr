@@ -76,18 +76,18 @@ my %opt_group_desc_H = ();
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 $opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                              help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                       "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is circular",                        "genome is circular",                                 \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",               "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
-opt_Add("-n",           "integer", "4",                      1,    undef, undef,      "set number of CPUs for calibration to <n>", "for non-big models, set number of CPUs for calibration to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as <s>",         "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",      "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",             "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
-opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "build models of additional qualifiers",     "build models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
-opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "duplicate features, e.g. gene:CDS",                           "create feature <s1> as a duplicate of <s2> in <s>=<s1>:<s2>, e.g. gene:CDS", \%opt_HH, \@opt_order_A);  
-opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",        "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                                 help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                          "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is circular",                           "genome is circular",                                 \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",                  "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
+opt_Add("-n",           "integer", "4",                      1,    undef, undef,      "set number of CPUs for calibration to <n>",    "for non-big models, set number of CPUs for calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                   "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as <s>",            "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",         "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
+opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
+opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "build models of additional qualifiers",        "build models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
+opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "annotate additional qualifiers as duplicates", "annotate qualifiers in <s> from duplicates (e.g. gene from CDS)",  \%opt_HH, \@opt_order_A);  
+opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options affecting calibration of models";
 #       option       type        default                group  requires incompat          preamble-output                                              help-output    
@@ -366,21 +366,14 @@ if(opt_IsUsed("--xfeat", \%opt_HH)) {
   }
 }
 # parse --dfeat option if necessary
-my %dfeat_H = (); # dfeat data from command line option argument for --dfeat
-                  # key:   qualifier name, e.g. 'gene'
-                  # value: qualifier name that key will be a duplicate, e.g. 'CDS'
-my $do_dfeat = 0; # set to TRUE if --dfeat is used
+my $do_dfeat = 0;
 if(opt_IsUsed("--dfeat", \%opt_HH)) { 
   $do_dfeat = 1;
   my $dfeat_str = opt_Get("--dfeat", \%opt_HH);
   foreach my $dfeat (split(",", $dfeat_str)) { 
-    if($dfeat =~ /^(\w+)\:(\w+)$/) {
-      my ($dest_feature, $src_feature) = ($1, $2);
-      $dfeat_H{$dest_feature} = $src_feature;
-      %{$dfeat_tbl_HHHA{$dest_feature}} = ();
-    }
-    else {
-      die "ERROR, with --dfeat <s>, <s> must be in format <s> = <s1>:<s2> (or multiple <s1>:<s2> separated by commans)\n to create feature <s1> as a duplicate of <s2> with the same Reference coordinates.\ne.g. \"--dfeat gene:CDS\""
+    %{$dfeat_tbl_HHHA{$xfeat}} = ();
+    if(exists $xfeat_tbl_HHHA{$xfeat}) {
+      DNAORG_FAIL("ERROR, with --xfeat <s1> and --dfeat <s2>, no qualifier names can be in common between <s1> and <s2>, found $xfeat", 1, $ofile_info_HH{"FH"});
     }
   }
 }
@@ -448,7 +441,6 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
   dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
 
-exit 0;
 ####################################
 # Step 5. Build and calibrate models 
 ####################################

@@ -232,7 +232,7 @@ opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "use models of additional qualifiers",                         "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
-opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "duplicate features, e.g. gene:CDS",                           "create feature <s1> as a duplicate of <s2> in <s>=<s1>:<s2>, e.g. gene:CDS", \%opt_HH, \@opt_order_A);  
+opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "annotate additional qualifiers as duplicates", "annotate qualifiers in <s> from duplicates (e.g. gene from CDS)",  \%opt_HH, \@opt_order_A);  
 opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",                  "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",                       "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
@@ -748,21 +748,14 @@ if(opt_IsUsed("--xfeat", \%opt_HH)) {
   }
 }
 # parse --dfeat option if necessary
-my %dfeat_H = (); # dfeat data from command line option argument for --dfeat
-                  # key:   qualifier name, e.g. 'gene'
-                  # value: qualifier name that key will be a duplicate, e.g. 'CDS'
-my $do_dfeat = 0; # set to TRUE if --dfeat is used
+my $do_dfeat = 0;
 if(opt_IsUsed("--dfeat", \%opt_HH)) { 
   $do_dfeat = 1;
   my $dfeat_str = opt_Get("--dfeat", \%opt_HH);
   foreach my $dfeat (split(",", $dfeat_str)) { 
-    if($dfeat =~ /^[\w+]\:[\w+]$/) {
-      my ($dest_feature, $src_feature) = ($1, $2);
-      $dfeat_H{$dest_feature} = $src_feature;
-      %{$dfeat_tbl_HHHA{$dest_feature}} = ();
-    }
-    else {
-      die "ERROR, with --dfeat <s>, <s> must be in format <s> = <s1>:<s2> (or multiple <s1>:<s2> separated by commans)\n to create feature <s1> as a duplicate of <s2> with the same Reference coordinates.\ne.g. \"--dfeat gene:CDS\""
+    %{$dfeat_tbl_HHHA{$xfeat}} = ();
+    if(exists $xfeat_tbl_HHHA{$xfeat}) {
+      DNAORG_FAIL("ERROR, with --xfeat <s1> and --dfeat <s2>, no qualifier names can be in common between <s1> and <s2>, found $xfeat", 1, $ofile_info_HH{"FH"});
     }
   }
 }
