@@ -6685,7 +6685,7 @@ sub output_feature_tbl_all_sequences {
   my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
   my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); # nerr: number of different error codes
   my $nexc = validateFTableErrorExceptions      ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR); # nexc: number of different feature table exceptions
-  my $do_matpept  = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
+  my $do_matpept = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
   my $exc_idx; # an index in @{$ftbl_err_exceptions_AHR}
   my $cur_err_str;     # current string of errors for this sequence/feature combo
   my $do_short_ftable; # '1' if we are printing this current sequence/feature to the short feature table, '0' if not
@@ -6727,7 +6727,9 @@ sub output_feature_tbl_all_sequences {
     my $min_coord = -1;     # minimum coord in this feature
     my $cur_min_coord = -1; # minimum coord in this segment
     my $i;
-
+    my $fidx2sidx_H = (); # key is feature index $fidx, value is $sidx index in @short_AH that $fidx corresponds to
+    my $fidx2lidx_H = (); # key is feature index $fidx, value is $lidx index in @long_AH that $fidx corresponds to
+    
     $cur_out_str = (">Feature $accn_name\n");
     print $sftbl_FH $cur_out_str;
     print $lftbl_FH $cur_out_str;
@@ -6771,7 +6773,6 @@ sub output_feature_tbl_all_sequences {
           }
         }
       } # end of for loop over $err_idx 
-
 
       # determine if this sequence/feature combo satisfies any of the feature 
       # table exceptions, allowing it to be output to the short feature table
@@ -6840,6 +6841,7 @@ sub output_feature_tbl_all_sequences {
             $long_AH[$lidx]{"mincoord"}      = $min_coord;
             $long_AH[$lidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
             $long_AH[$lidx]{"output"}        = $cur_long_out_str;
+            $fidx2lidx_H{$ftr_idx} = $lidx;
             $lidx++;
 
             if($do_short_ftable) { 
@@ -6848,12 +6850,13 @@ sub output_feature_tbl_all_sequences {
               $short_AH[$sidx]{"mincoord"}      = $min_coord;
               $short_AH[$sidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
               $short_AH[$sidx]{"output"}        = $cur_short_out_str;
+              $fidx2sidx_H{$ftr_idx} = $sidx;
               $sidx++;
             }
           }
         } # end of if(! $ftr_nop_error_flag) { 
       }
-      else { # not a multifeature cds-mp 
+      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # not a multifeature cds-mp but annotated by models
         # if this feature is of annot_type 'model' determine if all models for it have no prediction or not
         $all_mdl_nop_error_flag = 0;
         $first_mdl_idx_w_pred = -1;
@@ -6925,6 +6928,7 @@ sub output_feature_tbl_all_sequences {
           $long_AH[$lidx]{"mincoord"}      = $min_coord;
           $long_AH[$lidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
           $long_AH[$lidx]{"output"}        = $cur_long_out_str;
+          $fidx2lidx_H{$ftr_idx} = $lidx;
           $lidx++;
           
           if($do_short_ftable) { 
@@ -6933,10 +6937,36 @@ sub output_feature_tbl_all_sequences {
             $short_AH[$sidx]{"mincoord"}      = $min_coord;
             $short_AH[$sidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
             $short_AH[$sidx]{"output"}        = $cur_short_out_str;
+            $fidx2sidx_H{$ftr_idx} = $sidx;
             $sidx++;
           }
         } # end of if(! $all_mdl_nop_error_flag)
-      }  # end of 'else' entered if feature is not a multifeature cds-mp
+      }  # end of 'else' entered if feature is not a multifeature cds-mp but is annotated by models
+      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") { # duplicate feature
+        my $src_idx = $ftr_info_HAR->{"source_idx"}[$ftr_idx];
+        if($src_idx == -1) {
+          DNAORG_FAIL("ERROR in $sub_name, feature index $ftr_idx has annot_type of duplicate, but has source_idx of -1", 1, $ofile_info_HHR->{"FH"});
+        }
+        if(exists $fidx2lidx_H{$src_idx}) {
+          my $src_lidx = $fidx2lidx_H{$src_idx};
+          %{$long_AH[$lidx]} = ();
+          foreach my $key (sort keys (%{$long_AH[$src_lidx]})) {
+            $long_AH[$lidx]{$key} = $long_HA[$src_lidx]{$key};
+          }
+          $fidx2lidx_H{$ftr_idx} = $lidx;
+          $lidx++;
+        }
+        if($do_short_ftable) { 
+          if(exists $fidx2sidx_H{$src_idx}) {
+          my $src_sidx = $fidx2sidx_H{$src_idx};
+          %{$short_AH[$sidx]} = ();
+          foreach my $key (sort keys (%{$short_AH[$src_sidx]})) {
+            $short_AH[$sidx]{$key} = $short_HA[$src_sidx]{$key};
+          }
+          $fidx2sidx_H{$ftr_idx} = $sidx;
+          $sidx++;
+        }
+      }
     } # end of 'for(my $ftr_idx'      
 
     # 3' UTR would go here, see commit e443e96 for example (I abandoned 3' UTRs after that commit)
