@@ -310,12 +310,16 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #              "type"        values are one of: "cds-notmp", "cds-mp", "mp", 'xfeat', or 'dfeat'
 #              "type_idx"    values are indices of each feature for its type
 #                            so a '2' means it's the 2nd of its type.
-#              "annot_type": annotation type, either "model" or "multifeature",
+#              "annot_type": annotation type, either "model", "multifeature", or "duplicate"
 #                            "model": a homology model's prediction annotates 
 #                            these features
 #                            "multifeature": derived from multiple "model" annot_type
 #                            features, these are usually type: cds-mp, a CDS comprised
 #                            of mature peptides.
+#                            "duplicate": the annotation of this feature is copied from 
+#                            another. Example is a 'gene' that is a copy of a 'CDS'.
+#                            The feature that is the source to copy is stored in the
+#                            "source_idx" key.
 #               "primary_children_ftr_str": for features with annot_type eq "multifeature",
 #                            string of feature indices that are the primary children of this
 #                            feature (when the primary children are concatenated they make up
@@ -334,6 +338,8 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #               "parent_ftr": index of parent feature for 'mp' types, this is the feature
 #                            index of the annot_type eq "multifeature" of which the current
 #                            feature is a child.
+#               "source_idx": if "annot_type" is "duplicate", the index of the feature that
+#                             that is the source to copy for this feature's annotation.
 #
 # Arguments:
 #   $nmp:              number of mature peptides, may be 0

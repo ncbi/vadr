@@ -5416,94 +5416,92 @@ sub output_tbl_get_headings {
     #####################################################################################
     if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
        ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-      if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
-        $width = 6 + 1 + 6 + 1 + 6; #20
-        $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int($width-length($ftr_out_short)/2), " ", $FH_HR));
-        $exp_tok1 = "CDS(MP) #<i>";
-        $tok2 = sprintf("  %s", $ftr_out_product); 
-        $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
-        $tok4 = sprintf("  %8s", sprintf("%s", "start"));
-        $tok5 = sprintf("  %8s", "--------");
-
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        $tok4 = sprintf(" %8s", "stop");
-        $tok5 = sprintf(" %8s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop  position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        $tok4 = sprintf(" %6s", "length");
-        $tok5 = sprintf(" %6s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "length of CDS(MP) #<i> (\"?\" if any of the mat_peptides that comprise this CDS are not predicted)", $FH_HR);
-        }
-
-        $tok4 = sprintf(" %6s", "startc");
-        $tok5 = sprintf(" %6s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start codon of CDS(MP) #<i> (\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        $tok4 = sprintf(" %6s", "stopc");
-        $tok5 = sprintf(" %6s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop codon of CDS(MP) #<i> (\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        if($do_ss3) { 
-          $tok4 = sprintf(" %3s", "ss3");
-          $tok5 = sprintf(" %3s", "---");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-          if($do_multi_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, '!' if not,", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  and '?' if first mat_peptide for this CDS is not predicted", $FH_HR);          
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, '!' if not,", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                      and '?' if final mat_peptide for this CDS is not predicted", $FH_HR);      
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, '!' if it is not a", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  multiple of 3, and '?' if any of the mat_peptides that comprise it are not predicted.", $FH_HR);
-          }
-        }
-        
-        $tok4 = sprintf(" %6s", "PF");
-        $tok5 = sprintf(" %6s", "---");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first mat_peptide", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after the end of its final mat_peptide", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of the mat_peptides that comprise it are adjacent", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-          if($nmultifeature == 1) { 
-            push(@pf_text_A, sprintf("P/F character %d pertains to the lone CDS.", $pf_idx));
-          }
-          else {
-            push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nmultifeature-1, $nmultifeature));
-          }
-          $pf_idx += $nmultifeature;
-        }
-        $do_multi_explanation = 0;
+      $width = 6 + 1 + 6 + 1 + 6; #20
+      $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int($width-length($ftr_out_short)/2), " ", $FH_HR));
+      $exp_tok1 = "CDS(MP) #<i>";
+      $tok2 = sprintf("  %s", $ftr_out_product); 
+      $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
+      $tok4 = sprintf("  %8s", sprintf("%s", "start"));
+      $tok5 = sprintf("  %8s", "--------");
+      
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
       }
+      
+      $tok4 = sprintf(" %8s", "stop");
+      $tok5 = sprintf(" %8s", "------");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop  position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
+      }
+      
+      $tok4 = sprintf(" %6s", "length");
+      $tok5 = sprintf(" %6s", "------");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "length of CDS(MP) #<i> (\"?\" if any of the mat_peptides that comprise this CDS are not predicted)", $FH_HR);
+      }
+      
+      $tok4 = sprintf(" %6s", "startc");
+      $tok5 = sprintf(" %6s", "------");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start codon of CDS(MP) #<i> (\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
+      }
+      
+      $tok4 = sprintf(" %6s", "stopc");
+      $tok5 = sprintf(" %6s", "------");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop codon of CDS(MP) #<i> (\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
+      }
+      
+      if($do_ss3) { 
+        $tok4 = sprintf(" %3s", "ss3");
+        $tok5 = sprintf(" %3s", "---");
+        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+        if($do_multi_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, '!' if not,", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  and '?' if first mat_peptide for this CDS is not predicted", $FH_HR);          
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, '!' if not,", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                      and '?' if final mat_peptide for this CDS is not predicted", $FH_HR);      
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, '!' if it is not a", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  multiple of 3, and '?' if any of the mat_peptides that comprise it are not predicted.", $FH_HR);
+        }
+      }
+      
+      $tok4 = sprintf(" %6s", "PF");
+      $tok5 = sprintf(" %6s", "---");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first mat_peptide", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after the end of its final mat_peptide", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of the mat_peptides that comprise it are adjacent", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+        if($nmultifeature == 1) { 
+          push(@pf_text_A, sprintf("P/F character %d pertains to the lone CDS.", $pf_idx));
+        }
+        else {
+          push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nmultifeature-1, $nmultifeature));
+        }
+        $pf_idx += $nmultifeature;
+      }
+      $do_multi_explanation = 0;
     } # end of 'if' entered if feature is a multifeature cds-mp feature
   
     #############################################
     # block that handles 'annot_type' eq "model"
     # features, these are cds-notmp and mp types
     #############################################
-    else { 
+    elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
       for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
         $width += 18;
         my $mdl_exon_idx = $mdl_info_HAR->{"map_exon"}[$mdl_idx];
@@ -5752,7 +5750,25 @@ sub output_tbl_get_headings {
         } # end of 'if($mdl_is_final_AR->[$mdl_idx])'
         $do_model_explanation = 0; # once we see the final exon of the first CDS, we don't need to print CDS explanations anymore
       } # end of 'for(my $mdl_idx)'
-    } # end of 'else' entered if we're not a multifeature cds-mp feature
+    } # end of 'else' entered if we're not a multifeature cds-mp feature but do have annot_type eq 'model'
+    ################################################
+    # block that handles 'annot_type' eq "duplicate"
+    ################################################
+    elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") { 
+      $width = 6 + 1 + 6 + 1 + 6; #20
+      $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int($width-length($ftr_out_short)/2), " ", $FH_HR));
+      $exp_tok1 = $ftr_out_short;
+      $tok2 = sprintf("  %s", $ftr_out_product); 
+      $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
+      $tok4 = sprintf("  %8s", sprintf("%s", "start"));
+      $tok5 = sprintf("  %8s", "--------");
+      
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      
+      $tok4 = sprintf(" %8s", "stop");
+      $tok5 = sprintf(" %8s", "------");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+    } # end of block that handles 'annot_type' eq 'duplicate'
   } # end of 'for(my $ftr_idx)'
   
   # create columns for 3'UTR, if $do_matpept:
@@ -6221,7 +6237,7 @@ sub output_tbl_all_sequences {
       # block that handles 'annot_type' eq "model"
       # features, these are cds-notmp and mp types
       #############################################
-      else { # not a multifeature cds-mp 
+      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
         for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
           my $is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx]; # is this the first model for feature $ftr_idx?
           my $is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx]; # is this the final model for feature $ftr_idx?
@@ -6372,7 +6388,28 @@ sub output_tbl_all_sequences {
             }
           }
         } # end of 'for(my $mdl_idx'
-      } # end of 'else' entered if feature is not a multifeature cds-mp
+      } # end of 'elsif($ftr_info_HAR->{"annot_type"} eq "model") {' entered if feature is not a multifeature cds-mp but has annot_type == "model"
+      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") {
+        my $src_idx = $ftr_info_HAR->{"source_idx"}[$ftr_idx];
+        if($src_idx == -1) {
+          DNAORG_FAIL("ERROR in $sub_name, feature index $ftr_idx has annot_type of duplicate, but has source_idx of -1", 1, $ofile_info_HHR->{"FH"});
+        }
+        my $start_pos = "-";
+        my $stop_pos  = "-";
+        if(($ftr_info_HAR->{"annot_type"}[$src_idx] eq "multifeature") && 
+           ($ftr_info_HAR->{"type"}[$src_idx]       eq "cds-mp")) {
+          $start_pos = $ftr_results_AAHR->[$src_idx][$seq_dxi]->{"out_start"};
+          $stop_pos  = $ftr_results_AAHR->[$src_idx][$seq_dxi]->{"out_stop"};
+        }
+        elsif($ftr_info_HAR->{"type"}[$src_idx] eq "model") {
+          my $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
+          my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+          $start_pos = $mdl_results_HR->{"out_start"};
+          $stop_pos  = $mdl_results_HR->{"out_stop"};
+        }
+        push(@cur_out_A, sprintf("  %8s ", $start_pos)); # start position
+        push(@cur_out_A, sprintf("%8s",    $stop_pos));  # stop position
+      }        
     } # end of 'for(my $ftr_idx'      
 
     # 3' UTR, if nec
