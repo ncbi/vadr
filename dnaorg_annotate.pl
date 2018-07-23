@@ -753,9 +753,9 @@ if(opt_IsUsed("--dfeat", \%opt_HH)) {
   $do_dfeat = 1;
   my $dfeat_str = opt_Get("--dfeat", \%opt_HH);
   foreach my $dfeat (split(",", $dfeat_str)) { 
-    %{$dfeat_tbl_HHHA{$xfeat}} = ();
-    if(exists $xfeat_tbl_HHHA{$xfeat}) {
-      DNAORG_FAIL("ERROR, with --xfeat <s1> and --dfeat <s2>, no qualifier names can be in common between <s1> and <s2>, found $xfeat", 1, $ofile_info_HH{"FH"});
+    %{$dfeat_tbl_HHHA{$dfeat}} = ();
+    if(exists $xfeat_tbl_HHHA{$dfeat}) {
+      DNAORG_FAIL("ERROR, with --xfeat <s1> and --dfeat <s2>, no qualifier names can be in common between <s1> and <s2>, found $dfeat", 1, $ofile_info_HH{"FH"});
     }
   }
 }
