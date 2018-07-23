@@ -2425,9 +2425,9 @@ sub wrapper_esl_epn_translate_startstop {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ftr_hit_fafile            = $ftr_info_HAR->{$ftr_info_fa_file_key}[$ftr_idx];
     my $esl_epn_translate_outfile = $ftr_info_HAR->{$ftr_info_out_file_key}[$ftr_idx];
-  
+    
     if($ftr_hit_fafile ne "/dev/null") { # if this is set to /dev/null we know it's not supposed to exist, so we skip this feature
-
+      
       # deal with alternative starts here
       my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
       
@@ -6398,14 +6398,14 @@ sub output_tbl_all_sequences {
         my $stop_pos  = "-";
         if(($ftr_info_HAR->{"annot_type"}[$src_idx] eq "multifeature") && 
            ($ftr_info_HAR->{"type"}[$src_idx]       eq "cds-mp")) {
-          $start_pos = $ftr_results_AAHR->[$src_idx][$seq_dxi]->{"out_start"};
-          $stop_pos  = $ftr_results_AAHR->[$src_idx][$seq_dxi]->{"out_stop"};
+          $start_pos = $ftr_results_AAHR->[$src_idx][$seq_idx]->{"out_start"};
+          $stop_pos  = $ftr_results_AAHR->[$src_idx][$seq_idx]->{"out_stop"};
         }
         elsif($ftr_info_HAR->{"type"}[$src_idx] eq "model") {
           my $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
           my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
-          $start_pos = $mdl_results_HR->{"out_start"};
-          $stop_pos  = $mdl_results_HR->{"out_stop"};
+          $start_pos = $mdl_results_AAHR->[$src_idx][$seq_idx]->{"out_start"};
+          $stop_pos  = $mdl_results_AAHR->[$src_idx][$seq_idx]->{"out_stop"};
         }
         push(@cur_out_A, sprintf("  %8s ", $start_pos)); # start position
         push(@cur_out_A, sprintf("%8s",    $stop_pos));  # stop position
@@ -6678,6 +6678,7 @@ sub output_feature_tbl_all_sequences {
   my $sftbl_FH = $FH_HR->{"sftbl"};
   my $lftbl_FH = $FH_HR->{"lftbl"};
   my $cur_out_str; # current output string to print
+  my $cur_coords_str; # current output string of only coordinates needed to deal with duplicate features
   my $cur_long_out_str; # current output string to print to long file
   my $cur_short_out_str; # current output string to print to short file
   my $nmdl = validateModelInfoHashIsComplete    ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
@@ -6727,8 +6728,8 @@ sub output_feature_tbl_all_sequences {
     my $min_coord = -1;     # minimum coord in this feature
     my $cur_min_coord = -1; # minimum coord in this segment
     my $i;
-    my $fidx2sidx_H = (); # key is feature index $fidx, value is $sidx index in @short_AH that $fidx corresponds to
-    my $fidx2lidx_H = (); # key is feature index $fidx, value is $lidx index in @long_AH that $fidx corresponds to
+    my %fidx2sidx_H = (); # key is feature index $fidx, value is $sidx index in @short_AH that $fidx corresponds to
+    my %fidx2lidx_H = (); # key is feature index $fidx, value is $lidx index in @long_AH that $fidx corresponds to
     
     $cur_out_str = (">Feature $accn_name\n");
     print $sftbl_FH $cur_out_str;
@@ -6749,6 +6750,7 @@ sub output_feature_tbl_all_sequences {
     # go through each feature and output information on it
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       $cur_out_str       = "";
+      $cur_coords_str    = "";
       $cur_short_out_str = "";
       $cur_long_out_str  = "";
 
@@ -6812,6 +6814,9 @@ sub output_feature_tbl_all_sequences {
             $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
                                     $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
                                     $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"}, $feature_type); 
+            $cur_coords_str .= sprintf("%s%d\t%s%d\n", 
+                                       $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
+                                       $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"});
             $min_coord = ($ftr_results_HR->{"ftbl_out_start"} < $ftr_results_HR->{"ftbl_out_stop"}) ? $ftr_results_HR->{"ftbl_out_start"} : $ftr_results_HR->{"ftbl_out_stop"};
             if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
               foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
@@ -6837,19 +6842,23 @@ sub output_feature_tbl_all_sequences {
 
             # now push that to the output hashes
             %{$long_AH[$lidx]} = ();
-            $long_AH[$lidx]{"carrot"}        = $do_start_carrot;
-            $long_AH[$lidx]{"mincoord"}      = $min_coord;
-            $long_AH[$lidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
-            $long_AH[$lidx]{"output"}        = $cur_long_out_str;
+            $long_AH[$lidx]{"carrot"}          = $do_start_carrot;
+            $long_AH[$lidx]{"mincoord"}        = $min_coord;
+            $long_AH[$lidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+            $long_AH[$lidx]{"output"}          = $cur_long_out_str;
+            $long_AH[$lidx]{"coords"}          = $cur_coords_str;
+            $long_AH[$lidx]{"do_misc_feature"} = $do_misc_feature;
             $fidx2lidx_H{$ftr_idx} = $lidx;
             $lidx++;
 
             if($do_short_ftable) { 
               %{$short_AH[$sidx]} = ();
-              $short_AH[$sidx]{"carrot"}        = $do_start_carrot;
-              $short_AH[$sidx]{"mincoord"}      = $min_coord;
-              $short_AH[$sidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
-              $short_AH[$sidx]{"output"}        = $cur_short_out_str;
+              $short_AH[$sidx]{"carrot"}          = $do_start_carrot;
+              $short_AH[$sidx]{"mincoord"}        = $min_coord;
+              $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+              $short_AH[$sidx]{"output"}          = $cur_short_out_str;
+              $short_AH[$sidx]{"coords"}    = $cur_coords_str;
+              $short_AH[$sidx]{"do_misc_feature"} = $do_misc_feature;
               $fidx2sidx_H{$ftr_idx} = $sidx;
               $sidx++;
             }
@@ -6891,11 +6900,17 @@ sub output_feature_tbl_all_sequences {
                 $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
                                         $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
                                         ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"}, $feature_type); 
+                $cur_coords_str .= sprintf("%s%d\t%s%d\n", 
+                                           $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
+                                           ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
               }
               else { 
                 $cur_out_str .= sprintf("%d\t%s%d\n", 
                                         $mdl_results_HR->{"out_start"}, 
                                         ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
+                $cur_coords_str .= sprintf("%d\t%s%d\n", 
+                                           $mdl_results_HR->{"out_start"}, 
+                                           ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
               }
             }
           }
@@ -6924,19 +6939,23 @@ sub output_feature_tbl_all_sequences {
 
           # now push that to the output hashes
           %{$long_AH[$lidx]} = ();
-          $long_AH[$lidx]{"carrot"}        = $do_start_carrot;
-          $long_AH[$lidx]{"mincoord"}      = $min_coord;
-          $long_AH[$lidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
-          $long_AH[$lidx]{"output"}        = $cur_long_out_str;
+          $long_AH[$lidx]{"carrot"}          = $do_start_carrot;
+          $long_AH[$lidx]{"mincoord"}        = $min_coord;
+          $long_AH[$lidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+          $long_AH[$lidx]{"output"}          = $cur_long_out_str;
+          $long_AH[$lidx]{"coords"}          = $cur_coords_str;
+          $long_AH[$lidx]{"do_misc_feature"} = $do_misc_feature;
           $fidx2lidx_H{$ftr_idx} = $lidx;
           $lidx++;
-          
+
           if($do_short_ftable) { 
             %{$short_AH[$sidx]} = ();
-            $short_AH[$sidx]{"carrot"}        = $do_start_carrot;
-            $short_AH[$sidx]{"mincoord"}      = $min_coord;
-            $short_AH[$sidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
-            $short_AH[$sidx]{"output"}        = $cur_short_out_str;
+            $short_AH[$sidx]{"carrot"}          = $do_start_carrot;
+            $short_AH[$sidx]{"mincoord"}        = $min_coord;
+            $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+            $short_AH[$sidx]{"output"}          = $cur_short_out_str;
+            $short_AH[$sidx]{"coords"}          = $cur_coords_str;
+            $short_AH[$sidx]{"do_misc_feature"} = $do_misc_feature;
             $fidx2sidx_H{$ftr_idx} = $sidx;
             $sidx++;
           }
@@ -6951,20 +6970,61 @@ sub output_feature_tbl_all_sequences {
           my $src_lidx = $fidx2lidx_H{$src_idx};
           %{$long_AH[$lidx]} = ();
           foreach my $key (sort keys (%{$long_AH[$src_lidx]})) {
-            $long_AH[$lidx]{$key} = $long_HA[$src_lidx]{$key};
+            $long_AH[$lidx]{$key} = $long_AH[$src_lidx]{$key};
           }
           $fidx2lidx_H{$ftr_idx} = $lidx;
+          # use "coords" value to rewrite "output" value
+          $cur_out_str = "";
+          my @coords_A = split("\n", $long_AH[$src_lidx]{"coords"});
+          for(my $cidx = 0; $cidx < scalar(@coords_A); $cidx++) { 
+            $cur_out_str .= $coords_A[$cidx];
+            if($cidx == 0) { $cur_out_str .= "\t" . $feature_type; }
+            $cur_out_str .= "\n";
+          }
+          if(! $long_AH[$src_lidx]{"do_misc_feature"}) { 
+            foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                foreach $qval (@qval_A) { 
+                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+                }
+              }
+            }
+          }
+          $long_AH[$lidx]{"output"} = $cur_out_str;
           $lidx++;
         }
         if($do_short_ftable) { 
           if(exists $fidx2sidx_H{$src_idx}) {
-          my $src_sidx = $fidx2sidx_H{$src_idx};
-          %{$short_AH[$sidx]} = ();
-          foreach my $key (sort keys (%{$short_AH[$src_sidx]})) {
-            $short_AH[$sidx]{$key} = $short_HA[$src_sidx]{$key};
+            my $src_sidx = $fidx2sidx_H{$src_idx};
+            %{$short_AH[$sidx]} = ();
+            foreach my $key (sort keys (%{$short_AH[$src_sidx]})) {
+              $short_AH[$sidx]{$key} = $short_AH[$src_sidx]{$key};
+            }
+            $fidx2sidx_H{$ftr_idx} = $sidx;
+            # use "coords" value to rewrite "output" value
+            $cur_out_str = "";
+            my @coords_A = split("\n", $short_AH[$src_sidx]{"coords"});
+            for(my $cidx = 0; $cidx < scalar(@coords_A); $cidx++) { 
+              $cur_out_str .= $coords_A[$cidx];
+              if($cidx == 0) { $cur_out_str .= "\t" . $feature_type; }
+              $cur_out_str .= "\n";
+            }
+            if(! $short_AH[$src_sidx]{"do_misc_feature"}) { 
+              foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+                if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                  $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                  @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                  foreach $qval (@qval_A) { 
+                    $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+                  }
+                }
+              }
+            }
+            $short_AH[$sidx]{"output"} = $cur_out_str;
+            $sidx++;
           }
-          $fidx2sidx_H{$ftr_idx} = $sidx;
-          $sidx++;
         }
       }
     } # end of 'for(my $ftr_idx'      
@@ -8410,8 +8470,15 @@ sub define_model_and_feature_output_file_names {
   }
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    foreach my $file_type (@both_file_types_A, @ftr_only_file_types_A) { 
-      $ftr_info_HAR->{$file_type}[$ftr_idx] = $out_root . "." . $ftr_info_HAR->{"filename_root"}[$ftr_idx] . "." . $file_type;
+    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "duplicate") { 
+      foreach my $file_type (@both_file_types_A, @ftr_only_file_types_A) { 
+        $ftr_info_HAR->{$file_type}[$ftr_idx] = $out_root . "." . $ftr_info_HAR->{"filename_root"}[$ftr_idx] . "." . $file_type;
+      }
+    }
+    else { 
+      foreach my $file_type (@both_file_types_A, @ftr_only_file_types_A) { 
+        $ftr_info_HAR->{$file_type}[$ftr_idx] = "/dev/null";
+      }
     }
   }
 
