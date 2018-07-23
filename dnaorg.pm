@@ -338,8 +338,6 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #               "parent_ftr": index of parent feature for 'mp' types, this is the feature
 #                            index of the annot_type eq "multifeature" of which the current
 #                            feature is a child.
-#               "source_idx": if "annot_type" is "duplicate", the index of the feature that
-#                             that is the source to copy for this feature's annotation.
 #
 # Arguments:
 #   $nmp:              number of mature peptides, may be 0
@@ -554,12 +552,14 @@ sub getNumFeaturesAnnotatedByModels {
 #             arrays in the feature info hash of arrays (%{$ftr_info_HAR})
 #             using $cds_tbl_HHAR and possibly $mp_tbl_HHAR:
 #
-#             "ref_strand":   strand of this feature in the reference
-#             "ref_len":      length (in nt) of this feature in the reference
-#             "ref_coords":   coordinates for this feature in the reference in NCBI format
-#             "out_product":  'product' value or type_ftable value (if xfeat or dfeat) for this feature, in NCBI annotation
-#             "type_fname":   string for naming output files related to this feature, e.g. "mp", "cds", "$xfeat" or "$dfeat"
-#             "type_ftable":  output feature table feature name, e.g. "mat_peptide", "CDS", "$xfeat" or "$dfeat"
+#             "ref_strand":    strand of this feature in the reference
+#             "ref_len":       length (in nt) of this feature in the reference
+#             "ref_coords":    coordinates for this feature in the reference in NCBI format
+#             "out_product":   'product' value or type_ftable value (if xfeat or dfeat) for this feature, in NCBI annotation
+#             "out_gene":      'gene' value or type_ftable value (if xfeat or dfeat) for this feature, in NCBI annotation
+#             "out_exception": 'gene' value or type_ftable value (if xfeat or dfeat) for this feature, in NCBI annotation
+#             "type_fname":    string for naming output files related to this feature, e.g. "mp", "cds", "$xfeat" or "$dfeat"
+#             "type_ftable":   output feature table feature name, e.g. "mat_peptide", "CDS", "$xfeat" or "$dfeat"
 # 
 # Arguments:
 #   $cds_tbl_HHAR:   ref to CDS hash of hash of arrays, PRE-FILLED
@@ -583,13 +583,14 @@ sub getReferenceFeatureInfo {
   my ($cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $ftr_info_HAR, $ref_accn, $FH_HR) = @_;
 
   # initialize the arrays we are about to fill
-  @{$ftr_info_HAR->{"ref_strand"}}  = ();
-  @{$ftr_info_HAR->{"ref_len"}}     = ();
-  @{$ftr_info_HAR->{"ref_coords"}}  = ();
-  @{$ftr_info_HAR->{"out_product"}} = ();
-  @{$ftr_info_HAR->{"out_gene"}}    = ();
-  @{$ftr_info_HAR->{"type_fname"}}  = ();
-  @{$ftr_info_HAR->{"type_ftable"}} = ();
+  @{$ftr_info_HAR->{"ref_strand"}}    = ();
+  @{$ftr_info_HAR->{"ref_len"}}       = ();
+  @{$ftr_info_HAR->{"ref_coords"}}    = ();
+  @{$ftr_info_HAR->{"out_product"}}   = ();
+  @{$ftr_info_HAR->{"out_gene"}}      = ();
+  @{$ftr_info_HAR->{"out_exception"}} = ();
+  @{$ftr_info_HAR->{"type_fname"}}    = ();
+  @{$ftr_info_HAR->{"type_ftable"}}   = ();
 
   my $do_matpept = (defined $mp_tbl_HHAR)     ? 1 : 0;
   my $do_xfeat   = (defined $xfeat_tbl_HHHAR) ? 1 : 0;
@@ -602,16 +603,18 @@ sub getReferenceFeatureInfo {
   my $ref_dfeat_strand_cur_str  = "";
   my $ref_dfeat_strand_full_str = "";
   my $i; # ctr;
-  my $nadded_strand;  # number of elements just added to @{$ftr_info_HAR->{"strand"}}
-  my $nadded_gene;    # number of elements just added to @{$ftr_info_HAR->{"gene"}}
-  my $nadded_product; # number of elements just added to @{$ftr_info_HAR->{"product"}}
+  my $nadded_strand;    # number of elements just added to @{$ftr_info_HAR->{"strand"}}
+  my $nadded_product;   # number of elements just added to @{$ftr_info_HAR->{"out_product"}}
+  my $nadded_gene;      # number of elements just added to @{$ftr_info_HAR->{"out_gene"}}
+  my $nadded_exception; # number of elements just added to @{$ftr_info_HAR->{"out_exception"}}
 
   if($do_matpept) { 
     (undef, undef, undef, undef, undef, $ref_mp_strand_str) = getStrandStats($mp_tbl_HHAR, $ref_accn, $FH_HR);
     getLengthsAndCoords(\%{$mp_tbl_HHAR->{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-    $nadded_product = getQualifierValues($mp_tbl_HHAR, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-    $nadded_gene    = getQualifierValues($mp_tbl_HHAR, $ref_accn, "gene",    \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
-    $nadded_strand  = length($ref_mp_strand_str);
+    $nadded_product   = getQualifierValues($mp_tbl_HHAR, $ref_accn, "product",   \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
+    $nadded_gene      = getQualifierValues($mp_tbl_HHAR, $ref_accn, "gene",      \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
+    $nadded_exception = getQualifierValues($mp_tbl_HHAR, $ref_accn, "exception", \@{$ftr_info_HAR->{"out_exception"}}, $FH_HR);
+    $nadded_strand    = length($ref_mp_strand_str);
     for($i = 0; $i < $nadded_strand; $i++) { 
       push(@{$ftr_info_HAR->{"type_fname"}},  "mp"); 
       push(@{$ftr_info_HAR->{"type_ftable"}}, "mat_peptide"); 
@@ -622,18 +625,27 @@ sub getReferenceFeatureInfo {
     if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
       DNAORG_FAIL("ERROR in $sub_name, for mature peptides, added gene info for $nadded_gene mature peptides (should be 0 or $nadded_strand)", 1, $FH_HR);
     }
+    if(($nadded_exception != 0) && ($nadded_exception != $nadded_strand)) {
+      DNAORG_FAIL("ERROR in $sub_name, for mature peptides, added exception info for $nadded_exception mature peptides (should be 0 or $nadded_strand)", 1, $FH_HR);
+    }
     if($nadded_gene == 0) { 
       for($i = 0; $i < $nadded_strand; $i++) { 
         push(@{$ftr_info_HAR->{"out_gene"}}, "");
+      }
+    }
+    if($nadded_exception == 0) { 
+      for($i = 0; $i < $nadded_strand; $i++) { 
+        push(@{$ftr_info_HAR->{"out_exception"}}, "");
       }
     }
   }
 
   (undef, undef, undef, undef, undef, $ref_cds_strand_str) = getStrandStats($cds_tbl_HHAR, $ref_accn, $FH_HR);
   getLengthsAndCoords(\%{$cds_tbl_HHAR->{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-  $nadded_product = getQualifierValues($cds_tbl_HHAR, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-  $nadded_gene    = getQualifierValues($cds_tbl_HHAR, $ref_accn, "gene",    \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
-  $nadded_strand  = length($ref_cds_strand_str);
+  $nadded_product   = getQualifierValues($cds_tbl_HHAR, $ref_accn, "product",   \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
+  $nadded_gene      = getQualifierValues($cds_tbl_HHAR, $ref_accn, "gene",      \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
+  $nadded_exception = getQualifierValues($cds_tbl_HHAR, $ref_accn, "exception", \@{$ftr_info_HAR->{"out_exception"}}, $FH_HR);
+  $nadded_strand    = length($ref_cds_strand_str);
   for($i = 0; $i < $nadded_strand; $i++) { 
     push(@{$ftr_info_HAR->{"type_fname"}},  "cds");
     push(@{$ftr_info_HAR->{"type_ftable"}}, "CDS");
@@ -644,9 +656,17 @@ sub getReferenceFeatureInfo {
   if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
     DNAORG_FAIL("ERROR in $sub_name, for CDS, added gene info for $nadded_gene CDS (should be 0 or $nadded_strand)", 1, $FH_HR);
   }
+  if(($nadded_exception != 0) && ($nadded_exception != $nadded_strand)) {
+    DNAORG_FAIL("ERROR in $sub_name, for CDS, added exception gene info for $nadded_exception CDS (should be 0 or $nadded_strand)", 1, $FH_HR);
+  }
   if($nadded_gene == 0) { 
     for($i = 0; $i < $nadded_strand; $i++) { 
       push(@{$ftr_info_HAR->{"out_gene"}}, "");
+    }
+  }
+  if($nadded_exception == 0) { 
+    for($i = 0; $i < $nadded_strand; $i++) { 
+      push(@{$ftr_info_HAR->{"out_exception"}}, "");
     }
   }
 
@@ -655,9 +675,10 @@ sub getReferenceFeatureInfo {
       (undef, undef, undef, undef, undef, $ref_xfeat_strand_cur_str) = getStrandStats(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, $FH_HR);
       $ref_xfeat_strand_full_str .= $ref_xfeat_strand_cur_str;
       getLengthsAndCoords(\%{$xfeat_tbl_HHHAR->{$xfeat}{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-      $nadded_product = getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-      $nadded_gene    = getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, "gene",    \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
-      $nadded_strand  = length($ref_xfeat_strand_cur_str);
+      $nadded_product   = getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, "product",   \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
+      $nadded_gene      = getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, "gene",      \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
+      $nadded_exception = getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, "exception", \@{$ftr_info_HAR->{"out_exception"}}, $FH_HR);
+      $nadded_strand    = length($ref_xfeat_strand_cur_str);
       for($i = 0; $i < $nadded_strand; $i++) { 
         push(@{$ftr_info_HAR->{"type_fname"}},  $xfeat);
         push(@{$ftr_info_HAR->{"type_ftable"}}, $xfeat);
@@ -671,11 +692,19 @@ sub getReferenceFeatureInfo {
         }
       }
       if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
-        DNAORG_FAIL("ERROR in $sub_name, for $xfeat features, added gene info for $nadded_gene mature peptides (should be 0 or $nadded_strand)", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, for $xfeat features, added gene info for $nadded_gene features (should be 0 or $nadded_strand)", 1, $FH_HR);
+      }
+      if(($nadded_exception != 0) && ($nadded_exception != $nadded_strand)) {
+        DNAORG_FAIL("ERROR in $sub_name, for $xfeat features, added exception info for $nadded_exception features (should be 0 or $nadded_strand)", 1, $FH_HR);
       }
       if($nadded_gene == 0) { 
         for($i = 0; $i < $nadded_strand; $i++) { 
           push(@{$ftr_info_HAR->{"out_gene"}}, "");
+        }
+      }
+      if($nadded_exception == 0) { 
+        for($i = 0; $i < $nadded_strand; $i++) { 
+          push(@{$ftr_info_HAR->{"out_exception"}}, "");
         }
       }
     }
@@ -686,9 +715,10 @@ sub getReferenceFeatureInfo {
       (undef, undef, undef, undef, undef, $ref_dfeat_strand_cur_str) = getStrandStats(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, $FH_HR);
       $ref_dfeat_strand_full_str .= $ref_dfeat_strand_cur_str;
       getLengthsAndCoords(\%{$dfeat_tbl_HHHAR->{$dfeat}{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-      $nadded_product = getQualifierValues(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, "product", \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-      $nadded_gene    = getQualifierValues(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, "gene",    \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
-      $nadded_strand  = length($ref_dfeat_strand_cur_str);
+      $nadded_product   = getQualifierValues(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, "product",   \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
+      $nadded_gene      = getQualifierValues(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, "gene",      \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
+      $nadded_exception = getQualifierValues(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, "exception", \@{$ftr_info_HAR->{"out_exception"}}, $FH_HR);
+      $nadded_strand    = length($ref_dfeat_strand_cur_str);
       for($i = 0; $i < $nadded_strand; $i++) { 
         push(@{$ftr_info_HAR->{"type_fname"}},  $dfeat);
         push(@{$ftr_info_HAR->{"type_ftable"}}, $dfeat);
@@ -702,11 +732,19 @@ sub getReferenceFeatureInfo {
         }
       }
       if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
-        DNAORG_FAIL("ERROR in $sub_name, for $dfeat features, added gene info for $nadded_gene mature peptides (should be 0 or $nadded_strand)", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, for $dfeat features, added gene info for $nadded_gene features (should be 0 or $nadded_strand)", 1, $FH_HR);
+      }
+      if(($nadded_exception != 0) && ($nadded_exception != $nadded_strand)) {
+        DNAORG_FAIL("ERROR in $sub_name, for $dfeat features, added exception info for $nadded_exception features (should be 0 or $nadded_strand)", 1, $FH_HR);
       }
       if($nadded_gene == 0) { 
         for($i = 0; $i < $nadded_strand; $i++) { 
           push(@{$ftr_info_HAR->{"out_gene"}}, "");
+        }
+      }
+      if($nadded_exception == 0) { 
+        for($i = 0; $i < $nadded_strand; $i++) { 
+          push(@{$ftr_info_HAR->{"out_exception"}}, "");
         }
       }
     }
@@ -2864,7 +2902,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
 
   # 2) determine reference information for each feature (strand, length, coordinates, product)
   getReferenceFeatureInfo($cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $ftr_info_HAR, $ref_accn, $FH_HR); # $mp_tbl_HHAR may be undefined and that's okay
-  my @reqd_keys_A = ("ref_strand", "ref_len", "ref_coords", "out_product", "type_fname", "type_ftable");
+  my @reqd_keys_A = ("ref_strand", "ref_len", "ref_coords", "out_product", "out_gene", "out_exception", "type_fname", "type_ftable");
   validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_keys_A, $FH_HR);
 
   # 3) determine type of each reference feature ('cds-mp', 'cds-notmp', 'mp', 'xfeat', or 'dfeat')
@@ -5227,8 +5265,9 @@ sub validateExecutableHash {
 #             'Complete' means it has all the expected keys, each of which is an identically sized array.
 #             The expected keys are:
 #                "annot_type":    annotation type:
-#                                 "model":         if this feature's annotation is derived from models (type: 'mp' or 'cds-notmp'
+#                                 "model":        if this feature's annotation is derived from models (type: 'mp' or 'cds-notmp'
 #                                 "multifeature": if this feature's annotation is derived from multiple other features (type: 'cds-mp')
+#                                 "duplicate":    if this feature's annotation is derived by copying data from another (e.g., type: 'gene')
 #                "append_num":    number of nucleotides to append for this model, usually 0, unless this
 #                                 model is the final mature peptide of a CDS, in which case it is usually 3,
 #                                 this informs other parts of the pipeline that we need to append the 3 
@@ -5241,11 +5280,15 @@ sub validateExecutableHash {
 #                "nmodels":       number of models for this feature (e.g. number of exons or segments) for this feature, 
 #                                 0 if 'annotation' eq 'multifeature'
 #                "out_product":   output value: name of product for this feature (e.g. "replication-associated protein")
+#                "out_gene":      output value: name of gene for this feature (e.g. "ORF2")
+#                "out_exception": output value: name of exception for this feature (e.g. "RNA editing")
 #                "out_short":     output value: short name for this feature (e.g. "CDS #4 [1 exon; +]")
 #                "out_tiny":      output value: very short name for this feature (e.g. "CDS#4")
 #                "ref_coords":    coordinates for this feature in the reference
 #                "ref_len":       length of this feature in the reference
 #                "ref_strand":    strand for this feature in the reference
+#                "source_idx":    if "annot_type" is "duplicate", the index of the feature that
+#                                 that is the source to copy for this feature's annotation.
 #                "type":          type of feature: "mp", "cds-notmp", "cds-mp", "xfeat", or "dfeat"
 #                "type_fname":    string for naming output files related to this feature, e.g. "mp", "cds", "$xfeat", or "$dfeat"
 #                "type_ftable":   output feature table feature name, e.g. "mat_peptide", "CDS", "$xfeat", or "$dfeat"
@@ -5275,7 +5318,8 @@ sub validateFeatureInfoHashIsComplete {
   my ($ftr_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
   my @expected_keys_A = ("append_num", "final_mdl", "first_mdl", "annot_type", "nmodels", 
-                         "out_product", "out_tiny", "out_short", "out_tiny", "ref_coords",
+                         "out_product", "out_gene", "out_exception", 
+                         "out_tiny", "out_short", "out_tiny", "ref_coords",
                          "ref_len", "ref_strand", "type", "type_idx", 
                          "parent_ftr", "primary_children_ftr_str", "primary_children_ftr_num", 
                          "all_children_ftr_str", "all_children_ftr_num", "source_idx");
@@ -7960,8 +8004,10 @@ sub runCmscanOrNhmmscan {
 #             convert it into a string for a qualifier name
 #             in a feature table.
 #
-#             Input          Return value
-#             'out_product'  "product"
+#             Input           Return value
+#             'out_product'   "product"
+#             'out_gene'      "gene"
+#             'out_exception' "exception"
 #
 # Arguments:
 #   $in_key:  input key from %ftr_info_HA
@@ -7983,6 +8029,9 @@ sub featureInfoKeyToFeatureTableQualifierName {
   }
   elsif($in_key eq "out_gene") { 
     return "gene";
+  }
+  elsif($in_key eq "out_exception") { 
+    return "exception";
   }
   else { 
     DNAORG_FAIL("ERROR in $sub_name, unrecognized input key string: $in_key.", 1, $FH_HR);
