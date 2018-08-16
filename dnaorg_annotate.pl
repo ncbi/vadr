@@ -6819,7 +6819,7 @@ sub output_feature_tbl_all_sequences {
                                        $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"});
             $min_coord = ($ftr_results_HR->{"ftbl_out_start"} < $ftr_results_HR->{"ftbl_out_stop"}) ? $ftr_results_HR->{"ftbl_out_start"} : $ftr_results_HR->{"ftbl_out_stop"};
             if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
-              foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+              foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
                 if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                   $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
                   @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
@@ -6914,8 +6914,8 @@ sub output_feature_tbl_all_sequences {
               }
             }
           }
-          if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
-            foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+          if(! $do_misc_feature) { # misc_feature's don't get product, gene or exception information output
+            foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
               if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                 $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
                 @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
@@ -6982,7 +6982,7 @@ sub output_feature_tbl_all_sequences {
             $cur_out_str .= "\n";
           }
           if(! $long_AH[$src_lidx]{"do_misc_feature"}) { 
-            foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+            foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
               if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                 $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
                 @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
@@ -7012,7 +7012,7 @@ sub output_feature_tbl_all_sequences {
               $cur_out_str .= "\n";
             }
             if(! $short_AH[$src_sidx]{"do_misc_feature"}) { 
-              foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+              foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
                 if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                   $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
                   @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
