@@ -447,7 +447,7 @@ sub diff_two_files {
     }
   }
   else { 
-    $conclusion = ($out_file_exists) ? "FAIL [output file does not exist]" : "FAIL [output file exists but is empty]";
+    $conclusion = ($out_file_exists) ? "FAIL [output file exists but is empty]" : "FAIL [output file does not exist]";
   }
 
   outputString($FH_HR->{"log"}, 1, "$conclusion\n");
@@ -502,11 +502,14 @@ sub compare_two_sqtable_files {
 
   my %exp_seq_lidx_H = (); # key: sequence name, value line index where sequence annotation starts for key in $exp_file
   my @exp_seq_A      = (); # array of all sequence name keys in order in %exp_seq_lidx_H
+  my %exp_seq_H      = (); # key is sequence name, value is index in @exp_seq_A for that sequence
 
   my %out_seq_lidx_H = (); # key: sequence name, value line index where sequence annotation starts for key in $out_file
   my @out_seq_A      = (); # array of all sequence name keys in order in %out_seq_lidx_H
+  my %out_seq_H      = (); # key is sequence name, value is index in @out_seq_A for that sequence
 
   my %seq_exists_H = ();   # key is a sequence name, value is '1' if sequence exists in either @exp_seq_A or @out_seq_A
+  my @seq_order_A  = ();   # all sequences, in order they're added 
 
   my $lidx = 0; # line index
   my $seq;      # a sequence name         
@@ -522,62 +525,72 @@ sub compare_two_sqtable_files {
   my $tot_nseq_note_out_only  = 0; # number of sequences with >=1 note only in the output file (not in the expected file)
   my $tot_nseq_note_exp_only  = 0; # number of sequences with >=1 note only in the expected file (not in the output file)
 
+  my $sidx;
   if($out_file_nonempty) { 
     open(OUT, $out_file) || fileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
     $lidx = 0;
+    $sidx = 0;
     while($out_line = <OUT>) { 
       if($out_line =~ m/^\>/) { 
         $seq = $out_line;
         chomp $seq;
-        push(@out_seq_A, $seq);
+        $out_seq_A[$sidx] = $seq;
+        $out_seq_H{$seq} = $sidx++;
         $out_seq_lidx_H{$seq} = $lidx;
         if(! exists $seq_exists_H{$seq}) { 
           $seq_exists_H{$seq} = 1;
+          push(@seq_order_A, $seq);
         }
       }
       push(@out_line_A, $out_line);
       $lidx++;
     }
     close(OUT);
-
+    
     open(EXP, $exp_file) || fileOpenFailure($exp_file, $sub_name, $!, "reading", $FH_HR);
     $lidx = 0;
+    $sidx = 0;
     while($exp_line = <EXP>) { 
       if($exp_line =~ m/^\>/) { 
         $seq = $exp_line;
         chomp $seq;
-        push(@exp_seq_A, $seq);
+        $exp_seq_A[$sidx] = $seq;
+        $exp_seq_H{$seq} = $sidx++;
         $exp_seq_lidx_H{$seq} = $lidx;
         if(! exists $seq_exists_H{$seq}) { 
           $seq_exists_H{$seq} = 1;
+          push(@seq_order_A, $seq);
         }
       }
       push(@exp_line_A, $exp_line);
       $lidx++;
     }
     close(EXP);
-
-    # make sure all sequences existed in both files
-    foreach $seq (sort keys %seq_exists_H) { 
-      if(! exists $out_seq_lidx_H{$seq}) { 
-        DNAORG_FAIL("ERROR in $sub_name, $seq not in out_seq_lidx_H", 1, $FH_HR);
-      }
-      if(! exists $exp_seq_lidx_H{$seq}) { 
-        DNAORG_FAIL("ERROR in $sub_name, $seq not in exp_seq_lidx_H", 1, $FH_HR);
-      }
-      #printf("HEYA $seq $out_seq_lidx_H{$seq} $exp_seq_lidx_H{$seq}\n");
-    }
-    # make sure all sequences are in the same order in both files
-    $nseq = scalar(@out_seq_A);
-    my $s;
-    for($s = 0; $s < $nseq; $s++) { 
-      if($out_seq_A[$s] ne $exp_seq_A[$s]) { 
-        DNAORG_FAIL("ERROR in $sub_name, $seq not in same order in both files", 1, $FH_HR);
-      }
-      #printf("HEYA $out_seq_A[$s] " . $out_seq_lidx_H{$out_seq_A[$s]} . " " . $exp_seq_lidx_H{$out_seq_A[$s]} . "\n");
-    }
     
     open(DIFFOUT, ">", $diff_file) || fileOpenFailure($diff_file, $sub_name, $!, "writing", $FH_HR);
+
+    # determine which sequences are in both files, and output lines for those that are not here:
+    my @seqs_in_both_A = ();
+    my $s;
+    my $nout_only = 0;
+    my $nexp_only = 0;
+    for($s = 0; $s < scalar(@seq_order_A); $s++) { 
+      $seq = $seq_order_A[$s];
+      if(exists $out_seq_lidx_H{$seq} && exists $exp_seq_lidx_H{$seq}) { 
+        push(@seqs_in_both_A, $seq); 
+      }
+      elsif((exists $out_seq_lidx_H{$seq}) && (! exists $exp_seq_lidx_H{$seq})) { 
+        printf DIFFOUT ("OUT-ONLY-SEQ $seq\n");
+        $nout_only++;
+      }
+      elsif((! exists $out_seq_lidx_H{$seq}) && (exists $exp_seq_lidx_H{$seq})) { 
+        printf DIFFOUT ("EXP-ONLY-SEQ $seq\n");
+        $nexp_only++;
+      }
+    }
+    my $nseqs_in_both = scalar(@seqs_in_both_A);
+    my $nseq_out = scalar(@out_seq_A);
+    my $nseq_exp = scalar(@exp_seq_A);
 
     # for each sequence, compare the annotations
     my $lidx;        # counter over lines
@@ -587,18 +600,22 @@ sub compare_two_sqtable_files {
     my %cur_exp_H = ();    # key: feature line, value: current annotation in exp file for that feature
     my %cur_exists_H = (); # key: feature line, value '1'
     my @cur_A = ();        # array of feature lines in order they were read
-
-    for($s = 0; $s < $nseq; $s++) { 
-      $seq = $out_seq_A[$s];
-      #printf("\ns: $s\n");
+    
+    my $out_sidx = 0; # out file sequence index
+    my $exp_sidx = 0; # exp file sequence index
+    for($s = 0; $s < $nseqs_in_both; $s++) { 
+      $seq = $seqs_in_both_A[$s];
+      $exp_sidx = $exp_seq_H{$seq};
+      $out_sidx = $exp_seq_H{$seq};
+      
       %cur_exists_H = ();
       @cur_A = ();
-
+      
       # parse information from out_file
       %cur_out_H = ();
       $first_lidx = $out_seq_lidx_H{$seq} + 1; # first line after a sequence is the beginning of its annotation
-      if($s < ($nseq-1)) { $final_lidx = $out_seq_lidx_H{$out_seq_A[($s+1)]} - 1; }
-      else               { $final_lidx = scalar(@out_line_A) - 1; }
+      if($out_sidx < ($nseq_out-1)) { $final_lidx = $out_seq_lidx_H{$out_seq_A[($out_sidx+1)]} - 1; }
+      else                          { $final_lidx = scalar(@out_line_A) - 1; }
       my $fline = undef;
       my $cline = undef;
       my $cur_cline = "";
@@ -622,12 +639,12 @@ sub compare_two_sqtable_files {
         }
       }
       
-
+      
       # parse information from exp_file
       %cur_exp_H = ();
       $first_lidx = $exp_seq_lidx_H{$seq} + 1; # first line after a sequence is the beginning of its annotation
-      if($s < ($nseq-1)) { $final_lidx = $exp_seq_lidx_H{$exp_seq_A[($s+1)]} - 1; }
-      else               { $final_lidx = scalar(@exp_line_A) - 1; }
+      if($exp_sidx < ($nseq_exp-1)) { $final_lidx = $exp_seq_lidx_H{$exp_seq_A[($exp_sidx+1)]} - 1; }
+      else                          { $final_lidx = scalar(@exp_line_A) - 1; }
       $fline = undef;
       $cline = undef;
       $cur_cline = "";
@@ -649,92 +666,93 @@ sub compare_two_sqtable_files {
           }
           $cur_cline = "";
         }
-      }
-
-      # compare annotation from exp_file and out_file
-      my $cur_ftr_nidentical  = 0; # number of features that are identical (all lines) between output and expected
-      my $cur_ftr_ndiff       = 0; # number of features that are different (at least one line different) between output and expected
-      my $cur_ftr_nout_only   = 0; # number of features that are only in output file
-      my $cur_ftr_nexp_only   = 0; # number of features that are only in expected file
-      my $cur_nftr            = 0; # number of features in the sequence
-      my $cur_outstr          = ""; # output string
-
-      my $cur_note_nidentical  = 0; # number of 'notes' that are identical (all lines) between output and expected
-      my $cur_note_ndiff       = 0; # number of 'notes' that are different (at least one line different) between output and expected
-      my $cur_note_nout_only   = 0; # number of 'notes' that are only in output file
-      my $cur_note_nexp_only   = 0; # number of 'notes' that are only in expected file
-      my $cur_nnote            = 0; # number of 'notes' in the sequence
-
-      my $is_note = 0; # '1' if this line is a note, '0' if it is a feature
-
-      foreach $fline (@cur_A) { 
-        # determine if it is a 'note' or not, we treat them differently
-        $is_note = ($fline =~ m/^\s+note/) ? 1 : 0;
-
-        if($is_note) { 
-          $cur_nnote++;
-        }
-        else { 
-          $cur_nftr++;
-        }
-
-        if((! exists $cur_exp_H{$fline}) && (! exists $cur_out_H{$fline})) { 
-          DNAORG_FAIL("ERROR in $sub_name, $fline does not exist in either exp or out", 1, $FH_HR);
-        }
-        elsif((exists $cur_exp_H{$fline}) && (! exists $cur_out_H{$fline})) { 
-          if($is_note) { $cur_note_nexp_only++; }
-          else         { $cur_ftr_nexp_only++; }
-          $cur_outstr .= "EXP only: $fline$cur_exp_H{$fline}"; 
-        }
-        elsif((! exists $cur_exp_H{$fline}) && (exists $cur_out_H{$fline})) { 
-          if($is_note) { $cur_note_nout_only++; }
-          else         { $cur_ftr_nout_only++; }
-          $cur_outstr .= "OUT only: $fline$cur_out_H{$fline}"; 
-        }
-        elsif($cur_exp_H{$fline} ne $cur_out_H{$fline}) { 
-          if($is_note) { $cur_note_ndiff++; }
-          else         { $cur_ftr_ndiff++; }
-          if(! exists $cur_exp_H{$fline}) { 
-            printf("exp does not exists $fline\n");
+      
+        # compare annotation from exp_file and out_file
+        my $cur_ftr_nidentical  = 0; # number of features that are identical (all lines) between output and expected
+        my $cur_ftr_ndiff       = 0; # number of features that are different (at least one line different) between output and expected
+        my $cur_ftr_nout_only   = 0; # number of features that are only in output file
+        my $cur_ftr_nexp_only   = 0; # number of features that are only in expected file
+        my $cur_nftr            = 0; # number of features in the sequence
+        my $cur_outstr          = ""; # output string
+        
+        my $cur_note_nidentical  = 0; # number of 'notes' that are identical (all lines) between output and expected
+        my $cur_note_ndiff       = 0; # number of 'notes' that are different (at least one line different) between output and expected
+        my $cur_note_nout_only   = 0; # number of 'notes' that are only in output file
+        my $cur_note_nexp_only   = 0; # number of 'notes' that are only in expected file
+        my $cur_nnote            = 0; # number of 'notes' in the sequence
+        
+        my $is_note = 0; # '1' if this line is a note, '0' if it is a feature
+        
+        foreach $fline (@cur_A) { 
+          # determine if it is a 'note' or not, we treat them differently
+          $is_note = ($fline =~ m/^\s+note/) ? 1 : 0;
+          
+          if($is_note) { 
+            $cur_nnote++;
           }
-          if(! exists $cur_out_H{$fline}) { 
-            printf("out does not exists $fline\n");
+          else { 
+            $cur_nftr++;
           }
-          $cur_outstr .= "DIFFERENT: " . $fline . "OUT:\n$cur_out_H{$fline}EXP:\n$cur_exp_H{$fline}"; 
+          
+          if((! exists $cur_exp_H{$fline}) && (! exists $cur_out_H{$fline})) { 
+            DNAORG_FAIL("ERROR in $sub_name, $fline does not exist in either exp or out", 1, $FH_HR);
+          }
+          elsif((exists $cur_exp_H{$fline}) && (! exists $cur_out_H{$fline})) { 
+            if($is_note) { $cur_note_nexp_only++; }
+            else         { $cur_ftr_nexp_only++; }
+            $cur_outstr .= "EXP only: $fline$cur_exp_H{$fline}"; 
+          }
+          elsif((! exists $cur_exp_H{$fline}) && (exists $cur_out_H{$fline})) { 
+            if($is_note) { $cur_note_nout_only++; }
+            else         { $cur_ftr_nout_only++; }
+            $cur_outstr .= "OUT only: $fline$cur_out_H{$fline}"; 
+          }
+          elsif($cur_exp_H{$fline} ne $cur_out_H{$fline}) { 
+            if($is_note) { $cur_note_ndiff++; }
+            else         { $cur_ftr_ndiff++; }
+            if(! exists $cur_exp_H{$fline}) { 
+              printf("exp does not exists $fline\n");
+            }
+            if(! exists $cur_out_H{$fline}) { 
+              printf("out does not exists $fline\n");
+            }
+            $cur_outstr .= "DIFFERENT: " . $fline . "OUT:\n$cur_out_H{$fline}EXP:\n$cur_exp_H{$fline}"; 
+          }
+          else { 
+            if($is_note) { $cur_note_nidentical++; }
+            else         { $cur_ftr_nidentical++; }
+          }
         }
-        else { 
-          if($is_note) { $cur_note_nidentical++; }
-          else         { $cur_ftr_nidentical++; }
+        printf DIFFOUT ("%s %s %-50s %2d features [%2d %2d %2d %2d] %2d notes [%2d %2d %2d %2d]\n", 
+                        ($cur_ftr_nidentical == $cur_nftr)   ? "FTR-IDENTICAL" : "FTR-DIFFERENT", 
+                        ($cur_note_nidentical == $cur_nnote) ? "NOTE-IDENTICAL" : "NOTE-DIFFERENT", 
+                        $seq,
+                        $cur_nftr, $cur_ftr_nidentical, $cur_ftr_ndiff, $cur_ftr_nout_only, $cur_ftr_nexp_only, 
+                        $cur_nnote, $cur_note_nidentical, $cur_note_ndiff, $cur_note_nout_only, $cur_note_nexp_only);
+        if($cur_outstr ne "") { 
+          printf DIFFOUT $cur_outstr;
         }
+        if($cur_ftr_nidentical == $cur_nftr) { $tot_nseq_ftr_identical++; }
+        if($cur_ftr_ndiff > 0)               { $tot_nseq_ftr_diff++; }
+        if($cur_ftr_nout_only > 0)           { $tot_nseq_ftr_out_only++; }
+        if($cur_ftr_nexp_only > 0)           { $tot_nseq_ftr_exp_only++; }
+        
+        if($cur_note_nidentical == $cur_nftr) { $tot_nseq_note_identical++; }
+        if($cur_note_ndiff > 0)               { $tot_nseq_note_diff++; }
+        if($cur_note_nout_only > 0)           { $tot_nseq_note_out_only++; }
+        if($cur_note_nexp_only > 0)           { $tot_nseq_note_exp_only++; }
       }
-      printf DIFFOUT ("%s %s %-50s %2d features [%2d %2d %2d %2d] %2d notes [%2d %2d %2d %2d]\n", 
-                      ($cur_ftr_nidentical == $cur_nftr)   ? "FTR-IDENTICAL" : "FTR-DIFFERENT", 
-                      ($cur_note_nidentical == $cur_nnote) ? "NOTE-IDENTICAL" : "NOTE-DIFFERENT", 
-                      $seq,
-                      $cur_nftr, $cur_ftr_nidentical, $cur_ftr_ndiff, $cur_ftr_nout_only, $cur_ftr_nexp_only, 
-                      $cur_nnote, $cur_note_nidentical, $cur_note_ndiff, $cur_note_nout_only, $cur_note_nexp_only);
-      if($cur_outstr ne "") { 
-        printf DIFFOUT $cur_outstr;
-      }
-      if($cur_ftr_nidentical == $cur_nftr) { $tot_nseq_ftr_identical++; }
-      if($cur_ftr_ndiff > 0)               { $tot_nseq_ftr_diff++; }
-      if($cur_ftr_nout_only > 0)           { $tot_nseq_ftr_out_only++; }
-      if($cur_ftr_nexp_only > 0)           { $tot_nseq_ftr_exp_only++; }
-
-      if($cur_note_nidentical == $cur_nftr) { $tot_nseq_note_identical++; }
-      if($cur_note_ndiff > 0)               { $tot_nseq_note_diff++; }
-      if($cur_note_nout_only > 0)           { $tot_nseq_note_out_only++; }
-      if($cur_note_nexp_only > 0)           { $tot_nseq_note_exp_only++; }
+      $out_sidx++;
+      $exp_sidx++;
     }
+    printf DIFFOUT ("SUMMARY %5d sequences EXP-ONLY-SEQ: [%d seqs] OUT-ONLY-SEQ: [%d seqs] FEATURES: [identical:%5d;  different:%5d;  out-only:%5d;  exp-only:%5d;] NOTES: [identical:%5d;  different:%5d;  out-only:%5d;  exp-only:%5d;]\n", $nseq, $nexp_only, $nout_only,
+                    $tot_nseq_ftr_identical, $tot_nseq_ftr_diff, $tot_nseq_ftr_out_only, $tot_nseq_ftr_exp_only, 
+                    $tot_nseq_note_identical, $tot_nseq_note_diff, $tot_nseq_note_out_only, $tot_nseq_note_exp_only);
+    
+    close(DIFFOUT);
   }
-
-  printf DIFFOUT ("SUMMARY %5d sequences FEATURES: [identical:%5d;  different:%5d;  out-only:%5d;  exp-only:%5d;] NOTES: [identical:%5d;  different:%5d;  out-only:%5d;  exp-only:%5d;]\n", $nseq,
-                  $tot_nseq_ftr_identical, $tot_nseq_ftr_diff, $tot_nseq_ftr_out_only, $tot_nseq_ftr_exp_only, 
-                  $tot_nseq_note_identical, $tot_nseq_note_diff, $tot_nseq_note_out_only, $tot_nseq_note_exp_only);
-
-  close(DIFFOUT);
   return;
 }
     
-    
+
 
