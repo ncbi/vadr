@@ -5853,3 +5853,17 @@
 			gene	ORF3
 6707	7513	CDS
 			product	VP2
+>Feature gi|54111169|dbj|AB180299.1|
+<1	>203	gene
+			gene	ORF1
+<1	>203	CDS
+			product	nonstructural polyprotein
+<1	>203	mat_peptide
+			product	RdRp
+>Feature gi|929656589|gb|KR904625.1|
+<1	>282	gene
+			gene	ORF1
+<1	>282	CDS
+			product	nonstructural polyprotein
+<1	>282	mat_peptide
+			product	RdRp

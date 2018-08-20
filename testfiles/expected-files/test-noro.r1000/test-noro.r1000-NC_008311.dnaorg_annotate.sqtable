@@ -179,3 +179,17 @@
 <1	>768	CDS
 			product	VP1
 >Feature gi|357433015|gb|JN975540.1|
+<1	150	gene
+			gene	ORF1
+<1	150	CDS
+			product	nonstructural polyprotein
+<1	147	mat_peptide
+			product	RdRp
+137	>1757	gene
+			gene	ORF2
+137	>1757	CDS
+			product	VP1
+150	791	gene
+			gene	ORF4
+150	791	CDS
+			product	VF1

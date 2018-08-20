@@ -109,5 +109,21 @@
 11566	18198	CDS
 			product	RNA-dependent RNA polymerase
 >Feature gi|941456768|dbj|HZ164395.1|
+<1	>2031	gene
+			gene	GP
+1	885	CDS
+886	2031
+			product	spike glycoprotein
+1	885	CDS
+888	911
+			product	second secreted glycoprotein
 >Feature gi|1073848262|emb|LQ278396.1|
+<1	>173	gene
+			gene	VP24
+<1	>173	CDS
+			product	membrane-associated protein
 >Feature gi|1073848136|emb|LQ278392.1|
+<1	>133	gene
+			gene	NP
+<1	>133	CDS
+			product	nucleoprotein

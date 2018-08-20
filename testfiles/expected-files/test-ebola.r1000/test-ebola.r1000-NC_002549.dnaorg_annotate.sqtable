@@ -5451,6 +5451,25 @@
 			gene	L
 11537	18175	CDS
 			product	RNA-dependent RNA polymerase
+>Feature gi|298226055|emb|HC874679.1|
+2854	4184	gene
+			gene	VP35
+			note	low homology score [-36.1 bits]
+4415	5923	gene
+			gene	VP40
+			note	low homology score [-123.0 bits]
+5783	8184	gene
+			gene	GP
+			note	low homology score [-138.7 bits]
+9710	11426	gene
+			gene	VP24
+			note	low homology score [-153.0 bits]
+10207	10968	CDS
+			product	membrane-associated protein
+11408	18512	gene
+			gene	L
+11478	18464	misc_feature
+			note	similar to RNA-dependent RNA polymerase
 >Feature gi|1172209560|dbj|LC152433.1|
 39	3009	gene
 			gene	NP
@@ -28146,3 +28165,37 @@
 11539	18177	CDS
 			product	RNA-dependent RNA polymerase
 >Feature gi|973433243|gb|KU296582.1|
+30	3000	gene
+			gene	NP
+444	2663	CDS
+			product	nucleoprotein
+3006	4381	gene
+			gene	VP35
+3103	4125	CDS
+			product	polymerase complex protein
+4364	5868	gene
+			gene	VP40
+4453	5433	CDS
+			product	matrix protein
+5874	8277	gene
+			gene	GP
+6013	6564	misc_feature
+6896	8040
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
+6013	6564	misc_feature
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
+6013	6564	misc_feature
+6897	6906
+			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
+8260	9712	gene
+			gene	VP30
+8481	9347	CDS
+			product	minor nucleoprotein
+9857	11490	gene
+			gene	VP24
+10317	11072	CDS
+			product	membrane-associated protein
+11473	18254	gene
+			gene	L
+11553	18191	CDS
+			product	RNA-dependent RNA polymerase

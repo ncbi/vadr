@@ -14451,100 +14451,100 @@ result                                                                          
 #
 # end of page 149
 #
-idx                                                                                           746                                 747
-accession                                                            gi|1376177361|gb|KY983927.1|         gi|507309647|gb|JX439819.1|
-totlen                                                                                        225                                7538
-5' UTR:start                                                                                    ?                                   1
-5' UTR:stop                                                                                     ?                                   4
-5' UTR:length                                                                                   ?                                   4
-MP #1 [single segment; +]:p48:start1                                                           NP                                   5
-MP #1 [single segment; +]:p48:stop1                                                            NP                                 994
-MP #1 [single segment; +]:p48:md1                                                              NP                                  ..
-MP #1 [single segment; +]:p48:overlaps1                                                        NP                              P:10.1
-MP #1 [single segment; +]:p48:adjcnces1                                                        NP                               P:2.1
-MP #1 [single segment; +]:p48:length                                                           NP                                 990
-MP #1 [single segment; +]:p48:PF                                                                F                                   P
-MP #2 [single segment; +]:NTPase:start1                                                        NP                                 995
-MP #2 [single segment; +]:NTPase:stop1                                                         NP                                2092
-MP #2 [single segment; +]:NTPase:md1                                                           NP                                  ..
-MP #2 [single segment; +]:NTPase:overlaps1                                                     NP                              P:10.1
-MP #2 [single segment; +]:NTPase:adjcnces1                                                     NP                           P:1.1,3.1
-MP #2 [single segment; +]:NTPase:length                                                        NP                                1098
-MP #2 [single segment; +]:NTPase:PF                                                             F                                   P
-MP #3 [single segment; +]:p22:start1                                                           NP                                2093
-MP #3 [single segment; +]:p22:stop1                                                            NP                                2629
-MP #3 [single segment; +]:p22:md1                                                              NP                                  ..
-MP #3 [single segment; +]:p22:overlaps1                                                        NP                              P:10.1
-MP #3 [single segment; +]:p22:adjcnces1                                                        NP                           P:2.1,4.1
-MP #3 [single segment; +]:p22:length                                                           NP                                 537
-MP #3 [single segment; +]:p22:PF                                                                F                                   P
-MP #4 [single segment; +]:VPg:start1                                                           NP                                2630
-MP #4 [single segment; +]:VPg:stop1                                                            NP                                3028
-MP #4 [single segment; +]:VPg:md1                                                              NP                                  ..
-MP #4 [single segment; +]:VPg:overlaps1                                                        NP                              P:10.1
-MP #4 [single segment; +]:VPg:adjcnces1                                                        NP                           P:3.1,5.1
-MP #4 [single segment; +]:VPg:length                                                           NP                                 399
-MP #4 [single segment; +]:VPg:PF                                                                F                                   P
-MP #5 [single segment; +]:Pro:start1                                                           NP                                3029
-MP #5 [single segment; +]:Pro:stop1                                                            NP                                3571
-MP #5 [single segment; +]:Pro:md1                                                              NP                                  ..
-MP #5 [single segment; +]:Pro:overlaps1                                                        NP                              P:10.1
-MP #5 [single segment; +]:Pro:adjcnces1                                                        NP                           P:4.1,6.1
-MP #5 [single segment; +]:Pro:length                                                           NP                                 543
-MP #5 [single segment; +]:Pro:PF                                                                F                                   P
-MP #6 [single segment; +]:RdRp:start1                                                          NP                                3572
-MP #6 [single segment; +]:RdRp:stop1                                                           NP                                5101
-MP #6 [single segment; +]:RdRp:md1                                                             NP                                  ..
-MP #6 [single segment; +]:RdRp:overlaps1                                                       NP                     P:8.1,10.1,11.1
-MP #6 [single segment; +]:RdRp:adjcnces1                                                       NP                               P:5.1
-MP #6 [single segment; +]:RdRp:length                                                          NP                                1530
-MP #6 [single segment; +]:RdRp:PF                                                               F                                   P
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:start                                ?                                   5
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                                 ?                                5104
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                               ?                                5100
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:startc                               ?                                 ATG
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                                ?                                 TGA
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                                ???                                 ...
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                                   F                                   P
-CDS #2 [single exon; +]:VP1:start1                                                              1                                5085
-CDS #2 [single exon; +]:VP1:stop1                                                             225                                6707
-CDS #2 [single exon; +]:VP1:md1                                                                .+                                  ..
-CDS #2 [single exon; +]:VP1:overlaps1                                                      F:11.1            P:6.1,9.1,10.1,11.1,12.1
-CDS #2 [single exon; +]:VP1:length                                                            225                                1623
-CDS #2 [single exon; +]:VP1:ss3                                                               .!.                                 ...
-CDS #2 [single exon; +]:VP1:stp                                                               ATT                                 TAA
-CDS #2 [single exon; +]:VP1:PF                                                                  F                                   P
-CDS #3 [single exon; +]:VP2:start1                                                             NP                                6707
-CDS #3 [single exon; +]:VP2:stop1                                                              NP                                7513
-CDS #3 [single exon; +]:VP2:md1                                                                NP                                  ..
-CDS #3 [single exon; +]:VP2:overlaps1                                                          NP                     P:8.1,11.1,12.1
-CDS #3 [single exon; +]:VP2:length                                                             NP                                 807
-CDS #3 [single exon; +]:VP2:ss3                                                                NP                                 ...
-CDS #3 [single exon; +]:VP2:stp                                                                NP                                 TAA
-CDS #3 [single exon; +]:VP2:PF                                                                  F                                   P
-gene #1 [single segment; +]::start1                                                            NP                                   5
-gene #1 [single segment; +]::stop1                                                             NP                                5104
-gene #1 [single segment; +]::md1                                                               NP                                  ..
-gene #1 [single segment; +]::overlaps1                                                         NP  P:1.1,2.1,3.1,4.1,5.1,6.1,8.1,11.1
-gene #1 [single segment; +]::length                                                            NP                                5100
-gene #1 [single segment; +]::PF                                                                 F                                   P
-gene #2 [single segment; +]::start1                                                             1                                5085
-gene #2 [single segment; +]::stop1                                                            225                                6707
-gene #2 [single segment; +]::md1                                                               .+                                  ..
-gene #2 [single segment; +]::overlaps1                                                      F:8.1             P:6.1,8.1,9.1,10.1,12.1
-gene #2 [single segment; +]::length                                                           225                                1623
-gene #2 [single segment; +]::PF                                                                 F                                   P
-gene #3 [single segment; +]::start1                                                            NP                                6707
-gene #3 [single segment; +]::stop1                                                             NP                                7513
-gene #3 [single segment; +]::md1                                                               NP                                  ..
-gene #3 [single segment; +]::overlaps1                                                         NP                      P:8.1,9.1,11.1
-gene #3 [single segment; +]::length                                                            NP                                 807
-gene #3 [single segment; +]::PF                                                                 F                                   P
-3' UTR:start                                                                                    ?                                7514
-3' UTR:stop                                                                                     ?                                7538
-3' UTR:length                                                                                   ?                                  25
-totlen                                                                                        225                                7538
-result                                                                          FAIL FFFFFFFFFFFF                   PASS PPPPPPPPPPPP
+idx                                                                                           746                                 747                          748                          749
+accession                                                            gi|1376177361|gb|KY983927.1|         gi|507309647|gb|JX439819.1|  gi|54111169|dbj|AB180299.1|  gi|929656589|gb|KR904625.1|
+totlen                                                                                        225                                7538                          203                          282
+5' UTR:start                                                                                    ?                                   1                            ?                            ?
+5' UTR:stop                                                                                     ?                                   4                            ?                            ?
+5' UTR:length                                                                                   ?                                   4                            ?                            ?
+MP #1 [single segment; +]:p48:start1                                                           NP                                   5                           NP                           NP
+MP #1 [single segment; +]:p48:stop1                                                            NP                                 994                           NP                           NP
+MP #1 [single segment; +]:p48:md1                                                              NP                                  ..                           NP                           NP
+MP #1 [single segment; +]:p48:overlaps1                                                        NP                              P:10.1                           NP                           NP
+MP #1 [single segment; +]:p48:adjcnces1                                                        NP                               P:2.1                           NP                           NP
+MP #1 [single segment; +]:p48:length                                                           NP                                 990                           NP                           NP
+MP #1 [single segment; +]:p48:PF                                                                F                                   P                            F                            F
+MP #2 [single segment; +]:NTPase:start1                                                        NP                                 995                           NP                           NP
+MP #2 [single segment; +]:NTPase:stop1                                                         NP                                2092                           NP                           NP
+MP #2 [single segment; +]:NTPase:md1                                                           NP                                  ..                           NP                           NP
+MP #2 [single segment; +]:NTPase:overlaps1                                                     NP                              P:10.1                           NP                           NP
+MP #2 [single segment; +]:NTPase:adjcnces1                                                     NP                           P:1.1,3.1                           NP                           NP
+MP #2 [single segment; +]:NTPase:length                                                        NP                                1098                           NP                           NP
+MP #2 [single segment; +]:NTPase:PF                                                             F                                   P                            F                            F
+MP #3 [single segment; +]:p22:start1                                                           NP                                2093                           NP                           NP
+MP #3 [single segment; +]:p22:stop1                                                            NP                                2629                           NP                           NP
+MP #3 [single segment; +]:p22:md1                                                              NP                                  ..                           NP                           NP
+MP #3 [single segment; +]:p22:overlaps1                                                        NP                              P:10.1                           NP                           NP
+MP #3 [single segment; +]:p22:adjcnces1                                                        NP                           P:2.1,4.1                           NP                           NP
+MP #3 [single segment; +]:p22:length                                                           NP                                 537                           NP                           NP
+MP #3 [single segment; +]:p22:PF                                                                F                                   P                            F                            F
+MP #4 [single segment; +]:VPg:start1                                                           NP                                2630                           NP                           NP
+MP #4 [single segment; +]:VPg:stop1                                                            NP                                3028                           NP                           NP
+MP #4 [single segment; +]:VPg:md1                                                              NP                                  ..                           NP                           NP
+MP #4 [single segment; +]:VPg:overlaps1                                                        NP                              P:10.1                           NP                           NP
+MP #4 [single segment; +]:VPg:adjcnces1                                                        NP                           P:3.1,5.1                           NP                           NP
+MP #4 [single segment; +]:VPg:length                                                           NP                                 399                           NP                           NP
+MP #4 [single segment; +]:VPg:PF                                                                F                                   P                            F                            F
+MP #5 [single segment; +]:Pro:start1                                                           NP                                3029                           NP                           NP
+MP #5 [single segment; +]:Pro:stop1                                                            NP                                3571                           NP                           NP
+MP #5 [single segment; +]:Pro:md1                                                              NP                                  ..                           NP                           NP
+MP #5 [single segment; +]:Pro:overlaps1                                                        NP                              P:10.1                           NP                           NP
+MP #5 [single segment; +]:Pro:adjcnces1                                                        NP                           P:4.1,6.1                           NP                           NP
+MP #5 [single segment; +]:Pro:length                                                           NP                                 543                           NP                           NP
+MP #5 [single segment; +]:Pro:PF                                                                F                                   P                            F                            F
+MP #6 [single segment; +]:RdRp:start1                                                          NP                                3572                            1                            1
+MP #6 [single segment; +]:RdRp:stop1                                                           NP                                5101                          203                          282
+MP #6 [single segment; +]:RdRp:md1                                                             NP                                  ..                           ++                           ++
+MP #6 [single segment; +]:RdRp:overlaps1                                                       NP                     P:8.1,10.1,11.1                       F:10.1                       F:10.1
+MP #6 [single segment; +]:RdRp:adjcnces1                                                       NP                               P:5.1                       F:NONE                       F:NONE
+MP #6 [single segment; +]:RdRp:length                                                          NP                                1530                          203                          282
+MP #6 [single segment; +]:RdRp:PF                                                               F                                   P                            F                            F
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:start                                ?                                   5                            1                            1
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                                 ?                                5104                            ?                            ?
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                               ?                                5100                            ?                            ?
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:startc                               ?                                 ATG                          TGA                          TCT
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                                ?                                 TGA                            ?                            ?
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                                ???                                 ...                          .??                          .??
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                                   F                                   P                            F                            F
+CDS #2 [single exon; +]:VP1:start1                                                              1                                5085                           NP                           NP
+CDS #2 [single exon; +]:VP1:stop1                                                             225                                6707                           NP                           NP
+CDS #2 [single exon; +]:VP1:md1                                                                .+                                  ..                           NP                           NP
+CDS #2 [single exon; +]:VP1:overlaps1                                                      F:11.1            P:6.1,9.1,10.1,11.1,12.1                           NP                           NP
+CDS #2 [single exon; +]:VP1:length                                                            225                                1623                           NP                           NP
+CDS #2 [single exon; +]:VP1:ss3                                                               .!.                                 ...                           NP                           NP
+CDS #2 [single exon; +]:VP1:stp                                                               ATT                                 TAA                           NP                           NP
+CDS #2 [single exon; +]:VP1:PF                                                                  F                                   P                            F                            F
+CDS #3 [single exon; +]:VP2:start1                                                             NP                                6707                           NP                           NP
+CDS #3 [single exon; +]:VP2:stop1                                                              NP                                7513                           NP                           NP
+CDS #3 [single exon; +]:VP2:md1                                                                NP                                  ..                           NP                           NP
+CDS #3 [single exon; +]:VP2:overlaps1                                                          NP                     P:8.1,11.1,12.1                           NP                           NP
+CDS #3 [single exon; +]:VP2:length                                                             NP                                 807                           NP                           NP
+CDS #3 [single exon; +]:VP2:ss3                                                                NP                                 ...                           NP                           NP
+CDS #3 [single exon; +]:VP2:stp                                                                NP                                 TAA                           NP                           NP
+CDS #3 [single exon; +]:VP2:PF                                                                  F                                   P                            F                            F
+gene #1 [single segment; +]::start1                                                            NP                                   5                            1                            1
+gene #1 [single segment; +]::stop1                                                             NP                                5104                          203                          282
+gene #1 [single segment; +]::md1                                                               NP                                  ..                           ++                           ++
+gene #1 [single segment; +]::overlaps1                                                         NP  P:1.1,2.1,3.1,4.1,5.1,6.1,8.1,11.1                        F:6.1                        F:6.1
+gene #1 [single segment; +]::length                                                            NP                                5100                          203                          282
+gene #1 [single segment; +]::PF                                                                 F                                   P                            F                            F
+gene #2 [single segment; +]::start1                                                             1                                5085                           NP                           NP
+gene #2 [single segment; +]::stop1                                                            225                                6707                           NP                           NP
+gene #2 [single segment; +]::md1                                                               .+                                  ..                           NP                           NP
+gene #2 [single segment; +]::overlaps1                                                      F:8.1             P:6.1,8.1,9.1,10.1,12.1                           NP                           NP
+gene #2 [single segment; +]::length                                                           225                                1623                           NP                           NP
+gene #2 [single segment; +]::PF                                                                 F                                   P                            F                            F
+gene #3 [single segment; +]::start1                                                            NP                                6707                           NP                           NP
+gene #3 [single segment; +]::stop1                                                             NP                                7513                           NP                           NP
+gene #3 [single segment; +]::md1                                                               NP                                  ..                           NP                           NP
+gene #3 [single segment; +]::overlaps1                                                         NP                      P:8.1,9.1,11.1                           NP                           NP
+gene #3 [single segment; +]::length                                                            NP                                 807                           NP                           NP
+gene #3 [single segment; +]::PF                                                                 F                                   P                            F                            F
+3' UTR:start                                                                                    ?                                7514                            ?                            ?
+3' UTR:stop                                                                                     ?                                7538                            ?                            ?
+3' UTR:length                                                                                   ?                                  25                            ?                            ?
+totlen                                                                                        225                                7538                          203                          282
+result                                                                          FAIL FFFFFFFFFFFF                   PASS PPPPPPPPPPPP            FAIL FFFFFFFFFFFF            FAIL FFFFFFFFFFFF
 #
 # end of page 150
 #
