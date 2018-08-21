@@ -16,11 +16,13 @@
 5974	6858	CDS
 6858	8003
 			product	spike glycoprotein
+			exception	RNA editing
 5974	7092	CDS
 			product	small secreted glycoprotein
 5974	6857	CDS
 6859	6931
 			product	second secreted glycoprotein
+			exception	RNA editing
 8200	9673	gene
 			gene	VP30
 8417	9283	CDS
@@ -51,11 +53,13 @@
 5998	6882	CDS
 6882	8027
 			product	spike glycoprotein
+			exception	RNA editing
 5998	7116	CDS
 			product	small secreted glycoprotein
 5998	6881	CDS
 6883	6955
 			product	second secreted glycoprotein
+			exception	RNA editing
 8224	9697	gene
 			gene	VP30
 8441	9307	CDS

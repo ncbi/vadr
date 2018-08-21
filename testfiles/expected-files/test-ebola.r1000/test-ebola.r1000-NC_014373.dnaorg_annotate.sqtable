@@ -21,6 +21,7 @@
 6021	6905	CDS
 6905	8050
 			product	spike glycoprotein
+			exception	RNA editing
 6021	7142	CDS
 			product	small secreted glycoprotein
 6021	6905	CDS
@@ -56,6 +57,7 @@
 6021	6905	CDS
 6905	8050
 			product	spike glycoprotein
+			exception	RNA editing
 6021	6905	CDS
 6907	6930
 			product	second secreted glycoprotein
@@ -91,6 +93,7 @@
 6021	6905	CDS
 6905	8050
 			product	spike glycoprotein
+			exception	RNA editing
 6021	6905	CDS
 6907	6930
 			product	second secreted glycoprotein
@@ -114,6 +117,7 @@
 1	885	CDS
 886	2031
 			product	spike glycoprotein
+			exception	RNA editing
 1	885	CDS
 888	911
 			product	second secreted glycoprotein

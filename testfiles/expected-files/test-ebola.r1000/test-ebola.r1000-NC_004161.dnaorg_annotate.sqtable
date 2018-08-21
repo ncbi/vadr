@@ -16,12 +16,14 @@
 6041	6929	CDS
 6929	8073
 			product	spike glycoprotein
+			exception	RNA editing
 6041	7186	CDS
 			product	small secreted glycoprotein
 			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [CAA ending at position 7144 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 6041..7144 revised to 6041..7186 (stop shifted 42 nt)]
 6041	6927	CDS
 6929	7229
 			product	second secreted glycoprotein
+			exception	RNA editing
 			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [TGG ending at position 7037 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 6929..7037 exon 2 of 2 revised to 6929..7229 (stop shifted 192 nt)]
 8261	9700	gene
 			gene	VP30
@@ -53,12 +55,14 @@
 6041	6929	CDS
 6929	8073
 			product	spike glycoprotein
+			exception	RNA editing
 6041	7186	CDS
 			product	small secreted glycoprotein
 			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [CAA ending at position 7144 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 6041..7144 revised to 6041..7186 (stop shifted 42 nt)]
 6041	6927	CDS
 6929	7229
 			product	second secreted glycoprotein
+			exception	RNA editing
 			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [TGG ending at position 7037 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 6929..7037 exon 2 of 2 revised to 6929..7229 (stop shifted 192 nt)]
 8261	9700	gene
 			gene	VP30
@@ -78,11 +82,13 @@
 19	907	CDS
 907	2051
 			product	spike glycoprotein
+			exception	RNA editing
 19	1122	CDS
 			product	small secreted glycoprotein
 19	905	CDS
 907	1015
 			product	second secreted glycoprotein
+			exception	RNA editing
 >Feature gi|391227230|gb|JN872216.1|
 >Feature gi|291212855|dbj|FV537280.1|
 7428	26	misc_feature
@@ -140,33 +146,39 @@
 1	889	CDS
 889	2033
 			product	spike glycoprotein
+			exception	RNA editing
 1	1104	CDS
 			product	small secreted glycoprotein
 1	887	CDS
 889	997
 			product	second secreted glycoprotein
+			exception	RNA editing
 >Feature gi|1041201|gb|U23152.1|EVU23152
 5	2360	gene
 			gene	GP
 146	1034	CDS
 1034	2178
 			product	spike glycoprotein
+			exception	RNA editing
 146	1249	CDS
 			product	small secreted glycoprotein
 146	1032	CDS
 1034	1142
 			product	second secreted glycoprotein
+			exception	RNA editing
 >Feature gi|88493724|dbj|DD220209.1|
 5	2360	gene
 			gene	GP
 146	1034	CDS
 1034	2178
 			product	spike glycoprotein
+			exception	RNA editing
 146	1249	CDS
 			product	small secreted glycoprotein
 146	1032	CDS
 1034	1142
 			product	second secreted glycoprotein
+			exception	RNA editing
 >Feature gi|22671623|gb|AF522874.1|
 56	3013	gene
 			gene	NP
@@ -185,11 +197,13 @@
 6042	6930	CDS
 6930	8074
 			product	spike glycoprotein
+			exception	RNA editing
 6042	7145	CDS
 			product	small secreted glycoprotein
 6042	6928	CDS
 6930	7038
 			product	second secreted glycoprotein
+			exception	RNA editing
 8262	9701	gene
 			gene	VP30
 8490	9353	CDS
