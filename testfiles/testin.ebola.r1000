@@ -14,16 +14,16 @@
 # file, etc.
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass --keep -v -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/ebola.r1000.fa --dirbuild !dirbuild! --dirout test-ebola.r1000
 desc: classify-ebola-1
-out: test-ebola.r1000/test-ebola.r1000-NC_002549/test-ebola.r1000-NC_002549.dnaorg_annotate.sqtable 
-out: test-ebola.r1000/test-ebola.r1000-NC_002549/test-ebola.r1000-NC_002549.dnaorg_annotate.tbl
-out: test-ebola.r1000/test-ebola.r1000-NC_004161/test-ebola.r1000-NC_004161.dnaorg_annotate.sqtable 
-out: test-ebola.r1000/test-ebola.r1000-NC_004161/test-ebola.r1000-NC_004161.dnaorg_annotate.tbl
-out: test-ebola.r1000/test-ebola.r1000-NC_006432/test-ebola.r1000-NC_006432.dnaorg_annotate.sqtable 
-out: test-ebola.r1000/test-ebola.r1000-NC_006432/test-ebola.r1000-NC_006432.dnaorg_annotate.tbl
-out: test-ebola.r1000/test-ebola.r1000-NC_014372/test-ebola.r1000-NC_014372.dnaorg_annotate.sqtable 
-out: test-ebola.r1000/test-ebola.r1000-NC_014372/test-ebola.r1000-NC_014372.dnaorg_annotate.tbl
-out: test-ebola.r1000/test-ebola.r1000-NC_014373/test-ebola.r1000-NC_014373.dnaorg_annotate.sqtable 
-out: test-ebola.r1000/test-ebola.r1000-NC_014373/test-ebola.r1000-NC_014373.dnaorg_annotate.tbl
+out: test-ebola.r1000/test-ebola.r1000-NC_002549.pass/test-ebola.r1000-NC_002549.pass.dnaorg_annotate.sqtable 
+out: test-ebola.r1000/test-ebola.r1000-NC_002549.pass/test-ebola.r1000-NC_002549.pass.dnaorg_annotate.tbl
+out: test-ebola.r1000/test-ebola.r1000-NC_004161.pass/test-ebola.r1000-NC_004161.pass.dnaorg_annotate.sqtable 
+out: test-ebola.r1000/test-ebola.r1000-NC_004161.pass/test-ebola.r1000-NC_004161.pass.dnaorg_annotate.tbl
+out: test-ebola.r1000/test-ebola.r1000-NC_006432.pass/test-ebola.r1000-NC_006432.pass.dnaorg_annotate.sqtable 
+out: test-ebola.r1000/test-ebola.r1000-NC_006432.pass/test-ebola.r1000-NC_006432.pass.dnaorg_annotate.tbl
+out: test-ebola.r1000/test-ebola.r1000-NC_014372.pass/test-ebola.r1000-NC_014372.pass.dnaorg_annotate.sqtable 
+out: test-ebola.r1000/test-ebola.r1000-NC_014372.pass/test-ebola.r1000-NC_014372.pass.dnaorg_annotate.tbl
+out: test-ebola.r1000/test-ebola.r1000-NC_014373.pass/test-ebola.r1000-NC_014373.pass.dnaorg_annotate.sqtable 
+out: test-ebola.r1000/test-ebola.r1000-NC_014373.pass/test-ebola.r1000-NC_014373.pass.dnaorg_annotate.tbl
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_002549.dnaorg_annotate.sqtable 
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_002549.dnaorg_annotate.tbl
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/test-ebola.r1000/test-ebola.r1000-NC_004161.dnaorg_annotate.sqtable 

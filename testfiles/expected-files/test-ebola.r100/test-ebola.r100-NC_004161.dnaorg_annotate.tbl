@@ -73,13 +73,13 @@ CDS #8 [single exon; +]:membrane-associated protein:length                      
 CDS #8 [single exon; +]:membrane-associated protein:ss3                                     NP                         NP                           ...                           NP
 CDS #8 [single exon; +]:membrane-associated protein:stp                                     NP                         NP                           TAA                           NP
 CDS #8 [single exon; +]:membrane-associated protein:PF                                       F                          F                             P                            F
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:start1                                 NP                         NP                         11550                           NP
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:stop1                                  NP                         NP                         18188                           NP
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:md1                                    NP                         NP                            ..                           NP
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:overlaps1                              NP                         NP                        P:16.1                           NP
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:length                                 NP                         NP                          6639                           NP
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:ss3                                    NP                         NP                           ...                           NP
-CDS #9 [single exon; +]:RNA-dependent RNA polymerase:stp                                    NP                         NP                           TAG                           NP
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:start1                                 NP                         NP                         11550                          385
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:stop1                                  NP                         NP                         18188                            1
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:md1                                    NP                         NP                            ..                           ++
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:overlaps1                              NP                         NP                        P:16.1                       P:16.1
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:length                                 NP                         NP                          6639                          385
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:ss3                                    NP                         NP                           ...                          .!.
+CDS #9 [single exon; +]:RNA-dependent RNA polymerase:stp                                    NP                         NP                           TAG                          TCG
 CDS #9 [single exon; +]:RNA-dependent RNA polymerase:PF                                      F                          F                             P                            F
 gene #1 [single segment; +]::start1                                                         NP                         NP                            56                           NP
 gene #1 [single segment; +]::stop1                                                          NP                         NP                          3013                           NP
@@ -117,11 +117,11 @@ gene #6 [single segment; +]::md1                                                
 gene #6 [single segment; +]::overlaps1                                                      NP                         NP                    P:8.1,16.1                           NP
 gene #6 [single segment; +]::length                                                         NP                         NP                          1650                           NP
 gene #6 [single segment; +]::PF                                                              F                          F                             P                            F
-gene #7 [single segment; +]::start1                                                         NP                         NP                         11464                           NP
-gene #7 [single segment; +]::stop1                                                          NP                         NP                         18866                           NP
-gene #7 [single segment; +]::md1                                                            NP                         NP                            ..                           NP
-gene #7 [single segment; +]::overlaps1                                                      NP                         NP                    P:9.1,15.1                           NP
-gene #7 [single segment; +]::length                                                         NP                         NP                          7403                           NP
+gene #7 [single segment; +]::start1                                                         NP                         NP                         11464                          385
+gene #7 [single segment; +]::stop1                                                          NP                         NP                         18866                            1
+gene #7 [single segment; +]::md1                                                            NP                         NP                            ..                           ++
+gene #7 [single segment; +]::overlaps1                                                      NP                         NP                    P:9.1,15.1                        F:9.1
+gene #7 [single segment; +]::length                                                         NP                         NP                          7403                          385
 gene #7 [single segment; +]::PF                                                              F                          F                             F                            F
 totlen                                                                                    2360                       2233                         18891                          385
 result                                                                   FAIL FFFPPPFFFFFFFFFF      FAIL FFFPPPFFFFFFFFFF         FAIL PPPPPPPPPPPFFPPF        FAIL FFFFFFFFFFFFFFFF

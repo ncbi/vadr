@@ -1,0 +1,474 @@
+>Feature gi|589918683|gb|KJ162380.1|
+1	>213	gene
+			gene	ORF2
+1	>213	CDS
+			product	VP1
+>Feature gi|198088200|gb|EU876870.1|
+1	>244	gene
+			gene	ORF2
+1	>244	CDS
+			product	VP1
+>Feature gi|1045808387|gb|KU532430.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|1298157537|gb|MF796282.1|
+<1	>234	gene
+			gene	ORF2
+<1	>234	CDS
+			product	VP1
+>Feature gi|166203573|gb|EU392256.1|
+2	>249	gene
+			gene	ORF2
+2	>249	CDS
+			product	VP1
+>Feature gi|1045808351|gb|KU532412.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|1045808703|gb|KU532588.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|1070115234|gb|KU672131.1|
+<1	>212	gene
+			gene	ORF2
+<1	>212	CDS
+			product	VP1
+>Feature gi|1045808417|gb|KU532445.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|930056681|gb|KR007881.1|
+<1	>207	gene
+			gene	ORF2
+<1	>207	CDS
+			product	VP1
+>Feature gi|1376177141|gb|KY983817.1|
+1	>237	gene
+			gene	ORF2
+1	>237	CDS
+			product	VP1
+>Feature gi|675240645|emb|LN482659.1|
+1	>235	gene
+			gene	ORF2
+1	>235	CDS
+			product	VP1
+>Feature gi|564010462|gb|KF658314.1|
+1	>242	gene
+			gene	ORF2
+1	>242	CDS
+			product	VP1
+>Feature gi|428229731|gb|JX863421.1|
+1	>281	gene
+			gene	ORF2
+1	>281	CDS
+			product	VP1
+>Feature gi|407731258|gb|JQ750988.1|
+<1	57	gene
+			gene	ORF1
+<1	57	CDS
+			product	nonstructural polyprotein
+<1	54	mat_peptide
+			product	RdRp
+38	>324	gene
+			gene	ORF2
+38	>324	CDS
+			product	VP1
+>Feature gi|675240839|emb|LN482756.1|
+2	>235	gene
+			gene	ORF2
+>Feature gi|532761675|gb|KC999770.1|
+1	>282	gene
+			gene	ORF2
+1	>282	CDS
+			product	VP1
+>Feature gi|226222510|gb|FJ173245.1|
+1	>257	gene
+			gene	ORF2
+1	>257	CDS
+			product	VP1
+>Feature gi|198088180|gb|EU876860.1|
+1	>250	gene
+			gene	ORF2
+1	>250	CDS
+			product	VP1
+>Feature gi|148839152|dbj|AB287472.1|
+<1	>169	gene
+			gene	ORF2
+<1	>169	CDS
+			product	VP1
+>Feature gi|1376176867|gb|KY983680.1|
+1	>237	gene
+			gene	ORF2
+1	>237	CDS
+			product	VP1
+>Feature gi|158514370|gb|EU187428.1|
+1	>237	gene
+			gene	ORF2
+1	>237	CDS
+			product	VP1
+>Feature gi|1376176889|gb|KY983691.1|
+1	>237	gene
+			gene	ORF2
+1	>237	CDS
+			product	VP1
+>Feature gi|1045808511|gb|KU532492.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|675240745|emb|LN482709.1|
+1	>235	gene
+			gene	ORF2
+1	>235	CDS
+			product	VP1
+>Feature gi|193783859|dbj|AB427194.1|
+1	>282	gene
+			gene	ORF2
+1	>282	CDS
+			product	VP1
+>Feature gi|1045808707|gb|KU532590.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|506485220|gb|KC608686.1|
+1	>238	gene
+			gene	ORF2
+1	>238	CDS
+			product	VP1
+>Feature gi|820832312|gb|KJ916203.1|
+<1	>303	gene
+			gene	ORF2
+<1	>303	CDS
+			product	VP1
+>Feature gi|157420087|gb|EU138877.1|
+1	>280	gene
+			gene	ORF2
+1	>280	CDS
+			product	VP1
+>Feature gi|76556078|emb|AJ865556.1|
+<1	>238	gene
+			gene	ORF2
+<1	>238	CDS
+			product	VP1
+>Feature gi|952543858|gb|KT151065.1|
+<1	>266	gene
+			gene	ORF2
+<1	>266	CDS
+			product	VP1
+>Feature gi|358423271|gb|JN182393.1|
+<1	>209	gene
+			gene	ORF2
+<1	>209	CDS
+			product	VP1
+>Feature gi|675240767|emb|LN482720.1|
+1	>235	gene
+			gene	ORF2
+1	>235	CDS
+			product	VP1
+>Feature gi|564010500|gb|KF658333.1|
+1	>242	gene
+			gene	ORF2
+1	>242	CDS
+			product	VP1
+>Feature gi|148633699|gb|EF600771.1|
+1	>222	gene
+			gene	ORF2
+1	>222	CDS
+			product	VP1
+>Feature gi|695613010|gb|KM057714.1|
+<1	>274	gene
+			gene	ORF1
+<1	>274	CDS
+			product	nonstructural polyprotein
+<1	>274	mat_peptide
+			product	RdRp
+>Feature gi|385721711|gb|JQ182686.1|
+<1	>253	gene
+			gene	ORF2
+<1	>253	CDS
+			product	VP1
+>Feature gi|1045809001|gb|KU532737.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|1045808551|gb|KU532512.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|1045808981|gb|KU532727.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|930056757|gb|KR007919.1|
+<1	>207	gene
+			gene	ORF2
+<1	>207	CDS
+			product	VP1
+>Feature gi|1043489572|gb|KU821037.1|
+<1	>217	gene
+			gene	ORF2
+<1	>217	CDS
+			product	VP1
+>Feature gi|1045808247|gb|KU532360.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|1355439906|gb|MF179596.1|
+1	>244	gene
+			gene	ORF2
+1	>244	CDS
+			product	VP1
+>Feature gi|393689544|gb|JQ944100.1|
+<1	>209	gene
+			gene	ORF2
+<1	>209	CDS
+			product	VP1
+>Feature gi|451172983|gb|KC165050.1|
+<1	>287	gene
+			gene	ORF2
+<1	>287	CDS
+			product	VP1
+>Feature gi|165967994|gb|EU363866.1|
+1	>308	gene
+			gene	ORF2
+1	>308	CDS
+			product	VP1
+>Feature gi|1220257618|emb|LT628547.2|
+<1	67	gene
+			gene	ORF1
+<1	67	CDS
+			product	nonstructural polyprotein
+<1	64	mat_peptide
+			product	RdRp
+48	>329	gene
+			gene	ORF2
+48	>329	CDS
+			product	VP1
+>Feature gi|311691378|dbj|AB545276.1|
+<1	>278	gene
+			gene	ORF2
+<1	>278	CDS
+			product	VP1
+>Feature gi|1376176999|gb|KY983746.1|
+1	>237	gene
+			gene	ORF2
+1	>237	CDS
+			product	VP1
+>Feature gi|1045808723|gb|KU532598.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|675240655|emb|LN482664.1|
+1	>235	gene
+			gene	ORF2
+1	>235	CDS
+			product	VP1
+>Feature gi|148839161|dbj|AB287475.1|
+<1	>170	gene
+			gene	ORF2
+<1	>170	CDS
+			product	VP1
+>Feature gi|384406918|gb|JN600530.1|
+1	>304	gene
+			gene	ORF2
+1	>304	CDS
+			product	VP1
+>Feature gi|959035703|gb|KU194882.1|
+1	>258	gene
+			gene	ORF2
+1	>258	CDS
+			product	VP1
+>Feature gi|1061205544|dbj|LC150869.1|
+1	>282	gene
+			gene	ORF2
+1	>282	CDS
+			product	VP1
+>Feature gi|532761659|gb|KC999762.1|
+1	>282	gene
+			gene	ORF2
+1	>282	CDS
+			product	VP1
+>Feature gi|354549090|gb|JN102113.1|
+1	>255	gene
+			gene	ORF2
+1	>255	CDS
+			product	VP1
+>Feature gi|1011985204|gb|KU220635.1|
+1	>252	gene
+			gene	ORF2
+1	>252	CDS
+			product	VP1
+>Feature gi|1045808763|gb|KU532618.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|76556040|emb|AJ865537.1|
+<1	>238	gene
+			gene	ORF2
+<1	>238	CDS
+			product	VP1
+>Feature gi|1024312252|gb|KU963435.1|
+1	>291	gene
+			gene	ORF2
+1	>291	CDS
+			product	VP1
+>Feature gi|393690706|gb|JQ944687.1|
+<1	>210	gene
+			gene	ORF2
+<1	>210	CDS
+			product	VP1
+>Feature gi|32454210|gb|AY237464.1|
+<1	>255	gene
+			gene	ORF2
+<1	>255	CDS
+			product	VP1
+>Feature gi|1045808591|gb|KU532532.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|311691512|dbj|AB545343.1|
+<1	>278	gene
+			gene	ORF2
+<1	>278	CDS
+			product	VP1
+>Feature gi|930056791|gb|KR007936.1|
+<1	>207	gene
+			gene	ORF2
+<1	>207	CDS
+			product	VP1
+>Feature gi|1045808255|gb|KU532364.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|353453355|gb|JN008060.1|
+1	>249	gene
+			gene	ORF2
+1	>249	CDS
+			product	VP1
+>Feature gi|1045808711|gb|KU532592.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|1045808931|gb|KU532702.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|392302075|gb|JX074935.1|
+1	>244	gene
+			gene	ORF2
+1	>244	CDS
+			product	VP1
+>Feature gi|1045808989|gb|KU532731.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|506485254|gb|KC608703.1|
+1	>238	gene
+			gene	ORF2
+1	>238	CDS
+			product	VP1
+>Feature gi|388460501|gb|JQ739426.1|
+1	>249	gene
+			gene	ORF2
+1	>249	CDS
+			product	VP1
+>Feature gi|930056745|gb|KR007913.1|
+<1	>207	gene
+			gene	ORF2
+<1	>207	CDS
+			product	VP1
+>Feature gi|1376177137|gb|KY983815.1|
+1	>237	gene
+			gene	ORF2
+1	>237	CDS
+			product	VP1
+>Feature gi|1057837972|dbj|LC074829.1|
+<1	>238	gene
+			gene	ORF2
+<1	>238	CDS
+			product	VP1
+>Feature gi|188474431|gb|EU603429.1|
+1	>242	gene
+			gene	ORF2
+1	>242	CDS
+			product	VP1
+>Feature gi|1212123122|gb|KY489837.1|
+<1	40	gene
+			gene	ORF1
+<1	40	CDS
+			product	nonstructural polyprotein
+<1	37	mat_peptide
+			product	RdRp
+21	>302	gene
+			gene	ORF2
+21	>302	CDS
+			product	VP1
+>Feature gi|1057838024|dbj|LC074849.1|
+<1	>238	gene
+			gene	ORF2
+<1	>238	CDS
+			product	VP1
+>Feature gi|1045808745|gb|KU532609.1|
+<1	>221	gene
+			gene	ORF2
+<1	>221	CDS
+			product	VP1
+>Feature gi|316991890|gb|HM991431.1|
+1	>247	gene
+			gene	ORF2
+1	>247	CDS
+			product	VP1
+>Feature gi|1214146559|gb|KX357028.1|
+22	>305	gene
+			gene	ORF2
+22	>305	CDS
+			product	VP1
+>Feature gi|1043489576|gb|KU821039.1|
+<1	>217	gene
+			gene	ORF2
+<1	>217	CDS
+			product	VP1
+>Feature gi|923056960|gb|KP963723.1|
+<1	>270	gene
+			gene	ORF2
+<1	>270	CDS
+			product	VP1
+>Feature gi|1379051620|dbj|LC328875.1|
+<1	>248	gene
+			gene	ORF2
+<1	>248	CDS
+			product	VP1
+>Feature gi|589918654|gb|KJ162372.1|
+1	>231	gene
+			gene	ORF2
+1	>231	CDS
+			product	VP1
+>Feature gi|157652899|gb|EU007787.1|
+<1	76	gene
+			gene	ORF1
+<1	76	CDS
+			product	nonstructural polyprotein
+<1	73	mat_peptide
+			product	RdRp
+57	>338	gene
+			gene	ORF2
+57	>338	CDS
+			product	VP1

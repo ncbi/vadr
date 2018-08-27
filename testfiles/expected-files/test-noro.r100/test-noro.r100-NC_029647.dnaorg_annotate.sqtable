@@ -51,3 +51,8 @@
 			gene	ORF2
 <1	>253	CDS
 			product	VP1
+>Feature gi|586499739|gb|KF870636.1|
+1	>247	gene
+			gene	ORF2
+1	>247	CDS
+			product	VP1

@@ -3,27 +3,6 @@
 			gene	L
 1	6633	CDS
 			product	RNA-dependent RNA polymerase
->Feature gi|298226055|emb|HC874679.1|
-<1	2660	gene
-			gene	NP
-2854	4162	gene
-			gene	VP35
-			note	low homology score [-73.0 bits]
-4415	6029	gene
-			gene	VP40
-			note	low homology score [-200.8 bits]
-5786	8160	gene
-			gene	GP
-			note	low homology score [-149.6 bits]
-9707	11295	gene
-			gene	VP24
-			note	low homology score [-158.1 bits]
-10207	10968	CDS
-			product	membrane-associated protein
-11409	18665	gene
-			gene	L
-11478	18458	misc_feature
-			note	similar to RNA-dependent RNA polymerase
 >Feature gi|152013738|gb|EF490233.1|
 <1	>724	gene
 			gene	L
@@ -52,11 +31,13 @@
 6027	6911	CDS
 6911	8056
 			product	spike glycoprotein
+			exception	RNA editing
 6027	7124	CDS
 			product	small secreted glycoprotein
 6027	6911	CDS
 6913	6936
 			product	second secreted glycoprotein
+			exception	RNA editing
 8276	9733	gene
 			gene	VP30
 8503	9372	CDS

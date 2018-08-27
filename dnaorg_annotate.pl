@@ -232,6 +232,7 @@ opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "use models of additional qualifiers",                         "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
+opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "annotate additional qualifiers as duplicates", "annotate qualifiers in <s> from duplicates (e.g. gene from CDS)",  \%opt_HH, \@opt_order_A);  
 opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",                  "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",                       "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
@@ -307,6 +308,7 @@ my $options_okay =
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
                 'nomatpept'    => \$GetOptions_H{"--nomatpept"},
                 'xfeat=s'      => \$GetOptions_H{"--xfeat"},
+                'dfeat=s'      => \$GetOptions_H{"--dfeat"},
                 'specstart=s'  => \$GetOptions_H{"--specstart"},
                 'keep'         => \$GetOptions_H{"--keep"},
                 'local'        => \$GetOptions_H{"--local"}, 
@@ -351,8 +353,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.33";
-my $releasedate   = "Jun 2018";
+my $version       = "0.34";
+my $releasedate   = "Aug 2018";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -725,7 +727,12 @@ my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashe
                         # 1D: key: accession
                         # 2D: key: column name in gene ftable file
                         # 3D: per-row values for each column
-my %xfeat_tbl_HHHA = (); # xfeat data from feature table file, hash of hash of hashes of arrays
+my %xfeat_tbl_HHHA = (); # xfeat (eXtra feature) data from feature table file, hash of hash of hashes of arrays
+                         # 1D: qualifier name, e.g. 'gene'
+                         # 2D: key: accession
+                         # 3D: key: column name in gene ftable file
+                         # 4D: per-row values for each column
+my %dfeat_tbl_HHHA = (); # dfeat (Duplicate feature) data from feature table file, hash of hash of hashes of arrays
                          # 1D: qualifier name, e.g. 'gene'
                          # 2D: key: accession
                          # 3D: key: column name in gene ftable file
@@ -738,6 +745,18 @@ if(opt_IsUsed("--xfeat", \%opt_HH)) {
   my $xfeat_str = opt_Get("--xfeat", \%opt_HH);
   foreach my $xfeat (split(",", $xfeat_str)) { 
     %{$xfeat_tbl_HHHA{$xfeat}} = ();
+  }
+}
+# parse --dfeat option if necessary
+my $do_dfeat = 0;
+if(opt_IsUsed("--dfeat", \%opt_HH)) { 
+  $do_dfeat = 1;
+  my $dfeat_str = opt_Get("--dfeat", \%opt_HH);
+  foreach my $dfeat (split(",", $dfeat_str)) { 
+    %{$dfeat_tbl_HHHA{$dfeat}} = ();
+    if(exists $xfeat_tbl_HHHA{$dfeat}) {
+      DNAORG_FAIL("ERROR, with --xfeat <s1> and --dfeat <s2>, no qualifier names can be in common between <s1> and <s2>, found $dfeat", 1, $ofile_info_HH{"FH"});
+    }
   }
 }
 
@@ -755,7 +774,7 @@ if(defined $infasta_file) {
   # note that we pass in a reference to %ref_seq_info_HA to wrapperGetInfoUsingEdirect()
   # and *not* a reference to %seq_info_HA. We will use %infasta_ref_seq_info_HA to 
   # store information on the reference sequence only.
-  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
+  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
                              \%opt_HH, $ofile_info_HH{"FH"}); 
   $nseq = process_input_fasta_file($infasta_file, $outfasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
   if(defined $outfasta_file) { # this will be true if -c
@@ -763,7 +782,7 @@ if(defined $infasta_file) {
   }
 }
 else { # --infasta not used (default)
-  wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%seq_info_HA, \%ofile_info_HH,
+  wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%seq_info_HA, \%ofile_info_HH,
                              \%opt_HH, $ofile_info_HH{"FH"}); 
 }
 
@@ -800,6 +819,7 @@ wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_ro
                                                     \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
+                                                    ($do_dfeat)   ? \%dfeat_tbl_HHHA  : undef,
                                                     ($do_matpept) ? \@cds2pmatpept_AA : undef, 
                                                     ($do_matpept) ? \@cds2amatpept_AA : undef, 
                                                     \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, 
@@ -1182,6 +1202,7 @@ mdl_results_compare_to_genbank_annotations(\%mdl_info_HA, \%ftr_info_HA, \%seq_i
                                            \%cds_tbl_HHA, 
                                            ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                            ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
+                                           ($do_dfeat)   ? \%dfeat_tbl_HHHA  : undef,
                                            \%opt_HH, $ofile_info_HH{"FH"});
 
 # validate all of our error instances by checking for incompatibilities
@@ -2216,8 +2237,8 @@ sub parse_esl_epn_translate_startstop_outfile {
         # outcome of each possibility.
         #
         # Variables we know from earlier processing:
-        # $is_cds:     '1' if current feature is a CDS, '0' if it is not (e.g. mature peptide or $xfeat)
-        # $is_matpept: '1' if current feature is a CDS, '0' if it is not (e.g. mature peptide or $xfeat)
+        # $is_cds:     '1' if current feature is a CDS, '0' if it is not (e.g. mature peptide, $xfeat, or $dfeat)
+        # $is_matpept: '1' if current feature is a CDS, '0' if it is not (e.g. mature peptide, $xfeat, or $dfeat)
         #
         # Variables derived from esl-epn-translate output we're currently parsing
         # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
@@ -2404,9 +2425,9 @@ sub wrapper_esl_epn_translate_startstop {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ftr_hit_fafile            = $ftr_info_HAR->{$ftr_info_fa_file_key}[$ftr_idx];
     my $esl_epn_translate_outfile = $ftr_info_HAR->{$ftr_info_out_file_key}[$ftr_idx];
-  
+    
     if($ftr_hit_fafile ne "/dev/null") { # if this is set to /dev/null we know it's not supposed to exist, so we skip this feature
-
+      
       # deal with alternative starts here
       my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
       
@@ -3686,6 +3707,7 @@ sub mdl_results_calculate_out_starts_and_stops {
 #  $cds_tbl_HHAR:       REF to CDS hash of hash of arrays, PRE-FILLED
 #  $mp_tbl_HHAR:        REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
 #  $xfeat_tbl_HHAR:     REF to extra feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
+#  $dfeat_tbl_HHAR:     REF to duplicate feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
 #  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:              REF to hash of file handles
 #
@@ -3696,10 +3718,10 @@ sub mdl_results_calculate_out_starts_and_stops {
 ################################################################# 
 sub mdl_results_compare_to_genbank_annotations { 
   my $sub_name = "mdl_results_compare_to_genbank_annotations()";
-  my $nargs_exp = 9;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $opt_HHR, $FH_HR) = @_;
+  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $opt_HHR, $FH_HR) = @_;
   
   # total counts of things
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
@@ -3723,6 +3745,7 @@ sub mdl_results_compare_to_genbank_annotations {
     my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
     my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
     my $is_xfeat   = featureTypeIsExtraFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
+    my $is_dfeat   = featureTypeIsDuplicateFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
     for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
       my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
       my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
@@ -3738,6 +3761,7 @@ sub mdl_results_compare_to_genbank_annotations {
         if($is_matpept) { $tbl_HAR = $mp_tbl_HHAR->{$accn_name}; }
         if($is_cds)     { $tbl_HAR = $cds_tbl_HHAR->{$accn_name}; }
         if($is_xfeat)   { $tbl_HAR = $xfeat_tbl_HHHAR->{$ftr_info_HAR->{"type_ftable"}[$ftr_idx]}{$accn_name}; }
+        if($is_dfeat)   { $tbl_HAR = $dfeat_tbl_HHHAR->{$ftr_info_HAR->{"type_ftable"}[$ftr_idx]}{$accn_name}; }
         # TODO: if we get into viruses with many features, will want to do the comparison 
         # in sorted order by start to avoid quadratic time behavior
         if(defined $tbl_HAR) { # if there was annotation for this sequence 
@@ -5214,6 +5238,7 @@ sub output_tbl_get_headings {
   my $do_matpept   = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
   my $do_cds_notmp = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "cds-notmp", $FH_HR) > 0) ? 1 : 0;
   my $do_xfeat     = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "xfeat", $FH_HR) > 0) ? 1 : 0;
+  my $do_dfeat     = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "dfeat", $FH_HR) > 0) ? 1 : 0;
 
   # miscellaneous variables
   my $width_result = 5 + $nmdl + 2; # an important width 
@@ -5391,100 +5416,99 @@ sub output_tbl_get_headings {
     #####################################################################################
     if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
        ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-      if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
-        $width = 6 + 1 + 6 + 1 + 6; #20
-        $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int($width-length($ftr_out_short)/2), " ", $FH_HR));
-        $exp_tok1 = "CDS(MP) #<i>";
-        $tok2 = sprintf("  %s", $ftr_out_product); 
-        $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
-        $tok4 = sprintf("  %8s", sprintf("%s", "start"));
-        $tok5 = sprintf("  %8s", "--------");
-
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        $tok4 = sprintf(" %8s", "stop");
-        $tok5 = sprintf(" %8s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop  position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        $tok4 = sprintf(" %6s", "length");
-        $tok5 = sprintf(" %6s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "length of CDS(MP) #<i> (\"?\" if any of the mat_peptides that comprise this CDS are not predicted)", $FH_HR);
-        }
-
-        $tok4 = sprintf(" %6s", "startc");
-        $tok5 = sprintf(" %6s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start codon of CDS(MP) #<i> (\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        $tok4 = sprintf(" %6s", "stopc");
-        $tok5 = sprintf(" %6s", "------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop codon of CDS(MP) #<i> (\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
-        }
-        
-        if($do_ss3) { 
-          $tok4 = sprintf(" %3s", "ss3");
-          $tok5 = sprintf(" %3s", "---");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-          if($do_multi_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, '!' if not,", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  and '?' if first mat_peptide for this CDS is not predicted", $FH_HR);          
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, '!' if not,", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                      and '?' if final mat_peptide for this CDS is not predicted", $FH_HR);      
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, '!' if it is not a", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  multiple of 3, and '?' if any of the mat_peptides that comprise it are not predicted.", $FH_HR);
-          }
-        }
-        
-        $tok4 = sprintf(" %6s", "PF");
-        $tok5 = sprintf(" %6s", "---");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first mat_peptide", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after the end of its final mat_peptide", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of the mat_peptides that comprise it are adjacent", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-          if($nmultifeature == 1) { 
-            push(@pf_text_A, sprintf("P/F character %d pertains to the lone CDS.", $pf_idx));
-          }
-          else {
-            push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nmultifeature-1, $nmultifeature));
-          }
-          $pf_idx += $nmultifeature;
-        }
-        $do_multi_explanation = 0;
+      $width = 6 + 1 + 6 + 1 + 6; #20
+      $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int($width-length($ftr_out_short)/2), " ", $FH_HR));
+      $exp_tok1 = "CDS(MP) #<i>";
+      $tok2 = sprintf("  %s", $ftr_out_product); 
+      $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
+      $tok4 = sprintf("  %8s", sprintf("%s", "start"));
+      $tok5 = sprintf("  %8s", "--------");
+      
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
       }
+      
+      $tok4 = sprintf(" %8s", "stop");
+      $tok5 = sprintf(" %8s", "------");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop  position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
+      }
+      
+      $tok4 = sprintf(" %6s", "length");
+      $tok5 = sprintf(" %6s", "------");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "length of CDS(MP) #<i> (\"?\" if any of the mat_peptides that comprise this CDS are not predicted)", $FH_HR);
+      }
+      
+      $tok4 = sprintf(" %6s", "startc");
+      $tok5 = sprintf(" %6s", "------");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start codon of CDS(MP) #<i> (\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
+      }
+      
+      $tok4 = sprintf(" %6s", "stopc");
+      $tok5 = sprintf(" %6s", "------");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop codon of CDS(MP) #<i> (\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
+      }
+      
+      if($do_ss3) { 
+        $tok4 = sprintf(" %3s", "ss3");
+        $tok5 = sprintf(" %3s", "---");
+        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+        if($do_multi_explanation) { 
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, '!' if not,", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  and '?' if first mat_peptide for this CDS is not predicted", $FH_HR);          
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, '!' if not,", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                      and '?' if final mat_peptide for this CDS is not predicted", $FH_HR);      
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, '!' if it is not a", $FH_HR);
+          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  multiple of 3, and '?' if any of the mat_peptides that comprise it are not predicted.", $FH_HR);
+        }
+      }
+      
+      $tok4 = sprintf(" %6s", "PF");
+      $tok5 = sprintf(" %6s", "---");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      if($do_multi_explanation) { 
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first mat_peptide", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after the end of its final mat_peptide", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of the mat_peptides that comprise it are adjacent", $FH_HR);
+        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
+        if($nmultifeature == 1) { 
+          push(@pf_text_A, sprintf("P/F character %d pertains to the lone CDS.", $pf_idx));
+        }
+        else {
+          push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nmultifeature-1, $nmultifeature));
+        }
+        $pf_idx += $nmultifeature;
+      }
+      $do_multi_explanation = 0;
     } # end of 'if' entered if feature is a multifeature cds-mp feature
   
     #############################################
     # block that handles 'annot_type' eq "model"
     # features, these are cds-notmp and mp types
     #############################################
-    else { 
+    elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
       for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
         $width += 18;
         my $mdl_exon_idx = $mdl_info_HAR->{"map_exon"}[$mdl_idx];
         my $is_matpept   = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
         my $is_cds       = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
         my $is_xfeat     = featureTypeIsExtraFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
+        my $is_dfeat     = featureTypeIsDuplicateFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
         if($do_fid)  { $width += 6;  }
         if($do_mdlb) { $width += 4;  }
         if($do_olap) { $width += 11; }
@@ -5495,19 +5519,19 @@ sub output_tbl_get_headings {
           if($do_stop) { $width += 4; }
           $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int(($width-length($ftr_out_short))/2), " ", $FH_HR));
           $exp_tok1 = "";
-          if($do_matpept && $do_cds_notmp && $do_xfeat) { 
+          if($do_matpept && $do_cds_notmp && ($do_xfeat || $do_dfeat)) { 
             $exp_tok1 = "{MP,CDS,other} #<i>";
           }
           elsif($do_matpept && $do_cds_notmp) { 
             $exp_tok1 = "{MP,CDS} #<i>";
           }
-          elsif($do_matpept && (! $do_cds_notmp) && $do_xfeat) { 
+          elsif($do_matpept && (! $do_cds_notmp) && ($do_xfeat || $do_dfeat)) { 
             $exp_tok1 = "{MP,other} #<i>";
           }
           elsif($do_matpept && (! $do_cds_notmp)) { 
             $exp_tok1 = "MP #<i>";
           }
-          elsif($do_cds_notmp && $do_xfeat) { 
+          elsif($do_cds_notmp && ($do_xfeat || $do_dfeat)) { 
             $exp_tok1 = "{CDS,other} #<i>";
           }
           else { 
@@ -5531,7 +5555,7 @@ sub output_tbl_get_headings {
           output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
         }
         my $exp_substr = "";
-        if(! $do_xfeat) { 
+        if((! $do_xfeat) && (! $do_dfeat)) { 
           if($do_matpept && $do_cds_notmp) { 
             $exp_substr = "coding sequence part (or exon) <j> of mat_peptide (or CDS)";
           }
@@ -5542,7 +5566,7 @@ sub output_tbl_get_headings {
             $exp_substr = "exon <j> of CDS";
           }
         }
-        else { # $do_xfeat is TRUE
+        else { # $do_xfeat or $do_dfeat is TRUE
           if($do_matpept && $do_cds_notmp) { 
             $exp_substr = "coding sequence part (or exon or segment) <j> of mat_peptide (or CDS or other feature)";
           }
@@ -5726,7 +5750,25 @@ sub output_tbl_get_headings {
         } # end of 'if($mdl_is_final_AR->[$mdl_idx])'
         $do_model_explanation = 0; # once we see the final exon of the first CDS, we don't need to print CDS explanations anymore
       } # end of 'for(my $mdl_idx)'
-    } # end of 'else' entered if we're not a multifeature cds-mp feature
+    } # end of 'else' entered if we're not a multifeature cds-mp feature but do have annot_type eq 'model'
+    ################################################
+    # block that handles 'annot_type' eq "duplicate"
+    ################################################
+    elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") { 
+      $width = 6 + 1 + 6 + 1 + 6; #20
+      $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int($width-length($ftr_out_short)/2), " ", $FH_HR));
+      $exp_tok1 = $ftr_out_short;
+      $tok2 = sprintf("  %s", $ftr_out_product); 
+      $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
+      $tok4 = sprintf("  %8s", sprintf("%s", "start"));
+      $tok5 = sprintf("  %8s", "--------");
+      
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+      
+      $tok4 = sprintf(" %8s", "stop");
+      $tok5 = sprintf(" %8s", "------");
+      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
+    } # end of block that handles 'annot_type' eq 'duplicate'
   } # end of 'for(my $ftr_idx)'
   
   # create columns for 3'UTR, if $do_matpept:
@@ -6195,7 +6237,7 @@ sub output_tbl_all_sequences {
       # block that handles 'annot_type' eq "model"
       # features, these are cds-notmp and mp types
       #############################################
-      else { # not a multifeature cds-mp 
+      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
         for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
           my $is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx]; # is this the first model for feature $ftr_idx?
           my $is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx]; # is this the final model for feature $ftr_idx?
@@ -6346,7 +6388,32 @@ sub output_tbl_all_sequences {
             }
           }
         } # end of 'for(my $mdl_idx'
-      } # end of 'else' entered if feature is not a multifeature cds-mp
+      } # end of 'elsif($ftr_info_HAR->{"annot_type"} eq "model") {' entered if feature is not a multifeature cds-mp but has annot_type == "model"
+      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") {
+        my $src_idx = $ftr_info_HAR->{"source_idx"}[$ftr_idx];
+        if($src_idx == -1) {
+          DNAORG_FAIL("ERROR in $sub_name, feature index $ftr_idx has annot_type of duplicate, but has source_idx of -1", 1, $ofile_info_HHR->{"FH"});
+        }
+        my $start_pos = "-";
+        my $stop_pos  = "-";
+        if(($ftr_info_HAR->{"annot_type"}[$src_idx] eq "multifeature") && 
+           ($ftr_info_HAR->{"type"}[$src_idx]       eq "cds-mp")) {
+          $start_pos = $ftr_results_AAHR->[$src_idx][$seq_idx]->{"out_start"};
+          $stop_pos  = $ftr_results_AAHR->[$src_idx][$seq_idx]->{"out_stop"};
+        }
+        elsif($ftr_info_HAR->{"annot_type"}[$src_idx] eq "model") {
+          my $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$src_idx];
+          my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$src_idx];
+          if(exists $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]->{"out_start"}) { 
+            $start_pos = $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]->{"out_start"};
+          }
+          if(exists $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]->{"out_stop"}) { 
+            $stop_pos = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]->{"out_stop"};
+          }
+        }
+        push(@cur_out_A, sprintf("  %8s ", $start_pos)); # start position
+        push(@cur_out_A, sprintf("%8s",    $stop_pos));  # stop position
+      }        
     } # end of 'for(my $ftr_idx'      
 
     # 3' UTR, if nec
@@ -6615,6 +6682,7 @@ sub output_feature_tbl_all_sequences {
   my $sftbl_FH = $FH_HR->{"sftbl"};
   my $lftbl_FH = $FH_HR->{"lftbl"};
   my $cur_out_str; # current output string to print
+  my $cur_coords_str; # current output string of only coordinates needed to deal with duplicate features
   my $cur_long_out_str; # current output string to print to long file
   my $cur_short_out_str; # current output string to print to short file
   my $nmdl = validateModelInfoHashIsComplete    ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
@@ -6622,7 +6690,7 @@ sub output_feature_tbl_all_sequences {
   my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
   my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); # nerr: number of different error codes
   my $nexc = validateFTableErrorExceptions      ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR); # nexc: number of different feature table exceptions
-  my $do_matpept  = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
+  my $do_matpept = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
   my $exc_idx; # an index in @{$ftbl_err_exceptions_AHR}
   my $cur_err_str;     # current string of errors for this sequence/feature combo
   my $do_short_ftable; # '1' if we are printing this current sequence/feature to the short feature table, '0' if not
@@ -6664,7 +6732,9 @@ sub output_feature_tbl_all_sequences {
     my $min_coord = -1;     # minimum coord in this feature
     my $cur_min_coord = -1; # minimum coord in this segment
     my $i;
-
+    my %fidx2sidx_H = (); # key is feature index $fidx, value is $sidx index in @short_AH that $fidx corresponds to
+    my %fidx2lidx_H = (); # key is feature index $fidx, value is $lidx index in @long_AH that $fidx corresponds to
+    
     $cur_out_str = (">Feature $accn_name\n");
     print $sftbl_FH $cur_out_str;
     print $lftbl_FH $cur_out_str;
@@ -6684,6 +6754,7 @@ sub output_feature_tbl_all_sequences {
     # go through each feature and output information on it
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       $cur_out_str       = "";
+      $cur_coords_str    = "";
       $cur_short_out_str = "";
       $cur_long_out_str  = "";
 
@@ -6708,7 +6779,6 @@ sub output_feature_tbl_all_sequences {
           }
         }
       } # end of for loop over $err_idx 
-
 
       # determine if this sequence/feature combo satisfies any of the feature 
       # table exceptions, allowing it to be output to the short feature table
@@ -6748,9 +6818,12 @@ sub output_feature_tbl_all_sequences {
             $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
                                     $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
                                     $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"}, $feature_type); 
+            $cur_coords_str .= sprintf("%s%d\t%s%d\n", 
+                                       $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
+                                       $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"});
             $min_coord = ($ftr_results_HR->{"ftbl_out_start"} < $ftr_results_HR->{"ftbl_out_stop"}) ? $ftr_results_HR->{"ftbl_out_start"} : $ftr_results_HR->{"ftbl_out_stop"};
             if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
-              foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+              foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
                 if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                   $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
                   @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
@@ -6773,24 +6846,30 @@ sub output_feature_tbl_all_sequences {
 
             # now push that to the output hashes
             %{$long_AH[$lidx]} = ();
-            $long_AH[$lidx]{"carrot"}        = $do_start_carrot;
-            $long_AH[$lidx]{"mincoord"}      = $min_coord;
-            $long_AH[$lidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
-            $long_AH[$lidx]{"output"}        = $cur_long_out_str;
+            $long_AH[$lidx]{"carrot"}          = $do_start_carrot;
+            $long_AH[$lidx]{"mincoord"}        = $min_coord;
+            $long_AH[$lidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+            $long_AH[$lidx]{"output"}          = $cur_long_out_str;
+            $long_AH[$lidx]{"coords"}          = $cur_coords_str;
+            $long_AH[$lidx]{"do_misc_feature"} = $do_misc_feature;
+            $fidx2lidx_H{$ftr_idx} = $lidx;
             $lidx++;
 
             if($do_short_ftable) { 
               %{$short_AH[$sidx]} = ();
-              $short_AH[$sidx]{"carrot"}        = $do_start_carrot;
-              $short_AH[$sidx]{"mincoord"}      = $min_coord;
-              $short_AH[$sidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
-              $short_AH[$sidx]{"output"}        = $cur_short_out_str;
+              $short_AH[$sidx]{"carrot"}          = $do_start_carrot;
+              $short_AH[$sidx]{"mincoord"}        = $min_coord;
+              $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+              $short_AH[$sidx]{"output"}          = $cur_short_out_str;
+              $short_AH[$sidx]{"coords"}    = $cur_coords_str;
+              $short_AH[$sidx]{"do_misc_feature"} = $do_misc_feature;
+              $fidx2sidx_H{$ftr_idx} = $sidx;
               $sidx++;
             }
           }
         } # end of if(! $ftr_nop_error_flag) { 
       }
-      else { # not a multifeature cds-mp 
+      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # not a multifeature cds-mp but annotated by models
         # if this feature is of annot_type 'model' determine if all models for it have no prediction or not
         $all_mdl_nop_error_flag = 0;
         $first_mdl_idx_w_pred = -1;
@@ -6825,16 +6904,22 @@ sub output_feature_tbl_all_sequences {
                 $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
                                         $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
                                         ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"}, $feature_type); 
+                $cur_coords_str .= sprintf("%s%d\t%s%d\n", 
+                                           $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
+                                           ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
               }
               else { 
                 $cur_out_str .= sprintf("%d\t%s%d\n", 
                                         $mdl_results_HR->{"out_start"}, 
                                         ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
+                $cur_coords_str .= sprintf("%d\t%s%d\n", 
+                                           $mdl_results_HR->{"out_start"}, 
+                                           ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
               }
             }
           }
-          if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
-            foreach my $key ("out_product", "out_gene") { # done this way so we could expand to more feature info elements in the future
+          if(! $do_misc_feature) { # misc_feature's don't get product, gene or exception information output
+            foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
               if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                 $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
                 @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
@@ -6858,22 +6943,96 @@ sub output_feature_tbl_all_sequences {
 
           # now push that to the output hashes
           %{$long_AH[$lidx]} = ();
-          $long_AH[$lidx]{"carrot"}        = $do_start_carrot;
-          $long_AH[$lidx]{"mincoord"}      = $min_coord;
-          $long_AH[$lidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
-          $long_AH[$lidx]{"output"}        = $cur_long_out_str;
+          $long_AH[$lidx]{"carrot"}          = $do_start_carrot;
+          $long_AH[$lidx]{"mincoord"}        = $min_coord;
+          $long_AH[$lidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+          $long_AH[$lidx]{"output"}          = $cur_long_out_str;
+          $long_AH[$lidx]{"coords"}          = $cur_coords_str;
+          $long_AH[$lidx]{"do_misc_feature"} = $do_misc_feature;
+          $fidx2lidx_H{$ftr_idx} = $lidx;
           $lidx++;
-          
+
           if($do_short_ftable) { 
             %{$short_AH[$sidx]} = ();
-            $short_AH[$sidx]{"carrot"}        = $do_start_carrot;
-            $short_AH[$sidx]{"mincoord"}      = $min_coord;
-            $short_AH[$sidx]{"type_priority"} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
-            $short_AH[$sidx]{"output"}        = $cur_short_out_str;
+            $short_AH[$sidx]{"carrot"}          = $do_start_carrot;
+            $short_AH[$sidx]{"mincoord"}        = $min_coord;
+            $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+            $short_AH[$sidx]{"output"}          = $cur_short_out_str;
+            $short_AH[$sidx]{"coords"}          = $cur_coords_str;
+            $short_AH[$sidx]{"do_misc_feature"} = $do_misc_feature;
+            $fidx2sidx_H{$ftr_idx} = $sidx;
             $sidx++;
           }
         } # end of if(! $all_mdl_nop_error_flag)
-      }  # end of 'else' entered if feature is not a multifeature cds-mp
+      }  # end of 'else' entered if feature is not a multifeature cds-mp but is annotated by models
+      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") { # duplicate feature
+        my $src_idx = $ftr_info_HAR->{"source_idx"}[$ftr_idx];
+        if($src_idx == -1) {
+          DNAORG_FAIL("ERROR in $sub_name, feature index $ftr_idx has annot_type of duplicate, but has source_idx of -1", 1, $ofile_info_HHR->{"FH"});
+        }
+        if(exists $fidx2lidx_H{$src_idx}) {
+          my $src_lidx = $fidx2lidx_H{$src_idx};
+          %{$long_AH[$lidx]} = ();
+          foreach my $key (sort keys (%{$long_AH[$src_lidx]})) {
+            $long_AH[$lidx]{$key} = $long_AH[$src_lidx]{$key};
+            if($key eq "type_priority") { $long_AH[$lidx]{$key} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority; }
+          }
+          $fidx2lidx_H{$ftr_idx} = $lidx;
+          # use "coords" value to rewrite "output" value
+          $cur_out_str = "";
+          my @coords_A = split("\n", $long_AH[$src_lidx]{"coords"});
+          for(my $cidx = 0; $cidx < scalar(@coords_A); $cidx++) { 
+            $cur_out_str .= $coords_A[$cidx];
+            if($cidx == 0) { $cur_out_str .= "\t" . $feature_type; }
+            $cur_out_str .= "\n";
+          }
+          if(! $long_AH[$src_lidx]{"do_misc_feature"}) { 
+            foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
+              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                foreach $qval (@qval_A) { 
+                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+                }
+              }
+            }
+          }
+          $long_AH[$lidx]{"output"} = $cur_out_str;
+          $lidx++;
+        }
+        if($do_short_ftable) { 
+          if(exists $fidx2sidx_H{$src_idx}) {
+            my $src_sidx = $fidx2sidx_H{$src_idx};
+            %{$short_AH[$sidx]} = ();
+            foreach my $key (sort keys (%{$short_AH[$src_sidx]})) {
+              $short_AH[$sidx]{$key} = $short_AH[$src_sidx]{$key};
+              if($key eq "type_priority") { $short_AH[$sidx]{$key} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority; }
+            }
+            $fidx2sidx_H{$ftr_idx} = $sidx;
+            # use "coords" value to rewrite "output" value
+            $cur_out_str = "";
+            my @coords_A = split("\n", $short_AH[$src_sidx]{"coords"});
+            for(my $cidx = 0; $cidx < scalar(@coords_A); $cidx++) { 
+              $cur_out_str .= $coords_A[$cidx];
+              if($cidx == 0) { $cur_out_str .= "\t" . $feature_type; }
+              $cur_out_str .= "\n";
+            }
+            if(! $short_AH[$src_sidx]{"do_misc_feature"}) { 
+              foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
+                if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                  $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                  @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                  foreach $qval (@qval_A) { 
+                    $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
+                  }
+                }
+              }
+            }
+            $short_AH[$sidx]{"output"} = $cur_out_str;
+            $sidx++;
+          }
+        }
+      }
     } # end of 'for(my $ftr_idx'      
 
     # 3' UTR would go here, see commit e443e96 for example (I abandoned 3' UTRs after that commit)
@@ -8317,8 +8476,15 @@ sub define_model_and_feature_output_file_names {
   }
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    foreach my $file_type (@both_file_types_A, @ftr_only_file_types_A) { 
-      $ftr_info_HAR->{$file_type}[$ftr_idx] = $out_root . "." . $ftr_info_HAR->{"filename_root"}[$ftr_idx] . "." . $file_type;
+    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "duplicate") { 
+      foreach my $file_type (@both_file_types_A, @ftr_only_file_types_A) { 
+        $ftr_info_HAR->{$file_type}[$ftr_idx] = $out_root . "." . $ftr_info_HAR->{"filename_root"}[$ftr_idx] . "." . $file_type;
+      }
+    }
+    else { 
+      foreach my $file_type (@both_file_types_A, @ftr_only_file_types_A) { 
+        $ftr_info_HAR->{$file_type}[$ftr_idx] = "/dev/null";
+      }
     }
   }
 
