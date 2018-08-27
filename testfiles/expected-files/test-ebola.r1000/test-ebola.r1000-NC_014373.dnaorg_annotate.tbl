@@ -25,37 +25,37 @@ CDS #3 [single exon; +]:matrix protein:length                                   
 CDS #3 [single exon; +]:matrix protein:ss3                                                   NP                           ...                          ...                          ...                            NP
 CDS #3 [single exon; +]:matrix protein:stp                                                   NP                           TGA                          TAA                          TAA                            NP
 CDS #3 [single exon; +]:matrix protein:PF                                                     F                             P                            P                            P                             F
-CDS #4 [2 exons; +]:spike glycoprotein:start1                                                NP                          6021                         6021                         6021                            NP
-CDS #4 [2 exons; +]:spike glycoprotein:stop1                                                 NP                          6905                         6905                         6905                            NP
-CDS #4 [2 exons; +]:spike glycoprotein:md1                                                   NP                            ..                           ..                           ..                            NP
-CDS #4 [2 exons; +]:spike glycoprotein:overlaps1                                             NP            P:4.2,5.1,6.1,13.1           P:4.2,5.1,6.1,13.1           P:4.2,5.1,6.1,13.1                            NP
-CDS #4 [2 exons; +]:spike glycoprotein:start2                                                NP                          6905                         6905                         6905                            NP
-CDS #4 [2 exons; +]:spike glycoprotein:stop2                                                 NP                          8050                         8050                         8050                            NP
-CDS #4 [2 exons; +]:spike glycoprotein:md2                                                   NP                            ..                           ..                           ..                            NP
-CDS #4 [2 exons; +]:spike glycoprotein:overlaps2                                             NP        P:4.1,5.1,6.1,6.2,13.1       P:4.1,5.1,6.1,6.2,13.1       P:4.1,5.1,6.1,6.2,13.1                            NP
-CDS #4 [2 exons; +]:spike glycoprotein:length                                                NP                          2031                         2031                         2031                            NP
-CDS #4 [2 exons; +]:spike glycoprotein:ss3                                                   NP                           ...                          ...                          ...                            NP
-CDS #4 [2 exons; +]:spike glycoprotein:stp                                                   NP                           TAA                          TAA                          TAA                            NP
+CDS #4 [2 exons; +]:spike glycoprotein:start1                                                NP                          6021                         6021                         6021                             1
+CDS #4 [2 exons; +]:spike glycoprotein:stop1                                                 NP                          6905                         6905                         6905                           885
+CDS #4 [2 exons; +]:spike glycoprotein:md1                                                   NP                            ..                           ..                           ..                            ..
+CDS #4 [2 exons; +]:spike glycoprotein:overlaps1                                             NP            P:4.2,5.1,6.1,13.1           P:4.2,5.1,6.1,13.1           P:4.2,5.1,6.1,13.1                F:5.1,6.1,13.1
+CDS #4 [2 exons; +]:spike glycoprotein:start2                                                NP                          6905                         6905                         6905                           886
+CDS #4 [2 exons; +]:spike glycoprotein:stop2                                                 NP                          8050                         8050                         8050                          2031
+CDS #4 [2 exons; +]:spike glycoprotein:md2                                                   NP                            ..                           ..                           ..                            ..
+CDS #4 [2 exons; +]:spike glycoprotein:overlaps2                                             NP        P:4.1,5.1,6.1,6.2,13.1       P:4.1,5.1,6.1,6.2,13.1       P:4.1,5.1,6.1,6.2,13.1                F:5.1,6.2,13.1
+CDS #4 [2 exons; +]:spike glycoprotein:length                                                NP                          2031                         2031                         2031                          2031
+CDS #4 [2 exons; +]:spike glycoprotein:ss3                                                   NP                           ...                          ...                          ...                           ...
+CDS #4 [2 exons; +]:spike glycoprotein:stp                                                   NP                           TAA                          TAA                          TAA                           TAA
 CDS #4 [2 exons; +]:spike glycoprotein:PF                                                     F                             P                            P                            P                             F
-CDS #5 [single exon; +]:small secreted glycoprotein:start1                                   NP                          6021                         6021                         6021                            NP
-CDS #5 [single exon; +]:small secreted glycoprotein:stop1                                    NP                          7142                         7121                         7121                            NP
-CDS #5 [single exon; +]:small secreted glycoprotein:md1                                      NP                            ..                           .t                           .t                            NP
-CDS #5 [single exon; +]:small secreted glycoprotein:overlaps1                                NP        P:4.1,4.2,6.1,6.2,13.1       P:4.1,4.2,6.1,6.2,13.1       P:4.1,4.2,6.1,6.2,13.1                            NP
-CDS #5 [single exon; +]:small secreted glycoprotein:length                                   NP                          1122                         1101                         1101                            NP
-CDS #5 [single exon; +]:small secreted glycoprotein:ss3                                      NP                           ...                          ...                          ...                            NP
-CDS #5 [single exon; +]:small secreted glycoprotein:stp                                      NP                           TGA                          TGA                          TGA                            NP
-CDS #5 [single exon; +]:small secreted glycoprotein:PF                                        F                             P                            P                            P                             F
-CDS #6 [2 exons; +]:second secreted glycoprotein:start1                                      NP                          6021                         6021                         6021                            NP
-CDS #6 [2 exons; +]:second secreted glycoprotein:stop1                                       NP                          6905                         6905                         6905                            NP
-CDS #6 [2 exons; +]:second secreted glycoprotein:md1                                         NP                            ..                           ..                           ..                            NP
-CDS #6 [2 exons; +]:second secreted glycoprotein:overlaps1                                   NP            P:4.1,4.2,5.1,13.1           P:4.1,4.2,5.1,13.1           P:4.1,4.2,5.1,13.1                            NP
-CDS #6 [2 exons; +]:second secreted glycoprotein:start2                                      NP                          6907                         6907                         6907                            NP
-CDS #6 [2 exons; +]:second secreted glycoprotein:stop2                                       NP                          6930                         6930                         6930                            NP
-CDS #6 [2 exons; +]:second secreted glycoprotein:md2                                         NP                            ..                           ..                           ..                            NP
-CDS #6 [2 exons; +]:second secreted glycoprotein:overlaps2                                   NP                P:4.2,5.1,13.1               P:4.2,5.1,13.1               P:4.2,5.1,13.1                            NP
-CDS #6 [2 exons; +]:second secreted glycoprotein:length                                      NP                           909                          909                          909                            NP
-CDS #6 [2 exons; +]:second secreted glycoprotein:ss3                                         NP                           ...                          ...                          ...                            NP
-CDS #6 [2 exons; +]:second secreted glycoprotein:stp                                         NP                           TGA                          TGA                          TGA                            NP
+CDS #5 [single exon; +]:small secreted glycoprotein:start1                                   NP                          6021                         6021                         6021                             1
+CDS #5 [single exon; +]:small secreted glycoprotein:stop1                                    NP                          7142                         7121                         7121                          2031
+CDS #5 [single exon; +]:small secreted glycoprotein:md1                                      NP                            ..                           .t                           .t                            .e
+CDS #5 [single exon; +]:small secreted glycoprotein:overlaps1                                NP        P:4.1,4.2,6.1,6.2,13.1       P:4.1,4.2,6.1,6.2,13.1       P:4.1,4.2,6.1,6.2,13.1        P:4.1,4.2,6.1,6.2,13.1
+CDS #5 [single exon; +]:small secreted glycoprotein:length                                   NP                          1122                         1101                         1101                          2031
+CDS #5 [single exon; +]:small secreted glycoprotein:ss3                                      NP                           ...                          ...                          ...                           ...
+CDS #5 [single exon; +]:small secreted glycoprotein:stp                                      NP                           TGA                          TGA                          TGA                           TAA
+CDS #5 [single exon; +]:small secreted glycoprotein:PF                                        F                             P                            P                            P                             P
+CDS #6 [2 exons; +]:second secreted glycoprotein:start1                                      NP                          6021                         6021                         6021                             1
+CDS #6 [2 exons; +]:second secreted glycoprotein:stop1                                       NP                          6905                         6905                         6905                           885
+CDS #6 [2 exons; +]:second secreted glycoprotein:md1                                         NP                            ..                           ..                           ..                            ..
+CDS #6 [2 exons; +]:second secreted glycoprotein:overlaps1                                   NP            P:4.1,4.2,5.1,13.1           P:4.1,4.2,5.1,13.1           P:4.1,4.2,5.1,13.1                F:4.1,5.1,13.1
+CDS #6 [2 exons; +]:second secreted glycoprotein:start2                                      NP                          6907                         6907                         6907                           888
+CDS #6 [2 exons; +]:second secreted glycoprotein:stop2                                       NP                          6930                         6930                         6930                           911
+CDS #6 [2 exons; +]:second secreted glycoprotein:md2                                         NP                            ..                           ..                           ..                            ..
+CDS #6 [2 exons; +]:second secreted glycoprotein:overlaps2                                   NP                P:4.2,5.1,13.1               P:4.2,5.1,13.1               P:4.2,5.1,13.1                P:4.2,5.1,13.1
+CDS #6 [2 exons; +]:second secreted glycoprotein:length                                      NP                           909                          909                          909                           909
+CDS #6 [2 exons; +]:second secreted glycoprotein:ss3                                         NP                           ...                          ...                          ...                           ...
+CDS #6 [2 exons; +]:second secreted glycoprotein:stp                                         NP                           TGA                          TGA                          TGA                           TGA
 CDS #6 [2 exons; +]:second secreted glycoprotein:PF                                           F                             P                            P                            P                             F
 CDS #7 [single exon; +]:minor nucleoprotein:start1                                           NP                          8496                         8496                         8496                            NP
 CDS #7 [single exon; +]:minor nucleoprotein:stop1                                            NP                          9365                         9365                         9365                            NP
@@ -99,11 +99,11 @@ gene #3 [single segment; +]::md1                                                
 gene #3 [single segment; +]::overlaps1                                                       NP                    P:3.1,11.1                   P:3.1,11.1                   P:3.1,11.1                            NP
 gene #3 [single segment; +]::length                                                          NP                          1504                         1504                         1504                            NP
 gene #3 [single segment; +]::PF                                                               F                             F                            F                            F                             F
-gene #4 [single segment; +]::start1                                                          NP                          5882                         5882                         5882                            NP
-gene #4 [single segment; +]::stop1                                                           NP                          8286                         8286                         8286                            NP
-gene #4 [single segment; +]::md1                                                             NP                            ..                           ..                           ..                            NP
-gene #4 [single segment; +]::overlaps1                                                       NP    P:4.1,4.2,5.1,6.1,6.2,14.1   P:4.1,4.2,5.1,6.1,6.2,14.1   P:4.1,4.2,5.1,6.1,6.2,14.1                            NP
-gene #4 [single segment; +]::length                                                          NP                          2405                         2405                         2405                            NP
+gene #4 [single segment; +]::start1                                                          NP                          5882                         5882                         5882                             1
+gene #4 [single segment; +]::stop1                                                           NP                          8286                         8286                         8286                          2031
+gene #4 [single segment; +]::md1                                                             NP                            ..                           ..                           ..                            ++
+gene #4 [single segment; +]::overlaps1                                                       NP    P:4.1,4.2,5.1,6.1,6.2,14.1   P:4.1,4.2,5.1,6.1,6.2,14.1   P:4.1,4.2,5.1,6.1,6.2,14.1         F:4.1,4.2,5.1,6.1,6.2
+gene #4 [single segment; +]::length                                                          NP                          2405                         2405                         2405                          2031
 gene #4 [single segment; +]::PF                                                               F                             F                            F                            F                             F
 gene #5 [single segment; +]::start1                                                          NP                          8269                         8269                         8269                            NP
 gene #5 [single segment; +]::stop1                                                           NP                          9728                         9727                         9727                            NP
@@ -124,20 +124,20 @@ gene #7 [single segment; +]::overlaps1                                          
 gene #7 [single segment; +]::length                                                        6633                          6979                         6979                         6979                            NP
 gene #7 [single segment; +]::PF                                                               F                             F                            F                            F                             F
 totlen                                                                                     6633                         18940                        18939                        18939                          2031
-result                                                                    FAIL FFFFFFFFPFFFFFFF         FAIL PPPPPPPPPFFFFFFF        FAIL PPPPPPPPPFFFFFFF        FAIL PPPPPPPPPFFFFFFF         FAIL FFFFFFFFFFFFFFFF
+result                                                                    FAIL FFFFFFFFPFFFFFFF         FAIL PPPPPPPPPFFFFFFF        FAIL PPPPPPPPPFFFFFFF        FAIL PPPPPPPPPFFFFFFF         FAIL FFFFPFFFFFFFFFFF
 #
 # end of page 1
 #
 idx                                                                                           6                              7
 accession                                                         gi|1073848262|emb|LQ278396.1|  gi|1073848136|emb|LQ278392.1|
 totlen                                                                                      173                            133
-CDS #1 [single exon; +]:nucleoprotein:start1                                                 NP                             NP
-CDS #1 [single exon; +]:nucleoprotein:stop1                                                  NP                             NP
-CDS #1 [single exon; +]:nucleoprotein:md1                                                    NP                             NP
-CDS #1 [single exon; +]:nucleoprotein:overlaps1                                              NP                             NP
-CDS #1 [single exon; +]:nucleoprotein:length                                                 NP                             NP
-CDS #1 [single exon; +]:nucleoprotein:ss3                                                    NP                             NP
-CDS #1 [single exon; +]:nucleoprotein:stp                                                    NP                             NP
+CDS #1 [single exon; +]:nucleoprotein:start1                                                 NP                              1
+CDS #1 [single exon; +]:nucleoprotein:stop1                                                  NP                            133
+CDS #1 [single exon; +]:nucleoprotein:md1                                                    NP                             ++
+CDS #1 [single exon; +]:nucleoprotein:overlaps1                                              NP                         P:10.1
+CDS #1 [single exon; +]:nucleoprotein:length                                                 NP                            133
+CDS #1 [single exon; +]:nucleoprotein:ss3                                                    NP                            .!.
+CDS #1 [single exon; +]:nucleoprotein:stp                                                    NP                            AGG
 CDS #1 [single exon; +]:nucleoprotein:PF                                                      F                              F
 CDS #2 [single exon; +]:polymerase complex protein:start1                                    NP                             NP
 CDS #2 [single exon; +]:polymerase complex protein:stop1                                     NP                             NP
@@ -195,13 +195,13 @@ CDS #7 [single exon; +]:minor nucleoprotein:length                              
 CDS #7 [single exon; +]:minor nucleoprotein:ss3                                              NP                             NP
 CDS #7 [single exon; +]:minor nucleoprotein:stp                                              NP                             NP
 CDS #7 [single exon; +]:minor nucleoprotein:PF                                                F                              F
-CDS #8 [single exon; +]:membrane-associated protein:start1                                   NP                             NP
-CDS #8 [single exon; +]:membrane-associated protein:stop1                                    NP                             NP
-CDS #8 [single exon; +]:membrane-associated protein:md1                                      NP                             NP
-CDS #8 [single exon; +]:membrane-associated protein:overlaps1                                NP                             NP
-CDS #8 [single exon; +]:membrane-associated protein:length                                   NP                             NP
-CDS #8 [single exon; +]:membrane-associated protein:ss3                                      NP                             NP
-CDS #8 [single exon; +]:membrane-associated protein:stp                                      NP                             NP
+CDS #8 [single exon; +]:membrane-associated protein:start1                                    1                             NP
+CDS #8 [single exon; +]:membrane-associated protein:stop1                                   173                             NP
+CDS #8 [single exon; +]:membrane-associated protein:md1                                      ++                             NP
+CDS #8 [single exon; +]:membrane-associated protein:overlaps1                            P:15.1                             NP
+CDS #8 [single exon; +]:membrane-associated protein:length                                  173                             NP
+CDS #8 [single exon; +]:membrane-associated protein:ss3                                     ...                             NP
+CDS #8 [single exon; +]:membrane-associated protein:stp                                     TGA                             NP
 CDS #8 [single exon; +]:membrane-associated protein:PF                                        F                              F
 CDS #9 [single exon; +]:RNA-dependent RNA polymerase:start1                                  NP                             NP
 CDS #9 [single exon; +]:RNA-dependent RNA polymerase:stop1                                   NP                             NP
@@ -211,11 +211,11 @@ CDS #9 [single exon; +]:RNA-dependent RNA polymerase:length                     
 CDS #9 [single exon; +]:RNA-dependent RNA polymerase:ss3                                     NP                             NP
 CDS #9 [single exon; +]:RNA-dependent RNA polymerase:stp                                     NP                             NP
 CDS #9 [single exon; +]:RNA-dependent RNA polymerase:PF                                       F                              F
-gene #1 [single segment; +]::start1                                                          NP                             NP
-gene #1 [single segment; +]::stop1                                                           NP                             NP
-gene #1 [single segment; +]::md1                                                             NP                             NP
-gene #1 [single segment; +]::overlaps1                                                       NP                             NP
-gene #1 [single segment; +]::length                                                          NP                             NP
+gene #1 [single segment; +]::start1                                                          NP                              1
+gene #1 [single segment; +]::stop1                                                           NP                            133
+gene #1 [single segment; +]::md1                                                             NP                             ++
+gene #1 [single segment; +]::overlaps1                                                       NP                          P:1.1
+gene #1 [single segment; +]::length                                                          NP                            133
 gene #1 [single segment; +]::PF                                                               F                              F
 gene #2 [single segment; +]::start1                                                          NP                             NP
 gene #2 [single segment; +]::stop1                                                           NP                             NP
@@ -241,11 +241,11 @@ gene #5 [single segment; +]::md1                                                
 gene #5 [single segment; +]::overlaps1                                                       NP                             NP
 gene #5 [single segment; +]::length                                                          NP                             NP
 gene #5 [single segment; +]::PF                                                               F                              F
-gene #6 [single segment; +]::start1                                                          NP                             NP
-gene #6 [single segment; +]::stop1                                                           NP                             NP
-gene #6 [single segment; +]::md1                                                             NP                             NP
-gene #6 [single segment; +]::overlaps1                                                       NP                             NP
-gene #6 [single segment; +]::length                                                          NP                             NP
+gene #6 [single segment; +]::start1                                                           1                             NP
+gene #6 [single segment; +]::stop1                                                          173                             NP
+gene #6 [single segment; +]::md1                                                             ++                             NP
+gene #6 [single segment; +]::overlaps1                                                    F:8.1                             NP
+gene #6 [single segment; +]::length                                                         173                             NP
 gene #6 [single segment; +]::PF                                                               F                              F
 gene #7 [single segment; +]::start1                                                          NP                             NP
 gene #7 [single segment; +]::stop1                                                           NP                             NP
