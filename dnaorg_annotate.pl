@@ -6401,11 +6401,15 @@ sub output_tbl_all_sequences {
           $start_pos = $ftr_results_AAHR->[$src_idx][$seq_idx]->{"out_start"};
           $stop_pos  = $ftr_results_AAHR->[$src_idx][$seq_idx]->{"out_stop"};
         }
-        elsif($ftr_info_HAR->{"type"}[$src_idx] eq "model") {
-          my $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
-          my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
-          $start_pos = $mdl_results_AAHR->[$src_idx][$seq_idx]->{"out_start"};
-          $stop_pos  = $mdl_results_AAHR->[$src_idx][$seq_idx]->{"out_stop"};
+        elsif($ftr_info_HAR->{"annot_type"}[$src_idx] eq "model") {
+          my $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$src_idx];
+          my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$src_idx];
+          if(exists $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]->{"out_start"}) { 
+            $start_pos = $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]->{"out_start"};
+          }
+          if(exists $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]->{"out_stop"}) { 
+            $stop_pos = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]->{"out_stop"};
+          }
         }
         push(@cur_out_A, sprintf("  %8s ", $start_pos)); # start position
         push(@cur_out_A, sprintf("%8s",    $stop_pos));  # stop position
@@ -6971,6 +6975,7 @@ sub output_feature_tbl_all_sequences {
           %{$long_AH[$lidx]} = ();
           foreach my $key (sort keys (%{$long_AH[$src_lidx]})) {
             $long_AH[$lidx]{$key} = $long_AH[$src_lidx]{$key};
+            if($key eq "type_priority") { $long_AH[$lidx]{$key} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority; }
           }
           $fidx2lidx_H{$ftr_idx} = $lidx;
           # use "coords" value to rewrite "output" value
@@ -7001,6 +7006,7 @@ sub output_feature_tbl_all_sequences {
             %{$short_AH[$sidx]} = ();
             foreach my $key (sort keys (%{$short_AH[$src_sidx]})) {
               $short_AH[$sidx]{$key} = $short_AH[$src_sidx]{$key};
+              if($key eq "type_priority") { $short_AH[$sidx]{$key} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority; }
             }
             $fidx2sidx_H{$ftr_idx} = $sidx;
             # use "coords" value to rewrite "output" value
