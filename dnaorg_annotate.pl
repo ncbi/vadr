@@ -6986,14 +6986,16 @@ sub output_feature_tbl_all_sequences {
             if($cidx == 0) { $cur_out_str .= "\t" . $feature_type; }
             $cur_out_str .= "\n";
           }
-          if(! $long_AH[$src_lidx]{"do_misc_feature"}) { 
-            foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
-              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
-                foreach $qval (@qval_A) { 
-                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-                }
+          # version 0.34 and previous, we only did this if src was not a misc_feature 
+          # but example sequence NC_029646-09 (https://confluence.ncbi.nlm.nih.gov/pages/viewpage.action?spaceKey=VG&title=Annotation+Test+Sets+and+5-Column+Feature+Table)
+          # has a gene with gene qualifier even when it is for a misc_feature CDS
+          # v0.34 if: if(! $long_AH[$src_lidx]{"do_misc_feature"}) { 
+          foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
+            if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+              $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+              @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+              foreach $qval (@qval_A) { 
+                $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
               }
             }
           }
@@ -7017,14 +7019,16 @@ sub output_feature_tbl_all_sequences {
               if($cidx == 0) { $cur_out_str .= "\t" . $feature_type; }
               $cur_out_str .= "\n";
             }
-            if(! $short_AH[$src_sidx]{"do_misc_feature"}) { 
-              foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
-                if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-                  $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-                  @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
-                  foreach $qval (@qval_A) { 
-                    $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-                  }
+            # version 0.34 and previous, we only did this if src was not a misc_feature 
+            # but example sequence NC_029646-09 (https://confluence.ncbi.nlm.nih.gov/pages/viewpage.action?spaceKey=VG&title=Annotation+Test+Sets+and+5-Column+Feature+Table)
+            # has a gene with gene qualifier even when it is for a misc_feature CDS
+            # v0.34 if: if(! $short_AH[$src_sidx]{"do_misc_feature"}) { 
+            foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
+              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                foreach $qval (@qval_A) { 
+                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
                 }
               }
             }
