@@ -1646,19 +1646,21 @@ sub initializeHardCodedFTableErrorExceptions {
 
   # add each exception, the addFTableErrorException() function will die if: 
   # - it sees error code not in %err_info_HAR
-  #                                                                required   allowed    
-  #                                                                errors     errors                                 misc_feature? start_carrot? stop_carrot?, note?
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, undef,     "olp,aja,ajb",                         0,            0,            0,            undef, $FH_HR);
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e",     "olp,aja,ajb,nm3,inp,nop",             0,            1,            0,            undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b3e",     "olp,aja,ajb,stp,nst,nm3,inp,aji,nop", 0,            0,            1,            undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e,b3e", "olp,aja,ajb,stp,nst,nm3,inp,aji,nop", 0,            1,            1,            undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",                         1,            0,            0,            "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb,mtr",                     1,            0,            0,            "!COPY!trc", $FH_HR); # "COPY!trc" indicates we should use the trc error string to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",                         1,            0,            0,            "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "lsc",     "olp,aja,ajb",                         0,            0,            0,            "!COPY!lsc", $FH_HR); # "COPY!lsc" indicates we should use the lsc error string to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",                         0,            0,            0,            "!COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ntr",     "olp,aja,ajb,mtr",                     1,            0,            0,            "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "mtr",     "olp,aja,ajb",                         1,            0,            0,            "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  #                                                                required   allowed                                misc_    start_  stop_    pred_
+  #                                                                errors     errors                                 feature? carrot? carrot?, stop?  note?
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, undef,     "olp,aja,ajb",                         0,       0,      0,           0, undef, $FH_HR);
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e",     "olp,aja,ajb,nm3,inp,nop",             0,       1,      0,           0, undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b3e",     "olp,aja,ajb,stp,nst,nm3,inp,aji,nop", 0,       0,      1,           0, undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e,b3e", "olp,aja,ajb,stp,nst,nm3,inp,aji,nop", 0,       1,      1,           0, undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",                         1,       0,      0,           0, "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+#  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb,mtr",                     1,       0,      0,           1, "!COPY!trc", $FH_HR); # "COPY!trc" indicates we should use the trc error string to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc,int", "olp,aja,ajb,aji,inp",                 1,       0,      0,           1, "similar to !out_product!; contains premature stop codon", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc,mtr", "olp,aja,ajb",                         1,       0,      0,           1, "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",                         1,       0,      0,           0, "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "lsc",     "olp,aja,ajb",                         0,       0,      0,           0, "!COPY!lsc", $FH_HR); # "COPY!lsc" indicates we should use the lsc error string to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",                         0,       0,      0,           0, "!COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ntr",     "olp,aja,ajb,mtr",                     1,       0,      0,           0, "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "mtr",     "olp,aja,ajb",                         1,       0,      0,           0, "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
   
   return;
 }
@@ -1688,6 +1690,8 @@ sub initializeHardCodedFTableErrorExceptions {
 #   $stop_carrot:              '1' if this exception rule modifies the stop position by 
 #                              prepending a greater than sign (">")
 #                              feature to a 'misc_feature' in the feature table, else '0'
+#   $pred_stop:                '1' if this exception rule dictates that the 'predicted stop'
+#                              should be output (instead of the output_stop), e.g. for 'trc' errors
 #   $note:                     string to use as a note for this exception, or undefined
 #                              for no note. As a special case if $note starts with:
 #                              "!COPY!" followed by a string of comma-separated
@@ -1707,10 +1711,10 @@ sub initializeHardCodedFTableErrorExceptions {
 #################################################################
 sub addFTableErrorException() { 
   my $sub_name = "addFTableErrorException";
-  my $nargs_expected = 9;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $required_err_str, $allowed_err_str, $misc_feature, $start_carrot, $stop_carrot, $note, $FH_HR) = (@_);
+  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $required_err_str, $allowed_err_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, $note, $FH_HR) = (@_);
 
   my $nexc = scalar(@{$ftbl_err_exceptions_AHR});
   %{$ftbl_err_exceptions_AHR->[$nexc]} = ();
@@ -1769,6 +1773,11 @@ sub addFTableErrorException() {
     DNAORG_FAIL("ERROR in $sub_name, stop_carrot value of $stop_carrot is not valid (must be 0 or 1)", 1, $FH_HR);
   }
   $HR->{"stop_carrot"} = $stop_carrot;
+
+  if(($pred_stop ne "0") && ($pred_stop ne "1")) { 
+    DNAORG_FAIL("ERROR in $sub_name, pred_stop value of $pred_stop is not valid (must be 0 or 1)", 1, $FH_HR);
+  }
+  $HR->{"pred_stop"} = $pred_stop;
 
   if(defined $note) { 
     my $orig_note = $note;
@@ -5823,7 +5832,7 @@ sub validateFTableErrorExceptions {
   my ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR) = (@_);
 
   my $nerr = validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
-  my @other_reqd_keys_A = ("misc_feature", "start_carrot", "stop_carrot", "note");
+  my @other_reqd_keys_A = ("misc_feature", "start_carrot", "stop_carrot", "pred_stop", "note");
 
   my $nexc = scalar(@{$ftbl_err_exceptions_AHR});
   # make sure all error codes are hash keys with valid values ("R", "D", or "A")

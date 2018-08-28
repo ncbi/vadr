@@ -6711,6 +6711,7 @@ sub output_feature_tbl_all_sequences {
   my $do_misc_feature; # '1' if this feature becomes a 'misc_feature' in the feature tables, '0' if not 
   my $do_start_carrot; # '1' if this feature's start position gets prepended with a '<'
   my $do_stop_carrot;  # '1' if this feature's stop position gets prepended with a '>'
+  my $do_pred_stop;    # '1' if we use the predicted stop for this feature
   my $note_value;      # value for the note in the feature table, "" for none
   my $qval_sep = ";;"; # value separating multiple qualifier values in a single element of $ftr_info_HAR->{$key}[$ftr_idx]
   # NOTE: $qval_sep == ';;' is hard-coded value for separating multiple qualifier values for the same 
@@ -6805,6 +6806,7 @@ sub output_feature_tbl_all_sequences {
         $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
         $do_start_carrot = $ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"};
         $do_stop_carrot  = $ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"};
+        $do_pred_stop    = $ftbl_err_exceptions_AHR->[$exc_idx]{"pred_stop"};
         $note_value      = populateFTableNote($ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
       }
       else { 
@@ -6812,6 +6814,7 @@ sub output_feature_tbl_all_sequences {
         $do_misc_feature = 0;
         $do_start_carrot = 0;
         $do_stop_carrot  = 0;
+        $do_pred_stop    = 0;
         $note_value      = "";
       }
 
@@ -6825,17 +6828,32 @@ sub output_feature_tbl_all_sequences {
         if(! $ftr_nop_error_flag) { 
           # we only print feature information for features with predictions
           my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
-          if(($ftr_results_HR->{"ftbl_out_start"} ne "?") && 
-             ($ftr_results_HR->{"ftbl_out_stop"}  ne "?")) { 
+          my $ftbl_out_start = $ftr_results_HR->{"ftbl_out_start"};
+          my $ftbl_out_stop  = $ftr_results_HR->{"ftbl_out_stop"};
+          if($do_pred_stop) { 
+            my @cur_primary_children_idx_A = (); # feature indices of the primary children of this feature
+            getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@cur_primary_children_idx_A, $FH_HR);
+            my $final_ftr_idx = $cur_primary_children_idx_A[(scalar(@cur_primary_children_idx_A)-1)];
+            my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
+            my $pred_start = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_start"};
+            my $pred_stop  = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"} + $mdl_info_HAR->{"append_num"}[$final_child_mdl_idx];
+            if(($mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_strand"} eq "+") && ($pred_stop > $seq_info_HAR->{"seq_len"})) { $pred_stop = $seq_info_HAR->{"seq_len"}; }
+            if(($mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_strand"} eq "-") && ($pred_stop < 1))                          { $pred_stop = 1; }
+            (undef, $ftbl_out_stop) = create_output_start_and_stop($pred_start, # irrelevant due to the first undef arg
+                                                                   $pred_stop, 
+                                                                   $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+          }
+          if($ftbl_out_start ne "?" && 
+             $ftbl_out_stop  ne "?") { 
             # we have a predicted start and stop for this feature
             # create the output for the feature table
             $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
-                                    $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
-                                    $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"}, $feature_type); 
+                                    $do_start_carrot ? "<" : "", $ftbl_out_start,
+                                    $do_stop_carrot  ? ">" : "", $ftbl_out_stop, $feature_type); 
             $cur_coords_str .= sprintf("%s%d\t%s%d\n", 
-                                       $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
-                                       $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"});
-            $min_coord = ($ftr_results_HR->{"ftbl_out_start"} < $ftr_results_HR->{"ftbl_out_stop"}) ? $ftr_results_HR->{"ftbl_out_start"} : $ftr_results_HR->{"ftbl_out_stop"};
+                                       $do_start_carrot ? "<" : "", $ftbl_out_start, 
+                                       $do_stop_carrot  ? ">" : "", $ftbl_out_stop); 
+            $min_coord = ($ftbl_out_start < $ftbl_out_stop) ? $ftbl_out_start : $ftbl_out_stop;
             if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
               foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
                 if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
@@ -6907,28 +6925,36 @@ sub output_feature_tbl_all_sequences {
             my $is_final = ($mdl_idx == $final_mdl_idx_w_pred) ? 1 : 0;
             my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
             my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-
+            my $out_start = $mdl_results_HR->{"out_start"};
+            my $out_stop  = $mdl_results_HR->{"out_stop"};
+            if($do_pred_stop) { 
+              my $pred_start = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"};
+              my $pred_stop  = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"} + $mdl_info_HAR->{"append_num"}[$mdl_idx];
+              (undef, $out_stop) = create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
+                                                                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"}, 
+                                                                $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+            }
             if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]->{"p_start"}) { 
-              $cur_min_coord = ($mdl_results_HR->{"out_start"} < $mdl_results_HR->{"out_stop"}) ? $mdl_results_HR->{"out_start"} : $mdl_results_HR->{"out_stop"};
+              $cur_min_coord = ($out_start < $out_stop) ? $out_start : $out_stop;
               if(($mdl_idx == $ftr_info_HAR->{"first_mdl"}[$ftr_idx]) || ($cur_min_coord < $min_coord)) { 
                 $min_coord = $cur_min_coord;
               }
 
               if($is_first) { 
                 $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
-                                        $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
-                                        ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"}, $feature_type); 
+                                        $do_start_carrot ?               "<" : "", $out_start, 
+                                        ($do_stop_carrot && $is_final) ? ">" : "", $out_stop, $feature_type); 
                 $cur_coords_str .= sprintf("%s%d\t%s%d\n", 
-                                           $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
-                                           ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
+                                           $do_start_carrot ?               "<" : "", $out_start, 
+                                           ($do_stop_carrot && $is_final) ? ">" : "", $out_stop);
               }
               else { 
                 $cur_out_str .= sprintf("%d\t%s%d\n", 
-                                        $mdl_results_HR->{"out_start"}, 
-                                        ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
+                                        $out_start, 
+                                        ($do_stop_carrot && $is_final) ? ">" : "", $out_stop);
                 $cur_coords_str .= sprintf("%d\t%s%d\n", 
-                                           $mdl_results_HR->{"out_start"}, 
-                                           ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
+                                           $out_start, 
+                                           ($do_stop_carrot && $is_final) ? ">" : "", $out_stop);
               }
             }
           }
