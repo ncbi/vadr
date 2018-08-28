@@ -3881,6 +3881,7 @@ sub ftr_results_calculate {
         my $stop_strand         = undef; # strand stop codon is on
         my $cds_len             = 0;     # length to output for this CDS
         my $child_had_trc       = 0;     # if we find a child with a trc error, set this to 1
+        my $aji_int_or_inp_flag = 0;     # set to '1' if we set an aji, int or inp error for the mother CDS
 
         # step through all primary children of this feature
         for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
@@ -4008,6 +4009,7 @@ sub ftr_results_calculate {
                     if($ntr_err_ct > 0) { 
                       # we set at least one ntr error for mature peptides, set int for this CDS
                       error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
+                      $aji_int_or_inp_flag = 1;
                     }
                     # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
                   } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
@@ -4076,6 +4078,16 @@ sub ftr_results_calculate {
             } # end of 'if(! $child_had_trc'
           } # end of 'for(my $child_mdl_idx..'
         }  # end of 'for(my $child_idx..'
+      
+        #############################################################################
+        # add mtr errors for all children if mother CDS had a aji, int or inp error #
+        #############################################################################
+        if($aji_int_or_inp_flag) { 
+          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
+            my $child_ftr_idx = $all_children_idx_A[$child_idx];
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, "1 or more aji, int, inp errors in parent CDS", $FH_HR);
+          }
+        }
 
         #######################################
         # deal with a stp error, if we have one
@@ -4198,11 +4210,13 @@ sub ftr_results_calculate {
         if($aji_errmsg ne "") { 
           # adjacency error
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aji", $seq_name, $aji_errmsg, $FH_HR);
+          $aji_int_or_inp_flag = 1;
         }
 
         # add the inp (INterrupted due to no Prediction) if necessary
         if($inp_errmsg ne "") { 
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
+          $aji_int_or_inp_flag = 1;
         }
 
         # set ftr_results, we can set start if $cds_out_start is defined, 
