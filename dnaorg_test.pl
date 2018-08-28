@@ -538,8 +538,7 @@ sub compare_two_sqtable_files {
       $filekey = $filekey_A[$f];
       $seq = undef;
       $ftr = ""; # current feature string (multiple lines)
-      my $prv_line_seq   = 0;
-      my $prv_line_coord = 0;
+      my $prv_line_seq = 0;
       %{$file_seq_ftr_HHH{$filekey}} = ();
       open(IN, $file) || fileOpenFailure($file, $sub_name, $!, "reading", $FH_HR);
       while(my $line = <IN>) { 
@@ -552,22 +551,22 @@ sub compare_two_sqtable_files {
               $seq_ftr_HH{$seq}{$ftr} = 1;
             }
           }
+          $ftr = "";
           $seq = $line;
           chomp $seq;
           if(! exists $seq_H{$seq}) { 
             push(@seq_A, $seq);
             $seq_H{$seq} = 1;
           }
-          $prv_line_coord = 0;
-          $prv_line_seq   = 1;
+          $prv_line_seq = 1;
           %{$file_seq_ftr_HHH{$filekey}{$seq}} = ();
           if(! exists $seq_ftr_HA{$seq}) { 
             @{$seq_ftr_HA{$seq}} = ();
           }
         }
-        elsif($line =~ m/^\<?\d+/) { # coordinate line
-          if((! $prv_line_coord) && (! $prv_line_seq)) {
-            # end of previous feature, store it
+        elsif($line =~ m/^\<?\d+\s+\d+\s+\S+/) { # coordinate plus feature line
+          if(! $prv_line_seq) { # previous line was not a sequence line so
+                                # we know we just ended a feature, store it
             $file_seq_ftr_HHH{$filekey}{$seq}{$ftr} = 1;
             if(! exists $seq_ftr_HH{$seq}{$ftr}) { 
               push(@{$seq_ftr_HA{$seq}}, $ftr); 
@@ -575,19 +574,19 @@ sub compare_two_sqtable_files {
             }
             $ftr = $line; # reset this to new coordinate line
           }
-          else { # previous line was either a coordinate line or a sequence line, 
-                 # add to current feature in both cases (if prev line was a 
-                 # sequence line this will be the first addition
-            $ftr .= $line; 
+          else { # previous line was a sequence line, this will be first part of $ftr
+            $ftr .= $line
           }
-          $prv_line_coord = 1; 
-          $prv_line_seq   = 0;
+        }
+        elsif($line =~ m/^\<?\d+\s+\d+/) { # coordinate line with no feature
+          # add to current feature
+          $ftr .= $line; 
+          $prv_line_seq = 0;
         }
         else { # not a sequence line and not a coordinate line
           # just add to current feature string
           $ftr .= $line;
-          $prv_line_coord = 0; 
-          $prv_line_seq   = 0;
+          $prv_line_seq = 0;
         }
       }
     }
