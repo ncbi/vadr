@@ -137,7 +137,7 @@ require "epn-options.pm";
 # 1. parse_esl_epn_translate_startstop_outfile()
 # 2. results_calculate_corrected_stops()
 # 3. results_calculate_overlaps_and_adjacencies() 
-# 4. mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
+# 4. mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
 # 5. ftr_results_calculate()
 # 6. find_origin_sequences()
 # 7. MAIN (not a function but rather the main body of the script):
@@ -353,7 +353,7 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.34";
+my $version       = "0.35";
 my $releasedate   = "Aug 2018";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -1180,8 +1180,8 @@ initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH
 
 $start_secs = outputProgressPrior("Finalizing annotations and validating error combinations", $progress_w, $log_FH, *STDOUT);
 # report str, nop, b3e, b3u errors, we need to know these before we call ftr_results_calculate()
-mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors($sqfile, \%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                                                   \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # report b3e errors for cds-mp multifeature features
 ftr_results_add_b3e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
@@ -1403,7 +1403,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
+#    mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate() ***
@@ -2463,7 +2463,7 @@ sub wrapper_esl_epn_translate_startstop {
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
+#    mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate
@@ -2699,6 +2699,7 @@ sub store_hit {
       if($mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"} > $evalue) { 
         DNAORG_FAIL(sprintf("ERROR in $sub_name, already have hit stored for model index $mdlidx seq index $seqidx with higher evalue (%g > %g), this implies hits were not sorted by E-value...", $mdl_results_AAHR->[$mdlidx][$seqidx]{"evalue"}, $evalue), 1, $FH_HR); 
       }
+      if($score > 0.) { $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}++; }
     }
     else { 
       # no hit yet exists, make one
@@ -2721,6 +2722,7 @@ sub store_hit {
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3seqflush"} = $p_3seqflush;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"}    = $evalue;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_score"}     = $score;
+      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}     = 1;
     }
   }
 
@@ -3336,9 +3338,15 @@ sub ftr_results_add_b5e_errors {
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
       my $np_children = scalar(@primary_children_idx_A);
 
+      # get the all children array
+      my @all_children_idx_A = (); # feature indices of the primary children of this feature
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@all_children_idx_A, $FH_HR);
+      my $na_children = scalar(@all_children_idx_A);
+
       for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         my $seen_hit = 0;      # set to '1' once we've seen the first model with an annotated hit
         $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+        my $b5e_flag = 0;
 
         # step through all primary children of this feature
         for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
@@ -3355,15 +3363,24 @@ sub ftr_results_add_b5e_errors {
               if($mdl_results_HR->{"p_5overhang"} != 0) {
                 # 1. first model with a prediction has p_5seqflush == 1 and p_5overhang != 0
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end of mature peptide \#" . ($child_idx+1) . " of $np_children", $FH_HR);
+                $b5e_flag = 1;
               }
               elsif(($mdl_results_HR->{"p_5overhang"} == 0) && (($child_idx > 0) || ($child_mdl_idx > $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]))) { 
                 # 2. first model with a prediction has p_5seqflush == 1 and p_5overhang == 0 
                 #    and is not the first model of the first child
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, "$child_idx expected mature peptides not observed on 5' end", $FH_HR);
+                $b5e_flag = 1;
               }
               $seen_hit  = 1;
               $child_idx = $np_children; # breaks 'for(my $child_idx' loop;
             }
+          }
+        }
+        # if we added a b5e, step through all (not just primary) children of this feature and add m3e
+        if($b5e_flag) { 
+          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
+            my $child_ftr_idx = $all_children_idx_A[$child_idx];
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "m5e", $seq_name, "", $FH_HR);
           }
         }
       } # end of 'for($seq_idx' loop
@@ -3435,10 +3452,15 @@ sub ftr_results_add_b3e_errors {
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
       my $np_children = scalar(@primary_children_idx_A);
 
+      # get the all children array
+      my @all_children_idx_A = (); # feature indices of the primary children of this feature
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@all_children_idx_A, $FH_HR);
+      my $na_children = scalar(@all_children_idx_A);
+
       for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         my $seen_hit = 0;      # set to '1' once we've seen the first model with an annotated hit
         $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-
+        my $b3e_flag = 0;
         # step through all primary children of this feature
         for(my $child_idx = $np_children-1; $child_idx >= 0; $child_idx--) { 
           my $child_ftr_idx = $primary_children_idx_A[$child_idx];
@@ -3456,15 +3478,24 @@ sub ftr_results_add_b3e_errors {
               if($mdl_results_HR->{"p_3overhang"} != 0) {
                 # 1. first model with a prediction has p_3seqflush == 1 and p_3overhang != 0
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3e", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end of mature peptide \#" . ($child_idx+1) . " of $np_children", $FH_HR);
+                $b3e_flag = 1;
               }
               elsif(($mdl_results_HR->{"p_3overhang"} == 0) && (($child_idx < ($np_children-1)) || ($child_mdl_idx < $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]))) { 
                 # 2. first model with a prediction has p_3seqflush == 1 and p_3overhang == 0 
                 #    and is not the final model of the final child
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3e", $seq_name, ($np_children-1)-$child_idx . " expected mature peptides not observed on 3' end", $FH_HR);
+                $b3e_flag = 1;
               }
               $seen_hit = 1;
               $child_idx = -1; # breaks 'for(my $child_idx' loop;
             }
+          }
+        }
+        # if we added a b3e, step through all (not just primary) children of this feature and add m3e
+        if($b3e_flag) { 
+          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
+            my $child_ftr_idx = $all_children_idx_A[$child_idx];
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "m3e", $seq_name, "", $FH_HR);
           }
         }
       } # end of 'for($seq_idx' loop
@@ -3475,10 +3506,10 @@ sub ftr_results_add_b3e_errors {
 }      
 
 #################################################################
-# Subroutine:  mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors
+# Subroutine:  mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors
 # Incept:      EPN, Thu Mar 31 13:43:58 2016
 #
-# Purpose:    Report 'str', 'nop', 'ost', 'lsc', 'b3e', and 'b3u' errors
+# Purpose:    Report 'str', 'nop', 'ost', 'lsc', 'dup', 'b3e', and 'b3u' errors
 #             and fill in the following keys in $mdl_results_AAHR:
 #             "out_5boundary" and "out_3boundary".
 #
@@ -3496,6 +3527,7 @@ sub ftr_results_add_b3e_errors {
 #
 # Arguments: 
 #  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
+#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
 #  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
 #  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
@@ -3510,12 +3542,12 @@ sub ftr_results_add_b3e_errors {
 #       given the lengths of the accession and the sequence we searched.
 #
 ################################################################# 
-sub mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors { 
-  my $sub_name = "mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()";
-  my $nargs_exp = 8;
+sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors { 
+  my $sub_name = "mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()";
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($sqfile, $ftr_info_HAR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
   
   # total counts of things
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
@@ -3614,7 +3646,18 @@ sub mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors {
             error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"lsc"}{$seq_name} . ", " . $mdl_results_HR->{"p_score"} . " bits", $FH_HR);
           }
           else { # first lsc error
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, $mdl_results_HR->{"p_score"} . " bits", $FH_HR);
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, sprintf("%s: %s bits", $ftr_info_HAR->{"out_product"}[$ftr_idx], $mdl_results_HR->{"p_score"}), $FH_HR);
+          }
+        }
+        if($mdl_results_HR->{"p_nhits"} > 1) { 
+          ##############################
+          # dup error (duplicate hits) #
+          ##############################
+          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name}) { # lsc error already exists, update it
+            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "dup", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name} . ", " . $mdl_results_HR->{"p_nhits"} . " hits", $FH_HR);
+          }
+          else { # first dup error
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "dup", $seq_name, sprintf("%s: %d regions", $ftr_info_HAR->{"out_product"}[$ftr_idx], $mdl_results_HR->{"p_nhits"}), $FH_HR);
           }
         }
       } # end of 'else' entered if we have a prediction
@@ -3881,6 +3924,7 @@ sub ftr_results_calculate {
         my $stop_strand         = undef; # strand stop codon is on
         my $cds_len             = 0;     # length to output for this CDS
         my $child_had_trc       = 0;     # if we find a child with a trc error, set this to 1
+        my $aji_int_or_inp_flag = 0;     # set to '1' if we set an aji, int or inp error for the mother CDS
 
         # step through all primary children of this feature
         for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
@@ -3915,9 +3959,13 @@ sub ftr_results_calculate {
                 # check if we have a trc in this child model, and deal with it if we do
                 if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"trc_err_flag"}) { 
                   $child_had_trc = 1;
+                  error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ctr", $seq_name, 
+                                      sprintf("mat_peptide %s includes trc error", $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$child_mdl_idx]]), $FH_HR);
                   ####################################################
                   # We have a trc in this child model $child_mdl_idx 
                   # 
+                  # Add the 'ctr' error for this CDS (Child has TRc)
+                  #
                   # Determine the cds stop position to print ($cds_out_stop)
                   # and position in the sequence to fetch the stop ($cds_fetch_stop).
                   # 
@@ -3980,7 +4028,7 @@ sub ftr_results_calculate {
                     # all remaining children get a 'ntr' error,
                     # and the CDS gets an 'int' error, which we need
                     # to build the error message for
-                    $ntr_errmsg = sprintf("early stop in mature peptide %d ending at position %d", $child_ftr_idx+1, $cds_out_stop);
+                    $ntr_errmsg = sprintf("early stop in mat_peptide %s ending at position %d", $ftr_info_HAR->{"out_product"}[$child_ftr_idx], $cds_out_stop);
                     if($int_errmsg ne "") { 
                       DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);;
                     }
@@ -4008,6 +4056,7 @@ sub ftr_results_calculate {
                     if($ntr_err_ct > 0) { 
                       # we set at least one ntr error for mature peptides, set int for this CDS
                       error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
+                      $aji_int_or_inp_flag = 1;
                     }
                     # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
                   } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
@@ -4024,7 +4073,6 @@ sub ftr_results_calculate {
                     }
                   }
                   # deal with a potential stp error, if we have one
-                  
                 } # end of 'if trc_err_flag'
                 else { 
                   ###########################################################
@@ -4040,10 +4088,10 @@ sub ftr_results_calculate {
                     if(! checkForIndexInOverlapOrAdjacencyIndexString($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"idx_aja_str"}, $nxt_child_mdl_idx, $FH_HR)) { 
                       if($aji_errmsg ne "") { $aji_errmsg .= ", "; }
                       $aji_errmsg .= sprintf("%s (%s..%s) not adjacent to %s (%s..%s)", 
-                                             $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx], 
+                                             $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$child_mdl_idx]], 
                                              (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
                                              (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown", 
-                                             $mdl_info_HAR->{"out_tiny"}[$nxt_child_mdl_idx], 
+                                             $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$nxt_child_mdl_idx]], 
                                              (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
                                              (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown");
                     }        
@@ -4157,7 +4205,6 @@ sub ftr_results_calculate {
                                                                    $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"},
                                                                    $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
           # now recompute $cds_out_stop
-
           (undef, $cds_out_stop) = 
               create_output_start_and_stop($cds_fetch_start, # this is irrelevant due to first undef arg
                                            $cds_fetch_stop,
@@ -4198,11 +4245,13 @@ sub ftr_results_calculate {
         if($aji_errmsg ne "") { 
           # adjacency error
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aji", $seq_name, $aji_errmsg, $FH_HR);
+          $aji_int_or_inp_flag = 1;
         }
 
         # add the inp (INterrupted due to no Prediction) if necessary
         if($inp_errmsg ne "") { 
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
+          $aji_int_or_inp_flag = 1;
         }
 
         # set ftr_results, we can set start if $cds_out_start is defined, 
@@ -4283,6 +4332,18 @@ sub ftr_results_calculate {
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
               }
             }
+          }
+        }
+        #############################################################################
+        # add mtr errors for all children if mother CDS had a aji, int or inp error #
+        #############################################################################
+        if($aji_int_or_inp_flag) { 
+          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
+            my $child_ftr_idx = $all_children_idx_A[$child_idx];
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, 
+                                sprintf("CDS %s", 
+                                        $ftr_info_HAR->{"out_product"}[$ftr_idx]),
+                                $FH_HR);
           }
         }
       } # end of 'for($seq_idx'
@@ -6697,7 +6758,12 @@ sub output_feature_tbl_all_sequences {
   my $do_misc_feature; # '1' if this feature becomes a 'misc_feature' in the feature tables, '0' if not 
   my $do_start_carrot; # '1' if this feature's start position gets prepended with a '<'
   my $do_stop_carrot;  # '1' if this feature's stop position gets prepended with a '>'
+  my $do_pred_stop;    # '1' if we use the predicted stop for this feature
   my $note_value;      # value for the note in the feature table, "" for none
+  my $error_value;     # value for the ERROR in the feature table, "" for none
+  my $warning_value;   # value for the WARNING in the feature table, "" for none
+  my @error_value_A;   # array of error values for a sequence
+  my @warning_value_A; # array of warning values for a sequence
   my $qval_sep = ";;"; # value separating multiple qualifier values in a single element of $ftr_info_HAR->{$key}[$ftr_idx]
   # NOTE: $qval_sep == ';;' is hard-coded value for separating multiple qualifier values for the same 
   # qualifier (see dnaorg.pm::edirectFtableOrMatPept2SingleFeatureTableInfo
@@ -6705,11 +6771,12 @@ sub output_feature_tbl_all_sequences {
   my $qualifier_name; # name of current qualifier
   my $qval;           # name of current qualifier value
 
-
   # define the type priority hash, which defines the order of types, lower is higher priority
   my %type_priority_H = ();
-  $type_priority_H{"gene"}  = 0;
-  $type_priority_H{"CDS"}   = 1;
+  $type_priority_H{"gene"}         = 0;
+  $type_priority_H{"CDS"}          = 1;
+  $type_priority_H{"misc_feature"} = 2;
+  $type_priority_H{"mat_peptide"}  = 3;
   my $npriority = scalar(keys %type_priority_H);
 
   #https://stackoverflow.com/questions/10395383/sorting-an-array-of-hash-by-multiple-keys-perl      
@@ -6734,6 +6801,9 @@ sub output_feature_tbl_all_sequences {
     my $i;
     my %fidx2sidx_H = (); # key is feature index $fidx, value is $sidx index in @short_AH that $fidx corresponds to
     my %fidx2lidx_H = (); # key is feature index $fidx, value is $lidx index in @long_AH that $fidx corresponds to
+
+    @warning_value_A = ();
+    @error_value_A   = ();
     
     $cur_out_str = (">Feature $accn_name\n");
     print $sftbl_FH $cur_out_str;
@@ -6786,22 +6856,33 @@ sub output_feature_tbl_all_sequences {
       # those with an 'nop' error)
       $exc_idx = checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $cur_err_str, $FH_HR);
 
+      $error_value = "";
+      $warning_value = "";
       if($exc_idx != -1) { 
         $do_short_ftable = 1;
         $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
         $do_start_carrot = $ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"};
         $do_stop_carrot  = $ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"};
-        $note_value      = populateFTableNote($ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+        $do_pred_stop    = $ftbl_err_exceptions_AHR->[$exc_idx]{"pred_stop"};
+        $note_value      = populateFTableNoteErrorOrWarning("note",  $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+        $error_value     = populateFTableNoteErrorOrWarning("error", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+        $warning_value   = populateFTableNoteErrorOrWarning("warning", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
       }
       else { 
         $do_short_ftable = 0;
         $do_misc_feature = 0;
         $do_start_carrot = 0;
         $do_stop_carrot  = 0;
+        $do_pred_stop    = 0;
         $note_value      = "";
+        $error_value     = "";
+        $warning_value   = "";
       }
+      if($error_value   ne "") { push(@error_value_A,   $error_value); }
+      if($warning_value ne "") { push(@warning_value_A, $warning_value); }
 
-      my $feature_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
+      my $feature_type      = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
+      my $orig_feature_type = $feature_type; 
       if($do_misc_feature) { $feature_type = "misc_feature"; }
       #####################################################################################
       # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
@@ -6811,17 +6892,32 @@ sub output_feature_tbl_all_sequences {
         if(! $ftr_nop_error_flag) { 
           # we only print feature information for features with predictions
           my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
-          if(($ftr_results_HR->{"ftbl_out_start"} ne "?") && 
-             ($ftr_results_HR->{"ftbl_out_stop"}  ne "?")) { 
+          my $ftbl_out_start = $ftr_results_HR->{"ftbl_out_start"};
+          my $ftbl_out_stop  = $ftr_results_HR->{"ftbl_out_stop"};
+          if($do_pred_stop) { 
+            my @cur_primary_children_idx_A = (); # feature indices of the primary children of this feature
+            getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@cur_primary_children_idx_A, $FH_HR);
+            my $final_ftr_idx = $cur_primary_children_idx_A[(scalar(@cur_primary_children_idx_A)-1)];
+            my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
+            my $pred_start = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_start"};
+            my $pred_stop  = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"} + $mdl_info_HAR->{"append_num"}[$final_child_mdl_idx];
+            if(($mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_strand"} eq "+") && ($pred_stop > $seq_info_HAR->{"seq_len"})) { $pred_stop = $seq_info_HAR->{"seq_len"}; }
+            if(($mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_strand"} eq "-") && ($pred_stop < 1))                          { $pred_stop = 1; }
+            (undef, $ftbl_out_stop) = create_output_start_and_stop($pred_start, # irrelevant due to the first undef arg
+                                                                   $pred_stop, 
+                                                                   $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+          }
+          if($ftbl_out_start ne "?" && 
+             $ftbl_out_stop  ne "?") { 
             # we have a predicted start and stop for this feature
             # create the output for the feature table
             $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
-                                    $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
-                                    $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"}, $feature_type); 
+                                    $do_start_carrot ? "<" : "", $ftbl_out_start,
+                                    $do_stop_carrot  ? ">" : "", $ftbl_out_stop, $feature_type); 
             $cur_coords_str .= sprintf("%s%d\t%s%d\n", 
-                                       $do_start_carrot ? "<" : "", $ftr_results_HR->{"ftbl_out_start"}, 
-                                       $do_stop_carrot  ? ">" : "", $ftr_results_HR->{"ftbl_out_stop"});
-            $min_coord = ($ftr_results_HR->{"ftbl_out_start"} < $ftr_results_HR->{"ftbl_out_stop"}) ? $ftr_results_HR->{"ftbl_out_start"} : $ftr_results_HR->{"ftbl_out_stop"};
+                                       $do_start_carrot ? "<" : "", $ftbl_out_start, 
+                                       $do_stop_carrot  ? ">" : "", $ftbl_out_stop); 
+            $min_coord = ($ftbl_out_start < $ftbl_out_stop) ? $ftbl_out_start : $ftbl_out_stop;
             if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
               foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
                 if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
@@ -6848,7 +6944,7 @@ sub output_feature_tbl_all_sequences {
             %{$long_AH[$lidx]} = ();
             $long_AH[$lidx]{"carrot"}          = $do_start_carrot;
             $long_AH[$lidx]{"mincoord"}        = $min_coord;
-            $long_AH[$lidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+            $long_AH[$lidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
             $long_AH[$lidx]{"output"}          = $cur_long_out_str;
             $long_AH[$lidx]{"coords"}          = $cur_coords_str;
             $long_AH[$lidx]{"do_misc_feature"} = $do_misc_feature;
@@ -6859,7 +6955,7 @@ sub output_feature_tbl_all_sequences {
               %{$short_AH[$sidx]} = ();
               $short_AH[$sidx]{"carrot"}          = $do_start_carrot;
               $short_AH[$sidx]{"mincoord"}        = $min_coord;
-              $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+              $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
               $short_AH[$sidx]{"output"}          = $cur_short_out_str;
               $short_AH[$sidx]{"coords"}    = $cur_coords_str;
               $short_AH[$sidx]{"do_misc_feature"} = $do_misc_feature;
@@ -6893,28 +6989,36 @@ sub output_feature_tbl_all_sequences {
             my $is_final = ($mdl_idx == $final_mdl_idx_w_pred) ? 1 : 0;
             my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
             my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-
+            my $out_start = $mdl_results_HR->{"out_start"};
+            my $out_stop  = $mdl_results_HR->{"out_stop"};
+            if($do_pred_stop) { 
+              my $pred_start = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"};
+              my $pred_stop  = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"} + $mdl_info_HAR->{"append_num"}[$mdl_idx];
+              (undef, $out_stop) = create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
+                                                                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"}, 
+                                                                $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+            }
             if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]->{"p_start"}) { 
-              $cur_min_coord = ($mdl_results_HR->{"out_start"} < $mdl_results_HR->{"out_stop"}) ? $mdl_results_HR->{"out_start"} : $mdl_results_HR->{"out_stop"};
+              $cur_min_coord = ($out_start < $out_stop) ? $out_start : $out_stop;
               if(($mdl_idx == $ftr_info_HAR->{"first_mdl"}[$ftr_idx]) || ($cur_min_coord < $min_coord)) { 
                 $min_coord = $cur_min_coord;
               }
 
               if($is_first) { 
                 $cur_out_str .= sprintf("%s%d\t%s%d\t%s\n", 
-                                        $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
-                                        ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"}, $feature_type); 
+                                        $do_start_carrot ?               "<" : "", $out_start, 
+                                        ($do_stop_carrot && $is_final) ? ">" : "", $out_stop, $feature_type); 
                 $cur_coords_str .= sprintf("%s%d\t%s%d\n", 
-                                           $do_start_carrot ?               "<" : "", $mdl_results_HR->{"out_start"}, 
-                                           ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
+                                           $do_start_carrot ?               "<" : "", $out_start, 
+                                           ($do_stop_carrot && $is_final) ? ">" : "", $out_stop);
               }
               else { 
                 $cur_out_str .= sprintf("%d\t%s%d\n", 
-                                        $mdl_results_HR->{"out_start"}, 
-                                        ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
+                                        $out_start, 
+                                        ($do_stop_carrot && $is_final) ? ">" : "", $out_stop);
                 $cur_coords_str .= sprintf("%d\t%s%d\n", 
-                                           $mdl_results_HR->{"out_start"}, 
-                                           ($do_stop_carrot && $is_final) ? ">" : "", $mdl_results_HR->{"out_stop"});
+                                           $out_start, 
+                                           ($do_stop_carrot && $is_final) ? ">" : "", $out_stop);
               }
             }
           }
@@ -6945,7 +7049,7 @@ sub output_feature_tbl_all_sequences {
           %{$long_AH[$lidx]} = ();
           $long_AH[$lidx]{"carrot"}          = $do_start_carrot;
           $long_AH[$lidx]{"mincoord"}        = $min_coord;
-          $long_AH[$lidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+          $long_AH[$lidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
           $long_AH[$lidx]{"output"}          = $cur_long_out_str;
           $long_AH[$lidx]{"coords"}          = $cur_coords_str;
           $long_AH[$lidx]{"do_misc_feature"} = $do_misc_feature;
@@ -6956,7 +7060,7 @@ sub output_feature_tbl_all_sequences {
             %{$short_AH[$sidx]} = ();
             $short_AH[$sidx]{"carrot"}          = $do_start_carrot;
             $short_AH[$sidx]{"mincoord"}        = $min_coord;
-            $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority;
+            $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
             $short_AH[$sidx]{"output"}          = $cur_short_out_str;
             $short_AH[$sidx]{"coords"}          = $cur_coords_str;
             $short_AH[$sidx]{"do_misc_feature"} = $do_misc_feature;
@@ -6975,7 +7079,7 @@ sub output_feature_tbl_all_sequences {
           %{$long_AH[$lidx]} = ();
           foreach my $key (sort keys (%{$long_AH[$src_lidx]})) {
             $long_AH[$lidx]{$key} = $long_AH[$src_lidx]{$key};
-            if($key eq "type_priority") { $long_AH[$lidx]{$key} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority; }
+            if($key eq "type_priority") { $long_AH[$lidx]{$key} = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority; }
           }
           $fidx2lidx_H{$ftr_idx} = $lidx;
           # use "coords" value to rewrite "output" value
@@ -6986,14 +7090,16 @@ sub output_feature_tbl_all_sequences {
             if($cidx == 0) { $cur_out_str .= "\t" . $feature_type; }
             $cur_out_str .= "\n";
           }
-          if(! $long_AH[$src_lidx]{"do_misc_feature"}) { 
-            foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
-              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
-                foreach $qval (@qval_A) { 
-                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-                }
+          # version 0.34 and previous, we only did this if src was not a misc_feature 
+          # but example sequence NC_029646-09 (https://confluence.ncbi.nlm.nih.gov/pages/viewpage.action?spaceKey=VG&title=Annotation+Test+Sets+and+5-Column+Feature+Table)
+          # has a gene with gene qualifier even when it is for a misc_feature CDS
+          # v0.34 if: if(! $long_AH[$src_lidx]{"do_misc_feature"}) { 
+          foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
+            if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+              $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+              @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+              foreach $qval (@qval_A) { 
+                $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
               }
             }
           }
@@ -7006,7 +7112,7 @@ sub output_feature_tbl_all_sequences {
             %{$short_AH[$sidx]} = ();
             foreach my $key (sort keys (%{$short_AH[$src_sidx]})) {
               $short_AH[$sidx]{$key} = $short_AH[$src_sidx]{$key};
-              if($key eq "type_priority") { $short_AH[$sidx]{$key} = (exists $type_priority_H{$feature_type}) ? $type_priority_H{$feature_type} : $npriority; }
+              if($key eq "type_priority") { $short_AH[$sidx]{$key} = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority; }
             }
             $fidx2sidx_H{$ftr_idx} = $sidx;
             # use "coords" value to rewrite "output" value
@@ -7017,14 +7123,16 @@ sub output_feature_tbl_all_sequences {
               if($cidx == 0) { $cur_out_str .= "\t" . $feature_type; }
               $cur_out_str .= "\n";
             }
-            if(! $short_AH[$src_sidx]{"do_misc_feature"}) { 
-              foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
-                if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-                  $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-                  @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
-                  foreach $qval (@qval_A) { 
-                    $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-                  }
+            # version 0.34 and previous, we only did this if src was not a misc_feature 
+            # but example sequence NC_029646-09 (https://confluence.ncbi.nlm.nih.gov/pages/viewpage.action?spaceKey=VG&title=Annotation+Test+Sets+and+5-Column+Feature+Table)
+            # has a gene with gene qualifier even when it is for a misc_feature CDS
+            # v0.34 if: if(! $short_AH[$src_sidx]{"do_misc_feature"}) { 
+            foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
+              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
+                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+                foreach $qval (@qval_A) { 
+                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
                 }
               }
             }
@@ -7046,6 +7154,15 @@ sub output_feature_tbl_all_sequences {
       for($i = 0; $i < scalar(@short_AH); $i++) { 
         print $sftbl_FH $short_AH[$i]{"output"};
       }
+      if((scalar(@warning_value_A) + scalar(@error_value_A)) >= 1) { 
+        print $sftbl_FH "\nAdditional note(s) to submitter:\n"; 
+      }
+      foreach my $error_str (@error_value_A) { 
+        print $sftbl_FH "ERROR: " . $error_str . "\n"; 
+      }
+      foreach my $warning_str (@warning_value_A) { 
+        print $sftbl_FH "WARNING: " . $warning_str . "\n";  
+      }
     }
     if(scalar(@long_AH) > 0) { 
       @long_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
@@ -7054,6 +7171,15 @@ sub output_feature_tbl_all_sequences {
       } @long_AH;
       for($i = 0; $i < scalar(@long_AH); $i++) { 
         print $lftbl_FH $long_AH[$i]{"output"};
+      }
+      if((scalar(@warning_value_A) + scalar(@error_value_A)) >= 1) { 
+        print $lftbl_FH "\nAdditional note(s) to submitter:\n"; 
+      }
+      foreach my $error_str (@error_value_A) { 
+        print $lftbl_FH "ERROR: " . $error_str . "\n"; 
+      }
+      foreach my $warning_str (@warning_value_A) { 
+        print $lftbl_FH "WARNING: " . $warning_str . "\n"; 
       }
     }
   } # end of for loop over sequences
