@@ -69,6 +69,7 @@ $opt_group_desc_H{"2"} = "options for defining variables in testing files";
 opt_Add("--dirbuild",   "string",  undef,                    2,   undef, undef,       "build directory, replaces !dirbuild! in test file with <s>", "build directory, replaces !dirbuild! in test file with <s>", \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"3"} = "other options";
 opt_Add("--keep",       "boolean", 0,                        3,    undef, undef,      "leaving intermediate files on disk", "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("--skipmsg",    "boolean", 0,                        3,    undef, undef,      "do not compare errors and warnings", "do not compare errors and warning lines", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -81,7 +82,8 @@ my $options_okay =
                 'f'            => \$GetOptions_H{"-f"},
                 's'            => \$GetOptions_H{"-s"},
                 'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
-                'keep'         => \$GetOptions_H{"--keep"});
+                'keep'         => \$GetOptions_H{"--keep"},
+                'skipmsg'      => \$GetOptions_H{"--skipmsg"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -434,7 +436,7 @@ sub diff_two_files {
       # analyze the diff file and print out how many lines 
       if($out_file =~ m/\.sqtable/ && $exp_file =~ m/\.sqtable/) { 
         my $sqtable_diff_file = $diff_file . ".man";
-        compare_two_sqtable_files($out_file, $exp_file, $sqtable_diff_file, $FH_HR);
+        compare_two_sqtable_files($out_file, $exp_file, $sqtable_diff_file, \%opt_HH, $FH_HR);
         $conclusion = "FAIL [files differ, see $sqtable_diff_file]";
       }
       else { 
@@ -466,6 +468,7 @@ sub diff_two_files {
 #   $out_file:    name of output sqtable file
 #   $exp_file:    name of expected sqtable file
 #   $diff_file:   name of file to create with differences
+#   $opt_HHR:     ref to 2D hash of option values, see top of epn-options.pm for description
 #   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
@@ -475,10 +478,10 @@ sub diff_two_files {
 #################################################################
 sub compare_two_sqtable_files { 
   my $sub_name = "compare_two_sqtable_files";
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_file, $exp_file, $diff_file, $FH_HR) = @_;
+  my ($out_file, $exp_file, $diff_file, $opt_HHR, $FH_HR) = @_;
 
   my $out_file_exists   = (-e $out_file) ? 1 : 0;
   my $exp_file_exists   = (-e $exp_file) ? 1 : 0;
@@ -487,6 +490,8 @@ sub compare_two_sqtable_files {
 
   my $conclusion = "";
   my $pass = 0;
+
+  my $skip_msg_lines = opt_Get("--skipmsg", $opt_HHR) ? 1 : 0;
 
   if(! $exp_file_exists) { 
     DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file does not exist", 1, $FH_HR) ;
@@ -542,7 +547,16 @@ sub compare_two_sqtable_files {
       %{$file_seq_ftr_HHH{$filekey}} = ();
       open(IN, $file) || fileOpenFailure($file, $sub_name, $!, "reading", $FH_HR);
       while(my $line = <IN>) { 
-        if($line =~ m/^\>/) { # sequence line
+        if($skip_msg_lines && ($line =~ m/^Additional/)) { 
+          ;
+        }
+        elsif($skip_msg_lines && ($line =~ m/^ERROR/)) { 
+          ;
+        }
+        elsif($skip_msg_lines && ($line =~ m/^WARNINGR/)) { 
+          ;
+        }
+        elsif($line =~ m/^\>/) { # sequence line
           if(defined $seq) { # if this isn't our first sequence
             # store final feature string from previous sequence
             $file_seq_ftr_HHH{$filekey}{$seq}{$ftr} = 1;

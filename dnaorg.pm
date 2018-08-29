@@ -1706,9 +1706,42 @@ sub initializeHardCodedFTableErrorExceptions {
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, undef, $FH_HR);
 
   ###############################################################################
+  # Exception: allow features with b5e to be output to feature table
+  $reqd_str = "b5e,trc";
+  $alwd_str = "olp,aja,ajb,nm3,inp,aji,nop,m5e,mtr";
+  $misc_feature = 1;
+  $start_carrot = 1;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  # expln_H will be undefined
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, undef, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with b3e to be output to feature table
+  $reqd_str = "b3e,trc";
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m3e,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 1;
+  $pred_stop    = 0;
+  # expln_H will be undefined
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, undef, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with both b5e and b3e to be output to feature table
+  $reqd_str = "b5e,b3e,trc";
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m5e,m3e,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 1;
+  $start_carrot = 1;
+  $stop_carrot  = 1;
+  $pred_stop    = 0;
+  # expln_H will be undefined
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, undef, $FH_HR);
+
+  ###############################################################################
   # Exception: allow features with m5e to be output to feature table
   $reqd_str = "m5e";
-  $alwd_str = "olp,aja,ajb,nm3,nop,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $alwd_str = "olp,aja,ajb,nm3,nop"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
   $misc_feature = 0;
   $start_carrot = 0;
   $stop_carrot  = 0;
@@ -1719,7 +1752,7 @@ sub initializeHardCodedFTableErrorExceptions {
   ###############################################################################
   # Exception: allow features with m3e to be output to feature table
   $reqd_str = "m3e";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
   $misc_feature = 0;
   $start_carrot = 0;
   $stop_carrot  = 0;
@@ -1730,13 +1763,60 @@ sub initializeHardCodedFTableErrorExceptions {
   ###############################################################################
   # Exception: allow features with both m5e and m3e to be output to feature table
   $reqd_str = "m5e,m3e";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
   $misc_feature = 0;
   $start_carrot = 0;
   $stop_carrot  = 0;
   $pred_stop    = 0;
   # expln_H will be undefined
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, undef, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with m5e to be output to feature table
+  $reqd_str = "m5e,mtr";
+  $alwd_str = "olp,aja,ajb,nm3,nop"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 0;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  # expln_H will be undefined
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, undef, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with m3e to be output to feature table
+  $reqd_str = "m3e,mtr";
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 0;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  # expln_H will be undefined
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, undef, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with both m5e and m3e to be output to feature table
+  $reqd_str = "m5e,m3e,mtr";
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 0;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  %expln_H = ();
+  # expln_H will be undefined
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, undef, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with b5e and aji to be output to feature table
+  $reqd_str = "b5e,aji";
+  $alwd_str = "olp,aja,ajb,nm3,inp,nop,m5e,mtr";
+  $misc_feature = 1;
+  $start_carrot = 1;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  %expln_H = ();
+  $expln_H{"note"}  = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"error"} = "!COPY!aji"; # "COPY!aji" indicates we should use the aji error string to make the note 
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
   # Exception: allow features with str to be output to feature table
