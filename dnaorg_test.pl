@@ -640,7 +640,7 @@ sub compare_two_sqtable_files {
                         scalar(keys %{$file_seq_ftr_HHH{"out"}{$seq}}), 
                         scalar(keys %{$file_seq_ftr_HHH{"exp"}{$seq}}), 
                         $seq_id_ct, $seq_out_uniq_ct, $seq_exp_uniq_ct, 
-                        $fully_identical_char);
+                        $fully_identical_str);
         if($fully_identical_str eq "") { 
           foreach $line (@out_A) { print DIFFOUT $line; }
         }
