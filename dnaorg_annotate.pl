@@ -137,7 +137,7 @@ require "epn-options.pm";
 # 1. parse_esl_epn_translate_startstop_outfile()
 # 2. results_calculate_corrected_stops()
 # 3. results_calculate_overlaps_and_adjacencies() 
-# 4. mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
+# 4. mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
 # 5. ftr_results_calculate()
 # 6. find_origin_sequences()
 # 7. MAIN (not a function but rather the main body of the script):
@@ -1180,8 +1180,8 @@ initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH
 
 $start_secs = outputProgressPrior("Finalizing annotations and validating error combinations", $progress_w, $log_FH, *STDOUT);
 # report str, nop, b3e, b3u errors, we need to know these before we call ftr_results_calculate()
-mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors($sqfile, \%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                                                   \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # report b3e errors for cds-mp multifeature features
 ftr_results_add_b3e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
@@ -1403,7 +1403,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
+#    mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate() ***
@@ -2463,7 +2463,7 @@ sub wrapper_esl_epn_translate_startstop {
 #    store_hit()
 #    results_calculate_corrected_stops()
 #    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()
+#    mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
 #    ftr_results_calculate
@@ -2699,6 +2699,7 @@ sub store_hit {
       if($mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"} > $evalue) { 
         DNAORG_FAIL(sprintf("ERROR in $sub_name, already have hit stored for model index $mdlidx seq index $seqidx with higher evalue (%g > %g), this implies hits were not sorted by E-value...", $mdl_results_AAHR->[$mdlidx][$seqidx]{"evalue"}, $evalue), 1, $FH_HR); 
       }
+      if($score > 0.) { $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}++; }
     }
     else { 
       # no hit yet exists, make one
@@ -2721,6 +2722,7 @@ sub store_hit {
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3seqflush"} = $p_3seqflush;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"}    = $evalue;
       $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_score"}     = $score;
+      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}     = 1;
     }
   }
 
@@ -3378,7 +3380,7 @@ sub ftr_results_add_b5e_errors {
         if($b5e_flag) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "m5e", $seq_name, "parent CDS has b5e error", $FH_HR);
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "m5e", $seq_name, "", $FH_HR);
           }
         }
       } # end of 'for($seq_idx' loop
@@ -3493,7 +3495,7 @@ sub ftr_results_add_b3e_errors {
         if($b3e_flag) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "m3e", $seq_name, "parent CDS has b3e error", $FH_HR);
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "m3e", $seq_name, "", $FH_HR);
           }
         }
       } # end of 'for($seq_idx' loop
@@ -3504,10 +3506,10 @@ sub ftr_results_add_b3e_errors {
 }      
 
 #################################################################
-# Subroutine:  mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors
+# Subroutine:  mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors
 # Incept:      EPN, Thu Mar 31 13:43:58 2016
 #
-# Purpose:    Report 'str', 'nop', 'ost', 'lsc', 'b3e', and 'b3u' errors
+# Purpose:    Report 'str', 'nop', 'ost', 'lsc', 'dup', 'b3e', and 'b3u' errors
 #             and fill in the following keys in $mdl_results_AAHR:
 #             "out_5boundary" and "out_3boundary".
 #
@@ -3525,6 +3527,7 @@ sub ftr_results_add_b3e_errors {
 #
 # Arguments: 
 #  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
+#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
 #  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
 #  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
@@ -3539,12 +3542,12 @@ sub ftr_results_add_b3e_errors {
 #       given the lengths of the accession and the sequence we searched.
 #
 ################################################################# 
-sub mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors { 
-  my $sub_name = "mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors()";
-  my $nargs_exp = 8;
+sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors { 
+  my $sub_name = "mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()";
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($sqfile, $ftr_info_HAR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
   
   # total counts of things
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
@@ -3643,7 +3646,18 @@ sub mdl_results_add_str_nop_ost_lsc_b3e_b3u_errors {
             error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"lsc"}{$seq_name} . ", " . $mdl_results_HR->{"p_score"} . " bits", $FH_HR);
           }
           else { # first lsc error
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, $mdl_results_HR->{"p_score"} . " bits", $FH_HR);
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, sprintf("%s: %s bits", $ftr_info_HAR->{"out_product"}[$ftr_idx], $mdl_results_HR->{"p_score"}), $FH_HR);
+          }
+        }
+        if($mdl_results_HR->{"p_nhits"} > 1) { 
+          ##############################
+          # dup error (duplicate hits) #
+          ##############################
+          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name}) { # lsc error already exists, update it
+            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "dup", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name} . ", " . $mdl_results_HR->{"p_nhits"} . " hits", $FH_HR);
+          }
+          else { # first dup error
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "dup", $seq_name, sprintf("%s: %d regions", $ftr_info_HAR->{"out_product"}[$ftr_idx], $mdl_results_HR->{"p_nhits"}), $FH_HR);
           }
         }
       } # end of 'else' entered if we have a prediction
@@ -3946,7 +3960,7 @@ sub ftr_results_calculate {
                 if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"trc_err_flag"}) { 
                   $child_had_trc = 1;
                   error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ctr", $seq_name, 
-                                      sprintf("mat_peptide %s includes trc error", $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]), $FH_HR);
+                                      sprintf("mat_peptide %s includes trc error", $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$child_mdl_idx]]), $FH_HR);
                   ####################################################
                   # We have a trc in this child model $child_mdl_idx 
                   # 
@@ -4014,7 +4028,7 @@ sub ftr_results_calculate {
                     # all remaining children get a 'ntr' error,
                     # and the CDS gets an 'int' error, which we need
                     # to build the error message for
-                    $ntr_errmsg = sprintf("early stop in mature peptide %d ending at position %d", $child_ftr_idx+1, $cds_out_stop);
+                    $ntr_errmsg = sprintf("early stop in mat_peptide %s ending at position %d", $ftr_info_HAR->{"out_product"}[$child_ftr_idx], $cds_out_stop);
                     if($int_errmsg ne "") { 
                       DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);;
                     }
@@ -4074,10 +4088,10 @@ sub ftr_results_calculate {
                     if(! checkForIndexInOverlapOrAdjacencyIndexString($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"idx_aja_str"}, $nxt_child_mdl_idx, $FH_HR)) { 
                       if($aji_errmsg ne "") { $aji_errmsg .= ", "; }
                       $aji_errmsg .= sprintf("%s (%s..%s) not adjacent to %s (%s..%s)", 
-                                             $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx], 
+                                             $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$child_mdl_idx]], 
                                              (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
                                              (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown", 
-                                             $mdl_info_HAR->{"out_tiny"}[$nxt_child_mdl_idx], 
+                                             $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$nxt_child_mdl_idx]], 
                                              (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
                                              (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown");
                     }        
@@ -4326,7 +4340,10 @@ sub ftr_results_calculate {
         if($aji_int_or_inp_flag) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, "1 or more aji, int, inp errors in parent CDS", $FH_HR);
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, 
+                                sprintf("CDS %s", 
+                                        $ftr_info_HAR->{"out_product"}[$ftr_idx]),
+                                $FH_HR);
           }
         }
       } # end of 'for($seq_idx'
@@ -6743,6 +6760,10 @@ sub output_feature_tbl_all_sequences {
   my $do_stop_carrot;  # '1' if this feature's stop position gets prepended with a '>'
   my $do_pred_stop;    # '1' if we use the predicted stop for this feature
   my $note_value;      # value for the note in the feature table, "" for none
+  my $error_value;     # value for the ERROR in the feature table, "" for none
+  my $warning_value;   # value for the WARNING in the feature table, "" for none
+  my @error_value_A;   # array of error values for a sequence
+  my @warning_value_A; # array of warning values for a sequence
   my $qval_sep = ";;"; # value separating multiple qualifier values in a single element of $ftr_info_HAR->{$key}[$ftr_idx]
   # NOTE: $qval_sep == ';;' is hard-coded value for separating multiple qualifier values for the same 
   # qualifier (see dnaorg.pm::edirectFtableOrMatPept2SingleFeatureTableInfo
@@ -6780,6 +6801,9 @@ sub output_feature_tbl_all_sequences {
     my $i;
     my %fidx2sidx_H = (); # key is feature index $fidx, value is $sidx index in @short_AH that $fidx corresponds to
     my %fidx2lidx_H = (); # key is feature index $fidx, value is $lidx index in @long_AH that $fidx corresponds to
+
+    @warning_value_A = ();
+    @error_value_A   = ();
     
     $cur_out_str = (">Feature $accn_name\n");
     print $sftbl_FH $cur_out_str;
@@ -6832,13 +6856,17 @@ sub output_feature_tbl_all_sequences {
       # those with an 'nop' error)
       $exc_idx = checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $cur_err_str, $FH_HR);
 
+      $error_value = "";
+      $warning_value = "";
       if($exc_idx != -1) { 
         $do_short_ftable = 1;
         $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
         $do_start_carrot = $ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"};
         $do_stop_carrot  = $ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"};
         $do_pred_stop    = $ftbl_err_exceptions_AHR->[$exc_idx]{"pred_stop"};
-        $note_value      = populateFTableNote($ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+        $note_value      = populateFTableNoteErrorOrWarning("note",  $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+        $error_value     = populateFTableNoteErrorOrWarning("error", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+        $warning_value   = populateFTableNoteErrorOrWarning("warning", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
       }
       else { 
         $do_short_ftable = 0;
@@ -6847,7 +6875,11 @@ sub output_feature_tbl_all_sequences {
         $do_stop_carrot  = 0;
         $do_pred_stop    = 0;
         $note_value      = "";
+        $error_value     = "";
+        $warning_value   = "";
       }
+      if($error_value   ne "") { push(@error_value_A,   $error_value); }
+      if($warning_value ne "") { push(@warning_value_A, $warning_value); }
 
       my $feature_type      = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
       my $orig_feature_type = $feature_type; 
@@ -7122,6 +7154,15 @@ sub output_feature_tbl_all_sequences {
       for($i = 0; $i < scalar(@short_AH); $i++) { 
         print $sftbl_FH $short_AH[$i]{"output"};
       }
+      if((scalar(@warning_value_A) + scalar(@error_value_A)) >= 1) { 
+        print $sftbl_FH "\nAdditional note(s) to submitter:\n"; 
+      }
+      foreach my $error_str (@error_value_A) { 
+        print $sftbl_FH "ERROR: " . $error_str . "\n"; 
+      }
+      foreach my $warning_str (@warning_value_A) { 
+        print $sftbl_FH "WARNING: " . $warning_str . "\n";  
+      }
     }
     if(scalar(@long_AH) > 0) { 
       @long_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
@@ -7130,6 +7171,15 @@ sub output_feature_tbl_all_sequences {
       } @long_AH;
       for($i = 0; $i < scalar(@long_AH); $i++) { 
         print $lftbl_FH $long_AH[$i]{"output"};
+      }
+      if((scalar(@warning_value_A) + scalar(@error_value_A)) >= 1) { 
+        print $lftbl_FH "\nAdditional note(s) to submitter:\n"; 
+      }
+      foreach my $error_str (@error_value_A) { 
+        print $lftbl_FH "ERROR: " . $error_str . "\n"; 
+      }
+      foreach my $warning_str (@warning_value_A) { 
+        print $lftbl_FH "WARNING: " . $warning_str . "\n"; 
       }
     }
   } # end of for loop over sequences

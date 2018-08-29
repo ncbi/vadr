@@ -1392,13 +1392,14 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "aja", "feature",  0,             "feature (MP or CDS) is not adjacent to same set of features after it as in reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "trc", "feature",  0,             "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ext", "feature",  1,             "first in-frame stop codon exists 3' of stop position predicted by homology to reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,             "mature peptide is not translated because its CDS has an in-frame stop 5' of the mature peptide's predicted start", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,             "mature peptide may not be translated because its CDS has a problem (aji, int, or inp)", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,             "mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,             "mat_peptide may not be translated because its CDS has a problem", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "m5e", "feature",  0,             "parent CDS has a b5e error", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "m3e", "feature",  0,             "parent CDS has a b3e error", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,             "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ost", "feature",  0,             "predicted feature is on opposite strand from reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "lsc", "feature",  0,             "low homology score", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "dup", "feature",  0,             "more than one homologous region", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between primary 2 mat_peptides", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (ntr)", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", $FH_HR);
@@ -1746,7 +1747,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"note"}  = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"error"} = "Mutation at Start: Expected start codon could not be identified on !out_product!";
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1759,6 +1761,7 @@ sub initializeHardCodedFTableErrorExceptions {
   $pred_stop    = 1;
   %expln_H = ();
   $expln_H{"note"} = "similar to !out_product!; contains premature stop codon"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product!";
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1770,7 +1773,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 1;
   %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product!; contains premature stop codon"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"note"}  = "similar to !out_product!; contains premature stop codon"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product!";
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1783,6 +1787,7 @@ sub initializeHardCodedFTableErrorExceptions {
   $pred_stop    = 1;
   %expln_H = ();
   $expln_H{"note"} = "similar to !out_product!; polyprotein may not be translated"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"error"} = "mat_peptide Has Stop Codon: Contains unexpected stop codon in !out_product!";
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1794,7 +1799,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"note"}  = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"error"} = "Reverse Complement: Sequence may be misassembled; !out_product! appears to be reverse complemented"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1807,6 +1813,20 @@ sub initializeHardCodedFTableErrorExceptions {
   $pred_stop    = 0;
   %expln_H = ();
   $expln_H{"note"} = "!COPY!lsc"; # "COPY!lsc" indicates we should use the lsc error string to make the note 
+  $expln_H{"error"} = "Low Homology Score: !COPY!lsc"; # "COPY!lsc" indicates we should use the lsc error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with dup to be output to feature table
+  $reqd_str = "dup";
+  $alwd_str = "olp,aja,ajb";
+  $misc_feature = 0;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  %expln_H = ();
+  $expln_H{"note"} = "!COPY!dup"; # "COPY!lsc" indicates we should use the lsc error string to make the note 
+  $expln_H{"error"} = "Duplicate Feature: !COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1819,6 +1839,7 @@ sub initializeHardCodedFTableErrorExceptions {
   $pred_stop    = 1;
   %expln_H = ();
   $expln_H{"note"} = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"error"} = "Mutation at End: Expected stop codon could not be identified on !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1830,7 +1851,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product!; polyprotein may not be translated"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"note"}    = "similar to !out_product!; polyprotein may not be translated"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"warning"} = "!out_product! !COPY!ntr"; # "COPY!ntr" indicates we should use the ntr error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1842,7 +1864,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product!; polyprotein may not be translated"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"note"}    = "similar to !out_product!; polyprotein may not be translated"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"warning"} = "!out_product! !COPY!mtr"; # "COPY!mtr" indicates we should use the mtr error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1854,7 +1877,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"note"}    = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"warning"} = "!out_product! !COPY!aji"; # "COPY!aji" indicates we should use the aji error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1866,7 +1890,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 1;
   %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"note"}    = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"warning"} = "!out_product! !COPY!ctr"; # "COPY!aji" indicates we should use the aji error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   return;
@@ -2025,12 +2050,12 @@ sub addFTableErrorException() {
       $HR->{$err_code} = "D";
     }
   }
-
+  
   if(($misc_feature ne "0") && ($misc_feature ne "1")) { 
     DNAORG_FAIL("ERROR in $sub_name, misc_feature value of $misc_feature is not valid (must be 0 or 1)", 1, $FH_HR);
   }
   $HR->{"misc_feature"} = $misc_feature;
-
+  
   if(($start_carrot ne "0") && ($start_carrot ne "1")) { 
     DNAORG_FAIL("ERROR in $sub_name, start_carrot value of $start_carrot is not valid (must be 0 or 1)", 1, $FH_HR);
   }
@@ -2045,38 +2070,44 @@ sub addFTableErrorException() {
     DNAORG_FAIL("ERROR in $sub_name, pred_stop value of $pred_stop is not valid (must be 0 or 1)", 1, $FH_HR);
   }
   $HR->{"pred_stop"} = $pred_stop;
-
+  
+  my @ekey_A = ("note", "warning", "error");
+  my $ekey = undef;
   if(defined $expln_HR) { 
-    if(defined $expln_HR->{"note"}) { 
-      my $note = $expln_HR->{"note"};
-      my $orig_note = $note;
-      if($note =~ s/^COPY\!//) { 
-        # we must have at least one required error for the note to use this !COPY! mechanism
-        if(! defined $required_err_str) { 
-          DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but there are no required errors for this exception", 1, $FH_HR);
+    foreach $ekey (@ekey_A) { 
+      if(defined $expln_HR->{$ekey}) { 
+        my $msg = $expln_HR->{$ekey};
+        my $orig_msg = $msg;
+        if($msg =~ s/^COPY\!//) { 
+          # we must have at least one required error for the note to use this !COPY! mechanism
+          if(! defined $required_err_str) { 
+            DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_msg, but there are no required errors for this exception", 1, $FH_HR);
+          }
+          @err_A = split(",", $msg);
+          foreach $err_code (@err_A) { 
+            $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
+            if($idx == -1) { 
+              DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_msg, but error code $err_code is invalid", 1, $FH_HR);
+            }
+            if((! exists $HR->{$err_code}) || ($HR->{$err_code} ne "R")) { 
+              DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_msg, but error code $err_code is not a required error (required error string is $required_err_str)", 1, $FH_HR);
+            }
+          }          
+          $HR->{$ekey} = $orig_msg;
         }
-        @err_A = split(",", $note);
-        foreach $err_code (@err_A) { 
-          $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
-          if($idx == -1) { 
-            DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but error code $err_code is invalid", 1, $FH_HR);
-          }
-          if((! exists $HR->{$err_code}) || ($HR->{$err_code} ne "R")) { 
-            DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_note, but error code $err_code is not a required error (required error string is $required_err_str)", 1, $FH_HR);
-          }
-        }          
-        $HR->{"note"} = $orig_note;
+        else { # note does not start with "!COPY!"
+          $HR->{$ekey} = $orig_msg;
+        }
+      } # end of 'if(defined $expln_HR->{$ekey})'
+      else { # $expln_HR->{$ekey} is not defined
+        $HR->{$ekey} = "";
       }
-      else { # note does not start with "!COPY!"
-        $HR->{"note"} = $orig_note;
-      }
-    } # 
-    else { # $note is not defined
-      $HR->{"note"} = "";
     }
   }
   else { # $expln_HR is not defined
-    $HR->{"note"} = "";
+    foreach $ekey (@ekey_A) { 
+      $HR->{$ekey} = "";
+    }
   }
   return;
 }
@@ -2372,15 +2403,10 @@ sub checkErrorsAgainstFTableErrorExceptions {
 }
 
 #################################################################
-# Subroutine: populateFTableNote
+# Subroutine: populateFTableNoteErrorOrWarning
 # Incept:     EPN, Thu Feb  8 14:31:16 2018
 #
-# Purpose:    Given a %{$err_ftr_instances_AHR->[$i]} hash
-# 
-#             what errors, determine if any of the feature table
-#             error exceptions apply for this sequence. 
-#             Die if more than one apply, that's supposed to be
-#             impossible.
+# Purpose:    Create a note for the feature table
 #
 # Arguments:
 #   $ftr_info_HAR:             REF to hash of arrays with information on the features, PRE-FILLED
@@ -2398,42 +2424,46 @@ sub checkErrorsAgainstFTableErrorExceptions {
 #          or has invalid information
 #
 #################################################################
-sub populateFTableNote { 
-  my $sub_name = "populateFTableNote";
-  my $nargs_expected = 7;
+sub populateFTableNoteErrorOrWarning { 
+  my $sub_name = "populateFTableNoteErrorOrWarning";
+  my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_HR, $err_info_HAR, $err_ftr_instances_HHR, $seq_name, $FH_HR) = (@_);
+  my ($ekey, $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_HR, $err_info_HAR, $err_ftr_instances_HHR, $seq_name, $FH_HR) = (@_);
   
-  my $note = $ftbl_err_exceptions_HR->{"note"};
-  if(! defined $note) { 
-    DNAORG_FAIL("ERROR in $sub_name, note value is undefined in error exceptions hash", 1, $FH_HR);
+  my $msg = $ftbl_err_exceptions_HR->{$ekey};
+  if(! defined $msg) { 
+    DNAORG_FAIL("ERROR in $sub_name, $ekey value is undefined in error exceptions hash", 1, $FH_HR);
   }
   
-  if($note eq "") { 
+  if($msg eq "") { 
     return "";
   }
   
-  # if $note starts with !COPY!<s>, then return the error messages for all errcodes that 
+  # if $msg starts with !COPY!<s>, then return the error messages for all errcodes that 
   # compose <s> (separated by commas)
   # if not, it may still contain !$key! which gets replaced with $ftr_info_HAR->{$key}[$ftr_idx];
-  my $orig_note = $note;
-  my $ret_note  = "";
+  my $orig_msg = $msg;
+  my $ret_msg  = "";
   my $idx;
-  if($note =~ s/^!COPY!//) { 
-    my @err_A = split(",", $note);
+  if($msg =~ /(.*\s*)!COPY!/) { 
+    $ret_msg = $1;
+    $msg =~ s/.*\s*!COPY!//;
+    my @err_A = split(",", $msg);
+    my $first_flag = 1;
     foreach my $err_code (@err_A) { 
       $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
       if($idx == -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code in note $orig_note", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code in note $orig_msg", 1, $FH_HR);
       }
       if(exists $err_ftr_instances_HHR->{$err_code}{$seq_name}) { 
-        if($ret_note ne "") { $ret_note .= ";"; }
-        $ret_note .= sprintf("%s%s", 
+        if(! $first_flag) { $ret_msg .= ";"; }
+        $ret_msg .= sprintf("%s%s", 
                              $err_info_HAR->{"msg"}[$idx], 
                              ($err_ftr_instances_HHR->{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_HHR->{$err_code}{$seq_name} . "]"); 
+        $first_flag = 0;
         # to include the error code at the beginning of the note:
-        #$ret_note .= sprintf("%4s error code: %s%s", 
+        #$ret_msg .= sprintf("%4s error code: %s%s", 
         #$err_code, 
         #$err_info_HAR->{"msg"}[$idx], 
         #($err_ftr_instances_HHR->{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_HHR->{$err_code}{$seq_name} . "]"); 
@@ -2441,19 +2471,19 @@ sub populateFTableNote {
     }
   }
   else {  # note does not start with !COPY!
-    # check if there is an internal !$key! string, which is replaced by the value: $ftr_info_HAR->{$key}[$ftr_idx]);
-    if($note =~ /\!([^\!]*)\!/) {
-      my $key = $1; 
-      my $value = "?";
-      if(exists $ftr_info_HAR->{$key}[$ftr_idx]) { 
-        $value = $ftr_info_HAR->{$key}[$ftr_idx];
-      }
-      $note =~ s/\![^\!]*\!/$value/;
+    $ret_msg = $msg;
+  }
+  # check if there is an internal !$key! string, which is replaced by the value: $ftr_info_HAR->{$key}[$ftr_idx]);
+  if($ret_msg =~ /\!([^\!]*)\!/) {
+    my $key = $1; 
+    my $value = "?";
+    if(exists $ftr_info_HAR->{$key}[$ftr_idx]) { 
+      $value = $ftr_info_HAR->{$key}[$ftr_idx];
     }
-    $ret_note = $note;
+    $ret_msg =~ s/\![^\!]*\!/$value/;
   }
 
-  return $ret_note;
+  return $ret_msg;
 }
 
 #################################################################
