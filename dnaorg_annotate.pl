@@ -6720,11 +6720,12 @@ sub output_feature_tbl_all_sequences {
   my $qualifier_name; # name of current qualifier
   my $qval;           # name of current qualifier value
 
-
   # define the type priority hash, which defines the order of types, lower is higher priority
   my %type_priority_H = ();
-  $type_priority_H{"gene"}  = 0;
-  $type_priority_H{"CDS"}   = 1;
+  $type_priority_H{"gene"}         = 0;
+  $type_priority_H{"CDS"}          = 1;
+  $type_priority_H{"misc_feature"} = 2;
+  $type_priority_H{"mat_peptide"}  = 3;
   my $npriority = scalar(keys %type_priority_H);
 
   #https://stackoverflow.com/questions/10395383/sorting-an-array-of-hash-by-multiple-keys-perl      

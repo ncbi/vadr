@@ -631,17 +631,17 @@ sub compare_two_sqtable_files {
           }
         }
         # mark completely identical sequences with " *" at the end of the line summarizing them
-        my $fully_identical_char = "";
+        my $fully_identical_str = "";
         if(scalar(keys %{$file_seq_ftr_HHH{"out"}{$seq}} == scalar(keys %{$file_seq_ftr_HHH{"exp"}{$seq}})) && 
            scalar(keys %{$file_seq_ftr_HHH{"out"}{$seq}} == $seq_id_ct)) { 
-          $fully_identical_char = " *"; 
+          $fully_identical_str = " *IDENTICAL*"; 
         }
         printf DIFFOUT ("$seq FTR-OUT: %2d FTR-EXP: %2d FTR-ID: %2d FTR-OUT-UNIQUE: %2d FTR-EXP-UNIQUE: %2d%s\n", 
                         scalar(keys %{$file_seq_ftr_HHH{"out"}{$seq}}), 
                         scalar(keys %{$file_seq_ftr_HHH{"exp"}{$seq}}), 
                         $seq_id_ct, $seq_out_uniq_ct, $seq_exp_uniq_ct, 
                         $fully_identical_char);
-        if($fully_identical_char eq "") { 
+        if($fully_identical_str eq "") { 
           foreach $line (@out_A) { print DIFFOUT $line; }
         }
       }
