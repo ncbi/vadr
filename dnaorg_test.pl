@@ -589,6 +589,14 @@ sub compare_two_sqtable_files {
           $prv_line_seq = 0;
         }
       }
+      # finished reading all lines, store the final feature
+      if($ftr ne "") { 
+        $file_seq_ftr_HHH{$filekey}{$seq}{$ftr} = 1;
+        if(! exists $seq_ftr_HH{$seq}{$ftr}) { 
+          push(@{$seq_ftr_HA{$seq}}, $ftr); 
+          $seq_ftr_HH{$seq}{$ftr} = 1;
+        }
+      }
     }
 
     # now just compare all feature lines, and determine how many are in common
@@ -622,11 +630,20 @@ sub compare_two_sqtable_files {
             push(@out_A, $prefix . $line . "\n");
           }
         }
-        printf DIFFOUT ("$seq FTR-OUT: %2d FTR-EXP: %2d FTR-ID: %2d FTR-OUT-UNIQUE: %2d FTR-EXP-UNIQUE: %2d\n", 
+        # mark completely identical sequences with " *" at the end of the line summarizing them
+        my $fully_identical_char = "";
+        if(scalar(keys %{$file_seq_ftr_HHH{"out"}{$seq}} == scalar(keys %{$file_seq_ftr_HHH{"exp"}{$seq}})) && 
+           scalar(keys %{$file_seq_ftr_HHH{"out"}{$seq}} == $seq_id_ct)) { 
+          $fully_identical_char = " *"; 
+        }
+        printf DIFFOUT ("$seq FTR-OUT: %2d FTR-EXP: %2d FTR-ID: %2d FTR-OUT-UNIQUE: %2d FTR-EXP-UNIQUE: %2d%s\n", 
                         scalar(keys %{$file_seq_ftr_HHH{"out"}{$seq}}), 
                         scalar(keys %{$file_seq_ftr_HHH{"exp"}{$seq}}), 
-                        $seq_id_ct, $seq_out_uniq_ct, $seq_exp_uniq_ct);
-        foreach $line (@out_A) { print DIFFOUT $line; }
+                        $seq_id_ct, $seq_out_uniq_ct, $seq_exp_uniq_ct, 
+                        $fully_identical_char);
+        if($fully_identical_char eq "") { 
+          foreach $line (@out_A) { print DIFFOUT $line; }
+        }
       }
       elsif(exists $file_seq_ftr_HHH{"out"}{$seq}) { 
         print DIFFOUT "$seq OUT-ONLY\n";

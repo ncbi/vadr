@@ -1661,6 +1661,7 @@ sub initializeHardCodedFTableErrorExceptions {
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",                         0,       0,      0,           0, "!COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ntr",     "olp,aja,ajb,mtr",                     1,       0,      0,           0, "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "mtr",     "olp,aja,ajb",                         1,       0,      0,           0, "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "aji",     "olp,aja,ajb",                         1,       0,      0,           0, "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
   
   return;
 }
