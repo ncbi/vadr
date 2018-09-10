@@ -1814,7 +1814,7 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
   $expln_H{"error"} = "!COPY!aji"; # "COPY!aji" indicates we should use the aji error string to make the note 
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
@@ -1827,8 +1827,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  $expln_H{"error"} = "Mutation at Start: Expected start codon could not be identified on !out_product!";
+  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Mutation at Start: Expected start codon could not be identified on !out_product,out_gene!";
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1840,21 +1840,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 1;
   %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product!; contains premature stop codon"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product!";
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with trc and int to be output to feature table
-  $reqd_str = "trc,int";
-  $alwd_str = "olp,aja,ajb,aji,inp,ctr";
-  $misc_feature = 1;
-  $start_carrot = 0;
-  $stop_carrot  = 0;
-  $pred_stop    = 1;
-  %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product!; contains premature stop codon"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product!";
+  $expln_H{"note"} = "similar to !out_product,out_gene!; contains premature stop codon"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!";
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1866,8 +1853,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 1;
   %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product!; polyprotein may not be translated"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  $expln_H{"error"} = "mat_peptide Has Stop Codon: Contains unexpected stop codon in !out_product!";
+  $expln_H{"note"} = "similar to !out_product,out_gene!; polyprotein may not be translated"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "mat_peptide Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!";
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1879,8 +1866,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  $expln_H{"error"} = "Reverse Complement: Sequence may be misassembled; !out_product! appears to be reverse complemented"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Reverse Complement: Sequence may be misassembled; !out_product,out_gene! appears to be reverse complemented"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1918,8 +1905,22 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 1;
   %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  $expln_H{"error"} = "Mutation at End: Expected stop codon could not be identified on !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
+  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+
+  ###############################################################################
+  # Exception: allow features with ext to be output to feature table
+  $reqd_str = "ext";
+  $alwd_str = "olp,aja,ajb";
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 1;
+  %expln_H = ();
+  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!; !COPY!ext";
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1931,8 +1932,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"}    = "similar to !out_product!; polyprotein may not be translated"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  $expln_H{"warning"} = "!out_product! !COPY!ntr"; # "COPY!ntr" indicates we should use the ntr error string to make the error
+  $expln_H{"note"}    = "similar to !out_product,out_gene!; polyprotein may not be translated"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"warning"} = "!out_product,out_gene! !COPY!ntr"; # "COPY!ntr" indicates we should use the ntr error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1944,8 +1945,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"}    = "similar to !out_product!; polyprotein may not be translated"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  $expln_H{"warning"} = "!out_product! !COPY!mtr"; # "COPY!mtr" indicates we should use the mtr error string to make the error
+  $expln_H{"note"}    = "similar to !out_product,out_gene!; polyprotein may not be translated"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"warning"} = "!out_product,out_gene! !COPY!mtr"; # "COPY!mtr" indicates we should use the mtr error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1957,8 +1958,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"}    = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  $expln_H{"warning"} = "!out_product! !COPY!aji"; # "COPY!aji" indicates we should use the aji error string to make the error
+  $expln_H{"note"}    = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"warning"} = "!out_product,out_gene! !COPY!aji"; # "COPY!aji" indicates we should use the aji error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1970,8 +1971,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 1;
   %expln_H = ();
-  $expln_H{"note"}    = "similar to !out_product!"; #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  $expln_H{"warning"} = "!out_product! !COPY!ctr"; # "COPY!aji" indicates we should use the aji error string to make the error
+  $expln_H{"note"}    = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"warning"} = "!out_product,out_gene! !COPY!ctr"; # "COPY!aji" indicates we should use the aji error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   return;
@@ -2553,12 +2554,19 @@ sub populateFTableNoteErrorOrWarning {
   else {  # note does not start with !COPY!
     $ret_msg = $msg;
   }
-  # check if there is an internal !$key! string, which is replaced by the value: $ftr_info_HAR->{$key}[$ftr_idx]);
+  # check if there is an internal !$key_str! string, where $key_str is either $key or $key_1,$key_2,...,$key_n for some number n,
+  # which is replaced by the value: $ftr_info_HAR->{$key}[$ftr_idx]); for the first $key with a valid value
   if($ret_msg =~ /\!([^\!]*)\!/) {
-    my $key = $1; 
+    my $key_str = $1; 
+    my @value_A = split(",", $key_str); 
+    my $nvalue = scalar(@value_A);
     my $value = "?";
-    if(exists $ftr_info_HAR->{$key}[$ftr_idx]) { 
-      $value = $ftr_info_HAR->{$key}[$ftr_idx];
+    for(my $v = 0; $v < $nvalue; $v++) { 
+      my $key = $value_A[$v];
+      if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+        $value = $ftr_info_HAR->{$key}[$ftr_idx];
+        $v = $nvalue; # breaks loop
+      }
     }
     $ret_msg =~ s/\![^\!]*\!/$value/;
   }

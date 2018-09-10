@@ -547,14 +547,17 @@ sub compare_two_sqtable_files {
       %{$file_seq_ftr_HHH{$filekey}} = ();
       open(IN, $file) || fileOpenFailure($file, $sub_name, $!, "reading", $FH_HR);
       while(my $line = <IN>) { 
-        if($skip_msg_lines && ($line =~ m/^Additional/)) { 
-          ;
+        if($line !~ m/\S+/) { # skip blank lines
+          ; # do nothing
+        }
+        elsif($skip_msg_lines && ($line =~ m/^Additional/)) { 
+          ; # do nothing
         }
         elsif($skip_msg_lines && ($line =~ m/^ERROR/)) { 
-          ;
+          ; # do nothing
         }
-        elsif($skip_msg_lines && ($line =~ m/^WARNINGR/)) { 
-          ;
+        elsif($skip_msg_lines && ($line =~ m/^WARNING/)) { 
+          ; # do nothing
         }
         elsif($line =~ m/^\>/) { # sequence line
           if(defined $seq) { # if this isn't our first sequence
