@@ -15,4 +15,4 @@
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_annotate.pl -f --matpept $DNAORGDIR/dnaorg_scripts/testfiles/NC_029646.matpept.in --dfeat gene --refaccn NC_029646 --dirbuild !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/noro.v7.fa --dirout da-noro-v7-test
 desc: annotate-examples
 out: da-noro-v7-test/da-noro-v7-test.dnaorg_annotate.sqtable
-exp: noro.v7.nocdsgene.nocodonstart.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/noro.v7.nocdsgene.nocodonstart.sqtable

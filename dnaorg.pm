@@ -1845,6 +1845,19 @@ sub initializeHardCodedFTableErrorExceptions {
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
+  # Exception: allow features with trc and int to be output to feature table
+  $reqd_str = "trc,int";
+  $alwd_str = "olp,aja,ajb,aji,inp,ctr";
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 1;
+  %expln_H = ();
+  $expln_H{"note"} = "similar to !out_product,out_gene!; contains premature stop codon"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !COPY!trc";
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
   # Exception: allow features (mat_peptides) with trc and mtr to be output to feature table
   $reqd_str = "trc,mtr";
   $alwd_str = "olp,aja,ajb";
@@ -1894,6 +1907,33 @@ sub initializeHardCodedFTableErrorExceptions {
   %expln_H = ();
   $expln_H{"note"} = "!COPY!dup"; # "COPY!lsc" indicates we should use the lsc error string to make the note 
   $expln_H{"error"} = "Duplicate Feature: !COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with ost and dup to be output to feature table
+  $reqd_str = "ost,dup";
+  $alwd_str = "olp,aja,ajb";
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  %expln_H = ();
+  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Reverse Complement: Sequence may be misassembled; !out_product,out_gene! appears to be reverse complemented"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} .= ":::Duplicate Feature: !COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with nm3 to be output to feature table
+  $reqd_str = "nm3";
+  $alwd_str = "olp,aja,ajb,mtr";
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  %expln_H = ();
+  $expln_H{"note"} = "similar to !out_product,out_gene!; length is not a multiple of 3"; # "COPY!lsc" indicates we should use the lsc error string to make the note 
+  $expln_H{"error"} = "Unexpected length: not a multiple of 3 !COPY!nm3"; # "COPY!dup" indicates we should use the dup error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################

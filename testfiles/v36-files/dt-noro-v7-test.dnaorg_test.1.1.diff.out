@@ -23,9 +23,6 @@
 			gene	ORF3
 6692	7471	CDS
 			product	VP2
-
-
-
 >Feature NC_029646-06-VP1-03-10-VP2-02
 5	5104	gene
 			gene	ORF1
@@ -47,13 +44,6 @@
 			gene	ORF2
 5085	>5575	CDS
 			product	VP1
-
-
-Additional note(s) to submitter:
-WARNING:  Partial sequence; Lacks 1117 nucleotides from 3' end
-
-
-
 >Feature NC_029646-04-09
 <1	4866	gene
 			gene	ORF1
@@ -79,10 +69,6 @@ WARNING:  Partial sequence; Lacks 1117 nucleotides from 3' end
 			gene	ORF3
 6454	7233	CDS
 			product	VP2
-Additional note(s) to submitter:
-WARNING: Partial sequence; Lacks 238 nucleotides from 3' end
-
-
 >Feature NC_029646-1-2ntgap-inframe
 5	5101	gene
 			gene	ORF1
@@ -108,11 +94,6 @@ WARNING: Partial sequence; Lacks 238 nucleotides from 3' end
 			gene	ORF3
 6689	7468	CDS
 			product	VP2
-
-
-
-
-
 >Feature NC_029646-1ntgap-outframe
 5	5103	gene
 			gene	ORF1
@@ -140,10 +121,13 @@ WARNING: Partial sequence; Lacks 238 nucleotides from 3' end
 			product	VP2
 
 Additional note(s) to submitter:
-ERROR: Deletion of Nucleotides: Contains internal deletion of 1 nucleotide in nonstructural polyprotein/NTPase
-ERROR: CDS Has Frameshift: Contains internal deletion of 1 nucleotide(s) in nonstructural polyprotein/NTPase
-
-
+ERROR: mat_peptide Has Stop Codon: Contains unexpected stop codon in NTPase; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 995..2091 revised to 995..1651 (stop shifted 440 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in nonstructural polyprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5..5100 revised to 5..1651 (stop shifted 3449 nt due to early stop in mp#2)]
+WARNING: p48 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: p22 mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1651]
+WARNING: VPg mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1651]
+WARNING: Pro mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1651]
+WARNING: RdRp mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1651]
 >Feature NC_029646-04-09-p48-NTP-02
 <1	2958	gene
 			gene	ORF1
@@ -165,11 +149,6 @@ ERROR: CDS Has Frameshift: Contains internal deletion of 1 nucleotide(s) in nons
 			gene	ORF3
 4546	5325	CDS
 			product	VP2
-
-Additional note(s) to submitter:
-WARNING: Partial sequence; Lacks 2146 nucleotides from 5’ end
-
-
 >Feature NC_029646-5-Pro-3
 <1	1592	gene
 			gene	ORF1
@@ -187,11 +166,6 @@ WARNING: Partial sequence; Lacks 2146 nucleotides from 5’ end
 			gene	ORF3
 3180	3959	CDS
 			product	VP2
-
-Additional note(s) to submitter:
-WARNING: Partial sequence; Lacks 3512 nucleotides from 5’ end
-
-
 >Feature NC_029646-09
 5	5104	gene
 			gene	ORF1
@@ -220,8 +194,6 @@ WARNING: Partial sequence; Lacks 3512 nucleotides from 5’ end
 
 Additional note(s) to submitter:
 ERROR: Mutation at Start: Expected start codon could not be identified on VP1
-
-
 >Feature NC_029646-18-p48-p22-12
 5	5104	gene
 			gene	ORF1
@@ -247,11 +219,6 @@ ERROR: Mutation at Start: Expected start codon could not be identified on VP1
 			gene	ORF3
 6692	7471	CDS
 			product	VP2
-
-Additional note(s) to submitter:
-WARNING:Unexpected amount of variation at cleavage site p48/NTPase, p22/VPg
-
-
 >Feature NC_029646-gap-cleavagesite-inframe
 5	5056	gene
 			gene	ORF1
@@ -259,9 +226,9 @@ WARNING:Unexpected amount of variation at cleavage site p48/NTPase, p22/VPg
 			note	similar to nonstructural polyprotein
 5	994	misc_feature
 			note	similar to p48; polyprotein may not be translated
-995	>2062	misc_feature
+995	2089	misc_feature
 			note	similar to NTPase; polyprotein may not be translated
-<2063	2629	misc_feature
+2047	2581	misc_feature
 			note	similar to p22; polyprotein may not be translated
 2582	2980	misc_feature
 			note	similar to VPg; polyprotein may not be translated
@@ -279,21 +246,25 @@ WARNING:Unexpected amount of variation at cleavage site p48/NTPase, p22/VPg
 			product	VP2
 
 Additional note(s) to submitter:
-ERROR: Deletion of Nucleotides: Contains internal deletion of ≥10nt nucleotide(s) in nonstructural polyprotein/NTPase
-
-
+ERROR: mat_peptide Has Stop Codon: Contains unexpected stop codon in p22; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2047..2581 revised to 2047..2073 (stop shifted 508 nt)]
+WARNING: p48 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: NTPase mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: VPg mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: Pro mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: RdRp mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: nonstructural polyprotein CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error) [mat_peptide p22 includes trc error]
 >Feature NC_029646-gap-cleavagesite-outframe
 5	5055	gene
 			gene	ORF1
 5	5055	misc_feature
-			note	similar to nonstructural polyprotein; contains premature stop codon
+			note	similar to nonstructural polyprotein
 5	994	misc_feature
 			note	similar to p48; polyprotein may not be translated
-995	>2061	misc_feature
-			note	similar to NTPase; polyprotein may not be translated
-<2062	2580	misc_feature
+995	2088	misc_feature
+			note	similar to NTPase; length is not a multiple of 3
+2041	2580	misc_feature
 			note	similar to p22; polyprotein may not be translated
-2580	2979	misc_feature
+2581	2979	misc_feature
 			note	similar to VPg; polyprotein may not be translated
 2980	3522	misc_feature
 			note	similar to Pro; polyprotein may not be translated
@@ -309,58 +280,55 @@ ERROR: Deletion of Nucleotides: Contains internal deletion of ≥10nt nucleotide
 			product	VP2
 
 Additional note(s) to submitter:
-ERROR: Deletion of Nucleotides: Contains internal deletion of ≥10nt nucleotide(s) in nonstructural polyprotein/NTPase/p22
-ERROR: CDS Has Frameshift: Contains internal deletion of ≥10nt nucleotide(s) in nonstructural polyprotein/NTPase/p22
-ERROR: Peptide Frameshift: Contains internal deletion of ≥10nt nucleotide(s) in nonstructural polyprotein/NTPase/p22
-
-
+ERROR: Unexpected length: not a multiple of 3 length of nucleotide feature is not a multiple of 3 [1094]
+WARNING: p48 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: p22 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: VPg mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: Pro mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: RdRp mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: nonstructural polyprotein CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [NTPase (995..2088) not adjacent to p22 (2041..2580)]
 >Feature NC_029646-gap-inframe
 5	5065	gene
 			gene	ORF1
-5	5065	misc_feature
-			note	similar to nonstructural polyprotein
-5	994	misc_feature
-			note	similar to p48 mature peptide; polyprotein may not be translated
-995	2092	misc_feature
-			note	similar to NTPase mature peptide; polyprotein may not be translated
-2093	2629	misc_feature
-			note	similar to p22 mature peptide; polyprotein may not be translated
-2630	3028	misc_feature
-			note	similar to VPg mature peptide; polyprotein may not be translated
-3029	3571	misc_feature
-			note	similar to Pro mature peptide; polyprotein may not be translated
-3572	5101	misc_feature
-			note	similar to RdRp mature peptide; polyprotein may not be translated
-5085	6692	gene
+5	5065	CDS
+			product	nonstructural polyprotein
+5	994	mat_peptide
+			product	p48
+995	2092	mat_peptide
+			product	NTPase
+2093	2629	mat_peptide
+			product	p22
+2630	2989	mat_peptide
+			product	VPg
+2990	3532	mat_peptide
+			product	Pro
+3533	5062	mat_peptide
+			product	RdRp
+5046	6653	gene
 			gene	ORF2
-5085	6692	CDS
+5046	6653	CDS
 			product	VP1
-6692	7471	gene
+6653	7432	gene
 			gene	ORF3
-6692	7471	CDS
+6653	7432	CDS
 			product	VP2
-
-Additional note(s) to submitter:
-ERROR: Deletion of Nucleotides: Contains internal deletion of ≥10nt nucleotide(s) in nonstructural polyprotein/VPg
-
-
 >Feature NC_029646-gap-outframe
 5	5064	gene
 			gene	ORF1
 5	5064	misc_feature
-			note	similar to nonstructural polyprotein; contains premature stop codon
+			note	similar to nonstructural polyprotein; length is not a multiple of 3
 5	994	misc_feature
-			note	similar to p48 mature peptide; polyprotein may not be translated
+			note	similar to p48; polyprotein may not be translated
 995	2092	misc_feature
-			note	similar to NTPase mature peptide; polyprotein may not be translated
+			note	similar to NTPase; polyprotein may not be translated
 2093	2629	misc_feature
-			note	similar to p22 mature peptide; polyprotein may not be translated
+			note	similar to p22; polyprotein may not be translated
 2630	2988	misc_feature
-			note	similar to VPg mature peptide; polyprotein may not be translated
+			note	similar to VPg; length is not a multiple of 3
 2989	3531	misc_feature
-			note	similar to Pro mature peptide; polyprotein may not be translated
+			note	similar to Pro; polyprotein may not be translated
 3532	5061	misc_feature
-			note	similar to RdRp mature peptide; polyprotein may not be translated
+			note	similar to RdRp; polyprotein may not be translated
 5045	6652	gene
 			gene	ORF2
 5045	6652	CDS
@@ -371,14 +339,13 @@ ERROR: Deletion of Nucleotides: Contains internal deletion of ≥10nt nucleotide
 			product	VP2
 
 Additional note(s) to submitter:
-ERROR: Deletion of Nucleotides: Contains internal deletion of ≥10nt nucleotide(s) in nonstructural polyprotein/VPg
-ERROR: CDS Has Frameshift: Contains internal deletion of ≥10nt nucleotide(s) in nonstructural polyprotein/VPg
-ERROR: Peptide Has Frameshift: Contains internal deletion of ≥10nt nucleotide(s) in nonstructural polyprotein/VPg
-
-
-
-
-
+ERROR: Unexpected length: not a multiple of 3 length of nucleotide feature is not a multiple of 3 [359]
+ERROR: Unexpected length: not a multiple of 3 length of nucleotide feature is not a multiple of 3 [5060]
+WARNING: p48 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: NTPase mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: p22 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: Pro mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: RdRp mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
 >Feature NC_029646-NTP-NP1-VP2-N
 5	5104	gene
 			gene	ORF1
@@ -406,10 +373,7 @@ ERROR: Peptide Has Frameshift: Contains internal deletion of ≥10nt nucleotide(
 			note	similar to VP2; contains premature stop codon
 
 Additional note(s) to submitter:
-ERROR: Deletion of Nucleotides: Contains internal deletion of ≥10nt nucleotide(s) in VP2
-ERROR: CDS Has Frameshift: Contains internal deletion of ≥10nt nucleotide(s) in VP2
-
-
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in VP2; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6692..7437 revised to 6692..7168 (stop shifted 269 nt)]
 >Feature NC_029646-poly-13-p22-VPg-pro-RdRp-15
 5	5104	gene
 			gene	ORF1
@@ -437,26 +401,28 @@ ERROR: CDS Has Frameshift: Contains internal deletion of ≥10nt nucleotide(s) i
 			product	VP2
 
 Additional note(s) to submitter:
-ERROR: CDS Has Stop Codon: Contains unexpected stop codon in nonstructural polyprotein/NTPase
-
-
+ERROR: mat_peptide Has Stop Codon: Contains unexpected stop codon in NTPase; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 995..2092 revised to 995..1966 (stop shifted 126 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in nonstructural polyprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5..5101 revised to 5..1966 (stop shifted 3135 nt due to early stop in mp#2)]
+WARNING: p48 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: p22 mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1966]
+WARNING: VPg mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1966]
+WARNING: Pro mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1966]
+WARNING: RdRp mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1966]
 >Feature NC_029646-Pro17
 5	5104	gene
 			gene	ORF1
-5	5104	CDS
-			product	nonstructural polyprotein
-5	994	mat_peptide
-			product	p48
-995	2092	mat_peptide
-			product	NTPase
-2093	2629	mat_peptide
-			product	p22
-2630	3028	mat_peptide
-			product	VPg
-3571	3029	misc_feature
-			note	similar to Pro
-3572	5101	mat_peptide
-			product	RdRp
+5	5104	misc_feature
+			note	similar to nonstructural polyprotein
+5	994	misc_feature
+			note	similar to p48; polyprotein may not be translated
+995	2092	misc_feature
+			note	similar to NTPase; polyprotein may not be translated
+2093	2629	misc_feature
+			note	similar to p22; polyprotein may not be translated
+2630	3028	misc_feature
+			note	similar to VPg; polyprotein may not be translated
+3572	5101	misc_feature
+			note	similar to RdRp; polyprotein may not be translated
 5085	6692	gene
 			gene	ORF2
 5085	6692	CDS
@@ -467,9 +433,12 @@ ERROR: CDS Has Stop Codon: Contains unexpected stop codon in nonstructural polyp
 			product	VP2
 
 Additional note(s) to submitter:
-ERROR: Reverse Complement: Sequence appears to be missassembled
-
-
+WARNING: p48 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: NTPase mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: p22 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: VPg mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: RdRp mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: nonstructural polyprotein CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [VPg (2630..3028) not adjacent to Pro (3571..3029), Pro (3571..3029) not adjacent to RdRp (3572..5101)]
 >Feature NC_029646-short-RdRp
 <1	>761	gene
 			gene	ORF1
@@ -477,11 +446,6 @@ ERROR: Reverse Complement: Sequence appears to be missassembled
 			product	nonstructural polyprotein
 <1	>761	mat_peptide
 			product	RdRp
-
-Additional note(s) to submitter:
-WARNING: Partial sequence: Lacks 4152 nucleotides from 5’ end; Lacks 2605 nucleotides from 3' end
-
-
 >Feature NC_029646-v-short-RdRp
 <1	>310	gene
 			gene	ORF1
@@ -489,11 +453,6 @@ WARNING: Partial sequence: Lacks 4152 nucleotides from 5’ end; Lacks 2605 nucl
 			product	nonstructural polyprotein
 <1	>310	mat_peptide
 			product	RdRp
-
-Additional note(s) to submitter:
-WARNING: Partial sequence: Lacks 4152 nucleotides from 5’ end; Lacks 3056 nucleotides from 3' end
-
-
 >Feature NC_029646-VP2-03-10-14
 5	5104	gene
 			gene	ORF1
@@ -522,8 +481,6 @@ WARNING: Partial sequence: Lacks 4152 nucleotides from 5’ end; Lacks 3056 nucl
 
 Additional note(s) to submitter:
 ERROR: Mutation at End: Expected stop codon could not be identified on VP2
-
-
 >Feature NC_029646-VP2-17
 5	5104	gene
 			gene	ORF1
@@ -545,15 +502,14 @@ ERROR: Mutation at End: Expected stop codon could not be identified on VP2
 			gene	ORF2
 5085	6692	CDS
 			product	VP1
-6692	7471	gene
+7472	6693	gene
 			gene	ORF3
-7472	6693	CDS
-			product	VP2
+7472	6693	misc_feature
+			note	similar to VP2
 
 Additional note(s) to submitter:
-ERROR: Reverse Complement: Sequence appears to be missassembled
-
-
+ERROR: Reverse Complement: Sequence may be misassembled; VP2 appears to be reverse complemented
+ERROR: Duplicate Feature: more than one homologous region [VP2: 2 regions]
 >Feature NC_029646-VP2-dup
 5	5104	gene
 			gene	ORF1
@@ -579,16 +535,10 @@ ERROR: Reverse Complement: Sequence appears to be missassembled
 			gene	ORF3
 6692	7471	CDS
 			product	VP2
-7475	8254	gene
-			gene	ORF3
-7475	8254	CDS
-			product	VP2
+			note	more than one homologous region [VP2: 2 regions]
 
 Additional note(s) to submitter:
-ERROR: Wrong ORF Number: Sequence appears to be missassembled
-
-
-
+ERROR: Duplicate Feature: more than one homologous region [VP2: 2 regions]
 >Feature NC_029646-WRY
 5	5104	gene
 			gene	ORF1
@@ -614,23 +564,11 @@ ERROR: Wrong ORF Number: Sequence appears to be missassembled
 			gene	ORF3
 6692	7471	CDS
 			product	VP2
-
-Additional note(s) to submitter:
-WARNING: This sequence contains 1 non-ACTG character(s) in nonstructural polyprotein/p48
-WARNING: This sequence contains 1 non-ACTG character(s) in nonstructural polyprotein/RDRP
-WARNING: This sequence contains 1 non-ACTG character(s) in VP1
-
-
 >Feature NC_029646-v-short-VP1
 <1	>50	gene
 			gene	ORF2
 <1	>50	CDS
 			product	VP1
-
-Additional note(s) to submitter:
-WARNING: Partial sequence: Lacks 5175 nucleotides from 5’ end; Lacks 2293 nucleotides from 3' end
-
-
 >Feature NC_029646-02-NTP
 5	4006	gene
 			gene	ORF1
@@ -656,4 +594,9 @@ WARNING: Partial sequence: Lacks 5175 nucleotides from 5’ end; Lacks 2293 nucl
 			product	VP2
 
 Additional note(s) to submitter:
-ERROR: Wrong Mature Peptide Number: Sequence appears to be missassembled
+WARNING: p48 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: p22 mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: VPg mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: Pro mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: RdRp mat_peptide may not be translated because its CDS has a problem [CDS nonstructural polyprotein]
+WARNING: nonstructural polyprotein CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (5..994) not adjacent to NTPase (unknown..unknown)]

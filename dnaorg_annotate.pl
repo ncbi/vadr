@@ -2699,7 +2699,7 @@ sub store_hit {
       if($mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"} > $evalue) { 
         DNAORG_FAIL(sprintf("ERROR in $sub_name, already have hit stored for model index $mdlidx seq index $seqidx with higher evalue (%g > %g), this implies hits were not sorted by E-value...", $mdl_results_AAHR->[$mdlidx][$seqidx]{"evalue"}, $evalue), 1, $FH_HR); 
       }
-      if($score > 25.) { $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}++; } # yes, this score threshold is hard-coded
+      if($score > 25.) { $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}++; } # yes, this is hard-coded
     }
     else { 
       # no hit yet exists, make one
@@ -3924,7 +3924,7 @@ sub ftr_results_calculate {
         my $stop_strand         = undef; # strand stop codon is on
         my $cds_len             = 0;     # length to output for this CDS
         my $child_had_trc       = 0;     # if we find a child with a trc error, set this to 1
-        my $aji_int_or_inp_flag = 0;     # set to '1' if we set an aji, int or inp error for the mother CDS
+        my $nm3_aji_int_or_inp_flag = 0; # set to '1' if we set an nm3, aji, int or inp error for the mother CDS
 
         # step through all primary children of this feature
         for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
@@ -4056,7 +4056,7 @@ sub ftr_results_calculate {
                     if($ntr_err_ct > 0) { 
                       # we set at least one ntr error for mature peptides, set int for this CDS
                       error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
-                      $aji_int_or_inp_flag = 1;
+                      $nm3_aji_int_or_inp_flag = 1;
                     }
                     # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
                   } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
@@ -4245,13 +4245,13 @@ sub ftr_results_calculate {
         if($aji_errmsg ne "") { 
           # adjacency error
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aji", $seq_name, $aji_errmsg, $FH_HR);
-          $aji_int_or_inp_flag = 1;
+          $nm3_aji_int_or_inp_flag = 1;
         }
 
         # add the inp (INterrupted due to no Prediction) if necessary
         if($inp_errmsg ne "") { 
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
-          $aji_int_or_inp_flag = 1;
+          $nm3_aji_int_or_inp_flag = 1;
         }
 
         # set ftr_results, we can set start if $cds_out_start is defined, 
@@ -4293,6 +4293,7 @@ sub ftr_results_calculate {
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"}       = $cds_len;
           if(($cds_len % 3) != 0) { 
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cds_len", $FH_HR);
+            $nm3_aji_int_or_inp_flag = 1;
           }
         }
         else { 
@@ -4334,10 +4335,10 @@ sub ftr_results_calculate {
             }
           }
         }
-        #############################################################################
-        # add mtr errors for all children if mother CDS had a aji, int or inp error #
-        #############################################################################
-        if($aji_int_or_inp_flag) { 
+        ##################################################################################
+        # add mtr errors for all children if mother CDS had a nm3, aji, int or inp error #
+        ##################################################################################
+        if($nm3_aji_int_or_inp_flag) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, 
@@ -7158,10 +7159,14 @@ sub output_feature_tbl_all_sequences {
         print $sftbl_FH "\nAdditional note(s) to submitter:\n"; 
       }
       foreach my $error_str (@error_value_A) { 
-        print $sftbl_FH "ERROR: " . $error_str . "\n"; 
+        foreach my $error_line (split(/\:\:\:/, $error_str)) { 
+          print $sftbl_FH "ERROR: " . $error_line . "\n"; 
+        }
       }
       foreach my $warning_str (@warning_value_A) { 
-        print $sftbl_FH "WARNING: " . $warning_str . "\n";  
+        foreach my $warning_line (split(/\:\:\:/, $warning_str)) { 
+          print $sftbl_FH "WARNING: " . $warning_line . "\n";  
+        }
       }
     }
     if(scalar(@long_AH) > 0) { 

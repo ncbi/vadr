@@ -15,5 +15,5 @@
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_annotate.pl -v --keep -f --xfeat gene --refaccn NC_002549 --dirbuild !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/ebola.v7.fa --dirout da-ebola-v7-test
 desc: ebolavirus-annotate-examples
 out: da-ebola-v7-test/da-ebola-v7-test.dnaorg_annotate.sqtable
-exp: ebola.v7.noutr.nocdsgene.nocodonstart.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/ebola.v7.noutr.nocdsgene.nocodonstart.sqtable
 
