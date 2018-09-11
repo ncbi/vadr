@@ -1841,7 +1841,7 @@ sub initializeHardCodedFTableErrorExceptions {
   $pred_stop    = 1;
   %expln_H = ();
   $expln_H{"note"} = "similar to !out_product,out_gene!; contains premature stop codon"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!";
+  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !COPY!trc";
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1854,7 +1854,7 @@ sub initializeHardCodedFTableErrorExceptions {
   $pred_stop    = 1;
   %expln_H = ();
   $expln_H{"note"} = "similar to !out_product,out_gene!; polyprotein may not be translated"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "mat_peptide Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!";
+  $expln_H{"error"} = "mat_peptide Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !COPY!trc";
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -1909,6 +1909,18 @@ sub initializeHardCodedFTableErrorExceptions {
   $expln_H{"error"} = "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
+  ###############################################################################
+  # Exception: allow features with trc and stp to be output to feature table
+  $reqd_str = "trc,stp";
+  $alwd_str = "olp,aja,ajb,aji";
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 1;
+  %expln_H = ();
+  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; Position of expected stop codon is not a valid stop codon; !COPY!trc";
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
   # Exception: allow features with ext to be output to feature table
@@ -1972,7 +1984,7 @@ sub initializeHardCodedFTableErrorExceptions {
   $pred_stop    = 1;
   %expln_H = ();
   $expln_H{"note"}    = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"warning"} = "!out_product,out_gene! !COPY!ctr"; # "COPY!aji" indicates we should use the aji error string to make the error
+  $expln_H{"warning"} = "!out_product,out_gene! !COPY!ctr"; # "COPY!ctr" indicates we should use the ctr error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   return;

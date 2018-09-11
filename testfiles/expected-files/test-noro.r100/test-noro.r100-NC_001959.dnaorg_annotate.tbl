@@ -56,7 +56,7 @@ CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                   
 CDS #2 [single exon; +]:VP1:start1                                                              1                            1                             1                             1                             1
 CDS #2 [single exon; +]:VP1:stop1                                                             261                          289                           264                           242                           257
 CDS #2 [single exon; +]:VP1:md1                                                                ++                           4+                            ++                            ++                            ++
-CDS #2 [single exon; +]:VP1:overlaps1                                                      F:11.1                       F:11.1                        F:11.1                        F:11.1                        F:11.1
+CDS #2 [single exon; +]:VP1:overlaps1                                                      F:NONE                       F:NONE                        F:NONE                        F:NONE                        F:NONE
 CDS #2 [single exon; +]:VP1:length                                                            261                          289                           264                           242                           257
 CDS #2 [single exon; +]:VP1:ss3                                                               .!.                          .!.                           .!.                           .!.                           .!.
 CDS #2 [single exon; +]:VP1:stp                                                               ATA                          ACA                           AAT                           AAT                           AAT
@@ -69,29 +69,17 @@ CDS #3 [single exon; +]:VP2:length                                              
 CDS #3 [single exon; +]:VP2:ss3                                                                NP                           NP                            NP                            NP                            NP
 CDS #3 [single exon; +]:VP2:stp                                                                NP                           NP                            NP                            NP                            NP
 CDS #3 [single exon; +]:VP2:PF                                                                  F                            F                             F                             F                             F
-gene #1 [single segment; +]::start1                                                            NP                           NP                            NP                            NP                            NP
-gene #1 [single segment; +]::stop1                                                             NP                           NP                            NP                            NP                            NP
-gene #1 [single segment; +]::md1                                                               NP                           NP                            NP                            NP                            NP
-gene #1 [single segment; +]::overlaps1                                                         NP                           NP                            NP                            NP                            NP
-gene #1 [single segment; +]::length                                                            NP                           NP                            NP                            NP                            NP
-gene #1 [single segment; +]::PF                                                                 F                            F                             F                             F                             F
-gene #2 [single segment; +]::start1                                                             1                            1                             1                             1                             1
-gene #2 [single segment; +]::stop1                                                            261                          289                           264                           242                           257
-gene #2 [single segment; +]::md1                                                               ++                           4+                            ++                            ++                            ++
-gene #2 [single segment; +]::overlaps1                                                      F:8.1                        F:8.1                         F:8.1                         F:8.1                         F:8.1
-gene #2 [single segment; +]::length                                                           261                          289                           264                           242                           257
-gene #2 [single segment; +]::PF                                                                 F                            F                             F                             F                             F
-gene #3 [single segment; +]::start1                                                            NP                           NP                            NP                            NP                            NP
-gene #3 [single segment; +]::stop1                                                             NP                           NP                            NP                            NP                            NP
-gene #3 [single segment; +]::md1                                                               NP                           NP                            NP                            NP                            NP
-gene #3 [single segment; +]::overlaps1                                                         NP                           NP                            NP                            NP                            NP
-gene #3 [single segment; +]::length                                                            NP                           NP                            NP                            NP                            NP
-gene #3 [single segment; +]::PF                                                                 F                            F                             F                             F                             F
+gene #1::start                                                                                  ?                            ?                             ?                             ?                             ?
+gene #1::stop                                                                                   ?                            ?                             ?                             ?                             ?
+gene #2::start                                                                                  1                            1                             1                             1                             1
+gene #2::stop                                                                                 261                          289                           264                           242                           257
+gene #3::start                                                                                  -                            -                             -                             -                             -
+gene #3::stop                                                                                   -                            -                             -                             -                             -
 3' UTR:start                                                                                    ?                            ?                             ?                             ?                             ?
 3' UTR:stop                                                                                     ?                            ?                             ?                             ?                             ?
 3' UTR:length                                                                                   ?                            ?                             ?                             ?                             ?
 totlen                                                                                        261                          289                           264                           242                           257
-result                                                                          FAIL FFFFFFFFFFFF            FAIL FFFFFFFFFFFF             FAIL FFFFFFFFFFFF             FAIL FFFFFFFFFFFF             FAIL FFFFFFFFFFFF
+result                                                                             FAIL FFFFFFFFF               FAIL FFFFFFFFF                FAIL FFFFFFFFF                FAIL FFFFFFFFF                FAIL FFFFFFFFF
 #
 # end of page 1
 #
@@ -139,7 +127,7 @@ MP #5 [single segment; +]:Pro:PF                                                
 MP #6 [single segment; +]:RdRp:start1                                                          NP                            1                           NP                            NP                           1
 MP #6 [single segment; +]:RdRp:stop1                                                           NP                          577                           NP                            NP                         302
 MP #6 [single segment; +]:RdRp:md1                                                             NP                           +.                           NP                            NP                          ++
-MP #6 [single segment; +]:RdRp:overlaps1                                                       NP              P:8.1,10.1,11.1                           NP                            NP                      F:10.1
+MP #6 [single segment; +]:RdRp:overlaps1                                                       NP                        P:8.1                           NP                            NP                      F:NONE
 MP #6 [single segment; +]:RdRp:adjcnces1                                                       NP                       F:NONE                           NP                            NP                      F:NONE
 MP #6 [single segment; +]:RdRp:length                                                          NP                          577                           NP                            NP                         302
 MP #6 [single segment; +]:RdRp:PF                                                               F                            F                            F                             F                           F
@@ -153,7 +141,7 @@ CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                   
 CDS #2 [single exon; +]:VP1:start1                                                              1                          564                            1                             1                          NP
 CDS #2 [single exon; +]:VP1:stop1                                                             211                          858                          291                           239                          NP
 CDS #2 [single exon; +]:VP1:md1                                                                ++                           .+                           4+                            ++                          NP
-CDS #2 [single exon; +]:VP1:overlaps1                                                      F:11.1              F:6.1,10.1,11.1                       F:11.1                        F:11.1                          NP
+CDS #2 [single exon; +]:VP1:overlaps1                                                      F:NONE                        F:6.1                       F:NONE                        F:NONE                          NP
 CDS #2 [single exon; +]:VP1:length                                                            211                          295                          291                           239                          NP
 CDS #2 [single exon; +]:VP1:ss3                                                               .!.                          .!.                          .!.                           .!.                          NP
 CDS #2 [single exon; +]:VP1:stp                                                               TTT                          AGA                          AAA                           AAA                          NP
@@ -166,29 +154,17 @@ CDS #3 [single exon; +]:VP2:length                                              
 CDS #3 [single exon; +]:VP2:ss3                                                                NP                           NP                           NP                            NP                          NP
 CDS #3 [single exon; +]:VP2:stp                                                                NP                           NP                           NP                            NP                          NP
 CDS #3 [single exon; +]:VP2:PF                                                                  F                            F                            F                             F                           F
-gene #1 [single segment; +]::start1                                                            NP                            1                           NP                            NP                           1
-gene #1 [single segment; +]::stop1                                                             NP                          580                           NP                            NP                         302
-gene #1 [single segment; +]::md1                                                               NP                           +.                           NP                            NP                          ++
-gene #1 [single segment; +]::overlaps1                                                         NP               F:6.1,8.1,11.1                           NP                            NP                       F:6.1
-gene #1 [single segment; +]::length                                                            NP                          580                           NP                            NP                         302
-gene #1 [single segment; +]::PF                                                                 F                            F                            F                             F                           F
-gene #2 [single segment; +]::start1                                                             1                          564                            1                             1                          NP
-gene #2 [single segment; +]::stop1                                                            211                          858                          291                           239                          NP
-gene #2 [single segment; +]::md1                                                               ++                           .+                           4+                            ++                          NP
-gene #2 [single segment; +]::overlaps1                                                      F:8.1               F:6.1,8.1,10.1                        F:8.1                         F:8.1                          NP
-gene #2 [single segment; +]::length                                                           211                          295                          291                           239                          NP
-gene #2 [single segment; +]::PF                                                                 F                            F                            F                             F                           F
-gene #3 [single segment; +]::start1                                                            NP                           NP                           NP                            NP                          NP
-gene #3 [single segment; +]::stop1                                                             NP                           NP                           NP                            NP                          NP
-gene #3 [single segment; +]::md1                                                               NP                           NP                           NP                            NP                          NP
-gene #3 [single segment; +]::overlaps1                                                         NP                           NP                           NP                            NP                          NP
-gene #3 [single segment; +]::length                                                            NP                           NP                           NP                            NP                          NP
-gene #3 [single segment; +]::PF                                                                 F                            F                            F                             F                           F
+gene #1::start                                                                                  ?                            1                            ?                             ?                           1
+gene #1::stop                                                                                   ?                            ?                            ?                             ?                           ?
+gene #2::start                                                                                  1                          564                            1                             1                           -
+gene #2::stop                                                                                 211                          858                          291                           239                           -
+gene #3::start                                                                                  -                            -                            -                             -                           -
+gene #3::stop                                                                                   -                            -                            -                             -                           -
 3' UTR:start                                                                                    ?                            ?                            ?                             ?                           ?
 3' UTR:stop                                                                                     ?                            ?                            ?                             ?                           ?
 3' UTR:length                                                                                   ?                            ?                            ?                             ?                           ?
 totlen                                                                                        211                          858                          291                           239                         302
-result                                                                          FAIL FFFFFFFFFFFF            FAIL FFFFFFFFFFFF            FAIL FFFFFFFFFFFF             FAIL FFFFFFFFFFFF           FAIL FFFFFFFFFFFF
+result                                                                             FAIL FFFFFFFFF               FAIL FFFFFFFFF               FAIL FFFFFFFFF                FAIL FFFFFFFFF              FAIL FFFFFFFFF
 #
 # end of page 2
 #
@@ -236,7 +212,7 @@ MP #5 [single segment; +]:Pro:PF                                                
 MP #6 [single segment; +]:RdRp:start1                                                          1
 MP #6 [single segment; +]:RdRp:stop1                                                         274
 MP #6 [single segment; +]:RdRp:md1                                                            +.
-MP #6 [single segment; +]:RdRp:overlaps1                                         P:8.1,10.1,11.1
+MP #6 [single segment; +]:RdRp:overlaps1                                                   P:8.1
 MP #6 [single segment; +]:RdRp:adjcnces1                                                  F:NONE
 MP #6 [single segment; +]:RdRp:length                                                        274
 MP #6 [single segment; +]:RdRp:PF                                                              F
@@ -250,7 +226,7 @@ CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                   
 CDS #2 [single exon; +]:VP1:start1                                                           261
 CDS #2 [single exon; +]:VP1:stop1                                                            555
 CDS #2 [single exon; +]:VP1:md1                                                               .+
-CDS #2 [single exon; +]:VP1:overlaps1                                            F:6.1,10.1,11.1
+CDS #2 [single exon; +]:VP1:overlaps1                                                      F:6.1
 CDS #2 [single exon; +]:VP1:length                                                           295
 CDS #2 [single exon; +]:VP1:ss3                                                              .!.
 CDS #2 [single exon; +]:VP1:stp                                                              AAA
@@ -263,29 +239,17 @@ CDS #3 [single exon; +]:VP2:length                                              
 CDS #3 [single exon; +]:VP2:ss3                                                               NP
 CDS #3 [single exon; +]:VP2:stp                                                               NP
 CDS #3 [single exon; +]:VP2:PF                                                                 F
-gene #1 [single segment; +]::start1                                                            1
-gene #1 [single segment; +]::stop1                                                           277
-gene #1 [single segment; +]::md1                                                              +.
-gene #1 [single segment; +]::overlaps1                                            F:6.1,8.1,11.1
-gene #1 [single segment; +]::length                                                          277
-gene #1 [single segment; +]::PF                                                                F
-gene #2 [single segment; +]::start1                                                          261
-gene #2 [single segment; +]::stop1                                                           555
-gene #2 [single segment; +]::md1                                                              .+
-gene #2 [single segment; +]::overlaps1                                            F:6.1,8.1,10.1
-gene #2 [single segment; +]::length                                                          295
-gene #2 [single segment; +]::PF                                                                F
-gene #3 [single segment; +]::start1                                                           NP
-gene #3 [single segment; +]::stop1                                                            NP
-gene #3 [single segment; +]::md1                                                              NP
-gene #3 [single segment; +]::overlaps1                                                        NP
-gene #3 [single segment; +]::length                                                           NP
-gene #3 [single segment; +]::PF                                                                F
+gene #1::start                                                                                 1
+gene #1::stop                                                                                  ?
+gene #2::start                                                                               261
+gene #2::stop                                                                                555
+gene #3::start                                                                                 -
+gene #3::stop                                                                                  -
 3' UTR:start                                                                                   ?
 3' UTR:stop                                                                                    ?
 3' UTR:length                                                                                  ?
 totlen                                                                                       555
-result                                                                         FAIL FFFFFFFFFFFF
+result                                                                            FAIL FFFFFFFFF
 #
 # end of page 3
 #

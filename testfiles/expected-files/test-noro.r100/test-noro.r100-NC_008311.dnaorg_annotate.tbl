@@ -56,7 +56,7 @@ CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                   
 CDS #2 [single exon; +]:VP1:start1                                                             1
 CDS #2 [single exon; +]:VP1:stop1                                                            356
 CDS #2 [single exon; +]:VP1:md1                                                               ++
-CDS #2 [single exon; +]:VP1:overlaps1                                            F:9.1,12.1,13.1
+CDS #2 [single exon; +]:VP1:overlaps1                                                      F:9.1
 CDS #2 [single exon; +]:VP1:length                                                           356
 CDS #2 [single exon; +]:VP1:ss3                                                              .!.
 CDS #2 [single exon; +]:VP1:stp                                                              TTG
@@ -64,7 +64,7 @@ CDS #2 [single exon; +]:VP1:PF                                                  
 CDS #3 [single exon; +]:VF1:start1                                                             1
 CDS #3 [single exon; +]:VF1:stop1                                                            356
 CDS #3 [single exon; +]:VF1:md1                                                               4+
-CDS #3 [single exon; +]:VF1:overlaps1                                            F:8.1,12.1,13.1
+CDS #3 [single exon; +]:VF1:overlaps1                                                      P:8.1
 CDS #3 [single exon; +]:VF1:length                                                           356
 CDS #3 [single exon; +]:VF1:ss3                                                              .!.
 CDS #3 [single exon; +]:VF1:stp                                                              TTG
@@ -77,35 +77,19 @@ CDS #4 [single exon; +]:VP2:length                                              
 CDS #4 [single exon; +]:VP2:ss3                                                               NP
 CDS #4 [single exon; +]:VP2:stp                                                               NP
 CDS #4 [single exon; +]:VP2:PF                                                                 F
-gene #1 [single segment; +]::start1                                                           NP
-gene #1 [single segment; +]::stop1                                                            NP
-gene #1 [single segment; +]::md1                                                              NP
-gene #1 [single segment; +]::overlaps1                                                        NP
-gene #1 [single segment; +]::length                                                           NP
-gene #1 [single segment; +]::PF                                                                F
-gene #2 [single segment; +]::start1                                                            1
-gene #2 [single segment; +]::stop1                                                           356
-gene #2 [single segment; +]::md1                                                              ++
-gene #2 [single segment; +]::overlaps1                                            F:8.1,9.1,13.1
-gene #2 [single segment; +]::length                                                          356
-gene #2 [single segment; +]::PF                                                                F
-gene #3 [single segment; +]::start1                                                            1
-gene #3 [single segment; +]::stop1                                                           356
-gene #3 [single segment; +]::md1                                                              4+
-gene #3 [single segment; +]::overlaps1                                            F:8.1,9.1,12.1
-gene #3 [single segment; +]::length                                                          356
-gene #3 [single segment; +]::PF                                                                F
-gene #4 [single segment; +]::start1                                                           NP
-gene #4 [single segment; +]::stop1                                                            NP
-gene #4 [single segment; +]::md1                                                              NP
-gene #4 [single segment; +]::overlaps1                                                        NP
-gene #4 [single segment; +]::length                                                           NP
-gene #4 [single segment; +]::PF                                                                F
+gene #1::start                                                                                 ?
+gene #1::stop                                                                                  ?
+gene #2::start                                                                                 1
+gene #2::stop                                                                                356
+gene #3::start                                                                                 1
+gene #3::stop                                                                                356
+gene #4::start                                                                                 -
+gene #4::stop                                                                                  -
 3' UTR:start                                                                                   ?
 3' UTR:stop                                                                                    ?
 3' UTR:length                                                                                  ?
 totlen                                                                                       356
-result                                                                       FAIL FFFFFFFFFFFFFF
+result                                                                           FAIL FFFFFFFFFF
 #
 # end of page 1
 #

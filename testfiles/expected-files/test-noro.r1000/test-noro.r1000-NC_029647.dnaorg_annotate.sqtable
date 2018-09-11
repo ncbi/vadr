@@ -80,8 +80,13 @@
 38	>324	CDS
 			product	VP1
 >Feature gi|675240839|emb|LN482756.1|
-2	>235	gene
+2	235	gene
 			gene	ORF2
+2	235	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in VP1; Position of expected stop codon is not a valid stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2..235 revised to 2..97 (stop shifted 138 nt)]
 >Feature gi|532761675|gb|KC999770.1|
 1	>282	gene
 			gene	ORF2

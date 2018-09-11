@@ -55,14 +55,14 @@
 			product	matrix protein
 5874	8276	gene
 			gene	GP
-6013	6564	misc_feature
+6013	6896	misc_feature
 6896	8039
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
-6013	6564	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
-6013	6564	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6013	7106	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6013	6895	misc_feature
 6897	6906
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8259	9711	gene
 			gene	VP30
 8480	9346	CDS
@@ -75,6 +75,11 @@
 			gene	L
 11552	18190	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
 >Feature gi|1384693599|emb|LP930608.1|
 3	2408	gene
 			gene	GP
@@ -325,14 +330,14 @@
 			product	matrix protein
 5874	8277	gene
 			gene	GP
-6013	6564	misc_feature
+6013	6896	misc_feature
 6896	8040
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
-6013	6564	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
-6013	6564	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6013	7106	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6013	6895	misc_feature
 6897	6906
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8260	9712	gene
 			gene	VP30
 8481	9347	CDS
@@ -345,6 +350,11 @@
 			gene	L
 11553	18191	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
 >Feature gi|820905347|gb|KR653241.1|
 11	2981	gene
 			gene	NP
@@ -480,14 +490,14 @@
 			product	matrix protein
 5862	8264	gene
 			gene	GP
-6001	6552	misc_feature
+6001	6884	misc_feature
 6884	8027
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
-6001	6552	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
-6001	6552	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6001	7094	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6001	6883	misc_feature
 6885	6894
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8247	9699	gene
 			gene	VP30
 8468	9334	CDS
@@ -500,6 +510,11 @@
 			gene	L
 11540	18178	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
 >Feature gi|436409399|gb|KC242797.1|
 56	3026	gene
 			gene	NP
@@ -564,8 +579,8 @@
 			exception	RNA editing
 8278	9730	gene
 			gene	VP30
-8499	9344	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 8499..9365 revised to 8499..9344 (stop shifted 21 nt)]
+8499	9365	misc_feature
+			note	similar to minor nucleoprotein; contains premature stop codon
 9875	11508	gene
 			gene	VP24
 10335	11090	CDS
@@ -574,6 +589,9 @@
 			gene	L
 11571	18209	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in minor nucleoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 8499..9365 revised to 8499..9344 (stop shifted 21 nt)]
 >Feature gi|930627096|gb|KT725294.1|
 <1	2925	gene
 			gene	NP
@@ -609,9 +627,11 @@
 			product	membrane-associated protein
 11400	18181	gene
 			gene	L
-11480	18211	CDS
-			product	RNA-dependent RNA polymerase
-			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [TGN ending at position 18118 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 11480..18118 revised to 11480..18211 (stop shifted 93 nt)]
+11480	18118	misc_feature
+			note	similar to RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on RNA-dependent RNA polymerase
 >Feature gi|1101477787|emb|LT630551.1|
 7	2977	gene
 			gene	NP
@@ -643,13 +663,15 @@
 			product	minor nucleoprotein
 9836	11469	gene
 			gene	VP24
-10296	11102	CDS
-			product	membrane-associated protein
-			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [NAA ending at position 11051 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 10296..11051 revised to 10296..11102 (stop shifted 51 nt)]
+10296	11051	misc_feature
+			note	similar to membrane-associated protein
 11452	18233	gene
 			gene	L
 11532	18170	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on membrane-associated protein
 >Feature gi|820905377|gb|KR653244.1|
 50	3020	gene
 			gene	NP
@@ -961,14 +983,14 @@
 			product	matrix protein
 5874	8277	gene
 			gene	GP
-6013	6564	misc_feature
+6013	6896	misc_feature
 6896	8040
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
-6013	6564	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
-6013	6564	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6013	7106	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6013	6895	misc_feature
 6897	6906
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8260	9712	gene
 			gene	VP30
 8481	9347	CDS
@@ -981,6 +1003,11 @@
 			gene	L
 11553	18191	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
 >Feature gi|1384616285|emb|LP911914.1|
 >Feature gi|913074840|gb|KT357830.1|
 31	3001	gene
@@ -1001,12 +1028,12 @@
 6898	8043
 			product	spike glycoprotein
 			exception	RNA editing
+6014	7108	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
 6014	6897	CDS
 6899	6908
 			product	second secreted glycoprotein
 			exception	RNA editing
-6014	7090	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6014..7108 revised to 6014..7090 (stop shifted 18 nt)]
 8263	9715	gene
 			gene	VP30
 8484	9350	CDS
@@ -1019,6 +1046,9 @@
 			gene	L
 11556	18194	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6014..7108 revised to 6014..7090 (stop shifted 18 nt)]
 >Feature gi|973432695|gb|KU296511.1|
 18	2988	gene
 			gene	NP
@@ -1034,15 +1064,15 @@
 			product	matrix protein
 5862	8264	gene
 			gene	GP
+6001	6885	misc_feature
+6885	8027
+			note	similar to spike glycoprotein; contains premature stop codon
 6001	7095	CDS
 			product	small secreted glycoprotein
 6001	6884	CDS
 6886	6895
 			product	second secreted glycoprotein
 			exception	RNA editing
-6001	6885	misc_feature
-6885	7313
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6885..8027 exon 2 of 2 revised to 6885..7313 (stop shifted 714 nt)]
 8247	9699	gene
 			gene	VP30
 8468	9334	CDS
@@ -1055,6 +1085,9 @@
 			gene	L
 11540	18178	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6885..8027 exon 2 of 2 revised to 6885..7313 (stop shifted 714 nt)]
 >Feature gi|1101477760|emb|LT630524.1|
 7	2977	gene
 			gene	NP
@@ -1107,14 +1140,14 @@
 			product	matrix protein
 5767	8170	gene
 			gene	GP
-5906	6457	misc_feature
+5906	6789	misc_feature
 6789	7933
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5906..6789 exon 1 of 2 revised to 5906..6457 (stop shifted 332 nt)]
-5906	6457	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5906..6999 revised to 5906..6457 (stop shifted 542 nt)]
-5906	6457	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+5906	6999	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+5906	6788	misc_feature
 6790	6799
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5906..6788 exon 1 of 2 revised to 5906..6457 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8153	9605	gene
 			gene	VP30
 8374	9240	CDS
@@ -1127,6 +1160,11 @@
 			gene	L
 11446	18084	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5906..6789 exon 1 of 2 revised to 5906..6457 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5906..6999 revised to 5906..6457 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5906..6788 exon 1 of 2 revised to 5906..6457 (stop shifted 331 nt)]
 >Feature gi|973433797|gb|KU296655.1|
 18	2988	gene
 			gene	NP
@@ -1142,14 +1180,14 @@
 			product	matrix protein
 5862	8264	gene
 			gene	GP
-6001	6552	misc_feature
+6001	6884	misc_feature
 6884	8027
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
-6001	6552	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
-6001	6552	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6001	7094	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6001	6883	misc_feature
 6885	6894
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8247	9699	gene
 			gene	VP30
 8468	9334	CDS
@@ -1162,6 +1200,11 @@
 			gene	L
 11539	18177	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
 >Feature gi|760243308|gb|KP759719.1|
 56	3026	gene
 			gene	NP
@@ -1214,15 +1257,15 @@
 			product	matrix protein
 5862	8266	gene
 			gene	GP
+6001	6885	misc_feature
+6885	8029
+			note	similar to spike glycoprotein; contains premature stop codon
 6001	7095	CDS
 			product	small secreted glycoprotein
 6001	6884	CDS
 6886	6895
 			product	second secreted glycoprotein
 			exception	RNA editing
-6001	6885	misc_feature
-6885	7289
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6885..8029 exon 2 of 2 revised to 6885..7289 (stop shifted 740 nt)]
 8249	9701	gene
 			gene	VP30
 8470	9336	CDS
@@ -1235,6 +1278,9 @@
 			gene	L
 11542	18180	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6885..8029 exon 2 of 2 revised to 6885..7289 (stop shifted 740 nt)]
 >Feature gi|973433307|gb|KU296591.1|
 <1	2881	gene
 			gene	NP
@@ -1250,14 +1296,14 @@
 			product	matrix protein
 5755	8158	gene
 			gene	GP
-5894	6445	misc_feature
+5894	6777	misc_feature
 6777	7921
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6777 exon 1 of 2 revised to 5894..6445 (stop shifted 332 nt)]
-5894	6445	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6987 revised to 5894..6445 (stop shifted 542 nt)]
-5894	6445	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+5894	6987	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+5894	6776	misc_feature
 6778	6787
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6776 exon 1 of 2 revised to 5894..6445 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8141	9593	gene
 			gene	VP30
 8362	9228	CDS
@@ -1270,6 +1316,11 @@
 			gene	L
 11433	18071	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6777 exon 1 of 2 revised to 5894..6445 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6987 revised to 5894..6445 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6776 exon 1 of 2 revised to 5894..6445 (stop shifted 331 nt)]
 >Feature gi|820743865|gb|KR534568.1|
 5	2975	gene
 			gene	NP
@@ -1322,14 +1373,14 @@
 			product	matrix protein
 5755	8158	gene
 			gene	GP
-5894	6445	misc_feature
+5894	6777	misc_feature
 6777	7921
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6777 exon 1 of 2 revised to 5894..6445 (stop shifted 332 nt)]
-5894	6445	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6987 revised to 5894..6445 (stop shifted 542 nt)]
-5894	6445	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+5894	6987	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+5894	6776	misc_feature
 6778	6787
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6776 exon 1 of 2 revised to 5894..6445 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8141	9593	gene
 			gene	VP30
 8362	9228	CDS
@@ -1342,6 +1393,11 @@
 			gene	L
 11433	18071	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6777 exon 1 of 2 revised to 5894..6445 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6987 revised to 5894..6445 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5894..6776 exon 1 of 2 revised to 5894..6445 (stop shifted 331 nt)]
 >Feature gi|667852635|gb|KM233049.1|
 46	3016	gene
 			gene	NP
@@ -1394,18 +1450,18 @@
 			product	matrix protein
 5874	8277	gene
 			gene	GP
-6013	6564	misc_feature
+6013	6896	misc_feature
 6896	8040
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
-6013	6564	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
-6013	6564	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6013	7106	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6013	6895	misc_feature
 6897	6906
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8260	9711	gene
 			gene	VP30
-8481	8756	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 8481..9346 revised to 8481..8756 (stop shifted 590 nt)]
+8481	9346	misc_feature
+			note	similar to minor nucleoprotein; contains premature stop codon
 9856	11489	gene
 			gene	VP24
 10316	11071	CDS
@@ -1414,6 +1470,12 @@
 			gene	L
 11552	18190	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in minor nucleoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 8481..9346 revised to 8481..8756 (stop shifted 590 nt)]
 >Feature gi|973432249|gb|KU296451.1|
 30	3000	gene
 			gene	NP
@@ -1429,14 +1491,14 @@
 			product	matrix protein
 5874	8277	gene
 			gene	GP
-6013	6564	misc_feature
+6013	6896	misc_feature
 6896	8040
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
-6013	6564	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
-6013	6564	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6013	7106	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6013	6895	misc_feature
 6897	6906
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8260	9712	gene
 			gene	VP30
 8481	9347	CDS
@@ -1449,6 +1511,11 @@
 			gene	L
 11553	18191	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
 >Feature gi|2522270|gb|L11365.1|EBORNA
 56	3027	gene
 			gene	NP
@@ -1468,14 +1535,16 @@
 6926	8071
 			product	spike glycoprotein
 			exception	RNA editing
+6041	7136	misc_feature
+			note	similar to small secreted glycoprotein
 6041	6924	CDS
 6927	6936
 			product	second secreted glycoprotein
 			exception	RNA editing
 8291	9741	gene
 			gene	VP30
-8511	9293	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 8511..9376 revised to 8511..9293 (stop shifted 83 nt)]
+8511	9376	misc_feature
+			note	similar to minor nucleoprotein; contains premature stop codon
 9886	11518	gene
 			gene	VP24
 10346	11101	CDS
@@ -1484,6 +1553,10 @@
 			gene	L
 11581	>11742	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on small secreted glycoprotein; first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 6041..7136 revised to 6041..8071 (stop shifted 935 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in minor nucleoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 8511..9376 revised to 8511..9293 (stop shifted 83 nt)]
 >Feature gi|807051511|gb|KR105204.1|
 17	2987	gene
 			gene	NP
@@ -1536,14 +1609,14 @@
 			product	matrix protein
 5871	8273	gene
 			gene	GP
-6010	6561	misc_feature
+6010	6893	misc_feature
 6893	8036
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6010..6893 exon 1 of 2 revised to 6010..6561 (stop shifted 332 nt)]
-6010	6561	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6010..7103 revised to 6010..6561 (stop shifted 542 nt)]
-6010	6561	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6010	7103	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6010	6892	misc_feature
 6894	6903
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6010..6892 exon 1 of 2 revised to 6010..6561 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8256	9708	gene
 			gene	VP30
 8477	9343	CDS
@@ -1556,6 +1629,11 @@
 			gene	L
 11548	18186	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6010..6893 exon 1 of 2 revised to 6010..6561 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6010..7103 revised to 6010..6561 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6010..6892 exon 1 of 2 revised to 6010..6561 (stop shifted 331 nt)]
 >Feature gi|960312501|gb|KU143777.1|
 56	3026	gene
 			gene	NP
@@ -1608,14 +1686,14 @@
 			product	matrix protein
 5739	8142	gene
 			gene	GP
-5878	6429	misc_feature
+5878	6761	misc_feature
 6761	7905
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6761 exon 1 of 2 revised to 5878..6429 (stop shifted 332 nt)]
-5878	6429	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6971 revised to 5878..6429 (stop shifted 542 nt)]
-5878	6429	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+5878	6971	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+5878	6760	misc_feature
 6762	6771
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6760 exon 1 of 2 revised to 5878..6429 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8125	9577	gene
 			gene	VP30
 8346	9212	CDS
@@ -1628,6 +1706,11 @@
 			gene	L
 11418	18056	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6761 exon 1 of 2 revised to 5878..6429 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6971 revised to 5878..6429 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6760 exon 1 of 2 revised to 5878..6429 (stop shifted 331 nt)]
 >Feature gi|667853072|gb|KM233091.1|
 21	2991	gene
 			gene	NP
@@ -1680,14 +1763,14 @@
 			product	matrix protein
 5862	8265	gene
 			gene	GP
-6001	6552	misc_feature
+6001	6884	misc_feature
 6884	8028
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
-6001	6552	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
-6001	6552	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6001	7094	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6001	6883	misc_feature
 6885	6894
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8248	9700	gene
 			gene	VP30
 8469	9335	CDS
@@ -1700,6 +1783,11 @@
 			gene	L
 11540	18178	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
 >Feature gi|973433706|gb|KU296643.1|
 30	3000	gene
 			gene	NP
@@ -1715,15 +1803,15 @@
 			product	matrix protein
 5874	8278	gene
 			gene	GP
+6013	6897	misc_feature
+6897	8041
+			note	similar to spike glycoprotein; contains premature stop codon
 6013	7107	CDS
 			product	small secreted glycoprotein
 6013	6896	CDS
 6898	6907
 			product	second secreted glycoprotein
 			exception	RNA editing
-6013	6897	misc_feature
-6897	7301
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6897..8041 exon 2 of 2 revised to 6897..7301 (stop shifted 740 nt)]
 8261	9713	gene
 			gene	VP30
 8482	9348	CDS
@@ -1736,6 +1824,9 @@
 			gene	L
 11553	18191	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6897..8041 exon 2 of 2 revised to 6897..7301 (stop shifted 740 nt)]
 >Feature gi|158341893|gb|EU051649.1|
 <1	>1448	gene
 			gene	NP
@@ -1793,14 +1884,14 @@
 			product	matrix protein
 5865	8268	gene
 			gene	GP
-6004	6555	misc_feature
+6004	6887	misc_feature
 6887	8031
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6004..6887 exon 1 of 2 revised to 6004..6555 (stop shifted 332 nt)]
-6004	6555	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6004..7097 revised to 6004..6555 (stop shifted 542 nt)]
-6004	6555	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6004	7097	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6004	6886	misc_feature
 6888	6897
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6004..6886 exon 1 of 2 revised to 6004..6555 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8251	9703	gene
 			gene	VP30
 8472	9338	CDS
@@ -1813,6 +1904,11 @@
 			gene	L
 11543	18181	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6004..6887 exon 1 of 2 revised to 6004..6555 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6004..7097 revised to 6004..6555 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6004..6886 exon 1 of 2 revised to 6004..6555 (stop shifted 331 nt)]
 >Feature gi|1071908043|dbj|LF151543.1|
 >Feature gi|1071915030|dbj|LF159390.1|
 >Feature gi|820905187|gb|KR653225.1|
@@ -1978,14 +2074,14 @@
 			product	matrix protein
 5791	8195	gene
 			gene	GP
-5930	6481	misc_feature
+5930	6813	misc_feature
 6813	7958
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5930..6813 exon 1 of 2 revised to 5930..6481 (stop shifted 332 nt)]
-5930	6481	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5930..7023 revised to 5930..6481 (stop shifted 542 nt)]
-5930	6481	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+5930	7023	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+5930	6812	misc_feature
 6814	6823
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5930..6812 exon 1 of 2 revised to 5930..6481 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8178	9630	gene
 			gene	VP30
 8399	9265	CDS
@@ -1998,6 +2094,11 @@
 			gene	L
 11470	18108	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5930..6813 exon 1 of 2 revised to 5930..6481 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5930..7023 revised to 5930..6481 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5930..6812 exon 1 of 2 revised to 5930..6481 (stop shifted 331 nt)]
 >Feature gi|1129866739|gb|KY425649.1|
 42	3012	gene
 			gene	NP
@@ -2087,14 +2188,14 @@
 			product	matrix protein
 5874	8276	gene
 			gene	GP
-6013	6564	misc_feature
+6013	6896	misc_feature
 6896	8039
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
-6013	6564	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
-6013	6564	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6013	7106	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6013	6895	misc_feature
 6897	6906
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8259	9711	gene
 			gene	VP30
 8480	9346	CDS
@@ -2107,6 +2208,11 @@
 			gene	L
 11551	18189	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
 >Feature gi|824039913|gb|KR817159.1|
 20	2990	gene
 			gene	NP
@@ -2196,14 +2302,14 @@
 			product	matrix protein
 5739	8142	gene
 			gene	GP
-5878	6429	misc_feature
+5878	6761	misc_feature
 6761	7905
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6761 exon 1 of 2 revised to 5878..6429 (stop shifted 332 nt)]
-5878	6429	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6971 revised to 5878..6429 (stop shifted 542 nt)]
-5878	6429	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+5878	6971	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+5878	6760	misc_feature
 6762	6771
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6760 exon 1 of 2 revised to 5878..6429 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8125	9577	gene
 			gene	VP30
 8346	9212	CDS
@@ -2216,6 +2322,11 @@
 			gene	L
 11418	18056	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6761 exon 1 of 2 revised to 5878..6429 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6971 revised to 5878..6429 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5878..6760 exon 1 of 2 revised to 5878..6429 (stop shifted 331 nt)]
 >Feature gi|1018445811|gb|KX013094.1|
 13	2983	gene
 			gene	NP
@@ -2280,8 +2391,8 @@
 			exception	RNA editing
 8288	9740	gene
 			gene	VP30
-8509	9354	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 8509..9375 revised to 8509..9354 (stop shifted 21 nt)]
+8509	9375	misc_feature
+			note	similar to minor nucleoprotein; contains premature stop codon
 9885	11518	gene
 			gene	VP24
 10345	11100	CDS
@@ -2290,6 +2401,9 @@
 			gene	L
 11581	18219	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in minor nucleoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 8509..9375 revised to 8509..9354 (stop shifted 21 nt)]
 >Feature gi|973433715|gb|KU296644.1|
 18	2988	gene
 			gene	NP
@@ -2305,14 +2419,14 @@
 			product	matrix protein
 5862	8264	gene
 			gene	GP
-6001	6552	misc_feature
+6001	6884	misc_feature
 6884	8027
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
-6001	6552	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
-6001	6552	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6001	7094	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6001	6883	misc_feature
 6885	6894
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8247	9699	gene
 			gene	VP30
 8468	9334	CDS
@@ -2325,6 +2439,11 @@
 			gene	L
 11539	18177	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
 >Feature gi|973433834|gb|KU296660.1|
 <1	2849	gene
 			gene	NP
@@ -2340,15 +2459,15 @@
 			product	matrix protein
 5723	8129	gene
 			gene	GP
+5862	6746	misc_feature
+6746	7892
+			note	similar to spike glycoprotein; contains premature stop codon
 5862	6956	CDS
 			product	small secreted glycoprotein
 5862	6745	CDS
 6747	6756
 			product	second secreted glycoprotein
 			exception	RNA editing
-5862	6746	misc_feature
-6746	7090
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6746..7892 exon 2 of 2 revised to 6746..7090 (stop shifted 802 nt)]
 8112	9564	gene
 			gene	VP30
 8333	9199	CDS
@@ -2361,6 +2480,9 @@
 			gene	L
 11405	18043	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6746..7892 exon 2 of 2 revised to 6746..7090 (stop shifted 802 nt)]
 >Feature gi|824039851|gb|KR817154.1|
 20	2990	gene
 			gene	NP
@@ -2570,14 +2692,14 @@
 			product	matrix protein
 5862	8263	gene
 			gene	GP
-6001	6552	misc_feature
+6001	6884	misc_feature
 6884	8026
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
-6001	6552	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
-6001	6552	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6001	7094	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6001	6883	misc_feature
 6885	6894
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
+			note	similar to second secreted glycoprotein; contains premature stop codon
 8246	9698	gene
 			gene	VP30
 8467	9333	CDS
@@ -2590,6 +2712,11 @@
 			gene	L
 11538	18176	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in second secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
 >Feature gi|674810552|gb|KJ660347.2|
 56	3026	gene
 			gene	NP
@@ -2782,10 +2909,15 @@
 955	2100
 			product	spike glycoprotein
 			exception	RNA editing
+70	1165	misc_feature
+			note	similar to small secreted glycoprotein
 70	953	CDS
 956	965
 			product	second secreted glycoprotein
 			exception	RNA editing
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on small secreted glycoprotein; first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 70..1165 revised to 70..2100 (stop shifted 935 nt)]
 >Feature gi|824039296|gb|KR817110.1|
 56	3026	gene
 			gene	NP

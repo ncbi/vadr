@@ -1,0 +1,804 @@
+>Feature NC_002549
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18282	gene
+			gene	L
+11581	18219	CDS
+			product	RNA-dependent RNA polymerase
+
+
+
+>Feature NC_002549-06
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18282	gene
+			gene	L
+11581	18219	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+WARNING: Partial sequence: This sequence lacks 507 nucleotides of sequences at the 3' end
+
+
+>Feature NC_002549-06-L-02-VP24-03-10-16
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	>10795	gene
+			gene	VP24
+10345	>10795	CDS
+			product	membrane-associated protein
+
+Additional note(s) to submitter:
+WARNING: Partial sequence: This sequence lacks 304 nucleotides of coding sequences at the 3' end
+
+
+
+>Feature NC_002549-gap-inframe
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5807	gene
+			gene	VP40
+4479	5372	misc_feature
+			note	similar to matrix protein
+5813	8218	gene
+			gene	GP
+5952	6836	CDS
+6836	7981
+			product	spike glycoprotein
+			exception	RNA editing
+5952	7046	CDS
+			product	small secreted glycoprotein
+5952	6835	CDS
+6837	6846
+			product	second secreted glycoprotein
+			exception	RNA editing
+8201	9653	gene
+			gene	VP30
+8422	9288	CDS
+			product	minor nucleoprotein
+9798	11431	gene
+			gene	VP24
+10258	11013	CDS
+			product	membrane-associated protein
+11414	18195	gene
+			gene	L
+11494	18132	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: Deletion of Nucleotides: Contains internal deletion of >10 nucleotides in matrix protein
+
+
+>Feature NC_002549-gap-outframe
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5806	gene
+			gene	VP40
+4479	5371	misc_feature
+			note	similar to matrix protein; contains premature stop codon
+5812	8217	gene
+			gene	GP
+5951	6835	CDS
+6835	7980
+			product	spike glycoprotein
+			exception	RNA editing
+5951	7045	CDS
+			product	small secreted glycoprotein
+5951	6834	CDS
+6836	6845
+			product	second secreted glycoprotein
+			exception	RNA editing
+8200	9652	gene
+			gene	VP30
+8421	9287	CDS
+			product	minor nucleoprotein
+9797	11430	gene
+			gene	VP24
+10257	11012	CDS
+			product	membrane-associated protein
+11413	18194	gene
+			gene	L
+11493	18131	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: Deletion of Nucleotides: Contains internal deletion of >10 nucleotides in matrix protein
+
+
+
+>Feature NC_002549-04
+<1	2685	gene
+			gene	NP
+129	2348	CDS
+			product	nucleoprotein
+2691	4066	gene
+			gene	VP35
+2788	3810	CDS
+			product	polymerase complex protein
+4049	5553	gene
+			gene	VP40
+4138	5118	CDS
+			product	matrix protein
+5559	7964	gene
+			gene	GP
+5698	6582	CDS
+6582	7727
+			product	spike glycoprotein
+			exception	RNA editing
+5698	6792	CDS
+			product	small secreted glycoprotein
+5698	6581	CDS
+6583	6592
+			product	second secreted glycoprotein
+			exception	RNA editing
+7947	9399	gene
+			gene	VP30
+8168	9034	CDS
+			product	minor nucleoprotein
+9544	11177	gene
+			gene	VP24
+10004	10759	CDS
+			product	membrane-associated protein
+11160	17941	gene
+			gene	L
+11240	17878	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+WARNING: Partial sequence: Lacks 341 nucleotides from 5’ end
+
+
+
+>Feature NC_002549-04-NP-02-VP35-09
+<1	838	gene
+			gene	VP35
+<1	582	CDS
+			product	polymerase complex protein
+821	2325	gene
+			gene	VP40
+910	1890	CDS
+			product	matrix protein
+2331	4736	gene
+			gene	GP
+2470	3354	CDS
+3354	4499
+			product	spike glycoprotein
+			exception	RNA editing
+2470	3564	CDS
+			product	small secreted glycoprotein
+2470	3353	CDS
+3355	3364
+			product	second secreted glycoprotein
+			exception	RNA editing
+4719	6171	gene
+			gene	VP30
+4940	5806	CDS
+			product	minor nucleoprotein
+6316	7949	gene
+			gene	VP24
+6776	7531	CDS
+			product	membrane-associated protein
+7932	14713	gene
+			gene	L
+8012	14650	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+WARNING: Partial sequence: Lacks 3569 nucleotides from 5’ end
+
+
+
+>Feature NC_002549-VP30-10-14
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	misc_feature
+			note	similar to minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18282	gene
+			gene	L
+11581	18219	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on minor nucleoprotein
+
+
+
+>Feature NC_002549-L-13
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18282	gene
+			gene	L
+11581	18219	misc_feature
+			note	Similar to RNA-dependent RNA polymerase; contains premature stop codon
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in RNA-dependent RNA polymerase
+
+
+
+>Feature NC_002549-09
+56	3026	gene
+			gene	NP
+470	2689	misc_feature
+			note	similar to nucleoprotein
+3032	4407	gene
+			gene	VP35
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18282	gene
+			gene	L
+11581	18219	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: Mutation at Start: Expected start codon could not be identified on nucleoprotein
+
+
+>Feature NC_002549-L-17
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18282	gene
+			gene	L
+18219	11581	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR:  Reverse Complement: Sequence appears to be missassembled
+
+
+>Feature NC_002549-1ntgap-outframe
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18281	gene
+			gene	L
+11581	18218	misc_feature
+			note	similar to RNA-dependent RNA polymerase; contains premature stop codon
+
+Additional note(s) to submitter:
+ERROR:  Deletion of Nucleotides: Contains internal deletion of 1 nucleotide(s) in RNA-dependent RNA polymerase
+ERROR: CDS Has Frameshift: Contains internal deletion of 1 nucleotide(s) in RNA-dependent RNA polymerase
+
+
+>Feature NC_002549-1-2ntgap-inframe
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18279	gene
+			gene	L
+11581	18216	CDS
+			product	RNA-dependent RNA polymerase
+
+
+
+
+
+>Feature NC_002549-5-NP-2-VP35-3
+<1	1022	gene
+			gene	VP35
+<1	766	CDS
+			product	polymerase complex protein
+1005	2509	gene
+			gene	VP40
+1094	2074	CDS
+			product	matrix protein
+2515	4920	gene
+			gene	GP
+2654	3538	CDS
+3538	4683
+			product	spike glycoprotein
+			exception	RNA editing
+2654	3748	CDS
+			product	small secreted glycoprotein
+2654	3537	CDS
+3539	3548
+			product	second secreted glycoprotein
+			exception	RNA editing
+4903	6355	gene
+			gene	VP30
+5124	5990	CDS
+			product	minor nucleoprotein
+6500	8133	gene
+			gene	VP24
+6960	7715	CDS
+			product	membrane-associated protein
+8116	14897	gene
+			gene	L
+8196	14834	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+WARNING: Partial sequence: Lacks 3385 nucleotides from 5’ end
+
+
+>Feature NC_002549-NP-dup
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+<3027	5583	gene
+			gene	NP
+3027	5246	CDS
+			product	nucleoprotein
+5589	6964	gene
+			gene	VP35
+
+5686	6708	CDS
+			product	polymerase complex protein
+6947	8451	gene
+			gene	VP40
+7036	8016	CDS
+			product	matrix protein
+8457	10862	gene
+			gene	GP
+8596	9480	CDS
+9480	10625
+			product	spike glycoprotein
+			exception	RNA editing
+8596	9690	CDS
+			product	small secreted glycoprotein
+8596	9479	CDS
+9481	9490
+			product	second secreted glycoprotein
+			exception	RNA editing
+10845	12297	gene
+			gene	VP30
+11066	11932	CDS
+			product	minor nucleoprotein
+12442	14075	gene
+			gene	VP24
+12902	13657	CDS
+			product	membrane-associated protein
+14058	20839	gene
+			gene	L
+14138	20776	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: Wrong ORF Number: Sequence appears to be missassembled
+
+
+
+>Feature NC_002549-short-GP
+<1	>1327	gene
+			gene	GP
+<1	800	CDS
+800	>1327
+			product	spike glycoprotein
+			exception	RNA editing
+<1	1010	CDS
+			product	small secreted glycoprotein
+<1	799	CDS
+801	810
+			product	second secreted glycoprotein
+			exception	RNA editing
+
+Additional note(s) to submitter:
+WARNING: Partial sequence: Lacks 6123 nucleotides from 5’ end; Lacks 11509 nucleotides from 3' end
+
+
+>Feature NC_002549-vshort-GP
+<1	>304	gene
+			gene	GP
+<1	>304	CDS
+			product	spike glycoprotein
+			exception	RNA editing
+<1	>304	CDS
+			product	small secreted glycoprotein
+<1	>304	CDS
+			product	second secreted glycoprotein
+			exception	RNA editing
+
+Additional note(s) to submitter:
+WARNING: Partial sequence: Lacks 6330 nucleotides from 5’ end; Lacks 12325 nucleotides from 3' end
+
+
+>Feature NC_002549-VP30-VP24-L-N
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18248	gene
+			gene	L
+11581	18185	misc_feature
+			note	similar to RNA-dependent RNA polymerase; contains premature stop codon
+
+Additional note(s) to submitter:
+WARNING: This sequence contains 72 non-ACTG character(s) in minor nucleoprotein
+WARNING: This sequence contains 11 non-ACTG character(s) in membrane-associated protein
+WARNING: This sequence contains 11 non-ACTG character(s) in RNA-dependent RNA polymerase
+ERROR: Deletion of Nucleotides: Contains internal deletion of ≥10nt nucleotide(s) in RNA-dependent RNA polymerase
+ERROR: CDS Has Frameshift: Contains internal deletion of ≥10nt nucleotide(s) in RNA-dependent RNA polymerase
+
+
+
+>Feature NC_002549-WRY
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18282	gene
+			gene	L
+11581	18219	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+WARNING: This sequence contains 1 non-ACTG character(s) in matrix protein
+WARNING: This sequence contains 2 non-ACTG character(s) in spike glycoprotein
+WARNING: This sequence contains 1 non-ACTG character(s) in small secreted glycoprotein
+WARNING: This sequence contains 1 non-ACTG character(s) in second secreted glycoprotein
+
+
+>Feature NC_002549-GP-03
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8306	gene
+			gene	GP
+6039	8069	misc_feature
+			note	similar to spike glycoprotein; contains premature stop codon
+6039	7134	misc_feature
+			product	similar to small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8289	9741	gene
+			gene	VP30
+8510	9376	CDS
+			product	minor nucleoprotein
+9886	11519	gene
+			gene	VP24
+10346	11101	CDS
+			product	membrane-associated protein
+11502	18283	gene
+			gene	L
+11582	18220	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR:  Insertion of Nucleotides: Contains internal insertion of 1 nucleotide(s) in spike glycoprotein
+ERROR:  Insertion of Nucleotides: Contains internal insertion of 1 nucleotide(s) in small secreted glycoprotein
+May include:
+ERROR: Mutation at End: Expected stop codon could not be identified on small secreted glycoprotein

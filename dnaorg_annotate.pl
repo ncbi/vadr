@@ -2699,7 +2699,7 @@ sub store_hit {
       if($mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"} > $evalue) { 
         DNAORG_FAIL(sprintf("ERROR in $sub_name, already have hit stored for model index $mdlidx seq index $seqidx with higher evalue (%g > %g), this implies hits were not sorted by E-value...", $mdl_results_AAHR->[$mdlidx][$seqidx]{"evalue"}, $evalue), 1, $FH_HR); 
       }
-      if($score > 0.) { $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}++; }
+      if($score > 25.) { $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}++; } # yes, this score threshold is hard-coded
     }
     else { 
       # no hit yet exists, make one
