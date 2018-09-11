@@ -5,7 +5,6 @@
 			product	nucleoprotein
 3032	4407	gene
 			gene	VP35
-
 3129	4151	CDS
 			product	polymerase complex protein
 4390	5894	gene
@@ -36,9 +35,6 @@
 			gene	L
 11581	18219	CDS
 			product	RNA-dependent RNA polymerase
-
-
-
 >Feature NC_002549-06
 56	3026	gene
 			gene	NP
@@ -46,7 +42,6 @@
 			product	nucleoprotein
 3032	4407	gene
 			gene	VP35
-
 3129	4151	CDS
 			product	polymerase complex protein
 4390	5894	gene
@@ -77,11 +72,6 @@
 			gene	L
 11581	18219	CDS
 			product	RNA-dependent RNA polymerase
-
-Additional note(s) to submitter:
-WARNING: Partial sequence: This sequence lacks 507 nucleotides of sequences at the 3' end
-
-
 >Feature NC_002549-06-L-02-VP24-03-10-16
 56	3026	gene
 			gene	NP
@@ -89,7 +79,6 @@ WARNING: Partial sequence: This sequence lacks 507 nucleotides of sequences at t
 			product	nucleoprotein
 3032	4407	gene
 			gene	VP35
-
 3129	4151	CDS
 			product	polymerase complex protein
 4390	5894	gene
@@ -116,12 +105,6 @@ WARNING: Partial sequence: This sequence lacks 507 nucleotides of sequences at t
 			gene	VP24
 10345	>10795	CDS
 			product	membrane-associated protein
-
-Additional note(s) to submitter:
-WARNING: Partial sequence: This sequence lacks 304 nucleotides of coding sequences at the 3' end
-
-
-
 >Feature NC_002549-gap-inframe
 56	3026	gene
 			gene	NP
@@ -133,8 +116,8 @@ WARNING: Partial sequence: This sequence lacks 304 nucleotides of coding sequenc
 			product	polymerase complex protein
 4390	5807	gene
 			gene	VP40
-4479	5372	misc_feature
-			note	similar to matrix protein
+4479	5372	CDS
+			product	matrix protein
 5813	8218	gene
 			gene	GP
 5952	6836	CDS
@@ -159,11 +142,6 @@ WARNING: Partial sequence: This sequence lacks 304 nucleotides of coding sequenc
 			gene	L
 11494	18132	CDS
 			product	RNA-dependent RNA polymerase
-
-Additional note(s) to submitter:
-ERROR: Deletion of Nucleotides: Contains internal deletion of >10 nucleotides in matrix protein
-
-
 >Feature NC_002549-gap-outframe
 56	3026	gene
 			gene	NP
@@ -203,10 +181,7 @@ ERROR: Deletion of Nucleotides: Contains internal deletion of >10 nucleotides in
 			product	RNA-dependent RNA polymerase
 
 Additional note(s) to submitter:
-ERROR: Deletion of Nucleotides: Contains internal deletion of >10 nucleotides in matrix protein
-
-
-
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in matrix protein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4479..5371 revised to 4479..5084 (stop shifted 287 nt)]
 >Feature NC_002549-04
 <1	2685	gene
 			gene	NP
@@ -244,12 +219,6 @@ ERROR: Deletion of Nucleotides: Contains internal deletion of >10 nucleotides in
 			gene	L
 11240	17878	CDS
 			product	RNA-dependent RNA polymerase
-
-Additional note(s) to submitter:
-WARNING: Partial sequence: Lacks 341 nucleotides from 5’ end
-
-
-
 >Feature NC_002549-04-NP-02-VP35-09
 <1	838	gene
 			gene	VP35
@@ -283,12 +252,6 @@ WARNING: Partial sequence: Lacks 341 nucleotides from 5’ end
 			gene	L
 8012	14650	CDS
 			product	RNA-dependent RNA polymerase
-
-Additional note(s) to submitter:
-WARNING: Partial sequence: Lacks 3569 nucleotides from 5’ end
-
-
-
 >Feature NC_002549-VP30-10-14
 56	3026	gene
 			gene	NP
@@ -329,9 +292,6 @@ WARNING: Partial sequence: Lacks 3569 nucleotides from 5’ end
 
 Additional note(s) to submitter:
 ERROR: Mutation at End: Expected stop codon could not be identified on minor nucleoprotein
-
-
-
 >Feature NC_002549-L-13
 56	3026	gene
 			gene	NP
@@ -369,11 +329,9 @@ ERROR: Mutation at End: Expected stop codon could not be identified on minor nuc
 			gene	L
 11581	18219	misc_feature
 			note	similar to RNA-dependent RNA polymerase; contains premature stop codon
+
 Additional note(s) to submitter:
-ERROR: CDS Has Stop Codon: Contains unexpected stop codon in RNA-dependent RNA polymerase
-
-
-
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in RNA-dependent RNA polymerase; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 11581..18219 revised to 11581..16236 (stop shifted 1983 nt)]
 >Feature NC_002549-09
 56	3026	gene
 			gene	NP
@@ -414,8 +372,6 @@ ERROR: CDS Has Stop Codon: Contains unexpected stop codon in RNA-dependent RNA p
 
 Additional note(s) to submitter:
 ERROR: Mutation at Start: Expected start codon could not be identified on nucleoprotein
-
-
 >Feature NC_002549-L-17
 56	3026	gene
 			gene	NP
@@ -423,7 +379,6 @@ ERROR: Mutation at Start: Expected start codon could not be identified on nucleo
 			product	nucleoprotein
 3032	4407	gene
 			gene	VP35
-
 3129	4151	CDS
 			product	polymerase complex protein
 4390	5894	gene
@@ -450,15 +405,14 @@ ERROR: Mutation at Start: Expected start codon could not be identified on nucleo
 			gene	VP24
 10345	11100	CDS
 			product	membrane-associated protein
-11501	18282	gene
-			gene	L
-18219	11581	CDS
-			product	RNA-dependent RNA polymerase
+18311	11523	misc_feature
+			note	similar to L
+18219	11581	misc_feature
+			note	similar to RNA-dependent RNA polymerase
 
 Additional note(s) to submitter:
-ERROR:  Reverse Complement: Sequence appears to be missassembled
-
-
+ERROR: Reverse Complement: Sequence may be misassembled; RNA-dependent RNA polymerase appears to be reverse complemented
+ERROR: Reverse Complement: Sequence may be misassembled; L appears to be reverse complemented
 >Feature NC_002549-1ntgap-outframe
 56	3026	gene
 			gene	NP
@@ -466,7 +420,6 @@ ERROR:  Reverse Complement: Sequence appears to be missassembled
 			product	nucleoprotein
 3032	4407	gene
 			gene	VP35
-
 3129	4151	CDS
 			product	polymerase complex protein
 4390	5894	gene
@@ -499,10 +452,7 @@ ERROR:  Reverse Complement: Sequence appears to be missassembled
 			note	similar to RNA-dependent RNA polymerase; contains premature stop codon
 
 Additional note(s) to submitter:
-ERROR:  Deletion of Nucleotides: Contains internal deletion of 1 nucleotide(s) in RNA-dependent RNA polymerase
-ERROR: CDS Has Frameshift: Contains internal deletion of 1 nucleotide(s) in RNA-dependent RNA polymerase
-
-
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in RNA-dependent RNA polymerase; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 11581..18218 revised to 11581..12768 (stop shifted 5450 nt)]
 >Feature NC_002549-1-2ntgap-inframe
 56	3026	gene
 			gene	NP
@@ -510,7 +460,6 @@ ERROR: CDS Has Frameshift: Contains internal deletion of 1 nucleotide(s) in RNA-
 			product	nucleoprotein
 3032	4407	gene
 			gene	VP35
-
 3129	4151	CDS
 			product	polymerase complex protein
 4390	5894	gene
@@ -541,11 +490,6 @@ ERROR: CDS Has Frameshift: Contains internal deletion of 1 nucleotide(s) in RNA-
 			gene	L
 11581	18216	CDS
 			product	RNA-dependent RNA polymerase
-
-
-
-
-
 >Feature NC_002549-5-NP-2-VP35-3
 <1	1022	gene
 			gene	VP35
@@ -579,23 +523,14 @@ ERROR: CDS Has Frameshift: Contains internal deletion of 1 nucleotide(s) in RNA-
 			gene	L
 8196	14834	CDS
 			product	RNA-dependent RNA polymerase
-
-Additional note(s) to submitter:
-WARNING: Partial sequence: Lacks 3385 nucleotides from 5’ end
-
-
 >Feature NC_002549-NP-dup
 56	3026	gene
 			gene	NP
 470	2689	CDS
 			product	nucleoprotein
-<3027	5583	gene
-			gene	NP
-3027	5246	CDS
-			product	nucleoprotein
+			note	more than one homologous region [nucleoprotein: 2 regions]
 5589	6964	gene
 			gene	VP35
-
 5686	6708	CDS
 			product	polymerase complex protein
 6947	8451	gene
@@ -628,10 +563,7 @@ WARNING: Partial sequence: Lacks 3385 nucleotides from 5’ end
 			product	RNA-dependent RNA polymerase
 
 Additional note(s) to submitter:
-ERROR: Wrong ORF Number: Sequence appears to be missassembled
-
-
-
+ERROR: Duplicate Feature: more than one homologous region [nucleoprotein: 2 regions]
 >Feature NC_002549-short-GP
 <1	>1327	gene
 			gene	GP
@@ -645,11 +577,6 @@ ERROR: Wrong ORF Number: Sequence appears to be missassembled
 801	810
 			product	second secreted glycoprotein
 			exception	RNA editing
-
-Additional note(s) to submitter:
-WARNING: Partial sequence: Lacks 6123 nucleotides from 5’ end; Lacks 11509 nucleotides from 3' end
-
-
 >Feature NC_002549-vshort-GP
 <1	>304	gene
 			gene	GP
@@ -661,11 +588,6 @@ WARNING: Partial sequence: Lacks 6123 nucleotides from 5’ end; Lacks 11509 nuc
 <1	>304	CDS
 			product	second secreted glycoprotein
 			exception	RNA editing
-
-Additional note(s) to submitter:
-WARNING: Partial sequence: Lacks 6330 nucleotides from 5’ end; Lacks 12325 nucleotides from 3' end
-
-
 >Feature NC_002549-VP30-VP24-L-N
 56	3026	gene
 			gene	NP
@@ -673,7 +595,6 @@ WARNING: Partial sequence: Lacks 6330 nucleotides from 5’ end; Lacks 12325 nuc
 			product	nucleoprotein
 3032	4407	gene
 			gene	VP35
-
 3129	4151	CDS
 			product	polymerase complex protein
 4390	5894	gene
@@ -706,14 +627,7 @@ WARNING: Partial sequence: Lacks 6330 nucleotides from 5’ end; Lacks 12325 nuc
 			note	similar to RNA-dependent RNA polymerase; contains premature stop codon
 
 Additional note(s) to submitter:
-WARNING: This sequence contains 72 non-ACTG character(s) in minor nucleoprotein
-WARNING: This sequence contains 11 non-ACTG character(s) in membrane-associated protein
-WARNING: This sequence contains 11 non-ACTG character(s) in RNA-dependent RNA polymerase
-ERROR: Deletion of Nucleotides: Contains internal deletion of ≥10nt nucleotide(s) in RNA-dependent RNA polymerase
-ERROR: CDS Has Frameshift: Contains internal deletion of ≥10nt nucleotide(s) in RNA-dependent RNA polymerase
-
-
-
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in RNA-dependent RNA polymerase; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 11581..18185 revised to 11581..11889 (stop shifted 6296 nt)]
 >Feature NC_002549-WRY
 56	3026	gene
 			gene	NP
@@ -751,14 +665,6 @@ ERROR: CDS Has Frameshift: Contains internal deletion of ≥10nt nucleotide(s) i
 			gene	L
 11581	18219	CDS
 			product	RNA-dependent RNA polymerase
-
-Additional note(s) to submitter:
-WARNING: This sequence contains 1 non-ACTG character(s) in matrix protein
-WARNING: This sequence contains 2 non-ACTG character(s) in spike glycoprotein
-WARNING: This sequence contains 1 non-ACTG character(s) in small secreted glycoprotein
-WARNING: This sequence contains 1 non-ACTG character(s) in second secreted glycoprotein
-
-
 >Feature NC_002549-GP-03
 56	3026	gene
 			gene	NP
@@ -766,7 +672,6 @@ WARNING: This sequence contains 1 non-ACTG character(s) in second secreted glyco
 			product	nucleoprotein
 3032	4407	gene
 			gene	VP35
-
 3129	4151	CDS
 			product	polymerase complex protein
 4390	5894	gene
@@ -775,10 +680,11 @@ WARNING: This sequence contains 1 non-ACTG character(s) in second secreted glyco
 			product	matrix protein
 5900	8306	gene
 			gene	GP
-6039	8069	misc_feature
+6039	6923	misc_feature
+6923	8069
 			note	similar to spike glycoprotein; contains premature stop codon
 6039	7134	misc_feature
-			product	similar to small secreted glycoprotein
+			note	similar to small secreted glycoprotein
 6039	6922	CDS
 6924	6933
 			product	second secreted glycoprotein
@@ -797,7 +703,5 @@ WARNING: This sequence contains 1 non-ACTG character(s) in second secreted glyco
 			product	RNA-dependent RNA polymerase
 
 Additional note(s) to submitter:
-ERROR:  Insertion of Nucleotides: Contains internal insertion of 1 nucleotide(s) in spike glycoprotein
-ERROR:  Insertion of Nucleotides: Contains internal insertion of 1 nucleotide(s) in small secreted glycoprotein
-May include:
-ERROR: Mutation at End: Expected stop codon could not be identified on small secreted glycoprotein
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6923..8069 exon 2 of 2 revised to 6923..7048 (stop shifted 1021 nt)]
+ERROR: Mutation at End: Expected stop codon could not be identified on small secreted glycoprotein; first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 6039..7134 revised to 6039..8069 (stop shifted 935 nt)]
