@@ -1,6 +1,6 @@
 # EPN, Wed Nov 29 06:40:21 2017
 # git repository url: https://github.com/nawrockie/dnaorg_scripts.git
-# v0.35 Aug 2018
+# v0.36 Sept 2018
 #
 # This file is organized into the following sections: 
 # -----------
@@ -189,9 +189,9 @@ source ~/.cshrc
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -h
 ## dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-## dnaorg 0.33 (Jun 2018)
+## dnaorg 0.36 (Sept 2018)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:       Tue Jun 19 20:37:42 2018
+## date:       Wed Sep 12 11:25:15 2018
 ## $DNAORGDIR: /panfs/pan1/infernal/notebook/18_0613_virus_classify_weirdos
 ##
 #Usage: This script must be run in 1 of 3 modes:
@@ -287,9 +287,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -h
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 ## dnaorg_build.pl :: build homology models for features of a reference sequence
-## dnaorg 0.32 (Jun 2018)
+## dnaorg 0.36 (Sept 2018)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:       Wed Jun 13 09:14:45 2018
+## date:       Wed Sep 12 11:25:54 2018
 ## $DNAORGDIR: /panfs/pan1/dnaorg/virseqannot/code
 ##
 #Usage: dnaorg_build.pl [-options] <reference accession>
@@ -303,6 +303,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 #  --matpept <s> : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
 #  --nomatpept   : ignore mat_peptide information in reference annotation
 #  --xfeat <s>   : build models of additional qualifiers in string <s>
+#  --dfeat <s>   : annotate qualifiers in <s> from duplicates (e.g. gene from CDS)
 #  --keep        : do not remove intermediate files, keep them all on disk
 #
 #options affecting calibration of models:
@@ -370,9 +371,9 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_build.pl -h
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_annotate.pl -h
 ## dnaorg_annotate.pl :: annotate sequences based on a reference annotation
-## dnaorg 0.32 (Jun 2018)
+## dnaorg 0.36 (Sept 2018)
 ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-## date:       Wed Jun 13 09:16:17 2018
+# date:       Wed Sep 12 11:26:55 2018
 ## $DNAORGDIR: /panfs/pan1/dnaorg/virseqannot/code
 ##
 #Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>
@@ -1898,6 +1899,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -A /p
 #  --matpept <s>  : read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships
 #  --nomatpept    : ignore mat_peptide information in reference annotation
 #  --xfeat <s>    : build models of additional qualifiers in string <s>
+#  --dfeat <s>   : annotate qualifiers in <s> from duplicates (e.g. gene from CDS)
 # 
 # If you use either -c, --matpept <s>, --nomatpept, or --xfeat <s> with
 # dnaorg_build.pl for reference sequence x, then you must also use it
@@ -2029,7 +2031,7 @@ perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -A /p
 # - add section to this file explaining output files
 # 
 #############################################
-# EPN, Mon Aug 27 13:16:50 2018
+# EPN, Wed Sep 12 11:24:46 2018
 #############################################
 #
 # This directory is under git control. Use
