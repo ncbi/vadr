@@ -3929,7 +3929,8 @@ sub ftr_results_calculate {
         # step through all primary children of this feature
         for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
           my $child_ftr_idx = $primary_children_idx_A[$child_idx];
-          if(exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"b3e"}{$seq_name}) { 
+          if((exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"b3e"}{$seq_name}) || # we have a b3e for this mat_peptide
+             ($mdl_results_AAHR->[$ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]][$seq_idx]{"p_3seqflush"})) { # rare case: we don't have a b3e but final nt of prediction is final nt of sequence, so for our purposes here, we do have a b3e
             $seen_prv_b3e = 1;
           }
 
@@ -3942,7 +3943,7 @@ sub ftr_results_calculate {
               # we do not have a relevant b5e if: $set_start has been set
               # we do not have a relevant b3e if: this MP does not have a b3e and no previous MP had a b3e
               if(! exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { 
-                # we might need to trigger an inp, check if we have a relevant b5e:
+                # we might need to trigger an inp, check if we have a relevant b5e or b3e
                 my $have_relevant_b5e = ((! $set_start) && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name})) ? 1 : 0;
                 my $have_relevant_b3e = ($seen_prv_b3e) ? 1 : 0;
                 if((! $have_relevant_b5e) && (! $have_relevant_b3e)) { 
@@ -4093,9 +4094,11 @@ sub ftr_results_calculate {
                   ###########################################################
                   # check if we're adjacent to the next feature, we only need to 
                   # do this if we're the final model for the current feature and
-                  # we're not the final child feature
+                  # we're not the final child feature, and we haven't seen a b3e 
+                  # for this CDS yet
                   if(($child_idx < ($np_children-1)) && 
-                     ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx])) { 
+                     ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]) && 
+                     (! $seen_prv_b3e)) { 
                     my $nxt_child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$primary_children_idx_A[($child_idx+1)]];
                     # check if they are adjacent 
                     if(! checkForIndexInOverlapOrAdjacencyIndexString($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"idx_aja_str"}, $nxt_child_mdl_idx, $FH_HR)) { 

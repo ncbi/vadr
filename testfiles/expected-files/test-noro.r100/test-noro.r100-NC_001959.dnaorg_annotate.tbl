@@ -132,11 +132,11 @@ MP #6 [single segment; +]:RdRp:adjcnces1                                        
 MP #6 [single segment; +]:RdRp:length                                                          NP                          577                           NP                            NP                         302
 MP #6 [single segment; +]:RdRp:PF                                                               F                            F                            F                             F                           F
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:start                                ?                            1                            ?                             ?                           1
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                                 ?                            ?                            ?                             ?                           ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                               ?                            ?                            ?                             ?                           ?
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                                 ?                          580                            ?                             ?                         302
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                               ?                          580                            ?                             ?                         302
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:startc                               ?                          ACT                            ?                             ?                         TGA
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                                ?                            ?                            ?                             ?                           ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                                ???                          .??                          ???                           ???                         .??
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                                ?                          TAA                            ?                             ?                         CTT
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                                ???                          ..!                          ???                           ???                         .!!
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                                   F                            F                            F                             F                           F
 CDS #2 [single exon; +]:VP1:start1                                                              1                          564                            1                             1                          NP
 CDS #2 [single exon; +]:VP1:stop1                                                             211                          858                          291                           239                          NP
@@ -155,7 +155,7 @@ CDS #3 [single exon; +]:VP2:ss3                                                 
 CDS #3 [single exon; +]:VP2:stp                                                                NP                           NP                           NP                            NP                          NP
 CDS #3 [single exon; +]:VP2:PF                                                                  F                            F                            F                             F                           F
 gene #1::start                                                                                  ?                            1                            ?                             ?                           1
-gene #1::stop                                                                                   ?                            ?                            ?                             ?                           ?
+gene #1::stop                                                                                   ?                          580                            ?                             ?                         302
 gene #2::start                                                                                  1                          564                            1                             1                           -
 gene #2::stop                                                                                 211                          858                          291                           239                           -
 gene #3::start                                                                                  -                            -                            -                             -                           -
@@ -217,11 +217,11 @@ MP #6 [single segment; +]:RdRp:adjcnces1                                        
 MP #6 [single segment; +]:RdRp:length                                                        274
 MP #6 [single segment; +]:RdRp:PF                                                              F
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:start                               1
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                                ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                              ?
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                              277
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                            277
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:startc                            CCG
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                               ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                               .??
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                             TAA
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                               ..!
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                                  F
 CDS #2 [single exon; +]:VP1:start1                                                           261
 CDS #2 [single exon; +]:VP1:stop1                                                            555
@@ -240,7 +240,7 @@ CDS #3 [single exon; +]:VP2:ss3                                                 
 CDS #3 [single exon; +]:VP2:stp                                                               NP
 CDS #3 [single exon; +]:VP2:PF                                                                 F
 gene #1::start                                                                                 1
-gene #1::stop                                                                                  ?
+gene #1::stop                                                                                277
 gene #2::start                                                                               261
 gene #2::stop                                                                                555
 gene #3::start                                                                                 -
