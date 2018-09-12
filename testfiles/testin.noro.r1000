@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass --keep -v -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/noro.r1000.fa --dirbuild !dirbuild! --dirout test-noro.r1000
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass --keep -v -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/noro.r1000.fa --dirbuild !dirbuild! --dirout test-noro.r1000 > test-noro.r1000.out
 desc: classify-noro-1
 out: test-noro.r1000/test-noro.r1000-NC_001959.pass/test-noro.r1000-NC_001959.pass.dnaorg_annotate.sqtable 
 out: test-noro.r1000/test-noro.r1000-NC_001959.pass/test-noro.r1000-NC_001959.pass.dnaorg_annotate.tbl
