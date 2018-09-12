@@ -1776,7 +1776,7 @@ sub initializeHardCodedFTableErrorExceptions {
   $reqd_str = "m5e,mtr";
   $alwd_str = "olp,aja,ajb,nm3,nop,b5e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
   $misc_feature = 1;
-  $start_carrot = 0;
+  $start_carrot = 1; # we will only output a start_carrot if b5e
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
@@ -1789,7 +1789,7 @@ sub initializeHardCodedFTableErrorExceptions {
   $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop,b3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
   $misc_feature = 1;
   $start_carrot = 0;
-  $stop_carrot  = 0;
+  $stop_carrot  = 1; # we will only output a stop carrot if b3e
   $pred_stop    = 0;
   %expln_H = ();
   $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
@@ -1800,8 +1800,8 @@ sub initializeHardCodedFTableErrorExceptions {
   $reqd_str = "m5e,m3e,mtr";
   $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop,b5e,b3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
   $misc_feature = 1;
-  $start_carrot = 0;
-  $stop_carrot  = 0;
+  $start_carrot = 1; # we will only output a start carrot if b5e
+  $stop_carrot  = 1; # we will only output a stop carrot if b3e
   $pred_stop    = 0;
   %expln_H = ();
   $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR

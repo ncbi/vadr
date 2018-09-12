@@ -3924,7 +3924,7 @@ sub ftr_results_calculate {
         my $stop_strand         = undef; # strand stop codon is on
         my $cds_len             = 0;     # length to output for this CDS
         my $child_had_trc       = 0;     # if we find a child with a trc error, set this to 1
-        my $nm3_aji_int_or_inp_flag = 0; # set to '1' if we set an nm3, aji, int or inp error for the mother CDS
+        my $mtr_flag            = 0;     # set to '1' if we set a bad nm3 (no b5e or b3e), aji, int or inp error for the mother CDS
         my $seen_prv_b3e        = 0;     # set to '1' if we see a b3e error for a MP for the mother CDS
         # step through all primary children of this feature
         for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
@@ -4069,7 +4069,7 @@ sub ftr_results_calculate {
                     if($ntr_err_ct > 0) { 
                       # we set at least one ntr error for mature peptides, set int for this CDS
                       error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
-                      $nm3_aji_int_or_inp_flag = 1;
+                      $mtr_flag = 1; # this causes 'mtr' in children MPs
                     }
                     # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
                   } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
@@ -4258,13 +4258,13 @@ sub ftr_results_calculate {
         if($aji_errmsg ne "") { 
           # adjacency error
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aji", $seq_name, $aji_errmsg, $FH_HR);
-          $nm3_aji_int_or_inp_flag = 1;
+          $mtr_flag = 1; # this causes 'mtr' in children MPs
         }
 
         # add the inp (INterrupted due to no Prediction) if necessary
         if($inp_errmsg ne "") { 
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
-          $nm3_aji_int_or_inp_flag = 1;
+          $mtr_flag = 1; # this causes 'mtr' in children MPs
         }
 
         # set ftr_results, we can set start if $cds_out_start is defined, 
@@ -4306,7 +4306,11 @@ sub ftr_results_calculate {
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"}       = $cds_len;
           if(($cds_len % 3) != 0) { 
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cds_len", $FH_HR);
-            $nm3_aji_int_or_inp_flag = 1;
+            # if this is a 'bad' nm3 (no b5e or b3e), then update $mtr_flag
+            if((! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) && 
+               (! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b3e"}{$seq_name})) { 
+              $mtr_flag = 1;
+            }
           }
         }
         else { 
@@ -4351,7 +4355,7 @@ sub ftr_results_calculate {
         ##################################################################################
         # add mtr errors for all children if mother CDS had a nm3, aji, int or inp error #
         ##################################################################################
-        if($nm3_aji_int_or_inp_flag) { 
+        if($mtr_flag) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, 
@@ -6875,8 +6879,10 @@ sub output_feature_tbl_all_sequences {
       if($exc_idx != -1) { 
         $do_short_ftable = 1;
         $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
-        $do_start_carrot = $ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"};
-        $do_stop_carrot  = $ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"};
+        # only do a start_carrot if this exception calls for it AND we have a b5e
+        $do_start_carrot = (($ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"}) && ($cur_err_str =~ m/b5e/)) ? 1 : 0;
+        # only do a stop_carrot if this exception calls for it AND we have a b3e
+        $do_stop_carrot  = (($ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"}) && ($cur_err_str =~ m/b3e/)) ? 1 : 0;
         $do_pred_stop    = $ftbl_err_exceptions_AHR->[$exc_idx]{"pred_stop"};
         $note_value      = populateFTableNoteErrorOrWarning("note",  $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
         $error_value     = populateFTableNoteErrorOrWarning("error", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
