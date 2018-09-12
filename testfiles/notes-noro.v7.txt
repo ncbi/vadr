@@ -1,3 +1,14 @@
+The test specified by noro.eneida.v7.nocdsgene.nocodonstart.testin
+run by do-v7-eneida-example-tests.sh 
+should FAIL because the current output does not match what Eneida and
+Linda specified, even if errors/warnings are ignored, UTR annotation
+is removed, CDS:gene lines are removed, codon_starts are removed.
+
+The test specified by noro.current.v7.nocdsgene.nocodonstart.testin
+run by do-v7-current-example-tests.sh 
+should PASS because it is the current output from the most recent
+released version.
+
 As of v0.36:
 
 For more information see 
@@ -6,6 +17,8 @@ For more information see
 https://confluence.ncbi.nlm.nih.gov/display/VG/Annotation+Test+Sets+and+5-Column+Feature+Table
 https://confluence.ncbi.nlm.nih.gov/display/VG/5-Column+Feature+Table+Questions
 
+Also see v36 output files in: 
+v36-files/
 
 After taking Eneida's original v7 file
 on https://jira.ncbi.nlm.nih.gov/browse/VIV-528 

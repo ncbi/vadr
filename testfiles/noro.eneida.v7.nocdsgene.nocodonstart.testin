@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_annotate.pl -f --matpept $DNAORGDIR/dnaorg_scripts/testfiles/NC_029646.matpept.in --dfeat gene --refaccn NC_029646 --dirbuild !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/noro.v7.fa --dirout da-eneida-noro-v7-test
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_annotate.pl -f --matpept $DNAORGDIR/dnaorg_scripts/testfiles/NC_029646.matpept.in --dfeat gene --refaccn NC_029646 --dirbuild !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/noro.v7.fa --dirout da-eneida-noro-v7-test > da-eneida-noro-v7-test.out
 desc: norovirus-eneida-annotate-examples
 out: da-eneida-noro-v7-test/da-eneida-noro-v7-test.dnaorg_annotate.sqtable
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/noro.eneida.v7.nocdsgene.nocodonstart.sqtable
