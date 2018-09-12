@@ -1,0 +1,20 @@
+>Feature gb|MH544655|
+1	>276	gene
+			gene	ORF2
+1	>276	CDS
+			product	VP1
+>Feature gb|MH544656|
+<1	>288	gene
+			gene	ORF2
+<1	>288	CDS
+			product	VP1
+>Feature gb|MH544657|
+<1	>284	gene
+			gene	ORF2
+<1	>284	CDS
+			product	VP1
+>Feature gb|MH544658|
+<1	>284	gene
+			gene	ORF2
+<1	>284	CDS
+			product	VP1
