@@ -1,4 +1,5 @@
-BUILDDIR=/panfs/pan1/infernal/notebook/18_0722_virus_duplicate_features/dnaorg-build-directories
+#BUILDDIR=/panfs/pan1/infernal/notebook/18_0722_virus_duplicate_features/dnaorg-build-directories
+BUILDDIR=/panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories
 
 # same as do-v7-current-example-tests.sh 
 # except compares output of v7 tests with Eneida's expected output instead of 

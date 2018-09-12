@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass --keep -v -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/ebola.r1000.fa --dirbuild !dirbuild! --dirout test-ebola.r1000 > test-ebola.r1000.out
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/ebola.r1000.fa --dirbuild !dirbuild! --dirout test-ebola.r1000 > test-ebola.r1000.out
 desc: classify-ebola-1
 out: test-ebola.r1000/test-ebola.r1000-NC_002549.pass/test-ebola.r1000-NC_002549.pass.dnaorg_annotate.sqtable 
 out: test-ebola.r1000/test-ebola.r1000-NC_002549.pass/test-ebola.r1000-NC_002549.pass.dnaorg_annotate.tbl

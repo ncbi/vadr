@@ -47,12 +47,12 @@ MP #6 [single segment; +]:RdRp:adjcnces1                                        
 MP #6 [single segment; +]:RdRp:length                                                         NP                           162                         1530                           NP                          147
 MP #6 [single segment; +]:RdRp:PF                                                              F                             F                            P                            F                            F
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:start                               ?                             1                            6                            ?                            1
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                                ?                             ?                         5069                            ?                            ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                              ?                             ?                         5064                            ?                            ?
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                                ?                           165                         5069                            ?                          150
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                              ?                           165                         5064                            ?                          150
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:startc                              ?                           TAT                          ATG                            ?                          GCT
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                               ?                             ?                          TGA                            ?                            ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                               ???                           .??                          ...                          ???                          .??
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                                  F                             F                            P                            F                            F
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                               ?                           TGA                          TGA                            ?                          TGA
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                               ???                           ...                          ...                          ???                          ...
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                                  F                             P                            P                            F                            P
 CDS #2 [single exon; +]:VP1:start1                                                             1                           152                         5056                            1                          137
 CDS #2 [single exon; +]:VP1:stop1                                                           1626                           503                         6681                          503                         1757
 CDS #2 [single exon; +]:VP1:md1                                                               ..                            .+                           ..                           ++                           .5
@@ -78,7 +78,7 @@ CDS #4 [single exon; +]:VP2:ss3                                                 
 CDS #4 [single exon; +]:VP2:stp                                                              TAG                            NP                          TAG                           NP                           NP
 CDS #4 [single exon; +]:VP2:PF                                                                 P                             F                            P                            F                            F
 gene #1::start                                                                                 ?                             1                            6                            ?                            1
-gene #1::stop                                                                                  ?                             ?                         5069                            ?                            ?
+gene #1::stop                                                                                  ?                           165                         5069                            ?                          150
 gene #2::start                                                                                 1                           152                         5056                            1                          137
 gene #2::stop                                                                               1626                           503                         6681                          503                         1757
 gene #3::start                                                                                14                           165                         5069                            -                          150
@@ -89,7 +89,7 @@ gene #4::stop                                                                   
 3' UTR:stop                                                                                    0                             ?                         7382                            ?                            ?
 3' UTR:length                                                                                  0                             ?                           75                            ?                            ?
 totlen                                                                                      2252                           503                         7382                          503                         1757
-result                                                                           FAIL FFFFFFFFPP               FAIL FFFFFFFFFF              PASS PPPPPPPPPP              FAIL FFFFFFFFFF              FAIL FFFFFFFFPF
+result                                                                           FAIL FFFFFFFFPP               FAIL FFFFFFPFFF              PASS PPPPPPPPPP              FAIL FFFFFFFFFF              FAIL FFFFFFPFPF
 #
 # end of page 1
 #
@@ -142,11 +142,11 @@ MP #6 [single segment; +]:RdRp:adjcnces1                                        
 MP #6 [single segment; +]:RdRp:length                                                          NP                           37                         1530                           37                           NP
 MP #6 [single segment; +]:RdRp:PF                                                               F                            F                            P                            F                            F
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:start                                ?                            1                            6                            1                            ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                                 ?                            ?                         5069                            ?                            ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                               ?                            ?                         5064                            ?                            ?
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                                 ?                           40                         5069                           40                            ?
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                               ?                           40                         5064                           40                            ?
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:startc                               ?                          GCA                          ATG                          GCA                            ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                                ?                            ?                          TGA                            ?                            ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                                ???                          .??                          ...                          .??                          ???
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                                ?                          TGA                          TGA                          TGA                            ?
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                                ???                          ..!                          ...                          ..!                          ???
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                                   F                            F                            P                            F                            F
 CDS #2 [single exon; +]:VP1:start1                                                              1                           27                         5056                           27                            1
 CDS #2 [single exon; +]:VP1:stop1                                                             347                         1647                         6681                         1647                          551
@@ -173,7 +173,7 @@ CDS #4 [single exon; +]:VP2:ss3                                                 
 CDS #4 [single exon; +]:VP2:stp                                                                NP                           NP                          TAG                           NP                          AAT
 CDS #4 [single exon; +]:VP2:PF                                                                  F                            F                            P                            F                            F
 gene #1::start                                                                                  ?                            1                            6                            1                            ?
-gene #1::stop                                                                                   ?                            ?                         5069                            ?                            ?
+gene #1::stop                                                                                   ?                           40                         5069                           40                            ?
 gene #2::start                                                                                  1                           27                         5056                           27                            1
 gene #2::stop                                                                                 347                         1647                         6681                         1647                          551
 gene #3::start                                                                                 14                           40                         5069                           40                            -
@@ -237,12 +237,12 @@ MP #6 [single segment; +]:RdRp:adjcnces1                                        
 MP #6 [single segment; +]:RdRp:length                                                           NP                             NP                             NP                          NP                          147
 MP #6 [single segment; +]:RdRp:PF                                                                F                              F                              F                           F                            F
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:start                                 1                              1                              1                           ?                            1
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                                  ?                              ?                              ?                           ?                            ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                                ?                              ?                              ?                           ?                            ?
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stop                               1023                           1023                           1023                           ?                          150
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:length                             1023                           1023                           1023                           ?                          150
 CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:startc                              ATG                            ATG                            ATG                           ?                          GCT
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                                 ?                              ?                              ?                           ?                            ?
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                                 .??                            .??                            .??                         ???                          .??
-CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                                    F                              F                              F                           F                            F
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:stopc                               GAA                            GAA                            GAG                           ?                          TGA
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:ss3                                 .!.                            .!.                            .!.                         ???                          ...
+CDS(MP) #1 [6 mature_peptide(s)]:nonstructural polyprotein:PF                                    F                              F                              F                           F                            P
 CDS #2 [single exon; +]:VP1:start1                                                              NP                             NP                             NP                           1                          137
 CDS #2 [single exon; +]:VP1:stop1                                                               NP                             NP                             NP                         768                         1757
 CDS #2 [single exon; +]:VP1:md1                                                                 NP                             NP                             NP                          ++                           .5
@@ -268,7 +268,7 @@ CDS #4 [single exon; +]:VP2:ss3                                                 
 CDS #4 [single exon; +]:VP2:stp                                                                 NP                             NP                             NP                          NP                           NP
 CDS #4 [single exon; +]:VP2:PF                                                                   F                              F                              F                           F                            F
 gene #1::start                                                                                   1                              1                              1                           ?                            1
-gene #1::stop                                                                                    ?                              ?                              ?                           ?                            ?
+gene #1::stop                                                                                 1023                           1023                           1023                           ?                          150
 gene #2::start                                                                                   -                              -                              -                           1                          137
 gene #2::stop                                                                                    -                              -                              -                         768                         1757
 gene #3::start                                                                                   -                              -                              -                           -                          150
@@ -279,7 +279,7 @@ gene #4::stop                                                                   
 3' UTR:stop                                                                                      ?                              ?                              ?                           ?                            ?
 3' UTR:length                                                                                    ?                              ?                              ?                           ?                            ?
 totlen                                                                                        1023                           1023                           1023                         768                         1757
-result                                                                             FAIL FFFFFFFFFF                FAIL FFFFFFFFFF                FAIL FFFFFFFFFF             FAIL FFFFFFFFFF              FAIL FFFFFFFFPF
+result                                                                             FAIL FFFFFFFFFF                FAIL FFFFFFFFFF                FAIL FFFFFFFFFF             FAIL FFFFFFFFFF              FAIL FFFFFFPFPF
 #
 # end of page 3
 #

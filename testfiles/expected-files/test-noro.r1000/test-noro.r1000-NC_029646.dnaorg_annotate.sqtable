@@ -19,18 +19,18 @@
 			gene	ORF1
 <1	5088	misc_feature
 			note	similar to nonstructural polyprotein
-<1	979	mat_peptide
-			product	p48
-979	2076	mat_peptide
-			product	NTPase
-2077	2613	mat_peptide
-			product	p22
-2614	3012	mat_peptide
-			product	VPg
-3013	3555	mat_peptide
-			product	Pro
-3556	5085	mat_peptide
-			product	RdRp
+<1	979	misc_feature
+			note	similar to p48
+979	2076	misc_feature
+			note	similar to NTPase
+2077	2613	misc_feature
+			note	similar to p22
+2614	3012	misc_feature
+			note	similar to VPg
+3013	3555	misc_feature
+			note	similar to Pro
+3556	5085	misc_feature
+			note	similar to RdRp
 5069	6691	gene
 			gene	ORF2
 5069	6691	CDS
@@ -799,18 +799,18 @@ ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency be
 			gene	ORF1
 <1	5106	misc_feature
 			note	similar to nonstructural polyprotein
-<1	997	mat_peptide
-			product	p48
-997	2094	mat_peptide
-			product	NTPase
-2095	2631	mat_peptide
-			product	p22
-2632	3030	mat_peptide
-			product	VPg
-3031	3573	mat_peptide
-			product	Pro
-3574	5103	mat_peptide
-			product	RdRp
+<1	997	misc_feature
+			note	similar to p48
+997	2094	misc_feature
+			note	similar to NTPase
+2095	2631	misc_feature
+			note	similar to p22
+2632	3030	misc_feature
+			note	similar to VPg
+3031	3573	misc_feature
+			note	similar to Pro
+3574	5103	misc_feature
+			note	similar to RdRp
 5087	6709	gene
 			gene	ORF2
 5087	6709	CDS
@@ -960,18 +960,18 @@ ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency be
 			gene	ORF1
 <1	5088	misc_feature
 			note	similar to nonstructural polyprotein
-<1	979	mat_peptide
-			product	p48
-979	2076	mat_peptide
-			product	NTPase
-2077	2613	mat_peptide
-			product	p22
-2614	3012	mat_peptide
-			product	VPg
-3013	3555	mat_peptide
-			product	Pro
-3556	5085	mat_peptide
-			product	RdRp
+<1	979	misc_feature
+			note	similar to p48
+979	2076	misc_feature
+			note	similar to NTPase
+2077	2613	misc_feature
+			note	similar to p22
+2614	3012	misc_feature
+			note	similar to VPg
+3013	3555	misc_feature
+			note	similar to Pro
+3556	5085	misc_feature
+			note	similar to RdRp
 5069	6688	gene
 			gene	ORF2
 5069	6688	CDS
@@ -2737,18 +2737,18 @@ ERROR: Mutation at End: Expected stop codon could not be identified on VP1
 			gene	ORF1
 <1	5087	misc_feature
 			note	similar to nonstructural polyprotein
-<1	984	mat_peptide
-			product	p48
-984	2081	mat_peptide
-			product	NTPase
-2082	2612	mat_peptide
-			product	p22
-2613	3011	mat_peptide
-			product	VPg
-3012	3554	mat_peptide
-			product	Pro
-3555	5084	mat_peptide
-			product	RdRp
+<1	984	misc_feature
+			note	similar to p48
+984	2081	misc_feature
+			note	similar to NTPase
+2082	2612	misc_feature
+			note	similar to p22
+2613	3011	misc_feature
+			note	similar to VPg
+3012	3554	misc_feature
+			note	similar to Pro
+3555	5084	misc_feature
+			note	similar to RdRp
 5068	6696	gene
 			gene	ORF2
 5068	6696	CDS
@@ -2934,8 +2934,8 @@ ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency be
 1	>282	CDS
 			product	VP1
 >Feature gi|1191948749|gb|KY421172.1|
-7	>1527	mat_peptide
-			product	RdRp
+7	>1527	misc_feature
+			note	similar to RdRp
 >Feature gi|1070115394|gb|KU672211.1|
 1	>212	gene
 			gene	ORF2
@@ -3495,18 +3495,18 @@ ERROR: Mutation at End: Expected stop codon could not be identified on nonstruct
 			gene	ORF1
 <1	5092	misc_feature
 			note	similar to nonstructural polyprotein
-<1	983	mat_peptide
-			product	p48
-983	2080	mat_peptide
-			product	NTPase
-2081	2617	mat_peptide
-			product	p22
-2618	3016	mat_peptide
-			product	VPg
-3017	3559	mat_peptide
-			product	Pro
-3560	5089	mat_peptide
-			product	RdRp
+<1	983	misc_feature
+			note	similar to p48
+983	2080	misc_feature
+			note	similar to NTPase
+2081	2617	misc_feature
+			note	similar to p22
+2618	3016	misc_feature
+			note	similar to VPg
+3017	3559	misc_feature
+			note	similar to Pro
+3560	5089	misc_feature
+			note	similar to RdRp
 5073	6689	gene
 			gene	ORF2
 5073	6689	CDS
@@ -3765,18 +3765,18 @@ ERROR: CDS Has Stop Codon: Contains unexpected stop codon in VP1; Position of ex
 			gene	ORF1
 <1	5093	misc_feature
 			note	similar to nonstructural polyprotein
-<1	985	mat_peptide
-			product	p48
-984	2081	mat_peptide
-			product	NTPase
-2082	2618	mat_peptide
-			product	p22
-2619	3017	mat_peptide
-			product	VPg
-3018	3560	mat_peptide
-			product	Pro
-3561	5090	mat_peptide
-			product	RdRp
+<1	985	misc_feature
+			note	similar to p48
+984	2081	misc_feature
+			note	similar to NTPase
+2082	2618	misc_feature
+			note	similar to p22
+2619	3017	misc_feature
+			note	similar to VPg
+3018	3560	misc_feature
+			note	similar to Pro
+3561	5090	misc_feature
+			note	similar to RdRp
 5074	6693	gene
 			gene	ORF2
 5074	6693	CDS
@@ -5241,18 +5241,18 @@ ERROR: Mutation at End: Expected stop codon could not be identified on VP1
 			gene	ORF1
 <1	5106	misc_feature
 			note	similar to nonstructural polyprotein
-<1	997	mat_peptide
-			product	p48
-997	2094	mat_peptide
-			product	NTPase
-2095	2631	mat_peptide
-			product	p22
-2632	3030	mat_peptide
-			product	VPg
-3031	3573	mat_peptide
-			product	Pro
-3574	5103	mat_peptide
-			product	RdRp
+<1	997	misc_feature
+			note	similar to p48
+997	2094	misc_feature
+			note	similar to NTPase
+2095	2631	misc_feature
+			note	similar to p22
+2632	3030	misc_feature
+			note	similar to VPg
+3031	3573	misc_feature
+			note	similar to Pro
+3574	5103	misc_feature
+			note	similar to RdRp
 5087	6709	gene
 			gene	ORF2
 5087	6709	CDS
@@ -5326,18 +5326,18 @@ ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency be
 			gene	ORF1
 <1	5093	misc_feature
 			note	similar to nonstructural polyprotein
-<1	984	mat_peptide
-			product	p48
-984	2081	mat_peptide
-			product	NTPase
-2082	2618	mat_peptide
-			product	p22
-2619	3017	mat_peptide
-			product	VPg
-3018	3560	mat_peptide
-			product	Pro
-3561	5090	mat_peptide
-			product	RdRp
+<1	984	misc_feature
+			note	similar to p48
+984	2081	misc_feature
+			note	similar to NTPase
+2082	2618	misc_feature
+			note	similar to p22
+2619	3017	misc_feature
+			note	similar to VPg
+3018	3560	misc_feature
+			note	similar to Pro
+3561	5090	misc_feature
+			note	similar to RdRp
 5074	6702	gene
 			gene	ORF2
 5074	6702	CDS
