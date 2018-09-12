@@ -3925,19 +3925,32 @@ sub ftr_results_calculate {
         my $cds_len             = 0;     # length to output for this CDS
         my $child_had_trc       = 0;     # if we find a child with a trc error, set this to 1
         my $nm3_aji_int_or_inp_flag = 0; # set to '1' if we set an nm3, aji, int or inp error for the mother CDS
-
+        my $seen_prv_b3e        = 0;     # set to '1' if we see a b3e error for a MP for the mother CDS
         # step through all primary children of this feature
         for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
           my $child_ftr_idx = $primary_children_idx_A[$child_idx];
+          if(exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"b3e"}{$seq_name}) { 
+            $seen_prv_b3e = 1;
+          }
 
           for(my $child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $child_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $child_mdl_idx++) { 
             if(! $child_had_trc) { # if $child_had_trc is true, then we dealt with this feature completely below
               # check to make sure we have a hit annotated for this model
+              # if not, we trigger an inp UNLESS we don't expect a hit due to a relevant b5e or relevant b3e
+              # we have a relevant b5e if: the CDS has a b5e AND $set_start has NOT yet been set
+              # we have a relevant b3e if: either this MP or a previous one has a b3e ($seen_prv_b3e == 1)
+              # we do not have a relevant b5e if: $set_start has been set
+              # we do not have a relevant b3e if: this MP does not have a b3e and no previous MP had a b3e
               if(! exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { 
-                if($inp_errmsg ne "") { 
-                  $inp_errmsg .= ", ";
+                # we might need to trigger an inp, check if we have a relevant b5e:
+                my $have_relevant_b5e = ((! $set_start) && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name})) ? 1 : 0;
+                my $have_relevant_b3e = ($seen_prv_b3e) ? 1 : 0;
+                if((! $have_relevant_b5e) && (! $have_relevant_b3e)) { 
+                  if($inp_errmsg ne "") { 
+                    $inp_errmsg .= ", ";
+                  }
+                  $inp_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
                 }
-                $inp_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
               }
               else { # we do have a hit for $child_mdl_idx in $seq_idx
                 $cds_len += $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"len"};
