@@ -6904,9 +6904,9 @@ sub output_feature_tbl_all_sequences {
       my $feature_type      = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
       my $orig_feature_type = $feature_type; 
       if($do_misc_feature) { $feature_type = "misc_feature"; }
-      #####################################################################################
-      # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
-      #####################################################################################
+      ####################################################################################################
+      # beginning of block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
+      ####################################################################################################
       if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
          ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
         if(! $ftr_nop_error_flag) { 
@@ -6985,6 +6985,12 @@ sub output_feature_tbl_all_sequences {
           }
         } # end of if(! $ftr_nop_error_flag) { 
       }
+      #############################################################################################
+      # end of block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
+      #############################################################################################
+      ##########################################################################################
+      # beginning of block that handles features that are annotated based on model predictions
+      ##########################################################################################
       elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # not a multifeature cds-mp but annotated by models
         # if this feature is of annot_type 'model' determine if all models for it have no prediction or not
         $all_mdl_nop_error_flag = 0;
