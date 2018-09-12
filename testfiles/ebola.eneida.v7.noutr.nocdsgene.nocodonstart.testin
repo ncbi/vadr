@@ -12,8 +12,8 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_annotate.pl -f --xfeat gene --refaccn NC_002549 --dirbuild !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/ebola.v7.fa --dirout da-ebola-v7-test
-desc: ebolavirus-annotate-examples
-out: da-ebola-v7-test/da-ebola-v7-test.dnaorg_annotate.sqtable
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/ebola.v7.noutr.nocdsgene.nocodonstart.sqtable
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_annotate.pl -f --xfeat gene --refaccn NC_002549 --dirbuild !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/ebola.v7.fa --dirout da-eneida-ebola-v7-test
+desc: ebolavirus-eneida-annotate-examples
+out: da-eneida-ebola-v7-test/da-eneida-ebola-v7-test.dnaorg_annotate.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/ebola.eneida.v7.noutr.nocdsgene.nocodonstart.sqtable
 
