@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/jira-viv-792.fa --dirbuild !dirbuild! --dirout da-jira-viv-792
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/jira-viv-792.fa --dirbuild !dirbuild! --dirout da-jira-viv-792 > da-jira-viv-792.out
 desc: jira-viv-792
 out: da-jira-viv-792/da-jira-viv-792-NC_029646.pass/da-jira-viv-792-NC_029646.pass.dnaorg_annotate.sqtable
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-792-NC_029646.pass.dnaorg_annotate.sqtable

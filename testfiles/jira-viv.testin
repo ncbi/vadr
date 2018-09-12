@@ -44,7 +44,7 @@ desc: jira-viv-792
 out: da-jira-viv-792/da-jira-viv-792-NC_029646.pass/da-jira-viv-792-NC_029646.pass.dnaorg_annotate.sqtable
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-792-NC_029646.pass.dnaorg_annotate.sqtable
 
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/jira-viv-793.fa --dirbuild !dirbuild! --dirout da-jira-viv-793
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/jira-viv-793.fa --dirbuild !dirbuild! --dirout da-jira-viv-793 > da-jira-viv-793.out
 desc: jira-viv-793
 out: da-jira-viv-793/da-jira-viv-793-NC_031324.pass/da-jira-viv-793-NC_031324.pass.dnaorg_annotate.sqtable
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-793-NC_031324.pass.dnaorg_annotate.sqtable

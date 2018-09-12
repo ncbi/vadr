@@ -3,7 +3,7 @@
 			gene	ORF1
 <1	4692	misc_feature
 			note	similar to nonstructural polyprotein
-1	583	misc_feature
+<1	583	misc_feature
 			note	similar to p48
 583	1680	misc_feature
 			note	similar to NTPase
