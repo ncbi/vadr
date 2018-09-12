@@ -353,8 +353,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.35";
-my $releasedate   = "Aug 2018";
+my $version       = "0.36";
+my $releasedate   = "Sept 2018";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -2699,7 +2699,7 @@ sub store_hit {
       if($mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"} > $evalue) { 
         DNAORG_FAIL(sprintf("ERROR in $sub_name, already have hit stored for model index $mdlidx seq index $seqidx with higher evalue (%g > %g), this implies hits were not sorted by E-value...", $mdl_results_AAHR->[$mdlidx][$seqidx]{"evalue"}, $evalue), 1, $FH_HR); 
       }
-      if($score > 0.) { $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}++; }
+      if($score > 25.) { $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}++; } # yes, this is hard-coded
     }
     else { 
       # no hit yet exists, make one
@@ -3924,20 +3924,34 @@ sub ftr_results_calculate {
         my $stop_strand         = undef; # strand stop codon is on
         my $cds_len             = 0;     # length to output for this CDS
         my $child_had_trc       = 0;     # if we find a child with a trc error, set this to 1
-        my $aji_int_or_inp_flag = 0;     # set to '1' if we set an aji, int or inp error for the mother CDS
-
+        my $mtr_flag            = 0;     # set to '1' if we set a bad nm3 (no b5e or b3e), aji, int or inp error for the mother CDS
+        my $seen_prv_b3e        = 0;     # set to '1' if we see a b3e error for a MP for the mother CDS
         # step through all primary children of this feature
         for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
           my $child_ftr_idx = $primary_children_idx_A[$child_idx];
+          if((exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"b3e"}{$seq_name}) || # we have a b3e for this mat_peptide
+             ($mdl_results_AAHR->[$ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]][$seq_idx]{"p_3seqflush"})) { # rare case: we don't have a b3e but final nt of prediction is final nt of sequence, so for our purposes here, we do have a b3e
+            $seen_prv_b3e = 1;
+          }
 
           for(my $child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $child_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $child_mdl_idx++) { 
             if(! $child_had_trc) { # if $child_had_trc is true, then we dealt with this feature completely below
               # check to make sure we have a hit annotated for this model
+              # if not, we trigger an inp UNLESS we don't expect a hit due to a relevant b5e or relevant b3e
+              # we have a relevant b5e if: the CDS has a b5e AND $set_start has NOT yet been set
+              # we have a relevant b3e if: either this MP or a previous one has a b3e ($seen_prv_b3e == 1)
+              # we do not have a relevant b5e if: $set_start has been set
+              # we do not have a relevant b3e if: this MP does not have a b3e and no previous MP had a b3e
               if(! exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { 
-                if($inp_errmsg ne "") { 
-                  $inp_errmsg .= ", ";
+                # we might need to trigger an inp, check if we have a relevant b5e or b3e
+                my $have_relevant_b5e = ((! $set_start) && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name})) ? 1 : 0;
+                my $have_relevant_b3e = ($seen_prv_b3e) ? 1 : 0;
+                if((! $have_relevant_b5e) && (! $have_relevant_b3e)) { 
+                  if($inp_errmsg ne "") { 
+                    $inp_errmsg .= ", ";
+                  }
+                  $inp_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
                 }
-                $inp_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
               }
               else { # we do have a hit for $child_mdl_idx in $seq_idx
                 $cds_len += $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"len"};
@@ -4056,7 +4070,7 @@ sub ftr_results_calculate {
                     if($ntr_err_ct > 0) { 
                       # we set at least one ntr error for mature peptides, set int for this CDS
                       error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
-                      $aji_int_or_inp_flag = 1;
+                      $mtr_flag = 1; # this causes 'mtr' in children MPs
                     }
                     # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
                   } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
@@ -4080,9 +4094,11 @@ sub ftr_results_calculate {
                   ###########################################################
                   # check if we're adjacent to the next feature, we only need to 
                   # do this if we're the final model for the current feature and
-                  # we're not the final child feature
+                  # we're not the final child feature, and we haven't seen a b3e 
+                  # for this CDS yet
                   if(($child_idx < ($np_children-1)) && 
-                     ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx])) { 
+                     ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]) && 
+                     (! $seen_prv_b3e)) { 
                     my $nxt_child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$primary_children_idx_A[($child_idx+1)]];
                     # check if they are adjacent 
                     if(! checkForIndexInOverlapOrAdjacencyIndexString($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"idx_aja_str"}, $nxt_child_mdl_idx, $FH_HR)) { 
@@ -4245,13 +4261,13 @@ sub ftr_results_calculate {
         if($aji_errmsg ne "") { 
           # adjacency error
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aji", $seq_name, $aji_errmsg, $FH_HR);
-          $aji_int_or_inp_flag = 1;
+          $mtr_flag = 1; # this causes 'mtr' in children MPs
         }
 
         # add the inp (INterrupted due to no Prediction) if necessary
         if($inp_errmsg ne "") { 
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
-          $aji_int_or_inp_flag = 1;
+          $mtr_flag = 1; # this causes 'mtr' in children MPs
         }
 
         # set ftr_results, we can set start if $cds_out_start is defined, 
@@ -4293,6 +4309,11 @@ sub ftr_results_calculate {
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"}       = $cds_len;
           if(($cds_len % 3) != 0) { 
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cds_len", $FH_HR);
+            # if this is a 'bad' nm3 (no b5e or b3e), then update $mtr_flag
+            if((! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) && 
+               (! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b3e"}{$seq_name})) { 
+              $mtr_flag = 1;
+            }
           }
         }
         else { 
@@ -4334,10 +4355,10 @@ sub ftr_results_calculate {
             }
           }
         }
-        #############################################################################
-        # add mtr errors for all children if mother CDS had a aji, int or inp error #
-        #############################################################################
-        if($aji_int_or_inp_flag) { 
+        ##################################################################################
+        # add mtr errors for all children if mother CDS had a nm3, aji, int or inp error #
+        ##################################################################################
+        if($mtr_flag) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, 
@@ -6861,8 +6882,10 @@ sub output_feature_tbl_all_sequences {
       if($exc_idx != -1) { 
         $do_short_ftable = 1;
         $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
-        $do_start_carrot = $ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"};
-        $do_stop_carrot  = $ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"};
+        # only do a start_carrot if this exception calls for it AND we have a b5e
+        $do_start_carrot = (($ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"}) && ($cur_err_str =~ m/b5e/)) ? 1 : 0;
+        # only do a stop_carrot if this exception calls for it AND we have a b3e
+        $do_stop_carrot  = (($ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"}) && ($cur_err_str =~ m/b3e/)) ? 1 : 0;
         $do_pred_stop    = $ftbl_err_exceptions_AHR->[$exc_idx]{"pred_stop"};
         $note_value      = populateFTableNoteErrorOrWarning("note",  $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
         $error_value     = populateFTableNoteErrorOrWarning("error", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
@@ -6884,9 +6907,9 @@ sub output_feature_tbl_all_sequences {
       my $feature_type      = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
       my $orig_feature_type = $feature_type; 
       if($do_misc_feature) { $feature_type = "misc_feature"; }
-      #####################################################################################
-      # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
-      #####################################################################################
+      ####################################################################################################
+      # beginning of block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
+      ####################################################################################################
       if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
          ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
         if(! $ftr_nop_error_flag) { 
@@ -6965,6 +6988,12 @@ sub output_feature_tbl_all_sequences {
           }
         } # end of if(! $ftr_nop_error_flag) { 
       }
+      #############################################################################################
+      # end of block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
+      #############################################################################################
+      ##########################################################################################
+      # beginning of block that handles features that are annotated based on model predictions
+      ##########################################################################################
       elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # not a multifeature cds-mp but annotated by models
         # if this feature is of annot_type 'model' determine if all models for it have no prediction or not
         $all_mdl_nop_error_flag = 0;
@@ -7158,10 +7187,14 @@ sub output_feature_tbl_all_sequences {
         print $sftbl_FH "\nAdditional note(s) to submitter:\n"; 
       }
       foreach my $error_str (@error_value_A) { 
-        print $sftbl_FH "ERROR: " . $error_str . "\n"; 
+        foreach my $error_line (split(/\:\:\:/, $error_str)) { 
+          print $sftbl_FH "ERROR: " . $error_line . "\n"; 
+        }
       }
       foreach my $warning_str (@warning_value_A) { 
-        print $sftbl_FH "WARNING: " . $warning_str . "\n";  
+        foreach my $warning_line (split(/\:\:\:/, $warning_str)) { 
+          print $sftbl_FH "WARNING: " . $warning_line . "\n";  
+        }
       }
     }
     if(scalar(@long_AH) > 0) { 

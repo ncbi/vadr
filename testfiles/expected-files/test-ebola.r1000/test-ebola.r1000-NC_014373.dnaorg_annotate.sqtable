@@ -27,6 +27,7 @@
 6021	6905	CDS
 6907	6930
 			product	second secreted glycoprotein
+			exception	RNA editing
 8269	9728	gene
 			gene	VP30
 8496	9365	CDS
@@ -58,11 +59,12 @@
 6905	8050
 			product	spike glycoprotein
 			exception	RNA editing
+6021	7142	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
 6021	6905	CDS
 6907	6930
 			product	second secreted glycoprotein
-6021	7121	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6021..7142 revised to 6021..7121 (stop shifted 21 nt)]
+			exception	RNA editing
 8269	9727	gene
 			gene	VP30
 8496	9365	CDS
@@ -75,6 +77,9 @@
 			gene	L
 11566	18198	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6021..7142 revised to 6021..7121 (stop shifted 21 nt)]
 >Feature gi|499104232|gb|KC545393.1|
 56	3014	gene
 			gene	NP
@@ -94,11 +99,12 @@
 6905	8050
 			product	spike glycoprotein
 			exception	RNA editing
+6021	7142	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
 6021	6905	CDS
 6907	6930
 			product	second secreted glycoprotein
-6021	7121	misc_feature
-			note	in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6021..7142 revised to 6021..7121 (stop shifted 21 nt)]
+			exception	RNA editing
 8269	9727	gene
 			gene	VP30
 8496	9365	CDS
@@ -111,6 +117,9 @@
 			gene	L
 11566	18198	CDS
 			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in small secreted glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6021..7142 revised to 6021..7121 (stop shifted 21 nt)]
 >Feature gi|941456768|dbj|HZ164395.1|
 <1	>2031	gene
 			gene	GP
@@ -118,9 +127,15 @@
 886	2031
 			product	spike glycoprotein
 			exception	RNA editing
+1	1123	misc_feature
+			note	similar to small secreted glycoprotein
 1	885	CDS
 888	911
 			product	second secreted glycoprotein
+			exception	RNA editing
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on small secreted glycoprotein; first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 1..1123 revised to 1..2031 (stop shifted 908 nt)]
 >Feature gi|1073848262|emb|LQ278396.1|
 <1	>173	gene
 			gene	VP24

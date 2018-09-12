@@ -1,0 +1,28 @@
+>Feature gb|MH013233|
+<1	>298	gene
+			gene	ORF1
+<1	>298	CDS
+			product	nonstructural polyprotein
+<1	>298	mat_peptide
+			product	RdRp
+>Feature gb|MH013235|
+<1	>301	gene
+			gene	ORF1
+<1	>301	CDS
+			product	nonstructural polyprotein
+<1	>301	mat_peptide
+			product	RdRp
+>Feature gb|MH013268|
+<1	>311	gene
+			gene	ORF1
+<1	>311	CDS
+			product	nonstructural polyprotein
+<1	>311	mat_peptide
+			product	RdRp
+>Feature gb|MH013265|
+<1	>316	gene
+			gene	ORF1
+<1	>316	CDS
+			product	nonstructural polyprotein
+<1	>316	mat_peptide
+			product	RdRp

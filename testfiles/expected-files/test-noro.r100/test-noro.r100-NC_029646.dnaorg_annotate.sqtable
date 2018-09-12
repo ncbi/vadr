@@ -379,18 +379,20 @@
 >Feature gi|1313740698|dbj|LC209472.1|
 <1	5092	gene
 			gene	ORF1
-<1	983	mat_peptide
-			product	p48
-983	2080	mat_peptide
-			product	NTPase
-2081	2617	mat_peptide
-			product	p22
-2618	3016	mat_peptide
-			product	VPg
-3017	3559	mat_peptide
-			product	Pro
-3560	5089	mat_peptide
-			product	RdRp
+<1	5092	misc_feature
+			note	similar to nonstructural polyprotein
+<1	983	misc_feature
+			note	similar to p48
+983	2080	misc_feature
+			note	similar to NTPase
+2081	2617	misc_feature
+			note	similar to p22
+2618	3016	misc_feature
+			note	similar to VPg
+3017	3559	misc_feature
+			note	similar to Pro
+3560	5089	misc_feature
+			note	similar to RdRp
 5073	6701	gene
 			gene	ORF2
 5073	6701	CDS
@@ -399,6 +401,9 @@
 			gene	ORF3
 6701	7480	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..983) not adjacent to NTPase (983..2080)]
 >Feature gi|1215708385|gb|KY594653.1|
 <1	>301	gene
 			gene	ORF2
@@ -483,8 +488,13 @@
 <1	>254	CDS
 			product	VP1
 >Feature gi|194595645|gb|EU854308.1|
-1	>747	gene
+1	747	gene
 			gene	ORF2
+1	747	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in VP1; Position of expected stop codon is not a valid stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1..747 revised to 1..627 (stop shifted 120 nt)]
 >Feature gi|526264986|gb|KC820430.1|
 <1	82	gene
 			gene	ORF1

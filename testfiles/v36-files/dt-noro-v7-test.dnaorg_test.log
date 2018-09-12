@@ -1,0 +1,28 @@
+# dnaorg_test.pl :: test dnaorg scripts [TEST SCRIPT]
+# dnaorg 0.35 (Aug 2018)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:       Tue Sep 11 13:16:22 2018
+# $DNAORGDIR: /panfs/pan1/infernal/notebook/18_0722_virus_duplicate_features
+#
+# test file:                                                   /panfs/pan1/infernal/notebook/18_0722_virus_duplicate_features/dnaorg_scripts/testfiles/noro.v7.nocdsgene.nocodonstart.testin
+# forcing directory overwrite:                                 yes [-f]
+# build directory, replaces !dirbuild! in test file with <s>:  /panfs/pan1/infernal/notebook/18_0722_virus_duplicate_features/dnaorg-build-directories/norovirus-builds/NC_029646 [--dirbuild]
+# do not compare errors and warnings:                          yes [--skipmsg]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Running command  1 [   annotate-examples]          ... done. [45.6 seconds]
+#	checking da-noro-v7-test/da-noro-v7-test.dnaorg_annotate.sqtable                                              ... FAIL [files differ, see dt-noro-v7-test/dt-noro-v7-test.dnaorg_test.1.1.diff.man]
+#
+#
+# FAIL: 1 of 1 files were not created correctly.
+#
+#
+# Output printed to screen saved in:                   dt-noro-v7-test.dnaorg_test.log
+# List of executed commands saved in:                  dt-noro-v7-test.dnaorg_test.cmd
+# List and description of all output files saved in:   dt-noro-v7-test.dnaorg_test.list
+#
+# All output files created in directory ./dt-noro-v7-test/
+#
+# CPU time:  00:00:45.73
+#            hh:mm:ss
+# 
+# DNAORG-SUCCESS

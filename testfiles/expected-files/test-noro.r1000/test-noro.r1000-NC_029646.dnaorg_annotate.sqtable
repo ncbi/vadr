@@ -15,20 +15,22 @@
 144	>422	CDS
 			product	VP1
 >Feature gi|669176156|gb|KM198591.1|
-<1	5089	gene
+<1	5088	gene
 			gene	ORF1
-<1	979	mat_peptide
-			product	p48
-979	2076	mat_peptide
-			product	NTPase
-2077	2613	mat_peptide
-			product	p22
-2614	3012	mat_peptide
-			product	VPg
-3013	3555	mat_peptide
-			product	Pro
-3556	5085	mat_peptide
-			product	RdRp
+<1	5088	misc_feature
+			note	similar to nonstructural polyprotein
+<1	979	misc_feature
+			note	similar to p48
+979	2076	misc_feature
+			note	similar to NTPase
+2077	2613	misc_feature
+			note	similar to p22
+2614	3012	misc_feature
+			note	similar to VPg
+3013	3555	misc_feature
+			note	similar to Pro
+3556	5085	misc_feature
+			note	similar to RdRp
 5069	6691	gene
 			gene	ORF2
 5069	6691	CDS
@@ -37,6 +39,9 @@
 			gene	ORF3
 6691	>7431	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..979) not adjacent to NTPase (979..2076)]
 >Feature gi|317106809|dbj|AB514594.1|
 1	>282	gene
 			gene	ORF2
@@ -404,6 +409,8 @@
 <1	>269	CDS
 			product	VP1
 >Feature gi|291088245|dbj|AB521758.1|
+<1	42	gene
+			gene	ORF1
 <1	42	CDS
 			product	nonstructural polyprotein
 <1	39	mat_peptide
@@ -790,18 +797,20 @@
 >Feature gi|954622982|gb|KT780408.1|
 <1	5106	gene
 			gene	ORF1
-<1	997	mat_peptide
-			product	p48
-997	2094	mat_peptide
-			product	NTPase
-2095	2631	mat_peptide
-			product	p22
-2632	3030	mat_peptide
-			product	VPg
-3031	3573	mat_peptide
-			product	Pro
-3574	5103	mat_peptide
-			product	RdRp
+<1	5106	misc_feature
+			note	similar to nonstructural polyprotein
+<1	997	misc_feature
+			note	similar to p48
+997	2094	misc_feature
+			note	similar to NTPase
+2095	2631	misc_feature
+			note	similar to p22
+2632	3030	misc_feature
+			note	similar to VPg
+3031	3573	misc_feature
+			note	similar to Pro
+3574	5103	misc_feature
+			note	similar to RdRp
 5087	6709	gene
 			gene	ORF2
 5087	6709	CDS
@@ -810,6 +819,9 @@
 			gene	ORF3
 6709	7488	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..997) not adjacent to NTPase (997..2094)]
 >Feature gi|452114357|gb|KC495685.1|
 1	>305	gene
 			gene	ORF2
@@ -946,18 +958,20 @@
 >Feature gi|1267574022|gb|MF140634.1|
 <1	5088	gene
 			gene	ORF1
-<1	979	mat_peptide
-			product	p48
-979	2076	mat_peptide
-			product	NTPase
-2077	2613	mat_peptide
-			product	p22
-2614	3012	mat_peptide
-			product	VPg
-3013	3555	mat_peptide
-			product	Pro
-3556	5085	mat_peptide
-			product	RdRp
+<1	5088	misc_feature
+			note	similar to nonstructural polyprotein
+<1	979	misc_feature
+			note	similar to p48
+979	2076	misc_feature
+			note	similar to NTPase
+2077	2613	misc_feature
+			note	similar to p22
+2614	3012	misc_feature
+			note	similar to VPg
+3013	3555	misc_feature
+			note	similar to Pro
+3556	5085	misc_feature
+			note	similar to RdRp
 5069	6688	gene
 			gene	ORF2
 5069	6688	CDS
@@ -966,6 +980,9 @@
 			gene	ORF3
 6688	7488	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..979) not adjacent to NTPase (979..2076)]
 >Feature gi|56683440|gb|AY673892.1|
 <1	>274	gene
 			gene	ORF1
@@ -1057,7 +1074,7 @@
 <1	>265	mat_peptide
 			product	RdRp
 >Feature gi|255687970|gb|GQ384446.1|
-<1	96	gene
+<1	98	gene
 			gene	ORF1
 <1	98	CDS
 			product	nonstructural polyprotein
@@ -1874,13 +1891,15 @@
 >Feature gi|667668692|gb|KJ716364.1|
 1	1621	gene
 			gene	ORF2
-1	1623	CDS
-			product	VP1
-			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [TAT ending at position 1621 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 1..1621 revised to 1..1623 (stop shifted 2 nt)]
+1	1621	misc_feature
+			note	similar to VP1
 1623	2429	gene
 			gene	ORF3
 1623	2429	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on VP1
 >Feature gi|543103261|gb|KF438004.1|
 <1	>280	gene
 			gene	ORF1
@@ -1964,9 +1983,11 @@
 >Feature gi|1150565629|gb|KX514241.1|
 1	1621	gene
 			gene	ORF2
-1	1623	CDS
-			product	VP1
-			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [TAT ending at position 1621 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 1..1621 revised to 1..1623 (stop shifted 2 nt)]
+1	1621	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on VP1
 >Feature gi|1350889244|gb|MG763428.1|
 <1	750	gene
 			gene	ORF1
@@ -1981,9 +2002,11 @@
 >Feature gi|1027910810|gb|KU985155.1|
 1	1621	gene
 			gene	ORF2
-1	1623	CDS
-			product	VP1
-			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [TAT ending at position 1621 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 1..1621 revised to 1..1623 (stop shifted 2 nt)]
+1	1621	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on VP1
 >Feature gi|410519144|gb|JX995010.1|
 <1	>231	gene
 			gene	ORF2
@@ -2084,9 +2107,11 @@
 >Feature gi|1150565607|gb|KX514230.1|
 1	1621	gene
 			gene	ORF2
-1	1623	CDS
-			product	VP1
-			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [TAT ending at position 1621 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 1..1621 revised to 1..1623 (stop shifted 2 nt)]
+1	1621	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on VP1
 >Feature gi|685432959|gb|KJ420340.1|
 <1	>317	gene
 			gene	ORF1
@@ -2186,8 +2211,6 @@
 <1	>208	CDS
 			product	VP1
 >Feature gi|126507120|gb|EF213633.1|
-7	>307	gene
-			gene	ORF2
 >Feature gi|330368183|gb|HQ721790.1|
 1	>282	gene
 			gene	ORF2
@@ -2712,18 +2735,20 @@
 >Feature gi|1313740689|dbj|LC209471.1|
 <1	5087	gene
 			gene	ORF1
-<1	984	mat_peptide
-			product	p48
-984	2081	mat_peptide
-			product	NTPase
-2082	2612	mat_peptide
-			product	p22
-2613	3011	mat_peptide
-			product	VPg
-3012	3554	mat_peptide
-			product	Pro
-3555	5084	mat_peptide
-			product	RdRp
+<1	5087	misc_feature
+			note	similar to nonstructural polyprotein
+<1	984	misc_feature
+			note	similar to p48
+984	2081	misc_feature
+			note	similar to NTPase
+2082	2612	misc_feature
+			note	similar to p22
+2613	3011	misc_feature
+			note	similar to VPg
+3012	3554	misc_feature
+			note	similar to Pro
+3555	5084	misc_feature
+			note	similar to RdRp
 5068	6696	gene
 			gene	ORF2
 5068	6696	CDS
@@ -2732,6 +2757,9 @@
 			gene	ORF3
 6696	7475	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..984) not adjacent to NTPase (984..2081)]
 >Feature gi|449133114|gb|KC409305.1|
 3	5102	gene
 			gene	ORF1
@@ -2906,10 +2934,8 @@
 1	>282	CDS
 			product	VP1
 >Feature gi|1191948749|gb|KY421172.1|
-<1	>1527	gene
-			gene	ORF1
-7	>1527	mat_peptide
-			product	RdRp
+7	>1527	misc_feature
+			note	similar to RdRp
 >Feature gi|1070115394|gb|KU672211.1|
 1	>212	gene
 			gene	ORF2
@@ -3346,6 +3372,8 @@
 >Feature gi|926457537|dbj|AB933725.1|
 1	5100	gene
 			gene	ORF1
+1	5100	misc_feature
+			note	similar to nonstructural polyprotein
 1	990	mat_peptide
 			product	p48
 991	2088	mat_peptide
@@ -3366,6 +3394,9 @@
 			gene	ORF3
 6703	7509	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on nonstructural polyprotein
 >Feature gi|944544865|gb|KR869066.1|
 1	>299	gene
 			gene	ORF2
@@ -3462,18 +3493,20 @@
 >Feature gi|806932726|dbj|LC043168.1|
 <1	5092	gene
 			gene	ORF1
-<1	983	mat_peptide
-			product	p48
-983	2080	mat_peptide
-			product	NTPase
-2081	2617	mat_peptide
-			product	p22
-2618	3016	mat_peptide
-			product	VPg
-3017	3559	mat_peptide
-			product	Pro
-3560	5089	mat_peptide
-			product	RdRp
+<1	5092	misc_feature
+			note	similar to nonstructural polyprotein
+<1	983	misc_feature
+			note	similar to p48
+983	2080	misc_feature
+			note	similar to NTPase
+2081	2617	misc_feature
+			note	similar to p22
+2618	3016	misc_feature
+			note	similar to VPg
+3017	3559	misc_feature
+			note	similar to Pro
+3560	5089	misc_feature
+			note	similar to RdRp
 5073	6689	gene
 			gene	ORF2
 5073	6689	CDS
@@ -3482,6 +3515,9 @@
 			gene	ORF3
 6689	7468	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..983) not adjacent to NTPase (983..2080)]
 >Feature gi|1270245272|gb|MF398790.1|
 1	>240	gene
 			gene	ORF2
@@ -3589,8 +3625,13 @@
 			product	nonstructural polyprotein
 <1	55	mat_peptide
 			product	RdRp
-39	>281	gene
+39	281	gene
 			gene	ORF2
+39	281	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: Contains unexpected stop codon in VP1; Position of expected stop codon is not a valid stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 39..281 revised to 39..245 (stop shifted 36 nt)]
 >Feature gi|775461021|dbj|AB809985.1|
 <1	663	gene
 			gene	ORF1
@@ -3720,20 +3761,22 @@
 1	>211	CDS
 			product	VP1
 >Feature gi|966751799|gb|KU311162.1|
-<1	5094	gene
+<1	5093	gene
 			gene	ORF1
-<1	985	mat_peptide
-			product	p48
-984	2081	mat_peptide
-			product	NTPase
-2082	2618	mat_peptide
-			product	p22
-2619	3017	mat_peptide
-			product	VPg
-3018	3560	mat_peptide
-			product	Pro
-3561	5090	mat_peptide
-			product	RdRp
+<1	5093	misc_feature
+			note	similar to nonstructural polyprotein
+<1	985	misc_feature
+			note	similar to p48
+984	2081	misc_feature
+			note	similar to NTPase
+2082	2618	misc_feature
+			note	similar to p22
+2619	3017	misc_feature
+			note	similar to VPg
+3018	3560	misc_feature
+			note	similar to Pro
+3561	5090	misc_feature
+			note	similar to RdRp
 5074	6693	gene
 			gene	ORF2
 5074	6693	CDS
@@ -3742,6 +3785,9 @@
 			gene	ORF3
 6693	7499	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..985) not adjacent to NTPase (984..2081)]
 >Feature gi|413966097|gb|JX666281.1|
 <1	>298	gene
 			gene	ORF1
@@ -4123,9 +4169,11 @@
 >Feature gi|1150565627|gb|KX514240.1|
 1	1618	gene
 			gene	ORF2
-1	1620	CDS
-			product	VP1
-			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [TAT ending at position 1618 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 1..1618 revised to 1..1620 (stop shifted 2 nt)]
+1	1618	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on VP1
 >Feature gi|162320433|dbj|AB294772.1|
 <1	>274	gene
 			gene	ORF2
@@ -4559,13 +4607,15 @@
 			product	RdRp
 5081	6701	gene
 			gene	ORF2
-5081	6703	CDS
-			product	VP1
-			note	predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA) [TAT ending at position 6701 on + strand];first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 5081..6701 revised to 5081..6703 (stop shifted 2 nt)]
+5081	6701	misc_feature
+			note	similar to VP1
 6703	7509	gene
 			gene	ORF3
 6703	7509	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on VP1
 >Feature gi|313847446|emb|FN827118.1|
 <1	>285	gene
 			gene	ORF1
@@ -4574,12 +4624,12 @@
 <1	>285	mat_peptide
 			product	RdRp
 >Feature gi|565419528|gb|KF289332.1|
+<1	56	gene
+			gene	ORF1
 <1	56	CDS
 			product	nonstructural polyprotein
 <1	53	mat_peptide
 			product	RdRp
-37	>339	gene
-			gene	ORF2
 >Feature gi|669175764|gb|KM198493.1|
 <1	5088	gene
 			gene	ORF1
@@ -5189,18 +5239,20 @@
 >Feature gi|1046839907|gb|KU561249.1|
 <1	5106	gene
 			gene	ORF1
-<1	997	mat_peptide
-			product	p48
-997	2094	mat_peptide
-			product	NTPase
-2095	2631	mat_peptide
-			product	p22
-2632	3030	mat_peptide
-			product	VPg
-3031	3573	mat_peptide
-			product	Pro
-3574	5103	mat_peptide
-			product	RdRp
+<1	5106	misc_feature
+			note	similar to nonstructural polyprotein
+<1	997	misc_feature
+			note	similar to p48
+997	2094	misc_feature
+			note	similar to NTPase
+2095	2631	misc_feature
+			note	similar to p22
+2632	3030	misc_feature
+			note	similar to VPg
+3031	3573	misc_feature
+			note	similar to Pro
+3574	5103	misc_feature
+			note	similar to RdRp
 5087	6709	gene
 			gene	ORF2
 5087	6709	CDS
@@ -5209,6 +5261,9 @@
 			gene	ORF3
 6709	7488	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..997) not adjacent to NTPase (997..2094)]
 >Feature gi|1203184618|gb|KX702086.1|
 <1	>328	gene
 			gene	ORF1
@@ -5269,18 +5324,20 @@
 >Feature gi|1313740632|dbj|LC209465.1|
 <1	5093	gene
 			gene	ORF1
-<1	984	mat_peptide
-			product	p48
-984	2081	mat_peptide
-			product	NTPase
-2082	2618	mat_peptide
-			product	p22
-2619	3017	mat_peptide
-			product	VPg
-3018	3560	mat_peptide
-			product	Pro
-3561	5090	mat_peptide
-			product	RdRp
+<1	5093	misc_feature
+			note	similar to nonstructural polyprotein
+<1	984	misc_feature
+			note	similar to p48
+984	2081	misc_feature
+			note	similar to NTPase
+2082	2618	misc_feature
+			note	similar to p22
+2619	3017	misc_feature
+			note	similar to VPg
+3018	3560	misc_feature
+			note	similar to Pro
+3561	5090	misc_feature
+			note	similar to RdRp
 5074	6702	gene
 			gene	ORF2
 5074	6702	CDS
@@ -5289,6 +5346,9 @@
 			gene	ORF3
 6702	7481	CDS
 			product	VP2
+
+Additional note(s) to submitter:
+ERROR: CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..984) not adjacent to NTPase (984..2081)]
 >Feature gi|543103233|gb|KF437990.1|
 <1	>280	gene
 			gene	ORF1
