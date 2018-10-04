@@ -192,6 +192,7 @@ my $esl_exec_dir      = $dnaorgdir . "/infernal-dev/easel/miniapps/";
 my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
 my $esl_epn_translate = $dnaorgdir . "/esl-epn-translate/esl-epn-translate.pl";
 my $esl_ssplit        = $dnaorgdir . "/Bio-Easel/scripts/esl-ssplit.pl";
+my $blast_exec_dir    = "/usr/bin/"; # HARD-CODED FOR NOW
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -574,6 +575,14 @@ $dir_build_tail =~ s/^.+\///; # remove all but last dir
 my $out_root   = $dir_out .   "/" . $dir_out_tail   . ".dnaorg_annotate";
 my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_build";
 
+# validate blast dbs exist
+my $blastx_db_root  = $build_root . ".prot.fa";
+foreach my $sfx (".phr", ".pin", ".psq") { 
+  if(! -s $blastx_db_root . $sfx) { 
+    die "ERROR required blast DB file " . $blastx_db_root . $sfx . " does not exist or is empty"; 
+  }
+}
+
 #############################################
 # output program banner and open output files
 #############################################
@@ -678,6 +687,7 @@ $execs_H{"esl-reformat"}      = $esl_exec_dir   . "esl-reformat";
 $execs_H{"esl_fetch_cds"}     = $esl_fetch_cds;
 $execs_H{"esl-epn-translate"} = $esl_epn_translate;
 $execs_H{"esl-ssplit"}        = $esl_ssplit;
+$execs_H{"blastx"}            = $blast_exec_dir . "blastx";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################
@@ -983,6 +993,21 @@ mdl_results_add_b5e_b5u_errors(\%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH,
 ftr_results_add_b5e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
                            \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+##################################
+# Step 10c. Run BLASTX for all CDS
+##################################
+$start_secs = outputProgressPrior("Running BLASTX", $progress_w, $log_FH, *STDOUT);
+blastx_hits(\%execs_H, $blastx_db_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+##################################
+# Step 10c. Parse BLASTX output
+##################################
+#$start_secs = outputProgressPrior("Running BLASTX", $progress_w, $log_FH, *STDOUT);
+#blastx_hits(\%execs_H, $blastx_db_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+#outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 
 #########################################################
 # Step 11. Examine each predicted feature to see if:
@@ -9610,4 +9635,54 @@ sub aorg_get_origin_output_for_sequence {
   }
 
   return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail);
+}
+
+#################################################################
+# Subroutine:  blastx_hits()
+# Incept:      EPN, Thu Oct  4 15:25:00 2018
+#
+# Purpose:    For each fasta file of predicted hits, run them as
+#             blastx queries against the appropriate target blast DBs.
+#
+# Arguments: 
+#  $execs_HR:          REF to a hash with "hmmbuild" and "hmmalign"
+#                      executable paths
+#  $blastx_db_root:    path to blastx database ($blastx_db_root.phr, $blastx_db_root.pin and 
+#                      $blastx_db_root.psq were all verified to exist earlier)
+#  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If blastx fails.
+#
+################################################################# 
+sub blastx_hits {
+  my $sub_name = "blastx_hits";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $blastx_db, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
+  my $ftr_info_file_key = "blastx.out";
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || 
+       ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
+      my $query_file = $ftr_info_HAR->{"predicted.hits.fa"}[$ftr_idx];
+      my $blastx_out = $query_file . ".blastx";
+      my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $blastx_db -seg no -num_descriptions 3 -num_alignments 3 -out $blastx_out";
+      runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = $blastx_out;
+      my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $blastx_out, 0, "blastx output for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . "(idx: $ftr_idx)");
+    }
+    else { 
+      $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = "/dev/null";
+    }
+  }
+
+  return;
 }
