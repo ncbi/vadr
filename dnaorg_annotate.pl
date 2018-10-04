@@ -688,6 +688,7 @@ $execs_H{"esl_fetch_cds"}     = $esl_fetch_cds;
 $execs_H{"esl-epn-translate"} = $esl_epn_translate;
 $execs_H{"esl-ssplit"}        = $esl_ssplit;
 $execs_H{"blastx"}            = $blast_exec_dir . "blastx";
+$execs_H{"parse_blastx"}      = $dnaorgdir . "/dnaorg_scripts/parse_blastx.pl";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################
@@ -997,17 +998,9 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ##################################
 # Step 10c. Run BLASTX for all CDS
 ##################################
-$start_secs = outputProgressPrior("Running BLASTX", $progress_w, $log_FH, *STDOUT);
-blastx_hits(\%execs_H, $blastx_db_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+$start_secs = outputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
+run_blastx_and_parse_output(\%execs_H, $blastx_db_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-##################################
-# Step 10c. Parse BLASTX output
-##################################
-#$start_secs = outputProgressPrior("Running BLASTX", $progress_w, $log_FH, *STDOUT);
-#blastx_hits(\%execs_H, $blastx_db_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
-#outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
 
 #########################################################
 # Step 11. Examine each predicted feature to see if:
@@ -9638,7 +9631,7 @@ sub aorg_get_origin_output_for_sequence {
 }
 
 #################################################################
-# Subroutine:  blastx_hits()
+# Subroutine:  run_blastx_and_parse_output()
 # Incept:      EPN, Thu Oct  4 15:25:00 2018
 #
 # Purpose:    For each fasta file of predicted hits, run them as
@@ -9658,31 +9651,42 @@ sub aorg_get_origin_output_for_sequence {
 # Dies:       If blastx fails.
 #
 ################################################################# 
-sub blastx_hits {
-  my $sub_name = "blastx_hits";
+sub run_blastx_and_parse_output {
+  my $sub_name = "run_blastx_and_parse_output";
   my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($execs_HR, $blastx_db, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-  my $ftr_info_file_key = "blastx.out";
+  my $out_ftr_info_file_key = "blastx.out";
+  my $sum_ftr_info_file_key = "blastx.summary";
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || 
        ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
       my $query_file = $ftr_info_HAR->{"predicted.hits.fa"}[$ftr_idx];
-      my $blastx_out = $query_file . ".blastx";
-      my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $blastx_db -seg no -num_descriptions 3 -num_alignments 3 -out $blastx_out";
+      my $blastx_out_file     = $query_file . ".blastx.out";
+      my $blastx_summary_file = $query_file . ".blastx.summary.txt";
+      my $blastx_cmd          = $execs_HR->{"blastx"} . " -query $query_file -db $blastx_db -seg no -num_descriptions 3 -num_alignments 3 -out $blastx_out_file";
       runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-      $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = $blastx_out;
-      my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $blastx_out, 0, "blastx output for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . "(idx: $ftr_idx)");
+      $ftr_info_HAR->{$out_ftr_info_file_key}[$ftr_idx] = $blastx_out_file;
+      my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $out_ftr_info_file_key, $ofile_info_HHR->{"FH"});
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $blastx_out_file, 0, "blastx output for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . "(idx: $ftr_idx)");
+
+      # now parse its output
+      my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
+      runCommand($parse_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      $ftr_info_HAR->{$sum_ftr_info_file_key}[$ftr_idx] = $blastx_summary_file;
+      $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $sum_ftr_info_file_key, $ofile_info_HHR->{"FH"});
+      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $blastx_summary_file, 0, "parsed (summarized) blastx output for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . "(idx: $ftr_idx)");
     }
     else { 
-      $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = "/dev/null";
+      $ftr_info_HAR->{$out_ftr_info_file_key}[$ftr_idx] = "/dev/null";
+      $ftr_info_HAR->{$sum_ftr_info_file_key}[$ftr_idx] = "/dev/null";
     }
   }
 
   return;
 }
+
