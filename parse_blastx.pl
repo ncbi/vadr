@@ -37,6 +37,7 @@ my $Linetype_query_aln     = 8;
 my $Linetype_subject_aln   = 9;
 my $Linetype_frame         = 10;
 my $Linetype_other         = 11;
+my $Linetype_searchspace   = 12;
 
 # variables used while parsing input file
 my $input_file;             #file with blastx output to parse
@@ -133,248 +134,274 @@ if(! defined $input_file)           { $reqopts_errmsg .= "ERROR, --input_file no
 open(INPUT,        "<", $input_file)           or die "Cannot open $input_file for reading\n";
 
 
+my $keep_going = 1; # set to '0' when we get to the end of the file
+my $new_query  = 0; # set to '1' when we read a new query
+$qdef = undef;
+while($keep_going) { 
+  $new_query = 0;
 #-----------------------------------------------------------
-#	obtain query data
+#	obtain query data (for first query)
 #-----------------------------------------------------------
-while(<INPUT>){    #read in a line
- chomp;           #remove new line character
- ($qdef) = m/^Query= (.*)$/;   #assign to qdef if line starts with Query
- last if($qdef);               #if qdef got defined, exit the loop
-}
-$state = $State_FoundQuery;
-
-($qacc) = ($qdef =~ m/^(\S+)/); #get the accession for this query 
-
-while(<INPUT>){   #read a line of input
- chomp;          #remove newline character
- ($qlen) = m/Length=(\d+)/;  #find length designation
- last if($qlen);                  #if qlength defined, exit loop
- my ($qrest) = m/^\s*(\S.*\S)\s*$/; #otherwise read the query
- $qdef .= " ".$qrest if($qrest);    #keep concatenating $qrest to $qdef
-}
-
+  if(! defined $qdef) { 
+    while(<INPUT>){    #read in a line
+      chomp;           #remove new line character
+      ($qdef) = m/^Query= (.*)$/;   #assign to qdef if line starts with Query
+      last if($qdef);               #if qdef got defined, exit the loop
+    }
+  }
+  # else $qdef is defined
+  $state = $State_FoundQuery;
+  
+  ($qacc) = ($qdef =~ m/^(\S+)/); #get the accession for this query 
+  
+  while(<INPUT>){   #read a line of input
+    chomp;          #remove newline character
+    ($qlen) = m/Length=(\d+)/;  #find length designation
+    last if($qlen);                  #if qlength defined, exit loop
+    my ($qrest) = m/^\s*(\S.*\S)\s*$/; #otherwise read the query
+    $qdef .= " ".$qrest if($qrest);    #keep concatenating $qrest to $qdef
+  }
+  
 #-----------------------------------------------------------
 #	output query data
 #-----------------------------------------------------------
-print "QACC\t".$qacc."\n";       #a blank line except for QACC on it
-print "QDEF\t".$qdef."\n";     #QDEF followed by the def line
-print "QLEN\t".$qlen."\n";     #QLEN followed by the length of the query
-
-$nmatches = 0;        #number of matches initialized to 0
+  print "QACC\t".$qacc."\n";       #a blank line except for QACC on it
+  print "QDEF\t".$qdef."\n";     #QDEF followed by the def line
+  print "QLEN\t".$qlen."\n";     #QLEN followed by the length of the query
+  
+  $nmatches = 0;        #number of matches initialized to 0
 #-----------------------------------------------------------
 #	skip the junk before hits
 #-----------------------------------------------------------
-
-$processing_alignment = 0;
-while($nextline = <INPUT>){     #read a line of input
+  
+  $processing_alignment = 0;
+  while((! $new_query) && ($keep_going)) { 
+    $nextline = <INPUT>; #read a line of input
     chomp($nextline);
     $linetype = determineLineType($nextline,
-				  $Linetype_BLASTX,
-				  $Linetype_match,
-				  $Linetype_position,
-				  $Linetype_query_name,
-				  $Linetype_length,
-				  $Linetype_subject_name,
-				  $Linetype_score,
-				  $Linetype_identities,				  
-				  $Linetype_query_aln,
-				  $Linetype_subject_aln,
-				  $Linetype_other);
+                                  $Linetype_BLASTX,
+                                  $Linetype_match,
+                                  $Linetype_position,
+                                  $Linetype_query_name,
+                                  $Linetype_length,
+                                  $Linetype_subject_name,
+                                  $Linetype_score,
+                                  $Linetype_identities,				  
+                                  $Linetype_query_aln,
+                                  $Linetype_subject_aln,
+                                  $Linetype_searchspace,
+                                  $Linetype_other); 
     if ($DEBUG) {
-	print "saw $nextline and classified as type $linetype\n";
+      print "saw $nextline and classified as type $linetype\n";
     }
     if($Linetype_subject_name == $linetype){        #if the line starts with >
-	$state = $State_SeenDefline;
-	if ($DEBUG) {
-	    print "set state to $State_SeenDefline $nextline\n";
-	}
-	($hdef) = ($nextline =~ m/>\s*([A-Z]\S+.*)/);
-	($hacc) = ($hdef =~ m/^(\S+)/);
-	$nhsp = 0;        #number of alignments for one match initialized to 0
-	if ($processing_alignment) {
-	    if ($overall_query_stop_representation) {
-		print "STOP\t" .$overall_query_stop_representation . "\n";
-	    }
-	    if ($overall_query_gap_representation) {
-		print "DEL\t" .$overall_query_gap_representation . "\n";
-		print "MAXDE\t" .$maximum_query_gap ."\n";
-	    }
-	    if ($overall_subject_gap_representation) {
-		print "INS\t" .$overall_subject_gap_representation . "\n";
-		print "MAXIN\t" .$maximum_subject_gap ."\n"; 		
-	    }	    	    
-	    print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
-	    print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
-	    $processing_alignment = 0;
-	    $overall_query_stop_representation = "";
-	    $one_row_query_stop_representation = "";	    
-	    $overall_query_gap_representation = "";
-	    $one_row_query_gap_representation = "";
-	    $overall_subject_gap_representation = "";
-	    $one_row_subject_gap_representation = "";
-	    $maximum_subject_gap = 0;
-	    $maximum_query_gap = 0;	    
-	}	
+      $state = $State_SeenDefline;
+      if ($DEBUG) {
+        print "set state to $State_SeenDefline $nextline\n";
+      }
+      ($hdef) = ($nextline =~ m/>\s*([A-Z]\S+.*)/);
+      ($hacc) = ($hdef =~ m/^(\S+)/);
+      $nhsp = 0;        #number of alignments for one match initialized to 0
+      if ($processing_alignment) {
+        if ($overall_query_stop_representation) {
+          print "STOP\t" .$overall_query_stop_representation . "\n";
+        }
+        if ($overall_query_gap_representation) {
+          print "DEL\t" .$overall_query_gap_representation . "\n";
+          print "MAXDE\t" .$maximum_query_gap ."\n";
+        }
+        if ($overall_subject_gap_representation) {
+          print "INS\t" .$overall_subject_gap_representation . "\n";
+          print "MAXIN\t" .$maximum_subject_gap ."\n"; 		
+        }	    	    
+        print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
+        print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
+        $processing_alignment = 0;
+        $overall_query_stop_representation = "";
+        $one_row_query_stop_representation = "";	    
+        $overall_query_gap_representation = "";
+        $one_row_query_gap_representation = "";
+        $overall_subject_gap_representation = "";
+        $one_row_subject_gap_representation = "";
+        $maximum_subject_gap = 0;
+        $maximum_query_gap = 0;	    
+      }	
     }
     if (($state == $State_SeenDefline) && ($Linetype_length == $linetype)) {
-	($slen) =  ($nextline =~ m/Length=(\d+)/);  #find length designation
-	$nmatches++;            #increment the number of matches
-	if ($nmatches > 1) {
-	    print "END_MATCH\n";  #print END_MATCH
-	}
+      ($slen) =  ($nextline =~ m/Length=(\d+)/);  #find length designation
+      $nmatches++;            #increment the number of matches
+      if ($nmatches > 1) {
+        print "END_MATCH\n";  #print END_MATCH
+      }
     }
     #    if (($state == $State_InAlignment) && ($linetype == $Linetype_score) && ($nhsp == 0)) {
     if (($linetype == $Linetype_score) && ($nhsp == 0)) {    
-	print "MATCH\t".$nmatches."\n";  #print HIT and the number of the hit
-	print "HACC\t".$hacc."\n";   #print HACC and the accession
-	print "HDEF\t".$hdef."\n"; #print HDEF and the defline
-	print "SLEN\t".$slen."\n"; #print SLEN and the subject length
+      print "MATCH\t".$nmatches."\n";  #print HIT and the number of the hit
+      print "HACC\t".$hacc."\n";   #print HACC and the accession
+      print "HDEF\t".$hdef."\n"; #print HDEF and the defline
+      print "SLEN\t".$slen."\n"; #print SLEN and the subject length
     }
     if ($linetype == $Linetype_score) {
-	($score, $eval) = getScoreExpect($nextline);
-	$nhsp++;            #increment the number of matches
-	if ($processing_alignment) {
-	    if ($DEBUG) {
-		print "Going to print alignment summary with overal_subject_representation as $overall_subject_gap_representation\n";
-	    }
-	    if ($overall_query_stop_representation) {
-		print "STOP\t" .$overall_query_stop_representation . "\n";
-	    }
-	    if ($overall_query_gap_representation) {
-		print "DEL\t" .$overall_query_gap_representation . "\n";
-		print "MAXDE\t" .$maximum_query_gap ."\n"; 
-	    }
-	    if ($overall_subject_gap_representation) {
-		print "INS\t" .$overall_subject_gap_representation . "\n";
-		print "MAXIN\t" .$maximum_subject_gap ."\n"; 				
-	    }	    
-	    print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
-	    print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
-	    $processing_alignment = 0;
-	    $overall_query_stop_representation = "";
-	    $one_row_query_stop_representation = "";	    
-	    $overall_query_gap_representation = "";
-	    $one_row_query_gap_representation = "";
-	    $overall_subject_gap_representation = "";
-	    $one_row_subject_gap_representation = "";	    
-            $maximum_query_gap = 0;
-	    $maximum_subject_gap = 0;
-	}
-	print "HSP\t".$nhsp."\n";      #print HSP and the number of the hsp
-	print "SCORE\t".$score."\n";   #print SCORE and the raw score
-	print "EVALUE\t".$eval."\n";   #print EVALUE and the e-value
+      ($score, $eval) = getScoreExpect($nextline);
+      $nhsp++;            #increment the number of matches
+      if ($processing_alignment) {
+        if ($DEBUG) {
+          print "Going to print alignment summary with overal_subject_representation as $overall_subject_gap_representation\n";
+        }
+        if ($overall_query_stop_representation) {
+          print "STOP\t" .$overall_query_stop_representation . "\n";
+        }
+        if ($overall_query_gap_representation) {
+          print "DEL\t" .$overall_query_gap_representation . "\n";
+          print "MAXDE\t" .$maximum_query_gap ."\n"; 
+        }
+        if ($overall_subject_gap_representation) {
+          print "INS\t" .$overall_subject_gap_representation . "\n";
+          print "MAXIN\t" .$maximum_subject_gap ."\n"; 				
+        }	    
+        print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
+        print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
+        $processing_alignment = 0;
+        $overall_query_stop_representation = "";
+        $one_row_query_stop_representation = "";	    
+        $overall_query_gap_representation = "";
+        $one_row_query_gap_representation = "";
+        $overall_subject_gap_representation = "";
+        $one_row_subject_gap_representation = "";	    
+        $maximum_query_gap = 0;
+        $maximum_subject_gap = 0;
+      }
+      print "HSP\t".$nhsp."\n";      #print HSP and the number of the hsp
+      print "SCORE\t".$score."\n";   #print SCORE and the raw score
+      print "EVALUE\t".$eval."\n";   #print EVALUE and the e-value
     }
     if ($linetype == $Linetype_identities) {
-	($hlen, $identities, $gaps) = getIdentitiesGaps($nextline);
-	$first_line_query = $first_line_subject = 1;
+      ($hlen, $identities, $gaps) = getIdentitiesGaps($nextline);
+      $first_line_query = $first_line_subject = 1;
     }
     if ($linetype == $Linetype_frame) {
-	$frame = getFrame($nextline);	
-	print "HLEN\t".$hlen."\n";   #print HLEN and the alignment length
-	print "IDENT\t".$identities."\n";   #print IDENTITIES and the number of identities
-	print "GAPS\t".$gaps."\n";   #print GAPS and the number of gaps
-	print "FRAME\t".$frame."\n";   #print FRAME and the frame of the nucleotide to protein alignment
-	$new_query_gap_overhang = $old_query_gap_overhang = 0;
-	$one_line_query_gap = $one_line_subject_gap = 0;
+      $frame = getFrame($nextline);	
+      print "HLEN\t".$hlen."\n";   #print HLEN and the alignment length
+      print "IDENT\t".$identities."\n";   #print IDENTITIES and the number of identities
+      print "GAPS\t".$gaps."\n";   #print GAPS and the number of gaps
+      print "FRAME\t".$frame."\n";   #print FRAME and the frame of the nucleotide to protein alignment
+      $new_query_gap_overhang = $old_query_gap_overhang = 0;
+      $one_line_query_gap = $one_line_subject_gap = 0;
     }
     if ($linetype == $Linetype_query_aln) {
-	if (! $processing_alignment) {
-	    $processing_alignment = 1;
-	}
-	# Query alignment line:line that begins with "Query "including a segment of the query in an alignment
-	($query_start, $query_end, $query_alignment_part) = getAlignmentPositions($nextline);
-	if ($first_line_query) {
-	    $overall_query_start = $query_start;
-	    $overall_query_end = $query_end;
-	    $first_line_query = 0;
-	}
-	else {
-	    updateOverallPositions($processing_alignment, $query_start, $query_end, \$overall_query_start, \$overall_query_end);
-	}
+      if (! $processing_alignment) {
+        $processing_alignment = 1;
+      }
+      # Query alignment line:line that begins with "Query "including a segment of the query in an alignment
+      ($query_start, $query_end, $query_alignment_part) = getAlignmentPositions($nextline);
+      if ($first_line_query) {
+        $overall_query_start = $query_start;
+        $overall_query_end = $query_end;
+        $first_line_query = 0;
+      }
+      else {
+        updateOverallPositions($processing_alignment, $query_start, $query_end, \$overall_query_start, \$overall_query_end);
+      }
     }
     if($linetype == $Linetype_subject_aln) {
-	# Subject alignment line: line that begins with "Sbjct "  including a segment of the vector (subject) in an alignment
-	($subject_start, $subject_end, $subject_alignment_part) = getAlignmentPositions($nextline);
-	if ($first_line_subject) {
-	    $overall_subject_start = $subject_start;
-	    $overall_subject_end = $subject_end;
-	    $first_line_subject = 0;
-	}
-	else {
-	    updateOverallPositions($processing_alignment, $subject_start, $subject_end, \$overall_subject_start, \$overall_subject_end);
-	}
-        $one_row_query_stop_representation = findQueryStops($query_alignment_part, $query_start, $query_end);
-	if ($one_row_query_stop_representation) {
-	    if ($overall_query_stop_representation) {
-		if ($query_start < $query_end) {
-		    $overall_query_stop_representation = $overall_query_stop_representation . ";" . $one_row_query_stop_representation;
-		}
-		else {
-		    $overall_query_stop_representation = $one_row_query_stop_representation . ";" . $overall_query_stop_representation;
-		}
-	    }
-	    else {
-		$overall_query_stop_representation = $one_row_query_stop_representation;
-	    }
-	}
-	if ($gaps > 0) {
-	    ($new_query_gap_overhang, $one_row_query_gap_representation, $one_line_query_gap) = findQueryGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_query_gap_overhang);
-	    if ($DEBUG) {
-		print "From findQueryGaps returned $one_row_query_gap_representation $new_query_gap_overhang\n";
-	    }
-	    if ($one_line_query_gap > $maximum_query_gap) {
-		$maximum_query_gap = $one_line_query_gap;
-	    }
-	    if (($overall_query_gap_representation) && ($one_row_query_gap_representation)) {
-		if ($subject_start < $subject_end) {
-		    $overall_query_gap_representation = $overall_query_gap_representation . ";" . $one_row_query_gap_representation;
-		}
-		else {
-		    $overall_query_gap_representation = $one_row_query_gap_representation . ";" . $overall_query_gap_representation;
-		}
-	    }
-	    else {
-		if ($subject_start < $subject_end) {
-		    $overall_query_gap_representation = $overall_query_gap_representation . $one_row_query_gap_representation;
-		}
-		else {
-		    $overall_query_gap_representation = $one_row_query_gap_representation . $overall_query_gap_representation;
-		}
-	    }
-	    $old_query_gap_overhang = $new_query_gap_overhang;
-	    ($new_subject_gap_overhang, $one_row_subject_gap_representation, $one_line_subject_gap) = findSubjectGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_subject_gap_overhang);
-	    if ($one_line_subject_gap > $maximum_subject_gap) {
-		$maximum_subject_gap = $one_line_subject_gap;
-	    }
-	    if (($overall_subject_gap_representation) && ($one_row_subject_gap_representation)) {
-		$overall_subject_gap_representation = $overall_subject_gap_representation . ";" . $one_row_subject_gap_representation;
-	    }
-	    else {
-		$overall_subject_gap_representation = $overall_subject_gap_representation . $one_row_subject_gap_representation;
-	    }
-	    if ($DEBUG) {
-		print "Updated subject gap representation is $overall_subject_gap_representation\n";
-	    }
-	    $old_subject_gap_overhang = $new_subject_gap_overhang;	    
-	}
+      # Subject alignment line: line that begins with "Sbjct "  including a segment of the vector (subject) in an alignment
+      ($subject_start, $subject_end, $subject_alignment_part) = getAlignmentPositions($nextline);
+      if ($first_line_subject) {
+        $overall_subject_start = $subject_start;
+        $overall_subject_end = $subject_end;
+        $first_line_subject = 0;
+      }
+      else {
+        updateOverallPositions($processing_alignment, $subject_start, $subject_end, \$overall_subject_start, \$overall_subject_end);
+      }
+      $one_row_query_stop_representation = findQueryStops($query_alignment_part, $query_start, $query_end);
+      if ($one_row_query_stop_representation) {
+        if ($overall_query_stop_representation) {
+          if ($query_start < $query_end) {
+            $overall_query_stop_representation = $overall_query_stop_representation . ";" . $one_row_query_stop_representation;
+          }
+          else {
+            $overall_query_stop_representation = $one_row_query_stop_representation . ";" . $overall_query_stop_representation;
+          }
+        }
+        else {
+          $overall_query_stop_representation = $one_row_query_stop_representation;
+        }
+      }
+      if ($gaps > 0) {
+        ($new_query_gap_overhang, $one_row_query_gap_representation, $one_line_query_gap) = findQueryGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_query_gap_overhang);
+        if ($DEBUG) {
+          print "From findQueryGaps returned $one_row_query_gap_representation $new_query_gap_overhang\n";
+        }
+        if ($one_line_query_gap > $maximum_query_gap) {
+          $maximum_query_gap = $one_line_query_gap;
+        }
+        if (($overall_query_gap_representation) && ($one_row_query_gap_representation)) {
+          if ($subject_start < $subject_end) {
+            $overall_query_gap_representation = $overall_query_gap_representation . ";" . $one_row_query_gap_representation;
+          }
+          else {
+            $overall_query_gap_representation = $one_row_query_gap_representation . ";" . $overall_query_gap_representation;
+          }
+        }
+        else {
+          if ($subject_start < $subject_end) {
+            $overall_query_gap_representation = $overall_query_gap_representation . $one_row_query_gap_representation;
+          }
+          else {
+            $overall_query_gap_representation = $one_row_query_gap_representation . $overall_query_gap_representation;
+          }
+        }
+        $old_query_gap_overhang = $new_query_gap_overhang;
+        ($new_subject_gap_overhang, $one_row_subject_gap_representation, $one_line_subject_gap) = findSubjectGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_subject_gap_overhang);
+        if ($one_line_subject_gap > $maximum_subject_gap) {
+          $maximum_subject_gap = $one_line_subject_gap;
+        }
+        if (($overall_subject_gap_representation) && ($one_row_subject_gap_representation)) {
+          $overall_subject_gap_representation = $overall_subject_gap_representation . ";" . $one_row_subject_gap_representation;
+        }
+        else {
+          $overall_subject_gap_representation = $overall_subject_gap_representation . $one_row_subject_gap_representation;
+        }
+        if ($DEBUG) {
+          print "Updated subject gap representation is $overall_subject_gap_representation\n";
+        }
+        $old_subject_gap_overhang = $new_subject_gap_overhang;	    
+      }
     }
-}
+    if($linetype == $Linetype_searchspace) { 
+      # end of query, look for next query
+#-----------------------------------------------------------
+#	obtain query data (for query #2 or greater)
+#-----------------------------------------------------------
+      $qdef = undef;
+      while(<INPUT>){    #read in a line
+        chomp;           #remove new line character
+        ($qdef) = m/^Query= (.*)$/;   #assign to qdef if line starts with Query
+        if($qdef) { $new_query = 1; }
+        last if($qdef);               #if qdef got defined, exit the loop
+      }
+      if(! defined $qdef) { # reached end of file
+        $keep_going = 0;
+      }
+    }
+  }
 
-if ($overall_query_stop_representation) {
+  if ($overall_query_stop_representation) {
     print "STOP\t" .$overall_query_stop_representation . "\n"; 
-}
-if ($overall_query_gap_representation) {
+  }
+  if ($overall_query_gap_representation) {
     print "DEL\t" .$overall_query_gap_representation . "\n";
     print "MAXDE\t" .$maximum_query_gap ."\n";     
-}
-if ($overall_subject_gap_representation) {
+  }
+  if ($overall_subject_gap_representation) {
     print "INS\t" .$overall_subject_gap_representation . "\n";
     print "MAXIN\t" .$maximum_subject_gap ."\n"; 		    
+  }
+  print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
+  print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
+  print "END_MATCH\n";  #print END_MATCH
 }
-print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
-print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
-print "END_MATCH\n";  #print END_MATCH
-
 ################################################
 # List of subroutines:
 #
@@ -419,12 +446,12 @@ print "END_MATCH\n";  #print END_MATCH
 ##########################################################################################
 sub determineLineType {
     my $sub_name = "determineLineType()";
-    my $nargs_exp = 12;
+    my $nargs_exp = 13;
     if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
     my ($line, $Linetype_BLASTX, $Linetype_match, $Linetype_position, $Linetype_query_name,
 	$Linetype_length, $Linetype_subject_name, $Linetype_score, $linetypeidentitis, $Linetype_query_aln,
-	$Linetype_vector_aln, $Linetype_other) = @_;
+	$Linetype_vector_aln, $Linetype_searchspace, $Linetype_other) = @_;
 
     if($line =~ m/^BLASTX/)                              { return $Linetype_BLASTX;      }
     if($line =~ m/^Strong/)                              { return $Linetype_match;       }
@@ -437,10 +464,11 @@ sub determineLineType {
     if($line =~ m/^>\s*[A-Z]/)                           { return $Linetype_subject_name; }
     if(($line =~ m/^\s*Score\s*=\s+\S+\s+bits\s+\(\d+\)/) && ($line =~m/Expect/))
       { return $Linetype_score;       }
-    if($line =~ m/^\s*Identities\s*=\s+\S+/)             { return $Linetype_identities;       }    
+    if($line =~ m/^\s*Identities\s*=\s+\S+/)             { return $Linetype_identities;  }    
     if($line =~ m/^Query\s+\d+\s+\D+\d+/)                { return $Linetype_query_aln;   }
-    if($line =~ m/^Sbjct\s+\d+\s+\D+\d+/)                { return $Linetype_subject_aln;  }
+    if($line =~ m/^Sbjct\s+\d+\s+\D+\d+/)                { return $Linetype_subject_aln; }
     if($line =~ m/^\s*Frame\s*=\s+\S+/)                  { return $Linetype_frame;       }        
+    if($line =~ m/^Effective search space used/)         { return $Linetype_searchspace; }        
     if ($DEBUG) {
 	print "In determineLineType; about to return other, which is $Linetype_other \n";
     }
