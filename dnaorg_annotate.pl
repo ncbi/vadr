@@ -247,47 +247,52 @@ opt_Add("--mxsize",     "integer", 2048,                     1,"--doalign",undef
 opt_Add("--hmmonly",    "integer", 0,                        1,    undef, undef,      "run in HMM-only mode for models with len >= <n>",             "run in HMM-only mode for models with >= <n> positions", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for alternative modes";
- #       option               type   default                group  requires incompat                        preamble-output                                                      help-output    
+#        option               type   default                group  requires incompat                        preamble-output                                                      help-output    
 opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--skipedirect,--skipfetch",   "single cmdline argument is a fasta file of sequences, not a list of accessions", "single cmdline argument is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
 opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"3"} = "options for modifying which errors are reported";
+$opt_group_desc_H{"3"} = "options for tuning protein validation with blastx";
+#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
+opt_Add("--xalntol",     "integer",  5,                       3,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xinstol",     "integer",  27,                      3,     undef, undef,     "max allowed nucleotide insertion length in blastx validation is <n>",                          "max allowed nucleotide insertion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"4"} = "options for modifying which errors are reported";
 #       option               type   default                group  requires incompat preamble-output                                  help-output    
-opt_Add("--allolp",     "boolean", 0,                       3,    undef,   undef,   "report all olp errors, do not skip due to nop", "report all olp errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
-opt_Add("--alladj",     "boolean", 0,                       3,    undef,   undef,   "report all adj errors, do not skip due to nop", "report all aja/ajb errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
+opt_Add("--allolp",     "boolean", 0,                       4,    undef,   undef,   "report all olp errors, do not skip due to nop", "report all olp errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
+opt_Add("--alladj",     "boolean", 0,                       4,    undef,   undef,   "report all adj errors, do not skip due to nop", "report all aja/ajb errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"4"} = "options for skipping/adding optional stages";
+$opt_group_desc_H{"5"} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
-opt_Add("--doalign",    "boolean", 0,                       4,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
-opt_Add("--checkftable","boolean", 0,                       4,    undef,   undef,   "exhaustively check feature table rules",   "exhastively check feature table error exception rules", \%opt_HH, \@opt_order_A);
+opt_Add("--doalign",    "boolean", 0,                       5,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
+opt_Add("--checkftable","boolean", 0,                       5,    undef,   undef,   "exhaustively check feature table rules",   "exhastively check feature table error exception rules", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"5"} = "options that modify the tabular output file";
+$opt_group_desc_H{"6"} = "options that modify the tabular output file";
 #       option               type   default                group  requires incompat preamble-output                                               help-output    
-opt_Add("--tblfirst",    "boolean", 0,                      5,    undef,   undef,   "put first accession first on each .tbl page",               "include annotation for first accession on each page of .tbl output file", \%opt_HH, \@opt_order_A);
-opt_Add("--tblnocomp",   "boolean", 0,                      5,    undef,   undef,   "do not compare annotations to existing GenBank annotation", "do not include information comparing predicted annotations to existing GenBank annotations", \%opt_HH, \@opt_order_A);
+opt_Add("--tblfirst",    "boolean", 0,                      6,    undef,   undef,   "put first accession first on each .tbl page",               "include annotation for first accession on each page of .tbl output file", \%opt_HH, \@opt_order_A);
+opt_Add("--tblnocomp",   "boolean", 0,                      6,    undef,   undef,   "do not compare annotations to existing GenBank annotation", "do not include information comparing predicted annotations to existing GenBank annotations", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"6"} = "optional output files";
+$opt_group_desc_H{"7"} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                        6,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
-opt_Add("--ftrinfo",    "boolean", 0,                        6,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--seqinfo",    "boolean", 0,                        6,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
-opt_Add("--errinfo",    "boolean", 0,                        6,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
+opt_Add("--mdlinfo",    "boolean", 0,                        7,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--ftrinfo",    "boolean", 0,                        7,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--seqinfo",    "boolean", 0,                        7,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
+opt_Add("--errinfo",    "boolean", 0,                        7,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"7"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
+$opt_group_desc_H{"8"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
 #     option               type       default               group   requires    incompat                    preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       7,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                       7,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                       7,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                       7,"--skipscan",  undef,                      "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipedirect",   "boolean", 0,                       8,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                       8,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",      "boolean", 0,                       8,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skiptranslate", "boolean", 0,                       8,"--skipscan",  undef,                      "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"8"} = "TEMPORARY options for the alternative method of identifying origin sequences";
+$opt_group_desc_H{"9"} = "TEMPORARY options for the alternative method of identifying origin sequences";
 #     option               type       default               group   requires                                   incompat     preamble-output                                                         help-output    
-opt_Add("--aorgmodel",     "string",  undef,                   8,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgstart",     "integer", 0,                       8,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
-opt_Add("--aorgoffset",    "integer", 0,                       8,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
-opt_Add("--aorglen",       "integer", 0,                       8,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgethresh",   "real",    1.0,                     8,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgppthresh",  "real",    0.6,                     8,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgmodel",     "string",  undef,                   9,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgstart",     "integer", 0,                       9,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
+opt_Add("--aorgoffset",    "integer", 0,                       9,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
+opt_Add("--aorglen",       "integer", 0,                       9,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgethresh",   "real",    1.0,                     9,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgppthresh",  "real",    0.6,                     9,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -324,6 +329,9 @@ my $options_okay =
 # options for alternative modes
                 'infasta'      => \$GetOptions_H{"--infasta"},
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
+# options for tuning protein validation with blastx
+                'xalntol=s'    => \$GetOptions_H{"--xalntol"},
+                'xinstol=s'    => \$GetOptions_H{"--xinstol"},
 # options for modifying which errors are reported
                 'allolp'       => \$GetOptions_H{"--allolp"},
                 'alladj'       => \$GetOptions_H{"--alladj"},
@@ -995,11 +1003,11 @@ ftr_results_add_b5e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_re
                            \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-##################################
-# Step 10c. Run BLASTX for all CDS
-##################################
+#########################################################
+# Step 10c. Run BLASTX: all sequences versus all proteins
+#########################################################
 $start_secs = outputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
-run_blastx_and_parse_output(\%execs_H, $blastx_db_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+run_blastx_and_summarize_output(\%execs_H, $out_root, $seq_file, $blastx_db_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################################################
@@ -1212,8 +1220,15 @@ mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA
 ftr_results_calculate($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH,
                       \%cds_tbl_HHA, \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
+# calculate the blastx related information
+ftr_results_calculate_blastx($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr_info_HA, \%seq_info_HA, \%seq_name_index_H, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
+
 # recalculate out_start and out_stop and out_stop_codon values, they may have changed for final mature peptides in each CDS
 mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, $ofile_info_HH{"FH"});
+
+# add xip and mip errors
+ftr_results_add_xip_errors(\%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
+                           \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # compare our final annotations to GenBank
 mdl_results_compare_to_genbank_annotations(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
@@ -3523,6 +3538,198 @@ sub ftr_results_add_b3e_errors {
   return;
 }      
 
+
+#################################################################
+# Subroutine:  ftr_results_add_xip_errors
+# Incept:      EPN, Tue Oct 23 15:54:50 2018
+#
+# Purpose:    Report 'xip' errors for features of type 'cds-notmp' and 'cds-mp'
+#             Uses ftr_results to do this. 
+
+#             child of a multifeature feature should have a 'b5e' error
+#             (by looking at p_5overhang and p_5seqflush values in mdl_results)
+#             then the parent multifeature should too.
+#
+#             Checks for and adds or updates the following error 
+#             codes for features with "annot_type" eq "multifeature' and
+#             type 'cds-mp':
+#             
+#             "xip": adds this error, if blastx does not validate a CDS prediction
+#
+# Arguments: 
+#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
+#  $ftr_results_AAHR:       REF to feature results AAH, PRE-FILLED
+#  $mdl_results_AAHR:       REF to model results AAH, PRE-FILLED
+#  $err_ftr_instances_AHHR: REF to error instances AHH, ADDED TO HERE
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+################################################################# 
+sub ftr_results_add_xip_errors { 
+  my $sub_name = "ftr_results_add_xip_errors";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  if(opt_Get("-c", $opt_HHR)) { 
+    DNAORG_FAIL("ERROR, checking for xip errors with when genome is closed, not set up to deal with that yet", 1, undef);
+    # if -c, need to update code below, blastx will have been run on duplicated sequences, 
+    # so out_start may not equal x_start even for same prediction
+  }
+
+  # total counts of things
+  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $ftr_idx;   # counter over features
+  my $seq_idx;   # counter over sequences
+  my $seq_name;  # name of one sequence
+
+  my $aln_tol = opt_Get("--xalntol", $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
+  my $ins_tol = opt_Get("--xinstol", $opt_HHR); # maximum allowed insertion length in blastx output
+
+  # foreach type:'cds-mp' or 'cds-notmp' feature, 
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") ||
+       ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
+
+      my @all_children_idx_A = ();
+      my $na_children = 0;
+      if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") { 
+        # get the all children array
+        @all_children_idx_A = (); # feature indices of the primary children of this feature
+        getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@all_children_idx_A, $FH_HR);
+        $na_children = scalar(@all_children_idx_A);
+      }
+
+      for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+        $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+        my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
+
+        if($seq_info_HAR->{"seq_len"}[$seq_idx] != 
+           $seq_info_HAR->{"accn_len"}[$seq_idx]) { 
+          DNAORG_FAIL("ERROR, checking for xip errors with when genome is closed, not set up to deal with that yet", 1, undef);
+          # if -c, need to update code below, blastx will have been run on duplicated sequences, 
+          # so out_start may not equal x_start even for same prediction
+        }
+
+        my $xip_err_str = ""; # modified if we have an 'xip' error below
+        printf("HEYA LOOKING FOR xip FOR $seq_name $ftr_idx\n");
+        
+        # first, determine predicted start/stop/strand from CM and blastx for this feature
+        my $p_start   = undef; # predicted start  from CM 
+        my $p_stop    = undef; # predicted stop   from CM 
+        my $p_strand  = undef; # predicted strand from CM 
+        my $x_start   = undef; # predicted start  from blastx
+        my $x_stop    = undef; # predicted stop   from blastx
+        my $x_strand  = undef; # predicted strand from blastx
+        my $x_maxins  = undef; # predicted maximum insert from blastx
+        my $x_trcstop = undef; # predicted premature stop from blastx
+        # and get the p_start and p_stop values from "ftbl_out_start
+        if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") { 
+          if((defined $ftr_results_HR->{"out_start"})  && 
+             ($ftr_results_HR->{"out_start"} ne "?") && 
+             (defined $ftr_results_HR->{"out_stop"})  && 
+             ($ftr_results_HR->{"out_stop"} ne "?")) { 
+            $p_start = $ftr_results_HR->{"out_start"};
+            $p_stop  = $ftr_results_HR->{"out_stop"};
+            $p_strand = ($p_start <= $p_stop) ? "+" : "-";
+          }          
+        }
+        elsif($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp") { 
+          my $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
+          my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
+          if($first_mdl_idx == $final_mdl_idx) { # single exon 
+            if((defined $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]{"out_start"}) && 
+               ($mdl_results_AAHR->[$first_mdl_idx][$seq_idx]{"out_start"} ne "?")  && 
+               (defined $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop"}) && 
+               ($mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop"} ne "?")) { 
+              $p_start = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_start"};
+              $p_stop  = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop"};
+              $p_strand = ($p_start <= $p_stop) ? "+" : "-";
+            }
+          }
+        }
+        if((defined $ftr_results_HR->{"x_start"}) && 
+           (defined $ftr_results_HR->{"x_stop"})) { 
+          $x_start   = $ftr_results_HR->{"x_start"};
+          $x_stop    = $ftr_results_HR->{"x_stop"};
+          $x_strand  = $ftr_results_HR->{"x_strand"};
+          if(defined $ftr_results_HR->{"x_maxins"}) { 
+            $x_maxins  = $ftr_results_HR->{"x_maxins"};
+          }
+          if(defined $ftr_results_HR->{"x_trcstop"}) { 
+            $x_trcstop = $ftr_results_HR->{"x_trcstop"};
+          }
+        }
+
+        if(defined $p_start) { 
+          printf("HEYAA seq $seq_idx ftr_idx $ftr_idx " . $ftr_info_HAR->{"type"}[$ftr_idx] . " p_start: $p_start p_stop: $p_stop p_strand: $p_strand\n");
+        }
+
+        # if we have a prediction from the CM, so we should check for xip errors
+        if(defined $p_start) { 
+          # check for lack of prediction failure
+          if(! defined $x_start) { 
+            if($xip_err_str ne "") { $xip_err_str .= ", "; }
+            $xip_err_str = "no blastx hit";
+          }
+          else { # $x_start is defined, we can compare CM and blastx predictions
+            # check for stand mismatch failure
+            if($p_strand ne $x_strand) { 
+              $xip_err_str .= "strand mismatch between nucleotide-based and blastx-based predictions";
+            }
+            else { 
+              # check for alignment start difference failure 
+              my $start_diff = abs($p_start - $x_start);
+              my $stop_diff  = abs($p_stop  - $x_stop);
+              printf("start_diff: $start_diff\n");
+              printf("stop_diff:  $stop_diff\n");
+              if($start_diff > $aln_tol) { 
+                if($xip_err_str ne "") { $xip_err_str .= ", "; }
+                $xip_err_str .= "start positions differ by $start_diff > $aln_tol (CM:$p_start blastx:$x_start)";
+              }                
+              if($stop_diff > $aln_tol) { 
+                if($xip_err_str ne "") { $xip_err_str .= ", "; }
+                $xip_err_str .= "stop positions differ by $stop_diff > $aln_tol (CM:$p_stop blastx:$x_stop)";
+              }
+              # check for too big of an insert
+              if((defined $x_maxins) && ($x_maxins > $ins_tol)) { 
+                if($xip_err_str ne "") { $xip_err_str .= ", "; }
+                $xip_err_str .= "longest blastx predicted insert of length $x_maxins > $ins_tol";
+              }
+              # check for blast predicted truncation
+              if(defined $x_trcstop) { 
+                if($xip_err_str ne "") { $xip_err_str .= ", "; }
+                $xip_err_str .= "blastx alignment includes stop codon ($x_trcstop)";
+              }
+            }
+            if($xip_err_str ne "") { 
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "xip", $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $xip_err_str), $FH_HR);
+            }
+          }                
+        }
+        # if we added a xip, step through all (not just primary) children of this feature and add mip
+        if(($xip_err_str ne "") && ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp")) { 
+          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
+            my $child_ftr_idx = $all_children_idx_A[$child_idx];
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mip", $seq_name, 
+                                sprintf("CDS %s", 
+                                        $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
+                                $FH_HR);
+          }
+        }
+      } # end of 'for($seq_idx' loop
+    }
+  } # end of 'for($ftr_idx' loop
+
+  return;
+}    
+
 #################################################################
 # Subroutine:  mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors
 # Incept:      EPN, Thu Mar 31 13:43:58 2016
@@ -3671,7 +3878,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
           ##############################
           # dup error (duplicate hits) #
           ##############################
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name}) { # lsc error already exists, update it
+          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name}) { # dup error already exists, update it
             error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "dup", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name} . ", " . $mdl_results_HR->{"p_nhits"} . " hits", $FH_HR);
           }
           else { # first dup error
@@ -9631,7 +9838,7 @@ sub aorg_get_origin_output_for_sequence {
 }
 
 #################################################################
-# Subroutine:  run_blastx_and_parse_output()
+# Subroutine:  run_blastx_and_summarize_output()
 # Incept:      EPN, Thu Oct  4 15:25:00 2018
 #
 # Purpose:    For each fasta file of predicted hits, run them as
@@ -9640,9 +9847,11 @@ sub aorg_get_origin_output_for_sequence {
 # Arguments: 
 #  $execs_HR:          REF to a hash with "hmmbuild" and "hmmalign"
 #                      executable paths
-#  $blastx_db_root:    path to blastx database ($blastx_db_root.phr, $blastx_db_root.pin and 
-#                      $blastx_db_root.psq were all verified to exist earlier)
-#  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
+#  $out_root:          output root for the file names
+#  $query_file:        query fasta file (input fasta file to script, same fasta file cmscan searches against)
+#  $blastx_db:         path to blastx database ($blastx_db.phr, $blastx_db.pin and 
+#                      $blastx_db.psq were all verified to exist earlier)
+#  $ftr_info_HAR:      REF to hash of arrays with information on the features
 #  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -9651,42 +9860,192 @@ sub aorg_get_origin_output_for_sequence {
 # Dies:       If blastx fails.
 #
 ################################################################# 
-sub run_blastx_and_parse_output {
-  my $sub_name = "run_blastx_and_parse_output";
-  my $nargs_exp = 5;
+sub run_blastx_and_summarize_output {
+  my $sub_name = "run_blastx_and_summarize_output";
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($execs_HR, $blastx_db, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $out_root, $query_file, $blastx_db, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-  my $out_ftr_info_file_key = "blastx.out";
-  my $sum_ftr_info_file_key = "blastx.summary";
 
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || 
-       ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
-      my $query_file = $ftr_info_HAR->{"predicted.hits.fa"}[$ftr_idx];
-      my $blastx_out_file     = $query_file . ".blastx.out";
-      my $blastx_summary_file = $query_file . ".blastx.summary.txt";
-      my $blastx_cmd          = $execs_HR->{"blastx"} . " -query $query_file -db $blastx_db -seg no -num_descriptions 3 -num_alignments 3 -out $blastx_out_file";
-      runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-      $ftr_info_HAR->{$out_ftr_info_file_key}[$ftr_idx] = $blastx_out_file;
-      my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $out_ftr_info_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $blastx_out_file, 0, "blastx output for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . "(idx: $ftr_idx)");
+  my $blastx_out_file     = $out_root . ".blastx.out";
+  my $blastx_summary_file = $out_root . ".blastx.summary.txt";
+  my $blastx_cmd          = $execs_HR->{"blastx"} . " -query $query_file -db $blastx_db -seg no -num_descriptions 3 -num_alignments 3 -out $blastx_out_file";
+  
+  runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+  addClosedFileToOutputInfo($ofile_info_HHR, "blastx-out", $blastx_out_file, 0, "blastx output");
 
-      # now parse its output
-      my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
-      runCommand($parse_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-      $ftr_info_HAR->{$sum_ftr_info_file_key}[$ftr_idx] = $blastx_summary_file;
-      $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $sum_ftr_info_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $blastx_summary_file, 0, "parsed (summarized) blastx output for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . "(idx: $ftr_idx)");
-    }
-    else { 
-      $ftr_info_HAR->{$out_ftr_info_file_key}[$ftr_idx] = "/dev/null";
-      $ftr_info_HAR->{$sum_ftr_info_file_key}[$ftr_idx] = "/dev/null";
-    }
-  }
+  # now summarize its output
+  my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
+  runCommand($parse_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+  addClosedFileToOutputInfo($ofile_info_HHR, "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
 
   return;
 }
 
+#################################################################
+# Subroutine:  ftr_results_calculate_blastx()
+# Incept:      EPN, Thu Oct  4 15:25:00 2018
+#              [modified from subroutine of same name by Alejandro Schaffer, compare_predictions.pl]
+#
+# Purpose:    Parse blastx summary file and store results
+#             in ftr_results.
+#
+# Arguments: 
+#  $blastx_summary_file: path to blastx summary file to parse
+#  $ftr_info_HAR:        REF to hash of arrays with information on the features
+#  $seq_info_HAR:        REF to hash of sequence information
+#  $seq_name_idx_HR;     REF to hash, key: $seq_name, value: idx of $seq_name in @{$seq_info_HAR->{"seq_name"}} and $ftr_info_HAR
+#  $ftr_results_AAHR:    REF to feature results AAH, ADDED TO HERE
+#  $opt_HHR:             REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If blastx fails.
+#
+################################################################# 
+sub ftr_results_calculate_blastx { 
+  my $sub_name = "ftr_results_calculate_blastx";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($blastx_summary_file, $ftr_info_HAR, $seq_info_HAR, $seq_name_idx_HR, $ftr_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  validateFileExistsAndIsNonEmpty($blastx_summary_file, $sub_name, $FH_HR);
+  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, undef, $FH_HR);
+    
+  open(IN, $blastx_summary_file) || fileOpenFailure($blastx_summary_file, $sub_name, $!, "reading", $FH_HR);
+  # first step, determine which sequence each hit corresponds to
+  my $query   = undef;
+  my $target  = undef;
+  my $hsp_idx = undef;
+  my $seq_idx = undef; 
+  my $ftr_idx = undef;
+  while(my $line = <IN>) { 
+    chomp $line;
+    if($line ne "END_MATCH") { 
+      my @el_A = split(/\t/, $line);
+      if(scalar(@el_A) != 2) { 
+        DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, did not read exactly 2 tab-delimited tokens in line $line", 1, $FH_HR);
+      }
+      my ($key, $value) = (@el_A);
+      if($key eq "QACC") { 
+        $query = $value;
+        # determine what sequence it is
+        if(! exists $seq_name_idx_HR->{$query}) { 
+          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to find query $query in seq_name_idx hash", 1, $FH_HR); 
+        }
+        $seq_idx = $seq_name_idx_HR->{$query};
+      }
+      elsif($key eq "HACC") { 
+        if(! defined $query) { 
+          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HACC line before QACC line\n", 1, $FH_HR);
+        }
+        $target = $value;
+        # determine what feature it is
+        if($target =~ /(\S+)\/(\S+)/) { 
+          my ($accn, $coords) = ($1, $2);
+          # find it in @{$ftr_info_HAR->{"ref_coords"}}
+          $ftr_idx = -1;
+          for(my $f = 0; $f < $nftr; $f++) { 
+            if(($ftr_info_HAR->{"type"}[$f] eq "cds-mp") || 
+               ($ftr_info_HAR->{"type"}[$f] eq "cds-notmp")) { 
+              if($ftr_info_HAR->{"ref_coords"}[$f] eq $coords) { 
+                if($ftr_idx != -1) { # found more than 1 features that match
+                  DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, found target $target with coords that match two features, ftr_idx: $ftr_idx and $f", 1, $FH_HR);
+                }                  
+                $ftr_idx = $f;
+              }
+            }
+          }
+          if($ftr_idx == -1) { # did not find match
+            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, found target $target with coords that do not match any features", 1, $FH_HR);
+          }
+        }
+        else { 
+          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HACC line $line", 1, $FH_HR); 
+        }
+        $seq_idx = $seq_name_idx_HR->{$query};
+      }
+      elsif($key eq "HSP") { 
+        if((! defined $query) || (! defined $ftr_idx)) { 
+          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines\n", 1, $FH_HR);
+        }
+        printf("HEYA BLASTX HSP $key $value\n");
+        if($value =~ /^(\d+)$/) { 
+          $hsp_idx = $value;
+          printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
+        }
+        else { 
+          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", 1, $FH_HR);
+        }
+      }
+      elsif($key eq "QRANGE") { 
+        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read QRANGE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+        }
+        if($hsp_idx eq "1") { 
+          if($value =~ /^(\d+)..(\d+)$/) { 
+            my ($xstart, $xstop) = ($1, $2);
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $xstart;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $xstop;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} = ($xstart <= $xstop) ? "+" : "-";
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
+          }
+          else { 
+            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", 1, $FH_HR);
+          }
+        }
+      }
+      elsif($key eq "MAXIN") { 
+        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXIN line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+        }
+        if($hsp_idx eq "1") { 
+          if($value =~ /^(\d+)$/) { 
+            my $maxins = $1;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} = $maxins;
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} . "\n");
+          }
+          else { 
+            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", 1, $FH_HR);
+          }
+        }
+      }
+      elsif($key eq "FRAME") { 
+        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+        }
+        if($hsp_idx eq "1") { 
+          if($value =~ /(^[\+\-][123]$)/) { 
+            my $frame = $1;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} = $frame;
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} . "\n");
+          }
+          else { 
+            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
+          }
+        }
+      }
+      elsif($key eq "STOP") { 
+        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read STOP line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+        }
+        if($hsp_idx eq "1") { 
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} = $value;
+          printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
+        }
+      }
+      # Add elsif($key eq "") blocks here to store more values from the blastx.summary file
+    }
+  }
+  close(IN);
+
+  return 0;
+}

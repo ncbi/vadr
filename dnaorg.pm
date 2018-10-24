@@ -1396,10 +1396,12 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,             "mat_peptide may not be translated because its CDS has a problem", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "m5e", "feature",  0,             "parent CDS has a b5e error", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "m3e", "feature",  0,             "parent CDS has a b3e error", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,             "mat_peptide may not be translated because its CDS has a blastx protein validation failure", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,             "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "ost", "feature",  0,             "predicted feature is on opposite strand from reference", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "lsc", "feature",  0,             "low homology score", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "dup", "feature",  0,             "more than one homologous region", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "xip", "feature",  0,             "blastx protein validation failure", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (ntr)", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", $FH_HR);
@@ -1907,8 +1909,21 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"} = "!COPY!dup"; # "COPY!lsc" indicates we should use the lsc error string to make the note 
+  $expln_H{"note"} = "!COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the note 
   $expln_H{"error"} = "Duplicate Feature: !COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with xip to be output to feature table
+  $reqd_str = "xip";
+  $alwd_str = "olp,aja,ajb";
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  %expln_H = ();
+  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -2001,6 +2016,19 @@ sub initializeHardCodedFTableErrorExceptions {
   %expln_H = ();
   $expln_H{"note"}    = "similar to !out_product,out_gene!; polyprotein may not be translated"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
   $expln_H{"warning"} = "!out_product,out_gene! !COPY!mtr"; # "COPY!mtr" indicates we should use the mtr error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features (mat_peptides) with mip to be output to feature table
+  $reqd_str = "mip";
+  $alwd_str = "olp,aja,ajb";
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  %expln_H = ();
+  $expln_H{"note"}    = "similar to !out_product,out_gene!; polyprotein may not be translated"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"warning"} = "!out_product,out_gene! !COPY!mip"; # "COPY!mip" indicates we should use the mip error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################

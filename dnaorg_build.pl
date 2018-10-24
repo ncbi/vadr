@@ -958,7 +958,7 @@ sub fetch_proteins_into_fasta_file {
 
   my $efetch_out_file = $out_root . ".prot.efetch";
   my $fa_out_file     = $out_root . ".prot.fa";
-  runCommand("esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd CDS protein_id translation > $efetch_out_file", opt_Get("-v", $opt_HHR), $FH_HR); 
+  runCommand("esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd CDS protein_id INSDFeature_location translation > $efetch_out_file", opt_Get("-v", $opt_HHR), $FH_HR); 
   # NOTE: could get additional information to add to fasta defline, e.g. add 'product' after 'translation' above.
 
   # parse that file to create the fasta file
@@ -967,11 +967,12 @@ sub fetch_proteins_into_fasta_file {
   while(my $line = <IN>) { 
     chomp $line;
     my @el_A = split(/\t/, $line);
-    if(scalar(@el_A) != 3) { 
-      DNAORG_FAIL("ERROR in $sub_name, not exactly 3 lines in efetch output file line\n$line\n", 1, $ofile_info_HHR->{"FH"});
+    if(scalar(@el_A) != 4) { 
+      DNAORG_FAIL("ERROR in $sub_name, not exactly 4 tab delimited tokens in efetch output file line\n$line\n", 1, $ofile_info_HHR->{"FH"});
     }
-    my ($read_ref_accn, $prot_accn, $translation) = (@el_A);
-    print FA (">$prot_accn\n$translation\n");
+    my ($read_ref_accn, $prot_accn, $location, $translation) = (@el_A);
+    my $new_name = $prot_accn . "/" . $location;
+    print FA (">$new_name\n$translation\n");
   }
   close(IN);
   close(FA);
