@@ -238,7 +238,7 @@ opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",                       "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 5,                        1,    undef,"--local",   "number of KB of sequence for each cmscan farm job",           "set target number of KB of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 50,                       1,    undef,"--local",   "number of KB of sequence for each cmscan farm job",           "set target number of KB of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,                     1,    undef,"--local",   "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",                   "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--midthresh",  "integer", 75,                       1,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",  "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
@@ -254,7 +254,7 @@ opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--s
 $opt_group_desc_H{"3"} = "options for tuning protein validation with blastx";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
 opt_Add("--xalntol",     "integer",  5,                       3,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xinstol",     "integer",  27,                      3,     undef, undef,     "max allowed nucleotide insertion length in blastx validation is <n>",                          "max allowed nucleotide insertion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xindeltol",   "integer",  27,                      3,     undef, undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"4"} = "options for modifying which errors are reported";
 #       option               type   default                group  requires incompat preamble-output                                  help-output    
@@ -331,7 +331,7 @@ my $options_okay =
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
 # options for tuning protein validation with blastx
                 'xalntol=s'    => \$GetOptions_H{"--xalntol"},
-                'xinstol=s'    => \$GetOptions_H{"--xinstol"},
+                'xindeltol=s'  => \$GetOptions_H{"--xindeltol"},
 # options for modifying which errors are reported
                 'allolp'       => \$GetOptions_H{"--allolp"},
                 'alladj'       => \$GetOptions_H{"--alladj"},
@@ -3589,8 +3589,8 @@ sub ftr_results_add_xip_errors {
   my $seq_idx;   # counter over sequences
   my $seq_name;  # name of one sequence
 
-  my $aln_tol = opt_Get("--xalntol", $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
-  my $ins_tol = opt_Get("--xinstol", $opt_HHR); # maximum allowed insertion length in blastx output
+  my $aln_tol   = opt_Get("--xalntol",   $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
+  my $indel_tol = opt_Get("--xindeltol", $opt_HHR); # maximum allowed insertion and deletion length in blastx output
 
   # foreach type:'cds-mp' or 'cds-notmp' feature, 
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -3618,7 +3618,7 @@ sub ftr_results_add_xip_errors {
         }
 
         my $xip_err_str = ""; # modified if we have an 'xip' error below
-        printf("HEYA LOOKING FOR xip FOR $seq_name $ftr_idx\n");
+        # printf("HEYA LOOKING FOR xip FOR $seq_name $ftr_idx\n");
         
         # first, determine predicted start/stop/strand from CM and blastx for this feature
         my $p_start   = undef; # predicted start  from CM 
@@ -3628,6 +3628,7 @@ sub ftr_results_add_xip_errors {
         my $x_stop    = undef; # predicted stop   from blastx
         my $x_strand  = undef; # predicted strand from blastx
         my $x_maxins  = undef; # predicted maximum insert from blastx
+        my $x_maxdel  = undef; # predicted maximum delete from blastx
         my $x_trcstop = undef; # predicted premature stop from blastx
         # and get the p_start and p_stop values from "ftbl_out_start
         if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") { 
@@ -3653,6 +3654,9 @@ sub ftr_results_add_xip_errors {
               $p_strand = ($p_start <= $p_stop) ? "+" : "-";
             }
           }
+          else { 
+            DNAORG_FAIL("ERROR in $sub_name, feature with multiple exons, code isn't set up for this yet,\nmaybe just use first valid start and final valid stop (not necessarily start from first model and stop from final model)\n", 1, $FH_HR);;
+          }
         }
         if((defined $ftr_results_HR->{"x_start"}) && 
            (defined $ftr_results_HR->{"x_stop"})) { 
@@ -3662,14 +3666,20 @@ sub ftr_results_add_xip_errors {
           if(defined $ftr_results_HR->{"x_maxins"}) { 
             $x_maxins  = $ftr_results_HR->{"x_maxins"};
           }
+          if(defined $ftr_results_HR->{"x_maxdel"}) { 
+            $x_maxdel  = $ftr_results_HR->{"x_maxdel"};
+          }
           if(defined $ftr_results_HR->{"x_trcstop"}) { 
             $x_trcstop = $ftr_results_HR->{"x_trcstop"};
           }
         }
 
-        if(defined $p_start) { 
-          printf("HEYAA seq $seq_idx ftr_idx $ftr_idx " . $ftr_info_HAR->{"type"}[$ftr_idx] . " p_start: $p_start p_stop: $p_stop p_strand: $p_strand\n");
-        }
+        #if(defined $p_start) { 
+        #  printf("HEYAA seq $seq_idx ftr_idx $ftr_idx " . $ftr_info_HAR->{"type"}[$ftr_idx] . " p_start: $p_start p_stop: $p_stop p_strand: $p_strand\n");
+        #}
+        #else { 
+        #printf("HEYAA seq $seq_idx ftr_idx $ftr_idx no p_start\n");
+        #}
 
         # if we have a prediction from the CM, so we should check for xip errors
         if(defined $p_start) { 
@@ -3687,20 +3697,34 @@ sub ftr_results_add_xip_errors {
               # check for alignment start difference failure 
               my $start_diff = abs($p_start - $x_start);
               my $stop_diff  = abs($p_stop  - $x_stop);
-              printf("start_diff: $start_diff\n");
-              printf("stop_diff:  $stop_diff\n");
               if($start_diff > $aln_tol) { 
                 if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "start positions differ by $start_diff > $aln_tol (CM:$p_start blastx:$x_start)";
+                $xip_err_str .= "start positions differ by $start_diff > $aln_tol (strand:$p_strand CM:$p_start blastx:$x_start)";
               }                
               if($stop_diff > $aln_tol) { 
                 if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "stop positions differ by $stop_diff > $aln_tol (CM:$p_stop blastx:$x_stop)";
+                $xip_err_str .= "stop positions differ by $stop_diff > $aln_tol (strand:$p_strand CM:$p_stop blastx:$x_stop)";
+              }
+              # check if blastx alignment extends outside of nucleotide/CM alignment
+              if((($p_strand eq "+") && ($x_start < $p_start)) || 
+                 (($p_strand eq "-") && ($x_start > $p_start))) { 
+                if($xip_err_str ne "") { $xip_err_str .= ", "; }
+                $xip_err_str .= "blastx alignment extends outside CM alignment on 5' end (strand:$p_strand CM:$p_start blastx:$x_start)";
+              }
+              if((($p_strand eq "+") && ($x_stop  > $p_stop)) || 
+                 (($p_strand eq "-") && ($x_stop  < $p_stop))) { 
+                if($xip_err_str ne "") { $xip_err_str .= ", "; }
+                $xip_err_str .= "blastx alignment extends outside CM alignment on 3' end (strand:$p_strand CM:$p_stop blastx:$x_stop)";
               }
               # check for too big of an insert
-              if((defined $x_maxins) && ($x_maxins > $ins_tol)) { 
+              if((defined $x_maxins) && ($x_maxins > $indel_tol)) { 
                 if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "longest blastx predicted insert of length $x_maxins > $ins_tol";
+                $xip_err_str .= "longest blastx predicted insert of length $x_maxins > $indel_tol";
+              }
+              # check for too big of a deletion
+              if((defined $x_maxdel) && ($x_maxdel > $indel_tol)) { 
+                if($xip_err_str ne "") { $xip_err_str .= ", "; }
+                $xip_err_str .= "longest blastx predicted delete of length $x_maxdel > $indel_tol";
               }
               # check for blast predicted truncation
               if(defined $x_trcstop) { 
@@ -9975,10 +9999,10 @@ sub ftr_results_calculate_blastx {
         if((! defined $query) || (! defined $ftr_idx)) { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines\n", 1, $FH_HR);
         }
-        printf("HEYA BLASTX HSP $key $value\n");
+        # printf("HEYA BLASTX HSP $key $value\n");
         if($value =~ /^(\d+)$/) { 
           $hsp_idx = $value;
-          printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
+          # printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
         }
         else { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", 1, $FH_HR);
@@ -9994,9 +10018,9 @@ sub ftr_results_calculate_blastx {
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $xstart;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $xstop;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} = ($xstart <= $xstop) ? "+" : "-";
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", 1, $FH_HR);
@@ -10011,10 +10035,25 @@ sub ftr_results_calculate_blastx {
           if($value =~ /^(\d+)$/) { 
             my $maxins = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} = $maxins;
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", 1, $FH_HR);
+          }
+        }
+      }
+      elsif($key eq "MAXDE") { 
+        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXDE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+        }
+        if($hsp_idx eq "1") { 
+          if($value =~ /^(\d+)$/) { 
+            my $maxdel = $1;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} = $maxdel;
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxdel} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} . "\n");
+          }
+          else { 
+            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXDE line $line", 1, $FH_HR);
           }
         }
       }
@@ -10026,7 +10065,7 @@ sub ftr_results_calculate_blastx {
           if($value =~ /(^[\+\-][123]$)/) { 
             my $frame = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} = $frame;
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
@@ -10039,7 +10078,7 @@ sub ftr_results_calculate_blastx {
         }
         if($hsp_idx eq "1") { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} = $value;
-          printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
+          # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
         }
       }
       # Add elsif($key eq "") blocks here to store more values from the blastx.summary file
