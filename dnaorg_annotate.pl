@@ -1306,15 +1306,18 @@ if(opt_Get("--doalign", \%opt_HH)) {
 # Step 22. Output annotations and errors
 #########################################
 # open files for writing
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",     $out_root . ".tbl",            1, "All annotations in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tblsum",  $out_root . ".tbl.summary",    1, "Summary of all annotations");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl", $out_root . ".fail.tbl",       1, "Annotations for all sequences with >= 1 failure in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",  $out_root . ".error.tbl",      1, "Annotations for all sequences with >= 1 error in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",  $out_root . ".peraccn.errors", 1, "List of errors, one line per sequence");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",  $out_root . ".all.errors",     1, "List of errors, one line per error");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",  $out_root . ".errors.summary", 1, "Summary of all errors");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "sftbl",   $out_root . ".sqtable",        1, "Sequin feature table output (minimal)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "lftbl",   $out_root . ".long.sqtable",   1, "Sequin feature table output (verbose)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",        $out_root . ".tbl",               1, "All annotations in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tblsum",     $out_root . ".tbl.summary",       1, "Summary of all annotations");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl",    $out_root . ".fail.tbl",          1, "Annotations for all sequences with >= 1 failure in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",     $out_root . ".error.tbl",         1, "Annotations for all sequences with >= 1 error in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",     $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",     $out_root . ".all.errors",        1, "List of errors, one line per error");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",     $out_root . ".errors.summary",    1, "Summary of all errors");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_sftbl", $out_root . ".ap.sqtable",      1, "Sequin feature table output for passing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_sftbl", $out_root . ".af.sqtable",      1, "Sequin feature table output for failing sequences (minimal)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_lftbl", $out_root . ".long.af.sqtable", 1, "Sequin feature table output for failing sequences (verbose)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",  $out_root . ".ap.list",         1, "list of passing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",  $out_root . ".af.list",         1, "list of failing sequences");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -7010,11 +7013,15 @@ sub output_feature_tbl_all_sequences {
       $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $ftbl_err_exceptions_AHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $sftbl_FH = $FH_HR->{"sftbl"};
-  my $lftbl_FH = $FH_HR->{"lftbl"};
-  my $cur_out_str; # current output string to print
-  my $cur_coords_str; # current output string of only coordinates needed to deal with duplicate features
-  my $cur_long_out_str; # current output string to print to long file
+  my $pass_sftbl_FH = $FH_HR->{"pass_sftbl"}; # feature table for PASSing sequences
+  my $fail_sftbl_FH = $FH_HR->{"fail_sftbl"}; # feature table for FAILing sequences
+  my $fail_lftbl_FH = $FH_HR->{"fail_lftbl"}; # long feature table for FAILing sequences
+  my $pass_list_FH  = $FH_HR->{"pass_list"};  # list of PASSing seqs
+  my $fail_list_FH  = $FH_HR->{"fail_list"};  # list of FAILing seqs
+  my $sftbl_FH      = undef; # pointer to either $pass_sftbl_FH or $fail_sftbl_FH
+  my $cur_out_str;       # current output string to print
+  my $cur_coords_str;    # current output string of only coordinates needed to deal with duplicate features
+  my $cur_long_out_str;  # current output string to print to long file
   my $cur_short_out_str; # current output string to print to short file
   my $nmdl = validateModelInfoHashIsComplete    ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
   my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
@@ -7022,9 +7029,9 @@ sub output_feature_tbl_all_sequences {
   my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); # nerr: number of different error codes
   my $nexc = validateFTableErrorExceptions      ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR); # nexc: number of different feature table exceptions
   my $do_matpept = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
-  my $exc_idx; # an index in @{$ftbl_err_exceptions_AHR}
+  my $exc_idx;         # an index in @{$ftbl_err_exceptions_AHR}
   my $cur_err_str;     # current string of errors for this sequence/feature combo
-  my $do_short_ftable; # '1' if we are printing this current sequence/feature to the short feature table, '0' if not
+#HEYA  my $do_short_ftable; # '1' if we are printing this current sequence/feature to the short feature table, '0' if not
   my $do_misc_feature; # '1' if this feature becomes a 'misc_feature' in the feature tables, '0' if not 
   my $do_start_carrot; # '1' if this feature's start position gets prepended with a '<'
   my $do_stop_carrot;  # '1' if this feature's stop position gets prepended with a '>'
@@ -7075,10 +7082,6 @@ sub output_feature_tbl_all_sequences {
     @warning_value_A = ();
     @error_value_A   = ();
     
-    $cur_out_str = (">Feature $accn_name\n");
-    print $sftbl_FH $cur_out_str;
-    print $lftbl_FH $cur_out_str;
-
     # placeholder for origin info?
 
     # 5' UTR would go here, see commit e443e96 for example (I abandoned 5' UTRs after that commit)
@@ -7129,7 +7132,7 @@ sub output_feature_tbl_all_sequences {
       $error_value = "";
       $warning_value = "";
       if($exc_idx != -1) { 
-        $do_short_ftable = 1;
+#HEYA        $do_short_ftable = 1;
         $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
         # only do a start_carrot if this exception calls for it AND we have a b5e
         $do_start_carrot = (($ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"}) && ($cur_err_str =~ m/b5e/)) ? 1 : 0;
@@ -7141,7 +7144,7 @@ sub output_feature_tbl_all_sequences {
         $warning_value   = populateFTableNoteErrorOrWarning("warning", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
       }
       else { 
-        $do_short_ftable = 0;
+#HEYA        $do_short_ftable = 0;
         $do_misc_feature = 0;
         $do_start_carrot = 0;
         $do_stop_carrot  = 0;
@@ -7207,7 +7210,8 @@ sub output_feature_tbl_all_sequences {
               # print all errors to long feature table output
               $cur_long_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $err_line);
             }
-            if($do_short_ftable && $note_value ne "") { 
+#HEYA            if($do_short_ftable && $note_value ne "") { 
+            if($note_value ne "") { 
               # print note to short feature table output
               $cur_short_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
             }
@@ -7223,17 +7227,17 @@ sub output_feature_tbl_all_sequences {
             $fidx2lidx_H{$ftr_idx} = $lidx;
             $lidx++;
 
-            if($do_short_ftable) { 
+#HEYA      if($do_short_ftable) { 
               %{$short_AH[$sidx]} = ();
               $short_AH[$sidx]{"carrot"}          = $do_start_carrot;
               $short_AH[$sidx]{"mincoord"}        = $min_coord;
               $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
               $short_AH[$sidx]{"output"}          = $cur_short_out_str;
-              $short_AH[$sidx]{"coords"}    = $cur_coords_str;
+              $short_AH[$sidx]{"coords"}          = $cur_coords_str;
               $short_AH[$sidx]{"do_misc_feature"} = $do_misc_feature;
               $fidx2sidx_H{$ftr_idx} = $sidx;
               $sidx++;
-            }
+#HEYA            }
           }
         } # end of if(! $ftr_nop_error_flag) { 
       }
@@ -7318,10 +7322,10 @@ sub output_feature_tbl_all_sequences {
             # only print errors to long feature table output
             $cur_long_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $err_line);
           }
-          if($do_short_ftable && $note_value ne "") { 
+#HEYA          if($do_short_ftable && $note_value ne "") { 
             # print note to short feature table output
             $cur_short_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
-          }
+#HEYA          }
 
           # now push that to the output hashes
           %{$long_AH[$lidx]} = ();
@@ -7334,7 +7338,7 @@ sub output_feature_tbl_all_sequences {
           $fidx2lidx_H{$ftr_idx} = $lidx;
           $lidx++;
 
-          if($do_short_ftable) { 
+#HEYA          if($do_short_ftable) { 
             %{$short_AH[$sidx]} = ();
             $short_AH[$sidx]{"carrot"}          = $do_start_carrot;
             $short_AH[$sidx]{"mincoord"}        = $min_coord;
@@ -7344,7 +7348,7 @@ sub output_feature_tbl_all_sequences {
             $short_AH[$sidx]{"do_misc_feature"} = $do_misc_feature;
             $fidx2sidx_H{$ftr_idx} = $sidx;
             $sidx++;
-          }
+#HEYA          }
         } # end of if(! $all_mdl_nop_error_flag)
       }  # end of 'else' entered if feature is not a multifeature cds-mp but is annotated by models
       elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") { # duplicate feature
@@ -7384,7 +7388,7 @@ sub output_feature_tbl_all_sequences {
           $long_AH[$lidx]{"output"} = $cur_out_str;
           $lidx++;
         }
-        if($do_short_ftable) { 
+#HEYA        if($do_short_ftable) { 
           if(exists $fidx2sidx_H{$src_idx}) {
             my $src_sidx = $fidx2sidx_H{$src_idx};
             %{$short_AH[$sidx]} = ();
@@ -7417,13 +7421,29 @@ sub output_feature_tbl_all_sequences {
             $short_AH[$sidx]{"output"} = $cur_out_str;
             $sidx++;
           }
-        }
+#HEYA   }
       }
     } # end of 'for(my $ftr_idx'      
 
     # 3' UTR would go here, see commit e443e96 for example (I abandoned 3' UTRs after that commit)
 
-    # now output, first sort the array of hashes
+    my $nwarn = scalar(@warning_value_A);
+    my $nerr  = scalar(@error_value_A);
+    my $do_pass = (($nwarn == 0) && ($nerr == 0) && (scalar(@short_AH) > 0)) ? 1 : 0;
+    if($do_pass) { 
+      $sftbl_FH = $pass_sftbl_FH;
+      print $sftbl_FH ">Feature $accn_name\n";
+      print $pass_list_FH $accn_name . "\n";
+    }
+    else { 
+      $sftbl_FH = $fail_sftbl_FH;
+      print $sftbl_FH ">Feature $accn_name\n";
+      print $fail_list_FH $accn_name . "\n";
+      print $fail_lftbl_FH ">Feature $accn_name\n";
+    }
+
+    # output
+    # first sort the array of hashes
     if(scalar(@short_AH) > 0) { 
       @short_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
                          $b->{"carrot"}        <=> $a->{"carrot"}   or
@@ -7432,17 +7452,17 @@ sub output_feature_tbl_all_sequences {
       for($i = 0; $i < scalar(@short_AH); $i++) { 
         print $sftbl_FH $short_AH[$i]{"output"};
       }
-      if((scalar(@warning_value_A) + scalar(@error_value_A)) >= 1) { 
+      if(! $do_pass) { 
         print $sftbl_FH "\nAdditional note(s) to submitter:\n"; 
-      }
-      foreach my $error_str (@error_value_A) { 
-        foreach my $error_line (split(/\:\:\:/, $error_str)) { 
-          print $sftbl_FH "ERROR: " . $error_line . "\n"; 
+        foreach my $error_str (@error_value_A) { 
+          foreach my $error_line (split(/\:\:\:/, $error_str)) { 
+            print $sftbl_FH "ERROR: " . $error_line . "\n"; 
+          }
         }
-      }
-      foreach my $warning_str (@warning_value_A) { 
-        foreach my $warning_line (split(/\:\:\:/, $warning_str)) { 
-          print $sftbl_FH "WARNING: " . $warning_line . "\n";  
+        foreach my $warning_str (@warning_value_A) { 
+          foreach my $warning_line (split(/\:\:\:/, $warning_str)) { 
+            print $sftbl_FH "WARNING: " . $warning_line . "\n";  
+          }
         }
       }
     }
@@ -7451,18 +7471,38 @@ sub output_feature_tbl_all_sequences {
                         $b->{"carrot"}        <=> $a->{"carrot"}   or
                         $a->{"type_priority"} <=> $b->{"type_priority"} 
       } @long_AH;
-      for($i = 0; $i < scalar(@long_AH); $i++) { 
-        print $lftbl_FH $long_AH[$i]{"output"};
+      if(! $do_pass) { 
+        for($i = 0; $i < scalar(@long_AH); $i++) { 
+          print $fail_lftbl_FH $long_AH[$i]{"output"};
+        }
+        if((scalar(@warning_value_A) + scalar(@error_value_A)) >= 1) { 
+          print $fail_lftbl_FH "\nAdditional note(s) to submitter:\n"; 
+        }
+        foreach my $error_str (@error_value_A) { 
+          print $fail_lftbl_FH "ERROR: " . $error_str . "\n"; 
+        }
+        foreach my $warning_str (@warning_value_A) { 
+          print $fail_lftbl_FH "WARNING: " . $warning_str . "\n"; 
+        }
       }
-      if((scalar(@warning_value_A) + scalar(@error_value_A)) >= 1) { 
-        print $lftbl_FH "\nAdditional note(s) to submitter:\n"; 
-      }
-      foreach my $error_str (@error_value_A) { 
-        print $lftbl_FH "ERROR: " . $error_str . "\n"; 
-      }
-      foreach my $warning_str (@warning_value_A) { 
-        print $lftbl_FH "WARNING: " . $warning_str . "\n"; 
-      }
+#HEYA      else { # do_pass is TRUE, verify short_AH and long_AH are identical
+#HEYA        if(scalar(@short_AH) != scalar(@long_AH)) { 
+#HEYA          DNAORG_FAIL(sprintf("ERROR in $sub_name, sequence $accn_name PASSes but short and long output differ in size (%d != %d)", scalar(@short_AH), scalar(@long_AH)), 1, $ofile_info_HHR->{"FH"});
+#HEYA        }
+#HEYA        for(my $z = 0; $z < scalar(@short_AH); $z++) { 
+#HEYA          if(scalar(keys %{$short_AH[$z]}) != scalar(keys %{$long_AH[$z]})) { 
+#HEYA            DNAORG_FAIL(sprintf("ERROR in $sub_name, sequence $accn_name PASSes but short and long output differ in size of hash for element $z (%d != %d)", scalar(keys %{$short_AH[$z]}), scalar(keys %{$long_AH[$z]})), 1, $ofile_info_HHR->{"FH"});
+#HEYA          }
+#HEYA          foreach my $zkey (sort keys (%{$short_AH[$z]})) { 
+#HEYA            if(! exists $long_AH[$z]{$zkey}) { 
+#HEYA              DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name PASSes but short and long output differ, in hash for element $z ($zkey exists only in short)", 1, $ofile_info_HHR->{"FH"});
+#HEYA            }
+#HEYA            if($short_AH[$z]{$zkey} ne $long_AH[$z]{$zkey}) { 
+#HEYA              DNAORG_FAIL(sprintf("ERROR in $sub_name, sequence $accn_name PASSes but short and long output differ, in hash for element $z, key $zkey (%s not equal to %s)", $short_AH[$z]{$zkey}, $long_AH[$z]{$zkey}), 1, $ofile_info_HHR->{"FH"});
+#HEYA            }
+#HEYA          }
+#HEYA        }
+#HEYA      } # end of 'else' block that verifies @short_AH and @long_AH are identical for passable seqs
     }
   } # end of for loop over sequences
 

@@ -1100,12 +1100,12 @@ else {
   my $noannot_assigned_fail = 0; # total number of assigned seqs that FAIL that will not be annotated
 
   foreach my $ref_list_seqname (@reordered_ref_list_seqname_A) {
-    $ntlist_file_H{"PASS"}    = $out_root . ".$ref_list_seqname.pass.ntlist";
-    $dv_ntlist_file_H{"PASS"} = $out_root . ".$ref_list_seqname.pass.deversioned.ntlist";
-    $sub_fasta_file_H{"PASS"} = $out_root . ".$ref_list_seqname.pass.fa";
-    $ntlist_file_H{"FAIL"}    = $out_root . ".$ref_list_seqname.fail.ntlist";
-    $dv_ntlist_file_H{"FAIL"} = $out_root . ".$ref_list_seqname.fail.deversion.ntlist";
-    $sub_fasta_file_H{"FAIL"} = $out_root . ".$ref_list_seqname.fail.fa";
+    $ntlist_file_H{"PASS"}    = $out_root . ".$ref_list_seqname.cp.ntlist";
+    $dv_ntlist_file_H{"PASS"} = $out_root . ".$ref_list_seqname.cp.deversioned.ntlist";
+    $sub_fasta_file_H{"PASS"} = $out_root . ".$ref_list_seqname.cp.fa";
+    $ntlist_file_H{"FAIL"}    = $out_root . ".$ref_list_seqname.cf.ntlist";
+    $dv_ntlist_file_H{"FAIL"} = $out_root . ".$ref_list_seqname.cf.deversion.ntlist";
+    $sub_fasta_file_H{"FAIL"} = $out_root . ".$ref_list_seqname.cf.fa";
     $cur_nseq_H{"PASS"} = 0;
     $cur_nseq_H{"FAIL"} = 0;
     my $cur_list_seq;
@@ -1232,17 +1232,19 @@ else {
     my $cur_out_dir  = "";
     my $cur_out_root = "";
     my $ctr = 1;
+    my %filekey_H = ();
+    $filekey_H{"PASS"} = "cp";
+    $filekey_H{"FAIL"} = "cf";
     # for each family with >0 
     foreach my $ref_list_seqname (@ref_list_seqname_A) {
       if($annotate_ref_list_seqname_H{$ref_list_seqname} == 1) { 
         foreach my $class ("PASS", "FAIL") { 
-          my $lc_class = $class;
-          $lc_class =~ tr/A-Z/a-z/;
-          my $ntlist_file    = $out_root . ".$ref_list_seqname.$lc_class.ntlist";
-          my $dv_ntlist_file = $out_root . ".$ref_list_seqname.$lc_class.deversioned.ntlist"; # same as $ntlist_file but accessions have been de-versioned
-          my $sub_fasta_file = $out_root . ".$ref_list_seqname.$lc_class.fa";
-          $build_dir = $annotate_dir . "/" . $ref_list_seqname; # do not include $lc_class here 
-          $cur_out_root = $dir_tail . "-" . $ref_list_seqname  . ".$lc_class";
+          my $classkey = $filekey_H{$class};
+          my $ntlist_file    = $out_root . ".$ref_list_seqname.$classkey.ntlist";
+          my $dv_ntlist_file = $out_root . ".$ref_list_seqname.$classkey.deversioned.ntlist"; # same as $ntlist_file but accessions have been de-versioned
+          my $sub_fasta_file = $out_root . ".$ref_list_seqname.$classkey.fa";
+          $build_dir = $annotate_dir . "/" . $ref_list_seqname; # do not include $classkey here 
+          $cur_out_root = $dir_tail . "-" . $ref_list_seqname  . ".$classkey";
           $cur_out_dir  = $dir . "/" . $cur_out_root;
           $cur_nseq = 0;
           for(my $z = 0; $z < scalar(@{$ntlist_HA{$ref_list_seqname}}); $z++) { 
@@ -1264,14 +1266,26 @@ else {
             }
             runCommand($annotate_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
             # now copy the sequin feature tables to this top level directory:
-            my $src_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.sqtable";
-            my $dest_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.sqtable";
-            my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
-            my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
-            runCommand("cp $src_sqtable $dest_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+            my $src_pass_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
+            my $src_fail_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
+            my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.af.sqtable";
+            my $src_pass_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
+            my $src_fail_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
+            my $dest_pass_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.qtable";
+            my $dest_fail_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
+            my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.af.sqtable";
+            my $dest_pass_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
+            my $dest_fail_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
+            runCommand("cp $src_pass_sqtable $dest_pass_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+            runCommand("cp $src_fail_sqtable $dest_fail_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
             runCommand("cp $src_long_sqtable $dest_long_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-            addClosedFileToOutputInfo(\%ofile_info_HH, "sqtbl" . $ctr++, $dest_sqtable, 1, "annotation results for $ref_list_seqname");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl" . $ctr++, $dest_long_sqtable, 1, "verbose annotation results for $ref_list_seqname");
+            runCommand("cp $src_pass_list    $dest_pass_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+            runCommand("cp $src_fail_list    $dest_fail_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+            addClosedFileToOutputInfo(\%ofile_info_HH, "pass-sqtbl" . $ctr++, $dest_pass_sqtable, 1, "annotation results for $ref_list_seqname sequences that pass dnaorg_annotate.pl");
+            addClosedFileToOutputInfo(\%ofile_info_HH, "fail-sqtbl" . $ctr++, $dest_fail_sqtable, 1, "annotation results for $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
+            addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl"  . $ctr++, $dest_long_sqtable, 1, "annotation results for $ref_list_seqname sequences that fail dnaorg_annotate.pl (verbose)");
+            addClosedFileToOutputInfo(\%ofile_info_HH, "pass-list"  . $ctr++, $dest_pass_sqtable, 1, "list of $ref_list_seqname sequences that pass dnaorg_annotate.pl");
+            addClosedFileToOutputInfo(\%ofile_info_HH, "fail-list"  . $ctr++, $dest_fail_sqtable, 1, "list of $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
           }
         }
       }
