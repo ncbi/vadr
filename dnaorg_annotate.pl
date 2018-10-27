@@ -1354,17 +1354,19 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ######################
 $start_secs = outputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 
-output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \@ftbl_err_exceptions_AH, \%opt_HH, \%ofile_info_HH);
+my $npass = output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \@ftbl_err_exceptions_AH, \%opt_HH, \%ofile_info_HH);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###########################################
 # brief summary of annotations and errors #
 ###########################################
-outputString($log_FH, 1, sprintf("#\n# Annotated %d accessions, %d (%6.4f fraction) had at least one annotation 'failure', see %s for all details.\n", 
-                                 $nseq, $nfail, ($nfail/$nseq), $ofile_info_HH{"nodirpath"}{"tbl"}));
+# OLD WAY, where we cared about how many sequences had errors:
+#outputString($log_FH, 1, sprintf("#\n# Annotated %d accessions, %d (%6.4f fraction) had at least one annotation 'failure', see %s for all details.\n", 
+#                                 $nseq, $nfail, ($nfail/$nseq), $ofile_info_HH{"nodirpath"}{"tbl"}));
 
-output_errors_summary($ofile_info_HH{"FH"}{"errsum"}, \@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, 1, \%opt_HH, \%ofile_info_HH); # 1: output to stdout
+outputString($log_FH, 1, sprintf("#\n# Annotated %d accessions:\n# %6d PASS (%5.3f) listed in $out_root.ap.list\n# %6d FAIL (%5.3f) listed in $out_root.af.list\n", $nseq, $npass, $npass/$nseq, ($nseq-$npass), ($nseq-$npass)/$nseq));
+output_errors_summary($ofile_info_HH{"FH"}{"errsum"}, \@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, 0, \%opt_HH, \%ofile_info_HH); # 1: output to stdout
 
 ##################
 # gap info files #
@@ -6999,7 +7001,7 @@ sub output_tbl_page_of_sequences {
 #  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
-# Returns:  void
+# Returns:  Number of sequences that 'pass'.
 # 
 # Dies:     never
 #
@@ -7019,6 +7021,8 @@ sub output_feature_tbl_all_sequences {
   my $pass_list_FH  = $FH_HR->{"pass_list"};  # list of PASSing seqs
   my $fail_list_FH  = $FH_HR->{"fail_list"};  # list of FAILing seqs
   my $sftbl_FH      = undef; # pointer to either $pass_sftbl_FH or $fail_sftbl_FH
+  my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
+
   my $cur_out_str;       # current output string to print
   my $cur_coords_str;    # current output string of only coordinates needed to deal with duplicate features
   my $cur_long_out_str;  # current output string to print to long file
@@ -7434,6 +7438,7 @@ sub output_feature_tbl_all_sequences {
       $sftbl_FH = $pass_sftbl_FH;
       print $sftbl_FH ">Feature $accn_name\n";
       print $pass_list_FH $accn_name . "\n";
+      $ret_npass++;
     }
     else { 
       $sftbl_FH = $fail_sftbl_FH;
@@ -7506,7 +7511,7 @@ sub output_feature_tbl_all_sequences {
     }
   } # end of for loop over sequences
 
-  return;
+  return $ret_npass;
 }
 
 #################################################################
