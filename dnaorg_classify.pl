@@ -365,6 +365,8 @@ if($do_annotate) {
 }
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
+my @annotate_summary_output_A = (); # the output that summarizes number of sequences that pass each dnaorg_annotate.pl call
+
 #################################################################################
 #
 # LES Jul 26 2016
@@ -1271,7 +1273,7 @@ else {
             my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.af.sqtable";
             my $src_pass_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
             my $src_fail_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
-            my $dest_pass_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.qtable";
+            my $dest_pass_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
             my $dest_fail_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
             my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.af.sqtable";
             my $dest_pass_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
@@ -1286,11 +1288,27 @@ else {
             addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl"  . $ctr++, $dest_long_sqtable, 1, "annotation results for $ref_list_seqname sequences that fail dnaorg_annotate.pl (verbose)");
             addClosedFileToOutputInfo(\%ofile_info_HH, "pass-list"  . $ctr++, $dest_pass_sqtable, 1, "list of $ref_list_seqname sequences that pass dnaorg_annotate.pl");
             addClosedFileToOutputInfo(\%ofile_info_HH, "fail-list"  . $ctr++, $dest_fail_sqtable, 1, "list of $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
+
+            # and finally, determine the number of passing sequences, by counting the 
+            # number of lines in the pass_list file
+            my $npass = countLinesInFile($dest_pass_list, $ofile_info_HH{"FH"});
+            push(@annotate_summary_output_A, sprintf("%-12s  %6s  %10d    %10d  %10.4f    %10d  %10.4f\n", $ref_list_seqname, "C-" . $class,  $cur_nseq, $npass, $npass / $cur_nseq, $cur_nseq - $npass, ($cur_nseq - $npass) / $cur_nseq));
           }
         }
       }
     }
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+    
+    my @output_A = ();
+    push(@output_A, sprintf("#\n"));
+    push(@output_A, sprintf("# Number of annotated sequences that PASSed/FAILed dnaorg_annotate.pl:\n"));
+    push(@output_A, sprintf("#\n"));
+    push(@output_A, sprintf("%-12s  %6s  %10s    %10s  %10s    %10s  %10s\n", "# RefSeq-acc", "C-p/f", "num-annot",  "num-A-PASS",   "frc-A-PASS", "num-A-FAIL",  "frc-A-FAIL"));
+    push(@output_A, sprintf("%-12s  %6s  %10s    %10s  %10s    %10s  %10s\n", "#-----------", "------", "----------", "----------", "----------", "----------", "----------"));
+    # output annotation summary
+    foreach my $out_line (@output_A, @annotate_summary_output_A) { 
+      outputString($log_FH, 1, $out_line);
+    }
   }
   else { 
     if($inlist_mode) { 
@@ -1313,12 +1331,13 @@ else {
 # Conclude
 ##########
 
-# if not --keep, then remove unnessecary files (while checking to make sure that you're not removing the same file twice
-my %seen;
-
-foreach my $file2rm (@files2rm_A) {
-  next if $seen{$file2rm}++;
-  runCommand("rm $file2rm", 0, $ofile_info_HH{"FH"});
+# remove temp files, unless --keep
+if(! opt_Get("--keep", \%opt_HH)) { 
+  foreach my $file2rm (@files2rm_A) {
+    if(-e $file2rm) { 
+      removeFileUsingSystemRm($file2rm, "dnaorg_classify.pl::main", \%opt_HH, $ofile_info_HH{"FH"});
+    }
+  }
 }
 
 $total_seconds += secondsSinceEpoch();
