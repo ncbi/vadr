@@ -7081,6 +7081,7 @@ sub output_feature_tbl_all_sequences {
 
     @warning_value_A = ();
     @error_value_A   = ();
+    my $n_missing_codon_starts = 0; # incremented for features that should have codon_start values but we don't output any for
     
     # placeholder for origin info?
 
@@ -7165,8 +7166,9 @@ sub output_feature_tbl_all_sequences {
         if(! $ftr_nop_error_flag) { 
           # we only print feature information for features with predictions
           my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
-          my $ftbl_out_start = $ftr_results_HR->{"ftbl_out_start"};
-          my $ftbl_out_stop  = $ftr_results_HR->{"ftbl_out_stop"};
+          my $ftbl_out_start   = $ftr_results_HR->{"ftbl_out_start"};
+          my $ftbl_out_stop    = $ftr_results_HR->{"ftbl_out_stop"};
+
           if($do_pred_stop) { 
             my @cur_primary_children_idx_A = (); # feature indices of the primary children of this feature
             getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@cur_primary_children_idx_A, $FH_HR);
@@ -7191,7 +7193,7 @@ sub output_feature_tbl_all_sequences {
                                        $do_start_carrot ? "<" : "", $ftbl_out_start, 
                                        $do_stop_carrot  ? ">" : "", $ftbl_out_stop); 
             $min_coord = ($ftbl_out_start < $ftbl_out_stop) ? $ftbl_out_start : $ftbl_out_stop;
-            if(! $do_misc_feature) { # misc_feature's don't get product and gene information output
+            if(! $do_misc_feature) { # misc_feature's don't get product, gene, exception, codon_start  information output
               foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
                 if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                   $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
@@ -7200,6 +7202,15 @@ sub output_feature_tbl_all_sequences {
                     $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
                   }
                 }
+              }
+              # add codon_start, if necessary
+              if(defined $ftr_results_HR->{"x_frame"}) { 
+                 my $ftbl_codon_start = $ftr_results_HR->{"x_frame"};
+                 $ftbl_codon_start =~ s/^[\+\-]//;
+                 $cur_out_str .= sprintf("\t\t\t%s\t%s\n", "codon_start", $ftbl_codon_start);
+              }
+              elsif(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
+                $n_missing_codon_starts++;
               }
             }
             $cur_long_out_str  = $cur_out_str;
@@ -7290,7 +7301,7 @@ sub output_feature_tbl_all_sequences {
               }
             }
           }
-          if(! $do_misc_feature) { # misc_feature's don't get product, gene or exception information output
+          if(! $do_misc_feature) { # misc_feature's don't get product, gene, exception codon_start information output
             foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
               if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
                 $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
@@ -7299,6 +7310,15 @@ sub output_feature_tbl_all_sequences {
                   $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval);
                 }
               }
+            }
+            # add codon_start, if necessary
+            if(defined $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"}) { 
+              my $ftbl_codon_start = $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"};
+              $ftbl_codon_start =~ s/^[\+\-]//;
+              $cur_out_str .= sprintf("\t\t\t%s\t%s\n", "codon_start", $ftbl_codon_start);
+            }
+            elsif(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
+              $n_missing_codon_starts++;
             }
           }
 
@@ -7309,7 +7329,9 @@ sub output_feature_tbl_all_sequences {
             $cur_long_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $err_line);
           }
           # print note to short feature table output
-          $cur_short_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
+          if($note_value ne "") { 
+            $cur_short_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
+          }
 
           # now push that to the output hash
           %{$ftout_AH[$ftidx]} = ();
@@ -7370,6 +7392,11 @@ sub output_feature_tbl_all_sequences {
     my $nwarn = scalar(@warning_value_A);
     my $nerr  = scalar(@error_value_A);
     my $do_pass = (($nwarn == 0) && ($nerr == 0) && (scalar(@ftout_AH) > 0)) ? 1 : 0;
+    # sanity check, if we are passing, we should also have set codon_start for all features
+    if(($do_pass) && ($n_missing_codon_starts > 0)) { 
+      DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but >= 1 CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
+    }
+
     if($do_pass) { 
       $sftbl_FH = $pass_sftbl_FH;
       print $sftbl_FH ">Feature $accn_name\n";
@@ -9948,10 +9975,10 @@ sub ftr_results_calculate_blastx {
         if((! defined $query) || (! defined $ftr_idx)) { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines\n", 1, $FH_HR);
         }
-        # printf("HEYA BLASTX HSP $key $value\n");
+         printf("HEYA BLASTX HSP $key $value\n");
         if($value =~ /^(\d+)$/) { 
           $hsp_idx = $value;
-          # printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
+          printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
         }
         else { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", 1, $FH_HR);
@@ -9967,9 +9994,9 @@ sub ftr_results_calculate_blastx {
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $xstart;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $xstop;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} = ($xstart <= $xstop) ? "+" : "-";
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", 1, $FH_HR);
@@ -9984,7 +10011,7 @@ sub ftr_results_calculate_blastx {
           if($value =~ /^(\d+)$/) { 
             my $maxins = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} = $maxins;
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} . "\n");
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", 1, $FH_HR);
@@ -9999,7 +10026,7 @@ sub ftr_results_calculate_blastx {
           if($value =~ /^(\d+)$/) { 
             my $maxdel = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} = $maxdel;
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxdel} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} . "\n");
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxdel} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXDE line $line", 1, $FH_HR);
@@ -10014,7 +10041,7 @@ sub ftr_results_calculate_blastx {
           if($value =~ /(^[\+\-][123]$)/) { 
             my $frame = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} = $frame;
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} . "\n");
+            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
@@ -10027,7 +10054,7 @@ sub ftr_results_calculate_blastx {
         }
         if($hsp_idx eq "1") { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} = $value;
-          # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
+          printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
         }
       }
       # Add elsif($key eq "") blocks here to store more values from the blastx.summary file
