@@ -1342,7 +1342,7 @@ $start_secs = outputProgressPrior("Generating tabular annotation output", $progr
 output_tbl_get_headings(\@out_row_header_A, \@out_header_exp_A, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 
 # for each sequence, output the tabular annotation
-my $nfail = output_tbl_all_sequences(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
+output_tbl_all_sequences(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
 # output the explanatory text
 output_tbl_explanations(\@out_header_exp_A, \%ofile_info_HH);
@@ -7035,7 +7035,6 @@ sub output_feature_tbl_all_sequences {
   my $do_matpept = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
   my $exc_idx;         # an index in @{$ftbl_err_exceptions_AHR}
   my $cur_err_str;     # current string of errors for this sequence/feature combo
-#HEYA  my $do_short_ftable; # '1' if we are printing this current sequence/feature to the short feature table, '0' if not
   my $do_misc_feature; # '1' if this feature becomes a 'misc_feature' in the feature tables, '0' if not 
   my $do_start_carrot; # '1' if this feature's start position gets prepended with a '<'
   my $do_stop_carrot;  # '1' if this feature's stop position gets prepended with a '>'
@@ -7073,15 +7072,12 @@ sub output_feature_tbl_all_sequences {
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
     my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
 
-    my @short_AH = (); # array of hashes with output for short feature table, kept in a hash so we can sort before outputting
-    my @long_AH  = (); # array of hashes with output for long feature table, kept in a hash so we can sort before outputting
-    my $sidx     = 0;  # index in @short_AH
-    my $lidx     = 0;  # index in @long_AH
-    my $min_coord = -1;     # minimum coord in this feature
+    my @ftout_AH      = (); # array of hashes with output for feature table, kept in a hash so we can sort before outputting
+    my $ftidx         = 0;  # index in @ftout_AH
+    my $min_coord     = -1; # minimum coord in this feature
     my $cur_min_coord = -1; # minimum coord in this segment
+    my %fidx2idx_H    = (); # key is feature index $fidx, value is $ftidx index in @ftout_AH that $fidx corresponds to
     my $i;
-    my %fidx2sidx_H = (); # key is feature index $fidx, value is $sidx index in @short_AH that $fidx corresponds to
-    my %fidx2lidx_H = (); # key is feature index $fidx, value is $lidx index in @long_AH that $fidx corresponds to
 
     @warning_value_A = ();
     @error_value_A   = ();
@@ -7136,7 +7132,6 @@ sub output_feature_tbl_all_sequences {
       $error_value = "";
       $warning_value = "";
       if($exc_idx != -1) { 
-#HEYA        $do_short_ftable = 1;
         $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
         # only do a start_carrot if this exception calls for it AND we have a b5e
         $do_start_carrot = (($ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"}) && ($cur_err_str =~ m/b5e/)) ? 1 : 0;
@@ -7148,7 +7143,6 @@ sub output_feature_tbl_all_sequences {
         $warning_value   = populateFTableNoteErrorOrWarning("warning", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
       }
       else { 
-#HEYA        $do_short_ftable = 0;
         $do_misc_feature = 0;
         $do_start_carrot = 0;
         $do_stop_carrot  = 0;
@@ -7214,34 +7208,22 @@ sub output_feature_tbl_all_sequences {
               # print all errors to long feature table output
               $cur_long_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $err_line);
             }
-#HEYA            if($do_short_ftable && $note_value ne "") { 
             if($note_value ne "") { 
               # print note to short feature table output
               $cur_short_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
             }
 
-            # now push that to the output hashes
-            %{$long_AH[$lidx]} = ();
-            $long_AH[$lidx]{"carrot"}          = $do_start_carrot;
-            $long_AH[$lidx]{"mincoord"}        = $min_coord;
-            $long_AH[$lidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
-            $long_AH[$lidx]{"output"}          = $cur_long_out_str;
-            $long_AH[$lidx]{"coords"}          = $cur_coords_str;
-            $long_AH[$lidx]{"do_misc_feature"} = $do_misc_feature;
-            $fidx2lidx_H{$ftr_idx} = $lidx;
-            $lidx++;
-
-#HEYA      if($do_short_ftable) { 
-              %{$short_AH[$sidx]} = ();
-              $short_AH[$sidx]{"carrot"}          = $do_start_carrot;
-              $short_AH[$sidx]{"mincoord"}        = $min_coord;
-              $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
-              $short_AH[$sidx]{"output"}          = $cur_short_out_str;
-              $short_AH[$sidx]{"coords"}          = $cur_coords_str;
-              $short_AH[$sidx]{"do_misc_feature"} = $do_misc_feature;
-              $fidx2sidx_H{$ftr_idx} = $sidx;
-              $sidx++;
-#HEYA            }
+            # now push that to the output hash
+            %{$ftout_AH[$ftidx]} = ();
+            $ftout_AH[$ftidx]{"carrot"}          = $do_start_carrot;
+            $ftout_AH[$ftidx]{"mincoord"}        = $min_coord;
+            $ftout_AH[$ftidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
+            $ftout_AH[$ftidx]{"short_output"}    = $cur_short_out_str;
+            $ftout_AH[$ftidx]{"long_output"}     = $cur_long_out_str;
+            $ftout_AH[$ftidx]{"coords"}          = $cur_coords_str;
+            $ftout_AH[$ftidx]{"do_misc_feature"} = $do_misc_feature;
+            $fidx2idx_H{$ftr_idx} = $ftidx;
+            $ftidx++;
           }
         } # end of if(! $ftr_nop_error_flag) { 
       }
@@ -7266,7 +7248,7 @@ sub output_feature_tbl_all_sequences {
             }
           }
         }
-
+        
         if(! $all_mdl_nop_error_flag) { 
           # we only print feature information for features with predictions
           $min_coord = -1;
@@ -7326,33 +7308,20 @@ sub output_feature_tbl_all_sequences {
             # only print errors to long feature table output
             $cur_long_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $err_line);
           }
-#HEYA          if($do_short_ftable && $note_value ne "") { 
-            # print note to short feature table output
-            $cur_short_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
-#HEYA          }
+          # print note to short feature table output
+          $cur_short_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
 
-          # now push that to the output hashes
-          %{$long_AH[$lidx]} = ();
-          $long_AH[$lidx]{"carrot"}          = $do_start_carrot;
-          $long_AH[$lidx]{"mincoord"}        = $min_coord;
-          $long_AH[$lidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
-          $long_AH[$lidx]{"output"}          = $cur_long_out_str;
-          $long_AH[$lidx]{"coords"}          = $cur_coords_str;
-          $long_AH[$lidx]{"do_misc_feature"} = $do_misc_feature;
-          $fidx2lidx_H{$ftr_idx} = $lidx;
-          $lidx++;
-
-#HEYA          if($do_short_ftable) { 
-            %{$short_AH[$sidx]} = ();
-            $short_AH[$sidx]{"carrot"}          = $do_start_carrot;
-            $short_AH[$sidx]{"mincoord"}        = $min_coord;
-            $short_AH[$sidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
-            $short_AH[$sidx]{"output"}          = $cur_short_out_str;
-            $short_AH[$sidx]{"coords"}          = $cur_coords_str;
-            $short_AH[$sidx]{"do_misc_feature"} = $do_misc_feature;
-            $fidx2sidx_H{$ftr_idx} = $sidx;
-            $sidx++;
-#HEYA          }
+          # now push that to the output hash
+          %{$ftout_AH[$ftidx]} = ();
+          $ftout_AH[$ftidx]{"carrot"}          = $do_start_carrot;
+          $ftout_AH[$ftidx]{"mincoord"}        = $min_coord;
+          $ftout_AH[$ftidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
+          $ftout_AH[$ftidx]{"short_output"}    = $cur_short_out_str;
+          $ftout_AH[$ftidx]{"long_output"}     = $cur_long_out_str;
+          $ftout_AH[$ftidx]{"coords"}          = $cur_coords_str;
+          $ftout_AH[$ftidx]{"do_misc_feature"} = $do_misc_feature;
+          $fidx2idx_H{$ftr_idx} = $ftidx;
+          $ftidx++;
         } # end of if(! $all_mdl_nop_error_flag)
       }  # end of 'else' entered if feature is not a multifeature cds-mp but is annotated by models
       elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") { # duplicate feature
@@ -7360,17 +7329,17 @@ sub output_feature_tbl_all_sequences {
         if($src_idx == -1) {
           DNAORG_FAIL("ERROR in $sub_name, feature index $ftr_idx has annot_type of duplicate, but has source_idx of -1", 1, $ofile_info_HHR->{"FH"});
         }
-        if(exists $fidx2lidx_H{$src_idx}) {
-          my $src_lidx = $fidx2lidx_H{$src_idx};
-          %{$long_AH[$lidx]} = ();
-          foreach my $key (sort keys (%{$long_AH[$src_lidx]})) {
-            $long_AH[$lidx]{$key} = $long_AH[$src_lidx]{$key};
-            if($key eq "type_priority") { $long_AH[$lidx]{$key} = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority; }
+        if(exists $fidx2idx_H{$src_idx}) {
+          my $src_ftidx = $fidx2idx_H{$src_idx};
+          %{$ftout_AH[$ftidx]} = ();
+          foreach my $key (sort keys (%{$ftout_AH[$src_ftidx]})) {
+            $ftout_AH[$ftidx]{$key} = $ftout_AH[$src_ftidx]{$key};
+            if($key eq "type_priority") { $ftout_AH[$ftidx]{$key} = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority; }
           }
-          $fidx2lidx_H{$ftr_idx} = $lidx;
+          $fidx2idx_H{$ftr_idx} = $ftidx;
           # use "coords" value to rewrite "output" value
           $cur_out_str = "";
-          my @coords_A = split("\n", $long_AH[$src_lidx]{"coords"});
+          my @coords_A = split("\n", $ftout_AH[$src_ftidx]{"coords"});
           for(my $cidx = 0; $cidx < scalar(@coords_A); $cidx++) { 
             $cur_out_str .= $coords_A[$cidx];
             if($cidx == 0) { $cur_out_str .= "\t" . $feature_type; }
@@ -7379,7 +7348,7 @@ sub output_feature_tbl_all_sequences {
           # version 0.34 and previous, we only did this if src was not a misc_feature 
           # but example sequence NC_029646-09 (https://confluence.ncbi.nlm.nih.gov/pages/viewpage.action?spaceKey=VG&title=Annotation+Test+Sets+and+5-Column+Feature+Table)
           # has a gene with gene qualifier even when it is for a misc_feature CDS
-          # v0.34 if: if(! $long_AH[$src_lidx]{"do_misc_feature"}) { 
+          # v0.34 if: if(! $ftout_AH[$src_ftidx]{"do_misc_feature"}) { 
           foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
             if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
               $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
@@ -7389,43 +7358,10 @@ sub output_feature_tbl_all_sequences {
               }
             }
           }
-          $long_AH[$lidx]{"output"} = $cur_out_str;
-          $lidx++;
+          $ftout_AH[$ftidx]{"short_output"} = $cur_out_str;
+          $ftout_AH[$ftidx]{"long_output"}  = $cur_out_str;
+          $ftidx++;
         }
-#HEYA        if($do_short_ftable) { 
-          if(exists $fidx2sidx_H{$src_idx}) {
-            my $src_sidx = $fidx2sidx_H{$src_idx};
-            %{$short_AH[$sidx]} = ();
-            foreach my $key (sort keys (%{$short_AH[$src_sidx]})) {
-              $short_AH[$sidx]{$key} = $short_AH[$src_sidx]{$key};
-              if($key eq "type_priority") { $short_AH[$sidx]{$key} = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority; }
-            }
-            $fidx2sidx_H{$ftr_idx} = $sidx;
-            # use "coords" value to rewrite "output" value
-            $cur_out_str = "";
-            my @coords_A = split("\n", $short_AH[$src_sidx]{"coords"});
-            for(my $cidx = 0; $cidx < scalar(@coords_A); $cidx++) { 
-              $cur_out_str .= $coords_A[$cidx];
-              if($cidx == 0) { $cur_out_str .= "\t" . $feature_type; }
-              $cur_out_str .= "\n";
-            }
-            # version 0.34 and previous, we only did this if src was not a misc_feature 
-            # but example sequence NC_029646-09 (https://confluence.ncbi.nlm.nih.gov/pages/viewpage.action?spaceKey=VG&title=Annotation+Test+Sets+and+5-Column+Feature+Table)
-            # has a gene with gene qualifier even when it is for a misc_feature CDS
-            # v0.34 if: if(! $short_AH[$src_sidx]{"do_misc_feature"}) { 
-            foreach my $key ("out_product", "out_gene", "out_exception") { # done this way so we could expand to more feature info elements in the future
-              if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-                $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-                @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
-                foreach $qval (@qval_A) { 
-                  $cur_out_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $ftr_info_HAR->{$key}[$ftr_idx]);
-                }
-              }
-            }
-            $short_AH[$sidx]{"output"} = $cur_out_str;
-            $sidx++;
-          }
-#HEYA   }
       }
     } # end of 'for(my $ftr_idx'      
 
@@ -7433,7 +7369,7 @@ sub output_feature_tbl_all_sequences {
 
     my $nwarn = scalar(@warning_value_A);
     my $nerr  = scalar(@error_value_A);
-    my $do_pass = (($nwarn == 0) && ($nerr == 0) && (scalar(@short_AH) > 0)) ? 1 : 0;
+    my $do_pass = (($nwarn == 0) && ($nerr == 0) && (scalar(@ftout_AH) > 0)) ? 1 : 0;
     if($do_pass) { 
       $sftbl_FH = $pass_sftbl_FH;
       print $sftbl_FH ">Feature $accn_name\n";
@@ -7449,65 +7385,33 @@ sub output_feature_tbl_all_sequences {
 
     # output
     # first sort the array of hashes
-    if(scalar(@short_AH) > 0) { 
-      @short_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
+    if(scalar(@ftout_AH) > 0) { 
+      @ftout_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
                          $b->{"carrot"}        <=> $a->{"carrot"}   or
                          $a->{"type_priority"} <=> $b->{"type_priority"} 
-      } @short_AH;
-      for($i = 0; $i < scalar(@short_AH); $i++) { 
-        print $sftbl_FH $short_AH[$i]{"output"};
+      } @ftout_AH;
+      for($i = 0; $i < scalar(@ftout_AH); $i++) { 
+        print $sftbl_FH $ftout_AH[$i]{"short_output"};
+        if(! $do_pass) { 
+          print $fail_lftbl_FH $ftout_AH[$i]{"long_output"};
+        }
       }
       if(! $do_pass) { 
-        print $sftbl_FH "\nAdditional note(s) to submitter:\n"; 
+        print $sftbl_FH      "\nAdditional note(s) to submitter:\n"; 
+        print $fail_lftbl_FH "\nAdditional note(s) to submitter:\n"; 
         foreach my $error_str (@error_value_A) { 
           foreach my $error_line (split(/\:\:\:/, $error_str)) { 
-            print $sftbl_FH "ERROR: " . $error_line . "\n"; 
+            print $sftbl_FH      "ERROR: " . $error_line . "\n"; 
+            print $fail_lftbl_FH "ERROR: " . $error_str . "\n"; 
           }
         }
         foreach my $warning_str (@warning_value_A) { 
           foreach my $warning_line (split(/\:\:\:/, $warning_str)) { 
-            print $sftbl_FH "WARNING: " . $warning_line . "\n";  
+            print $sftbl_FH      "WARNING: " . $warning_line . "\n";  
+            print $fail_lftbl_FH "WARNING: " . $warning_str . "\n"; 
           }
         }
       }
-    }
-    if(scalar(@long_AH) > 0) { 
-      @long_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
-                        $b->{"carrot"}        <=> $a->{"carrot"}   or
-                        $a->{"type_priority"} <=> $b->{"type_priority"} 
-      } @long_AH;
-      if(! $do_pass) { 
-        for($i = 0; $i < scalar(@long_AH); $i++) { 
-          print $fail_lftbl_FH $long_AH[$i]{"output"};
-        }
-        if((scalar(@warning_value_A) + scalar(@error_value_A)) >= 1) { 
-          print $fail_lftbl_FH "\nAdditional note(s) to submitter:\n"; 
-        }
-        foreach my $error_str (@error_value_A) { 
-          print $fail_lftbl_FH "ERROR: " . $error_str . "\n"; 
-        }
-        foreach my $warning_str (@warning_value_A) { 
-          print $fail_lftbl_FH "WARNING: " . $warning_str . "\n"; 
-        }
-      }
-#HEYA      else { # do_pass is TRUE, verify short_AH and long_AH are identical
-#HEYA        if(scalar(@short_AH) != scalar(@long_AH)) { 
-#HEYA          DNAORG_FAIL(sprintf("ERROR in $sub_name, sequence $accn_name PASSes but short and long output differ in size (%d != %d)", scalar(@short_AH), scalar(@long_AH)), 1, $ofile_info_HHR->{"FH"});
-#HEYA        }
-#HEYA        for(my $z = 0; $z < scalar(@short_AH); $z++) { 
-#HEYA          if(scalar(keys %{$short_AH[$z]}) != scalar(keys %{$long_AH[$z]})) { 
-#HEYA            DNAORG_FAIL(sprintf("ERROR in $sub_name, sequence $accn_name PASSes but short and long output differ in size of hash for element $z (%d != %d)", scalar(keys %{$short_AH[$z]}), scalar(keys %{$long_AH[$z]})), 1, $ofile_info_HHR->{"FH"});
-#HEYA          }
-#HEYA          foreach my $zkey (sort keys (%{$short_AH[$z]})) { 
-#HEYA            if(! exists $long_AH[$z]{$zkey}) { 
-#HEYA              DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name PASSes but short and long output differ, in hash for element $z ($zkey exists only in short)", 1, $ofile_info_HHR->{"FH"});
-#HEYA            }
-#HEYA            if($short_AH[$z]{$zkey} ne $long_AH[$z]{$zkey}) { 
-#HEYA              DNAORG_FAIL(sprintf("ERROR in $sub_name, sequence $accn_name PASSes but short and long output differ, in hash for element $z, key $zkey (%s not equal to %s)", $short_AH[$z]{$zkey}, $long_AH[$z]{$zkey}), 1, $ofile_info_HHR->{"FH"});
-#HEYA            }
-#HEYA          }
-#HEYA        }
-#HEYA      } # end of 'else' block that verifies @short_AH and @long_AH are identical for passable seqs
     }
   } # end of for loop over sequences
 
