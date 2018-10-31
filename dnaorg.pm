@@ -1402,6 +1402,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "lsc", "feature",  0,             "low homology score", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "dup", "feature",  0,             "more than one homologous region", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "xip", "feature",  0,             "blastx protein validation failure", $FH_HR);
+  addToErrorInfoHash($err_info_HAR, "xnn", "feature",  0,             "blastx identifies protein not identified in nucleotide-based search", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (ntr)", $FH_HR);
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", $FH_HR);
@@ -1664,6 +1665,9 @@ sub initializeHardCodedFTableErrorExceptions {
   #                                                                errors     errors                                             feature? carrot? carrot?, stop?  note?
 
   ###############################################################################
+  # 'clean' exceptions: exceptions that do not cause an error or warning
+  # The %expln_H hash is undefined for these when we call addFTableErrorException()
+  ###############################################################################
   # Exception: allow features with olp, aja and ajb to be output to feature table
   $reqd_str = undef;
   $alwd_str = "olp,aja,ajb";
@@ -1909,12 +1913,22 @@ sub initializeHardCodedFTableErrorExceptions {
   $stop_carrot  = 0;
   $pred_stop    = 0;
   %expln_H = ();
-  $expln_H{"note"} = "!COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the note 
+  $expln_H{"note"}  = "!COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the note 
   $expln_H{"error"} = "Duplicate Feature: !COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
+  ########################################################################################
+  # exceptions that require xip: there is one of these for each of the 
+  # 'clean' exceptions that do not throw an error or warning
+  #
+  # IDEA: make a new function that modifies another exception by adding a required 
+  # error string to it and modifying the errors/warnings that are thrown
+  # I would call that here once each for each of the clean exceptions adding the
+  # 'xip' error. Maybe I can make all my exceptions like that, by building on 
+  # top of the clean exceptions.
+  # 
+  # IDEA: can I have two errors for a single exception?
   ###############################################################################
-  # Exception: allow features with xip to be output to feature table
   $reqd_str = "xip";
   $alwd_str = "olp,aja,ajb";
   $misc_feature = 1;
@@ -1924,6 +1938,87 @@ sub initializeHardCodedFTableErrorExceptions {
   %expln_H = ();
   $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
   $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  $reqd_str = "xip,b5e";
+  $alwd_str = "olp,aja,ajb,nm3,inp,nop,m5e";
+  $misc_feature = 1;
+  $start_carrot = 1;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  %expln_H = ();
+  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  $reqd_str = "xip,b3e";
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 0;
+  $start_carrot = 0;
+  $stop_carrot  = 1;
+  $pred_stop    = 0;
+  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  $reqd_str = "xip,b5e,b3e";
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m5e,m3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 0;
+  $start_carrot = 1;
+  $stop_carrot  = 1;
+  $pred_stop    = 0;
+  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  $reqd_str = "xip,b5e,trc";
+  $alwd_str = "olp,aja,ajb,nm3,inp,aji,nop,m5e,mtr";
+  $misc_feature = 1;
+  $start_carrot = 1;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  $reqd_str = "xip,b3e,trc";
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m3e,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 1;
+  $pred_stop    = 0;
+  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with both b5e and b3e to be output to feature table
+  $reqd_str = "xip,b5e,b3e,trc";
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m5e,m3e,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 1;
+  $start_carrot = 1;
+  $stop_carrot  = 1;
+  $pred_stop    = 0;
+  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  # Exception: allow features with xnn to be output to feature table
+  $reqd_str = "xnn";
+  $alwd_str = "nop";
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  %expln_H = ();
+  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
+  $expln_H{"error"} = "Protein validation error: !COPY!xnn"; # "COPY!xnn" indicates we should use the xnn error string to make the error
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
@@ -8586,12 +8681,12 @@ sub runCmscanOrNhmmscan {
 #      $opts .= " --max -E 0.01 "; # with --max, a lot more FPs get through the filter, so we enforce an E-value cutoff
     }
     elsif($do_mid) { 
-#      $opts .= " --mid -E 0.1 --noF6 --olonepass --tau 0.001 --cyk --acyk  "; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
-      $opts .= " --mid -E 0.1 --noF6 --olonepass --tau 0.001 --cyk --acyk -g --mxsize 1028."; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
+#      $opts .= " --mid -E 0.1 --noF6 --olonepass --tau 0.001 --cyk --acyk -g --mxsize 1028."; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
+      $opts .= " --mid -E 0.1 --noF6 --olonepass --cyk --acyk -g --mxsize 1028."; # with --mid, more FPs get through the filter, so we enforce an E-value cutoff
     }
     else { 
-#      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --tau 0.001 --cyk --acyk ";
-      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --tau 0.001 --cyk --acyk -g --mxsize 1028. ";
+#      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --tau 0.001 --cyk --acyk -g --mxsize 1028. ";
+      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --cyk --acyk -g --mxsize 1028. ";
     }
     # finally add --nohmmonly if we're not a big model
     if(! $do_big) { # do not use hmm unless model is big

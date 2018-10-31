@@ -1270,12 +1270,12 @@ else {
             # now copy the sequin feature tables to this top level directory:
             my $src_pass_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
             my $src_fail_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
-            my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.af.sqtable";
+            my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
             my $src_pass_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
             my $src_fail_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
             my $dest_pass_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
             my $dest_fail_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
-            my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.af.sqtable";
+            my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
             my $dest_pass_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
             my $dest_fail_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
             runCommand("cp $src_pass_sqtable $dest_pass_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
@@ -1285,7 +1285,7 @@ else {
             runCommand("cp $src_fail_list    $dest_fail_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
             addClosedFileToOutputInfo(\%ofile_info_HH, "pass-sqtbl" . $ctr++, $dest_pass_sqtable, 1, "annotation results for $ref_list_seqname sequences that pass dnaorg_annotate.pl");
             addClosedFileToOutputInfo(\%ofile_info_HH, "fail-sqtbl" . $ctr++, $dest_fail_sqtable, 1, "annotation results for $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl"  . $ctr++, $dest_long_sqtable, 1, "annotation results for $ref_list_seqname sequences that fail dnaorg_annotate.pl (verbose)");
+            addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl"  . $ctr++, $dest_long_sqtable, 1, "annotation results for sequences that pass or fail dnaorg_annotate.pl (verbose)");
             addClosedFileToOutputInfo(\%ofile_info_HH, "pass-list"  . $ctr++, $dest_pass_sqtable, 1, "list of $ref_list_seqname sequences that pass dnaorg_annotate.pl");
             addClosedFileToOutputInfo(\%ofile_info_HH, "fail-list"  . $ctr++, $dest_fail_sqtable, 1, "list of $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
 
