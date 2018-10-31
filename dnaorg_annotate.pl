@@ -7154,8 +7154,8 @@ sub output_feature_tbl_all_sequences {
           my $exc_idx = checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $ftr_err_str, $FH_HR);
           if($exc_idx != -1) { 
             $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
-            $do_start_carrot = (($ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"}) && ($ftr_err_str =~ m/b5e/)) ? 1 : 0;
-            $do_stop_carrot  = (($ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"})  && ($ftr_err_str =~ m/b3e/)) ? 1 : 0;
+            $do_start_carrot = ($ftr_err_str =~ m/b5e/) ? 1 : 0;
+            $do_stop_carrot  = ($ftr_err_str =~ m/b3e/) ? 1 : 0;
             $do_pred_stop    = $ftbl_err_exceptions_AHR->[$exc_idx]{"pred_stop"};
             $note_value      = populateFTableNoteErrorOrWarning("note",  $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
             $error_value     = populateFTableNoteErrorOrWarning("error", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
@@ -10134,7 +10134,7 @@ sub helper_ftable_get_coords_standard {
   return ""; # never reached
 }
 #################################################################
-# Subroutine:  helper_ftable_get_starts_stops_xnn_flag
+# Subroutine:  helper_ftable_get_coords_xnn_flag
 # Incept:      EPN, Tue Oct 30 12:26:05 2018
 #
 # Purpose:    Given a sequence name and feature index, construct
@@ -10158,8 +10158,8 @@ sub helper_ftable_get_coords_standard {
 #
 # Dies:       if x_start or x_stop does not exist in the ftr_results_AAHR->[$ftr_idx][$seq_idx] hash
 ################################################################# 
-sub helper_ftable_get_starts_stops_xnn_flag { 
-  my $sub_name = "helper_ftable_get_starts_stops_xnn_flag";
+sub helper_ftable_get_coords_xnn_flag { 
+  my $sub_name = "helper_ftable_get_coords_xnn_flag";
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
