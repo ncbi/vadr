@@ -3624,7 +3624,7 @@ sub ftr_results_add_xip_xnn_errors {
         if(check_for_defined_pstart_in_mdl_results($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR)) { 
           $xnn_err_possible = 0; # we have at least one prediction for this feature, we can't have a xnn error
         }
-        printf("HEYAAAA ftr_idx $ftr_idx xnn_err_possible $xnn_err_possible\n");
+        # printf("HEYAAAA ftr_idx $ftr_idx xnn_err_possible $xnn_err_possible\n");
         my $xip_err_str = ""; # modified if we have an 'xip' error below
         my $xnn_err_str = ""; # modified if we have an 'xnn' error below
         # printf("HEYA LOOKING FOR xip FOR $seq_name $ftr_idx\n");
@@ -3688,11 +3688,11 @@ sub ftr_results_add_xip_xnn_errors {
         }
 
         if(($xnn_err_possible) && (! defined $p_start) && (defined $x_start))  { # no CM prediction but there is a blastx prediction
-          printf("0HEYAHEYA p_start is undef, x_start is def, x_score is $x_score, x_start: $x_start, x_stop: $x_stop\n");
+          # printf("0HEYAHEYA p_start is undef, x_start is def, x_score is $x_score, x_start: $x_start, x_stop: $x_stop\n");
           if((defined $x_score) && ($x_score >= $min_x_score)) { 
             if($xnn_err_str ne "") { $xnn_err_str .= ", "; }
             $xnn_err_str .= "blastx hit from $x_start to $x_stop with score $x_score, but no CM hit";
-            printf("1HEYAHEYA set xnn_err_str $ftr_idx seq_idx: $seq_idx\n");
+            # printf("1HEYAHEYA set xnn_err_str $ftr_idx seq_idx: $seq_idx\n");
           }
         }
 
@@ -3763,16 +3763,17 @@ sub ftr_results_add_xip_xnn_errors {
             for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
               my $child_ftr_idx = $all_children_idx_A[$child_idx];
               error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mip", $seq_name, 
-                                  sprintf("CDS %s", 
+                                  sprintf("MP: %s, CDS %s", 
+                                          $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
                                           $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
                                   $FH_HR);
             }
           }
         } # end of 'if(defined $p_start)'
         else { # $p_start is undefined, check if we should add a xnn error
-          printf("HEYAHEYA pstart is undef ftr_idx $ftr_idx seq_idx: $seq_idx\n");
+          # printf("HEYAHEYA pstart is undef ftr_idx $ftr_idx seq_idx: $seq_idx\n");
           if($xnn_err_str ne "") { 
-            printf("HEYAHEYA added xnn error\n");
+            # printf("HEYAHEYA added xnn error\n");
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "xnn", $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $xnn_err_str), $FH_HR);
           }
         }
@@ -4640,8 +4641,9 @@ sub ftr_results_calculate {
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, 
-                                sprintf("CDS %s", 
-                                        $ftr_info_HAR->{"out_product"}[$ftr_idx]),
+                                sprintf("MP: %s, CDS %s", 
+                                        $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
+                                        $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
                                 $FH_HR);
           }
         }
@@ -7202,9 +7204,9 @@ sub output_feature_tbl_all_sequences {
           $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "out_exception", $qval_sep, $ftr_info_HAR, $FH_HR);
           if((! $is_duplicate) && 
              (($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp"))) { 
-            printf("HEYA calling helper_ftable_add_qualifier_from_ftr_results() for $seq_idx feature $ftr_idx ($ftr_tiny)\n");
+            # printf("HEYA calling helper_ftable_add_qualifier_from_ftr_results() for $seq_idx feature $ftr_idx ($ftr_tiny)\n");
             my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_idx, $ftr_idx, "x_frame", "codon_start", $ftr_results_AAHR, $FH_HR);
-            if($tmp_str eq "") { $missing_codon_start_flag = 1; printf("HEYA set missing_codon_start_flag to 1\n"); } 
+            if($tmp_str eq "") { $missing_codon_start_flag = 1; } 
             $ftr_out_str .= $tmp_str;
           }
         }
@@ -9843,10 +9845,10 @@ sub ftr_results_calculate_blastx {
         if((! defined $query) || (! defined $ftr_idx)) { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines\n", 1, $FH_HR);
         }
-         printf("HEYA BLASTX HSP $key $value\n");
+        # printf("HEYA BLASTX HSP $key $value\n");
         if($value =~ /^(\d+)$/) { 
           $hsp_idx = $value;
-          printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
+          # printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
         }
         else { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", 1, $FH_HR);
@@ -9862,9 +9864,9 @@ sub ftr_results_calculate_blastx {
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $xstart;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $xstop;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} = ($xstart <= $xstop) ? "+" : "-";
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", 1, $FH_HR);
@@ -9879,7 +9881,7 @@ sub ftr_results_calculate_blastx {
           if($value =~ /^(\d+)$/) { 
             my $maxins = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} = $maxins;
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", 1, $FH_HR);
@@ -9894,7 +9896,7 @@ sub ftr_results_calculate_blastx {
           if($value =~ /^(\d+)$/) { 
             my $maxdel = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} = $maxdel;
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxdel} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxdel} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXDE line $line", 1, $FH_HR);
@@ -9906,10 +9908,10 @@ sub ftr_results_calculate_blastx {
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
         if($hsp_idx eq "1") { 
-          if($value =~ /(^[\+\-][123]$)/) { 
+          if($value =~ /^[\+\-]([123])$/) { 
             my $frame = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} = $frame;
-            printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} . "\n");
+            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
@@ -9922,7 +9924,7 @@ sub ftr_results_calculate_blastx {
         }
         if($hsp_idx eq "1") { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} = $value;
-          printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
+          # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
         }
       }
       elsif($key eq "SCORE") { 
@@ -9931,7 +9933,7 @@ sub ftr_results_calculate_blastx {
         }
         if($hsp_idx eq "1") { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} = $value;
-          printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_score} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} . "\n");
+          # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_score} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} . "\n");
         }
       }
       # Add elsif($key eq "") blocks here to store more values from the blastx.summary file

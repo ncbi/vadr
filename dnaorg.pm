@@ -1955,7 +1955,7 @@ sub initializeHardCodedFTableErrorExceptions {
   ###############################################################################
   $reqd_str = "xip,b3e";
   $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 0;
+  $misc_feature = 1;
   $start_carrot = 0;
   $stop_carrot  = 1;
   $pred_stop    = 0;
@@ -1966,7 +1966,7 @@ sub initializeHardCodedFTableErrorExceptions {
   ###############################################################################
   $reqd_str = "xip,b5e,b3e";
   $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m5e,m3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 0;
+  $misc_feature = 1;
   $start_carrot = 1;
   $stop_carrot  = 1;
   $pred_stop    = 0;
@@ -2006,6 +2006,54 @@ sub initializeHardCodedFTableErrorExceptions {
   $pred_stop    = 0;
   $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
   $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ########################################################################################
+  # exceptions that require mip: there is one of these for each of the 
+  # 'clean' exceptions involving m5e and m3e that do not throw an error or warning
+  ###############################################################################
+  $reqd_str = "mip";
+  $alwd_str = "olp,aja,ajb";
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  %expln_H = ();
+  $expln_H{"note"} = "similar to !out_product,out_gene!";
+  $expln_H{"error"} = "Protein validation failure: !COPY!mip";
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  $reqd_str = "m5e,mip";
+  $alwd_str = "olp,aja,ajb,nm3,nop,b5e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  $expln_H{"note"} = "similar to !out_product,out_gene!";
+  $expln_H{"error"} = "Protein validation failure: !COPY!mip"; 
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  $reqd_str = "m3e,mip";
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop,b3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  $expln_H{"note"} = "similar to !out_product,out_gene!";
+  $expln_H{"error"} = "Protein validation failure: !COPY!mip"; 
+  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
+
+  ###############################################################################
+  $reqd_str = "m5e,m3e,mip";
+  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop,b5e,b3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
+  $misc_feature = 1;
+  $start_carrot = 0;
+  $stop_carrot  = 0;
+  $pred_stop    = 0;
+  $expln_H{"note"} = "similar to !out_product,out_gene!";
+  $expln_H{"error"} = "Protein validation failure: !COPY!mip"; 
   addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $start_carrot, $stop_carrot, $pred_stop, \%expln_H, $FH_HR);
 
   ###############################################################################
