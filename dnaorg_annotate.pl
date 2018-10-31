@@ -7123,13 +7123,13 @@ sub output_feature_tbl_all_sequences {
         my $src_idx = $ftr_info_HAR->{"source_idx"}[$ftr_idx];
         if(exists $fidx2idx_H{$src_idx}) { 
           $dup_src_ftidx = $fidx2idx_H{$src_idx}; 
-          $do_ignore = 1; 
+          $do_ignore = 0;
         }
       }
       else { # not a duplicate feature
         $defined_pstart = check_for_defined_pstart_in_mdl_results($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR);
         $xnn_flag       = (exists $err_ftr_instances_AHHR->[$ftr_idx]{"xnn"}{$seq_name}) ? 1 : 0;
-        $do_ignore = ($defined_pstart || $xnn_flag) ? 0 : 1;
+        $do_ignore      = ($defined_pstart || $xnn_flag) ? 0 : 1;
       }
 
       if(! $do_ignore) { 
@@ -7141,38 +7141,39 @@ sub output_feature_tbl_all_sequences {
         my $note_value      = "";
         my $error_value     = "";
         my $warning_value   = "";
-
+        
         my $ftr_coords_str = ""; # string of coordinates for this feature
         my $ftr_out_str    = ""; # output string for this feature
         my $long_out_str   = ""; # long feature table output string for this feature
-
+        my @ftr_long_output_A = (); # array of strings with complete error messages, for long feature table
         my $ftr_tiny = $ftr_info_HAR->{"out_tiny"}[$ftr_idx];
 
-        # fill an array and strings with all errors for this sequence/feature combo
-        my @ftr_long_output_A = (); # array of strings with complete error messages, for long feature table
-        my $ftr_err_str = helper_ftable_get_ftr_error_code_strings($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, \@ftr_long_output_A, $FH_HR);
-        my $exc_idx = checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $ftr_err_str, $FH_HR);
-        if($exc_idx != -1) { 
-          $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
-          $do_start_carrot = (($ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"}) && ($ftr_err_str =~ m/b5e/)) ? 1 : 0;
-          $do_stop_carrot  = (($ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"})  && ($ftr_err_str =~ m/b3e/)) ? 1 : 0;
-          $do_pred_stop    = $ftbl_err_exceptions_AHR->[$exc_idx]{"pred_stop"};
-          $note_value      = populateFTableNoteErrorOrWarning("note",  $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
-          $error_value     = populateFTableNoteErrorOrWarning("error", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
-          $warning_value   = populateFTableNoteErrorOrWarning("warning", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
-          if($do_misc_feature) { $feature_type = "misc_feature"; }
-
-          if($error_value   ne "") { push(@seq_error_A,   $error_value);   }
-          if($warning_value ne "") { push(@seq_warning_A, $warning_value); }
-        }
-        else { 
-          # this set of errors did not meet an exception, add all the error information to the @seq_problem_A array
-          my $ftr_str = (exists $ftr_info_HAR->{"out_product"}[$ftr_idx]) ? $ftr_info_HAR->{"out_product"}[$ftr_idx] : $ftr_tiny;
-          foreach my $long_line (@ftr_long_output_A) { 
-            push(@seq_problem_A, $ftr_str . ":" . " " . $long_line);
+        if(! $is_duplicate) { # only look up errors if we're not a duplicate feature
+          # fill an array and strings with all errors for this sequence/feature combo
+          my $ftr_err_str = helper_ftable_get_ftr_error_code_strings($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, \@ftr_long_output_A, $FH_HR);
+          my $exc_idx = checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $ftr_err_str, $FH_HR);
+          if($exc_idx != -1) { 
+            $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
+            $do_start_carrot = (($ftbl_err_exceptions_AHR->[$exc_idx]{"start_carrot"}) && ($ftr_err_str =~ m/b5e/)) ? 1 : 0;
+            $do_stop_carrot  = (($ftbl_err_exceptions_AHR->[$exc_idx]{"stop_carrot"})  && ($ftr_err_str =~ m/b3e/)) ? 1 : 0;
+            $do_pred_stop    = $ftbl_err_exceptions_AHR->[$exc_idx]{"pred_stop"};
+            $note_value      = populateFTableNoteErrorOrWarning("note",  $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+            $error_value     = populateFTableNoteErrorOrWarning("error", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+            $warning_value   = populateFTableNoteErrorOrWarning("warning", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
+            if($do_misc_feature) { $feature_type = "misc_feature"; }
+            
+            if($error_value   ne "") { push(@seq_error_A,   $error_value);   }
+            if($warning_value ne "") { push(@seq_warning_A, $warning_value); }
           }
-          # the do_misc_feature, do_start_carrot, etc. values stay as their per-seq/feature-pair defaults
-        }
+          else { 
+            # this set of errors did not meet an exception, add all the error information to the @seq_problem_A array
+            my $ftr_str = (exists $ftr_info_HAR->{"out_product"}[$ftr_idx]) ? $ftr_info_HAR->{"out_product"}[$ftr_idx] : $ftr_tiny;
+            foreach my $long_line (@ftr_long_output_A) { 
+              push(@seq_problem_A, $ftr_str . ":" . " " . $long_line);
+            }
+            # the do_misc_feature, do_start_carrot, etc. values stay as their per-seq/feature-pair defaults
+          }
+        } # end of 'if(! $is_duplicate)'
 
         # determine coordinates for the feature differently depending on:
         # if we are: 
@@ -7180,7 +7181,9 @@ sub output_feature_tbl_all_sequences {
         # - we have at least one prediction ($defined_pstart) 
         # - not a duplicate and don't have at least one prediction (in this case, $xnn_flag will be up, or else we would have ignored this feature)
         if($is_duplicate) { 
-          $ftr_coords_str = $ftout_AH[$dup_src_ftidx]{"coords"};
+          $ftr_coords_str  = $ftout_AH[$dup_src_ftidx]{"coords"};
+          $min_coord       = $ftout_AH[$dup_src_ftidx]{"mincoord"};
+          $do_start_carrot = $ftout_AH[$dup_src_ftidx]{"carrot"};
         }
         elsif(! $defined_pstart) { 
           # $xnn_flag must be TRUE
