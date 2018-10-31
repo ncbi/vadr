@@ -15,29 +15,33 @@
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass --keep -v -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/jira-viv-664.fa --dirbuild !dirbuild! --dirout da-jira-viv-664 > da-jira-viv-664.out
 desc: jira-viv-664
 out: da-jira-viv-664/da-jira-viv-664-NC_029646.cp/da-jira-viv-664-NC_029646.cp.dnaorg_annotate.ap.sqtable
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-664-NC_029646.pass.dnaorg_annotate.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-664-NC_029646.cp.dnaorg_annotate.ap.sqtable
 
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/jira-viv-665.fa --dirbuild !dirbuild! --dirout da-jira-viv-665 > da-jira-viv-665.out
 desc: jira-viv-665
 out: da-jira-viv-665/da-jira-viv-665-NC_029646.cp/da-jira-viv-665-NC_029646.cp.dnaorg_annotate.ap.sqtable
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-665-NC_029646.pass.dnaorg_annotate.sqtable
+out: da-jira-viv-665/da-jira-viv-665-NC_029646.cp/da-jira-viv-665-NC_029646.cp.dnaorg_annotate.af.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-665-NC_029646.cp.dnaorg_annotate.ap.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-665-NC_029646.cp.dnaorg_annotate.af.sqtable
 
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/jira-viv-697.fa --dirbuild !dirbuild! --dirout da-jira-viv-697 > da-jira-viv-697.out
 desc: jira-viv-697
 out: da-jira-viv-697/da-jira-viv-697-NC_029646.cp/da-jira-viv-697-NC_029646.cp.dnaorg_annotate.ap.sqtable
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-697-NC_029646.pass.dnaorg_annotate.sqtable
+out: da-jira-viv-697/da-jira-viv-697-NC_029646.cp/da-jira-viv-697-NC_031324.cp.dnaorg_annotate.ap.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-697-NC_029646.cp.dnaorg_annotate.ap.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-697-NC_031324.cp.dnaorg_annotate.ap.sqtable
 
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/jira-viv-698.fa --dirbuild !dirbuild! --dirout da-jira-viv-698 > da-jira-viv-698.out
 desc: jira-viv-698
 out: da-jira-viv-698/da-jira-viv-698-NC_029646.cp/da-jira-viv-698-NC_029646.cp.dnaorg_annotate.ap.sqtable
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-698-NC_029646.pass.dnaorg_annotate.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-698-NC_029646.cp.dnaorg_annotate.ap.sqtable
 
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/jira-viv-789.fa --dirbuild !dirbuild! --dirout da-jira-viv-789 > da-jira-viv-789.out
 desc: jira-viv-789
 out: da-jira-viv-789/da-jira-viv-789-NC_029646.cp/da-jira-viv-789-NC_029646.cp.dnaorg_annotate.ap.sqtable
 out: da-jira-viv-789/da-jira-viv-789-NC_029647.cp/da-jira-viv-789-NC_029647.cp.dnaorg_annotate.ap.sqtable
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-789-NC_029646.pass.dnaorg_annotate.sqtable
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-789-NC_029647.pass.dnaorg_annotate.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-789-NC_029646.cp.dnaorg_annotate.ap.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/da-jira-viv-789-NC_029647.cp.dnaorg_annotate.ap.sqtable
 
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/jira-viv-792.fa --dirbuild !dirbuild! --dirout da-jira-viv-792 > da-jira-viv-792.out
 desc: jira-viv-792

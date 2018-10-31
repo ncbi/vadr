@@ -1,0 +1,26 @@
+>Feature gb|MG892912|
+<1	771	gene
+			gene	ORF1
+<1	771	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+<1	768	mat_peptide
+			product	RdRp
+752	>1324	gene
+			gene	ORF2
+752	>1324	CDS
+			product	VP1
+			codon_start	2
+>Feature gb|MG892909|
+<1	774	gene
+			gene	ORF1
+<1	774	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+<1	771	mat_peptide
+			product	RdRp
+755	>1326	gene
+			gene	ORF2
+755	>1326	CDS
+			product	VP1
+			codon_start	2

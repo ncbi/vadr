@@ -1,0 +1,13 @@
+>Feature gb|MH165841|
+<1	71	gene
+			gene	ORF1
+<1	71	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	68	mat_peptide
+			product	RdRp
+55	>358	gene
+			gene	ORF2
+55	>358	CDS
+			product	VP1
+			codon_start	1
