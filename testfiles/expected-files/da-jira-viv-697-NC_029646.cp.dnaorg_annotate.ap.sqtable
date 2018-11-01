@@ -1,0 +1,39 @@
+>Feature gb|MH165842|
+<1	98	gene
+			gene	ORF1
+<1	98	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	95	mat_peptide
+			product	RdRp
+79	>368	gene
+			gene	ORF2
+79	>368	CDS
+			product	VP1
+			codon_start	1
+>Feature gb|MH165843|
+<1	83	gene
+			gene	ORF1
+<1	83	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	80	mat_peptide
+			product	RdRp
+64	>353	gene
+			gene	ORF2
+64	>353	CDS
+			product	VP1
+			codon_start	1
+>Feature gb|MH165844|
+<1	92	gene
+			gene	ORF1
+<1	92	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	89	mat_peptide
+			product	RdRp
+73	>365	gene
+			gene	ORF2
+73	>365	CDS
+			product	VP1
+			codon_start	1

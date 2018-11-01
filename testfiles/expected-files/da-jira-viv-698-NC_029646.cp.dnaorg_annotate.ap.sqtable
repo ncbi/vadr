@@ -1,0 +1,26 @@
+>Feature gb|MH191300|
+<1	60	gene
+			gene	ORF1
+<1	60	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+<1	57	mat_peptide
+			product	RdRp
+41	>292	gene
+			gene	ORF2
+41	>292	CDS
+			product	VP1
+			codon_start	2
+>Feature Seq
+<1	59	gene
+			gene	ORF1
+<1	59	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	56	mat_peptide
+			product	RdRp
+40	>291	gene
+			gene	ORF2
+40	>291	CDS
+			product	VP1
+			codon_start	1
