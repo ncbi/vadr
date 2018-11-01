@@ -1,0 +1,36 @@
+>Feature gb|MH702256|
+<1	4692	gene
+			gene	ORF1
+<1	4692	misc_feature
+			note	similar to nonstructural polyprotein
+<1	583	misc_feature
+			note	similar to p48
+583	1680	misc_feature
+			note	similar to NTPase
+1681	2217	misc_feature
+			note	similar to p22
+2218	2616	misc_feature
+			note	similar to VPg
+2617	3159	misc_feature
+			note	similar to Pro
+3160	4689	misc_feature
+			note	similar to RdRp
+4673	6295	gene
+			gene	ORF2
+4673	6295	misc_feature
+			note	similar to VP1
+6295	>6934	gene
+			gene	ORF3
+6295	>6934	misc_feature
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: mat_peptide may not be translated because its CDS has a problem [MP: p48, CDS nonstructural polyprotein]
+ERROR: mat_peptide may not be translated because its CDS has a problem [MP: NTPase, CDS nonstructural polyprotein]
+ERROR: mat_peptide may not be translated because its CDS has a problem [MP: p22, CDS nonstructural polyprotein]
+ERROR: mat_peptide may not be translated because its CDS has a problem [MP: VPg, CDS nonstructural polyprotein]
+ERROR: mat_peptide may not be translated because its CDS has a problem [MP: Pro, CDS nonstructural polyprotein]
+ERROR: mat_peptide may not be translated because its CDS has a problem [MP: RdRp, CDS nonstructural polyprotein]
+ERROR: Protein validation failure: blastx protein validation failure [VP1: stop positions differ by 9 > 5 (strand:+ CM:6295 blastx:6286)]
+ERROR: Protein validation failure: blastx protein validation failure [VP2: longest blastx predicted insert of length 33 > 27]
+WARNING: nonstructural polyprotein CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..583) not adjacent to NTPase (583..1680)]

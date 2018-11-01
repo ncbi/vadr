@@ -7095,7 +7095,7 @@ sub output_feature_tbl_all_sequences {
 
     my @seq_warning_A = (); # all warnings for this sequence
     my @seq_error_A   = (); # all errors for this sequence
-    my @seq_problem_A = (); # all problems (err code messages from seq/ftr pairs that are not exceptions)
+    my @seq_note_A    = (); # all notes for this sequence
 
     my $nskipped = 0; # number of cds-mp features that were not output due to problem with start/stop coords
     my $missing_codon_start_flag = 0; # set to 1 if a feature for this sequence should have a codon_start value added but doesn't
@@ -7138,40 +7138,28 @@ sub output_feature_tbl_all_sequences {
         my $do_start_carrot = 0;
         my $do_stop_carrot  = 0;
         my $do_pred_stop    = 0;
-        my $note_value      = "";
-        my $error_value     = "";
-        my $warning_value   = "";
-        
+
         my $ftr_coords_str = ""; # string of coordinates for this feature
         my $ftr_out_str    = ""; # output string for this feature
         my $long_out_str   = ""; # long feature table output string for this feature
         my @ftr_long_output_A = (); # array of strings with complete error messages, for long feature table
+        my @ftr_note_A    = ();  # notes for this feature/sequence combination
         my $ftr_tiny = $ftr_info_HAR->{"out_tiny"}[$ftr_idx];
 
         if(! $is_duplicate) { # only look up errors if we're not a duplicate feature
           # fill an array and strings with all errors for this sequence/feature combo
           my $ftr_err_str = helper_ftable_get_ftr_error_code_strings($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, \@ftr_long_output_A, $FH_HR);
-          my $exc_idx = checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $ftr_err_str, $FH_HR);
-          if($exc_idx != -1) { 
-            $do_misc_feature = $ftbl_err_exceptions_AHR->[$exc_idx]{"misc_feature"};
-            $do_start_carrot = ($ftr_err_str =~ m/b5e/) ? 1 : 0;
-            $do_stop_carrot  = ($ftr_err_str =~ m/b3e/) ? 1 : 0;
-            $do_pred_stop    = $ftbl_err_exceptions_AHR->[$exc_idx]{"pred_stop"};
-            $note_value      = populateFTableNoteErrorOrWarning("note",  $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
-            $error_value     = populateFTableNoteErrorOrWarning("error", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
-            $warning_value   = populateFTableNoteErrorOrWarning("warning", $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_AHR->[$exc_idx], $err_info_HAR, $err_ftr_instances_AHHR->[$ftr_idx], $seq_name, $FH_HR);
-            if($do_misc_feature) { $feature_type = "misc_feature"; }
-            
-            if($error_value   ne "") { push(@seq_error_A,   $error_value);   }
-            if($warning_value ne "") { push(@seq_warning_A, $warning_value); }
+          $do_start_carrot = ($ftr_err_str =~ m/b5e/) ? 1 : 0;
+          $do_stop_carrot  = ($ftr_err_str =~ m/b3e/) ? 1 : 0;
+          $do_pred_stop = processFeatureErrorsForFTable($ftr_err_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, 
+                                                         \@ftr_note_A, \@seq_error_A, \@seq_warning_A, $FH_HR);
+          if(scalar(@ftr_note_A) > 0) { 
+            $do_misc_feature = 1;
+            $feature_type = "misc_feature";
+            push(@seq_note_A, @ftr_note_A);
           }
           else { 
-            # this set of errors did not meet an exception, add all the error information to the @seq_problem_A array
-            my $ftr_str = (exists $ftr_info_HAR->{"out_product"}[$ftr_idx]) ? $ftr_info_HAR->{"out_product"}[$ftr_idx] : $ftr_tiny;
-            foreach my $long_line (@ftr_long_output_A) { 
-              push(@seq_problem_A, $ftr_str . ":" . " " . $long_line);
-            }
-            # the do_misc_feature, do_start_carrot, etc. values stay as their per-seq/feature-pair defaults
+            $do_misc_feature = 0; 
           }
         } # end of 'if(! $is_duplicate)'
 
@@ -7215,7 +7203,7 @@ sub output_feature_tbl_all_sequences {
         }
         # add notes and full error messages (if !duplicate)
         if(! $is_duplicate) { 
-          if($note_value ne "") { 
+          foreach my $note_value (@ftr_note_A) { 
             $ftr_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
           }
           # add the full error messages as 'notes' to the long output string, which will be output to the long feature table
@@ -7242,9 +7230,9 @@ sub output_feature_tbl_all_sequences {
     #######################################
     # done with this sequence, determine what type of output we will have 
     my $noutftr  = scalar(@ftout_AH);
-    my $nproblem = scalar(@seq_problem_A);
     my $nwarn    = scalar(@seq_warning_A);
     my $nerror   = scalar(@seq_error_A);
+    my $nnote    = scalar(@seq_note_A);
 
     # sort output
     if($noutftr > 0) { 
@@ -7256,10 +7244,9 @@ sub output_feature_tbl_all_sequences {
 
     # sequences only pass if:
     # - at least one feature is annotated ($noutftr > 0)
-    # - zero errors or all errors satisfied exceptions ($nproblem == 0)
-    # - satisfied error exceptions produced no warnings or errors ($nwarn == 0 && $nerror == 0)
+    # - zero notes, errors and warnings
     # - no sequences skipped ($nskipped == 0)
-    my $do_pass = ($noutftr > 0 && $nproblem == 0 && $nwarn == 0 && $nerror == 0 && $nskipped == 0) ? 1 : 0;
+    my $do_pass = ($noutftr > 0 && $nnote == 0 && $nwarn == 0 && $nerror == 0 && $nskipped == 0) ? 1 : 0;
     # sanity check, if we are passing, we should also have set codon_start for all features
     if(($do_pass) && ($missing_codon_start_flag)) { 
       DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
@@ -7302,16 +7289,6 @@ sub output_feature_tbl_all_sequences {
           }
         }
       } # end of 'if(($nwarn + $nerr) > 0)'
-      if($nproblem > 0) { 
-        print $fail_ftbl_FH "\nProblem(s) with the sequence (unable to convert to 'Additional note(s) to submitter'):\n";
-        print $long_ftbl_FH "\nProblem(s) with the sequence (unable to convert to 'Additional note(s) to submitter'):\n";
-        foreach my $problem_str (@seq_problem_A) { 
-          foreach my $problem_line (split(/\:\:\:/, $problem_str)) { 
-            print $fail_ftbl_FH "PROBLEM: " . $problem_str . "\n"; 
-            print $long_ftbl_FH "PROBLEM: " . $problem_str . "\n"; 
-          }
-        }
-      }
     }      
   } # end of loop over sequences
 
@@ -7434,7 +7411,7 @@ sub output_errors_all_sequences {
         my $err_code = $err_info_HAR->{"code"}[$err_idx];
         if(exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
           # an error exists, output it
-          printf $all_FH ("%-10s  %3s  %-9s  %4s  %s%s\n", $accn_name, "N/A", "N/A", $err_code, $err_info_HAR->{"msg"}[$err_idx], 
+          printf $all_FH ("%-10s  %3s  %-9s  %4s  %s%s\n", $accn_name, "N/A", "N/A", $err_code, $err_info_HAR->{"desc"}[$err_idx], 
                           " [" . $err_seq_instances_HHR->{$err_code}{$seq_name} . "]"); 
           $seq_nseqerr++;
           $per_line .= " " . $err_code;
@@ -7452,7 +7429,7 @@ sub output_errors_all_sequences {
           my $err_code = $err_info_HAR->{"code"}[$err_idx];
           if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
             # an error exists, output it
-            printf $all_FH ("%-10s  %3s  %-9s  %4s  %s%s\n", $accn_name, ($ftr_idx+1), $out_tiny, $err_code, $err_info_HAR->{"msg"}[$err_idx], 
+            printf $all_FH ("%-10s  %3s  %-9s  %4s  %s%s\n", $accn_name, ($ftr_idx+1), $out_tiny, $err_code, $err_info_HAR->{"desc"}[$err_idx], 
                             ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]"); 
             if($ftr_seq_nftrerr == 0) { 
               $per_line .= (" " . ($ftr_idx+1) . ":" . $err_code);
@@ -10028,7 +10005,7 @@ sub helper_ftable_get_ftr_error_code_strings {
 
   my ($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, $ftr_long_output_AR, $FH_HR) = @_;
 
-  my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); # nerr: number of different error codes
+  my $nerr = scalar(@{$err_info_HAR->{"code"}});
 
   my $ret_err_str = "";
   for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
@@ -10039,7 +10016,7 @@ sub helper_ftable_get_ftr_error_code_strings {
         $ret_err_str .= $err_code;
         push(@{$ftr_long_output_AR}, sprintf("%4s error code: %s%s", 
                                              $err_code, 
-                                             $err_info_HAR->{"msg"}[$err_idx], 
+                                             $err_info_HAR->{"desc"}[$err_idx], 
                                              ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]")); 
       }
     }
