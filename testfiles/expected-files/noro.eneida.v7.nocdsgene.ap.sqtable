@@ -1,0 +1,265 @@
+>Feature NC_029646
+5	5104	gene
+			gene	ORF1
+5	5104	CDS
+			product	nonstructural polyprotein
+5	994	mat_peptide
+			product	p48
+995	2092	mat_peptide
+			product	NTPase
+2093	2629	mat_peptide
+			product	p22
+2630	3028	mat_peptide
+			product	VPg
+3029	3571	mat_peptide
+			product	Pro
+3572	5101	mat_peptide
+			product	RdRp
+5085	6692	gene
+			gene	ORF2
+5085	6692	CDS
+			product	VP1
+6692	7471	gene
+			gene	ORF3
+6692	7471	CDS
+			product	VP2
+
+
+
+>Feature NC_029646-06-VP1-03-10-VP2-02
+5	5104	gene
+			gene	ORF1
+5	5104	CDS
+			product	nonstructural polyprotein
+5	994	mat_peptide
+			product	p48
+995	2092	mat_peptide
+			product	NTPase
+2093	2629	mat_peptide
+			product	p22
+2630	3028	mat_peptide
+			product	VPg
+3029	3571	mat_peptide
+			product	Pro
+3572	5101	mat_peptide
+			product	RdRp
+5085	>5575	gene
+			gene	ORF2
+5085	>5575	CDS
+			product	VP1
+
+
+Additional note(s) to submitter:
+WARNING:  Partial sequence; Lacks 1117 nucleotides from 3' end
+
+
+
+>Feature NC_029646-04-09
+<1	4866	gene
+			gene	ORF1
+<1	4866	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+<1	756	mat_peptide
+			product	p48
+757	1854	mat_peptide
+			product	NTPase
+1855	2391	mat_peptide
+			product	p22
+2392	2790	mat_peptide
+			product	VPg
+2791	3333	mat_peptide
+			product	Pro
+3334	4863	mat_peptide
+			product	RdRp
+4847	6454	gene
+			gene	ORF2
+4847	6454	CDS
+			product	VP1
+6454	7233	gene
+			gene	ORF3
+6454	7233	CDS
+			product	VP2
+Additional note(s) to submitter:
+WARNING: Partial sequence; Lacks 238 nucleotides from 3' end
+
+
+>Feature NC_029646-1-2ntgap-inframe
+5	5101	gene
+			gene	ORF1
+5	5101	CDS
+			product	nonstructural polyprotein
+5	994	mat_peptide
+			product	p48
+995	2089	mat_peptide
+			product	NTPase
+2090	2626	mat_peptide
+			product	p22
+2627	3025	mat_peptide
+			product	VPg
+3026	3568	mat_peptide
+			product	Pro
+3569	5098	mat_peptide
+			product	RdRp
+5082	6689	gene
+			gene	ORF2
+5082	6689	CDS
+			product	VP1
+6689	7468	gene
+			gene	ORF3
+6689	7468	CDS
+			product	VP2
+
+
+
+
+
+>Feature NC_029646-04-09-p48-NTP-02
+<1	2958	gene
+			gene	ORF1
+<1	2958	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+<1	483	mat_peptide
+			product	p22
+484	882	mat_peptide
+			product	VPg
+883	1425	mat_peptide
+			product	Pro
+1426	2955	mat_peptide
+			product	RdRp
+2939	4546	gene
+			gene	ORF2
+2939	4546	CDS
+			product	VP1
+4546	5325	gene
+			gene	ORF3
+4546	5325	CDS
+			product	VP2
+
+Additional note(s) to submitter:
+WARNING: Partial sequence; Lacks 2146 nucleotides from 5’ end
+
+
+>Feature NC_029646-5-Pro-3
+<1	1592	gene
+			gene	ORF1
+<1	1592	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	59	mat_peptide
+			product	Pro
+60	1589	mat_peptide
+			product	RdRp
+1573	3180	gene
+			gene	ORF2
+1573	3180	CDS
+			product	VP1
+3180	3959	gene
+			gene	ORF3
+3180	3959	CDS
+			product	VP2
+
+Additional note(s) to submitter:
+WARNING: Partial sequence; Lacks 3512 nucleotides from 5’ end
+
+
+>Feature NC_029646-18-p48-p22-12
+5	5104	gene
+			gene	ORF1
+5	5104	CDS
+			product	nonstructural polyprotein
+5	994	mat_peptide
+			product	p48
+995	2092	mat_peptide
+			product	NTPase
+2093	2629	mat_peptide
+			product	p22
+2630	3028	mat_peptide
+			product	VPg
+3029	3571	mat_peptide
+			product	Pro
+3572	5101	mat_peptide
+			product	RdRp
+5085	6692	gene
+			gene	ORF2
+5085	6692	CDS
+			product	VP1
+6692	7471	gene
+			gene	ORF3
+6692	7471	CDS
+			product	VP2
+
+Additional note(s) to submitter:
+WARNING:Unexpected amount of variation at cleavage site p48/NTPase, p22/VPg
+
+
+>Feature NC_029646-short-RdRp
+<1	>761	gene
+			gene	ORF1
+<1	>761	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	>761	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+WARNING: Partial sequence: Lacks 4152 nucleotides from 5’ end; Lacks 2605 nucleotides from 3' end
+
+
+>Feature NC_029646-v-short-RdRp
+<1	>310	gene
+			gene	ORF1
+<1	>310	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	>310	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+WARNING: Partial sequence: Lacks 4152 nucleotides from 5’ end; Lacks 3056 nucleotides from 3' end
+
+
+>Feature NC_029646-WRY
+5	5104	gene
+			gene	ORF1
+5	5104	CDS
+			product	nonstructural polyprotein
+5	994	mat_peptide
+			product	p48
+995	2092	mat_peptide
+			product	NTPase
+2093	2629	mat_peptide
+			product	p22
+2630	3028	mat_peptide
+			product	VPg
+3029	3571	mat_peptide
+			product	Pro
+3572	5101	mat_peptide
+			product	RdRp
+5085	6692	gene
+			gene	ORF2
+5085	6692	CDS
+			product	VP1
+6692	7471	gene
+			gene	ORF3
+6692	7471	CDS
+			product	VP2
+
+Additional note(s) to submitter:
+WARNING: This sequence contains 1 non-ACTG character(s) in nonstructural polyprotein/p48
+WARNING: This sequence contains 1 non-ACTG character(s) in nonstructural polyprotein/RDRP
+WARNING: This sequence contains 1 non-ACTG character(s) in VP1
+
+
+>Feature NC_029646-v-short-VP1
+<1	>50	gene
+			gene	ORF2
+<1	>50	CDS
+			product	VP1
+			codon_start	3
+
+Additional note(s) to submitter:
+WARNING: Partial sequence: Lacks 5175 nucleotides from 5’ end; Lacks 2293 nucleotides from 3' end
+
+

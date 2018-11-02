@@ -1,0 +1,41 @@
+>Feature gb|MH540346|
+1	1623	gene
+			gene	ORF2
+1	1623	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Protein validation failure: blastx protein validation failure [VP1: stop positions differ by 9 > 5 (strand:+ CM:1623 blastx:1614)]
+>Feature gb|MH540347|
+1	1623	gene
+			gene	ORF2
+1	1623	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Protein validation failure: blastx protein validation failure [VP1: stop positions differ by 9 > 5 (strand:+ CM:1623 blastx:1614)]
+>Feature gb|MH540348|
+1	1623	gene
+			gene	ORF2
+1	1623	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Protein validation failure: blastx protein validation failure [VP1: stop positions differ by 9 > 5 (strand:+ CM:1623 blastx:1614)]
+>Feature gb|MH540349|
+1	1623	gene
+			gene	ORF2
+1	1623	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Protein validation failure: blastx protein validation failure [VP1: stop positions differ by 6 > 5 (strand:+ CM:1623 blastx:1617)]
+>Feature gb|MH540350|
+1	1621	gene
+			gene	ORF2
+1	1621	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Mutation at End: Expected stop codon could not be identified on VP1; first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 1..1621 revised to 1..1623 (stop shifted 2 nt)]
+ERROR: Protein validation failure: blastx protein validation failure [VP1: stop positions differ by 9 > 5 (strand:+ CM:1623 blastx:1614)]

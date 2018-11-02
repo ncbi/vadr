@@ -47,6 +47,7 @@ my $inf_exec_dir      = $dnaorgdir . "/infernal-1.1.2/src/";
 my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
 my $esl_exec_dir      = $dnaorgdir . "/infernal-1.1.2/easel/miniapps/";
 my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
+my $blast_exec_dir    = "/usr/bin/"; # HARD-CODED FOR NOW
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -165,8 +166,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.36";
-my $releasedate   = "Sept 2018";
+my $version       = "0.37";
+my $releasedate   = "Nov 2018";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -306,6 +307,7 @@ $execs_H{"cmpress"}       = $inf_exec_dir . "cmpress";
 $execs_H{"esl-afetch"}    = $esl_exec_dir . "esl-afetch";
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
 $execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
+$execs_H{"makeblastdb"}   = $blast_exec_dir . "makeblastdb";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################################################
@@ -440,6 +442,14 @@ if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) {
 if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
   dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
+
+#######################################################################
+# Step 4B. Fetch the CDS protein translations and build BLAST database
+#######################################################################
+$start_secs = outputProgressPrior("Fetching protein translations of CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
+my $prot_fa_file  = fetch_proteins_into_fasta_file($out_root, $ref_accn, \%opt_HH, \%ofile_info_HH);
+create_blast_protein_db(\%execs_H, $prot_fa_file, \%opt_HH, \%ofile_info_HH);
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ####################################
 # Step 5. Build and calibrate models 
@@ -919,5 +929,84 @@ sub run_cmcalibrate_and_cmpress {
     }
   }
     
+  return;
+}
+
+#################################################################
+# Subroutine: fetch_proteins_into_fasta_file()
+# Incept:     EPN, Wed Oct  3 16:10:26 2018
+# 
+# Purpose:    Fetch the protein translations of CDS for the genome
+#             and create a FASTA file of them.
+#
+# Arguments:
+#   $out_root:       string for naming output files
+#   $ref_accn:       reference accession
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $ofile_info_HHR: REF to the 2D hash of output file information
+#                    
+# Returns:    Name of the fasta file created.
+#
+#################################################################
+sub fetch_proteins_into_fasta_file { 
+  my $sub_name = "fetch_proteins_into_fasta_file";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_root, $ref_accn, $opt_HHR, $ofile_info_HHR) = @_;
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+
+  my $efetch_out_file = $out_root . ".prot.efetch";
+  my $fa_out_file     = $out_root . ".prot.fa";
+  runCommand("esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd CDS protein_id INSDFeature_location translation > $efetch_out_file", opt_Get("-v", $opt_HHR), $FH_HR); 
+  # NOTE: could get additional information to add to fasta defline, e.g. add 'product' after 'translation' above.
+
+  # parse that file to create the fasta file
+  open(IN, $efetch_out_file)  || fileOpenFailure($efetch_out_file, $sub_name, $!, "reading", $FH_HR);
+  open(FA, ">", $fa_out_file) || fileOpenFailure($fa_out_file, $sub_name, $!, "writing", $FH_HR);
+  while(my $line = <IN>) { 
+    chomp $line;
+    my @el_A = split(/\t/, $line);
+    if(scalar(@el_A) != 4) { 
+      DNAORG_FAIL("ERROR in $sub_name, not exactly 4 tab delimited tokens in efetch output file line\n$line\n", 1, $ofile_info_HHR->{"FH"});
+    }
+    my ($read_ref_accn, $prot_accn, $location, $translation) = (@el_A);
+    my $new_name = $prot_accn . "/" . $location;
+    print FA (">$new_name\n$translation\n");
+  }
+  close(IN);
+  close(FA);
+
+  addClosedFileToOutputInfo($ofile_info_HHR, "prot-fetch", $efetch_out_file, 0, "efetch output with protein information");
+  addClosedFileToOutputInfo($ofile_info_HHR, "prot-fa", $fa_out_file, 0,        "protein FASTA file");
+
+  return $fa_out_file;
+}
+
+#################################################################
+# Subroutine: create_blast_protein_db
+# Incept:     EPN, Wed Oct  3 16:31:38 2018
+# 
+# Purpose:    Create a protein blast database from a fasta file.
+#
+# Arguments:
+#   $execs_HR:       reference to hash with infernal executables, 
+#                    e.g. $execs_HR->{"cmcalibrate"} is path to cmcalibrate, PRE-FILLED
+#   $prot_fa_file:   FASTA file of protein sequences to make blast db from
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $ofile_info_HHR: REF to the 2D hash of output file information
+#                    
+# Returns:    void
+#
+#################################################################
+sub create_blast_protein_db {
+  my $sub_name = "create_blast_protein_db";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($execs_HR, $prot_fa_file, $opt_HHR, $ofile_info_HHR) = @_;
+
+  runCommand($execs_HR->{"makeblastdb"} . " -in $prot_fa_file -parse_seqids -dbtype prot > /dev/null", opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+
   return;
 }

@@ -1,6 +1,6 @@
 # EPN, Wed Nov 29 06:40:21 2017
 # git repository url: https://github.com/nawrockie/dnaorg_scripts.git
-# v0.36 Sept 2018
+# v0.37 Nov 2018
 #
 # This file is organized into the following sections: 
 # -----------

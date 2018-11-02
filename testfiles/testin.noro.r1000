@@ -14,18 +14,18 @@
 # file, etc.
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --allpass -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/noro.r1000.fa --dirbuild !dirbuild! --dirout test-noro.r1000 > test-noro.r1000.out
 desc: classify-noro-1
-out: test-noro.r1000/test-noro.r1000-NC_001959.pass/test-noro.r1000-NC_001959.pass.dnaorg_annotate.sqtable 
-out: test-noro.r1000/test-noro.r1000-NC_001959.pass/test-noro.r1000-NC_001959.pass.dnaorg_annotate.tbl
-out: test-noro.r1000/test-noro.r1000-NC_008311.pass/test-noro.r1000-NC_008311.pass.dnaorg_annotate.sqtable 
-out: test-noro.r1000/test-noro.r1000-NC_008311.pass/test-noro.r1000-NC_008311.pass.dnaorg_annotate.tbl
-out: test-noro.r1000/test-noro.r1000-NC_029645.pass/test-noro.r1000-NC_029645.pass.dnaorg_annotate.sqtable 
-out: test-noro.r1000/test-noro.r1000-NC_029645.pass/test-noro.r1000-NC_029645.pass.dnaorg_annotate.tbl
-out: test-noro.r1000/test-noro.r1000-NC_029646.pass/test-noro.r1000-NC_029646.pass.dnaorg_annotate.sqtable 
-out: test-noro.r1000/test-noro.r1000-NC_029646.pass/test-noro.r1000-NC_029646.pass.dnaorg_annotate.tbl
-out: test-noro.r1000/test-noro.r1000-NC_029647.pass/test-noro.r1000-NC_029647.pass.dnaorg_annotate.sqtable 
-out: test-noro.r1000/test-noro.r1000-NC_029647.pass/test-noro.r1000-NC_029647.pass.dnaorg_annotate.tbl
-out: test-noro.r1000/test-noro.r1000-NC_031324.pass/test-noro.r1000-NC_031324.pass.dnaorg_annotate.sqtable 
-out: test-noro.r1000/test-noro.r1000-NC_031324.pass/test-noro.r1000-NC_031324.pass.dnaorg_annotate.tbl
+out: test-noro.r1000/test-noro.r1000-NC_001959.cp/test-noro.r1000-NC_001959.cp.dnaorg_annotate.ap.sqtable 
+out: test-noro.r1000/test-noro.r1000-NC_001959.cp/test-noro.r1000-NC_001959.cp.dnaorg_annotate.tbl
+out: test-noro.r1000/test-noro.r1000-NC_008311.cp/test-noro.r1000-NC_008311.cp.dnaorg_annotate.af.sqtable 
+out: test-noro.r1000/test-noro.r1000-NC_008311.cp/test-noro.r1000-NC_008311.cp.dnaorg_annotate.tbl
+out: test-noro.r1000/test-noro.r1000-NC_029645.cp/test-noro.r1000-NC_029645.cp.dnaorg_annotate.ap.sqtable 
+out: test-noro.r1000/test-noro.r1000-NC_029645.cp/test-noro.r1000-NC_029645.cp.dnaorg_annotate.tbl
+out: test-noro.r1000/test-noro.r1000-NC_029646.cp/test-noro.r1000-NC_029646.cp.dnaorg_annotate.ap.sqtable 
+out: test-noro.r1000/test-noro.r1000-NC_029646.cp/test-noro.r1000-NC_029646.cp.dnaorg_annotate.tbl
+out: test-noro.r1000/test-noro.r1000-NC_029647.cp/test-noro.r1000-NC_029647.cp.dnaorg_annotate.ap.sqtable 
+out: test-noro.r1000/test-noro.r1000-NC_029647.cp/test-noro.r1000-NC_029647.cp.dnaorg_annotate.tbl
+out: test-noro.r1000/test-noro.r1000-NC_031324.cp/test-noro.r1000-NC_031324.cp.dnaorg_annotate.ap.sqtable 
+out: test-noro.r1000/test-noro.r1000-NC_031324.cp/test-noro.r1000-NC_031324.cp.dnaorg_annotate.tbl
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/test-noro.r1000/test-noro.r1000-NC_001959.dnaorg_annotate.sqtable 
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/test-noro.r1000/test-noro.r1000-NC_001959.dnaorg_annotate.tbl
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/test-noro.r1000/test-noro.r1000-NC_008311.dnaorg_annotate.sqtable 

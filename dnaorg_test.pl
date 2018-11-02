@@ -88,8 +88,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.36";
-my $releasedate   = "Sept 2018";
+my $version       = "0.37";
+my $releasedate   = "Nov 2018";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -449,7 +449,7 @@ sub diff_two_files {
     }
   }
   else { 
-    $conclusion = ($out_file_exists) ? "FAIL [output file does not exist]" : "FAIL [output file exists but is empty]";
+    $conclusion = ($out_file_exists) ? "FAIL [output file exists but is empty]" : "FAIL [output file does not exist]";
   }
 
   outputString($FH_HR->{"log"}, 1, "$conclusion\n");
