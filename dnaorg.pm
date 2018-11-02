@@ -1461,8 +1461,8 @@ sub initializeHardCodedErrorInfoHash {
 
   addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,
                      "mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start", # description
-                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!; !DESC!", "", # feature table error, warning
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "ctr", "feature",  0,
@@ -1530,7 +1530,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "dup", "feature",  0,
                      "more than one homologous region", # description
                      1, 0, "!DESC!", # feature table info: valid, pred_stop, note
-                     "Low Homology Score: !DESC!", "", # feature table error, warning
+                     "Duplicate Feature: !DESC!", "", # feature table error, warning
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "xip", "feature",  0,
@@ -1541,20 +1541,20 @@ sub initializeHardCodedErrorInfoHash {
 
   addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,
                      "mat_peptide may not be translated because its CDS has a blastx protein validation failure", # description
-                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Protein validation failure: !DESC!", "", # feature table error, warning
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "xnn", "feature",  0,
-                     "blastx identifies protein not identified in nucle # descriptionotide-based search",
+                     "blastx identifies protein not identified in nucleotide-based search", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
                      "Protein validation error: !DESC!", "", # feature table error, warning
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,
                      "mat_peptide may not be translated because its CDS has a problem", # description
-                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "!DESC!", "", # feature table error, warning
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
                      $FH_HR);
 
   # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
@@ -1585,13 +1585,19 @@ sub initializeHardCodedErrorInfoHash {
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ext", "b5e,b3e,m5e,m3e",             $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ntr", "b5e,b3e,m5e,m3e",             $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,m5e,m3e",             $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "int", "b5e,b3e,m5e,m3e",             $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nst", "b5e,b3e,m5e,m3e",             $FH_HR);
-  # stp commonly occurs in combination with trc, ext, or nst, and is invalidated by them b/c those errors will handle the feature table note/err/warn
+
+  # trc, ext and nst are preferred to stp
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "stp", "b5e,b3e,m5e,m3e,trc,ext,nst", $FH_HR); 
-  # trc commonly occurs in combination with int, ctr, and is invalidated by them b/c those errors will handle the feature table note/err/warn
+
+  # int and ctr are preffered to trc
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "b5e,b3e,m5e,m3e,int,ctr",     $FH_HR);
 
+  # trc is preffered to ctr
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,m5e,m3e,trc",         $FH_HR);
+
+  # mip and ntr are preferred to mtr
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mtr", "mip,ntr", $FH_HR);
 
   # validate the error info hash
   validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
@@ -1929,9 +1935,9 @@ sub setFTableInvalidatedByErrorInfoHash {
 #   $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
 #   $err_info_HAR:           REF to hash of arrays with information on the errors, PRE-FILLED
 #   $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
-#   $ret_note_AR:            REF to array of notes, possibly added to here
-#   $ret_error_AR:           REF to array of errors, possibly added to here
-#   $ret_warning_AR:         REF to array of warnings, possibly added to here
+#   $ret_note_AR:            REF to array of notes, possibly CREATED (not added to) here
+#   $ret_error_AR:           REF to array of errors, possibly added to here (not created)
+#   $ret_warning_AR:         REF to array of warnings, possibly added to here (not created)
 #   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: $do_pred_stop: '1' if predicted stop should be used for this feature in the feature table
@@ -1956,17 +1962,16 @@ sub processFeatureErrorsForFTable {
   my @err_idx_A = ();
   my $err_code; 
   my $err_idx; 
-  if($err_code_str ne "") { 
-    foreach $err_code (split(",", $err_code_str)) { 
-      $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
-      if($err_idx == -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, input error of $err_code in string $err_code_str is invalid", 1, $FH_HR);
-      }
-      $input_err_code_H{$err_code} = 1; 
-      push(@err_idx_A, $err_idx);
+  foreach $err_code (split(",", $err_code_str)) { 
+    $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
+    if($err_idx == -1) { 
+      DNAORG_FAIL("ERROR in $sub_name, input error of $err_code in string $err_code_str is invalid", 1, $FH_HR);
     }
+    $input_err_code_H{$err_code} = 1; 
+    push(@err_idx_A, $err_idx);
   }
 
+  my @tmp_note_A = (); # holds all notes
   my $nerr  = scalar(@err_idx_A);
   my $ret_pred_stop = 0;
   my $valid = 0;
@@ -1993,11 +1998,9 @@ sub processFeatureErrorsForFTable {
         }
         # add notes, warnings and errors
 
-        my $note_str    = populateFTableNoteErrorOrWarning("ftbl_note", $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR);
+        my $note_str = populateFTableNoteErrorOrWarning("ftbl_note", $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR);
         if($note_str ne "") { 
-          # only add the note, if an identical note does not already exist in @{$ret_note_AR}
-          my $idx = findNonNumericValueInArray($ret_note_AR, $note_str, $FH_HR);
-          if($idx == -1) { push(@{$ret_note_AR}, $note_str); }
+          push(@tmp_note_A, $note_str); # we will prune this array and populate @{$ret_note_AR} before returning
         }
 
         my $error_str   = populateFTableNoteErrorOrWarning("ftbl_err", $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR);
@@ -2014,6 +2017,44 @@ sub processFeatureErrorsForFTable {
           if($idx == -1) { push(@{$ret_warning_AR}, $warning_str); }
         }
       }
+    }
+  }
+
+  # Create the @{$ret_note_AR}, we do not create the @{$ret_error_AR} and @{$ret_warning_AR}
+  # this is because @{$ret_note_AR} is per-sequence/feature pair, and caller will treat it as such
+  # whereas @{$ret_error_AR} and @{$ret_warning_AR} are per-sequence and caller will treat as such
+  @{$ret_note_AR} = ();
+  my $nnote = scalar(@tmp_note_A);
+  my $ret_nnote = 0;
+  for(my $n = 0; $n < $nnote; $n++) { 
+    my $tmp_note = $tmp_note_A[$n];
+    my $keep_flag = 1; # possibly set to 0 below
+    # only keep this note if:
+    # - we haven't already added an identical string to @{$ret_note_AR}
+    # - there is not a superstring of it in @tmp_note_A, that we either 
+    #   have already or will eventually add to @{$ret_note_AR}
+
+    # check if we already have an identical string in @{$ret_note_AR}
+    for(my $rn = 0; $rn < $ret_nnote; $rn++) { 
+      my $ret_note = $ret_note_AR->[$rn];
+      if($tmp_note eq $ret_note) { 
+        $keep_flag = 0;
+      }
+    }
+
+    # check if there is a superstring of $tmp_note in @tmp_note_A that we
+    # either already have added or will add to @{$ret_note_AR}
+    for(my $n2 = 0; $n2 < $nnote; $n2++) { 
+      my $tmp_note2 = $tmp_note_A[$n2];
+      if(($tmp_note ne $tmp_note2) && 
+         ($tmp_note2 =~ m/^$tmp_note/)) { # $tmp_note2 is a superstring of $tmp_note
+        $keep_flag = 0;
+      }
+    }
+    
+    if($keep_flag) { 
+      push(@{$ret_note_AR}, $tmp_note);
+      $ret_nnote++;
     }
   }
 
@@ -2084,7 +2125,7 @@ sub populateFTableNoteErrorOrWarning {
   }
   # replace !FEATURE_TYPE! with 
   if($ret_msg =~ /!FEATURE_TYPE!/) { 
-    my $feature_type_str = $ftr_info_HAR->{"ftable_type"}[$ftr_idx];
+    my $feature_type_str = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
     $ret_msg =~ s/!FEATURE_TYPE!/$feature_type_str/g;
   }
   # check if there is an internal !$key_str! string, where $key_str is either $key or $key_1,$key_2,...,$key_n for some number n,

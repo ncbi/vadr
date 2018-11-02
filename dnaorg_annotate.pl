@@ -7193,12 +7193,19 @@ sub output_feature_tbl_all_sequences {
           $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "out_product",   $qval_sep, $ftr_info_HAR, $FH_HR);
           $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "out_gene",      $qval_sep, $ftr_info_HAR, $FH_HR);
           $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "out_exception", $qval_sep, $ftr_info_HAR, $FH_HR);
+          # check for existence of "x_frame" value for all CDS, but only actually output them if we have a start_carrot
           if((! $is_duplicate) && 
              (($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp"))) { 
-            # printf("HEYA calling helper_ftable_add_qualifier_from_ftr_results() for $seq_idx feature $ftr_idx ($ftr_tiny)\n");
             my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_idx, $ftr_idx, "x_frame", "codon_start", $ftr_results_AAHR, $FH_HR);
-            if($tmp_str eq "") { $missing_codon_start_flag = 1; } 
-            $ftr_out_str .= $tmp_str;
+            if($tmp_str eq "") { 
+              # we didn't have an x_frame value for this CDS, so raise a flag
+              # we check later that if the sequence passes that this flag 
+              # is *NOT* raised, if it is, something went wrong and we die
+              $missing_codon_start_flag = 1; 
+            } 
+            if($do_start_carrot) { # only add the codon_start if we have a start_carrot
+              $ftr_out_str .= $tmp_str;
+            }
           }
         }
         # add notes and full error messages (if !duplicate)
@@ -10014,7 +10021,7 @@ sub helper_ftable_get_ftr_error_code_strings {
       if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
         if($ret_err_str ne "") { $ret_err_str .= ","; }
         $ret_err_str .= $err_code;
-        push(@{$ftr_long_output_AR}, sprintf("%4s error code: %s%s", 
+        push(@{$ftr_long_output_AR}, sprintf("%3s error code: %s%s", 
                                              $err_code, 
                                              $err_info_HAR->{"desc"}[$err_idx], 
                                              ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]")); 
@@ -10066,14 +10073,29 @@ sub helper_ftable_get_coords_standard {
 
   if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
      ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-    if($do_pred_stop) { # sanity check
-      DNAORG_FAIL("ERROR in $sub_name, feature type is cds-mp but do_pred_stop is 1 - shouldn't happen", 1, $FH_HR);
+
+    my $ftbl_out_start = $ftr_results_HR->{"ftbl_out_start"};
+    my $ftbl_out_stop  = $ftr_results_HR->{"ftbl_out_stop"};
+
+    if($do_pred_stop) { # need to overwrite $ftbl_out_stop
+      my @cur_primary_children_idx_A = (); # feature indices of the primary children of this feature
+      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@cur_primary_children_idx_A, $FH_HR);
+      my $final_ftr_idx = $cur_primary_children_idx_A[(scalar(@cur_primary_children_idx_A)-1)];
+      my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
+      my $pred_start = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_start"};
+      my $pred_stop  = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"} + $mdl_info_HAR->{"append_num"}[$final_child_mdl_idx];
+      if(($mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_strand"} eq "+") && ($pred_stop > $seq_info_HAR->{"seq_len"})) { $pred_stop = $seq_info_HAR->{"seq_len"}; }
+      if(($mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_strand"} eq "-") && ($pred_stop < 1))                          { $pred_stop = 1; }
+      (undef, $ftbl_out_stop) = create_output_start_and_stop($pred_start, # irrelevant due to the first undef arg
+                                                             $pred_stop, 
+                                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
     }
-    if(($ftr_results_HR->{"ftbl_out_start"} eq "?") || ($ftr_results_HR->{"ftbl_out_stop"} eq "?")) { 
-      return ""; # indicating 
+
+    if(($ftbl_out_start eq "?") || ($ftbl_out_stop eq "?")) { 
+      return ""; # indicating we don't have a full CDS prediction for this seq/feature pair
     }
-    push(@start_A, $ftr_results_HR->{"ftbl_out_start"});
-    push(@stop_A,  $ftr_results_HR->{"ftbl_out_stop"});
+    push(@start_A, $ftbl_out_start);
+    push(@stop_A,  $ftbl_out_stop);
 
     return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $do_start_carrot, $do_stop_carrot, $ret_min_coord, $FH_HR);
   }
