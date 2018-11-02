@@ -18,10 +18,9 @@
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	CDS
@@ -37,6 +36,7 @@
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 >Feature NC_002549-06
 56	3026	gene
 			gene	NP
@@ -57,10 +57,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	CDS
@@ -76,6 +75,7 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 >Feature NC_002549-06-L-02-VP24-03-10-16
 56	3026	gene
 			gene	NP
@@ -96,10 +96,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	CDS
@@ -111,6 +110,7 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 >Feature NC_002549-gap-inframe
 56	3026	gene
 			gene	NP
@@ -122,8 +122,8 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			product	polymerase complex protein
 4390	5807	gene
 			gene	VP40
-4479	5372	CDS
-			product	matrix protein
+4479	5372	misc_feature
+			note	similar to matrix protein
 5813	8218	gene
 			gene	GP
 5952	6836	misc_feature
@@ -131,10 +131,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein
 5952	7046	CDS
 			product	small secreted glycoprotein
-5952	6835	CDS
+5952	6835	misc_feature
 6837	6846
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8201	9653	gene
 			gene	VP30
 8422	9288	CDS
@@ -149,7 +148,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			product	RNA-dependent RNA polymerase
 
 Additional note(s) to submitter:
+ERROR: Protein validation failure: blastx protein validation failure [matrix protein: longest blastx predicted delete of length 87 > 27]
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:5952 blastx:6833)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6846 blastx:6836)]
 >Feature NC_002549-gap-outframe
 56	3026	gene
 			gene	NP
@@ -170,10 +171,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein
 5951	7045	CDS
 			product	small secreted glycoprotein
-5951	6834	CDS
+5951	6834	misc_feature
 6836	6845
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8200	9652	gene
 			gene	VP30
 8421	9287	CDS
@@ -189,7 +189,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 
 Additional note(s) to submitter:
 ERROR: CDS Has Stop Codon: Contains unexpected stop codon in matrix protein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4479..5371 revised to 4479..5084 (stop shifted 287 nt)]
+ERROR: Protein validation failure: blastx protein validation failure [matrix protein: stop positions differ by 123 > 5 (strand:+ CM:5084 blastx:4961)]
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:5951 blastx:6832)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6845 blastx:6835)]
 >Feature NC_002549-04
 <1	2685	gene
 			gene	NP
@@ -210,10 +212,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein
 5698	6792	CDS
 			product	small secreted glycoprotein
-5698	6581	CDS
+5698	6581	misc_feature
 6583	6592
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 7947	9399	gene
 			gene	VP30
 8168	9034	CDS
@@ -229,11 +230,13 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:5698 blastx:6579)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6592 blastx:6582)]
 >Feature NC_002549-04-NP-02-VP35-09
 <1	838	gene
 			gene	VP35
 <1	582	CDS
 			product	polymerase complex protein
+			codon_start	1
 821	2325	gene
 			gene	VP40
 910	1890	CDS
@@ -245,10 +248,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein
 2470	3564	CDS
 			product	small secreted glycoprotein
-2470	3353	CDS
+2470	3353	misc_feature
 3355	3364
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 4719	6171	gene
 			gene	VP30
 4940	5806	CDS
@@ -264,6 +266,7 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:2470 blastx:3351)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:3364 blastx:3354)]
 >Feature NC_002549-VP30-10-14
 56	3026	gene
 			gene	NP
@@ -284,10 +287,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	misc_feature
@@ -303,7 +305,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 ERROR: Mutation at End: Expected stop codon could not be identified on minor nucleoprotein; first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 8509..9375 revised to 8509..9486 (stop shifted 111 nt)]
+ERROR: Protein validation failure: blastx protein validation failure [minor nucleoprotein: stop positions differ by 114 > 5 (strand:+ CM:9486 blastx:9372)]
 >Feature NC_002549-L-13
 56	3026	gene
 			gene	NP
@@ -324,10 +328,9 @@ ERROR: Mutation at End: Expected stop codon could not be identified on minor nuc
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	CDS
@@ -343,6 +346,7 @@ ERROR: Mutation at End: Expected stop codon could not be identified on minor nuc
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 ERROR: CDS Has Stop Codon: Contains unexpected stop codon in RNA-dependent RNA polymerase; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 11581..18219 revised to 11581..16236 (stop shifted 1983 nt)]
 ERROR: Protein validation failure: blastx protein validation failure [RNA-dependent RNA polymerase: stop positions differ by 1980 > 5 (strand:+ CM:16236 blastx:18216), blastx alignment extends outside CM alignment on 3' end (strand:+ CM:16236 blastx:18216), blastx alignment includes stop codon (16234)]
 >Feature NC_002549-09
@@ -365,10 +369,9 @@ ERROR: Protein validation failure: blastx protein validation failure [RNA-depend
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	CDS
@@ -385,6 +388,7 @@ ERROR: Protein validation failure: blastx protein validation failure [RNA-depend
 Additional note(s) to submitter:
 ERROR: Mutation at Start: Expected start codon could not be identified on nucleoprotein
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 >Feature NC_002549-L-17
 56	3026	gene
 			gene	NP
@@ -405,10 +409,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	CDS
@@ -424,6 +427,7 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 ERROR: Reverse Complement: Sequence may be misassembled; RNA-dependent RNA polymerase appears to be reverse complemented
 ERROR: Reverse Complement: Sequence may be misassembled; L appears to be reverse complemented
 >Feature NC_002549-1ntgap-outframe
@@ -446,10 +450,9 @@ ERROR: Reverse Complement: Sequence may be misassembled; L appears to be reverse
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	CDS
@@ -465,6 +468,7 @@ ERROR: Reverse Complement: Sequence may be misassembled; L appears to be reverse
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 ERROR: CDS Has Stop Codon: Contains unexpected stop codon in RNA-dependent RNA polymerase; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 11581..18218 revised to 11581..12768 (stop shifted 5450 nt)]
 ERROR: Protein validation failure: blastx protein validation failure [RNA-dependent RNA polymerase: start positions differ by 1160 > 5 (strand:+ CM:11581 blastx:12741), stop positions differ by 5447 > 5 (strand:+ CM:12768 blastx:18215), blastx alignment extends outside CM alignment on 3' end (strand:+ CM:12768 blastx:18215)]
 >Feature NC_002549-1-2ntgap-inframe
@@ -487,10 +491,9 @@ ERROR: Protein validation failure: blastx protein validation failure [RNA-depend
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	CDS
@@ -506,11 +509,13 @@ ERROR: Protein validation failure: blastx protein validation failure [RNA-depend
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 >Feature NC_002549-5-NP-2-VP35-3
 <1	1022	gene
 			gene	VP35
 <1	766	CDS
 			product	polymerase complex protein
+			codon_start	2
 1005	2509	gene
 			gene	VP40
 1094	2074	CDS
@@ -522,10 +527,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein
 2654	3748	CDS
 			product	small secreted glycoprotein
-2654	3537	CDS
+2654	3537	misc_feature
 3539	3548
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 4903	6355	gene
 			gene	VP30
 5124	5990	CDS
@@ -541,6 +545,7 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:2654 blastx:3535)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:3548 blastx:3538)]
 >Feature NC_002549-NP-dup
 56	3026	gene
 			gene	NP
@@ -562,10 +567,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein
 8596	9690	CDS
 			product	small secreted glycoprotein
-8596	9479	CDS
+8596	9479	misc_feature
 9481	9490
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 10845	12297	gene
 			gene	VP30
 11066	11932	CDS
@@ -583,6 +587,7 @@ Additional note(s) to submitter:
 ERROR: Duplicate Feature: more than one homologous region [nucleoprotein: 2 regions]
 ERROR: Protein validation failure: blastx protein validation failure [nucleoprotein: start positions differ by 2557 > 5 (strand:+ CM:470 blastx:3027), stop positions differ by 2554 > 5 (strand:+ CM:2689 blastx:5243), blastx alignment extends outside CM alignment on 3' end (strand:+ CM:2689 blastx:5243)]
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:8596 blastx:9477)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:9490 blastx:9480)]
 >Feature NC_002549-short-GP
 <1	>1327	gene
 			gene	GP
@@ -619,10 +624,9 @@ ERROR: Protein validation failure: blastx protein validation failure [second sec
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	CDS
@@ -638,6 +642,7 @@ ERROR: Protein validation failure: blastx protein validation failure [second sec
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 ERROR: CDS Has Stop Codon: Contains unexpected stop codon in RNA-dependent RNA polymerase; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 11581..18185 revised to 11581..11889 (stop shifted 6296 nt)]
 ERROR: Protein validation failure: blastx protein validation failure [RNA-dependent RNA polymerase: start positions differ by 299 > 5 (strand:+ CM:11581 blastx:11880), stop positions differ by 6293 > 5 (strand:+ CM:11889 blastx:18182), blastx alignment extends outside CM alignment on 3' end (strand:+ CM:11889 blastx:18182)]
 >Feature NC_002549-WRY
@@ -660,10 +665,9 @@ ERROR: Protein validation failure: blastx protein validation failure [RNA-depend
 			note	similar to spike glycoprotein
 6039	7133	CDS
 			product	small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8288	9740	gene
 			gene	VP30
 8509	9375	CDS
@@ -679,6 +683,7 @@ ERROR: Protein validation failure: blastx protein validation failure [RNA-depend
 
 Additional note(s) to submitter:
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: start positions differ by 881 > 5 (strand:+ CM:6039 blastx:6920)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
 >Feature NC_002549-GP-03
 56	3026	gene
 			gene	NP
@@ -699,10 +704,9 @@ ERROR: Protein validation failure: blastx protein validation failure [spike glyc
 			note	similar to spike glycoprotein; contains premature stop codon
 6039	7134	misc_feature
 			note	similar to small secreted glycoprotein
-6039	6922	CDS
+6039	6922	misc_feature
 6924	6933
-			product	second secreted glycoprotein
-			exception	RNA editing
+			note	similar to second secreted glycoprotein
 8289	9741	gene
 			gene	VP30
 8510	9376	CDS
@@ -720,3 +724,5 @@ Additional note(s) to submitter:
 ERROR: CDS Has Stop Codon: Contains unexpected stop codon in spike glycoprotein; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6923..8069 exon 2 of 2 revised to 6923..7048 (stop shifted 1021 nt)]
 ERROR: Protein validation failure: blastx protein validation failure [spike glycoprotein: stop positions differ by 1018 > 5 (strand:+ CM:7048 blastx:8066), blastx alignment extends outside CM alignment on 3' end (strand:+ CM:7048 blastx:8066)]
 ERROR: Mutation at End: Expected stop codon could not be identified on small secreted glycoprotein; first in-frame stop codon exists 3' of stop position predicted by homology to reference [homology search predicted 6039..7134 revised to 6039..8069 (stop shifted 935 nt)]
+ERROR: Protein validation failure: blastx protein validation failure [small secreted glycoprotein: stop positions differ by 1083 > 5 (strand:+ CM:8069 blastx:6986)]
+ERROR: Protein validation failure: blastx protein validation failure [second secreted glycoprotein: stop positions differ by 10 > 5 (strand:+ CM:6933 blastx:6923)]
