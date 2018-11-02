@@ -10,7 +10,6 @@
 			gene	ORF2
 79	>368	CDS
 			product	VP1
-			codon_start	1
 >Feature gb|MH165843|
 <1	83	gene
 			gene	ORF1
@@ -23,7 +22,6 @@
 			gene	ORF2
 64	>353	CDS
 			product	VP1
-			codon_start	1
 >Feature gb|MH165844|
 <1	92	gene
 			gene	ORF1
@@ -36,4 +34,3 @@
 			gene	ORF2
 73	>365	CDS
 			product	VP1
-			codon_start	1

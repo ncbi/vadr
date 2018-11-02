@@ -1627,11 +1627,11 @@ sub initializeHardCodedErrorInfoHash {
 #                     must eq "" if $ftbl_valid is 0 or per-type is "sequence"
 #                     must ne "" if $ftbl_valid is 1 and per-type is "feature"
 #   $ftbl_err:        ERROR message for feature table
-#                     can only ne "" if $ftbl_valid is 1
-#                     must eq "" if $ftbl_warn ne ""
+#                     if $ftbl_valid is 0: must be ""
+#                     if $ftbl_valid is 1: must eq "" if $ftbl_warn ne "", must ne "" if $ftbl_warn eq ""
 #   $ftbl_warn:       WARNING message for feature table
-#                     can only ne "" if $ftbl_valid is 1
-#                     must eq "" if $ftbl_err ne ""
+#                     if $ftbl_valid is 0: must be ""
+#                     if $ftbl_valid is 1: must eq "" if $ftbl_err ne "", must ne "" if $ftbl_err eq ""
 #   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: void
@@ -1689,6 +1689,7 @@ sub addToErrorInfoHash {
       DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with ftbl_valid of 1 and pertype of feature but ftbl_note is empty", 1, $FH_HR);
     }
   }
+
   # make sure $ftbl_err and $ftbl_warn are valid
   # if $ftbl_valid is '0': $ftbl_err and $ftbl_warn must eq ""
   # if $ftbl_valid is '1': zero or one of ftbl_err and ftbl_warn can ne ""
@@ -1955,7 +1956,7 @@ sub processFeatureErrorsForFTable {
     return 0; 
   }
 
-  printf("HEYA in $sub_name $seq_name $ftr_idx, $err_code_str\n");
+  # printf("HEYA in $sub_name $seq_name $ftr_idx, $err_code_str\n");
 
   # create a hash of all errors in the input $err_str, and also verify they are all valid errors
   my %input_err_code_H = (); # $input_err_code_H{$err_code} = 1 if $err_code is in $err_code_str
@@ -1977,21 +1978,21 @@ sub processFeatureErrorsForFTable {
   my $valid = 0;
   for(my $e = 0; $e < $nerr; $e++) { 
     $err_idx = $err_idx_A[$e];
-    printf("\terr_idx: $err_idx " . $err_info_HAR->{"code"}[$err_idx] . " valid: " . $err_info_HAR->{"ftbl_valid"}[$err_idx] . " checking...\n");
+    # printf("\terr_idx: $err_idx " . $err_info_HAR->{"code"}[$err_idx] . " valid: " . $err_info_HAR->{"ftbl_valid"}[$err_idx] . " checking...\n");
     if($err_info_HAR->{"ftbl_valid"}[$err_idx]) { 
       $valid = 1; # may be set to '0' below
       if($err_info_HAR->{"ftbl_invalid_by"}[$err_idx] ne "") { 
-        printf("\t\tinvalid_by is " . $err_info_HAR->{"ftbl_invalid_by"}[$err_idx] . "\n");
+        # printf("\t\tinvalid_by is " . $err_info_HAR->{"ftbl_invalid_by"}[$err_idx] . "\n");
         my @invalid_by_err_code_A = split(",", $err_info_HAR->{"ftbl_invalid_by"}[$err_idx]);
         foreach my $err_code2 (@invalid_by_err_code_A) {
           if(exists $input_err_code_H{$err_code2}) { 
             $valid = 0; # $err_idx is invalidated by $err_code2, which is also present in $err_str
-            printf("\t\t\tinvalidated by $err_code2\n");
+            # printf("\t\t\tinvalidated by $err_code2\n");
           }
         }
       }
       if($valid) { 
-        printf("\t\tvalid\n");
+        # printf("\t\tvalid\n");
         # valid error that will impact output of feature table
         if($err_info_HAR->{"ftbl_pred_stop"}[$err_idx]) { # if any of the errors are valid and have this set, we return it as 1
           $ret_pred_stop = 1;
@@ -8754,7 +8755,8 @@ sub cmscanOrNhmmscanWrapper {
   }
   if($targ_nseqfiles == 0) { $targ_nseqfiles = 1; }
 
-  if(($targ_nseqfiles == 1) || (opt_Get("--local", $opt_HHR))) { 
+  # if($targ_nseqfiles == 1) || (opt_Get("--local", $opt_HHR))) {  # to run single jobs locally, used to be default 
+  if(opt_Get("--local", $opt_HHR)) {  # to run single jobs locally, used to be default 
     # run jobs locally
     $start_secs = outputProgressPrior("Running $program_choice locally", $progress_w, $log_FH, *STDOUT);
     # run a different cmscan/nhmmscan run for each model file
@@ -8776,10 +8778,17 @@ sub cmscanOrNhmmscanWrapper {
   }
   else { 
     # we need to split up the sequence file, and submit a separate set of nhmmscan/cmscan jobs (one per model file) for each
-    my $nfasta_created = splitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
-    # splitFastaFile will return the actual number of fasta files created, 
-    # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
-
+    my $nfasta_created = 0;
+    if($targ_nseqfiles > 1) { 
+      $nfasta_created = splitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
+      # splitFastaFile will return the actual number of fasta files created, 
+      # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
+    }
+    else { 
+      my $cp_command = "cp " . $seq_file . " " . $seq_file . ".1";
+      runCommand($cp_command, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      $nfasta_created = 1;
+    }
     my $nfarmjobs = $nfasta_created * $nmdl;
     # now submit a job for each
     $start_secs = outputProgressPrior("Submitting $nfarmjobs $program_choice jobs to the farm", $progress_w, $log_FH, *STDOUT);

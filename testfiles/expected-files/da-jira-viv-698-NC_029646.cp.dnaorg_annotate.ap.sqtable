@@ -10,7 +10,6 @@
 			gene	ORF2
 41	>292	CDS
 			product	VP1
-			codon_start	2
 >Feature Seq
 <1	59	gene
 			gene	ORF1
@@ -23,4 +22,3 @@
 			gene	ORF2
 40	>291	CDS
 			product	VP1
-			codon_start	1

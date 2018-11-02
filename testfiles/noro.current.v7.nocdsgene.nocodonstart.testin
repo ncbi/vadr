@@ -14,5 +14,7 @@
 # file, etc.
 command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_annotate.pl -f --matpept $DNAORGDIR/dnaorg_scripts/testfiles/NC_029646.matpept.in --dfeat gene --refaccn NC_029646 --dirbuild !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/noro.v7.fa --dirout da-current-noro-v7-test > da-current-noro-v7-test.out
 desc: norovirus-current-annotate-examples
-out: da-current-noro-v7-test/da-current-noro-v7-test.dnaorg_annotate.sqtable
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/noro.current.v7.nocdsgene.nocodonstart.sqtable
+out: da-current-noro-v7-test/da-current-noro-v7-test.dnaorg_annotate.ap.sqtable
+out: da-current-noro-v7-test/da-current-noro-v7-test.dnaorg_annotate.af.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/noro.current.v7.nocdsgene.ap.sqtable
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/noro.current.v7.nocdsgene.af.sqtable

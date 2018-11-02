@@ -1229,7 +1229,8 @@ ftr_results_calculate_blastx($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr
 mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, $ofile_info_HH{"FH"});
 
 # add xip, mip and xnn errors
-ftr_results_add_xip_xnn_errors(\%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
+openAndAddFileToOutputInfo(\%ofile_info_HH, "blasttbl", $out_root . ".blastx.tbl", 1, "information on blast and CM hits for CDS features in tabular format");
+ftr_results_add_xip_xnn_errors($ofile_info_HH{"FH"}{"blasttbl"}, \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
                                \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # compare our final annotations to GenBank
@@ -3545,7 +3546,6 @@ sub ftr_results_add_b3e_errors {
   return;
 }      
 
-
 #################################################################
 # Subroutine:  ftr_results_add_xip_xnn_errors
 # Incept:      EPN, Tue Oct 23 15:54:50 2018
@@ -3558,6 +3558,7 @@ sub ftr_results_add_b3e_errors {
 #                    for a feature for which there is no CM/nucleotide based prediction
 #
 # Arguments: 
+#  $out_FH:                 file handle to output blast table to 
 #  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
 #  $ftr_results_AAHR:       REF to feature results AAH, PRE-FILLED
@@ -3573,10 +3574,10 @@ sub ftr_results_add_b3e_errors {
 ################################################################# 
 sub ftr_results_add_xip_xnn_errors { 
   my $sub_name = "ftr_results_add_xip_xnn_errors";
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($out_FH, $ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
   
   if(opt_Get("-c", $opt_HHR)) { 
     DNAORG_FAIL("ERROR, checking for xip and xnn errors with when genome is closed, not set up to deal with that yet", 1, undef);
@@ -3594,6 +3595,13 @@ sub ftr_results_add_xip_xnn_errors {
   my $aln_tol     = opt_Get("--xalntol",    $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
   my $indel_tol   = opt_Get("--xindeltol",  $opt_HHR); # maximum allowed insertion and deletion length in blastx output
   my $min_x_score = opt_Get("--xlonescore", $opt_HHR); # minimum score for a lone hit (no corresponding CM prediction) to be considered
+
+  my $seq_name_width    = maxLengthScalarValueInArray($seq_info_HAR->{"seq_name"});
+  my $ftr_product_width = maxLengthScalarValueInArray($ftr_info_HAR->{"out_product"});
+  if($seq_name_width < length("#sequence"))  { $seq_name_width    = length("#sequence"); }
+  if($ftr_product_width < length("product")) { $ftr_product_width = length("product"); }
+
+  my @out_per_seq_AA = (); # [0..$nseq-1]: per-cds feature output lines for each sequence, we output at end
 
   # foreach type:'cds-mp' or 'cds-notmp' feature, 
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -3625,22 +3633,26 @@ sub ftr_results_add_xip_xnn_errors {
         if(check_for_defined_pstart_in_mdl_results($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR)) { 
           $xnn_err_possible = 0; # we have at least one prediction for this feature, we can't have a xnn error
         }
-        # printf("HEYAAAA ftr_idx $ftr_idx xnn_err_possible $xnn_err_possible\n");
+        #printf("HEYAAAA ftr_idx $ftr_idx xnn_err_possible $xnn_err_possible\n");
         my $xip_err_str = ""; # modified if we have an 'xip' error below
         my $xnn_err_str = ""; # modified if we have an 'xnn' error below
-        # printf("HEYA LOOKING FOR xip FOR $seq_name $ftr_idx\n");
-        
+        #printf("HEYA LOOKING FOR xip FOR $seq_name $ftr_idx\n");
+
+        # initialize 
+        my $p_start    = undef; # predicted start  from CM 
+        my $p_stop     = undef; # predicted stop   from CM 
+        my $p_strand   = undef; # predicted strand from CM 
+        my $x_start    = undef; # predicted start  from blastx
+        my $x_stop     = undef; # predicted stop   from blastx
+        my $x_strand   = undef; # predicted strand from blastx
+        my $x_maxins   = undef; # maximum insert from blastx
+        my $x_maxdel   = undef; # maximum delete from blastx
+        my $x_trcstop  = undef; # premature stop from blastx
+        my $x_score    = undef; # raw score from blastx
+        my $start_diff = undef; # difference in start values between CM and blastx
+        my $stop_diff  = undef; # difference in start values between CM and blastx
+
         # first, determine predicted start/stop/strand from CM and blastx for this feature
-        my $p_start   = undef; # predicted start  from CM 
-        my $p_stop    = undef; # predicted stop   from CM 
-        my $p_strand  = undef; # predicted strand from CM 
-        my $x_start   = undef; # predicted start  from blastx
-        my $x_stop    = undef; # predicted stop   from blastx
-        my $x_strand  = undef; # predicted strand from blastx
-        my $x_maxins  = undef; # maximum insert from blastx
-        my $x_maxdel  = undef; # maximum delete from blastx
-        my $x_trcstop = undef; # premature stop from blastx
-        my $x_score   = undef; # raw score from blastx
         # and get the p_start and p_stop values from "out_start", "out_stop"
         if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") { 
           if((defined $ftr_results_HR->{"out_start"})  && 
@@ -3715,11 +3727,11 @@ sub ftr_results_add_xip_xnn_errors {
         }
 
         if(($xnn_err_possible) && (! defined $p_start) && (defined $x_start))  { # no CM prediction but there is a blastx prediction
-          # printf("0HEYAHEYA p_start is undef, x_start is def, x_score is $x_score, x_start: $x_start, x_stop: $x_stop\n");
+          #printf("0HEYAHEYA p_start is undef, x_start is def, x_score is $x_score, x_start: $x_start, x_stop: $x_stop\n");
           if((defined $x_score) && ($x_score >= $min_x_score)) { 
             if($xnn_err_str ne "") { $xnn_err_str .= ", "; }
             $xnn_err_str .= "blastx hit from $x_start to $x_stop with score $x_score, but no CM hit";
-            # printf("1HEYAHEYA set xnn_err_str $ftr_idx seq_idx: $seq_idx\n");
+            #printf("1HEYAHEYA set xnn_err_str $ftr_idx seq_idx: $seq_idx\n");
           }
         }
 
@@ -3727,7 +3739,7 @@ sub ftr_results_add_xip_xnn_errors {
         #  printf("HEYAA seq $seq_idx ftr_idx $ftr_idx " . $ftr_info_HAR->{"type"}[$ftr_idx] . " p_start: $p_start p_stop: $p_stop p_strand: $p_strand\n");
         #}
         #else { 
-        #printf("HEYAA seq $seq_idx ftr_idx $ftr_idx no p_start\n");
+        #  printf("HEYAA seq $seq_idx ftr_idx $ftr_idx no p_start\n");
         #}
 
         # if we have a prediction from the CM, so we should check for xip errors
@@ -3744,8 +3756,8 @@ sub ftr_results_add_xip_xnn_errors {
             }
             else { 
               # check for alignment start difference failure 
-              my $start_diff = abs($p_start - $x_start);
-              my $stop_diff  = abs($p_stop  - $x_stop);
+              $start_diff = abs($p_start - $x_start);
+              $stop_diff  = abs($p_stop  - $x_stop);
               if($start_diff > $aln_tol) { 
                 if($xip_err_str ne "") { $xip_err_str .= ", "; }
                 $xip_err_str .= "start positions differ by $start_diff > $aln_tol (strand:$p_strand CM:$p_start blastx:$x_start)";
@@ -3781,10 +3793,11 @@ sub ftr_results_add_xip_xnn_errors {
                 $xip_err_str .= "blastx alignment includes stop codon ($x_trcstop)";
               }
             }
-            if($xip_err_str ne "") { 
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "xip", $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $xip_err_str), $FH_HR);
-            }
-          }                
+          }
+          if($xip_err_str ne "") { 
+            #printf("calling error_instances_add(xip)\n");
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "xip", $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $xip_err_str), $FH_HR);
+          }
           # if we added a xip, step through all (not just primary) children of this feature and add mip
           if(($xip_err_str ne "") && ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp")) { 
             for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
@@ -3798,15 +3811,70 @@ sub ftr_results_add_xip_xnn_errors {
           }
         } # end of 'if(defined $p_start)'
         else { # $p_start is undefined, check if we should add a xnn error
-          # printf("HEYAHEYA pstart is undef ftr_idx $ftr_idx seq_idx: $seq_idx\n");
+          #printf("HEYAHEYA pstart is undef ftr_idx $ftr_idx seq_idx: $seq_idx\n");
           if($xnn_err_str ne "") { 
-            # printf("HEYAHEYA added xnn error\n");
+            #printf("HEYAHEYA added xnn error\n");
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "xnn", $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $xnn_err_str), $FH_HR);
           }
         }
+
+        # seqname out_product CM blast CM-start CM-stop blastx-start blastx-stop blastx-score startdiff stopdiff blastx-maxins blastx-maxdel blastx-trcstop xip xnn
+        if($ftr_idx == 0) { 
+          @{$out_per_seq_AA[$seq_idx]} = ();
+        }
+        push(@{$out_per_seq_AA[$seq_idx]}, sprintf("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s\n", 
+                                                   $seq_name_width,    $seq_name, 
+                                                   $ftr_product_width, $ftr_info_HAR->{"out_product"}[$ftr_idx],
+                                                   (defined $p_start)                               ? "yes"       : "no",   # CM prediction?
+                                                   (defined $x_start  && $x_score >= $min_x_score)  ? "yes"       : "no",   # blastx prediction? 
+                                                   (defined $p_start)                               ? $p_start    : "-",    # CM-start
+                                                   (defined $p_stop)                                ? $p_stop     : "-",    # CM-stop
+                                                   (defined $x_start  && $x_score >= $min_x_score)  ? $x_start    : "-",    # blastx-start
+                                                   (defined $x_stop   && $x_score >= $min_x_score)  ? $x_stop     : "-",    # blastx-stop
+                                                   (defined $x_score)                               ? $x_score    : "-",    # blastx-score
+                                                   (defined $start_diff)                            ? $start_diff : "-",    # start-diff
+                                                   (defined $stop_diff)                             ? $stop_diff  : "-",    # stop-diff
+                                                   (defined $x_maxins  && $x_score >= $min_x_score) ? $x_maxins   : "-",    # blastx-maxins
+                                                   (defined $x_maxdel  && $x_score >= $min_x_score) ? $x_maxdel   : "-",    # blastx-maxdel
+                                                   (defined $x_trcstop && $x_score >= $min_x_score) ? $x_trcstop  : "-",    # blastx-maxdel
+                                                   ($xip_err_str ne "")                             ? "yes"       : "no",   # xip error
+                                                   ($xnn_err_str ne "")                             ? "yes"       : "no")); # xnn error
+            
+
+
       } # end of 'for($seq_idx' loop
     }
   } # end of 'for($ftr_idx' loop
+
+  printf $out_FH ("#sequence: sequence name\n");
+  printf $out_FH ("#product:  CDS product name\n");
+  printf $out_FH ("#cm?:      is there a CM (nucleotide-based) prediction/hit? above threshold\n");
+  printf $out_FH ("#blast?:   is there a blastx (protein-based) prediction/hit? above threshold\n");
+  printf $out_FH ("#cmstart:  start position of CM (nucleotide-based) prediction\n");
+  printf $out_FH ("#cmstop:   stop  position of CM (nucleotide-based) prediction\n");
+  printf $out_FH ("#bxstart:  start position of blastx top HSP\n");
+  printf $out_FH ("#bxstop:   stop  position of blastx top HSP\n");
+  printf $out_FH ("#bxscore:  raw score of top blastx HSP (if one exists, even if it is below threshold)\n");
+  printf $out_FH ("#startdf:  difference between cmstart and bxstart\n");
+  printf $out_FH ("#stopdf:   difference between cmstop and bxstop\n");
+  printf $out_FH ("#bxmaxin:  maximum insert length in top blastx HSP\n");
+  printf $out_FH ("#bxmaxde:  maximum delete length in top blastx HSP\n");
+  printf $out_FH ("#bxtrc:    position of stop codon in top blastx HSP, if there is one\n");
+  printf $out_FH ("#xiperr?:  is there a xip error (failure of blastx to validate CM prediction) for this sequence/CDS?\n");
+  printf $out_FH ("#xnnerr?:  is there a xnn error (failure for CM to detect hit that blastx detected) for this sequence/CDS?\n");
+  printf $out_FH ("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s\n", 
+         $seq_name_width,    "#sequence", 
+         $ftr_product_width, "product", 
+         "cm?", "blast?", "cmstart", "cmstop", "bxstart", "bxstop", "bxscore", "startdf", "stopdf", "bxmaxin", "bxmaxde", "bxtrc", "xiperr?", "xnnerr?");
+
+         
+
+  # now go back and output per seq
+  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    foreach my $out_line (@{$out_per_seq_AA[$seq_idx]}) { 
+      print $out_FH $out_line;
+    }
+  }
 
   return;
 }    
@@ -9752,10 +9820,17 @@ sub run_blastx_and_summarize_output {
   my ($execs_HR, $out_root, $query_file, $blastx_db, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
+  my $ncds = 0; 
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || 
+       ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
+      $ncds++;
+    }
+  }
 
   my $blastx_out_file     = $out_root . ".blastx.out";
   my $blastx_summary_file = $out_root . ".blastx.summary.txt";
-  my $blastx_cmd          = $execs_HR->{"blastx"} . " -query $query_file -db $blastx_db -seg no -num_descriptions 3 -num_alignments 3 -out $blastx_out_file";
+  my $blastx_cmd          = $execs_HR->{"blastx"} . " -query $query_file -db $blastx_db -seg no -num_descriptions $ncds -num_alignments $ncds -out $blastx_out_file";
   
   runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
   addClosedFileToOutputInfo($ofile_info_HHR, "blastx-out", $blastx_out_file, 0, "blastx output");
@@ -9862,7 +9937,7 @@ sub ftr_results_calculate_blastx {
         # printf("HEYA BLASTX HSP $key $value\n");
         if($value =~ /^(\d+)$/) { 
           $hsp_idx = $value;
-          # printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
+          #printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
         }
         else { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", 1, $FH_HR);
@@ -9878,9 +9953,9 @@ sub ftr_results_calculate_blastx {
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $xstart;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $xstop;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} = ($xstart <= $xstop) ? "+" : "-";
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", 1, $FH_HR);
@@ -9895,7 +9970,7 @@ sub ftr_results_calculate_blastx {
           if($value =~ /^(\d+)$/) { 
             my $maxins = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} = $maxins;
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} . "\n");
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", 1, $FH_HR);
@@ -9910,7 +9985,7 @@ sub ftr_results_calculate_blastx {
           if($value =~ /^(\d+)$/) { 
             my $maxdel = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} = $maxdel;
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxdel} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} . "\n");
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxdel} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXDE line $line", 1, $FH_HR);
@@ -9925,7 +10000,7 @@ sub ftr_results_calculate_blastx {
           if($value =~ /^[\+\-]([123])$/) { 
             my $frame = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} = $frame;
-            # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} . "\n");
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
@@ -9938,7 +10013,7 @@ sub ftr_results_calculate_blastx {
         }
         if($hsp_idx eq "1") { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} = $value;
-          # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
+          #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
         }
       }
       elsif($key eq "SCORE") { 
@@ -9947,7 +10022,7 @@ sub ftr_results_calculate_blastx {
         }
         if($hsp_idx eq "1") { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} = $value;
-          # printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_score} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} . "\n");
+          #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_score} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} . "\n");
         }
       }
       # Add elsif($key eq "") blocks here to store more values from the blastx.summary file
@@ -10186,7 +10261,7 @@ sub helper_ftable_get_coords_standard {
 ################################################################# 
 sub helper_ftable_get_coords_xnn_flag { 
   my $sub_name = "helper_ftable_get_coords_xnn_flag";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($seq_idx, $ftr_idx, $do_start_carrot, $do_stop_carrot, $ret_min_coord, $seq_info_HAR, $ftr_results_AAHR, $FH_HR) = @_;
