@@ -1346,6 +1346,10 @@ sub helperAddFileToOutputInfo {
 #   addToErrorInfoHash()
 #   setIncompatibilityErrorInfoHash()
 #   setRequiredErrorInfoHash()
+#   setRequiredErrorInfoHash()
+#   setFTableInvalidatedByErrorInfoHash()
+#   processFeatureErrorsForFTable()
+#   populateFTableNoteErrorOrWarning()
 #
 #################################################################
 # Subroutine: initializeHardCodedErrorInfoHash()
@@ -1375,38 +1379,183 @@ sub initializeHardCodedErrorInfoHash {
     DNAORG_FAIL("ERROR in $sub_name, error info hash of arrays already has at least one key", 1, $FH_HR);
   }
 
-  # add each error code, this function will die if we try to add the same code twice, or if the 3rd argument is 
-  # neither "sequence" nor "feature"
-                                   #code    pertype   maybe_allowed?  msg (description)
-  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0,             "there is not exactly 1 occurrence of origin sequence", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "nop", "feature",  0,             "unable to identify homologous feature", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "nm3", "feature",  0,             "length of nucleotide feature is not a multiple of 3", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "b5e", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference but does extend to 5' boundary of target", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "b5u", "feature",  0,             "alignment to reference does not extend to 5' boundary of reference or target", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "b3e", "feature",  0,             "alignment to reference does not extend to 3' boundary of reference but does extend to 3' boundary of target", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "b3u", "feature",  0,             "alignment to reference does not extend to 3' boundary of reference or target", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "olp", "feature",  0,             "feature does not overlap with same set of features as in reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "str", "feature",  0,             "predicted CDS start position is not beginning of ATG start codon", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "stp", "feature",  1,             "predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ajb", "feature",  0,             "feature (MP or CDS) is not adjacent to same set of features before it as in reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "aja", "feature",  0,             "feature (MP or CDS) is not adjacent to same set of features after it as in reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "trc", "feature",  0,             "in-frame stop codon exists 5' of stop position predicted by homology to reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ext", "feature",  1,             "first in-frame stop codon exists 3' of stop position predicted by homology to reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,             "mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,             "mat_peptide may not be translated because its CDS has a problem", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "m5e", "feature",  0,             "parent CDS has a b5e error", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "m3e", "feature",  0,             "parent CDS has a b3e error", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,             "mat_peptide may not be translated because its CDS has a blastx protein validation failure", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,             "no in-frame stop codon exists 3' of predicted valid start codon", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ost", "feature",  0,             "predicted feature is on opposite strand from reference", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "lsc", "feature",  0,             "low homology score", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "dup", "feature",  0,             "more than one homologous region", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "xip", "feature",  0,             "blastx protein validation failure", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "xnn", "feature",  0,             "blastx identifies protein not identified in nucleotide-based search", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,             "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "int", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (ntr)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,             "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", $FH_HR);
-  addToErrorInfoHash($err_info_HAR, "ctr", "feature",  0,             "CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error)", $FH_HR);
+  # add each error code, this function will die if we try to add the same code twice, or if something is wrong 
+  # with how we try to add it (args to addToErrorInfoHash don't pass the contract check)
+
+  # errors that are not valid in the feature table: do not affect feature table output
+  # nop, b5e, b3e, m5e, m3e, olp, ajb, aja, aji, inp (10)
+  addToErrorInfoHash($err_info_HAR, "nop", "feature",  0,
+                     "unable to identify homologous feature", # description
+                     0, 0, "", "", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "b5e", "feature",  0,
+                     "alignment to reference does not extend to 5' boundary of reference but does extend to 5' boundary of target", # description
+                     0, 0, "", "", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "b3e", "feature",  0,
+                     "alignment to reference does not extend to 3' boundary of reference but does extend to 3' boundary of target", # description
+                     0, 0, "", "", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "m5e", "feature",  0,
+                     "parent CDS has a b5e error", # description
+                     0, 0, "", "", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "m3e", "feature",  0,
+                     "parent CDS has a b3e error", # description
+                     0, 0, "", "", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "olp", "feature",  0,
+                     "feature does not overlap with same set of features as in reference", # description
+                     0, 0, "", "", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "ajb", "feature",  0,
+                     "feature (MP or CDS) is not adjacent to same set of features before it as in reference", # description
+                     0, 0, "", "", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "aja", "feature",  0,
+                     "feature (MP or CDS) is not adjacent to same set of features after it as in reference", # description
+                     0, 0, "", "", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,
+                     "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", # description
+                     # NOTE: currently ftbl_valid == 0, because any feature with this error has 
+                     # no valid start/stop and so won't show up in the feature table
+                     0, 0, "", "", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+
+  # errors that can be invalidated by other errors in feature table output, many of these have to do with premature stop codons
+  # nm3, stp, trc, ext, ntr, ctr, int (7)
+  addToErrorInfoHash($err_info_HAR, "nm3", "feature",  0,
+                     "length of nucleotide feature is not a multiple of 3", # description
+                     1, 0, "similar to !out_product,out_gene!; length is not a multiple of 3", # feature table info: valid, pred_stop, note
+                     "Unexpected length: not a multiple of 3; !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "stp", "feature",  1,
+                     "predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA)", # description
+                     1, 1, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "trc", "feature",  0,
+                     "in-frame stop codon exists 5' of stop position predicted by homology to reference", # description
+                     # NOTE: invalidated by int and ctr because int or ctr will handle the feature table note/warn/err
+                     1, 1, "similar to !out_product,out_gene!; contains premature stop codon", # feature table info: valid, pred_stop, note
+                     "!FEATURE_TYPE! Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "ext", "feature",  1,
+                     "first in-frame stop codon exists 3' of stop position predicted by homology to reference", # description
+                     1, 1, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop note
+                     "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!; !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,
+                     "mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start", # description
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "ctr", "feature",  0,
+                     "CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error)", # description
+                     # NOTE: currently valid is 1 and this doesn't invalidate trc, but maybe it should?
+                     1, 1, "similar to !out_product,out_gene!; contains premature stop codon", # feature table info: valid, pred_stop, note
+                     "!FEATURE_TYPE! Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "int", "feature",  0,
+                     "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (ntr)", # description
+                     1, 1, "similar to !out_product,out_gene!; contains premature stop codon", # feature table info: valid, pred_stop, note
+                     "!FEATURE_TYPE! Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,
+                     "no in-frame stop codon exists 3' of predicted valid start codon", # description
+                     1, 1, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!; !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  # errors that cannot be invalidated by other errors in feature table output
+  # ori, str, b5u, b3u, ost, lsc, dup, xip, mpi, xnn, mtr (12)
+  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0, # code, per-type, maybe-allowed
+                     "there is not exactly 1 occurrence of origin sequence", # description
+                     1, 0, "", "!DESC!", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR); 
+
+  addToErrorInfoHash($err_info_HAR, "str", "feature",  0,
+                     "predicted CDS start position is not beginning of ATG start codon", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Mutation at Start: Expected start codon could not be identified on !out_product,out_gene!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "b5u", "feature",  0,
+                     "alignment to reference does not extend to 5' boundary of reference or target", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Reference alignment problem: does not extend to 5' boundary of reference feature; !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "b3u", "feature",  0,
+                     "alignment to reference does not extend to 3' boundary of reference or target", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Reference alignment problem: does not extend to 3' boundary of reference feature; !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "ost", "feature",  0,
+                     "predicted feature is on opposite strand from reference", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Reverse Complement: Sequence may be misassembled; !out_product,out_gene! appears to be reverse complemented", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,
+                     "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "lsc", "feature",  0,
+                     "low homology score", # description
+                     1, 0, "!DESC!", # feature table info: valid, pred_stop, note
+                     "Low Homology Score: !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "dup", "feature",  0,
+                     "more than one homologous region", # description
+                     1, 0, "!DESC!", # feature table info: valid, pred_stop, note
+                     "Duplicate Feature: !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "xip", "feature",  0,
+                     "blastx protein validation failure", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Protein validation failure: !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,
+                     "mat_peptide may not be translated because its CDS has a blastx protein validation failure", # description
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "xnn", "feature",  0,
+                     "blastx identifies protein not identified in nucleotide-based search", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Protein validation error: !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,
+                     "mat_peptide may not be translated because its CDS has a problem", # description
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
 
   # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "aji,int,inp", $FH_HR); 
@@ -1429,7 +1578,30 @@ sub initializeHardCodedErrorInfoHash {
   # exists between predicted start and stop, and 'nst' error occurs if no valid *in-frame* stop
   # codon exists 3' of predicted start. So there can be instances of 'ext' and not 'stp', and there
   # can be instances of 'nst' and not 'stp'.
-  
+
+  # define the ftbl_invalid_by values, these are one-sided, any error code listed in the 
+  # 3rd argument invalidates the 2nd argument error code, but not vice versa
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nm3", "b5e,b3e,m5e,m3e",             $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ext", "b5e,b3e,m5e,m3e",             $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ntr", "b5e,b3e,m5e,m3e",             $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,m5e,m3e",             $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nst", "b5e,b3e,m5e,m3e",             $FH_HR);
+
+  # trc, ext and nst are preferred to stp
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "stp", "b5e,b3e,m5e,m3e,trc,ext,nst", $FH_HR); 
+
+  # int and ctr are preffered to trc
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "b5e,b3e,m5e,m3e,int,ctr",     $FH_HR);
+
+  # trc is preffered to ctr
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,m5e,m3e,trc",         $FH_HR);
+
+  # mip and ntr are preferred to mtr
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mtr", "mip,ntr", $FH_HR);
+
+  # validate the error info hash
+  validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
+
   return;
 }
 
@@ -1441,13 +1613,26 @@ sub initializeHardCodedErrorInfoHash {
 #             Die if the same error code already exists.
 #
 # Arguments:
-#   $err_info_HAR:  REF to hash of arrays of error information, FILLED HERE
-#   $code:          the code of the element we are adding
-#   $pertype:       the 'per-type' of the element we are adding, "sequence" or "feature"
-#   $maybe_allowed: 1, if we're allowing this error to be set as 'maybe', to facilitate
-#                   reexamination later.
-#   $msg:           the error message of the element we are adding
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#   $err_info_HAR:    REF to hash of arrays of error information, FILLED HERE
+#   $code:            the code of the element we are adding
+#   $pertype:         the 'per-type' of the element we are adding, "sequence" or "feature"
+#   $maybe_allowed:   '1' if we're allowing this error to be set as 'maybe', to facilitate
+#                     reexamination later.
+#   $desc:            the error description/message of the element we are adding
+#   $ftbl_valid:      '1' if this error is valid/relevant to feature table output
+#                     '0' if it is not valid/relevant
+#   $ftbl_pred_stop:  '1' to use predicted stop (instead of corrected one) in 
+#                     feature table when this error exists
+#   $ftbl_note:       note message for feature table
+#                     must eq "" if $ftbl_valid is 0 or per-type is "sequence"
+#                     must ne "" if $ftbl_valid is 1 and per-type is "feature"
+#   $ftbl_err:        ERROR message for feature table
+#                     if $ftbl_valid is 0: must be ""
+#                     if $ftbl_valid is 1: must eq "" if $ftbl_warn ne "", must ne "" if $ftbl_warn eq ""
+#   $ftbl_warn:       WARNING message for feature table
+#                     if $ftbl_valid is 0: must be ""
+#                     if $ftbl_valid is 1: must eq "" if $ftbl_err ne "", must ne "" if $ftbl_err eq ""
+#   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: void
 #
@@ -1457,24 +1642,80 @@ sub initializeHardCodedErrorInfoHash {
 #################################################################
 sub addToErrorInfoHash { 
   my $sub_name = "addToErrorInfoHash";
-  my $nargs_expected = 6;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($err_info_HAR, $code, $pertype, $maybe_allowed, $msg, $FH_HR) = (@_);
+  my ($err_info_HAR, $code, $pertype, $maybe_allowed, $desc, 
+      $ftbl_valid, $ftbl_pred_stop, $ftbl_note, $ftbl_err, $ftbl_warn, 
+      $FH_HR) = (@_);
 
   # make sure $pertype is valid
   if(($pertype ne "feature") && ($pertype ne "sequence")) { 
     DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\".", 1, $FH_HR); 
   }
-
+  
   # make sure $maybe_allowed is valid
   if(($maybe_allowed ne "1") && ($maybe_allowed ne "0")) { 
     DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with invalid maybe_allowed value of $maybe_allowed", 1, $FH_HR);
   }
+  
+  # make sure $ftbl_valid is valid
+  if(($ftbl_valid ne "1") && ($ftbl_valid ne "0")) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with invalid ftbl_valid value of $ftbl_valid", 1, $FH_HR);
+  }
+  
+  # make sure $ftbl_pred_stop is valid
+  if(($ftbl_pred_stop ne "1") && ($ftbl_pred_stop ne "0")) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with invalid ftbl_pred_stop value of $ftbl_pred_stop", 1, $FH_HR);
+  }
+  if(($ftbl_valid eq "0") && ($ftbl_pred_stop eq "1")) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with ftbl_valid of 0, but ftbl_pred_stop of 1", 1, $FH_HR);
+  }
+  
+  # make sure $ftbl_note is valid
+  if(! defined $ftbl_note) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code but ftbl_note is undefined", 1, $FH_HR);
+  }
+  if($pertype eq "sequence") { 
+    if($ftbl_note ne "") { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with pertype of sequence but ftbl_note is not empty", 1, $FH_HR);
+    }
+  }
+  elsif($pertype eq "feature") { 
+    if(($ftbl_valid eq "0") && ($ftbl_note ne "")) { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with ftbl_valid of 0 and pertype of feature but ftbl_note is not empty", 1, $FH_HR);
+    }
+    if(($ftbl_valid eq "1") && ($ftbl_note eq "")) { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with ftbl_valid of 1 and pertype of feature but ftbl_note is empty", 1, $FH_HR);
+    }
+  }
 
+  # make sure $ftbl_err and $ftbl_warn are valid
+  # if $ftbl_valid is '0': $ftbl_err and $ftbl_warn must eq ""
+  # if $ftbl_valid is '1': zero or one of ftbl_err and ftbl_warn can ne ""
+  if(! defined $ftbl_err) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code but ftbl_err is undefined", 1, $FH_HR);
+  }
+  if(! defined $ftbl_warn) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code but ftbl_err is undefined", 1, $FH_HR);
+  }
+  if($ftbl_valid eq "0") { 
+    if($ftbl_err ne "") { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with ftbl_valid of 0 but ftbl_err is not empty", 1, $FH_HR);
+    }
+    if($ftbl_warn ne "") { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with ftbl_valid of 0 but ftbl_warn is not empty", 1, $FH_HR);
+    }
+  }
+  else { 
+    if(($ftbl_err ne "") && ($ftbl_warn ne "")) { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with ftbl_valid of 1 but both ftbl_err and ftbl_warn are non-empty", 1, $FH_HR);
+    }
+  }
+  
   # check if $code already exists
   if(exists $err_info_HAR->{"code"}) { 
-    my $nerr = validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); # this validates all arrays are the same size
+    my $nerr = scalar(@{$err_info_HAR->{"code"}});
     for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
       my $other_code = $err_info_HAR->{"code"}[$err_idx]; 
       if($code eq $other_code) { 
@@ -1482,21 +1723,33 @@ sub addToErrorInfoHash {
       }
     }
   }
-
-  # initialize, if necessary
-  if(! exists $err_info_HAR->{"code"})          { @{$err_info_HAR->{"code"}} = (); }
-  if(! exists $err_info_HAR->{"pertype"})       { @{$err_info_HAR->{"pertype"}} = (); }
-  if(! exists $err_info_HAR->{"maybe_allowed"}) { @{$err_info_HAR->{"maybe_allowed"}} = (); }
-  if(! exists $err_info_HAR->{"msg"})           { @{$err_info_HAR->{"msg"}} = (); }
-  if(! exists $err_info_HAR->{"incompat"})      { @{$err_info_HAR->{"incompat"}} = (); }
-  if(! exists $err_info_HAR->{"requires"})      { @{$err_info_HAR->{"requires"}} = (); }
   
-  push(@{$err_info_HAR->{"code"}},          $code); 
-  push(@{$err_info_HAR->{"pertype"}},       $pertype); 
-  push(@{$err_info_HAR->{"maybe_allowed"}}, $maybe_allowed); 
-  push(@{$err_info_HAR->{"msg"}},           $msg); 
-  push(@{$err_info_HAR->{"incompat"}},      ""); # initialized to no incompatabilities, possibly added to later with setIncompatibilityErrorInfoHash()
-  push(@{$err_info_HAR->{"requires"}},      ""); # initialized to no requirements,      possibly added to later with setRequiredErrorInfoHash()
+  # initialize, if necessary
+  if(! exists $err_info_HAR->{"code"})            { @{$err_info_HAR->{"code"}}            = (); }
+  if(! exists $err_info_HAR->{"pertype"})         { @{$err_info_HAR->{"pertype"}}         = (); }
+  if(! exists $err_info_HAR->{"maybe_allowed"})   { @{$err_info_HAR->{"maybe_allowed"}}   = (); }
+  if(! exists $err_info_HAR->{"desc"})            { @{$err_info_HAR->{"desc"}}            = (); }
+  if(! exists $err_info_HAR->{"incompat"})        { @{$err_info_HAR->{"incompat"}}        = (); }
+  if(! exists $err_info_HAR->{"requires"})        { @{$err_info_HAR->{"requires"}}        = (); }
+  if(! exists $err_info_HAR->{"ftbl_valid"})      { @{$err_info_HAR->{"ftbl_valid"}}      = (); }
+  if(! exists $err_info_HAR->{"ftbl_invalid_by"}) { @{$err_info_HAR->{"ftbl_invalid_by"}} = (); }
+  if(! exists $err_info_HAR->{"ftbl_pred_stop"})  { @{$err_info_HAR->{"ftbl_pred_stop"}}  = (); }
+  if(! exists $err_info_HAR->{"ftbl_note"})       { @{$err_info_HAR->{"ftbl_note"}}       = (); }
+  if(! exists $err_info_HAR->{"ftbl_err"})        { @{$err_info_HAR->{"ftbl_err"}}        = (); }
+  if(! exists $err_info_HAR->{"ftbl_warn"})       { @{$err_info_HAR->{"ftbl_warn"}}       = (); }
+  
+  push(@{$err_info_HAR->{"code"}},             $code); 
+  push(@{$err_info_HAR->{"pertype"}},          $pertype); 
+  push(@{$err_info_HAR->{"maybe_allowed"}},    $maybe_allowed); 
+  push(@{$err_info_HAR->{"desc"}},             $desc); 
+  push(@{$err_info_HAR->{"incompat"}},         ""); # initialized to no incompatabilities, possibly added to later with setIncompatibilityErrorInfoHash()
+  push(@{$err_info_HAR->{"requires"}},         ""); # initialized to no requirements,      possibly added to later with setRequiredErrorInfoHash()
+  push(@{$err_info_HAR->{"ftbl_valid"}},       $ftbl_valid);
+  push(@{$err_info_HAR->{"ftbl_invalid_by"}},  ""); # initialized to no invalid_by's, possibly added to later with setFTableInvalidatedByErrorInfoHash()
+  push(@{$err_info_HAR->{"ftbl_pred_stop"}},   $ftbl_pred_stop);
+  push(@{$err_info_HAR->{"ftbl_note"}},        $ftbl_note);
+  push(@{$err_info_HAR->{"ftbl_err"}},         $ftbl_err);
+  push(@{$err_info_HAR->{"ftbl_warn"}},        $ftbl_warn);
 
   return;
 }
@@ -1610,6 +1863,293 @@ sub setRequiredErrorInfoHash {
 }
 
 #################################################################
+# Subroutine: setFTableInvalidatedByErrorInfoHash
+# Incept:     EPN, Thu Nov  1 10:10:03 2018
+#
+# Purpose:    Add to the ftbl_invalid_by value for an error code $code1 given
+#             a string of other error codes $code2. ftr_invalid_by values 
+#             are uni-directional.
+#
+# Arguments:
+#   $err_info_HAR:  REF to hash of arrays of error information, FILLED HERE
+#   $code1:         the code of the element we are adding ftbl_invalid_by values for
+#   $code2str:      the codes $code1 is invalidated by, separated by commas
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: void
+#
+# Dies:    if one of the error codes in $code1 or $code2str do not
+#          exist in %{$err_info_HAR}.
+#
+#################################################################
+sub setFTableInvalidatedByErrorInfoHash { 
+  my $sub_name = "setFTableInvalidatedByErrorInfoHash";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($err_info_HAR, $code1, $code2str, $FH_HR) = (@_);
+
+  my $idx1 = findNonNumericValueInArray($err_info_HAR->{"code"}, $code1, $FH_HR);
+  if($idx1 == -1) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add ftbl_invalid_by for code $code1, but it does not exist in the error info hash", 1, $FH_HR);
+  }
+  if($err_info_HAR->{"ftbl_valid"}[$idx1] == 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, trying to add ftbl_invalid_by for code $code1, but its ftbl_valid value is 0", 1, $FH_HR);
+  }
+
+  # verify the codes in $code2str
+  my @code2_A = split(',', $code2str);
+  foreach my $code2 (@code2_A) { 
+    my $idx2 = findNonNumericValueInArray($err_info_HAR->{"code"}, $code2, $FH_HR);
+    if($idx2 == -1) { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between codes $code1 and $code2, but $code2 does not exist in the error info hash", 1, $FH_HR);
+    }
+    if($idx1 == $idx2) { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between a code and itself: $code1 and $code2", 1, $FH_HR);
+    }
+  }
+
+  # set the value
+  $err_info_HAR->{"ftbl_invalid_by"}[$idx1] = $code2str;
+
+  return;
+}
+
+#################################################################
+# Subroutine: processFeatureErrorsForFTable()
+# Incept:     EPN, Thu Nov  1 12:10:34 2018
+#
+# Purpose:    Given a string of errors that correspond to a specific
+#             sequence and feature, use the %{$err_info_HAR} and
+#             process that string to determine what (if any) notes,
+#             errors, warnings should be added to the feature table
+#             for this seq/feature pair, also determine if the stop
+#             coordinate should be the predicted stop instead of a
+#             possibly corrected one.  error exceptions apply for this
+#             sequence.  Die if more than one apply, that's supposed
+#             to be impossible.
+#
+# Arguments:
+#   $err_code_str:           string of errors, comma separated, can be ""
+#   $seq_name:               name of sequence
+#   $ftr_idx:                feature index
+#   $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#   $err_info_HAR:           REF to hash of arrays with information on the errors, PRE-FILLED
+#   $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
+#   $ret_note_AR:            REF to array of notes, possibly CREATED (not added to) here
+#   $ret_error_AR:           REF to array of errors, possibly added to here (not created)
+#   $ret_warning_AR:         REF to array of warnings, possibly added to here (not created)
+#   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: $do_pred_stop: '1' if predicted stop should be used for this feature in the feature table
+#
+# Dies: Never
+#################################################################
+sub processFeatureErrorsForFTable { 
+  my $sub_name = "processFeatureErrorsForFTable";
+  my $nargs_expected = 10;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($err_code_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $ret_note_AR, $ret_error_AR, $ret_warning_AR, $FH_HR) = (@_);
+
+  if($err_code_str eq "") { 
+    return 0; 
+  }
+
+  # printf("HEYA in $sub_name $seq_name $ftr_idx, $err_code_str\n");
+
+  # create a hash of all errors in the input $err_str, and also verify they are all valid errors
+  my %input_err_code_H = (); # $input_err_code_H{$err_code} = 1 if $err_code is in $err_code_str
+  my @err_idx_A = ();
+  my $err_code; 
+  my $err_idx; 
+  foreach $err_code (split(",", $err_code_str)) { 
+    $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
+    if($err_idx == -1) { 
+      DNAORG_FAIL("ERROR in $sub_name, input error of $err_code in string $err_code_str is invalid", 1, $FH_HR);
+    }
+    $input_err_code_H{$err_code} = 1; 
+    push(@err_idx_A, $err_idx);
+  }
+
+  my @tmp_note_A = (); # holds all notes
+  my $nerr  = scalar(@err_idx_A);
+  my $ret_pred_stop = 0;
+  my $valid = 0;
+  for(my $e = 0; $e < $nerr; $e++) { 
+    $err_idx = $err_idx_A[$e];
+    # printf("\terr_idx: $err_idx " . $err_info_HAR->{"code"}[$err_idx] . " valid: " . $err_info_HAR->{"ftbl_valid"}[$err_idx] . " checking...\n");
+    if($err_info_HAR->{"ftbl_valid"}[$err_idx]) { 
+      $valid = 1; # may be set to '0' below
+      if($err_info_HAR->{"ftbl_invalid_by"}[$err_idx] ne "") { 
+        # printf("\t\tinvalid_by is " . $err_info_HAR->{"ftbl_invalid_by"}[$err_idx] . "\n");
+        my @invalid_by_err_code_A = split(",", $err_info_HAR->{"ftbl_invalid_by"}[$err_idx]);
+        foreach my $err_code2 (@invalid_by_err_code_A) {
+          if(exists $input_err_code_H{$err_code2}) { 
+            $valid = 0; # $err_idx is invalidated by $err_code2, which is also present in $err_str
+            # printf("\t\t\tinvalidated by $err_code2\n");
+          }
+        }
+      }
+      if($valid) { 
+        # printf("\t\tvalid\n");
+        # valid error that will impact output of feature table
+        if($err_info_HAR->{"ftbl_pred_stop"}[$err_idx]) { # if any of the errors are valid and have this set, we return it as 1
+          $ret_pred_stop = 1;
+        }
+        # add notes, warnings and errors
+
+        my $note_str = populateFTableNoteErrorOrWarning("ftbl_note", $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR);
+        if($note_str ne "") { 
+          push(@tmp_note_A, $note_str); # we will prune this array and populate @{$ret_note_AR} before returning
+        }
+
+        my $error_str   = populateFTableNoteErrorOrWarning("ftbl_err", $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR);
+        if($error_str ne "") { 
+          # only add the error, if an identical error does not already exist in @{$ret_error_AR}
+          my $idx = findNonNumericValueInArray($ret_error_AR, $error_str, $FH_HR);
+          if($idx == -1) { push(@{$ret_error_AR}, $error_str); }
+        }
+
+        my $warning_str = populateFTableNoteErrorOrWarning("ftbl_warn", $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR);
+        if($warning_str ne "") { 
+          # only add the warning, if an identical warning does not already exist in @{$ret_warning_AR}
+          my $idx = findNonNumericValueInArray($ret_warning_AR, $warning_str, $FH_HR);
+          if($idx == -1) { push(@{$ret_warning_AR}, $warning_str); }
+        }
+      }
+    }
+  }
+
+  # Create the @{$ret_note_AR}, we do not create the @{$ret_error_AR} and @{$ret_warning_AR}
+  # this is because @{$ret_note_AR} is per-sequence/feature pair, and caller will treat it as such
+  # whereas @{$ret_error_AR} and @{$ret_warning_AR} are per-sequence and caller will treat as such
+  @{$ret_note_AR} = ();
+  my $nnote = scalar(@tmp_note_A);
+  my $ret_nnote = 0;
+  for(my $n = 0; $n < $nnote; $n++) { 
+    my $tmp_note = $tmp_note_A[$n];
+    my $keep_flag = 1; # possibly set to 0 below
+    # only keep this note if:
+    # - we haven't already added an identical string to @{$ret_note_AR}
+    # - there is not a superstring of it in @tmp_note_A, that we either 
+    #   have already or will eventually add to @{$ret_note_AR}
+
+    # check if we already have an identical string in @{$ret_note_AR}
+    for(my $rn = 0; $rn < $ret_nnote; $rn++) { 
+      my $ret_note = $ret_note_AR->[$rn];
+      if($tmp_note eq $ret_note) { 
+        $keep_flag = 0;
+      }
+    }
+
+    # check if there is a superstring of $tmp_note in @tmp_note_A that we
+    # either already have added or will add to @{$ret_note_AR}
+    for(my $n2 = 0; $n2 < $nnote; $n2++) { 
+      my $tmp_note2 = $tmp_note_A[$n2];
+      if(($tmp_note ne $tmp_note2) && 
+         ($tmp_note2 =~ m/^$tmp_note/)) { # $tmp_note2 is a superstring of $tmp_note
+        $keep_flag = 0;
+      }
+    }
+    
+    if($keep_flag) { 
+      push(@{$ret_note_AR}, $tmp_note);
+      $ret_nnote++;
+    }
+  }
+
+  return $ret_pred_stop;
+}
+
+#################################################################
+# Subroutine: populateFTableNoteErrorOrWarning
+# Incept:     EPN, Thu Feb  8 14:31:16 2018
+#
+# Purpose:    Create notes, warnings or errors for the feature table for a specific
+#             error, feature, and sequence trio.
+#
+# Arguments:
+#   $ekey:                   either "ftbl_note", "ftbl_err", or "ftbl_warn"
+#   $err_idx:                index of current error in %{$err_info_HAR} arrays
+#   $seq_name:               name of sequence
+#   $ftr_idx:                feature index
+#   $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#   $err_info_HAR:           REF to hash of arrays with information on the errors, PRE-FILLED
+#   $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
+#   $FH_HR:                    REF to hash of file handles, including "log" 
+#                              and "cmd"
+# 
+# Returns: string with the feature table note for the current sequence/feature combo
+#
+# Dies:    If ftbl_err_exceptions_HR doesn't have information we need
+#          or has invalid information
+#
+#################################################################
+sub populateFTableNoteErrorOrWarning { 
+  my $sub_name = "populateFTableNoteErrorOrWarning";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ekey, $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR) = (@_);
+  
+  if(! exists $err_info_HAR->{$ekey}) { 
+    DNAORG_FAIL("ERROR in $sub_name, $ekey value is undefined in error info hash", 1, $FH_HR);
+  }
+
+  my $msg = $err_info_HAR->{$ekey}[$err_idx];
+
+  if(! defined $msg) { 
+    DNAORG_FAIL("ERROR in $sub_name, error $err_idx is invalid in error info hash", 1, $FH_HR);
+  }
+
+  if($msg eq "") { 
+    return "";
+  }
+
+  my $err_code = $err_info_HAR->{"code"}[$err_idx];
+
+  my $orig_msg = $msg;
+  my $ret_msg  = $msg;
+  my $idx;
+  # replace !DESC! with description of the error
+  if($ret_msg =~ /!DESC!/) { 
+    if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
+      my $desc_str = sprintf("%s%s", 
+                             $err_info_HAR->{"desc"}[$err_idx], 
+                             ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]"); 
+      $ret_msg =~ s/!DESC!/$desc_str/g;
+    }
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, trying to return $ekey message for $err_code and sequence $seq_name feature $ftr_idx, but no error instance exists", 1, $FH_HR);
+    }
+  }
+  # replace !FEATURE_TYPE! with 
+  if($ret_msg =~ /!FEATURE_TYPE!/) { 
+    my $feature_type_str = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
+    $ret_msg =~ s/!FEATURE_TYPE!/$feature_type_str/g;
+  }
+  # check if there is an internal !$key_str! string, where $key_str is either $key or $key_1,$key_2,...,$key_n for some number n,
+  # which is replaced by the value: $ftr_info_HAR->{$key}[$ftr_idx]); for the first $key with a valid value
+  if($ret_msg =~ /\!([^\!]*)\!/) {
+    my $key_str = $1; 
+    my @value_A = split(",", $key_str); 
+    my $nvalue = scalar(@value_A);
+    my $value = "?";
+    for(my $v = 0; $v < $nvalue; $v++) { 
+      my $key = $value_A[$v];
+      if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
+        $value = $ftr_info_HAR->{$key}[$ftr_idx];
+        $v = $nvalue; # breaks loop
+      }
+    }
+    $ret_msg =~ s/\![^\!]*\!/$value/;
+  }
+
+  return $ret_msg;
+}
+
+
 #################################################################
 #
 # Subroutines related to the feature table error exception array of hashes:
@@ -1617,7 +2157,6 @@ sub setRequiredErrorInfoHash {
 #   addFTableErrorException()
 #   checkSequenceAndFeatureAgainstFTableErrorExceptions()
 #   checkErrorsAgainstFTableErrorExceptions()
-#   populateFTableNote()
 #   exhaustiveSearchFTableErrorExceptions()
 #
 #################################################################
@@ -2462,96 +3001,6 @@ sub checkErrorsAgainstFTableErrorExceptions {
   return $pass_idx;
 }
 
-#################################################################
-# Subroutine: populateFTableNoteErrorOrWarning
-# Incept:     EPN, Thu Feb  8 14:31:16 2018
-#
-# Purpose:    Create a note for the feature table
-#
-# Arguments:
-#   $ftr_info_HAR:             REF to hash of arrays with information on the features, PRE-FILLED
-#   $ftr_idx:                  relevant feature index for 2nd dim of %ftr_info_HAR
-#   $ftbl_err_exceptions_HR:   REF to hash with exception info, PRE-FILLED
-#   $err_info_HAR:             REF to the error info hash of arrays, PRE-FILLED
-#   $err_ftr_instances_HHR:    REF to 2D hash with per-feature errors, PRE-FILLED
-#   $seq_name:                 name of current sequence
-#   $FH_HR:                    REF to hash of file handles, including "log" 
-#                              and "cmd"
-# 
-# Returns: string with the feature table note for the current sequence/feature combo
-#
-# Dies:    If ftbl_err_exceptions_HR doesn't have information we need
-#          or has invalid information
-#
-#################################################################
-sub populateFTableNoteErrorOrWarning { 
-  my $sub_name = "populateFTableNoteErrorOrWarning";
-  my $nargs_expected = 8;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($ekey, $ftr_info_HAR, $ftr_idx, $ftbl_err_exceptions_HR, $err_info_HAR, $err_ftr_instances_HHR, $seq_name, $FH_HR) = (@_);
-  
-  my $msg = $ftbl_err_exceptions_HR->{$ekey};
-  if(! defined $msg) { 
-    DNAORG_FAIL("ERROR in $sub_name, $ekey value is undefined in error exceptions hash", 1, $FH_HR);
-  }
-  
-  if($msg eq "") { 
-    return "";
-  }
-  
-  # if $msg starts with !COPY!<s>, then return the error messages for all errcodes that 
-  # compose <s> (separated by commas)
-  # if not, it may still contain !$key! which gets replaced with $ftr_info_HAR->{$key}[$ftr_idx];
-  my $orig_msg = $msg;
-  my $ret_msg  = "";
-  my $idx;
-  if($msg =~ /(.*\s*)!COPY!/) { 
-    $ret_msg = $1;
-    $msg =~ s/.*\s*!COPY!//;
-    my @err_A = split(",", $msg);
-    my $first_flag = 1;
-    foreach my $err_code (@err_A) { 
-      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
-      if($idx == -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code in note $orig_msg", 1, $FH_HR);
-      }
-      if(exists $err_ftr_instances_HHR->{$err_code}{$seq_name}) { 
-        if(! $first_flag) { $ret_msg .= ";"; }
-        $ret_msg .= sprintf("%s%s", 
-                             $err_info_HAR->{"msg"}[$idx], 
-                             ($err_ftr_instances_HHR->{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_HHR->{$err_code}{$seq_name} . "]"); 
-        $first_flag = 0;
-        # to include the error code at the beginning of the note:
-        #$ret_msg .= sprintf("%4s error code: %s%s", 
-        #$err_code, 
-        #$err_info_HAR->{"msg"}[$idx], 
-        #($err_ftr_instances_HHR->{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_HHR->{$err_code}{$seq_name} . "]"); 
-      }        
-    }
-  }
-  else {  # note does not start with !COPY!
-    $ret_msg = $msg;
-  }
-  # check if there is an internal !$key_str! string, where $key_str is either $key or $key_1,$key_2,...,$key_n for some number n,
-  # which is replaced by the value: $ftr_info_HAR->{$key}[$ftr_idx]); for the first $key with a valid value
-  if($ret_msg =~ /\!([^\!]*)\!/) {
-    my $key_str = $1; 
-    my @value_A = split(",", $key_str); 
-    my $nvalue = scalar(@value_A);
-    my $value = "?";
-    for(my $v = 0; $v < $nvalue; $v++) { 
-      my $key = $value_A[$v];
-      if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-        $value = $ftr_info_HAR->{$key}[$ftr_idx];
-        $v = $nvalue; # breaks loop
-      }
-    }
-    $ret_msg =~ s/\![^\!]*\!/$value/;
-  }
-
-  return $ret_msg;
-}
 
 #################################################################
 # Subroutine: exhaustiveSearchFTableErrorExceptions()
@@ -6018,14 +6467,25 @@ sub validateSequenceInfoHashIsComplete {
 # Purpose:    Validate that a 'error info' hash is valid and complete.
 #             'Complete' means it has all the expected keys, each of which is an identically sized array.
 #             The expected keys are:
-#                "code":          the error code, e.g. "nop"
-#                "msg":           the message for this error, e.g. ""unable to identify homologous feature"
-#                "pertype":       type of this error, either "feature" (error occurs for a single feature) or "sequence"
-#                                 (error occurs for an entire sequence)
-#                "maybe_allowed": '1' if a value of 'maybe' is allowed for this error code, '0' if not
-#                "incompat":      string that lists all error codes (separated by commas) the current error code is incompatible with
-#                "requires":      string that lists all error codes (separated by commas) the current error code requires
-#
+#                "code":            the error code, e.g. "nop"
+#                "pertype":         type of this error, either "feature" (error occurs for a single feature) or "sequence"
+#                                   (error occurs for an entire sequence)
+#                "maybe_allowed":   '1' if a value of 'maybe' is allowed for this error code, '0' if not
+#                "desc":            the description/message for this error, e.g. ""unable to identify homologous feature"
+#                "incompat":        string that lists all error code indices (separated by commas) the current error code is incompatible with
+#                "requires":        string that lists all error code indices (separated by commas) the current error code requires
+#             Information relevant  to feature table output:
+#                "ftbl_valid":      '1' if this error is valid/relevant to feature table output
+#                                   '0' if it is not valid/relevant and does not change feature table output
+#                "ftbl_invalid_by": string that lists all error code indices (separated by commas) the current error code is invalidated by
+#                                   for feature table output (if any of those errors are also present, this error becomes invalid and does
+#                                   not impact feature table output)
+#                "ftbl_pred_stop":  '1' to use predicted stop (instead of corrected one) in feature table when this error exists
+#                "ftbl_note":       note message for feature table
+#                "ftbl_err"         ERROR message for feature table
+#                "ftbl_warn"        WARNING message for feature table
+#                
+#               
 #             If @{exceptions_AR} is non-empty, then keys in 
 #             in that array need not be in %{$err_info_HAR}.
 #
@@ -6050,7 +6510,10 @@ sub validateErrorInfoHashIsComplete {
  
   my ($err_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("code", "pertype", "maybe_allowed", "msg", "incompat", "requires");
+  my @expected_keys_A = ("code", "pertype", "maybe_allowed", "desc", "incompat", "requires", "ftbl_valid", "ftbl_invalid_by", "ftbl_pred_stop", "ftbl_note", "ftbl_err", "ftbl_warn");
+
+  # we do not do any more extensive checking because the function that adds elements to the error info hash
+  # (addToErrorInfoHash()) does a lot of checking to validate the data before it is added
 
   return validateInfoHashOfArraysIsComplete($err_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
@@ -8292,7 +8755,8 @@ sub cmscanOrNhmmscanWrapper {
   }
   if($targ_nseqfiles == 0) { $targ_nseqfiles = 1; }
 
-  if(($targ_nseqfiles == 1) || (opt_Get("--local", $opt_HHR))) { 
+  # if($targ_nseqfiles == 1) || (opt_Get("--local", $opt_HHR))) {  # to run single jobs locally, used to be default 
+  if(opt_Get("--local", $opt_HHR)) {  # to run single jobs locally, used to be default 
     # run jobs locally
     $start_secs = outputProgressPrior("Running $program_choice locally", $progress_w, $log_FH, *STDOUT);
     # run a different cmscan/nhmmscan run for each model file
@@ -8314,10 +8778,17 @@ sub cmscanOrNhmmscanWrapper {
   }
   else { 
     # we need to split up the sequence file, and submit a separate set of nhmmscan/cmscan jobs (one per model file) for each
-    my $nfasta_created = splitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
-    # splitFastaFile will return the actual number of fasta files created, 
-    # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
-
+    my $nfasta_created = 0;
+    if($targ_nseqfiles > 1) { 
+      $nfasta_created = splitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
+      # splitFastaFile will return the actual number of fasta files created, 
+      # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
+    }
+    else { 
+      my $cp_command = "cp " . $seq_file . " " . $seq_file . ".1";
+      runCommand($cp_command, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      $nfasta_created = 1;
+    }
     my $nfarmjobs = $nfasta_created * $nmdl;
     # now submit a job for each
     $start_secs = outputProgressPrior("Submitting $nfarmjobs $program_choice jobs to the farm", $progress_w, $log_FH, *STDOUT);
@@ -8757,7 +9228,6 @@ sub getNumExtraOrDuplicateFeatures() {
 
   return $ret_size;
 }
-
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value
