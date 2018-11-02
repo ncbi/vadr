@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# version: 0.23 [Jan 2018]
+# version: 0.37 [Nov 2018]
 #
 # dnaorg.pm
 # Eric Nawrocki
