@@ -3569,6 +3569,7 @@ sub ftr_results_add_b3e_errors {
 #
 # Returns:    void
 #
+# Dies: if we have a multi-segment cds-notmp feature and are unable to find a p
 ################################################################# 
 sub ftr_results_add_xip_xnn_errors { 
   my $sub_name = "ftr_results_add_xip_xnn_errors";
@@ -3614,7 +3615,7 @@ sub ftr_results_add_xip_xnn_errors {
 
         if($seq_info_HAR->{"seq_len"}[$seq_idx] != 
            $seq_info_HAR->{"accn_len"}[$seq_idx]) { 
-          DNAORG_FAIL("ERROR, checking for xip errors with when genome is closed, not set up to deal with that yet", 1, undef);
+          DNAORG_FAIL("ERROR, checking for xip errors with when genome is closed, not set up to deal with that yet", 1, $FH_HR);
           # if -c, need to update code below, blastx will have been run on duplicated sequences, 
           # so out_start may not equal x_start even for same prediction
         }
@@ -3665,7 +3666,33 @@ sub ftr_results_add_xip_xnn_errors {
             }
           }
           else { 
-            DNAORG_FAIL("ERROR in $sub_name, feature with multiple exons, code isn't set up for this yet,\nmaybe just use first valid start and final valid stop (not necessarily start from first model and stop from final model)\n", 1, $FH_HR);;
+            for(my $cur_mdl_idx = $first_mdl_idx; $cur_mdl_idx <= $final_mdl_idx; $cur_mdl_idx++) { 
+              # looking for first valid p_start, and final valid p_stop
+              # these can (and probably will) be different segments, but if so we make sure they are on the same strand
+              if((! defined $p_start) && 
+                 (defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"}) && 
+                 ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"} ne "?") && 
+                 (defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"}) && 
+                 ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"} ne "?")) { 
+                $p_start = $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"};
+                $p_stop  = $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"};
+                $p_strand = ($p_start <= $p_stop) ? "+" : "-";
+              }
+              elsif((defined $p_start) && 
+                    (defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"}) && 
+                    ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"} ne "?") && 
+                    (defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"}) && 
+                    ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"} ne "?")) { 
+                if((($p_strand eq "+") && ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"} <= $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"})) ||
+                   (($p_strand eq "-") && ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"}  > $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"}))) { 
+                  # same strand as current p_start, p_stop, p_strand
+                  $p_stop  = $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"};
+                }
+              }
+            } # end of 'for(my $cur_mdl_idx = $first_mdl_idx; $cur_mdl_idx <= $final_mdl_idx; $cur_mdl_idx++)'
+            if((! defined $p_start) && (! $xnn_err_possible)) { 
+              DNAORG_FAIL("ERROR, in $sub_name, feature with multiple segments, unable to find a valid start and stop to compare to blastx but xnn_err_possible was set to true", 1, $FH_HR);
+            }
           }
         }
         if((defined $ftr_results_HR->{"x_start"}) && 
@@ -4323,7 +4350,7 @@ sub ftr_results_calculate {
                     # to build the error message for
                     $ntr_errmsg = sprintf("early stop in mat_peptide %s ending at position %d", $ftr_info_HAR->{"out_product"}[$child_ftr_idx], $cds_out_stop);
                     if($int_errmsg ne "") { 
-                      DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);;
+                      DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);
                     }
                     $child_idx++;
                     my $ntr_err_ct = 0;
