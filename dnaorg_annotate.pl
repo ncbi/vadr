@@ -364,7 +364,7 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.37";
+my $version       = "0.38";
 my $releasedate   = "Nov 2018";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -3579,12 +3579,6 @@ sub ftr_results_add_xip_xnn_errors {
 
   my ($out_FH, $ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
   
-  if(opt_Get("-c", $opt_HHR)) { 
-    DNAORG_FAIL("ERROR, checking for xip and xnn errors with when genome is closed, not set up to deal with that yet", 1, undef);
-    # if -c, need to update code below, blastx will have been run on duplicated sequences, 
-    # so out_start may not equal x_start even for same prediction
-  }
-
   # total counts of things
   my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
@@ -3620,13 +3614,6 @@ sub ftr_results_add_xip_xnn_errors {
       for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
         my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
-
-        if($seq_info_HAR->{"seq_len"}[$seq_idx] != 
-           $seq_info_HAR->{"accn_len"}[$seq_idx]) { 
-          DNAORG_FAIL("ERROR, checking for xip errors with when genome is closed, not set up to deal with that yet", 1, $FH_HR);
-          # if -c, need to update code below, blastx will have been run on duplicated sequences, 
-          # so out_start may not equal x_start even for same prediction
-        }
 
         # determine if we have any CM predictions for any models related to this feature
         my $xnn_err_possible = 1; 
@@ -9084,7 +9071,7 @@ sub check_for_downstream_stop {
 #
 # Purpose:    Convert predicted start and stop coordinates which are
 #             in coordinate space 1..seq_len to 'output' coordinates 
-#             in coorindate space 1..accn_len. If seq_len == accn_len,
+#             in coordinate space 1..accn_len. If seq_len == accn_len,
 #             which will be the case if the -c option was not used (that is,
 #             if the genome is not circular and thus we did not duplicate it)
 #             we do nothing. If seq_len == accn_len * 2, then we have to 
@@ -9949,10 +9936,14 @@ sub ftr_results_calculate_blastx {
         }
         if($hsp_idx eq "1") { 
           if($value =~ /^(\d+)..(\d+)$/) { 
-            my ($xstart, $xstop) = ($1, $2);
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $xstart;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $xstop;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} = ($xstart <= $xstop) ? "+" : "-";
+            my ($blast_start, $blast_stop) = ($1, $2);
+            my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
+            my ($out_start, $out_stop) = create_output_start_and_stop($blast_start, $blast_stop,
+                                                                      $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+            # unless -c was used: $xstart will equal $blast_start and $xstop will equal $blast_stop
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $out_start;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $out_stop;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} = $blast_strand;
             #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
             #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
             #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
