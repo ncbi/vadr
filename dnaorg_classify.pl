@@ -138,9 +138,9 @@ opt_Add("--optsA",      "string", undef,                    6,    "-A",         
 opt_Add("--reflistA",   "string", undef,                    6,    "-A",         "--onlybuild",    "only annotate seqs that match to RefSeqs listed in <s>",  "only annotate seqs that match to RefSeqs listed in <s>", \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"7"} = "in combination with -A, options for tuning protein validation with blastx (don't list these in --optsA <f> file)";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--xalntol",     "integer",  5,                       7,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xindeltol",   "integer",  27,                      7,     undef, undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,                      7,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xalntol",     "integer",  5,                       7,     "-A", undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xindeltol",   "integer",  27,                      7,     "-A", undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore",  "integer",  80,                      7,     "-A", undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
 
 
 
