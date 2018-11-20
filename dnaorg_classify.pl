@@ -55,7 +55,7 @@ if(! (-d $dnaorgdir)) {
  
 # determine other required paths to executables relative to $dnaorgdir
 my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
-my $esl_exec_dir      = $dnaorgdir . "/infernal-1.1.2/easel/miniapps/";
+my $esl_exec_dir      = $dnaorgdir . "/infernal-dev/easel/miniapps/";
 my $bioeasel_exec_dir = $dnaorgdir . "/Bio-Easel/scripts/";
 my $dnaorg_exec_dir   = $dnaorgdir . "/dnaorg_scripts/";
 
