@@ -199,8 +199,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.38";
-my $releasedate   = "Nov 2018";
+my $version       = "0.39";
+my $releasedate   = "Dec 2018";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -538,6 +538,7 @@ else {
     my $auto_add_opts = "--dirout,--dirbuild,--infasta,--refaccn";
     if(opt_IsUsed("--keep",       \%opt_HH)) { $auto_add_opts .= ",--keep";       }
     if(opt_IsUsed("-v",           \%opt_HH)) { $auto_add_opts .= ",-v";           }
+    if(opt_IsUsed("--local",      \%opt_HH)) { $auto_add_opts .= ",--local";      }
     if(opt_IsUsed("--xalntol",    \%opt_HH)) { $auto_add_opts .= ",--xalntol";    }
     if(opt_IsUsed("--xindeltol",  \%opt_HH)) { $auto_add_opts .= ",--xindeltol";  }
     if(opt_IsUsed("--xlonescore", \%opt_HH)) { $auto_add_opts .= ",--xlonescore"; }
@@ -1273,6 +1274,7 @@ else {
             if(defined $annotate_non_cons_opts) { $annotate_cmd .= " " . $annotate_non_cons_opts; }
             if(opt_IsUsed("--keep",       \%opt_HH)) { $annotate_cmd .= " --keep"; }
             if(opt_IsUsed("-v",           \%opt_HH)) { $annotate_cmd .= " -v"; }
+            if(opt_IsUsed("--local",      \%opt_HH)) { $annotate_cmd .= " --local"; }
             if(opt_IsUsed("--xalntol",    \%opt_HH)) { $annotate_cmd .= sprintf(" --xalntol    %s", opt_Get("--xalntol",    \%opt_HH)); }
             if(opt_IsUsed("--xindeltol",  \%opt_HH)) { $annotate_cmd .= sprintf(" --xindeltol  %s", opt_Get("--xindeltol",  \%opt_HH)); }
             if(opt_IsUsed("--xlonescore", \%opt_HH)) { $annotate_cmd .= sprintf(" --xlonescore %s", opt_Get("--xlonescore", \%opt_HH)); }
