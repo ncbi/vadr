@@ -3620,10 +3620,9 @@ sub ftr_results_add_xip_xnn_errors {
         if(check_for_defined_pstart_in_mdl_results($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR)) { 
           $xnn_err_possible = 0; # we have at least one prediction for this feature, we can't have a xnn error
         }
-        #printf("HEYAAAA ftr_idx $ftr_idx xnn_err_possible $xnn_err_possible\n");
+
         my $xip_err_str = ""; # modified if we have an 'xip' error below
         my $xnn_err_str = ""; # modified if we have an 'xnn' error below
-        #printf("HEYA LOOKING FOR xip FOR $seq_name $ftr_idx\n");
 
         # initialize 
         my $p_start    = undef; # predicted start  from CM 
@@ -3638,19 +3637,24 @@ sub ftr_results_add_xip_xnn_errors {
         my $x_score    = undef; # raw score from blastx
         my $start_diff = undef; # difference in start values between CM and blastx
         my $stop_diff  = undef; # difference in start values between CM and blastx
-
+        my $p_has_stop = undef; # '1' if predicted CM stop ends with a stop codon, else '0'
+        
         # first, determine predicted start/stop/strand from CM and blastx for this feature
         # and get the p_start and p_stop values from "out_start", "out_stop"
+        # type == cds-mp
         if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") { 
           if((defined $ftr_results_HR->{"out_start"})  && 
              ($ftr_results_HR->{"out_start"} ne "?") && 
              (defined $ftr_results_HR->{"out_stop"})  && 
              ($ftr_results_HR->{"out_stop"} ne "?")) { 
-            $p_start = $ftr_results_HR->{"out_start"};
-            $p_stop  = $ftr_results_HR->{"out_stop"};
-            $p_strand = ($p_start <= $p_stop) ? "+" : "-";
-          }          
+            $p_start    = $ftr_results_HR->{"out_start"};
+            $p_stop     = $ftr_results_HR->{"out_stop"};
+            $p_strand   = ($p_start <= $p_stop) ? "+" : "-";
+            $p_has_stop = ((defined $ftr_results_HR->{"out_stop_codon"}) && 
+                           (validateStopCodon($ftr_results_HR->{"out_stop_codon"}))) ? 1 : 0;
+          }
         }
+        # type == cds-notmp
         elsif($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp") { 
           my $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
           my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
@@ -3662,6 +3666,8 @@ sub ftr_results_add_xip_xnn_errors {
               $p_start = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_start"};
               $p_stop  = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop"};
               $p_strand = ($p_start <= $p_stop) ? "+" : "-";
+              $p_has_stop = ((defined $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop_codon"}) &&
+                             (validateStopCodon($mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop_codon"}))) ? 1 : 0;
             }
           }
           else { 
@@ -3676,6 +3682,8 @@ sub ftr_results_add_xip_xnn_errors {
                 $p_start = $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"};
                 $p_stop  = $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"};
                 $p_strand = ($p_start <= $p_stop) ? "+" : "-";
+                $p_has_stop = ((defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop_codon"}) &&
+                               (validateStopCodon($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop_codon"}))) ? 1 : 0;
               }
               elsif((defined $p_start) && 
                     (defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"}) && 
@@ -3686,6 +3694,8 @@ sub ftr_results_add_xip_xnn_errors {
                    (($p_strand eq "-") && ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"}  > $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"}))) { 
                   # same strand as current p_start, p_stop, p_strand
                   $p_stop  = $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"};
+                  $p_has_stop = ((defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop_codon"}) &&
+                                 (validateStopCodon($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop_codon"}))) ? 1 : 0;
                 }
               }
             } # end of 'for(my $cur_mdl_idx = $first_mdl_idx; $cur_mdl_idx <= $final_mdl_idx; $cur_mdl_idx++)'
@@ -3694,6 +3704,8 @@ sub ftr_results_add_xip_xnn_errors {
             }
           }
         }
+        printf("HEYA TEMP p_start: $p_start p_stop: $p_stop p_has_stop: $p_has_stop\n");
+
         if((defined $ftr_results_HR->{"x_start"}) && 
            (defined $ftr_results_HR->{"x_stop"})) { 
           $x_start   = $ftr_results_HR->{"x_start"};
@@ -3744,14 +3756,26 @@ sub ftr_results_add_xip_xnn_errors {
             else { 
               # check for alignment start difference failure 
               $start_diff = abs($p_start - $x_start);
-              $stop_diff  = abs($p_stop  - $x_stop);
               if($start_diff > $aln_tol) { 
                 if($xip_err_str ne "") { $xip_err_str .= ", "; }
                 $xip_err_str .= "start positions differ by $start_diff > $aln_tol (strand:$p_strand CM:$p_start blastx:$x_start)";
               }                
-              if($stop_diff > $aln_tol) { 
+              # for the stop coordinates, we do this differently if the CM prediction 
+              # includes the stop codon or not, if it does, we allow 3 more positions different
+              $stop_diff  = abs($p_stop  - $x_stop);
+              my $cur_aln_tol = undef;
+              my $cur_stop_str = undef;
+              if((defined $p_has_stop) && ($p_has_stop == 1)) { 
+                $cur_aln_tol  = $aln_tol + 3;
+                $cur_stop_str = "valid stop codon";
+              }
+              else { 
+                $cur_aln_tol  = $aln_tol;
+                $cur_stop_str = "no valid stop codon";
+              }
+              if($stop_diff > $cur_aln_tol) { 
                 if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "stop positions differ by $stop_diff > $aln_tol (strand:$p_strand CM:$p_stop blastx:$x_stop)";
+                $xip_err_str .= "stop positions differ by $stop_diff > $cur_aln_tol (strand:$p_strand CM:$p_stop blastx:$x_stop, $cur_stop_str in CM prediction)";
               }
               # check if blastx alignment extends outside of nucleotide/CM alignment
               if((($p_strand eq "+") && ($x_start < $p_start)) || 
