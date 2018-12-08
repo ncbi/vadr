@@ -132,7 +132,8 @@ opt_Add("--nolowdiffminlen","boolean", 0,                     5,   undef,"--lowd
 $opt_group_desc_H{"8"} = "options for defining expected classifications";
 #        option               type   default                group  requires incompat   preamble-output                                                   help-output    
 opt_Add("--expclass",    "string",   undef,                   8,     undef, undef,     "read expected classifications for each sequence from <s>",       "read expected classifications for each sequence from <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--ecthresh",    "real",     "0.3",                   8,     undef, undef,     "expected classification must be within <x> bits/nt of top match","expected classification must be within <x> bits/nt of top match", \%opt_HH, \@opt_order_A);
+opt_Add("--ecthresh",    "real",     "0.3",                   8,"--expclass",undef,    "expected classification must be within <x> bits/nt of top match","expected classification must be within <x> bits/nt of top match", \%opt_HH, \@opt_order_A);
+opt_Add("--ectoponly",   "boolean",  0,                       8,"--expclass","--ecthresh","top match must be expected classification",                   "top match must be expected classification", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"6"} = "options for automatically running dnaorg_annotate.pl for classified sequences";
 #     option            type       default               group   requires       incompat          preamble-output                help-output    
@@ -196,7 +197,8 @@ my $options_okay =
                 'xlonescore=s'     => \$GetOptions_H{"--xlonescore"},
 # options related to expected classifications
                 'expclass=s'       => \$GetOptions_H{"--expclass"},
-                'ecthresh=s'       => \$GetOptions_H{"--ecthresh"});
+                'ecthresh=s'       => \$GetOptions_H{"--ecthresh"},
+                'ectoponly'        => \$GetOptions_H{"--ectoponly"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -339,9 +341,6 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "log": log file of what's output to stdout
                          #  "cmd": command file with list of all commands executed
                          #  "list": list and description of output files
-                         #  Per accession '$seq':
-                         #                       $seq.tbl
-                         #                       $seq.results
 
 # open the log and command files 
 openAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", 1, "Output printed to screen");
@@ -609,12 +608,14 @@ else {
       $query_width = length($cls_seqname); 
     }
   }
-  
-  my $match_info_FH = undef;
-  my $match_file = $out_root . ".infotbl";
-  open($match_info_FH, ">", $match_file) || fileOpenFailure($match_file, $0, $!, "writing", $ofile_info_HH{"FH"});
-  output_match_info_headers($match_info_FH, $query_width, \%opt_HH); 
-  
+
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "infotbl",       $out_root . ".infotbl",            1, "Per-sequence hit and classification information");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "ufeature-all",  $out_root . ".ufeature.all.list",  1, "List of all unexpected features per sequence");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "ufeature-fail", $out_root . ".ufeature.fail.list", 1, "List of all unexpected features that cause failure per sequence");
+  printf { $ofile_info_HH{"FH"}{"ufeature-all"}  } "#sequence\tunexpected-features\n";
+  printf { $ofile_info_HH{"FH"}{"ufeature-fail"} } "#sequence\tunexpected-features-that-cause-failure\n";
+
+  output_match_info_headers($ofile_info_HH{"FH"}{"infotbl"}, $query_width, \%opt_HH); 
   my %pass_fail_H = (); # key is sequence name, value is "PASS" or "FAIL"Hash of pass/fail values:
   my %seqlist_HA  = (); # hash of arrays, key model name, value array of sequences that match best to that modelHash of arrays containing each RefSeq's seqlist
   foreach (@ref_list_seqname_A) {
@@ -624,16 +625,13 @@ else {
 
   # actually do the parsing and write the meat of the match info tabular output file
   my %outflag_H = (); # key is sequence name, value is '1' if we output information for this sequence
-  parse_nhmmscan_tblout($match_info_FH, $query_width, $tblout_file, \%cls_seqlen_H, \%seqlist_HA, \%pass_fail_H, \%expref_HA, \%outflag_H, \%opt_HH, $ofile_info_HH{"FH"});
+  parse_nhmmscan_tblout($query_width, $tblout_file, \%cls_seqlen_H, \%seqlist_HA, \%pass_fail_H, \%expref_HA, \%outflag_H, \%opt_HH, $ofile_info_HH{"FH"});
   # output for sequences with 0 hits
   foreach my $seq (@cls_seqname_A) { 
     if(! exists $outflag_H{$seq}) { 
-      output_one_sequence($match_info_FH, $query_width, $seq, $cls_seqlen_H{$seq}, undef, \%seqlist_HA, \%pass_fail_H, \%expref_HA, \%opt_HH, $ofile_info_HH{"FH"});
+      output_one_sequence($query_width, $seq, $cls_seqlen_H{$seq}, undef, \%seqlist_HA, \%pass_fail_H, \%expref_HA, \%opt_HH, $ofile_info_HH{"FH"});
     }
   }
-  close($match_info_FH);
-
-  addClosedFileToOutputInfo(\%ofile_info_HH, "match-info", $match_file, 1, "Table with statistics for each match");
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   ########################################################################
@@ -1217,20 +1215,20 @@ sub output_match_info_headers {
 
   print  $out_FH "########################################################################################################################################\n";
   print  $out_FH  "#\n";
-  print  $out_FH  "# query:       Accession number of the sequence\n";
-  print  $out_FH  "# qlen:        length of this sequence\n";
-  print  $out_FH  "# RefSeq:      RefSeq that the sequence was assigned to\n";
-  print  $out_FH  "# score:       (summed) bit score(s) of all hits to 'RefSeq'\n";
+  print  $out_FH  "# sequence:    Accession number of the sequence\n";
+  print  $out_FH  "# seqlen:      length of this sequence\n";
+  print  $out_FH  "# topmodel:    model/RefSeq that the sequence was assigned to (max score)\n";
+  print  $out_FH  "# score:       (summed) bit score(s) of all hits to 'topmodel'\n";
   print  $out_FH  "# sc/nt:       'score' divided by 'qlen'\n";
-  print  $out_FH  "# E-val:       E-value of hit to 'RefSeq'\n";
-  print  $out_FH  "# coverage:    the percentage of the query that the hit to 'RefSeq' covers (Hit length)/(Query length)\n";
-  print  $out_FH  "# bias:        correction in bits for biased composition sequences\n";
-  print  $out_FH  "# #hits:       number of individual hits to this RefSeq (the program combines stats such as bit score and covg. from separate hits)\n";
-  print  $out_FH  "# strand:      strand of top hit to 'RefSeq'\n";
-  print  $out_FH  "# H2:RefSeq:   RefSeq that had the second strongest hit\n";
-  print  $out_FH  "# scdiff:      difference in bit score b/t 'RefSeq' hit(s) and 'H2:RefSeq' hit(s)\n";
+  print  $out_FH  "# E-val:       E-value of best hit to 'topmodel'\n";
+  print  $out_FH  "# coverage:    the percentage of the sequence that all hits to 'topmodel' cover\n";
+  print  $out_FH  "# bias:        correction in bits for biased composition sequences, summed for all hits to 'topmodel'\n";
+  print  $out_FH  "# #hits:       number of hits to 'topmodel'\n";
+  print  $out_FH  "# strand:      strand of best hit and all considered to 'topmodel'\n";
+  print  $out_FH  "# scdmodel:    second best model/Refseq (2nd highest score)\n";
+  print  $out_FH  "# scdiff:      difference in summed bit score b/t 'topmodel' hit(s) and 'scdmodel' hit(s)\n";
   print  $out_FH  "# scdiff/nt:   'scdiff' divided by 'qlen'\n";
-  print  $out_FH  "# covdiff:     amount by which the coverage of the 'RefSeq' hit is greater than that of the 'H2: RefSeq' hit\n";
+  print  $out_FH  "# covdiff:     amount by which the coverage of the 'topmodel' hit(s) is greater than that of the 'scdmodel' hit(s)\n";
   printf $out_FH ("# CC:          'confidence class', first letter based on sc/nt: A: if sc/nt >= %.3f, B: if %.3f > sc/nt >= %.3f, C: if %.3f > sc_nt\n", opt_Get("--lowscthresh", $opt_HHR), opt_Get("--lowscthresh", $opt_HHR), opt_Get("--vlowscthresh", $opt_HHR), opt_Get("--vlowscthresh", $opt_HHR));
   printf $out_FH ("#              second letter based on diff/nt: A: if diff/nt >= %.3f, B: if %.3f > diff/nt >= %.3f, C: if %.3f > diff_nt\n", opt_Get("--lowdiffthresh", $opt_HHR), opt_Get("--lowdiffthresh", $opt_HHR), opt_Get("--vlowdiffthresh", $opt_HHR), opt_Get("--vlowdiffthresh", $opt_HHR));
   printf $out_FH ("# p/f:         'PASS' if sequence passes, 'FAIL' if it fails\n");
@@ -1244,8 +1242,14 @@ sub output_match_info_headers {
   printf $out_FH ("#              MinusStrand:  top hit is on minus strand\n");
   printf $out_FH ("#              HighBias:     'bias' > (%.3f * ('bias' + 'score')) (threshold settable with --biasfract)\n", opt_Get("--biasfract", $opt_HHR));
   if(opt_IsUsed("--expclass", $opt_HHR)) { 
-    printf $out_FH ("#              UnexpectedClassification: sequence does not have a hit with score sc/nt >= %.3f (threshold settable with --lowscthresh)\n", opt_Get("--lowscthresh", $opt_HHR));
-    printf $out_FH ("#                                        to any model listed in file %s (from --explclass options)\n", opt_Get("--expclass", $opt_HHR));  
+    if(opt_IsUsed("--ectoponly", $opt_HHR)) { 
+      printf $out_FH ("#              UnexpectedClassification: best-scoring model is not a model representing the expected classification for this sequence\n");
+      printf $out_FH ("#                                        (read from %s (--expclass)) and --ectoponly option used.\n", opt_Get("--expclass", $opt_HHR));
+    }
+    else { 
+      printf $out_FH ("#              UnexpectedClassification: sequence does not have summed bit score per nucleotide within %.3f of top model (threshold settable with --ecthresh)\n", opt_Get("--ecthresh", $opt_HHR));
+      printf $out_FH ("#                                        to any model listed in file %s (from --expclass options)\n", opt_Get("--expclass", $opt_HHR));  
+    }
   }
   print  $out_FH  "########################################################################################################################################\n";
   print  $out_FH "#\n";
@@ -1284,7 +1288,6 @@ sub output_match_info_headers {
 #            because the nhmmscan tblout file is sorted by sequence).
 #
 # Arguments:
-#  $out_FH:       open file handle to write to
 #  $query_width:  max width of all query sequences
 #  $tblout_file:  tblout file to parse
 #  $seqlen_HR:    ref to hash, key is sequence name, value is length
@@ -1305,10 +1308,10 @@ sub output_match_info_headers {
 #################################################################
 sub parse_nhmmscan_tblout { 
   my $sub_name  = "parse_nhmmscan_tblout";
-  my $nargs_expected = 10;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
   
-  my ($out_FH, $query_width, $tblout_file, $seqlen_HR, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $outflag_HR, $opt_HHR, $FH_HR) = (@_);
+  my ($query_width, $tblout_file, $seqlen_HR, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $outflag_HR, $opt_HHR, $FH_HR) = (@_);
 
   open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
 
@@ -1355,7 +1358,7 @@ sub parse_nhmmscan_tblout {
       # do we need to reset the information? 
       if((defined $prv_seq) && ($seq ne $prv_seq)) { 
         # output for the previous sequence
-        output_one_sequence($out_FH, $query_width, $prv_seq, $prv_seqlen, \@cur_tbldata_AH, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $opt_HHR, $FH_HR);
+        output_one_sequence($query_width, $prv_seq, $prv_seqlen, \@cur_tbldata_AH, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $opt_HHR, $FH_HR);
         $outflag_HR->{$prv_seq} = 1;
         $seen_H{$prv_seq} = 1;
         @cur_tbldata_AH = ();
@@ -1375,7 +1378,7 @@ sub parse_nhmmscan_tblout {
   }
   if($nhit > 0) { 
     # output for final sequence
-    output_one_sequence($out_FH, $query_width, $seq, $seqlen, \@cur_tbldata_AH, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $opt_HHR, $FH_HR);
+    output_one_sequence($query_width, $seq, $seqlen, \@cur_tbldata_AH, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $opt_HHR, $FH_HR);
     $outflag_HR->{$prv_seq} = 1;
   }
   close(IN);
@@ -1392,7 +1395,6 @@ sub parse_nhmmscan_tblout {
 #            table file, and update %{$seqlist_HAR} and %{$pass_fail_HR}.
 #
 # Arguments:
-#  $out_FH:             open file handle to write to
 #  $query_width:        max width of all query sequences
 #  $seq:                name of sequence we are outputting for
 #  $seqlen:             length of the sequence
@@ -1412,18 +1414,22 @@ sub parse_nhmmscan_tblout {
 #################################################################
 sub output_one_sequence { 
   my $sub_name  = "output_one_sequence";
-  my $nargs_expected = 10;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
   
-  my ($out_FH, $query_width, $seq, $seqlen, $cur_tbldata_AHR, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $opt_HHR, $FH_HR) = (@_);
+  my ($query_width, $seq, $seqlen, $cur_tbldata_AHR, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $opt_HHR, $FH_HR) = (@_);
+
+  my $infotbl_FH = $FH_HR->{"infotbl"};
+  my $uall_FH    = $FH_HR->{"ufeature-all"};
+  my $ufail_FH   = $FH_HR->{"ufeature-fail"};
 
   my $nhit = 0; 
   if(defined $cur_tbldata_AHR) { 
     $nhit = scalar(@{$cur_tbldata_AHR});
   }
   if($nhit == 0) { 
-    printf $out_FH ("%-*s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
-                    $query_width, $seq, $seqlen, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "--", "FAIL", "NoHits;");
+    printf $infotbl_FH ("%-*s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+                        $query_width, $seq, $seqlen, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "--", "FAIL", "NoHits;");
 
     push(@{$seqlist_HAR->{"non-assigned"}}, $seq);
     $pass_fail_HR->{$seq} = "FAIL";
@@ -1444,13 +1450,16 @@ sub output_one_sequence {
     if(opt_Get("--nolowdiffminlen", \%opt_HH)) { $lowdiff_minlen = 0; }
 
     # get thresholds
-    my $small_value        = 0.00000001; # for handling precision issues
-    my $vlowscthresh_opt   = opt_Get("--vlowscthresh",   $opt_HHR) - $small_value;
-    my $lowscthresh_opt    = opt_Get("--lowscthresh",    $opt_HHR) - $small_value;
-    my $vlowdiffthresh_opt = opt_Get("--vlowdiffthresh", $opt_HHR) - $small_value;
-    my $lowdiffthresh_opt  = opt_Get("--lowdiffthresh",  $opt_HHR) - $small_value;
-    my $biasfract_opt      = opt_Get("--biasfract",      $opt_HHR);
-    my $expclassthresh_opt = opt_Get("--ecthresh",       $opt_HHR) - $small_value;
+    my $small_value         = 0.00000001; # for handling precision issues
+    my $vlowscthresh_opt    = opt_Get("--vlowscthresh",   $opt_HHR) - $small_value;
+    my $lowscthresh_opt     = opt_Get("--lowscthresh",    $opt_HHR) - $small_value;
+    my $vlowdiffthresh_opt  = opt_Get("--vlowdiffthresh", $opt_HHR) - $small_value;
+    my $lowdiffthresh_opt   = opt_Get("--lowdiffthresh",  $opt_HHR) - $small_value;
+    my $biasfract_opt       = opt_Get("--biasfract",      $opt_HHR);
+    my $expclassthresh_opt  = opt_Get("--ecthresh",       $opt_HHR) - $small_value;
+    if(opt_IsUsed("--ectoponly", $opt_HHR)) { 
+      $expclassthresh_opt = $small_value;
+    }
 
     my @cur_prcdata_AH = (); # array of hashes, output information for each model, keys are "model", "bitscsum", "bitscpnt", "evalue", "coverage", "biassum", "strand", "nhits"
                              # we do this as an array of hashes, instead of a hash of hashes with model name as the 1D key, so we can more easily sort it
@@ -1484,37 +1493,63 @@ sub output_one_sequence {
     my $score_class = "A"; # set to 'B' or 'C' below if below threshold
     my $diff_class  = "A"; # set to 'B' or 'C' below if below threshold
     $pass_fail_HR->{$seq} = "PASS"; # will change to FAIL below if necessary
-    my $ufeature_str = "";
+    my $ufeature_all_str  = "";
+    my $ufeature_fail_str = "";
+    my $cur_ufeature_str  = undef;
     if($cur_prcdata_AH[0]{"bitscpnt"} < $vlowscthresh_opt) { 
-      $ufeature_str .= "VeryLowScore(" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $vlowscthresh_opt) . ");"; 
+      $cur_ufeature_str = "VeryLowScore(" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $vlowscthresh_opt) . ");"; 
+      $ufeature_all_str .= $cur_ufeature_str;
       $score_class = "C";
-      if($vlowsc_fails) { $pass_fail_HR->{$seq} = "FAIL"; }
+      if($vlowsc_fails) { 
+        $pass_fail_HR->{$seq} = "FAIL"; 
+        $ufeature_fail_str .= $cur_ufeature_str;
+      }
     }
     elsif($cur_prcdata_AH[0]{"bitscpnt"} < $lowscthresh_opt) { 
-      $ufeature_str .= "LowScore(" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $lowscthresh_opt) . ");"; 
+      $cur_ufeature_str = "LowScore(" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $lowscthresh_opt) . ");"; 
+      $ufeature_all_str .= $cur_ufeature_str;
       $score_class = "B";
-      if(($lowsc_fails) && ($seqlen > $lowsc_minlen)) { $pass_fail_HR->{$seq} = "FAIL"; }
+      if(($lowsc_fails) && ($seqlen > $lowsc_minlen)) { 
+        $pass_fail_HR->{$seq} = "FAIL"; 
+        $ufeature_fail_str .= $cur_ufeature_str;
+      }
     }
     if(defined $diff_bitscpnt) { 
       if($diff_bitscpnt < $vlowdiffthresh_opt) { 
-        $ufeature_str .= "VeryLowDiff(" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $vlowdiffthresh_opt) . ");"; 
+        $cur_ufeature_str = "VeryLowDiff(" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $vlowdiffthresh_opt) . ");"; 
+        $ufeature_all_str .= $cur_ufeature_str;
         $diff_class = "C";
-        if($vlowdiff_fails) { $pass_fail_HR->{$seq} = "FAIL"; }
+        if($vlowdiff_fails) { 
+          $pass_fail_HR->{$seq} = "FAIL"; 
+          $ufeature_fail_str .= $cur_ufeature_str;
+        }
       }
       elsif($diff_bitscpnt < $lowdiffthresh_opt) { 
-        $ufeature_str .= "LowDiff(" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $lowdiffthresh_opt) . ");"; 
+        $cur_ufeature_str = "LowDiff(" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $lowdiffthresh_opt) . ");"; 
+        $ufeature_all_str .= $cur_ufeature_str;
         $diff_class = "B";
-        if($lowdiff_fails && ($seqlen > $lowdiff_minlen)) { $pass_fail_HR->{$seq} = "FAIL"; }
+        if($lowdiff_fails && ($seqlen > $lowdiff_minlen)) { 
+          $pass_fail_HR->{$seq} = "FAIL"; 
+          $ufeature_fail_str .= $cur_ufeature_str;
+        }
       }
     }
     if($cur_prcdata_AH[0]{"strand"} eq "minus") { 
-      $ufeature_str .= "MinusStrand;";
-      if($minus_fails) { $pass_fail_HR->{$seq} = "FAIL"; }
+      $cur_ufeature_str = "MinusStrand;";
+      $ufeature_all_str .= $cur_ufeature_str;
+      if($minus_fails) { 
+        $pass_fail_HR->{$seq} = "FAIL"; 
+        $ufeature_fail_str .= $cur_ufeature_str;
+      }
     }
     if($cur_prcdata_AH[0]{"biassum"} > (($biasfract_opt * ($cur_prcdata_AH[0]{"bitscsum"} + $cur_prcdata_AH[0]{"biassum"})) + $small_value)) { 
       # $cur_prcdata_AH[0]["bitscsum"} has already had bias subtracted from it so we need to add it back in before we compare with biasfract
-      $ufeature_str .= "HighBias;";
-      if($bias_fails) { $pass_fail_HR->{$seq} = "FAIL"; }
+      $cur_ufeature_str = "HighBias;";
+      $ufeature_all_str .= $cur_ufeature_str;
+      if($bias_fails) { 
+        $pass_fail_HR->{$seq} = "FAIL"; 
+        $ufeature_fail_str .= $cur_ufeature_str;
+      }
     }
     # determine if we have an unexpected classification:
     # if the difference between the top model's bitscpernt (bit score per nt) is more than 
@@ -1536,31 +1571,35 @@ sub output_one_sequence {
         }
       }
       if(! $found_match) { 
-        $ufeature_str .= "UnexpectedClassification;";
-        if($unexpclass_fails) { $pass_fail_HR->{$seq} = "FAIL"; }
+        $cur_ufeature_str = "UnexpectedClassification;";
+        if($unexpclass_fails) { 
+          $pass_fail_HR->{$seq} = "FAIL"; 
+          $ufeature_fail_str .= $cur_ufeature_str;
+        }
       }
     }
-    if($ufeature_str eq "") { 
-      $ufeature_str = "-";
-    }
+    if($ufeature_all_str eq "")  { $ufeature_all_str  = "-"; }
+    if($ufeature_fail_str eq "") { $ufeature_fail_str = "-"; }
     
-    printf $out_FH ("%-*s  %6s  %9s  %7.1f  %5.3f  %8g  %8.3f  %7.1f  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
-                    $query_width, $seq, $seqlen, 
-                    $cur_prcdata_AH[0]{"model"},
-                    $cur_prcdata_AH[0]{"bitscsum"},
-                    $cur_prcdata_AH[0]{"bitscpnt"},
-                    $cur_prcdata_AH[0]{"evalue"},
-                    $cur_prcdata_AH[0]{"coverage"},
-                    $cur_prcdata_AH[0]{"biassum"}, 
-                    $cur_prcdata_AH[0]{"nhits"},
-                    $cur_prcdata_AH[0]{"strand"},
-                    $scd_model2print,
-                    $diff_bitscsum2print, 
-                    $diff_bitscpnt2print, 
-                    $diff_cov2print,
-                    $score_class . $diff_class,
-                    $pass_fail_HR->{$seq},
-                    $ufeature_str);
+    printf $infotbl_FH ("%-*s  %6s  %9s  %7.1f  %5.3f  %8g  %8.3f  %7.1f  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+                        $query_width, $seq, $seqlen, 
+                        $cur_prcdata_AH[0]{"model"},
+                        $cur_prcdata_AH[0]{"bitscsum"},
+                        $cur_prcdata_AH[0]{"bitscpnt"},
+                        $cur_prcdata_AH[0]{"evalue"},
+                        $cur_prcdata_AH[0]{"coverage"},
+                        $cur_prcdata_AH[0]{"biassum"}, 
+                        $cur_prcdata_AH[0]{"nhits"},
+                        $cur_prcdata_AH[0]{"strand"},
+                        $scd_model2print,
+                        $diff_bitscsum2print, 
+                        $diff_bitscpnt2print, 
+                        $diff_cov2print,
+                        $score_class . $diff_class,
+                        $pass_fail_HR->{$seq},
+                        $ufeature_all_str);
+    printf $uall_FH  "$seq\t$ufeature_all_str\n";
+    printf $ufail_FH "$seq\t$ufeature_fail_str\n";
     # Add this seq to the hash key that corresponds to its RefSeq
     push(@{$seqlist_HAR->{$cur_prcdata_AH[0]{"model"}}}, $seq);
   }
