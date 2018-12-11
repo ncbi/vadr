@@ -362,7 +362,7 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.40";
+my $version       = "0.41";
 my $releasedate   = "Dec 2018";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -4407,9 +4407,12 @@ sub ftr_results_calculate {
                       if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
                         # update it
                         error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                        # set the trc_err_flag for this feature
+                        $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
                       }
                       else { 
-                        # it doesn't yet exist, so add the trc error. This
+                        # it doesn't yet exist, so add the trc error IF 
+                        # we don't have a b5e for this guy. This
                         # is rare, but we may have no trc error for this
                         # CDS yet, if the predicted child mature peptide
                         # sequences didn't all exist, then we won't have
@@ -4417,10 +4420,12 @@ sub ftr_results_calculate {
                         # and thus we didn't check that predicted CDS for
                         # trc errors in
                         # parse_esl_epn_translate_startstop_outfile().
-                        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                        if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) { 
+                          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                          # set the trc_err_flag for this feature
+                          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
+                        }
                       }
-                      # set the trc_err_flag for this feature
-                      $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
                     }
                     # all remaining children get a 'ntr' error,
                     # and the CDS gets an 'int' error, which we need
@@ -10195,12 +10200,28 @@ sub helper_ftable_get_coords_standard {
     if($do_pred_stop) { # need to overwrite $ftbl_out_stop
       my @cur_primary_children_idx_A = (); # feature indices of the primary children of this feature
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@cur_primary_children_idx_A, $FH_HR);
+      my $first_ftr_idx = $cur_primary_children_idx_A[0];
       my $final_ftr_idx = $cur_primary_children_idx_A[(scalar(@cur_primary_children_idx_A)-1)];
+      my $first_child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$first_ftr_idx];
       my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
-      my $pred_start = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_start"};
-      my $pred_stop  = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"} + $mdl_info_HAR->{"append_num"}[$final_child_mdl_idx];
-      if(($mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_strand"} eq "+") && ($pred_stop > $seq_info_HAR->{"seq_len"})) { $pred_stop = $seq_info_HAR->{"seq_len"}; }
-      if(($mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_strand"} eq "-") && ($pred_stop < 1))                          { $pred_stop = 1; }
+      # go through and determine final model between first_child_mdl_idx and final_child_mdl_idx that has a valid p_stop value, 
+      # there must be at least 1, then set ftbl_out_stop to that (p_start is actually irrelevant here)
+      my $pred_start = undef;
+      my $pred_stop  = undef;
+      for(my $m = $first_child_mdl_idx; $m <= $final_child_mdl_idx; $m++){ 
+        if((defined $mdl_results_AAHR->[$m][$seq_idx]{"p_start"}) && 
+           (defined $mdl_results_AAHR->[$m][$seq_idx]{"p_stop"})  && 
+           ($mdl_results_AAHR->[$m][$seq_idx]{"p_start"} ne "?")  && 
+           ($mdl_results_AAHR->[$m][$seq_idx]{"p_stop"} ne "?")) { 
+          $pred_start = $mdl_results_AAHR->[$m][$seq_idx]{"p_start"};
+          $pred_stop  = $mdl_results_AAHR->[$m][$seq_idx]{"p_stop"};
+          if(($mdl_results_AAHR->[$m][$seq_idx]{"p_strand"} eq "+") && ($pred_stop > $seq_info_HAR->{"seq_len"})) { $pred_stop = $seq_info_HAR->{"seq_len"}; }
+          if(($mdl_results_AAHR->[$m][$seq_idx]{"p_strand"} eq "-") && ($pred_stop < 1))                          { $pred_stop = 1; }
+        }
+      }
+      if((! defined $pred_start) || (! defined $pred_stop)) { 
+        DNAORG_FAIL("ERROR in $sub_name, feature type is multifeature, do_pred_stop is 1 but unable to find start/stop - shouldn't happen", 1, $FH_HR);
+      }
       (undef, $ftbl_out_stop) = create_output_start_and_stop($pred_start, # irrelevant due to the first undef arg
                                                              $pred_stop, 
                                                              $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
