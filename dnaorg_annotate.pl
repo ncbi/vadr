@@ -10171,12 +10171,28 @@ sub helper_ftable_get_coords_standard {
     if($do_pred_stop) { # need to overwrite $ftbl_out_stop
       my @cur_primary_children_idx_A = (); # feature indices of the primary children of this feature
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@cur_primary_children_idx_A, $FH_HR);
+      my $first_ftr_idx = $cur_primary_children_idx_A[0];
       my $final_ftr_idx = $cur_primary_children_idx_A[(scalar(@cur_primary_children_idx_A)-1)];
+      my $first_child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$first_ftr_idx];
       my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
-      my $pred_start = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_start"};
-      my $pred_stop  = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"} + $mdl_info_HAR->{"append_num"}[$final_child_mdl_idx];
-      if(($mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_strand"} eq "+") && ($pred_stop > $seq_info_HAR->{"seq_len"})) { $pred_stop = $seq_info_HAR->{"seq_len"}; }
-      if(($mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_strand"} eq "-") && ($pred_stop < 1))                          { $pred_stop = 1; }
+      # go through and determine final model between first_child_mdl_idx and final_child_mdl_idx that has a valid p_stop value, 
+      # there must be at least 1, then set ftbl_out_stop to that (p_start is actually irrelevant here)
+      my $pred_start = undef;
+      my $pred_stop  = undef;
+      for(my $m = $first_child_mdl_idx; $m <= $final_child_mdl_idx; $m++){ 
+        if((defined $mdl_results_AAHR->[$m][$seq_idx]{"p_start"}) && 
+           (defined $mdl_results_AAHR->[$m][$seq_idx]{"p_stop"})  && 
+           ($mdl_results_AAHR->[$m][$seq_idx]{"p_start"} ne "?")  && 
+           ($mdl_results_AAHR->[$m][$seq_idx]{"p_stop"} ne "?")) { 
+          $pred_start = $mdl_results_AAHR->[$m][$seq_idx]{"p_start"};
+          $pred_stop  = $mdl_results_AAHR->[$m][$seq_idx]{"p_stop"};
+          if(($mdl_results_AAHR->[$m][$seq_idx]{"p_strand"} eq "+") && ($pred_stop > $seq_info_HAR->{"seq_len"})) { $pred_stop = $seq_info_HAR->{"seq_len"}; }
+          if(($mdl_results_AAHR->[$m][$seq_idx]{"p_strand"} eq "-") && ($pred_stop < 1))                          { $pred_stop = 1; }
+        }
+      }
+      if((! defined $pred_start) || (! defined $pred_stop)) { 
+        DNAORG_FAIL("ERROR in $sub_name, feature type is multifeature, do_pred_stop is 1 but unable to find start/stop - shouldn't happen", 1, $FH_HR);
+      }
       (undef, $ftbl_out_stop) = create_output_start_and_stop($pred_start, # irrelevant due to the first undef arg
                                                              $pred_stop, 
                                                              $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
