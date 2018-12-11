@@ -362,7 +362,7 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.40";
+my $version       = "0.41";
 my $releasedate   = "Dec 2018";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
