@@ -4383,9 +4383,12 @@ sub ftr_results_calculate {
                       if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
                         # update it
                         error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                        # set the trc_err_flag for this feature
+                        $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
                       }
                       else { 
-                        # it doesn't yet exist, so add the trc error. This
+                        # it doesn't yet exist, so add the trc error IF 
+                        # we don't have a b5e for this guy. This
                         # is rare, but we may have no trc error for this
                         # CDS yet, if the predicted child mature peptide
                         # sequences didn't all exist, then we won't have
@@ -4393,10 +4396,12 @@ sub ftr_results_calculate {
                         # and thus we didn't check that predicted CDS for
                         # trc errors in
                         # parse_esl_epn_translate_startstop_outfile().
-                        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                        if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) { 
+                          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                          # set the trc_err_flag for this feature
+                          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
+                        }
                       }
-                      # set the trc_err_flag for this feature
-                      $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
                     }
                     # all remaining children get a 'ntr' error,
                     # and the CDS gets an 'int' error, which we need
