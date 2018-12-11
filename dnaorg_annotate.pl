@@ -271,7 +271,6 @@ $opt_group_desc_H{++$g} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
 opt_Add("--doalign",    "boolean", 0,                      $g,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
 opt_Add("--mxsize",     "integer", 2048,                   $g, "--doalign",undef,   "with --doalign, set --mxsize <n> to <n>",                     "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--checkftable","boolean", 0,                      $g,    undef,   undef,   "exhaustively check feature table rules",   "exhastively check feature table error exception rules", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options that modify the tabular output file";
 #       option               type   default                group  requires incompat preamble-output                                               help-output    
@@ -348,7 +347,6 @@ my $options_okay =
 # options for skipping/adding optional stages
                 'doalign'      => \$GetOptions_H{"--doalign"},
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
-                'checkftable'  => \$GetOptions_H{"--checkftable"},
 # options that affect tabular output file
                 'tblfirst'     => \$GetOptions_H{"--tblfirst"},
                 'tblnocomp'    => \$GetOptions_H{"--tblnocomp"},
@@ -737,17 +735,6 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # initialize error related data structures
 my %err_info_HA = (); 
 initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
-
-my @ftbl_err_exceptions_AH = ();
-initializeHardCodedFTableErrorExceptions(\@ftbl_err_exceptions_AH, \%err_info_HA, $ofile_info_HH{"FH"});
-
-if(opt_Get("--checkftable", \%opt_HH)) { 
-  # validate the error exceptions by ensuring that exactly 0 or 1 exceptions applies
-  # to every possible error combination
-  $start_secs = outputProgressPrior("Exhaustively checking no error combination satisfies more than one feature table error exception", $progress_w, $log_FH, *STDOUT);
-  exhaustiveSearchFTableErrorExceptions(\@ftbl_err_exceptions_AH, \%err_info_HA, $ofile_info_HH{"FH"});
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
 
 ###########################################################################
 # Step 1. Gather and process information on reference genome using Edirect.
@@ -1342,6 +1329,7 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",  $out_root . ".af.sqtab
 openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",  $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",  $out_root . ".ap.list",           1, "list of passing sequences");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",  $out_root . ".af.list",           1, "list of failing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "error_ftbl", $out_root . ".error.list",        1, "list of errors in the sequence tables");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -1378,7 +1366,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ######################
 $start_secs = outputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 
-my $npass = output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \@ftbl_err_exceptions_AH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
+my $npass = output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -7158,7 +7146,6 @@ sub output_tbl_page_of_sequences {
 #  $err_info_HAR:            REF to the error info hash of arrays, PRE-FILLED
 #  $mdl_results_AAHR:        REF to model results AAH, PRE-FILLED
 #  $ftr_results_AAHR:        REF to feature results AAH, PRE-FILLED
-#  $ftbl_err_exceptions_AHR: REF to array of hashes of feature table error exceptions, PRE-FILLED
 #  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -7169,20 +7156,20 @@ sub output_tbl_page_of_sequences {
 #################################################################
 sub output_feature_tbl_all_sequences { 
   my $sub_name = "output_feature_tbl_all_sequences";
-  my $nargs_exp = 12;
+  my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, 
-      $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $ftbl_err_exceptions_AHR, 
+      $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR,
       $class_errors_per_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $pass_ftbl_FH  = $FH_HR->{"pass_ftbl"}; # feature table for PASSing sequences
-  my $fail_ftbl_FH  = $FH_HR->{"fail_ftbl"}; # feature table for FAILing sequences
-  my $long_ftbl_FH  = $FH_HR->{"long_ftbl"}; # long feature table for all sequences
-  my $pass_list_FH  = $FH_HR->{"pass_list"}; # list of PASSing seqs
-  my $fail_list_FH  = $FH_HR->{"fail_list"}; # list of FAILing seqs
-  my $sftbl_FH      = undef; # pointer to either $pass_sftbl_FH or $fail_sftbl_FH
+  my $pass_ftbl_FH = $FH_HR->{"pass_ftbl"};  # feature table for PASSing sequences
+  my $fail_ftbl_FH = $FH_HR->{"fail_ftbl"};  # feature table for FAILing sequences
+  my $long_ftbl_FH = $FH_HR->{"long_ftbl"};  # long feature table for all sequences
+  my $pass_list_FH = $FH_HR->{"pass_list"};  # list of PASSing seqs
+  my $fail_list_FH = $FH_HR->{"fail_list"};  # list of FAILing seqs
+  my $errors_FH    = $FH_HR->{"error_ftbl"}; # list of errors 
 
   my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
 
@@ -7191,7 +7178,6 @@ sub output_feature_tbl_all_sequences {
   my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
   my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); # nerr: number of different error codes
-  my $nexc = validateFTableErrorExceptions      ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR); # nexc: number of different feature table exceptions
 
   # define the hard-coded type priority hash, which defines the order of types in the feature table output, lower is higher priority
   my %type_priority_H = ();
@@ -7230,9 +7216,11 @@ sub output_feature_tbl_all_sequences {
     my %fidx2idx_H    = (); # key is feature index $fidx, value is $ftidx index in @ftout_AH that $fidx corresponds to
     my $i;
 
-    my @seq_warning_A = (); # all warnings for this sequence
-    my @seq_error_A   = (); # all errors for this sequence
-    my @seq_note_A    = (); # all notes for this sequence
+    my @seq_error_A           = (); # all errors for this sequence
+    my @seq_error_product_A   = (); # products corresponding to each error for this sequence
+    my @seq_warning_A         = (); # all warnings for this sequence
+    my @seq_warning_product_A = (); # products corresponding to each warning for this sequence
+    my @seq_note_A            = (); # all notes for this sequence
 
     my $nskipped = 0; # number of cds-mp features that were not output due to problem with start/stop coords
     my $missing_codon_start_flag = 0; # set to 1 if a feature for this sequence should have a codon_start value added but doesn't
@@ -7289,7 +7277,7 @@ sub output_feature_tbl_all_sequences {
           $do_start_carrot = ($ftr_err_str =~ m/b5e/) ? 1 : 0;
           $do_stop_carrot  = ($ftr_err_str =~ m/b3e/) ? 1 : 0;
           $do_pred_stop = processFeatureErrorsForFTable($ftr_err_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, 
-                                                         \@ftr_note_A, \@seq_error_A, \@seq_warning_A, $FH_HR);
+                                                        \@ftr_note_A, \@seq_error_A, \@seq_error_product_A, \@seq_warning_A, \@seq_warning_product_A, $FH_HR);
           if(scalar(@ftr_note_A) > 0) { 
             $do_misc_feature = 1;
             $feature_type = "misc_feature";
@@ -7420,16 +7408,32 @@ sub output_feature_tbl_all_sequences {
       if(($nwarn + $nerr) > 0) { 
         print $fail_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         print $long_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
-        foreach my $error_str (@seq_error_A) { 
+        for(my $e = 0; $e < scalar(@seq_error_A); $e++) { 
+          my $error_str     = $seq_error_A[$e];
+          my $error_product = $seq_error_product_A[$e];
           foreach my $error_line (split(/\:\:\:/, $error_str)) { 
             print $fail_ftbl_FH "ERROR: " . $error_str . "\n"; 
             print $long_ftbl_FH "ERROR: " . $error_str . "\n"; 
+            if($error_line =~ /([^\:]+)\:(.+)$/) {
+              print $errors_FH ($accn_name . "\t" . $1 . "\t" . $error_product . "\t" . $2 . "\n");
+            }
+            else {
+              DNAORG_FAIL("ERROR in $sub_name, unable to split error_str for output: $error_str", 1, $ofile_info_HHR->{"FH"});
+            }
           }
         }
-        foreach my $warning_str (@seq_warning_A) { 
+        for(my $w = 0; $w < scalar(@seq_warning_A); $w++) { 
+          my $warning_str     = $seq_warning_A[$w];
+          my $warning_product = $seq_warning_product_A[$w];
           foreach my $warning_line (split(/\:\:\:/, $warning_str)) { 
             print $fail_ftbl_FH "WARNING: " . $warning_str . "\n";  
             print $long_ftbl_FH "WARNING: " . $warning_str . "\n"; 
+            if($warning_line =~ /([^\:]+)\:(.+)$/) {
+              print $errors_FH ($accn_name . "\t" . $1 . "\t" . $warning_product . "\t" . $2 . "\n");
+            }
+            else {
+              DNAORG_FAIL("ERROR in $sub_name, unable to split warning_str for output: $warning_str", 1, $ofile_info_HHR->{"FH"});
+            }
           }
         }
       } # end of 'if(($nwarn + $nerr) > 0)'
@@ -10482,7 +10486,7 @@ sub helper_ftable_add_qualifier_from_ftr_info {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($ftr_idx, $key, $qval_sep, $ftr_info_HAR, $FH_HR) = @_;
-
+  
   my $ret_str = "";
   if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
     my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);

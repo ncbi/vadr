@@ -1437,7 +1437,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "nm3", "feature",  0,
                      "length of nucleotide feature is not a multiple of 3", # description
                      1, 0, "similar to !out_product,out_gene!; length is not a multiple of 3", # feature table info: valid, pred_stop, note
-                     "Unexpected length: not a multiple of 3; !DESC!", "", # feature table error, warning
+                     "Unexpected Length: not a multiple of 3; !DESC!", "", # feature table error, warning
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "stp", "feature",  1,
@@ -1462,7 +1462,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,
                      "mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
-                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
+                     "", "Peptide Translation Problem: !out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "ctr", "feature",  0,
@@ -1484,13 +1484,6 @@ sub initializeHardCodedErrorInfoHash {
                      "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!; !DESC!", "", # feature table error, warning
                      $FH_HR);
 
-  # errors that cannot be invalidated by other errors in feature table output
-  # ori, str, b5u, b3u, ost, lsc, dup, xip, mpi, xnn, mtr (12)
-  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0, # code, per-type, maybe-allowed
-                     "there is not exactly 1 occurrence of origin sequence", # description
-                     1, 0, "", "!DESC!", "", # feature table info: valid, pred_stop, note, err, warn
-                     $FH_HR); 
-
   addToErrorInfoHash($err_info_HAR, "str", "feature",  0,
                      "predicted CDS start position is not beginning of ATG start codon", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
@@ -1500,31 +1493,37 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "b5u", "feature",  0,
                      "alignment to reference does not extend to 5' boundary of reference or target", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Reference alignment problem: does not extend to 5' boundary of reference feature; !DESC!", "", # feature table error, warning
+                     "Indefinite Annotation: does not extend to 5' boundary of reference feature; !DESC!", "", # feature table error, warning
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "b3u", "feature",  0,
                      "alignment to reference does not extend to 3' boundary of reference or target", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Reference alignment problem: does not extend to 3' boundary of reference feature; !DESC!", "", # feature table error, warning
-                     $FH_HR);
-
-  addToErrorInfoHash($err_info_HAR, "ost", "feature",  0,
-                     "predicted feature is on opposite strand from reference", # description
-                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Reverse Complement: Sequence may be misassembled; !out_product,out_gene! appears to be reverse complemented", "", # feature table error, warning
-                     $FH_HR);
-
-  addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,
-                     "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides", # description
-                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
+                     "Indefinite Annotation: does not extend to 3' boundary of reference feature; !DESC!", "", # feature table error, warning
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "lsc", "feature",  0,
                      "low homology score", # description
                      1, 0, "!DESC!", # feature table info: valid, pred_stop, note
-                     "Low Homology Score: !DESC!", "", # feature table error, warning
+                     "Indefinite Annotation: !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "xip", "feature",  0,
+                     "blastx protein validation failure", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Indefinite Annotation: !DESC!", "", # feature table error, warning
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,
+                     "mat_peptide may not be translated because its CDS has a blastx protein validation failure", # description
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "", "Indefinite Annotation: !out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "xnn", "feature",  0,
+                     "blastx identifies protein not identified in nucleotide-based search", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Indefinite Annotation: !DESC!", "", # feature table error, warning
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "dup", "feature",  0,
@@ -1533,29 +1532,30 @@ sub initializeHardCodedErrorInfoHash {
                      "Duplicate Feature: !DESC!", "", # feature table error, warning
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "xip", "feature",  0,
-                     "blastx protein validation failure", # description
+  addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,
+                     "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Protein validation failure: !DESC!", "", # feature table error, warning
-                     $FH_HR);
-
-  addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,
-                     "mat_peptide may not be translated because its CDS has a blastx protein validation failure", # description
-                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
-                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
-                     $FH_HR);
-
-  addToErrorInfoHash($err_info_HAR, "xnn", "feature",  0,
-                     "blastx identifies protein not identified in nucleotide-based search", # description
-                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Protein validation error: !DESC!", "", # feature table error, warning
+                     "", "Peptide Adjacency Problem: !out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,
                      "mat_peptide may not be translated because its CDS has a problem", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
-                     "", "!out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
+                     "", "Peptide Translation Problem: !out_product,out_gene! !DESC!", # feature table info: valid, pred_stop, note, err, warn
                      $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "ost", "feature",  0,
+                     "predicted feature is on opposite strand from reference", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Reverse Complement: Sequence may be misassembled; !out_product,out_gene! appears to be reverse complemented", "", # feature table error, warning
+                     $FH_HR);
+
+  # errors that cannot be invalidated by other errors in feature table output
+  # ori, str, b5u, b3u, ost, lsc, dup, xip, mpi, xnn, mtr (12)
+  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0, # code, per-type, maybe-allowed
+                     "there is not exactly 1 occurrence of origin sequence", # description
+                     1, 0, "", "Duplicate Origin: !DESC!", "", # feature table info: valid, pred_stop, note, err, warn
+                     $FH_HR); 
 
   # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "aji,int,inp", $FH_HR); 
@@ -1938,7 +1938,9 @@ sub setFTableInvalidatedByErrorInfoHash {
 #   $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
 #   $ret_note_AR:            REF to array of notes, possibly CREATED (not added to) here
 #   $ret_error_AR:           REF to array of errors, possibly added to here (not created)
+#   $ret_error_product_AR:   REF to array of 'product' values corresponding to each error, possibly added to here (not created)
 #   $ret_warning_AR:         REF to array of warnings, possibly added to here (not created)
+#   $ret_warning_product_AR: REF to array of 'product' values corresponding to each error, possibly added to here (not created)
 #   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: $do_pred_stop: '1' if predicted stop should be used for this feature in the feature table
@@ -1947,10 +1949,10 @@ sub setFTableInvalidatedByErrorInfoHash {
 #################################################################
 sub processFeatureErrorsForFTable { 
   my $sub_name = "processFeatureErrorsForFTable";
-  my $nargs_expected = 10;
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($err_code_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $ret_note_AR, $ret_error_AR, $ret_warning_AR, $FH_HR) = (@_);
+  my ($err_code_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $ret_note_AR, $ret_error_AR, $ret_error_product_AR, $ret_warning_AR, $ret_warning_product_AR, $FH_HR) = (@_);
 
   if($err_code_str eq "") { 
     return 0; 
@@ -2008,14 +2010,30 @@ sub processFeatureErrorsForFTable {
         if($error_str ne "") { 
           # only add the error, if an identical error does not already exist in @{$ret_error_AR}
           my $idx = findNonNumericValueInArray($ret_error_AR, $error_str, $FH_HR);
-          if($idx == -1) { push(@{$ret_error_AR}, $error_str); }
+          if($idx == -1) { 
+            push(@{$ret_error_AR},         $error_str); 
+            if(exists $ftr_info_HAR->{"out_product"}[$ftr_idx]) { 
+              push(@{$ret_error_product_AR}, $ftr_info_HAR->{"out_product"}[$ftr_idx]);
+            }
+            else { 
+              push(@{$ret_error_product_AR}, "-"); # add '-' if out_product does not exist
+            }
+          }
         }
 
         my $warning_str = populateFTableNoteErrorOrWarning("ftbl_warn", $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR);
         if($warning_str ne "") { 
           # only add the warning, if an identical warning does not already exist in @{$ret_warning_AR}
           my $idx = findNonNumericValueInArray($ret_warning_AR, $warning_str, $FH_HR);
-          if($idx == -1) { push(@{$ret_warning_AR}, $warning_str); }
+          if($idx == -1) { 
+            push(@{$ret_warning_AR},         $warning_str); 
+            if(exists $ftr_info_HAR->{"out_product"}[$ftr_idx]) { 
+              push(@{$ret_warning_product_AR}, $ftr_info_HAR->{"out_product"}[$ftr_idx]);
+            }
+            else { 
+              push(@{$ret_warning_product_AR}, "-"); # add '-' if out_product does not exist
+            }
+          }
         }
       }
     }
@@ -2150,924 +2168,6 @@ sub populateFTableNoteErrorOrWarning {
 }
 
 
-#################################################################
-#
-# Subroutines related to the feature table error exception array of hashes:
-#   initializeHardCodedFTableErrorExceptions()
-#   addFTableErrorException()
-#   checkSequenceAndFeatureAgainstFTableErrorExceptions()
-#   checkErrorsAgainstFTableErrorExceptions()
-#   exhaustiveSearchFTableErrorExceptions()
-#
-#################################################################
-# Subroutine: initializeHardCodedFTableErrorExceptions()
-# Incept:     EPN, Thu Feb  8 10:05:13 2018
-#
-# Purpose:    Set the initial values in the feature table 
-#             error exception array of hashes, using the 
-#             hardcoded information in this function.
-#
-# Arguments:
-#   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
-#                              exceptions, FILLED HERE 
-#   $err_info_HAR:             REF to hash of arrays of error information, PRE-FILLED
-#   $FH_HR:                    REF to hash of file handles, including "log" 
-#                              and "cmd"
-# 
-# Returns: void
-#
-# Dies:    if $ftbl_err_excpetions_AHR is non-empty upon entering this function
-#
-#################################################################
-sub initializeHardCodedFTableErrorExceptions { 
-  my $sub_name = "initializeHardCodedFTableErrorExceptions";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR) = (@_);
-
-  if(scalar (@{$ftbl_err_exceptions_AHR}) > 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, feature table error exception array of hashes already has at least one hash", 1, $FH_HR);
-  }
-
-  # add each exception, the addFTableErrorException() function will die if: 
-  # - it sees error code not in %err_info_HAR
-
-  my $reqd_str = undef; # string of required errors
-  my $alwd_str = undef; # string of allowed errors
-  my %expln_H  = ();    # key is "note", "warning" or "error", value is explanation string for that key
-  my $misc_feature = 0; # does this exception turn its feature into a misc_feature?
-  my $pred_stop    = 0; # does this exception overwrite corrected stops with predicted stops for its feature? 
-  #                                                                required   allowed                                            misc_    start_  stop_    pred_
-  #                                                                errors     errors                                             feature? carrot? carrot?, stop?  note?
-
-  ###############################################################################
-  # 'clean' exceptions: exceptions that do not cause an error or warning
-  # The %expln_H hash is undefined for these when we call addFTableErrorException()
-  ###############################################################################
-  # Exception: allow features with olp, aja and ajb to be output to feature table
-  $reqd_str = undef;
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 0;
-  $pred_stop    = 0;
-  # expln_H will be undefined
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, undef, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with b5e to be output to feature table
-  $reqd_str = "b5e";
-  $alwd_str = "olp,aja,ajb,nm3,inp,nop,m5e";
-  $misc_feature = 0;
-  $pred_stop    = 0;
-  # expln_H will be undefined
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, undef, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with b3e to be output to feature table
-  $reqd_str = "b3e";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 0;
-  $pred_stop    = 0;
-  # expln_H will be undefined
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, undef, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with both b5e and b3e to be output to feature table
-  $reqd_str = "b5e,b3e";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m5e,m3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 0;
-  $pred_stop    = 0;
-  # expln_H will be undefined
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, undef, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with b5e to be output to feature table
-  $reqd_str = "b5e,trc";
-  $alwd_str = "olp,aja,ajb,nm3,inp,aji,nop,m5e,mtr";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  # expln_H will be undefined
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, undef, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with b3e to be output to feature table
-  $reqd_str = "b3e,trc";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m3e,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  # expln_H will be undefined
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, undef, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with both b5e and b3e to be output to feature table
-  $reqd_str = "b5e,b3e,trc";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m5e,m3e,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  # expln_H will be undefined
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, undef, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with m5e to be output to feature table
-  $reqd_str = "m5e";
-  $alwd_str = "olp,aja,ajb,nm3,nop"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 0;
-  $pred_stop    = 0;
-  # expln_H will be undefined
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, undef, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with m3e to be output to feature table
-  $reqd_str = "m3e";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 0;
-  $pred_stop    = 0;
-  # expln_H will be undefined
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, undef, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with both m5e and m3e to be output to feature table
-  $reqd_str = "m5e,m3e";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 0;
-  $pred_stop    = 0;
-  # expln_H will be undefined
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, undef, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with m5e to be output to feature table
-  $reqd_str = "m5e,mtr";
-  $alwd_str = "olp,aja,ajb,nm3,nop,b5e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with m3e to be output to feature table
-  $reqd_str = "m3e,mtr";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop,b3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with both m5e and m3e to be output to feature table
-  $reqd_str = "m5e,m3e,mtr";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop,b5e,b3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with b5e and aji to be output to feature table
-  $reqd_str = "b5e,aji";
-  $alwd_str = "olp,aja,ajb,nm3,inp,nop,m5e,mtr";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "!COPY!aji"; # "COPY!aji" indicates we should use the aji error string to make the note 
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with str to be output to feature table
-  $reqd_str = "str";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Mutation at Start: Expected start codon could not be identified on !out_product,out_gene!";
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with trc to be output to feature table
-  $reqd_str = "trc";
-  $alwd_str = "olp,aja,ajb,aji";
-  $misc_feature = 1;
-  $pred_stop    = 1;
-  %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product,out_gene!; contains premature stop codon"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !COPY!trc";
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with trc and int to be output to feature table
-  $reqd_str = "trc,int";
-  $alwd_str = "olp,aja,ajb,aji,inp,ctr";
-  $misc_feature = 1;
-  $pred_stop    = 1;
-  %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product,out_gene!; contains premature stop codon"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !COPY!trc";
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features (mat_peptides) with trc and mtr to be output to feature table
-  $reqd_str = "trc,mtr";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 1;
-  $pred_stop    = 1;
-  %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product,out_gene!; polyprotein may not be translated"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "mat_peptide Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !COPY!trc";
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with ost to be output to feature table
-  $reqd_str = "ost";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Reverse Complement: Sequence may be misassembled; !out_product,out_gene! appears to be reverse complemented"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with lsc to be output to feature table
-  $reqd_str = "lsc";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 0;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"} = "!COPY!lsc"; # "COPY!lsc" indicates we should use the lsc error string to make the note 
-  $expln_H{"error"} = "Low Homology Score: !COPY!lsc"; # "COPY!lsc" indicates we should use the lsc error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with dup to be output to feature table
-  $reqd_str = "dup";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 0;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}  = "!COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the note 
-  $expln_H{"error"} = "Duplicate Feature: !COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ########################################################################################
-  # exceptions that require xip: there is one of these for each of the 
-  # 'clean' exceptions that do not throw an error or warning
-  #
-  # IDEA: make a new function that modifies another exception by adding a required 
-  # error string to it and modifying the errors/warnings that are thrown
-  # I would call that here once each for each of the clean exceptions adding the
-  # 'xip' error. Maybe I can make all my exceptions like that, by building on 
-  # top of the clean exceptions.
-  # 
-  # IDEA: can I have two errors for a single exception?
-  ###############################################################################
-  $reqd_str = "xip";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  $reqd_str = "xip,b5e";
-  $alwd_str = "olp,aja,ajb,nm3,inp,nop,m5e";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  $reqd_str = "xip,b3e";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  $reqd_str = "xip,b5e,b3e";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m5e,m3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  $reqd_str = "xip,b5e,trc";
-  $alwd_str = "olp,aja,ajb,nm3,inp,aji,nop,m5e,mtr";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  $reqd_str = "xip,b3e,trc";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m3e,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with both b5e and b3e to be output to feature table
-  $reqd_str = "xip,b5e,b3e,trc";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m5e,m3e,mtr"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Protein validation failure: !COPY!xip"; # "COPY!xip" indicates we should use the xip error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ########################################################################################
-  # exceptions that require mip: there is one of these for each of the 
-  # 'clean' exceptions involving m5e and m3e that do not throw an error or warning
-  ###############################################################################
-  $reqd_str = "mip";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product,out_gene!";
-  $expln_H{"error"} = "Protein validation failure: !COPY!mip";
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  $reqd_str = "m5e,mip";
-  $alwd_str = "olp,aja,ajb,nm3,nop,b5e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  $expln_H{"note"} = "similar to !out_product,out_gene!";
-  $expln_H{"error"} = "Protein validation failure: !COPY!mip"; 
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  $reqd_str = "m3e,mip";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop,b3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  $expln_H{"note"} = "similar to !out_product,out_gene!";
-  $expln_H{"error"} = "Protein validation failure: !COPY!mip"; 
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  $reqd_str = "m5e,m3e,mip";
-  $alwd_str = "olp,aja,ajb,stp,nst,nm3,nop,b5e,b3e"; # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  $expln_H{"note"} = "similar to !out_product,out_gene!";
-  $expln_H{"error"} = "Protein validation failure: !COPY!mip"; 
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with xnn to be output to feature table
-  $reqd_str = "xnn";
-  $alwd_str = "nop";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Protein validation error: !COPY!xnn"; # "COPY!xnn" indicates we should use the xnn error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with ost and dup to be output to feature table
-  $reqd_str = "ost,dup";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Reverse Complement: Sequence may be misassembled; !out_product,out_gene! appears to be reverse complemented"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} .= ":::Duplicate Feature: !COPY!dup"; # "COPY!dup" indicates we should use the dup error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with nm3 to be output to feature table
-  $reqd_str = "nm3";
-  $alwd_str = "olp,aja,ajb,mtr";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product,out_gene!; length is not a multiple of 3"; # "COPY!lsc" indicates we should use the lsc error string to make the note 
-  $expln_H{"error"} = "Unexpected length: not a multiple of 3 !COPY!nm3"; # "COPY!dup" indicates we should use the dup error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with stp to be output to feature table
-  $reqd_str = "stp";
-  $alwd_str = "olp,aja,ajb,nst,ext";
-  $misc_feature = 1;
-  $pred_stop    = 1;
-  %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with trc and stp to be output to feature table
-  $reqd_str = "trc,stp";
-  $alwd_str = "olp,aja,ajb,aji";
-  $misc_feature = 1;
-  $pred_stop    = 1;
-  %expln_H = ();
-  $expln_H{"note"} = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "CDS Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; Position of expected stop codon is not a valid stop codon; !COPY!trc";
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features with ext to be output to feature table
-  $reqd_str = "ext";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 1;
-  $pred_stop    = 1;
-  %expln_H = ();
-  $expln_H{"note"}  = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"error"} = "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!; !COPY!ext";
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features (mat_peptides) with ntr to be output to feature table
-  $reqd_str = "ntr";
-  $alwd_str = "olp,aja,ajb,mtr";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}    = "similar to !out_product,out_gene!; polyprotein may not be translated"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"warning"} = "!out_product,out_gene! !COPY!ntr"; # "COPY!ntr" indicates we should use the ntr error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features (mat_peptides) with mtr to be output to feature table
-  $reqd_str = "mtr";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}    = "similar to !out_product,out_gene!; polyprotein may not be translated"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"warning"} = "!out_product,out_gene! !COPY!mtr"; # "COPY!mtr" indicates we should use the mtr error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features (mat_peptides) with mip to be output to feature table
-  $reqd_str = "mip";
-  $alwd_str = "olp,aja,ajb";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}    = "similar to !out_product,out_gene!; polyprotein may not be translated"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"warning"} = "!out_product,out_gene! !COPY!mip"; # "COPY!mip" indicates we should use the mip error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features (CDS composed of mat_peptides) with aji to be output to feature table
-  $reqd_str = "aji";
-  $alwd_str = "olp,aja,ajb,inp";
-  $misc_feature = 1;
-  $pred_stop    = 0;
-  %expln_H = ();
-  $expln_H{"note"}    = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"warning"} = "!out_product,out_gene! !COPY!aji"; # "COPY!aji" indicates we should use the aji error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  ###############################################################################
-  # Exception: allow features (CDS composed of mat_peptides) with ctr to be output to feature table
-  $reqd_str = "ctr";
-  $alwd_str = "olp,aja,ajb,aji,inp";
-  $misc_feature = 1;
-  $pred_stop    = 1;
-  %expln_H = ();
-  $expln_H{"note"}    = "similar to !out_product,out_gene!"; #!out_product,out_gene! will be replaced by value for 'out_product' if it exists, else 'out_gene'in ftr_info_HAR
-  $expln_H{"warning"} = "!out_product,out_gene! !COPY!ctr"; # "COPY!ctr" indicates we should use the ctr error string to make the error
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, $reqd_str, $alwd_str, $misc_feature, $pred_stop, \%expln_H, $FH_HR);
-
-  return;
-}
-
-#################################################################
-# Subroutine: old_initializeHardCodedFTableErrorExceptions()
-# Incept:     EPN, Thu Feb  8 10:05:13 2018
-#
-# Purpose:    Set the initial values in the feature table 
-#             error exception array of hashes, using the 
-#             hardcoded information in this function.
-#
-# Arguments:
-#   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
-#                              exceptions, FILLED HERE 
-#   $err_info_HAR:             REF to hash of arrays of error information, PRE-FILLED
-#   $FH_HR:                    REF to hash of file handles, including "log" 
-#                              and "cmd"
-# 
-# Returns: void
-#
-# Dies:    if $ftbl_err_excpetions_AHR is non-empty upon entering this function
-#
-#################################################################
-sub old_initializeHardCodedFTableErrorExceptions { 
-  my $sub_name = "old_initializeHardCodedFTableErrorExceptions";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR) = (@_);
-
-  if(scalar (@{$ftbl_err_exceptions_AHR}) > 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, feature table error exception array of hashes already has at least one hash", 1, $FH_HR);
-  }
-
-  # add each exception, the addFTableErrorException() function will die if: 
-  # - it sees error code not in %err_info_HAR
-  #                                                                required   allowed                                            misc_    start_  stop_    pred_
-  #                                                                errors     errors                                             feature? carrot? carrot?, stop?  note?
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, undef,     "olp,aja,ajb",                                     0,       0,      0,           0, undef, $FH_HR);
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e",     "olp,aja,ajb,nm3,inp,nop,m5e,mtr",                 0,       1,      0,           0, undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b3e",     "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m3e,mtr",     0,       0,      1,           0, undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "b5e,b3e", "olp,aja,ajb,stp,nst,nm3,inp,aji,nop,m5e,m3e,mtr", 0,       1,      1,           0, undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "m5e",     "olp,aja,ajb,nm3,nop,mtr",                         0,       0,      0,           0, undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "m3e",     "olp,aja,ajb,stp,nst,nm3,nop,mtr",                 0,       0,      0,           0, undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "m5e,m3e", "olp,aja,ajb,stp,nst,nm3,nop,mtr",                 0,       0,      0,           0, undef, $FH_HR); # 'nop' allowed so we can output predictions for features with >= 1 models (e.g. 2 exons) for which >= 1 of the models had a nop
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "str",     "olp,aja,ajb",                                     1,       0,      0,           0, "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-#  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb,mtr",                                 1,       0,      0,           1, "!COPY!trc", $FH_HR); # "COPY!trc" indicates we should use the trc error string to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc",     "olp,aja,ajb,aji",                                 1,       0,      0,           1, "similar to !out_product!; contains premature stop codon", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc,int", "olp,aja,ajb,aji,inp,ctr",                         1,       0,      0,           1, "similar to !out_product!; contains premature stop codon", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "trc,mtr", "olp,aja,ajb",                                     1,       0,      0,           1, "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ost",     "olp,aja,ajb",                                     1,       0,      0,           0, "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "lsc",     "olp,aja,ajb",                                     0,       0,      0,           0, "!COPY!lsc", $FH_HR); # "COPY!lsc" indicates we should use the lsc error string to make the note 
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp,ext", "olp,aja,ajb",                                     0,       0,      0,           0, "!COPY!stp,ext", $FH_HR); # "COPY!stp,ext" indicates we should concatenate the stp and ext error strings to make the note
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ntr",     "olp,aja,ajb,mtr",                                 1,       0,      0,           0, "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "mtr",     "olp,aja,ajb",                                     1,       0,      0,           0, "similar to !out_product!; polyprotein may not be translated", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "aji",     "olp,aja,ajb,inp",                                 1,       0,      0,           0, "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "stp",     "olp,aja,ajb,nst,ext",                             1,       0,      0,           1, "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  addFTableErrorException($ftbl_err_exceptions_AHR, $err_info_HAR, "ctr",     "olp,aja,ajb,aji,inp",                             1,       0,      0,           1, "similar to !out_product!", $FH_HR); #!out_product! will be replaced by value for 'out_product' in ftr_info_HAR
-  
-  return;
-}
-
-#################################################################
-# Subroutine: addFTableErrorException()
-# Incept:     EPN, Thu Feb  8 10:32:52 2018
-#
-# Purpose:    Add a hash that represents a 'feature table error exception' 
-#             rule element to the array of such hashes 
-#             (@{$ftbl_err_exceptions_AHR}) and exit.
-#             Die if one of the required or allowed errors is not 
-#             a valid error (does not exist in %{$err_info_HAR}.
-#
-# Arguments:
-#   $ftbl_err_exceptions_AHR:  REF to array of hashes of error exception information, 
-#                              ADDED TO HERE
-#   $err_info_HAR:             REF to hash of arrays of error information, PRE-FILLED
-#   $required_err_str:         string of errors, separated by ",", which are required
-#                              (must be present) for a feature to match this exception
-#   $allowed_err_str:          string of errors, separated by ",", which are allowed
-#                              (can be present or not) for a feature to match this exception
-#   $misc_feature:             '1' if this exception rule turns the corresponding
-#                              feature to a 'misc_feature' in the feature table, else '0'
-#   $pred_stop:                '1' if this exception rule dictates that the 'predicted stop'
-#                              should be output (instead of the output_stop), e.g. for 'trc' errors
-#   $expln_HR:                 REF to hash with up to 3 keys: "note", "warning", and "error"
-#                              values are strings ($str) to use as a note/warning/error for 
-#                              this exception, or undefined for no note/warning/error. As a 
-#                              special case if $str starts with: "!COPY!" followed by a string 
-#                              of comma-separated errors, then the note/warning/error will be 
-#                              constructed by concatenating the error strings for the corresponding
-#                              errors. Those errors must be also in the 'required_err_str";
-#   $FH_HR:                    REF to hash of file handles, including "log" 
-#                              and "cmd"
-# 
-# Returns: void
-#
-# Dies:    - if any error code in either $required_err_str, $allowed_err_str, or $note
-#            after removing a "!COPY!" prefix.
-#          - if any error code in $note that starts with "!COPY!" is not also in $required_err_str
-#          - if any error code is in both $required_err_str and $allowed_err_str
-#
-#################################################################
-sub addFTableErrorException() { 
-  my $sub_name = "addFTableErrorException";
-  my $nargs_expected = 8;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $required_err_str, $allowed_err_str, $misc_feature, $pred_stop, $expln_HR, $FH_HR) = (@_);
-
-  my $nexc = scalar(@{$ftbl_err_exceptions_AHR});
-  %{$ftbl_err_exceptions_AHR->[$nexc]} = ();
-
-  my $HR = \%{$ftbl_err_exceptions_AHR->[$nexc]};
-
-  my @err_A = ();
-  my $err_code = undef;
-  my $idx; # index of code in $err_info_HAR->{"code"};
-  my $nerr = scalar(@{$err_info_HAR->{"code"}});
-  
-  # make sure that each error code in the required error string is valid (exists in @{$err_info_HAR->{"code"}}
-  if(defined $required_err_str) { 
-    @err_A = split(",", $required_err_str);
-    foreach $err_code (@err_A) { 
-      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
-      if($idx == -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with required string $required_err_str, but error code $err_code is invalid", 1, $FH_HR);
-      }
-      $HR->{$err_code} = "R"; # required 
-    }
-  }
-  # make sure that each error code in the allowed error string is valid (exists in @{$err_info_HAR->{"code"}}
-  if(defined $allowed_err_str) { 
-    @err_A = split(",", $allowed_err_str);
-    foreach $err_code (@err_A) { 
-      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
-      if($idx == -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with allowed string $allowed_err_str, but error code $err_code is invalid", 1, $FH_HR);
-      }
-      if((exists $HR->{$err_code}) && ($HR->{$err_code} eq "R")) { 
-        DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with allowed string $allowed_err_str, but error code $err_code exists in both allowed string and required string, this is not allowed", 1, $FH_HR);
-      }
-      $HR->{$err_code} = "A"; # allowed
-    }
-  }
-  # fill in all other errors as disallowed ("D")
-  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-    $err_code = $err_info_HAR->{"code"}[$err_idx];
-    if(! exists $HR->{$err_code}) { 
-      $HR->{$err_code} = "D";
-    }
-  }
-  
-  if(($misc_feature ne "0") && ($misc_feature ne "1")) { 
-    DNAORG_FAIL("ERROR in $sub_name, misc_feature value of $misc_feature is not valid (must be 0 or 1)", 1, $FH_HR);
-  }
-  $HR->{"misc_feature"} = $misc_feature;
-  
-  if(($pred_stop ne "0") && ($pred_stop ne "1")) { 
-    DNAORG_FAIL("ERROR in $sub_name, pred_stop value of $pred_stop is not valid (must be 0 or 1)", 1, $FH_HR);
-  }
-  $HR->{"pred_stop"} = $pred_stop;
-  
-  my @ekey_A = ("note", "warning", "error");
-  my $ekey = undef;
-  if(defined $expln_HR) { 
-    foreach $ekey (@ekey_A) { 
-      if(defined $expln_HR->{$ekey}) { 
-        my $msg = $expln_HR->{$ekey};
-        my $orig_msg = $msg;
-        if($msg =~ s/^COPY\!//) { 
-          # we must have at least one required error for the note to use this !COPY! mechanism
-          if(! defined $required_err_str) { 
-            DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_msg, but there are no required errors for this exception", 1, $FH_HR);
-          }
-          @err_A = split(",", $msg);
-          foreach $err_code (@err_A) { 
-            $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
-            if($idx == -1) { 
-              DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_msg, but error code $err_code is invalid", 1, $FH_HR);
-            }
-            if((! exists $HR->{$err_code}) || ($HR->{$err_code} ne "R")) { 
-              DNAORG_FAIL("ERROR in $sub_name, trying to add error exception with note string $orig_msg, but error code $err_code is not a required error (required error string is $required_err_str)", 1, $FH_HR);
-            }
-          }          
-          $HR->{$ekey} = $orig_msg;
-        }
-        else { # note does not start with "!COPY!"
-          $HR->{$ekey} = $orig_msg;
-        }
-      } # end of 'if(defined $expln_HR->{$ekey})'
-      else { # $expln_HR->{$ekey} is not defined
-        $HR->{$ekey} = "";
-      }
-    }
-  }
-  else { # $expln_HR is not defined
-    foreach $ekey (@ekey_A) { 
-      $HR->{$ekey} = "";
-    }
-  }
-  return;
-}
-
-
-#################################################################
-# Subroutine: checkSequenceAndFeatureAgainstFTableErrorExceptions()
-# Incept:     EPN, Thu Feb  8 11:40:19 2018
-#
-# Purpose:    Given a feature index, sequence name and 
-#             the @{$err_ftr_instances_AHHR} data structure which holds
-#             information on what sequences and features have
-#             what errors, determine if any of the feature table
-#             error exceptions apply for this sequence. 
-#             Die if more than one apply, that's supposed to be
-#             impossible.
-#
-# Arguments:
-#   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
-#                              exceptions, FILLED HERE 
-#   $err_ftr_instances_AHHR:   REF to array of 2D hashes with per-feature errors, PRE-FILLED
-#   $err_info_HAR:             REF to the error info hash of arrays, PRE-FILLED
-#   $seq_name:                 name of sequence
-#   $ftr_idx:                  feature index 
-#   $FH_HR:                    REF to hash of file handles, including "log" 
-#                              and "cmd"
-# 
-# Returns: index of error exception that applies in @{$ftb_err_exceptions_AHR}, 
-#           or -1 if none do,
-#
-# Dies:    If more than one feature table error exception applies for 
-#          this sequence/feature combination. Actually dies in 
-#          checkErrorsAgainstFTableErrorExceptions().
-#
-#################################################################
-sub checkSequenceAndFeatureAgainstFTableErrorExceptions { 
-  my $sub_name = "checkSequenceAndFeatureAgainstFTableErrorExceptions";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($ftbl_err_exceptions_AHR, $err_ftr_instances_AHHR, $err_info_HAR, $seq_name, $ftr_idx, $FH_HR) = (@_);
-
-  my $err_str = "";
-  my $nerr = scalar(@{$err_info_HAR->{"code"}});
-  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-    if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
-      my $err_code = $err_info_HAR->{"code"}[$err_idx];
-      if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-        if($err_str ne "") { $err_str .= ","; }
-        $err_str .= $err_code;
-      }
-    }
-  }
-
-  return checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $err_str, $FH_HR);
-  # this will die if more than one exceptions match, which is supposed to be impossible
-}
-
-#################################################################
-# Subroutine: checkErrorsAgainstFTableErrorExceptions()
-# Incept:     EPN, Thu Feb  8 11:53:02 2018
-#
-# Purpose:    Given a string of errors that correspond to a specific
-#             sequence and feature, determine if any of the feature table
-#             error exceptions apply for this sequence. 
-#             Die if more than one apply, that's supposed to be
-#             impossible.
-#
-# Arguments:
-#   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
-#                              exceptions, FILLED HERE 
-#   $err_info_HAR:             REF to the error info hash of arrays, PRE-FILLED
-#   $err_str:                  string of errors, comma separated, can be ""
-#   $FH_HR:                    REF to hash of file handles, including "log" 
-#                              and "cmd"
-# 
-# Returns: index of error exception that applies in @{$ftb_err_exceptions_AHR}, 
-#           or -1 if none do,
-#
-# Dies:    If more than one feature table error exception applies for 
-#          this sequence/feature combination.
-#
-#################################################################
-sub checkErrorsAgainstFTableErrorExceptions { 
-  my $sub_name = "checkErrorsAgainstFTableErrorExceptions";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $err_str, $FH_HR) = (@_);
-
-  # create a hash of all errors in the input $err_str
-  my %input_err_H = (); # $cur_err_H{$err_code} = 1 if $err_code is in $err_str
-  my @err_A = ();
-  my $err_code; 
-  my $idx; 
-  if($err_str ne "") { 
-    foreach $err_code (split(",", $err_str)) { 
-      $idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
-      if($idx == -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, input error of $err_code in string $err_str is invalid", 1, $FH_HR);
-      }
-      $input_err_H{$err_code} = 1; 
-    }
-  }
-
-  # compare the input errors in the %input_err_H
-  # against what error codes are required, allowed and disallowed for 
-  # each feature table error exception
-  # 
-  # for each feature table error exception in @ftbl_err_exceptions_AHR:
-  #  - are all required errors in the input $err_str? 
-  #  - are zero disallowed errors in the input $err_str?
-  # if both are true, then this error string passes the relevant exception.
-  # if the error string passes two exceptions, we die, that's supposed to be impossible
-  # 
-  my $nerr_codes = scalar(@{$err_info_HAR->{"code"}});
-  my $pass = undef;
-  my $pass_idx = -1;
-  my $HR = undef; 
-  for(my $i = 0; $i < scalar(@{$ftbl_err_exceptions_AHR}); $i++) { 
-    $pass = 1; # set to 0 if we find an error code incompatibility with this exception
-    $HR = \%{$ftbl_err_exceptions_AHR->[$i]};
-    # make sure that it has all required errors:
-
-    for(my $err_idx = 0; $err_idx < $nerr_codes; $err_idx++) { 
-      $err_code = $err_info_HAR->{"code"}[$err_idx];
-      if(! exists $HR->{$err_code}) { 
-        DNAORG_FAIL("ERROR in $sub_name, valid error code $err_code does not exist in feature table error exception array $i", 1, $FH_HR); 
-      }
-      if(($HR->{$err_code} eq "R") && (! exists $input_err_H{$err_code})) { 
-        # required but not present in input error string
-        $pass = 0;
-        $err_idx = $nerr_codes; # breaks loop
-      }
-      elsif(($HR->{$err_code} eq "D") && (exists $input_err_H{$err_code})) { 
-        # disallowed but present in input error string
-        $pass = 0;
-        $err_idx = $nerr_codes; # breaks loop
-      }
-    }
-    if($pass) { 
-      if($pass_idx != -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, error string $err_str passed more than one error exception: $pass_idx and $i", 1, $FH_HR);
-      }
-      $pass_idx = $i;
-    }
-  }
-
-  return $pass_idx;
-}
-
-
-#################################################################
-# Subroutine: exhaustiveSearchFTableErrorExceptions()
-# Incept:     EPN, Thu Feb  8 12:33:18 2018
-#
-# Purpose:    Do an exhaustive search of all possible combinations of errors 
-#             to make sure that for any error combination exactly 0 or 1
-#             error exceptions matches it. 
-#
-# Arguments:
-#   $ftbl_err_exceptions_AHR:  REF to array of hashes of feature table error
-#                              exceptions, PRE-FILLED
-#   $err_info_HAR:             REF to the error info hash of arrays, PRE-FILLED
-#   $FH_HR:                    REF to hash of file handles, including "log" 
-#                              and "cmd"
-# 
-# Returns: void
-#
-# Dies:    If any error combination matches more than one error exception.
-#          Actually dies in checkErrorsAgainstFTableErrorExceptions().
-#
-#################################################################
-sub exhaustiveSearchFTableErrorExceptions  { 
-  my $sub_name = "exhaustiveSearchFTableErrorExceptions";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR) = (@_);
-  
-  my $nexc = validateFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR);
-  
-  # now for every possible combination of errors, run the checkErrorsAgainstFTableErrorExceptions()
-  # which will die if more than 1 exception applies
-
-  my $nerr = validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
-  my @err_code_A = @{$err_info_HAR->{"code"}};
-
-  # there are 2^$nerr possible combinations of errors
-  # for each, we can determine the binary number that corresponds to it, 
-  # and convert that to an array which tells us if each error is on/off
-  # in each combination
-  my @err_on_off_A = ();
-  my $exc_idx = -2;
-  for(my $i = 0; $i < 2 ** ($nerr); $i++) { 
-    my $b = sprintf("%0*b", $nerr, $i);
-    @err_on_off_A = split("", $b);
-    if(scalar(@err_on_off_A) != $nerr) { 
-      DNAORG_FAIL("ERROR in $sub_name, on off string is incorrect length: $b", 1, $FH_HR);
-    }
-
-    # currently we don't skip sets of options that have incompatible pairs, although we could
-    # at a cost in running time
-    my $err_str = "";
-    for(my $j = 0; $j < $nerr; $j++) { 
-      if($err_on_off_A[$j] == 1) { 
-        if($err_str ne "") { $err_str .= ","; }
-        $err_str .= $err_code_A[$j];
-      }
-    }
-    $exc_idx = checkErrorsAgainstFTableErrorExceptions($ftbl_err_exceptions_AHR, $err_info_HAR, $err_str, $FH_HR);
-    # if($exc_idx != -1) { printf("EXCEPTION: %7d $b exc_idx: $exc_idx\n", $i); }
-  }
-
-  return;
-}
-
-#################################################################
 #################################################################
 #
 # Subroutines related to overlaps and adjacencies:
