@@ -108,7 +108,8 @@ opt_Add("--local",      "boolean", 0,                        3,    undef, undef,
 opt_Add("--errcheck",   "boolean", 0,                        3,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"4"} = "options for controlling what unexpected features cause sequences to PASS/FAIL";
-#     option                type       default            group   requires incompat         preamble-output                                              help-output    
+#     option               type        default            group   requires incompat         preamble-output                                              help-output    
+opt_Add("--lowcovpass",    "boolean",  0,                    4,   undef,  "--allfail",      "seqs with low coverage can PASS",                              "sequences with low coverage can PASS",                     \%opt_HH, \@opt_order_A);
 opt_Add("--unexppass",     "boolean",  0,                    4,"--expclass","--allfail",    "seqs with unexpected classification can PASS",                 "sequences with unexpected classification can PASS",        \%opt_HH, \@opt_order_A);
 opt_Add("--allfail",       "boolean",  0,                    4,"--vlowscfail","--allfail",  "seqs with >=1 unexpected feature(s) FAIL",                     "sequences with >=1 unexpected feature(s) FAIL",            \%opt_HH, \@opt_order_A);
 opt_Add("--lowscfail",     "boolean",  0,                    4,"--vlowscfail","--allfail",  "seqs with Low Score      unexpected feature can PASS",         "sequences with LowScore     unexpected feature FAIL",      \%opt_HH, \@opt_order_A);
@@ -119,6 +120,7 @@ opt_Add("--biasfail",      "boolean",  0,                    4,   undef,"--allfa
 opt_Add("--minusfail",     "boolean",  0,                    4,   undef,"--allfail",        "seqs with Minus Strand   unexpected feature FAIL",             "sequences with MinusStrand  unexpected feature FAIL",      \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"5"} = "options for controlling reporting of unexpected features";
 #     option                type         default            group   requires incompat     preamble-output                                                    help-output    
+opt_Add("--lowcovthresh",   "real",    0.9,                   5,   undef,   undef,        "fractional coverage threshold for Low Coverage is <x>",           "fractional coverage threshold for Low Coverage is <x>",                        \%opt_HH, \@opt_order_A);
 opt_Add("--lowscthresh",    "real",    0.3,                   5,   undef,   undef,        "bits per nucleotide threshold for LowScore is <x>",               "bits per nucleotide threshold for LowScore unexpected feature is <x>",         \%opt_HH, \@opt_order_A);
 opt_Add("--vlowscthresh",   "real",    0.2,                   5,   undef,   undef,        "bits per nucleotide threshold for VeryLowScore is <x>",           "bits per nucleotide threshold for VeryLowScore unexpected feature is <x>",     \%opt_HH, \@opt_order_A);
 opt_Add("--lowdiffthresh",  "real",    0.06,                  5,   undef,   undef,        "bits per nucleotide diff threshold for LowDiff is <x>",           "bits per nucleotide diff threshold for LowDiff unexpected feature is <x>",     \%opt_HH, \@opt_order_A);
@@ -171,6 +173,7 @@ my $options_okay =
                 'wait=s'           => \$GetOptions_H{"--wait"},
                 'local'            => \$GetOptions_H{"--local"}, 
                 'errcheck'         => \$GetOptions_H{"--errcheck"},       
+                "lowcovpass"       => \$GetOptions_H{"--lowcovpass"},
                 "unexppass"        => \$GetOptions_H{"--unexppass"},
                 "allfail"          => \$GetOptions_H{"--allfail"},
                 "lowscfail"        => \$GetOptions_H{"--lowscfail"},
@@ -179,6 +182,7 @@ my $options_okay =
                 "vlowdifffail"     => \$GetOptions_H{"--vlowdifffail"},
                 "biasfail"         => \$GetOptions_H{"--biasfail"},
                 "minusfail"        => \$GetOptions_H{"--minusfail"},
+                "lowcovthresh=s"   => \$GetOptions_H{"--lowcovthresh"},
                 "lowscthresh=s"    => \$GetOptions_H{"--lowscthresh"},
                 "vlowscthresh=s"   => \$GetOptions_H{"--vlowscthresh"},
                 "lowdiffthresh=s"  => \$GetOptions_H{"--lowdiffthresh"},
@@ -288,19 +292,19 @@ my @early_cmd_A = (); # array of commands we run before our log file is opened
 # check if our output dir $symbol exists
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
-##!##  $cmd = "rm -rf $dir";
-##!## if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-##!##  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+  $cmd = "rm -rf $dir";
+ if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
-##!##  $cmd = "rm $dir";
-##!##  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-##!##  else                        { die "ERROR a file named $dir already exists. Remove it, or use -###f to overwrite it."; }
+  $cmd = "rm $dir";
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR a file named $dir already exists. Remove it, or use -###f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-##!##runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
+runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -594,8 +598,8 @@ else {
   my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
 
   my $cls_tot_len_nt = sumHashValues(\%cls_seqlen_H);
-##!##  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
-##!##                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
+  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
+                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
 
   # parse nhmmscan tblout file to create infotbl file and determine pass/fails
@@ -1220,40 +1224,41 @@ sub output_infotbl_header {
   
   my ($out_FH, $do_tab, $query_width, $opt_HHR) = (@_);
 
-  print  $out_FH  "# sequence:    Accession number of the sequence\n";
-  print  $out_FH  "# seqlen:      length of this sequence\n";
-  print  $out_FH  "# topmodel:    model/RefSeq that the sequence was assigned to (max score)\n";
-  print  $out_FH  "# score:       (summed) bit score(s) of all hits to 'topmodel'\n";
-  print  $out_FH  "# sc/nt:       'score' divided by 'qlen'\n";
-  print  $out_FH  "# E-val:       E-value of best hit to 'topmodel'\n";
-  print  $out_FH  "# coverage:    the percentage of the sequence that all hits to 'topmodel' cover\n";
-  print  $out_FH  "# bias:        correction in bits for biased composition sequences, summed for all hits to 'topmodel'\n";
-  print  $out_FH  "# #hits:       number of hits to 'topmodel'\n";
-  print  $out_FH  "# strand:      strand of best hit and all considered to 'topmodel'\n";
-  print  $out_FH  "# scdmodel:    second best model/Refseq (2nd highest score)\n";
-  print  $out_FH  "# scdiff:      difference in summed bit score b/t 'topmodel' hit(s) and 'scdmodel' hit(s)\n";
-  print  $out_FH  "# scdiff/nt:   'scdiff' divided by 'qlen'\n";
-  print  $out_FH  "# covdiff:     amount by which the coverage of the 'topmodel' hit(s) is greater than that of the 'scdmodel' hit(s)\n";
-  printf $out_FH ("# CC:          'confidence class', first letter based on sc/nt: A: if sc/nt >= %.3f, B: if %.3f > sc/nt >= %.3f, C: if %.3f > sc_nt\n", opt_Get("--lowscthresh", $opt_HHR), opt_Get("--lowscthresh", $opt_HHR), opt_Get("--vlowscthresh", $opt_HHR), opt_Get("--vlowscthresh", $opt_HHR));
-  printf $out_FH ("#              second letter based on diff/nt: A: if diff/nt >= %.3f, B: if %.3f > diff/nt >= %.3f, C: if %.3f > diff_nt\n", opt_Get("--lowdiffthresh", $opt_HHR), opt_Get("--lowdiffthresh", $opt_HHR), opt_Get("--vlowdiffthresh", $opt_HHR), opt_Get("--vlowdiffthresh", $opt_HHR));
-  printf $out_FH ("# p/f:         'PASS' if sequence passes, 'FAIL' if it fails\n");
-  print  $out_FH  "# unexpected   \n";
-  print  $out_FH  "# features:    unexpected features for this sequence\n";
-  print  $out_FH  "#              Possible values in unexpected features column:\n";
-  printf $out_FH ("#              Low Score:      'sc/nt'   < %.3f (threshold settable with --lowscthresh)\n",    opt_Get("--lowscthresh", $opt_HHR));
-  printf $out_FH ("#              Very Low Score: 'sc/nt'   < %.3f (threshold settable with --vlowscthresh)\n",   opt_Get("--vlowscthresh", $opt_HHR));
-  printf $out_FH ("#              Low Diff:       'diff/nt' < %.3f (threshold settable with --lowdiffthresh)\n",  opt_Get("--lowdiffthresh", $opt_HHR));
-  printf $out_FH ("#              Very Low Diff:  'diff/nt' < %.3f (threshold settable with --vlowdiffthresh)\n", opt_Get("--vlowdiffthresh", $opt_HHR));
-  printf $out_FH ("#              Minus Strand:   top hit is on minus strand\n");
-  printf $out_FH ("#              High Bias:     'bias' > (%.3f * ('bias' + 'score')) (threshold settable with --biasfract)\n", opt_Get("--biasfract", $opt_HHR));
+  print  $out_FH  "# Explanations of each column:\n";
+  print  $out_FH  "#  1. sequence:    Accession number of the sequence\n";
+  print  $out_FH  "#  2. seqlen:      length of this sequence\n";
+  print  $out_FH  "#  3. topmodel:    model/RefSeq that the sequence was assigned to (max score)\n";
+  print  $out_FH  "#  4. score:       (summed) bit score(s) of all hits to 'topmodel'\n";
+  print  $out_FH  "#  5. sc/nt:       'score' divided by 'qlen'\n";
+  print  $out_FH  "#  6. E-val:       E-value of best hit to 'topmodel'\n";
+  print  $out_FH  "#  7. coverage:    the percentage of the sequence that all hits to 'topmodel' cover\n";
+  print  $out_FH  "#  8. bias:        correction in bits for biased composition sequences, summed for all hits to 'topmodel'\n";
+  print  $out_FH  "#  9. #hits:       number of hits to 'topmodel'\n";
+  print  $out_FH  "# 10. strand:      strand of best hit and all considered to 'topmodel'\n";
+  print  $out_FH  "# 11. scdmodel:    second best model/Refseq (2nd highest score)\n";
+  print  $out_FH  "# 12. scdiff:      difference in summed bit score b/t 'topmodel' hit(s) and 'scdmodel' hit(s)\n";
+  print  $out_FH  "# 13. scdiff/nt:   'scdiff' divided by 'qlen'\n";
+  print  $out_FH  "# 14. covdiff:     amount by which the coverage of the 'topmodel' hit(s) is greater than that of the 'scdmodel' hit(s)\n";
+  printf $out_FH ("# 15. CC:          'confidence class', first letter based on sc/nt: A: if sc/nt >= %.3f, B: if %.3f > sc/nt >= %.3f, C: if %.3f > sc_nt\n", opt_Get("--lowscthresh", $opt_HHR), opt_Get("--lowscthresh", $opt_HHR), opt_Get("--vlowscthresh", $opt_HHR), opt_Get("--vlowscthresh", $opt_HHR));
+  printf $out_FH ("#                  second letter based on diff/nt: A: if diff/nt >= %.3f, B: if %.3f > diff/nt >= %.3f, C: if %.3f > diff_nt\n", opt_Get("--lowdiffthresh", $opt_HHR), opt_Get("--lowdiffthresh", $opt_HHR), opt_Get("--vlowdiffthresh", $opt_HHR), opt_Get("--vlowdiffthresh", $opt_HHR));
+  printf $out_FH ("# 16. p/f:         'PASS' if sequence passes, 'FAIL' if it fails\n");
+  print  $out_FH  "# 17. unexpected\n";
+  print  $out_FH  "#     features:    unexpected features for this sequence\n";
+  print  $out_FH  "#                  Possible values in unexpected features column:\n";
+  printf $out_FH ("#                  Low Score:      'sc/nt'   < %.3f (threshold settable with --lowscthresh)\n",    opt_Get("--lowscthresh", $opt_HHR));
+  printf $out_FH ("#                  Very Low Score: 'sc/nt'   < %.3f (threshold settable with --vlowscthresh)\n",   opt_Get("--vlowscthresh", $opt_HHR));
+  printf $out_FH ("#                  Low Diff:       'diff/nt' < %.3f (threshold settable with --lowdiffthresh)\n",  opt_Get("--lowdiffthresh", $opt_HHR));
+  printf $out_FH ("#                  Very Low Diff:  'diff/nt' < %.3f (threshold settable with --vlowdiffthresh)\n", opt_Get("--vlowdiffthresh", $opt_HHR));
+  printf $out_FH ("#                  Minus Strand:   top hit is on minus strand\n");
+  printf $out_FH ("#                  High Bias:     'bias' > (%.3f * ('bias' + 'score')) (threshold settable with --biasfract)\n", opt_Get("--biasfract", $opt_HHR));
   if(opt_IsUsed("--expclass", $opt_HHR)) { 
     if(opt_IsUsed("--ectoponly", $opt_HHR)) { 
-      printf $out_FH ("#              Unexpected Classification: best-scoring model is not a model representing the expected classification for this sequence\n");
-      printf $out_FH ("#                                        (read from %s (--expclass)) and --ectoponly option used.\n", opt_Get("--expclass", $opt_HHR));
+      printf $out_FH ("#                  Unexpected Classification: best-scoring model is not a model representing the expected classification for this sequence\n");
+      printf $out_FH ("#                                            (read from %s (--expclass)) and --ectoponly option used.\n", opt_Get("--expclass", $opt_HHR));
     }
     else { 
-      printf $out_FH ("#              Unexpected Classification: sequence does not have summed bit score per nucleotide within %.3f of top model (threshold settable with --ecthresh)\n", opt_Get("--ecthresh", $opt_HHR));
-      printf $out_FH ("#                                        to any model listed in file %s (from --expclass options)\n", opt_Get("--expclass", $opt_HHR));  
+      printf $out_FH ("#                  Unexpected Classification: sequence does not have summed bit score per nucleotide within %.3f of top model (threshold settable with --ecthresh)\n", opt_Get("--ecthresh", $opt_HHR));
+      printf $out_FH ("#                                            to any model listed in file %s (from --expclass options)\n", opt_Get("--expclass", $opt_HHR));  
     }
   }
   print  $out_FH  "########################################################################################################################################\n";
@@ -1464,6 +1469,7 @@ sub output_one_sequence {
     my $bias_fails       = (  opt_Get("--allfail", \%opt_HH)) || (  opt_Get("--biasfail",     \%opt_HH)) ? 1 : 0;
     my $minus_fails      = (  opt_Get("--allfail", \%opt_HH)) || (  opt_Get("--minusfail",    \%opt_HH)) ? 1 : 0;
     my $unexpclass_fails = (! opt_Get("--allfail", \%opt_HH)) && (! opt_Get("--unexppass",    \%opt_HH)) ? 1 : 0;
+    my $lowcov_fails     = (! opt_Get("--allfail", \%opt_HH)) && (! opt_Get("--lowcovpass",   \%opt_HH)) ? 1 : 0;
 
     my $lowsc_minlen    = opt_Get("--lowscminlen", \%opt_HH); 
     my $lowdiff_minlen  = opt_Get("--lowdiffminlen", \%opt_HH); 
@@ -1472,6 +1478,7 @@ sub output_one_sequence {
 
     # get thresholds
     my $small_value         = 0.00000001; # for handling precision issues
+    my $lowcovthresh_opt    = opt_Get("--lowcovthresh",   $opt_HHR) - $small_value;
     my $vlowscthresh_opt    = opt_Get("--vlowscthresh",   $opt_HHR) - $small_value;
     my $lowscthresh_opt     = opt_Get("--lowscthresh",    $opt_HHR) - $small_value;
     my $vlowdiffthresh_opt  = opt_Get("--vlowdiffthresh", $opt_HHR) - $small_value;
@@ -1516,6 +1523,14 @@ sub output_one_sequence {
     $pass_fail_HR->{$seq} = "PASS"; # will change to FAIL below if necessary
     my $cur_ufeature_str  = undef;
     
+    if($cur_prcdata_AH[0]{"coverage"} < $lowcovthresh_opt) { 
+      $cur_ufeature_str = "Low Coverage[" . sprintf("%.3f", $cur_prcdata_AH[0]{"coverage"}) . "<" . sprintf("%.3f", $lowcovthresh_opt) . "];"; 
+      $ufeature_all_str .= $cur_ufeature_str;
+      if($lowcov_fails) { 
+        $pass_fail_HR->{$seq} = "FAIL"; 
+        $ufeature_fail_str .= $cur_ufeature_str;
+      }
+    }
     if($cur_prcdata_AH[0]{"bitscpnt"} < $vlowscthresh_opt) { 
       $cur_ufeature_str = "Very Low Score[" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $vlowscthresh_opt) . "];"; 
       $ufeature_all_str .= $cur_ufeature_str;
