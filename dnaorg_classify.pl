@@ -1498,7 +1498,7 @@ sub output_one_sequence {
     my $ufeature_fail_str = "";
     my $cur_ufeature_str  = undef;
     if($cur_prcdata_AH[0]{"bitscpnt"} < $vlowscthresh_opt) { 
-      $cur_ufeature_str = "VeryLowScore(" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $vlowscthresh_opt) . ");"; 
+      $cur_ufeature_str = "VeryLowScore(" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $vlowscthresh_opt) . ");;"; 
       $ufeature_all_str .= $cur_ufeature_str;
       $score_class = "C";
       if($vlowsc_fails) { 
@@ -1507,7 +1507,7 @@ sub output_one_sequence {
       }
     }
     elsif($cur_prcdata_AH[0]{"bitscpnt"} < $lowscthresh_opt) { 
-      $cur_ufeature_str = "LowScore(" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $lowscthresh_opt) . ");"; 
+      $cur_ufeature_str = "LowScore(" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $lowscthresh_opt) . ");;"; 
       $ufeature_all_str .= $cur_ufeature_str;
       $score_class = "B";
       if(($lowsc_fails) && ($seqlen > $lowsc_minlen)) { 
@@ -1517,7 +1517,7 @@ sub output_one_sequence {
     }
     if(defined $diff_bitscpnt) { 
       if($diff_bitscpnt < $vlowdiffthresh_opt) { 
-        $cur_ufeature_str = "VeryLowDiff(" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $vlowdiffthresh_opt) . ");"; 
+        $cur_ufeature_str = "VeryLowDiff(" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $vlowdiffthresh_opt) . ");;"; 
         $ufeature_all_str .= $cur_ufeature_str;
         $diff_class = "C";
         if($vlowdiff_fails) { 
@@ -1526,7 +1526,7 @@ sub output_one_sequence {
         }
       }
       elsif($diff_bitscpnt < $lowdiffthresh_opt) { 
-        $cur_ufeature_str = "LowDiff(" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $lowdiffthresh_opt) . ");"; 
+        $cur_ufeature_str = "LowDiff(" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $lowdiffthresh_opt) . ");;"; 
         $ufeature_all_str .= $cur_ufeature_str;
         $diff_class = "B";
         if($lowdiff_fails && ($seqlen > $lowdiff_minlen)) { 
@@ -1536,7 +1536,7 @@ sub output_one_sequence {
       }
     }
     if($cur_prcdata_AH[0]{"strand"} eq "minus") { 
-      $cur_ufeature_str = "MinusStrand;";
+      $cur_ufeature_str = "MinusStrand;;";
       $ufeature_all_str .= $cur_ufeature_str;
       if($minus_fails) { 
         $pass_fail_HR->{$seq} = "FAIL"; 
@@ -1545,7 +1545,7 @@ sub output_one_sequence {
     }
     if($cur_prcdata_AH[0]{"biassum"} > (($biasfract_opt * ($cur_prcdata_AH[0]{"bitscsum"} + $cur_prcdata_AH[0]{"biassum"})) + $small_value)) { 
       # $cur_prcdata_AH[0]["bitscsum"} has already had bias subtracted from it so we need to add it back in before we compare with biasfract
-      $cur_ufeature_str = "HighBias;";
+      $cur_ufeature_str = "HighBias;;";
       $ufeature_all_str .= $cur_ufeature_str;
       if($bias_fails) { 
         $pass_fail_HR->{$seq} = "FAIL"; 
@@ -1572,7 +1572,7 @@ sub output_one_sequence {
         }
       }
       if(! $found_match) { 
-        $cur_ufeature_str = "UnexpectedClassification;";
+        $cur_ufeature_str = "UnexpectedClassification;;";
         if($unexpclass_fails) { 
           $pass_fail_HR->{$seq} = "FAIL"; 
           $ufeature_fail_str .= $cur_ufeature_str;

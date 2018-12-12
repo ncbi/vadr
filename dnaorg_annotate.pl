@@ -7362,6 +7362,17 @@ sub output_feature_tbl_all_sequences {
     # OUTPUT section 
     #######################################
     # done with this sequence, determine what type of output we will have 
+    # first, add any classification errors from %{$class_errors_per_seq_HR}
+    if((defined $class_errors_per_seq_HR) &&
+       (exists $class_errors_per_seq_HR->{$seq_name})) { 
+      my @class_errors_A = split("\n", $class_errors_per_seq_HR->{$seq_name});
+      foreach my $class_error (@class_errors_A) { 
+        push(@seq_error_A, $class_error);
+        push(@seq_error_product_A, "-"); 
+        # classification errors are per sequence, not per-feature, so we use '-' to denote the feature
+      }
+    }
+
     my $noutftr  = scalar(@ftout_AH);
     my $nerror   = scalar(@seq_error_A);
     my $nnote    = scalar(@seq_note_A);
@@ -7409,31 +7420,18 @@ sub output_feature_tbl_all_sequences {
         print $fail_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         print $long_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         for(my $e = 0; $e < scalar(@seq_error_A); $e++) { 
-          my $error_str     = $seq_error_A[$e];
+          my $error_line    = $seq_error_A[$e];
           my $error_product = $seq_error_product_A[$e];
-          foreach my $error_line (split(/\:\:\:/, $error_str)) { 
-            print $fail_ftbl_FH "ERROR: " . $error_str . "\n"; 
-            print $long_ftbl_FH "ERROR: " . $error_str . "\n"; 
-            if($error_line =~ /([^\:]+)\:(.+)$/) {
-              print $errors_FH ($accn_name . "\t" . $1 . "\t" . $error_product . "\t" . $2 . "\n");
-            }
-            else {
-              DNAORG_FAIL("ERROR in $sub_name, unable to split error_str for output: $error_str", 1, $ofile_info_HHR->{"FH"});
-            }
+          print $fail_ftbl_FH "ERROR: " . $error_line . "\n"; 
+          print $long_ftbl_FH "ERROR: " . $error_line . "\n"; 
+          if($error_line =~ /([^\:]+)\:(.+)$/) {
+            print $errors_FH ($accn_name . "\t" . $1 . "\t" . $error_product . "\t" . $2 . "\n");
+          }
+          else {
+            DNAORG_FAIL("ERROR in $sub_name, unable to split error_line for output: $error_line", 1, $ofile_info_HHR->{"FH"});
           }
         }
       } # end of 'if($nerr > 0)'
-    }
-    if((defined $class_errors_per_seq_HR) &&
-       (exists $class_errors_per_seq_HR->{$seq_name})) { 
-      # convention is that $class_errors_per_seq_HR->{$seq_name} has >= 1 errors 
-      # separated by ';', we print them each on separate lines
-      my @cerr_A = split(";", $class_errors_per_seq_HR->{$seq_name});
-      foreach my $cerr (@cerr_A) { 
-        if($do_pass) { print $pass_ftbl_FH "CLASSIFICATION-ERROR: " . $cerr . "\n"; }
-        else         { print $fail_ftbl_FH "CLASSIFICATION-ERROR: " . $cerr . "\n"; }
-        print $long_ftbl_FH "CLASSIFICATION-ERROR: " . $cerr . "\n"; 
-      }
     }
   } # end of loop over sequences
 
@@ -10552,14 +10550,14 @@ sub parse_class_errors_file {
       chomp $line;
       my @el_A = split(/\t/, $line);
       ##sequence	unexpected-features-that-cause-failure
-      #gi|1273500228|gb|MG203960.1|	-
-      #gi|1314786844|gb|MG557648.1|	LowScore(0.210<0.300);LowDiff(0.042<0.060);
+      #MG763371.1      Wrong Classification: Sequence was classified differently from what was specified by the user [GII was specified, but GI is predicted (NC_001959 is best match)]
       if(scalar(@el_A) != 2) { 
+        foreach my $tok (@el_A) { printf("tok: $tok\n"); }
         DNAORG_FAIL("ERROR in $sub_name, did not find exactly 2 tokens in line $line", 1, $FH_HR);
       }
       my ($seq, $error_str) = @el_A;
       if($error_str ne "-") { 
-        $errors_seq_HR->{$seq} = $error_str;
+        $errors_seq_HR->{$seq} .= $error_str . "\n";
       }
     }
   }

@@ -1993,12 +1993,12 @@ sub processFeatureErrorsForFTable {
           push(@tmp_note_A, $note_str); # we will prune this array and populate @{$ret_note_AR} before returning
         }
 
-        my $error_str   = populateFTableNoteOrError("ftbl_err", $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR);
+        my $error_str = populateFTableNoteOrError("ftbl_err", $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR);
         if($error_str ne "") { 
           # only add the error, if an identical error does not already exist in @{$ret_error_AR}
           my $idx = findNonNumericValueInArray($ret_error_AR, $error_str, $FH_HR);
           if($idx == -1) { 
-            push(@{$ret_error_AR},         $error_str); 
+            push(@{$ret_error_AR}, $error_str); 
             if(exists $ftr_info_HAR->{"out_product"}[$ftr_idx]) { 
               push(@{$ret_error_product_AR}, $ftr_info_HAR->{"out_product"}[$ftr_idx]);
             }
