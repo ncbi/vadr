@@ -7218,8 +7218,6 @@ sub output_feature_tbl_all_sequences {
 
     my @seq_error_A           = (); # all errors for this sequence
     my @seq_error_product_A   = (); # products corresponding to each error for this sequence
-    my @seq_warning_A         = (); # all warnings for this sequence
-    my @seq_warning_product_A = (); # products corresponding to each warning for this sequence
     my @seq_note_A            = (); # all notes for this sequence
 
     my $nskipped = 0; # number of cds-mp features that were not output due to problem with start/stop coords
@@ -7257,7 +7255,10 @@ sub output_feature_tbl_all_sequences {
         $do_ignore      = ($defined_pstart || $xnn_flag) ? 0 : 1;
       }
 
-      if(! $do_ignore) { 
+      if($do_ignore) { 
+        $nskipped++;
+      }
+      else { # ! $do_ignore
         # per-feature values that are modified if we have an exception that covers all errors for this feature
         my $do_misc_feature = 0;
         my $do_start_carrot = 0;
@@ -7277,7 +7278,7 @@ sub output_feature_tbl_all_sequences {
           $do_start_carrot = ($ftr_err_str =~ m/b5e/) ? 1 : 0;
           $do_stop_carrot  = ($ftr_err_str =~ m/b3e/) ? 1 : 0;
           $do_pred_stop = processFeatureErrorsForFTable($ftr_err_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, 
-                                                        \@ftr_note_A, \@seq_error_A, \@seq_error_product_A, \@seq_warning_A, \@seq_warning_product_A, $FH_HR);
+                                                        \@ftr_note_A, \@seq_error_A, \@seq_error_product_A, $FH_HR);
           if(scalar(@ftr_note_A) > 0) { 
             $do_misc_feature = 1;
             $feature_type = "misc_feature";
@@ -7362,7 +7363,6 @@ sub output_feature_tbl_all_sequences {
     #######################################
     # done with this sequence, determine what type of output we will have 
     my $noutftr  = scalar(@ftout_AH);
-    my $nwarn    = scalar(@seq_warning_A);
     my $nerror   = scalar(@seq_error_A);
     my $nnote    = scalar(@seq_note_A);
 
@@ -7376,9 +7376,9 @@ sub output_feature_tbl_all_sequences {
 
     # sequences only pass if:
     # - at least one feature is annotated ($noutftr > 0)
-    # - zero notes, errors and warnings
-    # - no sequences skipped ($nskipped == 0)
-    my $do_pass = ($noutftr > 0 && $nnote == 0 && $nwarn == 0 && $nerror == 0 && $nskipped == 0) ? 1 : 0;
+    # - zero notes and errors
+    # - no features skipped ($nskipped == 0)
+    my $do_pass = ($noutftr > 0 && $nnote == 0 && $nerror == 0 && $nskipped == 0) ? 1 : 0;
     # sanity check, if we are passing, we should also have set codon_start for all features
     if(($do_pass) && ($missing_codon_start_flag)) { 
       DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
@@ -7405,7 +7405,7 @@ sub output_feature_tbl_all_sequences {
         print $fail_ftbl_FH $ftout_AH[$i]{"output"};
         print $long_ftbl_FH $ftout_AH[$i]{"long_output"};
       }
-      if(($nwarn + $nerr) > 0) { 
+      if($nerr > 0) { 
         print $fail_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         print $long_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         for(my $e = 0; $e < scalar(@seq_error_A); $e++) { 
@@ -7422,21 +7422,7 @@ sub output_feature_tbl_all_sequences {
             }
           }
         }
-        for(my $w = 0; $w < scalar(@seq_warning_A); $w++) { 
-          my $warning_str     = $seq_warning_A[$w];
-          my $warning_product = $seq_warning_product_A[$w];
-          foreach my $warning_line (split(/\:\:\:/, $warning_str)) { 
-            print $fail_ftbl_FH "WARNING: " . $warning_str . "\n";  
-            print $long_ftbl_FH "WARNING: " . $warning_str . "\n"; 
-            if($warning_line =~ /([^\:]+)\:(.+)$/) {
-              print $errors_FH ($accn_name . "\t" . $1 . "\t" . $warning_product . "\t" . $2 . "\n");
-            }
-            else {
-              DNAORG_FAIL("ERROR in $sub_name, unable to split warning_str for output: $warning_str", 1, $ofile_info_HHR->{"FH"});
-            }
-          }
-        }
-      } # end of 'if(($nwarn + $nerr) > 0)'
+      } # end of 'if($nerr > 0)'
     }
     if((defined $class_errors_per_seq_HR) &&
        (exists $class_errors_per_seq_HR->{$seq_name})) { 
