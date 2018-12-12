@@ -8300,7 +8300,87 @@ sub getNumExtraOrDuplicateFeatures() {
   return $ret_size;
 }
 
+#################################################################
+# Subroutine: formatTabDelimitedStringForErrorListFile()
+# Incept:     EPN, Wed Dec 12 10:57:59 2018
+#
+# Purpose:    Given a sequence name and a string <error_str> that
+#             describes an error, return a tab-delimited one that is
+#             ready for output to an 'errors.list' file.
+#
+#             That return string will have 4 tokens:
+#             <sequence-name>
+#             <error-name>
+#             <feature-name>
+#             <error-description>
+#
+#             The input string must be in the following format:
+#             <error-name>
+# Arguments:
+#   $seqname:   name of sequence
+#   $errstr:    error string to convert
+#   $FH_HR:     ref to hash of file handles, including 'log'
+#             
+# Returns:    $err_tab_str: tab delimited string in format described above.
+#
+# Dies: If $errstr is not in required format
+#
+#################################################################
+sub formatTabDelimitedStringForErrorListFile() {
+  my $sub_name  = "formatTabDelimitedStringForErrorListFile";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($seqname, $errstr, $FH_HR) = (@_);
+
+  printf("HEYA 0 $seqname $errstr\n");
+
+  # first replace any '_' characters with single spaces
+  chomp $errstr;
+  $errstr =~ s/\_/ /g;
+
+  printf("HEYA 1 $seqname $errstr\n");
+
+  my $error_name   = undef;
+  my $feature_name = undef;
+  my $error_desc   = undef;
+
+  if($errstr =~ /^([^\:]+)\:\s*(.+)$/) {
+    ($error_name, $error_desc) = ($1, $2);
+    printf("HEYA 2 error_name: $error_name error_desc: $error_desc\n");
+    if($error_desc =~ /^\([^\)]+\)\s*(.*)$/) { 
+      $feature_name = $1;
+      $error_desc   = $2;
+    }
+    if(! defined $feature_name) { 
+      $feature_name = "*sequence*";
+    }
+  }
+  elsif($errstr =~ /^([^\[]+)\[([^\]]+)\]\;$/) {
+    # example from dnaorg_classify.pl:
+    #Unexpected Classification[NC 001959,NC 029647 was specified, but NC 039476 is predicted];
+    ($error_name, $error_desc) = ($1, $2);
+    printf("HEYA 3 error_name: $error_name error_desc: $error_desc\n");
+    $feature_name = "*sequence*";
+  }
+  elsif($errstr =~ /^([^\[\:]+)\;$/) {
+    # example from dnaorg_classify.pl:
+    #No Annotation;
+    ($error_name) = ($1);
+    printf("HEYA 4 error_name: $error_name error_desc: $error_desc\n");
+    $feature_name = "*sequence*";
+  }
+  else { 
+    DNAORG_FAIL("ERROR in $sub_name, unable to parse input error string: $errstr", 1, $FH_HR);
+  }
+
+  if($error_desc eq "") { 
+    $error_desc = "-";
+  }
+  return $seqname . "\t" . $error_name . "\t" . $feature_name . "\t" . $error_desc;
+}
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
-return 1;
+    return 1;
 ###########################################################################

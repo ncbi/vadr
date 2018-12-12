@@ -701,7 +701,7 @@ if($do_class_errors) {
   if(! -s $class_errors_file) { 
     die "ERROR file $class_errors_file specified with --classerrors does not exist or is empty"; 
   }
-  parse_class_errors_file($class_errors_file, \%class_errors_per_seq_H, $ofile_info_HH{"FH"});
+  parse_class_errors_list_file($class_errors_file, \%class_errors_per_seq_H, $ofile_info_HH{"FH"});
 }
 
 ###################################################
@@ -1327,9 +1327,9 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",     $out_root . ".errors.s
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",  $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",  $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",  $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",  $out_root . ".ap.list",           1, "list of passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",  $out_root . ".af.list",           1, "list of failing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "error_ftbl", $out_root . ".error.list",        1, "list of errors in the sequence tables");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",   $out_root . ".ap.list",           1, "list of passing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",   $out_root . ".af.list",           1, "list of failing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errors_list", $out_root . ".errors.list",       1, "list of errors in the sequence tables");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -7164,12 +7164,12 @@ sub output_feature_tbl_all_sequences {
       $class_errors_per_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $pass_ftbl_FH = $FH_HR->{"pass_ftbl"};  # feature table for PASSing sequences
-  my $fail_ftbl_FH = $FH_HR->{"fail_ftbl"};  # feature table for FAILing sequences
-  my $long_ftbl_FH = $FH_HR->{"long_ftbl"};  # long feature table for all sequences
-  my $pass_list_FH = $FH_HR->{"pass_list"};  # list of PASSing seqs
-  my $fail_list_FH = $FH_HR->{"fail_list"};  # list of FAILing seqs
-  my $errors_FH    = $FH_HR->{"error_ftbl"}; # list of errors 
+  my $pass_ftbl_FH = $FH_HR->{"pass_ftbl"};   # feature table for PASSing sequences
+  my $fail_ftbl_FH = $FH_HR->{"fail_ftbl"};   # feature table for FAILing sequences
+  my $long_ftbl_FH = $FH_HR->{"long_ftbl"};   # long feature table for all sequences
+  my $pass_list_FH = $FH_HR->{"pass_list"};   # list of PASSing seqs
+  my $fail_list_FH = $FH_HR->{"fail_list"};   # list of FAILing seqs
+  my $errors_FH    = $FH_HR->{"errors_list"}; # list of errors 
 
   my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
 
@@ -7362,15 +7362,10 @@ sub output_feature_tbl_all_sequences {
     # OUTPUT section 
     #######################################
     # done with this sequence, determine what type of output we will have 
-    # first, add any classification errors from %{$class_errors_per_seq_HR}
+    my $has_class_errors = 0;
     if((defined $class_errors_per_seq_HR) &&
        (exists $class_errors_per_seq_HR->{$seq_name})) { 
-      my @class_errors_A = split("\n", $class_errors_per_seq_HR->{$seq_name});
-      foreach my $class_error (@class_errors_A) { 
-        push(@seq_error_A, $class_error);
-        push(@seq_error_product_A, "-"); 
-        # classification errors are per sequence, not per-feature, so we use '-' to denote the feature
-      }
+      $has_class_errors = 1; 
     }
 
     my $noutftr  = scalar(@ftout_AH);
@@ -7389,9 +7384,10 @@ sub output_feature_tbl_all_sequences {
     # - at least one feature is annotated ($noutftr > 0)
     # - zero notes and errors
     # - no features skipped ($nskipped == 0)
-    my $do_pass = ($noutftr > 0 && $nnote == 0 && $nerror == 0 && $nskipped == 0) ? 1 : 0;
-    # sanity check, if we are passing, we should also have set codon_start for all features
-    if(($do_pass) && ($missing_codon_start_flag)) { 
+    my $do_pass = ($noutftr > 0 && $nnote == 0 && $nerror == 0 && $nskipped == 0 && (! $has_class_errors)) ? 1 : 0;
+
+    # sanity check, if we have no notes, errors and didn't skip anything, we should also have set codon_start for all features
+    if($noutftr > 0 && $nnote == 0 && $nerror == 0 && $nskipped == 0 && ($missing_codon_start_flag)) { 
       DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
     }
               
@@ -7416,7 +7412,7 @@ sub output_feature_tbl_all_sequences {
         print $fail_ftbl_FH $ftout_AH[$i]{"output"};
         print $long_ftbl_FH $ftout_AH[$i]{"long_output"};
       }
-      if($nerr > 0) { 
+      if($nerr > 0 || $has_class_errors) { 
         print $fail_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         print $long_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         for(my $e = 0; $e < scalar(@seq_error_A); $e++) { 
@@ -7431,7 +7427,13 @@ sub output_feature_tbl_all_sequences {
             DNAORG_FAIL("ERROR in $sub_name, unable to split error_line for output: $error_line", 1, $ofile_info_HHR->{"FH"});
           }
         }
-      } # end of 'if($nerr > 0)'
+        if($has_class_errors) { 
+          print $errors_FH ($class_errors_per_seq_HR->{$seq_name});
+          my $ftable_error_str = error_list_output_to_ftable_errors($seq_name, $class_errors_per_seq_HR->{$seq_name}, $ofile_info_HHR->{"FH"});
+          print $fail_ftbl_FH $ftable_error_str;
+          print $long_ftbl_FH $ftable_error_str;
+        }
+      } # end of 'if($nerr > 0) || $has_class_errors'
     }
   } # end of loop over sequences
 
@@ -10519,15 +10521,15 @@ sub helper_ftable_add_qualifier_from_ftr_results {
 }
 
 #################################################################
-# Subroutine:  helper_ftable_add_qualifier_from_ftr_results()
-# Incept:      EPN, Tue Oct 30 13:52:19 2018
+# Subroutine:  parse_class_errors_list_file
+# Incept:      EPN, Wed Dec 12 13:44:21 2018
 #
-# Purpose:    Add a qualifier line to a string that will be 
-#             part of a feature table output.
+# Purpose:    Parse the --classerrors input file
 #
 # Arguments: 
 #  $in_file:       file to parse with per-sequence classification errors
 #  $errors_seq_HR: ref to hash of classification errors per sequence, filled here
+#                  with unmodified lines from $in_file
 #  $FH_HR:         ref to hash of file handles
 #
 # Returns:    "" if $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key} does not exist
@@ -10536,8 +10538,8 @@ sub helper_ftable_add_qualifier_from_ftr_results {
 # Dies: never
 #
 ################################################################# 
-sub parse_class_errors_file { 
-  my $sub_name = "parse_class_errors_file";
+sub parse_class_errors_list_file { 
+  my $sub_name = "parse_class_errors_list_file";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -10549,19 +10551,70 @@ sub parse_class_errors_file {
     if($line !~ m/^\#/) { 
       chomp $line;
       my @el_A = split(/\t/, $line);
-      ##sequence	unexpected-features-that-cause-failure
-      #MG763371.1      Wrong Classification: Sequence was classified differently from what was specified by the user [GII was specified, but GI is predicted (NC_001959 is best match)]
-      if(scalar(@el_A) != 2) { 
+      ##sequence	error	feature	error-description
+      #MG763368.1	Unexpected Classification	*sequence*	NC 001959,NC 029647 was specified, but NC 039476 is predicted
+      if(scalar(@el_A) != 4) { 
         foreach my $tok (@el_A) { printf("tok: $tok\n"); }
         DNAORG_FAIL("ERROR in $sub_name, did not find exactly 2 tokens in line $line", 1, $FH_HR);
       }
-      my ($seq, $error_str) = @el_A;
-      if($error_str ne "-") { 
-        $errors_seq_HR->{$seq} .= $error_str . "\n";
-      }
+      my $seq = $el_A[0];
+      $errors_seq_HR->{$seq} .= $line . "\n";
     }
   }
   close(IN);
 
   return;
+}
+
+
+#################################################################
+# Subroutine: error_list_output_to_ftable_errors()
+# Incept:     EPN, Wed Dec 12 14:02:24 2018
+#
+# Purpose:    Given output from a error list file, with 4 tab-delimited
+#             tokens per new-line delimited string, return a string
+#             that can be output to a feature table with the 
+#             same information.
+#
+#             The input will be new-line delimited strings, each of 
+#             which will have 4 tab-delimited tokens:
+#             <sequence-name>
+#             <error-name>
+#             <feature-name>
+#             <error-description>
+#
+# Arguments:
+#   $in_seqname: expected name of sequence
+#   $errliststr: error string to convert
+#   $FH_HR:      ref to hash of file handles, including 'log'
+#             
+# Returns:    $err_ftbl_str: feature table strings in the format described above.
+#
+# Dies: If $errliststr is not in required format, or if it includes
+#       data for a sequence other than <$seqname>
+#
+#################################################################
+sub error_list_output_to_ftable_errors { 
+  my $sub_name  = "error_list_output_to_ftable_errors";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_seqname, $errliststr, $FH_HR) = (@_);
+
+  my @errliststr_A = split(/\n/, $errliststr);
+
+  my $retstr = "";
+  foreach my $errlistline (@errliststr_A) { 
+    my @el_A = split(/\t/, $errlistline); 
+    if(scalar(@el_A) != 4) { 
+      DNAORG_FAIL("ERROR in $sub_name, did not read exactly 4 tab-delimited tokens in line: $errlistline", 1, $FH_HR);
+    }
+    my ($seqname, $error_name, $feature_name, $error_desc) = (@el_A);
+    if($in_seqname ne $seqname) { 
+      DNAORG_FAIL("ERROR in $sub_name, read unexpected sequence name $seqname != $in_seqname in line: $errlistline", 1, $FH_HR);
+    }
+    $retstr .= sprintf("ERROR: $error_name: %s$error_desc\n", ($feature_name eq "*sequence*") ? "" : "($feature_name) ");
+  }
+
+  return $retstr;
 }

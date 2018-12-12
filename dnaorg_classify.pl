@@ -288,19 +288,19 @@ my @early_cmd_A = (); # array of commands we run before our log file is opened
 # check if our output dir $symbol exists
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
-  $cmd = "rm -rf $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+##!##  $cmd = "rm -rf $dir";
+##!## if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+##!##  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
-  $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR a file named $dir already exists. Remove it, or use -###f to overwrite it."; }
+##!##  $cmd = "rm $dir";
+##!##  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+##!##  else                        { die "ERROR a file named $dir already exists. Remove it, or use -###f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
+##!##runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -594,8 +594,8 @@ else {
   my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
 
   my $cls_tot_len_nt = sumHashValues(\%cls_seqlen_H);
-  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
-                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
+##!##  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
+##!##                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
 
   # parse nhmmscan tblout file to create infotbl file and determine pass/fails
@@ -609,11 +609,13 @@ else {
     }
   }
 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "infotbl",       $out_root . ".infotbl",            1, "Per-sequence hit and classification information");
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "ufeature-all",  $out_root . ".ufeature.all.list",  1, "List of all unexpected features per sequence");
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "ufeature-fail", $out_root . ".ufeature.fail.list", 1, "List of all unexpected features that cause failure per sequence");
-  printf { $ofile_info_HH{"FH"}{"ufeature-all"}  } "#sequence\tunexpected-features\n";
-  printf { $ofile_info_HH{"FH"}{"ufeature-fail"} } "#sequence\tunexpected-features-that-cause-failure\n";
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "infotbl",         $out_root . ".infotbl",          1, "Per-sequence hit and classification information");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "all_errors_list", $out_root . ".all.errors.list",  1, "List of errors (unexpected features that cause failure) for all sequences");
+  if($do_annotate) { 
+    openAndAddFileToOutputInfo(\%ofile_info_HH, "na_errors_list",  $out_root . ".noannot.errors.list",  1, "List of errors (unexpected features that cause failure) for sequences that will not be annotated");
+  }
+  printf { $ofile_info_HH{"FH"}{"all_errors_list"}  } "#sequence\terror\tfeature\terror-description\n";
+  printf { $ofile_info_HH{"FH"}{"na_errors_list"}   } "#sequence\terror\tfeature\terror-description\n";
 
   output_match_info_headers($ofile_info_HH{"FH"}{"infotbl"}, $query_width, \%opt_HH); 
   my %pass_fail_H = (); # key is sequence name, value is "PASS" or "FAIL"Hash of pass/fail values:
@@ -807,7 +809,7 @@ else {
             if(opt_IsUsed("--xindeltol",  \%opt_HH)) { $annotate_cmd .= sprintf(" --xindeltol  %s", opt_Get("--xindeltol",  \%opt_HH)); }
             if(opt_IsUsed("--xlonescore", \%opt_HH)) { $annotate_cmd .= sprintf(" --xlonescore %s", opt_Get("--xlonescore", \%opt_HH)); }
             if(opt_IsUsed("--local",      \%opt_HH)) { $annotate_cmd .= " --local"; }
-            if(opt_IsUsed("--expclass",   \%opt_HH)) { $annotate_cmd .= " --classerrors " . $ofile_info_HH{"fullpath"}{"ufeature-fail"}; }
+            if(opt_IsUsed("--expclass",   \%opt_HH)) { $annotate_cmd .= " --classerrors " . $ofile_info_HH{"fullpath"}{"all_errors_list"}; }
 
             if($infasta_mode) { 
               $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
@@ -1165,10 +1167,10 @@ sub parse_expclass_file {
       }
       my ($seqname, $class_str) = (@el_A);
       if(! exists $cls_seqlen_HR->{$seqname}) { 
-        DNAORG_FAIL("ERROR in $sub_name, while parsing $expclass_file, did not recognize the sequence $seqname in line: $line", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, while parsing $expclass_file, did not recognize the sequence $seqname (not in input file?) in line: $line", 1, $FH_HR);
       }
       if(exists $expref_HAR->{$seqname}) { 
-        DNAORG_FAIL("ERROR in $sub_name, while parsing $expclass_file, read ognize the sequence $seqname twice", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, while parsing $expclass_file, read the sequence $seqname twice", 1, $FH_HR);
       }
       my @class_A = split(",", $class_str);
       foreach my $class (@class_A) { 
@@ -1236,19 +1238,19 @@ sub output_match_info_headers {
   print  $out_FH  "# unexpected   \n";
   print  $out_FH  "# features:    unexpected features for this sequence\n";
   print  $out_FH  "#              Possible values in unexpected features column:\n";
-  printf $out_FH ("#              LowScore:     'sc/nt'   < %.3f (threshold settable with --lowscthresh)\n",    opt_Get("--lowscthresh", $opt_HHR));
-  printf $out_FH ("#              VeryLowScore: 'sc/nt'   < %.3f (threshold settable with --vlowscthresh)\n",   opt_Get("--vlowscthresh", $opt_HHR));
-  printf $out_FH ("#              LowDiff:      'diff/nt' < %.3f (threshold settable with --lowdiffthresh)\n",  opt_Get("--lowdiffthresh", $opt_HHR));
-  printf $out_FH ("#              VeryLowDiff:  'diff/nt' < %.3f (threshold settable with --vlowdiffthresh)\n", opt_Get("--vlowdiffthresh", $opt_HHR));
-  printf $out_FH ("#              MinusStrand:  top hit is on minus strand\n");
-  printf $out_FH ("#              HighBias:     'bias' > (%.3f * ('bias' + 'score')) (threshold settable with --biasfract)\n", opt_Get("--biasfract", $opt_HHR));
+  printf $out_FH ("#              Low_Score:      'sc/nt'   < %.3f (threshold settable with --lowscthresh)\n",    opt_Get("--lowscthresh", $opt_HHR));
+  printf $out_FH ("#              Very_Low_Score: 'sc/nt'   < %.3f (threshold settable with --vlowscthresh)\n",   opt_Get("--vlowscthresh", $opt_HHR));
+  printf $out_FH ("#              Low_Diff:       'diff/nt' < %.3f (threshold settable with --lowdiffthresh)\n",  opt_Get("--lowdiffthresh", $opt_HHR));
+  printf $out_FH ("#              Very_Low_Diff:  'diff/nt' < %.3f (threshold settable with --vlowdiffthresh)\n", opt_Get("--vlowdiffthresh", $opt_HHR));
+  printf $out_FH ("#              Minus_Strand:   top hit is on minus strand\n");
+  printf $out_FH ("#              High_Bias:     'bias' > (%.3f * ('bias' + 'score')) (threshold settable with --biasfract)\n", opt_Get("--biasfract", $opt_HHR));
   if(opt_IsUsed("--expclass", $opt_HHR)) { 
     if(opt_IsUsed("--ectoponly", $opt_HHR)) { 
-      printf $out_FH ("#              UnexpectedClassification: best-scoring model is not a model representing the expected classification for this sequence\n");
+      printf $out_FH ("#              Unexpected_Classification: best-scoring model is not a model representing the expected classification for this sequence\n");
       printf $out_FH ("#                                        (read from %s (--expclass)) and --ectoponly option used.\n", opt_Get("--expclass", $opt_HHR));
     }
     else { 
-      printf $out_FH ("#              UnexpectedClassification: sequence does not have summed bit score per nucleotide within %.3f of top model (threshold settable with --ecthresh)\n", opt_Get("--ecthresh", $opt_HHR));
+      printf $out_FH ("#              Unexpected_Classification: sequence does not have summed bit score per nucleotide within %.3f of top model (threshold settable with --ecthresh)\n", opt_Get("--ecthresh", $opt_HHR));
       printf $out_FH ("#                                        to any model listed in file %s (from --expclass options)\n", opt_Get("--expclass", $opt_HHR));  
     }
   }
@@ -1420,20 +1422,27 @@ sub output_one_sequence {
   
   my ($query_width, $seq, $seqlen, $cur_tbldata_AHR, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $opt_HHR, $FH_HR) = (@_);
 
-  my $infotbl_FH = $FH_HR->{"infotbl"};
-  my $uall_FH    = $FH_HR->{"ufeature-all"};
-  my $ufail_FH   = $FH_HR->{"ufeature-fail"};
+  my $infotbl_FH   = $FH_HR->{"infotbl"};
+  my $all_elist_FH = $FH_HR->{"all_errors_list"};
+  my $na_elist_FH  = (opt_IsUsed("-A", $opt_HHR)) ? $FH_HR->{"na_errors_list"} : undef;
+
+  my $ufeature_all_str  = "";
+  my $ufeature_fail_str = "";
+
+  my $no_annot_flag  = 0; # set to '1' if No_Annotation error
+  my $unexp_tax_flag = 0; # set to '1' if Unexpexected_Taxonomy error
 
   my $nhit = 0; 
   if(defined $cur_tbldata_AHR) { 
     $nhit = scalar(@{$cur_tbldata_AHR});
   }
   if($nhit == 0) { 
+    $ufeature_fail_str = "No_Annotation;";
     printf $infotbl_FH ("%-*s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
-                        $query_width, $seq, $seqlen, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "--", "FAIL", "NoHits;");
-
+                        $query_width, $seq, $seqlen, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "--", "FAIL", $ufeature_fail_str);
     push(@{$seqlist_HAR->{"non-assigned"}}, $seq);
     $pass_fail_HR->{$seq} = "FAIL";
+    $no_annot_flag = 1;
   } 
   else { 
     # determine which unexpected features cause a sequence fo tfail
@@ -1494,11 +1503,10 @@ sub output_one_sequence {
     my $score_class = "A"; # set to 'B' or 'C' below if below threshold
     my $diff_class  = "A"; # set to 'B' or 'C' below if below threshold
     $pass_fail_HR->{$seq} = "PASS"; # will change to FAIL below if necessary
-    my $ufeature_all_str  = "";
-    my $ufeature_fail_str = "";
     my $cur_ufeature_str  = undef;
+    
     if($cur_prcdata_AH[0]{"bitscpnt"} < $vlowscthresh_opt) { 
-      $cur_ufeature_str = "VeryLowScore(" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $vlowscthresh_opt) . ");;"; 
+      $cur_ufeature_str = "Very_Low_Score[" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $vlowscthresh_opt) . "];"; 
       $ufeature_all_str .= $cur_ufeature_str;
       $score_class = "C";
       if($vlowsc_fails) { 
@@ -1507,7 +1515,7 @@ sub output_one_sequence {
       }
     }
     elsif($cur_prcdata_AH[0]{"bitscpnt"} < $lowscthresh_opt) { 
-      $cur_ufeature_str = "LowScore(" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $lowscthresh_opt) . ");;"; 
+      $cur_ufeature_str = "Low_Score[" . sprintf("%.3f", $cur_prcdata_AH[0]{"bitscpnt"}) . "<" . sprintf("%.3f", $lowscthresh_opt) . "];"; 
       $ufeature_all_str .= $cur_ufeature_str;
       $score_class = "B";
       if(($lowsc_fails) && ($seqlen > $lowsc_minlen)) { 
@@ -1517,7 +1525,7 @@ sub output_one_sequence {
     }
     if(defined $diff_bitscpnt) { 
       if($diff_bitscpnt < $vlowdiffthresh_opt) { 
-        $cur_ufeature_str = "VeryLowDiff(" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $vlowdiffthresh_opt) . ");;"; 
+        $cur_ufeature_str = "Very_Low_Diff[" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $vlowdiffthresh_opt) . "];"; 
         $ufeature_all_str .= $cur_ufeature_str;
         $diff_class = "C";
         if($vlowdiff_fails) { 
@@ -1526,7 +1534,7 @@ sub output_one_sequence {
         }
       }
       elsif($diff_bitscpnt < $lowdiffthresh_opt) { 
-        $cur_ufeature_str = "LowDiff(" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $lowdiffthresh_opt) . ");;"; 
+        $cur_ufeature_str = "Low_Diff[" . $diff_bitscpnt2print . "<" . sprintf("%.3f", $lowdiffthresh_opt) . "];"; 
         $ufeature_all_str .= $cur_ufeature_str;
         $diff_class = "B";
         if($lowdiff_fails && ($seqlen > $lowdiff_minlen)) { 
@@ -1536,7 +1544,7 @@ sub output_one_sequence {
       }
     }
     if($cur_prcdata_AH[0]{"strand"} eq "minus") { 
-      $cur_ufeature_str = "MinusStrand;;";
+      $cur_ufeature_str = "Minus_Strand;";
       $ufeature_all_str .= $cur_ufeature_str;
       if($minus_fails) { 
         $pass_fail_HR->{$seq} = "FAIL"; 
@@ -1545,43 +1553,59 @@ sub output_one_sequence {
     }
     if($cur_prcdata_AH[0]{"biassum"} > (($biasfract_opt * ($cur_prcdata_AH[0]{"bitscsum"} + $cur_prcdata_AH[0]{"biassum"})) + $small_value)) { 
       # $cur_prcdata_AH[0]["bitscsum"} has already had bias subtracted from it so we need to add it back in before we compare with biasfract
-      $cur_ufeature_str = "HighBias;;";
+      $cur_ufeature_str = sprintf("High_Bias[%.1f>(%.1f*(%.1f+%.1f))]", $cur_prcdata_AH[0]{"biassum"}, $biasfract_opt, $cur_prcdata_AH[0]{"bitscsum"}, $cur_prcdata_AH[0]{"biassum"});
       $ufeature_all_str .= $cur_ufeature_str;
       if($bias_fails) { 
         $pass_fail_HR->{$seq} = "FAIL"; 
         $ufeature_fail_str .= $cur_ufeature_str;
       }
     }
-    # determine if we have an unexpected classification:
-    # if the difference between the top model's bitscpernt (bit score per nt) is more than 
-    # $expclassthresh_opt greater than the highest bitscpernt of all models in @{$expref_HAR->{$seq}}
-    # then we have an UnexpectedClassification; unexpected feature
-    if(exists $expref_HAR->{$seq}) { 
-      my $found_match = 0;
-      my $top_bitscpernt = $cur_prcdata_AH[0]{"bitscpnt"};
-      for(my $m = 0; $m < scalar(@{$expref_HAR->{$seq}}); $m++) { 
-        my $cur_model = $expref_HAR->{$seq}[$m];
-        if(exists $cur_mdlmap_H{$cur_model}) { 
-          # there is at least one hit to this model, check if the difference is within threshold
-          #printf("HEYA top_model: " . $cur_prcdata_AH[0]{"model"} . " top_bitpnt: $top_bitscpernt; cur_model: $cur_model bitpnt: " . $cur_prcdata_AH[$cur_mdlmap_H{$cur_model}]{"bitscpnt"} . "\n");
-          if(($top_bitscpernt - $cur_prcdata_AH[$cur_mdlmap_H{$cur_model}]{"bitscpnt"}) < $expclassthresh_opt) { 
-            #printf("\tHEYA match\n");
-            $found_match = 1; 
-            $m = scalar(@{$expref_HAR->{$seq}}); # breaks loop
+    # determine if the top match is to a model we are not going to annotate for,
+    # if so, then this is an Unexpected_Taxonomy ufeature. We only look for this if -A is used
+    if($do_annotate) { 
+      if(! $annotate_ref_list_seqname_H{$cur_prcdata_AH[0]{"model"}}) { 
+        $pass_fail_HR->{$seq} = "FAIL"; 
+        my $best_match_str = $cur_prcdata_AH[0]{"model"};
+        $cur_ufeature_str = sprintf("Unexpected_Taxonomy[best_match_is_to_%s]", $best_match_str);
+        $ufeature_all_str  .= $cur_ufeature_str;
+        $ufeature_fail_str .= $cur_ufeature_str; # always causes a failure
+        $unexp_tax_flag = 1;
+      }
+    }
+
+    if(! $unexp_tax_flag) { # we can only have a Unexpected_Classification ufeature if we do not have a Unexpected_Taxonomy ufeature
+      # determine if we have an unexpected classification:
+      # if the difference between the top model's bitscpernt (bit score per nt) is more than 
+      # $expclassthresh_opt greater than the highest bitscpernt of all models in @{$expref_HAR->{$seq}}
+      # then we have an UnexpectedClassification; unexpected feature
+      if(exists $expref_HAR->{$seq}) { 
+        my $found_match = 0;
+        my $top_bitscpernt = $cur_prcdata_AH[0]{"bitscpnt"};
+        for(my $m = 0; $m < scalar(@{$expref_HAR->{$seq}}); $m++) { 
+          my $cur_model = $expref_HAR->{$seq}[$m];
+          if(exists $cur_mdlmap_H{$cur_model}) { 
+            # there is at least one hit to this model, check if the difference is within threshold
+            #printf("HEYA top_model: " . $cur_prcdata_AH[0]{"model"} . " top_bitpnt: $top_bitscpernt; cur_model: $cur_model bitpnt: " . $cur_prcdata_AH[$cur_mdlmap_H{$cur_model}]{"bitscpnt"} . "\n");
+            if(($top_bitscpernt - $cur_prcdata_AH[$cur_mdlmap_H{$cur_model}]{"bitscpnt"}) < $expclassthresh_opt) { 
+              #printf("\tHEYA match\n");
+              $found_match = 1; 
+              $m = scalar(@{$expref_HAR->{$seq}}); # breaks loop
+            }
+          }
+        }
+        if(! $found_match) { 
+          $cur_ufeature_str = sprintf("Unexpected_Classification[%s_was_specified,_but_%s_is_predicted];", join(",", @{$expref_HAR->{$seq}}), $cur_prcdata_AH[0]{"model"});
+          $ufeature_all_str .= $cur_ufeature_str;
+          if($unexpclass_fails) { 
+            $pass_fail_HR->{$seq} = "FAIL"; 
+            $ufeature_fail_str .= $cur_ufeature_str;
           }
         }
       }
-      if(! $found_match) { 
-        $cur_ufeature_str = "UnexpectedClassification;;";
-        if($unexpclass_fails) { 
-          $pass_fail_HR->{$seq} = "FAIL"; 
-          $ufeature_fail_str .= $cur_ufeature_str;
-        }
-      }
+      if($ufeature_all_str eq "")  { $ufeature_all_str  = "-"; }
+      if($ufeature_fail_str eq "") { $ufeature_fail_str = "-"; }
     }
-    if($ufeature_all_str eq "")  { $ufeature_all_str  = "-"; }
-    if($ufeature_fail_str eq "") { $ufeature_fail_str = "-"; }
-    
+
     printf $infotbl_FH ("%-*s  %6s  %9s  %7.1f  %5.3f  %8g  %8.3f  %7.1f  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
                         $query_width, $seq, $seqlen, 
                         $cur_prcdata_AH[0]{"model"},
@@ -1599,10 +1623,17 @@ sub output_one_sequence {
                         $score_class . $diff_class,
                         $pass_fail_HR->{$seq},
                         $ufeature_all_str);
-    printf $uall_FH  "$seq\t$ufeature_all_str\n";
-    printf $ufail_FH "$seq\t$ufeature_fail_str\n";
     # Add this seq to the hash key that corresponds to its RefSeq
     push(@{$seqlist_HAR->{$cur_prcdata_AH[0]{"model"}}}, $seq);
+  } # end of 'else' entered if $nhit > 0
+
+  # output to the errors.list files
+  if($ufeature_fail_str ne "-") { 
+    my $error_list_output = ufeature_str_to_error_list_output($seq, $ufeature_fail_str, $FH_HR);
+    print $all_elist_FH $error_list_output;
+    if((defined $na_elist_FH) && ($no_annot_flag || $unexp_tax_flag)) { # we won't annotate this sequence, need to output errors to a special file
+      print $na_elist_FH  $error_list_output;
+    }
   }
 
   return;
@@ -1698,6 +1729,73 @@ sub process_tbldata {
   } @{$cur_prcdata_AHR};
 
   return;
+}
+
+#################################################################
+# Subroutine: ufeature_str_to_error_list_output()
+# Incept:     EPN, Wed Dec 12 10:57:59 2018
+#
+# Purpose:    Given a sequence name and a ufeature string that
+#             describes an error, return a tab-delimited one that is
+#             ready for output to an 'errors.list' file.
+#
+#             The return string will have 1 or more lines each separated by
+#             a newline character (\n) and with 4 tab-delimited tokens:
+#             <sequence-name>
+#             <error-name>
+#             <feature-name>
+#             <error-description>
+#
+# Arguments:
+#   $seqname:   name of sequence
+#   $errstr:    error string to convert
+#   $FH_HR:     ref to hash of file handles, including 'log'
+#             
+# Returns:    $err_tab_str: tab delimited string in format described above.
+#
+# Dies: If $errstr is not in required format
+#
+#################################################################
+sub ufeature_str_to_error_list_output { 
+  my $sub_name  = "ufeature_str_to_error_list_output";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($seqname, $errstr, $FH_HR) = (@_);
+
+  # first replace any '_' characters with single spaces
+  chomp $errstr;
+  $errstr =~ s/\-/ /g;
+
+  my @errstr_A = split(/\;/, $errstr);
+
+  # all classification errors are not feature specific but rather for the full sequence,
+  my $feature_name = "*sequence*";
+
+  my $retstr = "";
+  foreach my $errline (@errstr_A) { 
+    my $error_name   = undef;
+    my $error_desc   = undef;
+    
+    if($errline =~ /^([^\[]+)\[([^\]]+)\]$/) {
+      # with error description, example
+      #Unexpected Classification[NC 001959,NC 029647 was specified, but NC 039476 is predicted];
+      ($error_name, $error_desc) = ($1, $2);
+      $feature_name = "*sequence*";
+    }
+    elsif($errline =~ /^([^\[\:]+)$/) {
+      # without error description, example
+      #No Annotation;
+      ($error_name) = ($1);
+      $error_desc = "-";
+    }
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, unable to parse input error line: $errline", 1, $FH_HR);
+    }
+
+    $retstr .= $seqname . "\t" . $error_name . "\t" . $feature_name . "\t" . $error_desc . "\n";
+  }
+  return $retstr;
 }
 
 #################################################################################
