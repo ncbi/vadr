@@ -131,22 +131,25 @@ opt_Add("--lowdiffminlen",  "integer", 1001,                  5,   undef,   unde
 opt_Add("--nolowscminlen",  "boolean", 0,                     5,   undef,   undef,        "no minimum length for which LowScore causes a seq to FAIL",       "no minimum length for which LowScore causes a seq to FAIL",                    \%opt_HH, \@opt_order_A);
 opt_Add("--nolowdiffminlen","boolean", 0,                     5,   undef,   undef,        "no minimum length for which LowDiff causes a seq to FAIL",        "no minimum length for which LowDiff causes a seq to FAIL",                     \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"8"} = "options for defining expected classifications";
-#        option               type   default                group  requires incompat   preamble-output                                                   help-output    
-opt_Add("--expclass",    "string",   undef,                   8,     undef, undef,     "read expected classifications for each sequence from <s>",       "read expected classifications for each sequence from <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--ecthresh",    "real",     "0.3",                   8,"--expclass",undef,    "expected classification must be within <x> bits/nt of top match","expected classification must be within <x> bits/nt of top match", \%opt_HH, \@opt_order_A);
-opt_Add("--ectoponly",   "boolean",  0,                       8,"--expclass","--ecthresh","top match must be expected classification",                   "top match must be expected classification", \%opt_HH, \@opt_order_A);
-
 $opt_group_desc_H{"6"} = "options for automatically running dnaorg_annotate.pl for classified sequences";
 #     option            type       default               group   requires       incompat          preamble-output                help-output    
 opt_Add("-A",           "string", undef,                    6,    undef,        "--onlybuild",    "annotate after classifying using build dirs in dir <s>",  "annotate using dnaorg_build.pl build directories in <s> after classifying", \%opt_HH, \@opt_order_A);
 opt_Add("--optsA",      "string", undef,                    6,    "-A",         "--onlybuild",    "read dnaorg_annotate.pl options from file <s>",           "read additional dnaorg_annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--reflistA",   "string", undef,                    6,    "-A",         "--onlybuild",    "only annotate seqs that match to RefSeqs listed in <s>",  "only annotate seqs that match to RefSeqs listed in <s>", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{"7"} = "in combination with -A, options for tuning protein validation with blastx (don't list these in --optsA <f> file)";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
 opt_Add("--xalntol",     "integer",  5,                       7,     "-A", undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xindeltol",   "integer",  27,                      7,     "-A", undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xlonescore",  "integer",  80,                      7,     "-A", undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"8"} = "options for defining expected classifications";
+#        option               type   default                group  requires incompat                preamble-output                                                    help-output    
+opt_Add("--ecmap",         "string",  undef,                   8,     undef,"--onlybuild",          "read map of model names to taxonomic names from file <s>",        "read map of model names to taxonomic names from file <s>",     \%opt_HH, \@opt_order_A);
+opt_Add("--ecall",         "string",  undef,                   8,     undef,"--onlybuild,--eceach", "set expected classification of all seqs to model/tax <s>",        "set expected classification of all seqs to model/tax <s>",     \%opt_HH, \@opt_order_A);
+opt_Add("--eceach",        "string",  undef,                   8,     undef,"--onlybuild,--ecall",  "read expected classification for each sequence from file <s>",    "read expected classification for each sequence from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--ecthresh",        "real",  "0.3",                   8,     undef,"--onlybuild",          "expected classification must be within <x> bits/nt of top match", "expected classification must be within <x> bits/nt of top match", \%opt_HH, \@opt_order_A);
+opt_Add("--ectoponly",    "boolean",  0,                       8,     undef,"--onlybuild",          "top match must be expected classification",                       "top match must be expected classification", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -200,7 +203,9 @@ my $options_okay =
                 'xindeltol=s'      => \$GetOptions_H{"--xindeltol"},
                 'xlonescore=s'     => \$GetOptions_H{"--xlonescore"},
 # options related to expected classifications
-                'expclass=s'       => \$GetOptions_H{"--expclass"},
+                'ecmap=s'          => \$GetOptions_H{"--ecmap"},
+                'ecall=s'          => \$GetOptions_H{"--ecall"},
+                'eceach=s'         => \$GetOptions_H{"--eceach"},
                 'ecthresh=s'       => \$GetOptions_H{"--ecthresh"},
                 'ectoponly'        => \$GetOptions_H{"--ectoponly"});
 
@@ -276,12 +281,29 @@ if(opt_IsUsed("--lowdiffthresh",\%opt_HH) || opt_IsUsed("--vlowdiffthresh",\%opt
   }
 }
 
-# validate that the --expclass file exists
-my $expclass_file = undef;
-if(opt_IsUsed("--expclass", \%opt_HH)) { 
-  $expclass_file = opt_Get("--expclass", \%opt_HH); 
-  validateFileExistsAndIsNonEmpty($expclass_file, undef, undef);
+# validate that the expected classification (--ec*) options make sense
+# --ecthresh and --ectoponly only make sense in combination with either --ecall or --eceach
+# (we could make --ecmap require one of those too, but I won't)
+if((opt_IsUsed("--ecthresh", \%opt_HH)) && (! opt_IsUsed("--ecall", \%opt_HH)) && (! opt_IsUsed("--eceach", \%opt_HH))) { 
+  die "ERROR, --ecthresh only makes sense in combination with --ecall or -eceach"; 
 }
+if((opt_IsUsed("--ectoponly", \%opt_HH)) && (! opt_IsUsed("--ecall", \%opt_HH)) && (! opt_IsUsed("--eceach", \%opt_HH))) { 
+  die "ERROR, --ectoponly only makes sense in combination with --ecall or -eceach"; 
+}
+# validate --ecmap and --eceach files exist
+my $ecmap_file = undef;
+if(opt_IsUsed("--ecmap", \%opt_HH)) { 
+  $ecmap_file = opt_Get("--ecmap", \%opt_HH); 
+  validateFileExistsAndIsNonEmpty($ecmap_file, undef, undef);
+}
+my $eceach_file = undef;
+if(opt_IsUsed("--eceach", \%opt_HH)) { 
+  $eceach_file = opt_Get("--eceach", \%opt_HH); 
+  validateFileExistsAndIsNonEmpty($eceach_file, undef, undef);
+}
+# if -A used, all expected classifications need to be models we will annotate for
+# because unexpected classificatino error occurs if top model is not one we are going to annotate for
+
 
 #############################
 # create the output directory
@@ -292,19 +314,19 @@ my @early_cmd_A = (); # array of commands we run before our log file is opened
 # check if our output dir $symbol exists
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
-  $cmd = "rm -rf $dir";
- if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+##!##  $cmd = "rm -rf $dir";
+##!## if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+##!##  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
-  $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR a file named $dir already exists. Remove it, or use -###f to overwrite it."; }
+##!##  $cmd = "rm $dir";
+##!##  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+##!##  else                        { die "ERROR a file named $dir already exists. Remove it, or use -###f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
+##!##runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -444,6 +466,7 @@ foreach $ref_list_seqname (@ref_list_seqname_A) {
 # directories we may need to annotate exist
 my %buildopts_used_HH = ();
 my $build_dir = undef;
+
 if($do_annotate) { 
   $start_secs = outputProgressPrior("Verifying build directories exist (-A)", $progress_w, $log_FH, *STDOUT);
   # deal with --reflistA if it was used
@@ -476,6 +499,8 @@ if($do_annotate) {
   }
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
+
+
 
 if($onlybuild_mode) { 
   $start_secs = outputProgressPrior("Creating RefSeq HMM Library", $progress_w, $log_FH, *STDOUT);
@@ -542,8 +567,6 @@ else {
   my $cls_seqname; # name of a sequence in the fasta file to classify
   my $cls_seqlen;  # length of $cls_seqname
 
-
-
   # if we're annotating, read the dnaorg_annotate.pl options file, if nec
   if(($do_annotate) && (opt_IsUsed("--optsA", \%opt_HH))) { 
     $start_secs = outputProgressPrior("Parsing additional dnaorg_annotate.pl options (--optsA)", $progress_w, $log_FH, *STDOUT);
@@ -586,10 +609,30 @@ else {
   # $cls_list:       list file with names of all fasta seqs
   # @cls_seqname_A:  array of all sequence names from $cls_fa
 
-  # if --expclass, parse and validate the expclass file
-  my %expref_HA = (); # key is sequence name, value is array of model names this sequence is expected to match
-  if(defined $expclass_file) { 
-    parse_expclass_file($expclass_file, \%ref_list_seqname_H, \%cls_seqlen_H, \%expref_HA, \%ofile_info_HH);
+  # if --ecmap, parse and validate the --ecmap file
+  my %ecmap_ref2tax_H  = (); # key is model name from %ref_list_seqname_H, value is taxonomy group that model belongs to
+  my %ecmap_tax2ref_HA = (); # key is taxonomic group name, value is array of model names from %ref_list_seqname_H that correspond to it
+  if(defined $ecmap_file) { 
+    parse_ecmap_file($ecmap_file, \%ref_list_seqname_H, \%ecmap_ref2tax_H, \%ecmap_tax2ref_HA, $ofile_info_HH{"FH"})
+  }
+
+  my @ecall_raw_A = (); # raw --ecall args, may be models or tax groups
+  my @ecall_A = ();     # models corresponding to @ecall_raw_A (same as @ecall_raw_A if --ecmap not used)
+  if(opt_IsUsed("--ecall", \%opt_HH)) { 
+    my $ecall_arg = opt_Get("--ecall", \%opt_HH); 
+    @ecall_raw_A = split(",", $ecall_arg); 
+    foreach my $model_or_tax (@ecall_raw_A) { 
+      validate_expected_model_or_tax($model_or_tax, "while parsing --ecall argument $ecall_arg, ", \%ecmap_tax2ref_HA, \%ref_list_seqname_H, \%annotate_ref_list_seqname_H, @ecall_A, $ofile_info_HH{"FH"});
+    }
+  }
+  my $eceach_file = undef;
+  my %eceach_HA = (); # key is sequence name, value is array of model names this sequence is expected to match
+  if(opt_IsUsed("--eceach", \%opt_HH)) { 
+    $eceach_file = opt_Get("--eceach", \%opt_HH);
+    parse_eceach_file($eceach_file, \%ref_list_seqname_H, 
+                      ($do_annotate) ? \%annotate_ref_list_seqname_H : undef, 
+                      (opt_IsUsed("--ecmap", \%opt_HH)) ? \%ecmap_tax2ref_HA : undef,
+                      \%cls_seqlen_H, \%eceach_HA, \%ofile_info_HH);
   }
 
   ########### RUN nhmmscan and generate output files ####################################################################################################
@@ -598,19 +641,27 @@ else {
   my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
 
   my $cls_tot_len_nt = sumHashValues(\%cls_seqlen_H);
-  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
-                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
+##!##  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
+##!##                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
 
   # parse nhmmscan tblout file to create infotbl file and determine pass/fails
   $start_secs = outputProgressPrior("Creating tabular output file", $progress_w, $log_FH, *STDOUT);
 
-  # determine which unexpected features cause a sequence fo tfail
-  my $query_width = 20;
-  foreach $cls_seqname (keys %cls_seqlen_H) { 
-    if(length($cls_seqname) > $query_width) { 
-      $query_width = length($cls_seqname); 
-    }
+  # determine maximum lengths for our output table
+  my %width_H = ();
+  $width_H{"seq"} = maxLengthScalarKeyInHash(\%cls_seqlen_H);
+  if($width_H{"seq"} < length("#sequence")) { $width_H{"seq"} = length("#sequence"); }
+
+  $width_H{"model"} = maxLengthScalarValueInArray(\@ref_list_seqname_A);
+  if($width_H{"model"} < length("topmodel")) { $width_H{"model"} = length("topmodel"); }
+
+  if(defined $ecmap_file) {
+    $width_H{"tax"} = maxLengthScalarKeyInHash(\%ecmap_tax2ref_HA);
+    if($width_H{"tax"} < length("toptax")) { $width_H{"tax"} = length("toptax"); }
+  }
+  else { 
+    $width_H{"tax"} = length("toptax");
   }
 
   openAndAddFileToOutputInfo(\%ofile_info_HH, "rdb_infotbl",     $out_root . ".rdb.infotbl",      1, "Per-sequence hit and classification information, human readable");
@@ -622,8 +673,8 @@ else {
   printf { $ofile_info_HH{"FH"}{"all_errors_list"}  } "#sequence\terror\tfeature\terror-description\n";
   printf { $ofile_info_HH{"FH"}{"na_errors_list"}   } "#sequence\terror\tfeature\terror-description\n";
 
-  output_infotbl_header($ofile_info_HH{"FH"}{"rdb_infotbl"}, 0, $query_width, \%opt_HH); 
-  output_infotbl_header($ofile_info_HH{"FH"}{"tab_infotbl"}, 1, $query_width, \%opt_HH); 
+  output_infotbl_header($ofile_info_HH{"FH"}{"rdb_infotbl"}, 0, \%width_H, \%opt_HH); 
+  output_infotbl_header($ofile_info_HH{"FH"}{"tab_infotbl"}, 1, \%width_H, \%opt_HH); 
   my %pass_fail_H = (); # key is sequence name, value is "PASS" or "FAIL"Hash of pass/fail values:
   my %seqlist_HA  = (); # hash of arrays, key model name, value array of sequences that match best to that modelHash of arrays containing each RefSeq's seqlist
   foreach (@ref_list_seqname_A) {
@@ -633,11 +684,15 @@ else {
 
   # actually do the parsing and write the meat of the match info tabular output file
   my %outflag_H = (); # key is sequence name, value is '1' if we output information for this sequence
-  parse_nhmmscan_tblout($query_width, $tblout_file, \%cls_seqlen_H, \%seqlist_HA, \%pass_fail_H, \%expref_HA, \%outflag_H, \%opt_HH, $ofile_info_HH{"FH"});
+  parse_nhmmscan_tblout($tblout_file, \%width_H, \%cls_seqlen_H, \%seqlist_HA, \%pass_fail_H, 
+                        (opt_IsUsed("--ecall",  \%opt_HH)  ? \@ecall_A         : undef),
+                        (opt_IsUsed("--eceach", \%opt_HH)  ? \%eceach_HA       : undef),
+                        (opt_IsUsed("--ecmap",  \%opt_HH)  ? \%ecmap_ref2tax_H : undef),
+                         \%outflag_H, \%opt_HH, $ofile_info_HH{"FH"});
   # output for sequences with 0 hits
   foreach my $seq (@cls_seqname_A) { 
     if(! exists $outflag_H{$seq}) { 
-      output_one_sequence($query_width, $seq, $cls_seqlen_H{$seq}, undef, \%seqlist_HA, \%pass_fail_H, \%expref_HA, \%opt_HH, $ofile_info_HH{"FH"});
+      output_one_sequence($seq, $cls_seqlen_H{$seq}, \%width_H, undef, \%seqlist_HA, \%pass_fail_H, undef, undef, \%opt_HH, $ofile_info_HH{"FH"});
     }
   }
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -1127,75 +1182,160 @@ sub build_opts_hash_to_opts_string {
 
   return $ret_str;
 }
+
 #################################################################
-# Subroutine: parse_expclass_file()
-# Incept:     EPN, Tue Dec  4 15:12:12 2018
+# Subroutine: parse_eceach_file()
+# Incept:     EPN, Thu Dec 13 12:06:18 2018
 #
-# Purpose:   Parse the expected class file and validate it. 
-#            It should expected classifications for all sequences (keys in 
-#            %{$cls_seqlen_HR}) and all classifications should be 
-#            valid RefSeqs (keys in %{$ref_list_seqname_HR}). Fill
-#            %{$expref_HAR} with the list of expected RefSeqs.
-#            It is possible to have more than one expected RefSeq
+# Purpose:   Parse the expected class file for each sequence and validate it. 
+#            It should include expected models or tax groups (if --ecmap used)
+#            for all sequences (keys in %{$cls_seqlen_HR}) and all models should be 
+#            valid models (keys in %{$ref_list_seqname_HR}). Further,
+#            if $annotate_ref_list_seqname_HR is defined, all classifications
+#            must have $annot_ref_list_seqname_HR{$model} == 1.
+#            We fill %{$eceach_HAR} with the list of expected models.
+#            It is possible to have more than one expected model
 #            because the expected classification could be covered
-#            by more than one RefSeq (e.g. Nororvirus GII).
+#            by more than one model (e.g. Nororvirus GII).
 #
 # Arguments:
-#  $expclass_file:       name of file with expected class information.
-#  $ref_list_seqname_HR: ref to hash of reference sequence names
-#  $cls_seqlen_HR:       ref to hash of lengths of each sequence
-#  $expref_HAR:          ref to hash of arrays, key is sequence name (key from cls_seqlen_HR),
-#                        value is array of RefSeq accessions (from ref_list_seqname_HR),
-#                        this sequence is expected to be classified to one of those RefSeqs.
-#  $ofile_info_HHR:      REF to output file hash
+#  $eceach_file:               name of file with expected model information.
+#  $ref_list_seqname_HR:       ref to hash of reference sequence names
+#  $annot_ref_list_seqname_HR: ref to hash of reference sequence names that we will annotate for
+#                              should be undef if -A not used
+#  $ecmap_tax2ref_HAR:         ref to hash, key is taxonomic group, value is array of models in that group
+#  $cls_seqlen_HR:             ref to hash of lengths of each sequence
+#  $eceach_HAR:                ref to hash of arrays, key is sequence name (key from cls_seqlen_HR),
+#                              value is array of models (from ref_list_seqname_HR),
+#                              this sequence is expected to be classified to one of those models.
+#                              FILLED HERE.
+#  $ofile_info_HHR:            ref to output file hash
 # 
 # Returns:  string of options
 # 
 # Dies: Never
 #       
 #################################################################
-sub parse_expclass_file { 
-  my $sub_name  = "parse_expclass_file";
-  my $nargs_expected = 5;
+sub parse_eceach_file { 
+  my $sub_name  = "parse_eceach_file";
+  my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
   
-  my ($expclass_file, $ref_list_seqname_HR, $cls_seqlen_HR, $expref_HAR, $ofile_info_HHR) = (@_);
+  my ($eceach_file, $ref_list_seqname_HR, $annot_ref_list_seqname_HR, $ecmap_tax2ref_HAR, $cls_seqlen_HR, $eceach_HAR, $ofile_info_HHR) = (@_);
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
-  open(IN, $expclass_file) || fileOpenFailure($expclass_file, $sub_name, $!, "reading", $FH_HR);
-  #NC_001959.2 NC_001959
+  open(IN, $eceach_file) || fileOpenFailure($eceach_file, $sub_name, $!, "reading", $FH_HR);
+  #sequence1 NC_001959
+  #sequence2 GII
   while(my $line = <IN>) { 
     chomp $line;
     if(($line !~ m/^\#/) && ($line =~ m/\w/)) { 
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) != 2) { 
-        DNAORG_FAIL("ERROR in $sub_name, while parsing $expclass_file, did not read 2 space-delimited tokens on line: $line", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, while parsing $eceach_file, did not read exactly 2 space-delimited tokens on line: $line", 1, $FH_HR);
       }
-      my ($seqname, $class_str) = (@el_A);
+      my ($seqname, $model_or_tax_str) = (@el_A);
       if(! exists $cls_seqlen_HR->{$seqname}) { 
-        DNAORG_FAIL("ERROR in $sub_name, while parsing $expclass_file, did not recognize the sequence $seqname (not in input file?) in line: $line", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, while parsing $eceach_file, did not recognize the sequence $seqname (not in input file?) in line: $line", 1, $FH_HR);
       }
-      if(exists $expref_HAR->{$seqname}) { 
-        DNAORG_FAIL("ERROR in $sub_name, while parsing $expclass_file, read the sequence $seqname twice", 1, $FH_HR);
+      if(exists $eceach_HAR->{$seqname}) { 
+        DNAORG_FAIL("ERROR in $sub_name, while parsing $eceach_file, read the sequence $seqname twice", 1, $FH_HR);
       }
-      my @class_A = split(",", $class_str);
-      foreach my $class (@class_A) { 
-        if(! exists $ref_list_seqname_HR->{$class}) { 
-          DNAORG_FAIL("ERROR in $sub_name, while parsing $expclass_file, did not recognize the classification $class in line: $line", 1, $FH_HR);
-        }
+      @{$eceach_HAR->{$seqname}} = (); 
+      my @model_or_tax_A = split(",", $model_or_tax_str);
+      foreach my $model_or_tax (@model_or_tax_A) { 
+        validate_expected_model_or_tax($model_or_tax, "while parsing $eceach_file, ", $ecmap_tax2ref_HAR, $ref_list_seqname_HR, $annot_ref_list_seqname_HR, $eceach_HAR->{$seqname}, $FH_HR);
       }
-      @{$expref_HAR->{$seqname}} = @class_A;
     }
   }     
   close(IN);
   
   # make sure we have expected classifications for all sequences
   foreach my $seqname (sort keys %{$cls_seqlen_HR}) { 
-    if(! exists $expref_HAR->{$seqname}) { 
-      DNAORG_FAIL("ERROR in $sub_name, did not read classification for sequence $seqname in $expclass_file", 1, $FH_HR);
+    if((! exists $eceach_HAR->{$seqname}) || (scalar(@{$eceach_HAR->{$seqname}}) == 0)) { 
+      DNAORG_FAIL("ERROR in $sub_name, did not read classification for sequence $seqname in $eceach_file", 1, $FH_HR);
     }
   }
+
+  return;
+}
+
+#################################################################
+# Subroutine: parse_ecmap_file()
+# Incept:     EPN, Thu Dec 13 11:31:30 2018
+#
+# Purpose:   Parse the expected class map file and validate it. 
+#
+# Arguments:
+#  $ecmap_file:                name of file with expected class map information.
+#  $ref_list_seqname_HR:       ref to hash of reference sequence names
+#  $ecmap_ref2tax_HR:          ref to hash, key is reference sequence name from $ref_list_seqname_HR, value is taxonomy string
+#                              FILLED HERE 
+#  $ecmap_tax2ref_HAR:         ref to hash, key is taxonomy string, value is array of reference sequence names for that tax group
+#                              FILLED HERE 
+#  $FH_HR:                     ref to output file hash, including "log"
+# 
+# Returns:  void
+# 
+# Dies: Never
+#       
+#################################################################
+sub parse_ecmap_file { 
+  my $sub_name  = "parse_ecmap_file";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  
+  my ($ecmap_file, $ref_list_seqname_HR, $ecmap_ref2tax_HR, $ecmap_tax2ref_HAR, $FH_HR) = (@_);
+
+  open(IN, $ecmap_file) || fileOpenFailure($ecmap_file, $sub_name, $!, "reading", $FH_HR);
+  # dnaorg_classify.pl --ecmap input file
+  # Each line must contain two tab-delimited fields:
+  # Field 1: taxonomic name, e.g. 'GII'
+  # Field 2: comma-separated list of model names that correspond to the
+  #          taxonomic name field 1 with no whitespace,
+  #          e.g. "NC_001959,NC_031324"
+  # #-prefixed lines are comment lines, and ignored
+  while(my $line = <IN>) { 
+    chomp $line;
+    if(($line !~ m/^\#/) && ($line =~ m/\w/)) { 
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) != 2) { 
+        DNAORG_FAIL("ERROR in $sub_name, while parsing $ecmap_file, did not read exactly 2 space-delimited tokens on line: $line", 1, $FH_HR);
+      }
+      my ($taxname, $model_str) = (@el_A);
+      if(exists $ecmap_tax2ref_HAR->{$taxname}) { 
+        DNAORG_FAIL("ERROR in $sub_name, read two lines with the taxonomic name $taxname, second one is: $line", 1, $FH_HR);
+      }
+      my @model_A = split(",", $model_str);
+      foreach my $model (@model_A) { 
+        if(! exists $ref_list_seqname_HR->{$model}) { 
+          DNAORG_FAIL("ERROR in $sub_name, while parsing $ecmap_file, did not recognize the model $model (not listed in input file) in the line: $line", 1, $FH_HR);
+        }
+        if(exists $ref_list_seqname_HR->{$taxname}) { 
+          DNAORG_FAIL("ERROR in $sub_name, while parsing $ecmap_file, read illegal tax group name, $taxname is already a model name, in the line: $line", 1, $FH_HR);
+        }
+        if(exists $ecmap_ref2tax_HR->{$model}) { 
+          DNAORG_FAIL("ERROR in $sub_name, read two lines with the model $model, second one is: $line", 1, $FH_HR);
+        }
+        $ecmap_ref2tax_HR->{$model} = $taxname;
+      }
+      @{$ecmap_tax2ref_HAR->{$taxname}} = @model_A;
+    }
+  }
+  close(IN);
+
+  # print out map
+  #foreach my $model (sort keys (%{$ecmap_ref2tax_HR})) { 
+  #  printf("ecmap_ref2tax_HR->{$model}: $ecmap_ref2tax_HR->{$model}\n");
+  #}
+  #foreach my $tax (sort keys (%{$ecmap_tax2ref_HAR})) { 
+  #  printf("ecmap_tax2ref_HR->{$tax}:");
+  #  foreach my $tax2 (@{$ecmap_tax2ref_HAR->{$tax}}) { 
+  #    printf(" $tax2"); 
+  #  }
+  #  print ("\n");
+  #}
 
   return;
 }
@@ -1209,7 +1349,7 @@ sub parse_expclass_file {
 # Arguments:
 #  $out_FH:       open file handle to write to
 #  $do_tab:       true to do tab delimited, false to do readable
-#  $query_width:  max width of all query sequences
+#  $width_HR:     ref to hash of widths, values are "seq", "model", "tax"
 #  $opt_HHR:      ref to options 2D hash
 #
 # Returns:  void
@@ -1222,27 +1362,29 @@ sub output_infotbl_header {
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
   
-  my ($out_FH, $do_tab, $query_width, $opt_HHR) = (@_);
+  my ($out_FH, $do_tab, $width_HR, $opt_HHR) = (@_);
 
   print  $out_FH  "# Explanations of each column:\n";
   print  $out_FH  "#  1. sequence:    Accession number of the sequence\n";
   print  $out_FH  "#  2. seqlen:      length of this sequence\n";
   print  $out_FH  "#  3. topmodel:    model/RefSeq that the sequence was assigned to (max score)\n";
-  print  $out_FH  "#  4. score:       (summed) bit score(s) of all hits to 'topmodel'\n";
-  print  $out_FH  "#  5. sc/nt:       'score' divided by 'qlen'\n";
-  print  $out_FH  "#  6. E-val:       E-value of best hit to 'topmodel'\n";
-  print  $out_FH  "#  7. coverage:    the percentage of the sequence that all hits to 'topmodel' cover\n";
-  print  $out_FH  "#  8. bias:        correction in bits for biased composition sequences, summed for all hits to 'topmodel'\n";
-  print  $out_FH  "#  9. #hits:       number of hits to 'topmodel'\n";
-  print  $out_FH  "# 10. strand:      strand of best hit and all considered to 'topmodel'\n";
-  print  $out_FH  "# 11. scdmodel:    second best model/Refseq (2nd highest score)\n";
-  print  $out_FH  "# 12. scdiff:      difference in summed bit score b/t 'topmodel' hit(s) and 'scdmodel' hit(s)\n";
-  print  $out_FH  "# 13. scdiff/nt:   'scdiff' divided by 'qlen'\n";
-  print  $out_FH  "# 14. covdiff:     amount by which the coverage of the 'topmodel' hit(s) is greater than that of the 'scdmodel' hit(s)\n";
-  printf $out_FH ("# 15. CC:          'confidence class', first letter based on sc/nt: A: if sc/nt >= %.3f, B: if %.3f > sc/nt >= %.3f, C: if %.3f > sc_nt\n", opt_Get("--lowscthresh", $opt_HHR), opt_Get("--lowscthresh", $opt_HHR), opt_Get("--vlowscthresh", $opt_HHR), opt_Get("--vlowscthresh", $opt_HHR));
+  print  $out_FH  "#  4. toptax:      taxonomic group for 'topmodel' from --ecmap ('-' if none)\n";
+  print  $out_FH  "#  5. score:       (summed) bit score(s) of all hits to 'topmodel'\n";
+  print  $out_FH  "#  6. sc/nt:       'score' divided by 'qlen'\n";
+  print  $out_FH  "#  7. E-val:       E-value of best hit to 'topmodel'\n";
+  print  $out_FH  "#  8. coverage:    the percentage of the sequence that all hits to 'topmodel' cover\n";
+  print  $out_FH  "#  9. bias:        correction in bits for biased composition sequences, summed for all hits to 'topmodel'\n";
+  print  $out_FH  "# 10. #hits:       number of hits to 'topmodel'\n";
+  print  $out_FH  "# 11. strand:      strand of best hit and all considered to 'topmodel'\n";
+  print  $out_FH  "# 12. scdmodel:    second best model/Refseq (2nd highest score)\n";
+  print  $out_FH  "# 13. scdtax:      taxonomic group for 'scdmodel' from --ecmap ('-' if none)\n";
+  print  $out_FH  "# 14. scdiff:      difference in summed bit score b/t 'topmodel' hit(s) and 'scdmodel' hit(s)\n";
+  print  $out_FH  "# 15. diff/nt:     'scdiff' divided by 'seqlen'\n";
+  print  $out_FH  "# 16. covdiff:     amount by which the coverage of the 'topmodel' hit(s) is greater than that of the 'scdmodel' hit(s)\n";
+  printf $out_FH ("# 17. CC:          'confidence class', first letter based on sc/nt: A: if sc/nt >= %.3f, B: if %.3f > sc/nt >= %.3f, C: if %.3f > sc_nt\n", opt_Get("--lowscthresh", $opt_HHR), opt_Get("--lowscthresh", $opt_HHR), opt_Get("--vlowscthresh", $opt_HHR), opt_Get("--vlowscthresh", $opt_HHR));
   printf $out_FH ("#                  second letter based on diff/nt: A: if diff/nt >= %.3f, B: if %.3f > diff/nt >= %.3f, C: if %.3f > diff_nt\n", opt_Get("--lowdiffthresh", $opt_HHR), opt_Get("--lowdiffthresh", $opt_HHR), opt_Get("--vlowdiffthresh", $opt_HHR), opt_Get("--vlowdiffthresh", $opt_HHR));
-  printf $out_FH ("# 16. p/f:         'PASS' if sequence passes, 'FAIL' if it fails\n");
-  print  $out_FH  "# 17. unexpected\n";
+  printf $out_FH ("# 18. p/f:         'PASS' if sequence passes, 'FAIL' if it fails\n");
+  print  $out_FH  "# 19. unexpected\n";
   print  $out_FH  "#     features:    unexpected features for this sequence\n";
   print  $out_FH  "#                  Possible values in unexpected features column:\n";
   printf $out_FH ("#                  Low Score:      'sc/nt'   < %.3f (threshold settable with --lowscthresh)\n",    opt_Get("--lowscthresh", $opt_HHR));
@@ -1251,30 +1393,33 @@ sub output_infotbl_header {
   printf $out_FH ("#                  Very Low Diff:  'diff/nt' < %.3f (threshold settable with --vlowdiffthresh)\n", opt_Get("--vlowdiffthresh", $opt_HHR));
   printf $out_FH ("#                  Minus Strand:   top hit is on minus strand\n");
   printf $out_FH ("#                  High Bias:     'bias' > (%.3f * ('bias' + 'score')) (threshold settable with --biasfract)\n", opt_Get("--biasfract", $opt_HHR));
-  if(opt_IsUsed("--expclass", $opt_HHR)) { 
+  if(opt_IsUsed("--eceach", $opt_HHR)) { 
     if(opt_IsUsed("--ectoponly", $opt_HHR)) { 
       printf $out_FH ("#                  Unexpected Classification: best-scoring model is not a model representing the expected classification for this sequence\n");
-      printf $out_FH ("#                                            (read from %s (--expclass)) and --ectoponly option used.\n", opt_Get("--expclass", $opt_HHR));
+      printf $out_FH ("#                                            (read from %s (--eceach)) and --ectoponly option used.\n", opt_Get("--eceach", $opt_HHR));
     }
     else { 
       printf $out_FH ("#                  Unexpected Classification: sequence does not have summed bit score per nucleotide within %.3f of top model (threshold settable with --ecthresh)\n", opt_Get("--ecthresh", $opt_HHR));
-      printf $out_FH ("#                                            to any model listed in file %s (from --expclass options)\n", opt_Get("--expclass", $opt_HHR));  
+      printf $out_FH ("#                                            to any model listed in file %s (from --eceach options)\n", opt_Get("--eceach", $opt_HHR));  
     }
   }
   print  $out_FH  "########################################################################################################################################\n";
   print  $out_FH "#\n";
   if($do_tab) { 
-    printf $out_FH ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
-                    "#query", "qlen", "RefSeq", "score", "sc/nt", "E-val", "coverage", "bias", "#hits", "strand", "H2:RefSeq", "scdiff", "diff/nt", "covdiff", "CC", "p/f", "unexpected-features");
+    printf $out_FH ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+                    "#sequence", "seqlen", "topmodel", "toptax", "score", "sc/nt", "E-val", "coverage", "bias", "#hits", "strand", "scdmodel", "scdtax", "scdiff", "diff/nt", "covdiff", "CC", "p/f", "unexpected-features");
   }
   else { 
-    printf $out_FH ("%-*s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %5s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
-                    $query_width, "#query", "qlen", "RefSeq", "score", "sc/nt", "E-val", "coverage", "bias", "#hits", "strand", "H2:RefSeq", "scdiff", "diff/nt", "covdiff", "CC", "p/f", "unexpected-features");
-    printf $out_FH ("%-*s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
-                    $query_width,
-                    "#" . getMonocharacterString($query_width-1, "=", undef), 
+    printf $out_FH ("%-*s  %6s  %-*s  %-*s  %7s  %5s  %8s  %8s  %7s  %5s  %5s  %-*s  %-*s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+                    $width_HR->{"seq"}, "#sequence", "seqlen", $width_HR->{"model"}, "topmodel", $width_HR->{"tax"}, "toptax", "score", "sc/nt", "E-val", "coverage", "bias", "#hits", "strand", $width_HR->{"model"}, "scdmodel", $width_HR->{"tax"}, "scdtax", "scdiff", "diff/nt", "covdiff", "CC", "p/f", "unexpected-features");
+    printf $out_FH ("%-*s  %6s  %-*s  %-*s  %7s  %5s  %8s  %8s  %7s  %5s  %5s  %-*s  %-*s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+                    $width_HR->{"seq"},
+                    "#" . getMonocharacterString($width_HR->{"seq"}-1, "=", undef), 
                     "======",
-                    "=========",
+                    $width_HR->{"model"},
+                    getMonocharacterString($width_HR->{"model"}, "=", undef),
+                    $width_HR->{"tax"},
+                    getMonocharacterString($width_HR->{"tax"}, "=", undef),
                     "=======",
                     "=====",
                     "========",
@@ -1282,7 +1427,10 @@ sub output_infotbl_header {
                     "=======",
                     "=====",
                     "======",
-                    "=========",
+                    $width_HR->{"model"},
+                    getMonocharacterString($width_HR->{"model"}, "=", undef),
+                    $width_HR->{"tax"},
+                    getMonocharacterString($width_HR->{"tax"}, "=", undef),
                     "=======",
                     "=======",
                     "=======",
@@ -1304,18 +1452,21 @@ sub output_infotbl_header {
 #            because the nhmmscan tblout file is sorted by sequence).
 #
 # Arguments:
-#  $query_width:  max width of all query sequences
-#  $tblout_file:  tblout file to parse
-#  $seqlen_HR:    ref to hash, key is sequence name, value is length
-#  $seqlist_HAR:  ref to hash of arrays, key is RefSeq, array is sequences assigned
-#                 to that RefSeq, FILLED HERE
-#  $pass_fail_HR: ref to hash, key is sequence name, value is "PASS" or "FAIL"
-#  $expref_HAR:   ref to hash of arrays, key is sequence name (key from cls_seqlen_HR),
-#                 value is array of model names this sequence is expected to match
-#  $outflag_HR:   ref to hash, key is sequence name, value is '1' if we output info
-#                 on this sequence yet or not
-#  $opt_HHR:      ref to options 2D hash
-#  $FH_HR:        ref to output file hash, including "log"
+#  $tblout_file:      tblout file to parse
+#  $width_HR:         ref to hash of widths, values are "seq", "model", "tax"
+#  $seqlen_HR:        ref to hash, key is sequence name, value is length
+#  $seqlist_HAR:      ref to hash of arrays, key is RefSeq, array is sequences assigned
+#                     to that RefSeq, FILLED HERE
+#  $pass_fail_HR:     ref to hash, key is sequence name, value is "PASS" or "FAIL"
+#  $ecall_AR:         ref to array of models all sequences are expected to match (--ecall)
+#  $eceach_HAR:       ref to hash of arrays, key is sequence name (key from cls_seqlen_HR),
+#                     value is array of model names this sequence is expected to match (--eceach)
+#  $ecmap_ref2tax_HR: ref to hash, key is model name, value is taxonomic group for that model, if any
+#                     can be undef if no hits or --ecmap not used
+#  $outflag_HR:       ref to hash, key is sequence name, value is '1' if we output info
+#                     on this sequence yet or not
+#  $opt_HHR:          ref to options 2D hash
+#  $FH_HR:            ref to output file hash, including "log"
 #
 # Returns:  void
 # 
@@ -1324,18 +1475,21 @@ sub output_infotbl_header {
 #################################################################
 sub parse_nhmmscan_tblout { 
   my $sub_name  = "parse_nhmmscan_tblout";
-  my $nargs_expected = 9;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
   
-  my ($query_width, $tblout_file, $seqlen_HR, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $outflag_HR, $opt_HHR, $FH_HR) = (@_);
+  my ($tblout_file, $width_HR, $seqlen_HR, $seqlist_HAR, $pass_fail_HR, $ecall_AR, $eceach_HAR, $ecmap_ref2tax_HR, $outflag_HR, $opt_HHR, $FH_HR) = (@_);
 
   open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
+
+  if((defined $ecall_AR) && (defined $eceach_HAR)) { 
+    DNAORG_FAIL("ERROR in $sub_name, data structures for both --ecall and --eceach passed in", 1, $FH_HR);
+  }
 
   my @cur_tbldata_AH = ();
   my %seen_H     = (); # key is sequence name, value is 1 once we are done processing this sequence
                        # this is used to make sure tblout file is sorted correctly (by sequence)
   my $prv_seq    = undef;
-  my $prv_seqlen = undef;
   my $nhit       = 0; 
   my $seqlen     = undef;
   # info read from a single tblout line:
@@ -1348,6 +1502,7 @@ sub parse_nhmmscan_tblout {
   my $evalue  = undef; 
   my $score   = undef; 
   my $bias    = undef; 
+  my $expref_AR = undef;
 
   while(my $line = <IN>) {
     if($line !~ m/^\#/) { 
@@ -1358,28 +1513,41 @@ sub parse_nhmmscan_tblout {
       #------------------- ----------         -------------------- ---------- ------- ------- ------- ------- ------- ------- ------- ------ --------- ------ ----- ---------------------
       #NC_029645            -          gi|1273500228|gb|MG203960.1| -             4325    4535      12     222       4     242    7313    +       2e-22   60.3   1.2  -
       if(scalar(@el_A) != 16) { 
-        DNAORG_FAIL("ERROR in $sub_name, unable to parse nhmmscan tblout line: $line", 1, $ofile_info_HH{"FH"});
+        DNAORG_FAIL("ERROR in $sub_name, unable to parse nhmmscan tblout line: $line", 1, $FH_HR);
       }
       ($model, $seq, $alifrom, $alito, $strand, $evalue, $score, $bias) = ($el_A[0], $el_A[2], $el_A[6], $el_A[7], $el_A[11], $el_A[12], $el_A[13], $el_A[14]);
       $alilen = abs($alifrom - $alito) + 1;
 
       if(exists $seen_H{$seq}) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem with tblout file, previously read info for $seq, now reading more info with other seqs in between, line is $line", 1, $ofile_info_HH{"FH"});
+        DNAORG_FAIL("ERROR in $sub_name, problem with tblout file, previously read info for $seq, now reading more info with other seqs in between, line is $line", 1, $FH_HR);
       }
-      if(! defined ($seqlen_HR->{$seq})) { 
-        DNAORG_FAIL("ERROR in $sub_name, do not have length information for seq $seq from tblout line: $line", 1, $ofile_info_HH{"FH"});
+      if(! exists ($seqlen_HR->{$seq})) { 
+        DNAORG_FAIL("ERROR in $sub_name, do not have length information for seq $seq from tblout line: $line", 1, $FH_HR);
       }
-      $seqlen = $seqlen_HR->{$seq};
 
       # do we need to reset the information? 
       if((defined $prv_seq) && ($seq ne $prv_seq)) { 
         # output for the previous sequence
-        output_one_sequence($query_width, $prv_seq, $prv_seqlen, \@cur_tbldata_AH, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $opt_HHR, $FH_HR);
+        output_one_sequence($prv_seq, $seqlen, $width_HR, \@cur_tbldata_AH, $seqlist_HAR, $pass_fail_HR, $expref_AR, $ecmap_ref2tax_HR, $opt_HHR, $FH_HR);
         $outflag_HR->{$prv_seq} = 1;
         $seen_H{$prv_seq} = 1;
         @cur_tbldata_AH = ();
         $nhit = 0;
       }
+
+      # update seqlen (after we output the previous sequence)
+      $seqlen = $seqlen_HR->{$seq};
+      # determine the expected reference(s) for new sequence, if nec
+      if(defined $ecall_AR) {
+        $expref_AR = $ecall_AR; 
+      }
+      elsif(defined $eceach_HAR) { 
+        if(! exists $eceach_HAR->{$seq}) { 
+          DNAORG_FAIL("ERROR in $sub_name, have --eceach info, but not for seq $seq from tblout line: $line", 1, $FH_HR);
+        }
+        $expref_AR = $eceach_HAR->{$seq};
+      }
+
       %{$cur_tbldata_AH[$nhit]} = ();
       $cur_tbldata_AH[$nhit]{"model"}  = $model;
       $cur_tbldata_AH[$nhit]{"alilen"} = $alilen;
@@ -1389,12 +1557,11 @@ sub parse_nhmmscan_tblout {
       $cur_tbldata_AH[$nhit]{"bias"}   = $bias;
       $nhit++;
       $prv_seq    = $seq;
-      $prv_seqlen = $seqlen;
     }
   }
   if($nhit > 0) { 
     # output for final sequence
-    output_one_sequence($query_width, $seq, $seqlen, \@cur_tbldata_AH, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $opt_HHR, $FH_HR);
+    output_one_sequence($seq, $seqlen, $width_HR, \@cur_tbldata_AH, $seqlist_HAR, $pass_fail_HR, $expref_AR, $ecmap_ref2tax_HR, $opt_HHR, $FH_HR);
     $outflag_HR->{$prv_seq} = 1;
   }
   close(IN);
@@ -1411,15 +1578,18 @@ sub parse_nhmmscan_tblout {
 #            table file, and update %{$seqlist_HAR} and %{$pass_fail_HR}.
 #
 # Arguments:
-#  $query_width:        max width of all query sequences
 #  $seq:                name of sequence we are outputting for
 #  $seqlen:             length of the sequence
-#  $cur_tbldata_AHR:    ref to array of hashes with relevant info to all hits
+#  $width_HR:           ref to hash of widths, values are "seq", "model", "tax"
+#  $cur_tbldata_AHR:    ref to array of hashes with relevant info to all hits, can be undef if no hits
 #  $seqlist_HAR:        ref to hash of arrays, key is RefSeq, array is sequences assigned
 #                       to that RefSeq, FILLED HERE
 #  $pass_fail_HR:       ref to hash, key is sequence name, value is "PASS" or "FAIL"
-#  $expref_HAR:         ref to hash of arrays, key is sequence name (key from cls_seqlen_HR),
+#  $expref_AR:          ref to array, key is sequence name (key from cls_seqlen_HR),
 #                       value is array of model names this sequence is expected to match
+#                       will be undef if no --ec options used, and/or no hits
+#  $ecmap_ref2tax_HR:   ref to hash, key is model name, value is taxonomic group for that model, if any
+#                       can be undef if no hits or --ecmap not used
 #  $opt_HHR:            ref to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:              ref to output file hash, including "log"
 #
@@ -1430,10 +1600,10 @@ sub parse_nhmmscan_tblout {
 #################################################################
 sub output_one_sequence { 
   my $sub_name  = "output_one_sequence";
-  my $nargs_expected = 9;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
   
-  my ($query_width, $seq, $seqlen, $cur_tbldata_AHR, $seqlist_HAR, $pass_fail_HR, $expref_HAR, $opt_HHR, $FH_HR) = (@_);
+  my ($seq, $seqlen, $width_HR, $cur_tbldata_AHR, $seqlist_HAR, $pass_fail_HR, $expref_AR, $ecmap_ref2tax_HR, $opt_HHR, $FH_HR) = (@_);
 
   my $rdb_infotbl_FH = $FH_HR->{"rdb_infotbl"};
   my $tab_infotbl_FH = $FH_HR->{"tab_infotbl"};
@@ -1450,12 +1620,15 @@ sub output_one_sequence {
   if(defined $cur_tbldata_AHR) { 
     $nhit = scalar(@{$cur_tbldata_AHR});
   }
+  printf("width_HR->{seq} " . $width_HR->{"seq"} . "\n");
+  printf("width_HR->{model} " . $width_HR->{"model"} . "\n");
+  printf("width_HR->{tax} " . $width_HR->{"tax"} . "\n");
   if($nhit == 0) { 
     $ufeature_fail_str = "No_Annotation;";
-    printf $rdb_infotbl_FH ("%-*s  %6s  %9s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
-                            $query_width, $seq, $seqlen, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "--", "FAIL", $ufeature_fail_str);
-    printf $tab_infotbl_FH ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
-                            $seq, $seqlen, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "--", "FAIL", $ufeature_fail_str);
+    printf $rdb_infotbl_FH ("%-*s  %6s  %-*s  %-*s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %-*s  %-*s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+                            $width_HR->{"seq"}, $seq, $seqlen, $width_HR->{"model"}, "-", $width_HR->{"tax"}, "-", "-", "-", "-", "-", "-", "-", "-", $width_HR->{"model"}, "-", $width_HR->{"tax"}, "-", "-", "-", "--", "FAIL", $ufeature_fail_str);
+    printf $tab_infotbl_FH ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
+                            $seq, $seqlen, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "--", "FAIL", $ufeature_fail_str);
     push(@{$seqlist_HAR->{"non-assigned"}}, $seq);
     $pass_fail_HR->{$seq} = "FAIL";
     $no_annot_flag = 1;
@@ -1477,16 +1650,16 @@ sub output_one_sequence {
     if(opt_Get("--nolowdiffminlen", \%opt_HH)) { $lowdiff_minlen = 0; }
 
     # get thresholds
-    my $small_value         = 0.00000001; # for handling precision issues
-    my $lowcovthresh_opt    = opt_Get("--lowcovthresh",   $opt_HHR) - $small_value;
-    my $vlowscthresh_opt    = opt_Get("--vlowscthresh",   $opt_HHR) - $small_value;
-    my $lowscthresh_opt     = opt_Get("--lowscthresh",    $opt_HHR) - $small_value;
-    my $vlowdiffthresh_opt  = opt_Get("--vlowdiffthresh", $opt_HHR) - $small_value;
-    my $lowdiffthresh_opt   = opt_Get("--lowdiffthresh",  $opt_HHR) - $small_value;
-    my $biasfract_opt       = opt_Get("--biasfract",      $opt_HHR);
-    my $expclassthresh_opt  = opt_Get("--ecthresh",       $opt_HHR) - $small_value;
+    my $small_value        = 0.00000001; # for handling precision issues
+    my $lowcovthresh_opt   = opt_Get("--lowcovthresh",   $opt_HHR) - $small_value;
+    my $vlowscthresh_opt   = opt_Get("--vlowscthresh",   $opt_HHR) - $small_value;
+    my $lowscthresh_opt    = opt_Get("--lowscthresh",    $opt_HHR) - $small_value;
+    my $vlowdiffthresh_opt = opt_Get("--vlowdiffthresh", $opt_HHR) - $small_value;
+    my $lowdiffthresh_opt  = opt_Get("--lowdiffthresh",  $opt_HHR) - $small_value;
+    my $biasfract_opt      = opt_Get("--biasfract",      $opt_HHR);
+    my $ecthresh_opt       = opt_Get("--ecthresh",       $opt_HHR) - $small_value;
     if(opt_IsUsed("--ectoponly", $opt_HHR)) { 
-      $expclassthresh_opt = $small_value;
+      $ecthresh_opt = $small_value;
     }
 
     my @cur_prcdata_AH = (); # array of hashes, output information for each model, keys are "model", "bitscsum", "bitscpnt", "evalue", "coverage", "biassum", "strand", "nhits"
@@ -1502,10 +1675,10 @@ sub output_one_sequence {
     my $diff_bitscsum       = undef;
     my $diff_bitscpnt       = undef;
     my $diff_cov            = undef;
-    my $scd_model2print     = "-----";
-    my $diff_bitscsum2print = "-----";
-    my $diff_bitscpnt2print = "-----";
-    my $diff_cov2print      = "-----";
+    my $scd_model2print     = "-";
+    my $diff_bitscsum2print = "-";
+    my $diff_bitscpnt2print = "-";
+    my $diff_cov2print      = "-";
     if($nmodel > 1) { 
       # we have a second best model
       $scd_model2print     = $cur_prcdata_AH[1]{"model"};
@@ -1591,8 +1764,9 @@ sub output_one_sequence {
     if($do_annotate) { 
       if(! $annotate_ref_list_seqname_H{$cur_prcdata_AH[0]{"model"}}) { 
         $pass_fail_HR->{$seq} = "FAIL"; 
-        my $best_match_str = $cur_prcdata_AH[0]{"model"};
-        $cur_ufeature_str = sprintf("Unexpected Taxonomy[best match is to %s]", $best_match_str);
+        my @tmp_A = ($cur_prcdata_AH[0]{"model"});
+        my $best_model_str = format_tax_model_string(\@tmp_A, $ecmap_ref2tax_HR, $FH_HR);
+        $cur_ufeature_str = sprintf("Unexpected Taxonomy[best match is to %s]", $best_model_str);
         $ufeature_all_str  .= $cur_ufeature_str;
         $ufeature_fail_str .= $cur_ufeature_str; # always causes a failure
         $unexp_tax_flag = 1;
@@ -1602,25 +1776,28 @@ sub output_one_sequence {
     if(! $unexp_tax_flag) { # we can only have a Unexpected_Classification ufeature if we do not have a Unexpected_Taxonomy ufeature
       # determine if we have an unexpected classification:
       # if the difference between the top model's bitscpernt (bit score per nt) is more than 
-      # $expclassthresh_opt greater than the highest bitscpernt of all models in @{$expref_HAR->{$seq}}
+      # $ecthresh_opt greater than the highest bitscpernt of all models in @{$expref_AR}
       # then we have an UnexpectedClassification; unexpected feature
-      if(exists $expref_HAR->{$seq}) { 
+      if(defined $expref_AR) { 
         my $found_match = 0;
         my $top_bitscpernt = $cur_prcdata_AH[0]{"bitscpnt"};
-        for(my $m = 0; $m < scalar(@{$expref_HAR->{$seq}}); $m++) { 
-          my $cur_model = $expref_HAR->{$seq}[$m];
+        for(my $m = 0; $m < scalar(@{$expref_AR}); $m++) { 
+          my $cur_model = $expref_AR->[$m];
           if(exists $cur_mdlmap_H{$cur_model}) { 
             # there is at least one hit to this model, check if the difference is within threshold
             #printf("HEYA top_model: " . $cur_prcdata_AH[0]{"model"} . " top_bitpnt: $top_bitscpernt; cur_model: $cur_model bitpnt: " . $cur_prcdata_AH[$cur_mdlmap_H{$cur_model}]{"bitscpnt"} . "\n");
-            if(($top_bitscpernt - $cur_prcdata_AH[$cur_mdlmap_H{$cur_model}]{"bitscpnt"}) < $expclassthresh_opt) { 
+            if(($top_bitscpernt - $cur_prcdata_AH[$cur_mdlmap_H{$cur_model}]{"bitscpnt"}) < $ecthresh_opt) { 
               #printf("\tHEYA match\n");
               $found_match = 1; 
-              $m = scalar(@{$expref_HAR->{$seq}}); # breaks loop
+              $m = scalar(@{$expref_AR}); # breaks loop
             }
           }
         }
         if(! $found_match) { 
-          $cur_ufeature_str = sprintf("Unexpected Classification[%s was specified, but %s is predicted];", join(",", @{$expref_HAR->{$seq}}), $cur_prcdata_AH[0]{"model"});
+          my $spec_model_str = format_tax_model_string($expref_AR, $ecmap_ref2tax_HR, $FH_HR);
+          my @tmp_A = ($cur_prcdata_AH[0]{"model"});
+          my $best_model_str = format_tax_model_string(\@tmp_A, $ecmap_ref2tax_HR, $FH_HR);
+          $cur_ufeature_str = sprintf("Unexpected Classification[%s was specified, but %s is predicted];", $spec_model_str, $best_model_str);
           $ufeature_all_str .= $cur_ufeature_str;
           if($unexpclass_fails) { 
             $pass_fail_HR->{$seq} = "FAIL"; 
@@ -1631,10 +1808,15 @@ sub output_one_sequence {
       if($ufeature_all_str eq "")  { $ufeature_all_str  = "-"; }
       if($ufeature_fail_str eq "") { $ufeature_fail_str = "-"; }
     }
+    my $toptax2print = ((defined $ecmap_ref2tax_HR) && (exists $ecmap_ref2tax_HR->{$cur_prcdata_AH[0]{"model"}})) ? 
+        $ecmap_ref2tax_HR->{$cur_prcdata_AH[0]{"model"}} : "-";
+    my $scdtax2print = (($scd_model2print ne "-") && (defined $ecmap_ref2tax_HR) && (exists $ecmap_ref2tax_HR->{$cur_prcdata_AH[1]{"model"}})) ? 
+        $ecmap_ref2tax_HR->{$cur_prcdata_AH[1]{"model"}} : "-";
 
-    printf $rdb_infotbl_FH ("%-*s  %6s  %9s  %7.1f  %5.3f  %8g  %8.3f  %7.1f  %5s  %6s  %9s  %7s  %7s  %7s  %2s  %4s  %s\n", 
-                            $query_width, $seq, $seqlen, 
-                            $cur_prcdata_AH[0]{"model"},
+    printf $rdb_infotbl_FH ("%-*s  %6s  %-*s  %-*s  %7.1f  %5.3f  %8g  %8.3f  %7.1f  %5s  %6s  %-*s  %-*s  %7s  %7s  %7s  %2s  %4s  %s\n", 
+                            $width_HR->{"seq"}, $seq, $seqlen, 
+                            $width_HR->{"model"}, $cur_prcdata_AH[0]{"model"},
+                            $width_HR->{"tax"}, $toptax2print, 
                             $cur_prcdata_AH[0]{"bitscsum"},
                             $cur_prcdata_AH[0]{"bitscpnt"},
                             $cur_prcdata_AH[0]{"evalue"},
@@ -1642,16 +1824,18 @@ sub output_one_sequence {
                             $cur_prcdata_AH[0]{"biassum"}, 
                             $cur_prcdata_AH[0]{"nhits"},
                             $cur_prcdata_AH[0]{"strand"},
-                            $scd_model2print,
+                            $width_HR->{"model"}, $scd_model2print,
+                            $width_HR->{"tax"}, $scdtax2print, 
                             $diff_bitscsum2print, 
                             $diff_bitscpnt2print, 
                             $diff_cov2print,
                             $score_class . $diff_class,
                             $pass_fail_HR->{$seq},
                             $ufeature_all_str);
-    printf $tab_infotbl_FH ("%s\t%s\t%s\t%.1f\t%.3f\t%s\t%.3f\t%.1f\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
+    printf $tab_infotbl_FH ("%s\t%s\t%s\t%s\t%.1f\t%.3f\t%s\t%.3f\t%.1f\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
                             $seq, $seqlen, 
                             $cur_prcdata_AH[0]{"model"},
+                            $toptax2print,
                             $cur_prcdata_AH[0]{"bitscsum"},
                             $cur_prcdata_AH[0]{"bitscpnt"},
                             $cur_prcdata_AH[0]{"evalue"},
@@ -1660,6 +1844,7 @@ sub output_one_sequence {
                             $cur_prcdata_AH[0]{"nhits"},
                             $cur_prcdata_AH[0]{"strand"},
                             $scd_model2print,
+                            $scdtax2print,
                             $diff_bitscsum2print, 
                             $diff_bitscpnt2print, 
                             $diff_cov2print,
@@ -1840,6 +2025,125 @@ sub ufeature_str_to_error_list_output {
 
     $retstr .= $seqname . "\t" . $error_name . "\t" . $feature_name . "\t" . $error_desc . "\n";
   }
+  return $retstr;
+}
+
+#################################################################
+# Subroutine: validate_expected_model_or_tax()
+# Incept:     EPN, Wed Dec 12 10:57:59 2018
+#
+# Purpose:    Given a string that is either a model or a taxonomic
+#             group, validate that the model or all models that
+#             map to that group are 'valid', as follows:
+# 
+#             if -A used ($annot_ref_list_seqname_HR defined): 
+#             'valid' means that the model must be one we will 
+#             annotate with ($annot_ref_list_seqname_HR->{$model} is '1')
+#
+#             if -A not used ($annot_ref_list_seqname_HR not defined):   
+#             valid means that the model exists ($ref_list_seqname_HR->{$model} exists)
+#
+# Arguments:
+#  $model_or_tax:              a model name or tax name
+#  $errstr:                    extra error string for any DNAORG_FAIL calls
+#  $ecmap_tax2ref_HAR:         ref to hash, key is taxonomic group, value is array of models in that group
+#  $ref_list_seqname_HR:       ref to hash of reference sequence names
+#  $annot_ref_list_seqname_HR: ref to hash of reference sequence names that we will annotate for
+#                              should be undef if -A not used
+#  $validated_models_AR:       ref to array to add validated model names to
+#  $FH_HR:                     ref to hash of file handles, including 'log'
+#             
+# Returns:    $err_tab_str: tab delimited string in format described above.
+#
+# Dies: If $errstr is not in required format
+#
+#################################################################
+sub validate_expected_model_or_tax {
+  my $sub_name  = "validate_expected_model_or_tax";
+  my $nargs_expected = 7;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($model_or_tax, $errstr, $ecmap_tax2ref_HAR, $ref_list_seqname_HR, $annot_ref_list_seqname_HR, $validated_model_AR, $FH_HR) = (@_);
+  
+  my @model_to_check_A = (); # the array of models to check
+  if((defined $ecmap_tax2ref_HAR) && (exists $ecmap_tax2ref_HAR->{$model_or_tax})) { 
+    printf("model_or_tax: $model_or_tax\n");
+    @model_to_check_A = @{$ecmap_tax2ref_HAR->{$model_or_tax}}; # potentially multiple models
+  }
+  else { 
+    @model_to_check_A = ($model_or_tax); # single model 
+  }
+  foreach my $model_to_check (@model_to_check_A) { 
+    my $extra_str = (defined $ecmap_tax2ref_HAR) ? " (for --ecmap tax group $model_or_tax)" : ""; 
+    if(! exists $ref_list_seqname_HR->{$model_to_check}) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name,%s did not recognize the model $model_to_check%s (for --ecmap tax group $model_or_tax)", $errstr, $extra_str), 1, $FH_HR);
+    } 
+    if((defined $annot_ref_list_seqname_HR) && ($annot_ref_list_seqname_HR->{$model_to_check} != 1)) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name,%s -A is used and model $model_to_check%s is not a model we will annotate with. That is not allowed. All expected classifications must be for models we will annotate with if -A is used.", $errstr, $extra_str), 1, $ofile_info_HH{"FH"});
+    }
+    push(@{$validated_model_AR}, $model_to_check);
+  }
+  
+  return;
+}
+
+#################################################################
+# Subroutine: format_tax_model_string()
+# Incept:     EPN, Thu Dec 13 16:09:13 2018
+#
+# Purpose:    Given an array of models, create a string that 
+#             lists the taxonomic group for those models
+#             and the models. If no taxonomic group, the string
+#             will just list the models.
+#
+# Arguments:
+#  $model_AR:                  ref to array of models
+#  $ecmap_ref2tax_HR:          ref to hash, key is model, 
+#                              value is taxonomic group, if any, can be undef
+#  $FH_HR:                     ref to hash of file handles, including 'log'
+#             
+# Returns:    formatted string
+#
+# Dies: if not all the models have the same taxonomic group.
+#
+#################################################################
+sub format_tax_model_string {
+  my $sub_name  = "format_tax_model_string";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($model_AR, $ecmap_ref2tax_HR, $FH_HR) = @_;
+
+  my $tax = undef;
+  my $nmodels = scalar(@{$model_AR});
+  my $retstr = undef;
+  if(defined $ecmap_ref2tax_HR) { 
+    if(exists $ecmap_ref2tax_HR->{$model_AR->[0]}) { 
+      $tax = $ecmap_ref2tax_HR->{$model_AR->[0]};
+    }
+    # verify remaining models agree with this
+    for(my $m = 1; $m < $nmodels; $m++) { 
+      if((exists $ecmap_ref2tax_HR->{$model_AR->[$m]}) &&
+         $ecmap_ref2tax_HR->{$model_AR->[$m]} ne $tax) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, two models in input array have different taxonomic groups:\n%s --> $tax\n%s --> %s", $model_AR->[0], $model_AR->[$m], $ecmap_ref2tax_HR->{$model_AR->[$m]}), 1, $FH_HR);
+      }
+      if((defined $tax) && 
+         (! exists $ecmap_ref2tax_HR->{$model_AR->[$m]})) {
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, two models in input array have different taxonomic groups:\n%s --> $tax\n%s --> <NOGROUP>", $model_AR->[0], $model_AR->[$m]), 1, $FH_HR);
+      }
+      if((! defined $tax) && 
+         (exists $ecmap_ref2tax_HR->{$model_AR->[$m]})) {
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, two models in input array have different taxonomic groups:\n%s --> <NOGROUP>\n%s --> %s", $model_AR->[0], $model_AR->[$m], $ecmap_ref2tax_HR->{$model_AR->[$m]}), 1, $FH_HR);
+      }
+    }
+  }
+  if(defined $tax) { 
+    $retstr = sprintf("%s (%s)", $tax, join(",", @{$model_AR}));
+  }
+  else { 
+    $retstr = sprintf("%s", join(",", @{$model_AR}));
+  }
+  
   return $retstr;
 }
 
