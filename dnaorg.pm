@@ -1559,6 +1559,12 @@ sub initializeHardCodedErrorInfoHash {
                      "Insertion of Nucleotides: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
+  addToErrorInfoHash($err_info_HAR, "xde", "feature",  0,
+                     "blastx protein validation failure, too large of a deletion", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Deletion of Nucleotides: (!out_product,out_gene!) !DESC!", # feature table error
+                     $FH_HR);
+
   addToErrorInfoHash($err_info_HAR, "xtr", "feature",  0,
                      "blastx protein validation failure, stop codon in protein alignment", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note

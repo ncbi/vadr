@@ -1327,11 +1327,11 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",         $out_root . ".erro
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",      $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".ap.list",           1, "list of passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".af.list",           1, "list of failing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errors_list",    $out_root . ".errors.list",   1, "list of errors in the sequence tables");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".ap.seqlist",        1, "list of passing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".af.seqlist",        1, "list of failing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errors_list",    $out_root . ".errlist",           1, "list of errors in the sequence tables");
 if(opt_IsUsed("--classerrors", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_co_list",   $out_root . ".af-co.list",        1, "list of failing sequences that would have passed if not for a classification error");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_co_list",   $out_root . ".af-co.seqlist",   1, "list of failing sequences that would have passed if not for a classification error");
 }
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
@@ -1380,7 +1380,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #outputString($log_FH, 1, sprintf("#\n# Annotated %d accessions, %d (%6.4f fraction) had at least one annotation 'failure', see %s for all details.\n", 
 #                                 $nseq, $nfail, ($nfail/$nseq), $ofile_info_HH{"nodirpath"}{"tbl"}));
 
-outputString($log_FH, 1, sprintf("#\n# Annotated %d accessions:\n# %6d PASS (%5.3f) listed in $out_root.ap.list\n# %6d FAIL (%5.3f) listed in $out_root.af.list\n", $nseq, $npass, $npass/$nseq, ($nseq-$npass), ($nseq-$npass)/$nseq));
+outputString($log_FH, 1, sprintf("#\n# Annotated %d accessions:\n# %6d PASS (%5.3f) listed in $out_root.ap.seqlist\n# %6d FAIL (%5.3f) listed in $out_root.af.seqlist\n", $nseq, $npass, $npass/$nseq, ($nseq-$npass), ($nseq-$npass)/$nseq));
 output_errors_summary($ofile_info_HH{"FH"}{"errsum"}, \@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, 0, \%opt_HH, \%ofile_info_HH); # 1: output to stdout
 
 ##################

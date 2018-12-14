@@ -678,9 +678,9 @@ else {
 
   openAndAddFileToOutputInfo(\%ofile_info_HH, "rdb_infotbl",     $out_root . ".rdb.infotbl",      1, "Per-sequence hit and classification information, human readable");
   openAndAddFileToOutputInfo(\%ofile_info_HH, "tab_infotbl",     $out_root . ".tab.infotbl",      1, "Per-sequence hit and classification information, tab-delimited");
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "all_errors_list", $out_root . ".all.errors.list",  1, "List of errors (unexpected features that cause failure) for all sequences");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "all_errors_list", $out_root . ".all.errlist",  1, "List of errors (unexpected features that cause failure) for all sequences");
   if($do_annotate) { 
-    openAndAddFileToOutputInfo(\%ofile_info_HH, "na_errors_list",  $out_root . ".noannot.errors.list",  1, "List of errors (unexpected features that cause failure) for sequences that will not be annotated");
+    openAndAddFileToOutputInfo(\%ofile_info_HH, "na_errors_list",  $out_root . ".noannot.errlist",  1, "List of errors (unexpected features that cause failure) for sequences that will not be annotated");
   }
   printf { $ofile_info_HH{"FH"}{"all_errors_list"}  } "#sequence\terror\tfeature\terror-description\n";
   printf { $ofile_info_HH{"FH"}{"na_errors_list"}   } "#sequence\terror\tfeature\terror-description\n";
@@ -820,7 +820,7 @@ else {
   }
     
   # Generate file that lists non-assigned sequences
-  my $non_assigned_file = $out_root . ".non-assigned";
+  my $non_assigned_file = $out_root . ".noannot.seqlist";
   
   my $cur_nseq = scalar(@{$seqlist_HA{"non-assigned"}});
   push(@tmp_output_A, sprintf("%-*s  %10d  %10d%s\n", $width_H{"model"}, "NON-ASSIGNED", 0, $cur_nseq, ($do_annotate) ? "             no" : ""));
@@ -910,17 +910,17 @@ else {
           my $src_pass_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
           my $src_fail_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
           my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
-          my $src_pass_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
-          my $src_fail_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
-          my $src_fail_co_list  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af-co.list";
-          my $src_errors_list   = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.errors.list";
+          my $src_pass_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.seqlist";
+          my $src_fail_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.seqlist";
+          my $src_fail_co_list  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af-co.seqlist";
+          my $src_errors_list   = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.errlist";
           my $dest_pass_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
           my $dest_fail_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
           my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
-          my $dest_pass_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
-          my $dest_fail_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
-          my $dest_fail_co_list = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af-co.list";
-          my $dest_errors_list  = $dir . "/" . $cur_out_root . ".dnaorg_annotate.errors.list";
+          my $dest_pass_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.seqlist";
+          my $dest_fail_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.seqlist";
+          my $dest_fail_co_list = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af-co.seqlist";
+          my $dest_errors_list  = $dir . "/" . $cur_out_root . ".dnaorg_annotate.errlist";
           runCommand("cp $src_pass_sqtable $dest_pass_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
           runCommand("cp $src_fail_sqtable $dest_fail_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
           runCommand("cp $src_long_sqtable $dest_long_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
@@ -1909,7 +1909,7 @@ sub output_one_sequence {
     push(@{$seqlist_HAR->{$cur_prcdata_AH[0]{"model"}}}, $seq);
   } # end of 'else' entered if $nhit > 0
 
-  # output to the errors.list files
+  # output to the .errlist files
   if($ufeature_fail_str ne "-") { 
     my $error_list_output = ufeature_str_to_error_list_output($seq, $ufeature_fail_str, $FH_HR);
     print $all_elist_FH $error_list_output;
@@ -2019,7 +2019,7 @@ sub process_tbldata {
 #
 # Purpose:    Given a sequence name and a ufeature string that
 #             describes an error, return a tab-delimited one that is
-#             ready for output to an 'errors.list' file.
+#             ready for output to an '.errlist' file.
 #
 #             The return string will have 1 or more lines each separated by
 #             a newline character (\n) and with 4 tab-delimited tokens:
