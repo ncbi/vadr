@@ -216,82 +216,89 @@ my $blast_exec_dir    = "/usr/bin/"; # HARD-CODED FOR NOW
 my %opt_HH = ();      
 my @opt_order_A = (); 
 my %opt_group_desc_H = ();
+my $g = 0; # option group
 
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
-$opt_group_desc_H{"1"} = "basic options";
+$opt_group_desc_H{++$g} = "basic options";
 #     option            type       default               group   requires incompat    preamble-output                                                help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                                         "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is closed (a.k.a. circular)",                          "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,"--dirout",undef,      "forcing directory overwrite (with --dirout)",                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,   "output directory specified as",                                  "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--dirbuild",   "string",  undef,                    1,"--dirout",   undef,   "output directory used for dnaorg_build.pl",                   "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--origin",     "string",  undef,                    1,     "-c", undef,      "identify origin seq <s> in genomes",                          "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
-opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
-opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "use models of additional qualifiers",                         "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
-opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "annotate additional qualifiers as duplicates", "annotate qualifiers in <s> from duplicates (e.g. gene from CDS)",  \%opt_HH, \@opt_order_A);  
-opt_Add("--specstart",  "string",  undef,                    1,    undef, undef,      "using pre-specified alternate start codons",                  "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
-opt_Add("--local",      "boolean", 0,                        1,    undef, undef,      "run cmscan locally instead of on farm",                       "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
-opt_Add("--errcheck",   "boolean", 0,                        1,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 50,                       1,    undef,"--local",   "number of KB of sequence for each cmscan farm job",           "set target number of KB of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--maxnjobs",   "integer", 2500,                     1,    undef,"--local",   "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 500,                      1,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",                   "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
-opt_Add("--midthresh",  "integer", 75,                       1,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",  "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--smallthresh","integer", 30,                       1,    undef, undef,      "set max model length for using max sensitivity mode to <n>",  "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--mxsize",     "integer", 2048,                     1,"--doalign",undef,     "with --doalign, set --mxsize <n> to <n>",                     "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--hmmonly",    "integer", 0,                        1,    undef, undef,      "run in HMM-only mode for models with len >= <n>",             "run in HMM-only mode for models with >= <n> positions", \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,                       $g,    undef, undef,      "genome is closed (a.k.a. circular)",                          "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                       $g,"--dirout",undef,      "forcing directory overwrite (with --dirout)",                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string",  undef,                   $g,    undef, undef,   "output directory specified as",                                  "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirbuild",   "string",  undef,                   $g,"--dirout",   undef,   "output directory used for dnaorg_build.pl",                   "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--origin",     "string",  undef,                   $g,     "-c", undef,      "identify origin seq <s> in genomes",                          "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
+opt_Add("--matpept",    "string",  undef,                   $g,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
+opt_Add("--nomatpept",  "boolean", 0,                       $g,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
+opt_Add("--xfeat",      "string",  undef,                   $g,    undef, undef,      "use models of additional qualifiers",                         "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
+opt_Add("--dfeat",      "string",  undef,                   $g,    undef, undef,      "annotate additional qualifiers as duplicates", "annotate qualifiers in <s> from duplicates (e.g. gene from CDS)",  \%opt_HH, \@opt_order_A);  
+opt_Add("--specstart",  "string",  undef,                   $g,    undef, undef,      "using pre-specified alternate start codons",                  "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"2"} = "options for alternative modes";
+$opt_group_desc_H{++$g} = "options for alternative modes";
 #        option               type   default                group  requires incompat                        preamble-output                                                      help-output    
-opt_Add("--infasta",     "boolean", 0,                       2,"--refaccn", "--skipedirect,--skipfetch",   "single cmdline argument is a fasta file of sequences, not a list of accessions", "single cmdline argument is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
-opt_Add("--refaccn",     "string",  undef,                   2,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
+opt_Add("--infasta",     "boolean", 0,                      $g,"--refaccn", "--skipedirect,--skipfetch",   "single cmdline argument is a fasta file of sequences, not a list of accessions", "single cmdline argument is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
+opt_Add("--refaccn",     "string",  undef,                  $g,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"3"} = "options for tuning protein validation with blastx";
+$opt_group_desc_H{++$g} = "options for tuning protein validation with blastx";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--xalntol",     "integer",  5,                       3,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xindeltol",   "integer",  27,                      3,     undef, undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,                      3,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xalntol",     "integer",  5,                      $g,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xindeltol",   "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"4"} = "options for modifying which errors are reported";
-#       option               type   default                group  requires incompat preamble-output                                  help-output    
-opt_Add("--allolp",     "boolean", 0,                       4,    undef,   undef,   "report all olp errors, do not skip due to nop", "report all olp errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
-opt_Add("--alladj",     "boolean", 0,                       4,    undef,   undef,   "report all adj errors, do not skip due to nop", "report all aja/ajb errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for modifying which errors are reported";
+#       option               type   default                group  requires incompat preamble-output                                     help-output    
+opt_Add("--classerrors","string",  0,                      $g,    undef,   undef,   "read per-sequence classification errors from <s>", "read per-sequence classification errors from <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--allolp",     "boolean", 0,                      $g,    undef,   undef,   "report all olp errors, do not skip due to nop",    "report all olp errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
+opt_Add("--alladj",     "boolean", 0,                      $g,    undef,   undef,   "report all adj errors, do not skip due to nop",    "report all aja/ajb errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"5"} = "options for skipping/adding optional stages";
+$opt_group_desc_H{++$g} = "options for changing search sensitivity modes";
+#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
+opt_Add("--midthresh",  "integer", 75,                      $g,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",  "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--smallthresh","integer", 30,                      $g,    undef, undef,      "set max model length for using max sensitivity mode to <n>",  "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--hmmonly",    "integer", 0,                       $g,    undef, undef,      "run in HMM-only mode for models with len >= <n>",             "run in HMM-only mode for models with >= <n> positions", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
+#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
+opt_Add("--local",      "boolean", 0,                       $g,    undef, undef,      "run cmscan locally instead of on farm",                       "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
+opt_Add("--errcheck",   "boolean", 0,                       $g,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 50,                      $g,    undef,"--local",   "number of KB of sequence for each cmscan farm job",           "set target number of KB of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--maxnjobs",   "integer", 2500,                    $g,    undef,"--local",   "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 500,                     $g,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",                   "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
-opt_Add("--doalign",    "boolean", 0,                       5,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
-opt_Add("--checkftable","boolean", 0,                       5,    undef,   undef,   "exhaustively check feature table rules",   "exhastively check feature table error exception rules", \%opt_HH, \@opt_order_A);
+opt_Add("--doalign",    "boolean", 0,                      $g,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
+opt_Add("--mxsize",     "integer", 2048,                   $g, "--doalign",undef,   "with --doalign, set --mxsize <n> to <n>",                     "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"6"} = "options that modify the tabular output file";
+$opt_group_desc_H{++$g} = "options that modify the tabular output file";
 #       option               type   default                group  requires incompat preamble-output                                               help-output    
-opt_Add("--tblfirst",    "boolean", 0,                      6,    undef,   undef,   "put first accession first on each .tbl page",               "include annotation for first accession on each page of .tbl output file", \%opt_HH, \@opt_order_A);
-opt_Add("--tblnocomp",   "boolean", 0,                      6,    undef,   undef,   "do not compare annotations to existing GenBank annotation", "do not include information comparing predicted annotations to existing GenBank annotations", \%opt_HH, \@opt_order_A);
+opt_Add("--tblfirst",    "boolean", 0,                     $g,    undef,   undef,   "put first accession first on each .tbl page",               "include annotation for first accession on each page of .tbl output file", \%opt_HH, \@opt_order_A);
+opt_Add("--tblnocomp",   "boolean", 0,                     $g,    undef,   undef,   "do not compare annotations to existing GenBank annotation", "do not include information comparing predicted annotations to existing GenBank annotations", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"7"} = "optional output files";
+$opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                        7,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
-opt_Add("--ftrinfo",    "boolean", 0,                        7,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--seqinfo",    "boolean", 0,                        7,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
-opt_Add("--errinfo",    "boolean", 0,                        7,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
+opt_Add("--mdlinfo",    "boolean", 0,                       $g,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--ftrinfo",    "boolean", 0,                       $g,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--seqinfo",    "boolean", 0,                       $g,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
+opt_Add("--errinfo",    "boolean", 0,                       $g,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"8"} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
-#     option               type       default               group   requires    incompat                    preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       8,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                       8,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                       8,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                       8,"--skipscan",  undef,                      "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
+#     option               type       default            group   requires    incompat                    preamble-output                                            help-output    
+opt_Add("--skipedirect",   "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipfetch",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipscan",      "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skiptranslate", "boolean", 0,                    $g,"--skipscan",  undef,                      "skip the translation steps, use existing results",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"9"} = "TEMPORARY options for the alternative method of identifying origin sequences";
-#     option               type       default               group   requires                                   incompat     preamble-output                                                         help-output    
-opt_Add("--aorgmodel",     "string",  undef,                   9,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgstart",     "integer", 0,                       9,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
-opt_Add("--aorgoffset",    "integer", 0,                       9,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
-opt_Add("--aorglen",       "integer", 0,                       9,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgethresh",   "real",    1.0,                     9,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgppthresh",  "real",    0.6,                     9,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "TEMPORARY options for the alternative method of identifying origin sequences";
+#     option               type       default            group   requires                                   incompat     preamble-output                                                         help-output    
+opt_Add("--aorgmodel",     "string",  undef,                $g,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgstart",     "integer", 0,                    $g,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
+opt_Add("--aorgoffset",    "integer", 0,                    $g,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
+opt_Add("--aorglen",       "integer", 0,                    $g,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgethresh",   "real",    1.0,                  $g,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgppthresh",  "real",    0.6,                  $g,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -316,15 +323,6 @@ my $options_okay =
                 'dfeat=s'      => \$GetOptions_H{"--dfeat"},
                 'specstart=s'  => \$GetOptions_H{"--specstart"},
                 'keep'         => \$GetOptions_H{"--keep"},
-                'local'        => \$GetOptions_H{"--local"}, 
-                'errcheck'     => \$GetOptions_H{"--errcheck"},  
-                'nkb=s'        => \$GetOptions_H{"--nkb"}, 
-                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
-                'wait=s'       => \$GetOptions_H{"--wait"},
-                'midthresh=s'  => \$GetOptions_H{"--midthresh"},
-                'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
-                'hmmonly=s'    => \$GetOptions_H{"--hmmonly"},
-                'mxsize=s'     => \$GetOptions_H{"--mxsize"},
 # options for alternative modes
                 'infasta'      => \$GetOptions_H{"--infasta"},
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
@@ -333,11 +331,22 @@ my $options_okay =
                 'xindeltol=s'  => \$GetOptions_H{"--xindeltol"},
                 'xlonescore=s' => \$GetOptions_H{"--xlonescore"},
 # options for modifying which errors are reported
-                'allolp'       => \$GetOptions_H{"--allolp"},
-                'alladj'       => \$GetOptions_H{"--alladj"},
+                'classerrors=s' => \$GetOptions_H{"--classerrors"},
+                'allolp'        => \$GetOptions_H{"--allolp"},
+                'alladj'        => \$GetOptions_H{"--alladj"},
+# options for changing search sensitivity modes
+                'midthresh=s'  => \$GetOptions_H{"--midthresh"},
+                'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
+                'hmmonly=s'    => \$GetOptions_H{"--hmmonly"},
+# options related to parallelization
+                'local'        => \$GetOptions_H{"--local"}, 
+                'errcheck'     => \$GetOptions_H{"--errcheck"},  
+                'nkb=s'        => \$GetOptions_H{"--nkb"}, 
+                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
+                'wait=s'       => \$GetOptions_H{"--wait"},
 # options for skipping/adding optional stages
                 'doalign'      => \$GetOptions_H{"--doalign"},
-                'checkftable'  => \$GetOptions_H{"--checkftable"},
+                'mxsize=s'     => \$GetOptions_H{"--mxsize"},
 # options that affect tabular output file
                 'tblfirst'     => \$GetOptions_H{"--tblfirst"},
                 'tblnocomp'    => \$GetOptions_H{"--tblnocomp"},
@@ -683,6 +692,18 @@ if(opt_IsOn("--specstart", \%opt_HH)) {
   parseSpecStartFile(opt_Get("--specstart", \%opt_HH), \@specstart_AA, $ofile_info_HH{"FH"});
 }
 
+# --classerrors <f>
+my $do_class_errors = (opt_IsUsed("--classerrors", \%opt_HH)) ? 1 : 0;
+my $class_errors_file      = undef;
+my %class_errors_per_seq_H = ();
+if($do_class_errors) { 
+  $class_errors_file = opt_Get("--classerrors", \%opt_HH);
+  if(! -s $class_errors_file) { 
+    die "ERROR file $class_errors_file specified with --classerrors does not exist or is empty"; 
+  }
+  parse_class_errors_list_file($class_errors_file, \%class_errors_per_seq_H, $ofile_info_HH{"FH"});
+}
+
 ###################################################
 # make sure the required executables are executable
 ###################################################
@@ -714,17 +735,6 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # initialize error related data structures
 my %err_info_HA = (); 
 initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
-
-my @ftbl_err_exceptions_AH = ();
-initializeHardCodedFTableErrorExceptions(\@ftbl_err_exceptions_AH, \%err_info_HA, $ofile_info_HH{"FH"});
-
-if(opt_Get("--checkftable", \%opt_HH)) { 
-  # validate the error exceptions by ensuring that exactly 0 or 1 exceptions applies
-  # to every possible error combination
-  $start_secs = outputProgressPrior("Exhaustively checking no error combination satisfies more than one feature table error exception", $progress_w, $log_FH, *STDOUT);
-  exhaustiveSearchFTableErrorExceptions(\@ftbl_err_exceptions_AH, \%err_info_HA, $ofile_info_HH{"FH"});
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
 
 ###########################################################################
 # Step 1. Gather and process information on reference genome using Edirect.
@@ -1307,18 +1317,19 @@ if(opt_Get("--doalign", \%opt_HH)) {
 # Step 22. Output annotations and errors
 #########################################
 # open files for writing
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",        $out_root . ".tbl",               1, "All annotations in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tblsum",     $out_root . ".tbl.summary",       1, "Summary of all annotations");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl",    $out_root . ".fail.tbl",          1, "Annotations for all sequences with >= 1 failure in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",     $out_root . ".error.tbl",         1, "Annotations for all sequences with >= 1 error in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",     $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",     $out_root . ".all.errors",        1, "List of errors, one line per error");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",     $out_root . ".errors.summary",    1, "Summary of all errors");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",  $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",  $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",  $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",  $out_root . ".ap.list",           1, "list of passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",  $out_root . ".af.list",           1, "list of failing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",         $out_root . ".tbl",               1, "All annotations in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tblsum",      $out_root . ".tbl.summary",       1, "Summary of all annotations");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl",     $out_root . ".fail.tbl",          1, "Annotations for all sequences with >= 1 failure in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",      $out_root . ".error.tbl",         1, "Annotations for all sequences with >= 1 error in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",      $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",      $out_root . ".all.errors",        1, "List of errors, one line per error");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",      $out_root . ".errors.summary",    1, "Summary of all errors");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",   $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",   $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",   $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",   $out_root . ".ap.list",           1, "list of passing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",   $out_root . ".af.list",           1, "list of failing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errors_list", $out_root . ".errors.list",       1, "list of errors in the sequence tables");
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -1355,7 +1366,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ######################
 $start_secs = outputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 
-my $npass = output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \@ftbl_err_exceptions_AH, \%opt_HH, \%ofile_info_HH);
+my $npass = output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -3701,8 +3712,12 @@ sub ftr_results_add_xip_xnn_errors {
               DNAORG_FAIL("ERROR, in $sub_name, feature with multiple segments, unable to find a valid start and stop to compare to blastx but xnn_err_possible was set to true", 1, $FH_HR);
             }
           }
+#         if((defined $p_start) &&
+#             (defined $p_stop)  && 
+#             (defined $p_has_stop)) { 
+#            printf("HEYA TEMP p_start: $p_start p_stop: $p_stop p_has_stop: $p_has_stop\n");
+#          }
         }
-        printf("HEYA TEMP p_start: $p_start p_stop: $p_stop p_has_stop: $p_has_stop\n");
 
         if((defined $ftr_results_HR->{"x_start"}) && 
            (defined $ftr_results_HR->{"x_stop"})) { 
@@ -7131,7 +7146,6 @@ sub output_tbl_page_of_sequences {
 #  $err_info_HAR:            REF to the error info hash of arrays, PRE-FILLED
 #  $mdl_results_AAHR:        REF to model results AAH, PRE-FILLED
 #  $ftr_results_AAHR:        REF to feature results AAH, PRE-FILLED
-#  $ftbl_err_exceptions_AHR: REF to array of hashes of feature table error exceptions, PRE-FILLED
 #  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -7146,15 +7160,16 @@ sub output_feature_tbl_all_sequences {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, 
-      $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $ftbl_err_exceptions_AHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR,
+      $class_errors_per_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $pass_ftbl_FH  = $FH_HR->{"pass_ftbl"}; # feature table for PASSing sequences
-  my $fail_ftbl_FH  = $FH_HR->{"fail_ftbl"}; # feature table for FAILing sequences
-  my $long_ftbl_FH  = $FH_HR->{"long_ftbl"}; # long feature table for all sequences
-  my $pass_list_FH  = $FH_HR->{"pass_list"}; # list of PASSing seqs
-  my $fail_list_FH  = $FH_HR->{"fail_list"}; # list of FAILing seqs
-  my $sftbl_FH      = undef; # pointer to either $pass_sftbl_FH or $fail_sftbl_FH
+  my $pass_ftbl_FH = $FH_HR->{"pass_ftbl"};   # feature table for PASSing sequences
+  my $fail_ftbl_FH = $FH_HR->{"fail_ftbl"};   # feature table for FAILing sequences
+  my $long_ftbl_FH = $FH_HR->{"long_ftbl"};   # long feature table for all sequences
+  my $pass_list_FH = $FH_HR->{"pass_list"};   # list of PASSing seqs
+  my $fail_list_FH = $FH_HR->{"fail_list"};   # list of FAILing seqs
+  my $errors_FH    = $FH_HR->{"errors_list"}; # list of errors 
 
   my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
 
@@ -7163,7 +7178,6 @@ sub output_feature_tbl_all_sequences {
   my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
   my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); # nerr: number of different error codes
-  my $nexc = validateFTableErrorExceptions      ($ftbl_err_exceptions_AHR, $err_info_HAR, $FH_HR); # nexc: number of different feature table exceptions
 
   # define the hard-coded type priority hash, which defines the order of types in the feature table output, lower is higher priority
   my %type_priority_H = ();
@@ -7202,9 +7216,8 @@ sub output_feature_tbl_all_sequences {
     my %fidx2idx_H    = (); # key is feature index $fidx, value is $ftidx index in @ftout_AH that $fidx corresponds to
     my $i;
 
-    my @seq_warning_A = (); # all warnings for this sequence
-    my @seq_error_A   = (); # all errors for this sequence
-    my @seq_note_A    = (); # all notes for this sequence
+    my @seq_error_A = (); # all errors for this sequence
+    my @seq_note_A  = (); # all notes for this sequence
 
     my $nskipped = 0; # number of cds-mp features that were not output due to problem with start/stop coords
     my $missing_codon_start_flag = 0; # set to 1 if a feature for this sequence should have a codon_start value added but doesn't
@@ -7241,7 +7254,10 @@ sub output_feature_tbl_all_sequences {
         $do_ignore      = ($defined_pstart || $xnn_flag) ? 0 : 1;
       }
 
-      if(! $do_ignore) { 
+      if($do_ignore) { 
+        $nskipped++;
+      }
+      else { # ! $do_ignore
         # per-feature values that are modified if we have an exception that covers all errors for this feature
         my $do_misc_feature = 0;
         my $do_start_carrot = 0;
@@ -7261,7 +7277,7 @@ sub output_feature_tbl_all_sequences {
           $do_start_carrot = ($ftr_err_str =~ m/b5e/) ? 1 : 0;
           $do_stop_carrot  = ($ftr_err_str =~ m/b3e/) ? 1 : 0;
           $do_pred_stop = processFeatureErrorsForFTable($ftr_err_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, 
-                                                         \@ftr_note_A, \@seq_error_A, \@seq_warning_A, $FH_HR);
+                                                        \@ftr_note_A, \@seq_error_A, $FH_HR);
           if(scalar(@ftr_note_A) > 0) { 
             $do_misc_feature = 1;
             $feature_type = "misc_feature";
@@ -7345,8 +7361,13 @@ sub output_feature_tbl_all_sequences {
     # OUTPUT section 
     #######################################
     # done with this sequence, determine what type of output we will have 
+    my $has_class_errors = 0;
+    if((defined $class_errors_per_seq_HR) &&
+       (exists $class_errors_per_seq_HR->{$seq_name})) { 
+      $has_class_errors = 1; 
+    }
+
     my $noutftr  = scalar(@ftout_AH);
-    my $nwarn    = scalar(@seq_warning_A);
     my $nerror   = scalar(@seq_error_A);
     my $nnote    = scalar(@seq_note_A);
 
@@ -7360,11 +7381,12 @@ sub output_feature_tbl_all_sequences {
 
     # sequences only pass if:
     # - at least one feature is annotated ($noutftr > 0)
-    # - zero notes, errors and warnings
-    # - no sequences skipped ($nskipped == 0)
-    my $do_pass = ($noutftr > 0 && $nnote == 0 && $nwarn == 0 && $nerror == 0 && $nskipped == 0) ? 1 : 0;
-    # sanity check, if we are passing, we should also have set codon_start for all features
-    if(($do_pass) && ($missing_codon_start_flag)) { 
+    # - zero notes and errors
+    # - no features skipped ($nskipped == 0)
+    my $do_pass = ($noutftr > 0 && $nnote == 0 && $nerror == 0 && $nskipped == 0 && (! $has_class_errors)) ? 1 : 0;
+
+    # sanity check, if we have no notes, errors and didn't skip anything, we should also have set codon_start for all features
+    if($noutftr > 0 && $nnote == 0 && $nerror == 0 && $nskipped == 0 && ($missing_codon_start_flag)) { 
       DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
     }
               
@@ -7389,23 +7411,28 @@ sub output_feature_tbl_all_sequences {
         print $fail_ftbl_FH $ftout_AH[$i]{"output"};
         print $long_ftbl_FH $ftout_AH[$i]{"long_output"};
       }
-      if(($nwarn + $nerr) > 0) { 
+      if($nerr > 0 || $has_class_errors) { 
         print $fail_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         print $long_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
-        foreach my $error_str (@seq_error_A) { 
-          foreach my $error_line (split(/\:\:\:/, $error_str)) { 
-            print $fail_ftbl_FH "ERROR: " . $error_str . "\n"; 
-            print $long_ftbl_FH "ERROR: " . $error_str . "\n"; 
+        for(my $e = 0; $e < scalar(@seq_error_A); $e++) { 
+          my $error_line = $seq_error_A[$e];
+          print $fail_ftbl_FH "ERROR: " . $error_line . "\n"; 
+          print $long_ftbl_FH "ERROR: " . $error_line . "\n"; 
+          if($error_line =~ /([^\:]+)\:\s\(([^\)]+)\)\s*(.+)$/) {
+            print $errors_FH ($accn_name . "\t" . $1 . "\t" . $2 . "\t" . $3 . "\n");
+          }
+          else {
+            DNAORG_FAIL("ERROR in $sub_name, unable to split error_line for output: $error_line", 1, $ofile_info_HHR->{"FH"});
           }
         }
-        foreach my $warning_str (@seq_warning_A) { 
-          foreach my $warning_line (split(/\:\:\:/, $warning_str)) { 
-            print $fail_ftbl_FH "WARNING: " . $warning_str . "\n";  
-            print $long_ftbl_FH "WARNING: " . $warning_str . "\n"; 
-          }
+        if($has_class_errors) { 
+          print $errors_FH ($class_errors_per_seq_HR->{$seq_name});
+          my $ftable_error_str = error_list_output_to_ftable_errors($seq_name, $class_errors_per_seq_HR->{$seq_name}, $ofile_info_HHR->{"FH"});
+          print $fail_ftbl_FH $ftable_error_str;
+          print $long_ftbl_FH $ftable_error_str;
         }
-      } # end of 'if(($nwarn + $nerr) > 0)'
-    }      
+      } # end of 'if($nerr > 0) || $has_class_errors'
+    }
   } # end of loop over sequences
 
   return $ret_npass;
@@ -10443,7 +10470,7 @@ sub helper_ftable_add_qualifier_from_ftr_info {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($ftr_idx, $key, $qval_sep, $ftr_info_HAR, $FH_HR) = @_;
-
+  
   my $ret_str = "";
   if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
     my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
@@ -10489,4 +10516,103 @@ sub helper_ftable_add_qualifier_from_ftr_results {
     $ret_str = sprintf("\t\t\t%s\t%s\n", $qualifier, $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key});
   }
   return $ret_str;
+}
+
+#################################################################
+# Subroutine:  parse_class_errors_list_file
+# Incept:      EPN, Wed Dec 12 13:44:21 2018
+#
+# Purpose:    Parse the --classerrors input file
+#
+# Arguments: 
+#  $in_file:       file to parse with per-sequence classification errors
+#  $errors_seq_HR: ref to hash of classification errors per sequence, filled here
+#                  with unmodified lines from $in_file
+#  $FH_HR:         ref to hash of file handles
+#
+# Returns:    "" if $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key} does not exist
+#             else a string for the feature table
+#
+# Dies: never
+#
+################################################################# 
+sub parse_class_errors_list_file { 
+  my $sub_name = "parse_class_errors_list_file";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($in_file, $errors_seq_HR, $FH_HR) = @_;
+
+  open(IN, $in_file) || fileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
+  my $line;
+  while($line = <IN>) { 
+    if($line !~ m/^\#/) { 
+      chomp $line;
+      my @el_A = split(/\t/, $line);
+      ##sequence	error	feature	error-description
+      #MG763368.1	Unexpected Classification	*sequence*	NC 001959,NC 029647 was specified, but NC 039476 is predicted
+      if(scalar(@el_A) != 4) { 
+        foreach my $tok (@el_A) { printf("tok: $tok\n"); }
+        DNAORG_FAIL("ERROR in $sub_name, did not find exactly 2 tokens in line $line", 1, $FH_HR);
+      }
+      my $seq = $el_A[0];
+      $errors_seq_HR->{$seq} .= $line . "\n";
+    }
+  }
+  close(IN);
+
+  return;
+}
+
+
+#################################################################
+# Subroutine: error_list_output_to_ftable_errors()
+# Incept:     EPN, Wed Dec 12 14:02:24 2018
+#
+# Purpose:    Given output from a error list file, with 4 tab-delimited
+#             tokens per new-line delimited string, return a string
+#             that can be output to a feature table with the 
+#             same information.
+#
+#             The input will be new-line delimited strings, each of 
+#             which will have 4 tab-delimited tokens:
+#             <sequence-name>
+#             <error-name>
+#             <feature-name>
+#             <error-description>
+#
+# Arguments:
+#   $in_seqname: expected name of sequence
+#   $errliststr: error string to convert
+#   $FH_HR:      ref to hash of file handles, including 'log'
+#             
+# Returns:    $err_ftbl_str: feature table strings in the format described above.
+#
+# Dies: If $errliststr is not in required format, or if it includes
+#       data for a sequence other than <$seqname>
+#
+#################################################################
+sub error_list_output_to_ftable_errors { 
+  my $sub_name  = "error_list_output_to_ftable_errors";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_seqname, $errliststr, $FH_HR) = (@_);
+
+  my @errliststr_A = split(/\n/, $errliststr);
+
+  my $retstr = "";
+  foreach my $errlistline (@errliststr_A) { 
+    my @el_A = split(/\t/, $errlistline); 
+    if(scalar(@el_A) != 4) { 
+      DNAORG_FAIL("ERROR in $sub_name, did not read exactly 4 tab-delimited tokens in line: $errlistline", 1, $FH_HR);
+    }
+    my ($seqname, $error_name, $feature_name, $error_desc) = (@el_A);
+    if($in_seqname ne $seqname) { 
+      DNAORG_FAIL("ERROR in $sub_name, read unexpected sequence name $seqname != $in_seqname in line: $errlistline", 1, $FH_HR);
+    }
+    $retstr .= sprintf("ERROR: $error_name: %s$error_desc\n", ($feature_name eq "*sequence*") ? "" : "($feature_name) ");
+  }
+
+  return $retstr;
 }
