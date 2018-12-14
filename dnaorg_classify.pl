@@ -581,7 +581,8 @@ else {
     if(opt_IsUsed("--xalntol",     \%opt_HH)) { $auto_add_opts .= ",--xalntol";    }
     if(opt_IsUsed("--xindeltol",   \%opt_HH)) { $auto_add_opts .= ",--xindeltol";  }
     if(opt_IsUsed("--xlonescore",  \%opt_HH)) { $auto_add_opts .= ",--xlonescore"; }
-    if(opt_IsUsed("--local",       \%opt_HH)) { $auto_add_opts .= ",--local"; }
+    if(opt_IsUsed("--nkb",         \%opt_HH)) { $auto_add_opts .= ",--nkb"; }
+    if(opt_IsUsed("--maxnjobs",    \%opt_HH)) { $auto_add_opts .= ",--maxnjobs"; }
     $annotate_non_cons_opts = parseNonConsOptsFile(opt_Get("--optsA", \%opt_HH), "--optsA", $auto_add_opts, $failure_str, $ofile_info_HH{"FH"});
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
@@ -888,7 +889,8 @@ else {
           if(opt_IsUsed("--xalntol",    \%opt_HH)) { $annotate_cmd .= sprintf(" --xalntol    %s", opt_Get("--xalntol",    \%opt_HH)); }
           if(opt_IsUsed("--xindeltol",  \%opt_HH)) { $annotate_cmd .= sprintf(" --xindeltol  %s", opt_Get("--xindeltol",  \%opt_HH)); }
           if(opt_IsUsed("--xlonescore", \%opt_HH)) { $annotate_cmd .= sprintf(" --xlonescore %s", opt_Get("--xlonescore", \%opt_HH)); }
-          if(opt_IsUsed("--local",      \%opt_HH)) { $annotate_cmd .= " --local"; }
+          if(opt_IsUsed("--nkb",        \%opt_HH)) { $annotate_cmd .= sprintf(" --nkb %s",        opt_Get("--nkb",        \%opt_HH)); }
+          if(opt_IsUsed("--maxnjobs",   \%opt_HH)) { $annotate_cmd .= sprintf(" --maxnjobs %s",   opt_Get("--maxnjobs",   \%opt_HH)); }
           # and finally, add --classerrors
           $annotate_cmd .= " --classerrors " . $ofile_info_HH{"fullpath"}{"all_errors_list"}; 
           $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
