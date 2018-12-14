@@ -1238,7 +1238,7 @@ mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA
 
 # add xip, mip and xnn errors
 openAndAddFileToOutputInfo(\%ofile_info_HH, "blasttbl", $out_root . ".blastx.tbl", 1, "information on blast and CM hits for CDS features in tabular format");
-ftr_results_add_xip_xnn_errors($ofile_info_HH{"FH"}{"blasttbl"}, \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
+ftr_results_add_blastx_errors($ofile_info_HH{"FH"}{"blasttbl"}, \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
                                \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # compare our final annotations to GenBank
@@ -3559,13 +3559,32 @@ sub ftr_results_add_b3e_errors {
 }      
 
 #################################################################
-# Subroutine:  ftr_results_add_xip_xnn_errors
+# Subroutine:  ftr_results_add_blastx_errors
 # Incept:      EPN, Tue Oct 23 15:54:50 2018
 #
-# Purpose:    Report 'xip' and 'xnn' errors for features of type 'cds-notmp' and 'cds-mp'
-#             Uses ftr_results to do this. 
+# Purpose:    Report 'x**' and 'mip' errors for features of type 'cds-notmp' and 'cds-mp'
+#             Uses ftr_results to do this. Possible x** errors are:
 #
-#             "xip": adds this error if blastx does not validate a CDS prediction
+#             "xnn": adds this error if blastx predicts a CDS that does not overlap with
+#                    any CM prediction
+#             "xnh": adds this error if blastx validation of a CDS prediction fails due to
+#                    no blastx hits
+#             "xos": adds this error if blastx validation of a CDS prediction fails due to
+#                    strand mismatch between CM and blastx prediction
+#             "x5l": adds this error if blastx validation of a CDS prediction fails due to
+#                    BLASTX alignment being too long on 5' end (extending past CM alignment by > 0 nt)
+#             "x5s": adds this error if blastx validation of a CDS prediction fails due to
+#                    BLASTX alignment being too short on 5' end (more than $xalntol shorter than CM)
+#             "x3l": adds this error if blastx validation of a CDS prediction fails due to
+#                    BLASTX alignment being too long on 3' end (extending past CM alignment by > 0 nt)
+#             "x3s": adds this error if blastx validation of a CDS prediction fails due to
+#                    BLASTX alignment being too short on 3' end (more than $xalntol shorter than CM)
+#             "xin": adds this error if blastx validation of a CDS prediction fails due to
+#                    too long of an insert
+#             "xde": adds this error if blastx validation of a CDS prediction fails due to
+#                    too long of a delete
+#             "xtr": adds this error if blastx validation of a CDS prediction fails due to
+#                    an in-frame stop codon in the blastx alignment
 #             "xnn": adds this error if blastx has a prediction of sufficient score 
 #                    for a feature for which there is no CM/nucleotide based prediction
 #
@@ -3584,8 +3603,8 @@ sub ftr_results_add_b3e_errors {
 #
 # Dies: if we have a multi-segment cds-notmp feature and are unable to find a p
 ################################################################# 
-sub ftr_results_add_xip_xnn_errors { 
-  my $sub_name = "ftr_results_add_xip_xnn_errors";
+sub ftr_results_add_blastx_errors { 
+  my $sub_name = "ftr_results_add_blastx_errors";
   my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -3633,8 +3652,8 @@ sub ftr_results_add_xip_xnn_errors {
           $xnn_err_possible = 0; # we have at least one prediction for this feature, we can't have a xnn error
         }
 
-        my $xip_err_str = ""; # modified if we have an 'xip' error below
-        my $xnn_err_str = ""; # modified if we have an 'xnn' error below
+        my %err_str_H = ();   # added to as we find errors below, possible keys are:
+                              # "xnn", "xnh", "xws", "xin", "xde", "xst", "xnn", "x5u", "x3u"
 
         # initialize 
         my $p_start    = undef; # predicted start  from CM 
@@ -3742,11 +3761,8 @@ sub ftr_results_add_xip_xnn_errors {
         }
 
         if(($xnn_err_possible) && (! defined $p_start) && (defined $x_start))  { # no CM prediction but there is a blastx prediction
-          #printf("0HEYAHEYA p_start is undef, x_start is def, x_score is $x_score, x_start: $x_start, x_stop: $x_stop\n");
           if((defined $x_score) && ($x_score >= $min_x_score)) { 
-            if($xnn_err_str ne "") { $xnn_err_str .= ", "; }
-            $xnn_err_str .= "blastx hit from $x_start to $x_stop with score $x_score, but no CM hit";
-            #printf("1HEYAHEYA set xnn_err_str $ftr_idx seq_idx: $seq_idx\n");
+            $err_str_H{"xnn"} = "blastx hit from $x_start to $x_stop with score $x_score, but no CM hit";
           }
         }
 
@@ -3759,23 +3775,37 @@ sub ftr_results_add_xip_xnn_errors {
 
         # if we have a prediction from the CM, so we should check for xip errors
         if(defined $p_start) { 
-          # check for lack of prediction failure
+          # check for xnh: lack of prediction failure
           if(! defined $x_start) { 
-            if($xip_err_str ne "") { $xip_err_str .= ", "; }
-            $xip_err_str .= "no blastx hit";
+            $err_str_H{"xnh"} = "no blastx hit";
           }
           else { # $x_start is defined, we can compare CM and blastx predictions
-            # check for stand mismatch failure
+            # check for xos: strand mismatch failure
             if($p_strand ne $x_strand) { 
-              $xip_err_str .= "strand mismatch between nucleotide-based and blastx-based predictions";
+              $err_str_H{"xos"} = "strand mismatch between nucleotide-based and blastx-based predictions";
             }
             else { 
-              # check for alignment start difference failure 
+              # check for 'x5l': blastx alignment extends outside of nucleotide/CM alignment on 5' end
+              if((($p_strand eq "+") && ($x_start < $p_start)) || 
+                 (($p_strand eq "-") && ($x_start > $p_start))) { 
+                $err_str_H{"x5l"} = "blastx alignment extends outside CM alignment on 5' end (strand:$p_strand CM:$p_start blastx:$x_start)";
+              }
+
+              # check for 'x5s': blastx 5' end too short, not within $aln_tol nucleotides
               $start_diff = abs($p_start - $x_start);
-              if($start_diff > $aln_tol) { 
-                if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "start positions differ by $start_diff > $aln_tol (strand:$p_strand CM:$p_start blastx:$x_start)";
-              }                
+              if(! exists $err_str_H{"x5l"}) { # only add x5s if x5l does not exist
+                if($start_diff > $aln_tol) { 
+                  $err_str_H{"x5s"} = "start positions differ by $start_diff > $aln_tol (strand:$p_strand CM:$p_start blastx:$x_start)";
+                }                
+              }
+
+              # check for 'x3l': blastx alignment extends outside of nucleotide/CM alignment on 3' end
+              if((($p_strand eq "+") && ($x_stop  > $p_stop)) || 
+                 (($p_strand eq "-") && ($x_stop  < $p_stop))) { 
+                $err_str_H{"x3l"} = "blastx alignment extends outside CM alignment on 3' end (strand:$p_strand CM:$p_stop blastx:$x_stop)";
+              }
+
+              # check for 'x3s': blastx 3' end too short, not within $aln_tol nucleotides
               # for the stop coordinates, we do this differently if the CM prediction 
               # includes the stop codon or not, if it does, we allow 3 more positions different
               $stop_diff  = abs($p_stop  - $x_stop);
@@ -3789,59 +3819,44 @@ sub ftr_results_add_xip_xnn_errors {
                 $cur_aln_tol  = $aln_tol;
                 $cur_stop_str = "no valid stop codon";
               }
-              if($stop_diff > $cur_aln_tol) { 
-                if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "stop positions differ by $stop_diff > $cur_aln_tol (strand:$p_strand CM:$p_stop blastx:$x_stop, $cur_stop_str in CM prediction)";
+              if(! exists $err_str_H{"x3l"}) { # only add x3s if x3l does not exist
+                if($stop_diff > $cur_aln_tol) { 
+                  $err_str_H{"x3s"} = "stop positions differ by $stop_diff > $cur_aln_tol (strand:$p_strand CM:$p_stop blastx:$x_stop, $cur_stop_str in CM prediction)";
+                }
               }
-              # check if blastx alignment extends outside of nucleotide/CM alignment
-              if((($p_strand eq "+") && ($x_start < $p_start)) || 
-                 (($p_strand eq "-") && ($x_start > $p_start))) { 
-                if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "blastx alignment extends outside CM alignment on 5' end (strand:$p_strand CM:$p_start blastx:$x_start)";
-              }
-              if((($p_strand eq "+") && ($x_stop  > $p_stop)) || 
-                 (($p_strand eq "-") && ($x_stop  < $p_stop))) { 
-                if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "blastx alignment extends outside CM alignment on 3' end (strand:$p_strand CM:$p_stop blastx:$x_stop)";
-              }
-              # check for too big of an insert
+
+              # check for 'xin': too big of an insert
               if((defined $x_maxins) && ($x_maxins > $indel_tol)) { 
-                if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "longest blastx predicted insert of length $x_maxins > $indel_tol";
+                $err_str_H{"xin"} = "longest blastx predicted insert of length $x_maxins > $indel_tol";
               }
-              # check for too big of a deletion
+
+              # check for 'xde': too big of a deletion
               if((defined $x_maxdel) && ($x_maxdel > $indel_tol)) { 
-                if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "longest blastx predicted delete of length $x_maxdel > $indel_tol";
+                $err_str_H{"xde"} = "longest blastx predicted delete of length $x_maxdel > $indel_tol";
               }
-              # check for blast predicted truncation
+
+              # check for 'xtr': blast predicted truncation
               if(defined $x_trcstop) { 
-                if($xip_err_str ne "") { $xip_err_str .= ", "; }
-                $xip_err_str .= "blastx alignment includes stop codon ($x_trcstop)";
+                $err_str_H{"xtr"} = "blastx alignment includes stop codon ($x_trcstop)";
               }
-            }
-          }
-          if($xip_err_str ne "") { 
-            #printf("calling error_instances_add(xip)\n");
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "xip", $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $xip_err_str), $FH_HR);
-          }
-          # if we added a xip, step through all (not just primary) children of this feature and add mip
-          if(($xip_err_str ne "") && ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp")) { 
-            for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
-              my $child_ftr_idx = $all_children_idx_A[$child_idx];
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mip", $seq_name, 
-                                  sprintf("MP: %s, CDS %s", 
-                                          $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
-                                          $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
-                                  $FH_HR);
             }
           }
         } # end of 'if(defined $p_start)'
-        else { # $p_start is undefined, check if we should add a xnn error
-          #printf("HEYAHEYA pstart is undef ftr_idx $ftr_idx seq_idx: $seq_idx\n");
-          if($xnn_err_str ne "") { 
-            #printf("HEYAHEYA added xnn error\n");
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "xnn", $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $xnn_err_str), $FH_HR);
+        my $err_flag = 0;
+        foreach my $err_str (sort keys %err_str_H) { 
+          #printf("calling error_instances_add($err_str)\n");
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, $err_str, $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $err_str), $FH_HR);
+          $err_flag = 1;
+        }
+        # if we added an error, step through all (not just primary) children of this feature and add mip
+        if((defined $p_start) && ($err_flag) && ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp")) { 
+          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
+            my $child_ftr_idx = $all_children_idx_A[$child_idx];
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mip", $seq_name, 
+                                sprintf("MP: %s, CDS %s", 
+                                        $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
+                                        $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
+                                $FH_HR);
           }
         }
 
