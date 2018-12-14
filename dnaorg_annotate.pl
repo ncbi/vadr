@@ -3843,11 +3843,14 @@ sub ftr_results_add_blastx_errors {
           }
         } # end of 'if(defined $p_start)'
         my $err_flag = 0;
-        foreach my $err_str (sort keys %err_str_H) { 
-          #printf("calling error_instances_add($err_str)\n");
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, $err_str, $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $err_str), $FH_HR);
+        my $output_err_str = "";
+        foreach my $err_code (sort keys %err_str_H) { 
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, $err_code, $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $err_str_H{$err_code}), $FH_HR);
           $err_flag = 1;
+          if($output_err_str ne "") { $output_err_str .= ","; }
+          $output_err_str .= $err_code;
         }
+        if($output_err_str eq "") { $output_err_str = "-"; }
         # if we added an error, step through all (not just primary) children of this feature and add mip
         if((defined $p_start) && ($err_flag) && ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp")) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
@@ -3864,7 +3867,7 @@ sub ftr_results_add_blastx_errors {
         if($ftr_idx == 0) { 
           @{$out_per_seq_AA[$seq_idx]} = ();
         }
-        push(@{$out_per_seq_AA[$seq_idx]}, sprintf("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s\n", 
+        push(@{$out_per_seq_AA[$seq_idx]}, sprintf("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %s\n", 
                                                    $seq_name_width,    $seq_name, 
                                                    $ftr_product_width, $ftr_info_HAR->{"out_product"}[$ftr_idx],
                                                    (defined $p_start)                               ? "yes"       : "no",   # CM prediction?
@@ -3879,8 +3882,7 @@ sub ftr_results_add_blastx_errors {
                                                    (defined $x_maxins  && $x_score >= $min_x_score) ? $x_maxins   : "-",    # blastx-maxins
                                                    (defined $x_maxdel  && $x_score >= $min_x_score) ? $x_maxdel   : "-",    # blastx-maxdel
                                                    (defined $x_trcstop && $x_score >= $min_x_score) ? $x_trcstop  : "-",    # blastx-maxdel
-                                                   ($xip_err_str ne "")                             ? "yes"       : "no",   # xip error
-                                                   ($xnn_err_str ne "")                             ? "yes"       : "no")); # xnn error
+                                                   $output_err_str));
             
 
 
@@ -3902,12 +3904,11 @@ sub ftr_results_add_blastx_errors {
   printf $out_FH ("#bxmaxin:  maximum insert length in top blastx HSP\n");
   printf $out_FH ("#bxmaxde:  maximum delete length in top blastx HSP\n");
   printf $out_FH ("#bxtrc:    position of stop codon in top blastx HSP, if there is one\n");
-  printf $out_FH ("#xiperr?:  is there a xip error (failure of blastx to validate CM prediction) for this sequence/CDS?\n");
-  printf $out_FH ("#xnnerr?:  is there a xnn error (failure for CM to detect hit that blastx detected) for this sequence/CDS?\n");
-  printf $out_FH ("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s\n", 
+  printf $out_FH ("#errors:   list of errors for this sequence, - if none\n");
+  printf $out_FH ("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %s\n",
          $seq_name_width,    "#sequence", 
          $ftr_product_width, "product", 
-         "cm?", "blast?", "cmstart", "cmstop", "bxstart", "bxstop", "bxscore", "startdf", "stopdf", "bxmaxin", "bxmaxde", "bxtrc", "xiperr?", "xnnerr?");
+         "cm?", "blast?", "cmstart", "cmstop", "bxstart", "bxstop", "bxscore", "startdf", "stopdf", "bxmaxin", "bxmaxde", "bxtrc", "errors");
 
          
 

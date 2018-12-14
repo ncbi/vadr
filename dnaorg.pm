@@ -1508,7 +1508,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "lsc", "feature",  0,
                      "low homology score", # description
                      1, 0, "!DESC!", # feature table info: valid, pred_stop, note
-                     "Indefinite Annotation: (!out_product,out_gene) !DESC!", # feature table error
+                     "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "xnn", "feature",  0,
