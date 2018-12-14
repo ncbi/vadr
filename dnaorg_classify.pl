@@ -314,19 +314,19 @@ my @early_cmd_A = (); # array of commands we run before our log file is opened
 # check if our output dir $symbol exists
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
-##!##  $cmd = "rm -rf $dir";
-##!## if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-##!##  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+  $cmd = "rm -rf $dir";
+ if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
-##!##  $cmd = "rm $dir";
-##!##  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-##!##  else                        { die "ERROR a file named $dir already exists. Remove it, or use -###f to overwrite it."; }
+  $cmd = "rm $dir";
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR a file named $dir already exists. Remove it, or use -###f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-##!##runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
+runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -616,15 +616,23 @@ else {
     parse_ecmap_file($ecmap_file, \%ref_list_seqname_H, \%ecmap_ref2tax_H, \%ecmap_tax2ref_HA, $ofile_info_HH{"FH"})
   }
 
+  # deal with --ecall
   my @ecall_raw_A = (); # raw --ecall args, may be models or tax groups
   my @ecall_A = ();     # models corresponding to @ecall_raw_A (same as @ecall_raw_A if --ecmap not used)
   if(opt_IsUsed("--ecall", \%opt_HH)) { 
     my $ecall_arg = opt_Get("--ecall", \%opt_HH); 
     @ecall_raw_A = split(",", $ecall_arg); 
     foreach my $model_or_tax (@ecall_raw_A) { 
+      if((defined $ecmap_file) &&
+         (! exists $ecmap_tax2ref_HA{$model_or_tax})) { 
+        DNAORG_FAIL(sprintf("ERROR, when --ecmap and --ecall <s> are both used, the specified classifications in <s> must\nbe tax groups read from --ecmap file, but $model_or_tax was not. Tax groups read are:\n%s", hashKeysToNewlineDelimitedString(\%ecmap_tax2ref_HA)), 1, $ofile_info_HH{"FH"});
+      }
       validate_expected_model_or_tax($model_or_tax, "while parsing --ecall argument $ecall_arg, ", \%ecmap_tax2ref_HA, \%ref_list_seqname_H, \%annotate_ref_list_seqname_H, @ecall_A, $ofile_info_HH{"FH"});
     }
   }
+
+  # deal with --eceach
+  # Note: --eceach and --ecall are incompatible options, so only one could be used
   my $eceach_file = undef;
   my %eceach_HA = (); # key is sequence name, value is array of model names this sequence is expected to match
   if(opt_IsUsed("--eceach", \%opt_HH)) { 
@@ -641,8 +649,8 @@ else {
   my @mdl_file_A = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
 
   my $cls_tot_len_nt = sumHashValues(\%cls_seqlen_H);
-##!##  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
-##!##                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
+  cmscanOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, 
+                          \@mdl_file_A, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmscanOrNhmmscanWrapper call: '0' means run nhmmscan, not cmscan, 'undef' is for the model length array, irrelevant b/c we're using nhmmscan
 
   # parse nhmmscan tblout file to create infotbl file and determine pass/fails
@@ -1203,7 +1211,8 @@ sub build_opts_hash_to_opts_string {
 #  $ref_list_seqname_HR:       ref to hash of reference sequence names
 #  $annot_ref_list_seqname_HR: ref to hash of reference sequence names that we will annotate for
 #                              should be undef if -A not used
-#  $ecmap_tax2ref_HAR:         ref to hash, key is taxonomic group, value is array of models in that group
+#  $ecmap_tax2ref_HAR:         ref to hash, key is taxonomic group, value is array of models in that group, 
+#                              will be undef if --ecmap not used
 #  $cls_seqlen_HR:             ref to hash of lengths of each sequence
 #  $eceach_HAR:                ref to hash of arrays, key is sequence name (key from cls_seqlen_HR),
 #                              value is array of models (from ref_list_seqname_HR),
@@ -1245,6 +1254,11 @@ sub parse_eceach_file {
       @{$eceach_HAR->{$seqname}} = (); 
       my @model_or_tax_A = split(",", $model_or_tax_str);
       foreach my $model_or_tax (@model_or_tax_A) { 
+        if((defined $ecmap_tax2ref_HAR) && 
+           (! exists $ecmap_tax2ref_HAR->{$model_or_tax})) { 
+          DNAORG_FAIL(sprintf("ERROR in $sub_name, when --ecmap and --eceach are both used, specified classifications\nin --eceach file must be a tax group read from --ecmap file, but $model_or_tax was not. Tax groups read are:\n%s", hashKeysToNewlineDelimitedString($ecmap_tax2ref_HAR)), 1, $FH_HR);
+        }
+        # this function validates that the models exist, and adds them to @{$eceach_HAR->{$seqname}}
         validate_expected_model_or_tax($model_or_tax, "while parsing $eceach_file, ", $ecmap_tax2ref_HAR, $ref_list_seqname_HR, $annot_ref_list_seqname_HR, $eceach_HAR->{$seqname}, $FH_HR);
       }
     }
@@ -1620,13 +1634,10 @@ sub output_one_sequence {
   if(defined $cur_tbldata_AHR) { 
     $nhit = scalar(@{$cur_tbldata_AHR});
   }
-  printf("width_HR->{seq} " . $width_HR->{"seq"} . "\n");
-  printf("width_HR->{model} " . $width_HR->{"model"} . "\n");
-  printf("width_HR->{tax} " . $width_HR->{"tax"} . "\n");
   if($nhit == 0) { 
     $ufeature_fail_str = "No_Annotation;";
     printf $rdb_infotbl_FH ("%-*s  %6s  %-*s  %-*s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %-*s  %-*s  %7s  %7s  %7s  %2s  %4s  %s\n", 
-                            $width_HR->{"seq"}, $seq, $seqlen, $width_HR->{"model"}, "-", $width_HR->{"tax"}, "-", "-", "-", "-", "-", "-", "-", "-", $width_HR->{"model"}, "-", $width_HR->{"tax"}, "-", "-", "-", "--", "FAIL", $ufeature_fail_str);
+                            $width_HR->{"seq"}, $seq, $seqlen, $width_HR->{"model"}, "-", $width_HR->{"tax"}, "-", "-", "-", "-", "-", "-", "-", "-", $width_HR->{"model"}, "-", $width_HR->{"tax"}, "-", "-", "-", "-", "--", "FAIL", $ufeature_fail_str);
     printf $tab_infotbl_FH ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
                             $seq, $seqlen, "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "--", "FAIL", $ufeature_fail_str);
     push(@{$seqlist_HAR->{"non-assigned"}}, $seq);
@@ -1765,7 +1776,7 @@ sub output_one_sequence {
       if(! $annotate_ref_list_seqname_H{$cur_prcdata_AH[0]{"model"}}) { 
         $pass_fail_HR->{$seq} = "FAIL"; 
         my @tmp_A = ($cur_prcdata_AH[0]{"model"});
-        my $best_model_str = format_tax_model_string(\@tmp_A, $ecmap_ref2tax_HR, $FH_HR);
+        my $best_model_str = format_tax_model_string(\@tmp_A, $ecmap_ref2tax_HR, $sub_name, $FH_HR);
         $cur_ufeature_str = sprintf("Unexpected Taxonomy[best match is to %s]", $best_model_str);
         $ufeature_all_str  .= $cur_ufeature_str;
         $ufeature_fail_str .= $cur_ufeature_str; # always causes a failure
@@ -1794,9 +1805,9 @@ sub output_one_sequence {
           }
         }
         if(! $found_match) { 
-          my $spec_model_str = format_tax_model_string($expref_AR, $ecmap_ref2tax_HR, $FH_HR);
+          my $spec_model_str = format_tax_model_string($expref_AR, $ecmap_ref2tax_HR, $sub_name, $FH_HR);
           my @tmp_A = ($cur_prcdata_AH[0]{"model"});
-          my $best_model_str = format_tax_model_string(\@tmp_A, $ecmap_ref2tax_HR, $FH_HR);
+          my $best_model_str = format_tax_model_string(\@tmp_A, $ecmap_ref2tax_HR, $sub_name, $FH_HR);
           $cur_ufeature_str = sprintf("Unexpected Classification[%s was specified, but %s is predicted];", $spec_model_str, $best_model_str);
           $ufeature_all_str .= $cur_ufeature_str;
           if($unexpclass_fails) { 
@@ -2097,10 +2108,11 @@ sub validate_expected_model_or_tax {
 #             will just list the models.
 #
 # Arguments:
-#  $model_AR:                  ref to array of models
-#  $ecmap_ref2tax_HR:          ref to hash, key is model, 
-#                              value is taxonomic group, if any, can be undef
-#  $FH_HR:                     ref to hash of file handles, including 'log'
+#  $model_AR:         ref to array of models
+#  $caller_name:      name of calling subroutine, can be undef        
+#  $ecmap_ref2tax_HR: ref to hash, key is model, 
+#                     value is taxonomic group, if any, can be undef
+#  $FH_HR:            ref to hash of file handles, including 'log'
 #             
 # Returns:    formatted string
 #
@@ -2109,11 +2121,12 @@ sub validate_expected_model_or_tax {
 #################################################################
 sub format_tax_model_string {
   my $sub_name  = "format_tax_model_string";
-  my $nargs_expected = 3;
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($model_AR, $ecmap_ref2tax_HR, $FH_HR) = @_;
+  my ($model_AR, $ecmap_ref2tax_HR, $caller_name, $FH_HR) = @_;
 
+  my $caller_name_str = (defined $caller_name) ? ", called by $caller_name" : "";
   my $tax = undef;
   my $nmodels = scalar(@{$model_AR});
   my $retstr = undef;
@@ -2125,15 +2138,15 @@ sub format_tax_model_string {
     for(my $m = 1; $m < $nmodels; $m++) { 
       if((exists $ecmap_ref2tax_HR->{$model_AR->[$m]}) &&
          $ecmap_ref2tax_HR->{$model_AR->[$m]} ne $tax) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, two models in input array have different taxonomic groups:\n%s --> $tax\n%s --> %s", $model_AR->[0], $model_AR->[$m], $ecmap_ref2tax_HR->{$model_AR->[$m]}), 1, $FH_HR);
+        DNAORG_FAIL(sprintf("ERROR in $sub_name%s, two models in input array have different taxonomic groups:\n%s --> $tax\n%s --> %s", $caller_name_str, $model_AR->[0], $model_AR->[$m], $ecmap_ref2tax_HR->{$model_AR->[$m]}), 1, $FH_HR);
       }
       if((defined $tax) && 
          (! exists $ecmap_ref2tax_HR->{$model_AR->[$m]})) {
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, two models in input array have different taxonomic groups:\n%s --> $tax\n%s --> <NOGROUP>", $model_AR->[0], $model_AR->[$m]), 1, $FH_HR);
+        DNAORG_FAIL(sprintf("ERROR in $sub_name%s, two models in input array have different taxonomic groups:\n%s --> $tax\n%s --> <NOGROUP>", $caller_name_str, $model_AR->[0], $model_AR->[$m]), 1, $FH_HR);
       }
       if((! defined $tax) && 
          (exists $ecmap_ref2tax_HR->{$model_AR->[$m]})) {
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, two models in input array have different taxonomic groups:\n%s --> <NOGROUP>\n%s --> %s", $model_AR->[0], $model_AR->[$m], $ecmap_ref2tax_HR->{$model_AR->[$m]}), 1, $FH_HR);
+        DNAORG_FAIL(sprintf("ERROR in $sub_name%s, two models in input array have different taxonomic groups:\n%s --> <NOGROUP>\n%s --> %s", $caller_name_str, $model_AR->[0], $model_AR->[$m], $ecmap_ref2tax_HR->{$model_AR->[$m]}), 1, $FH_HR);
       }
     }
   }

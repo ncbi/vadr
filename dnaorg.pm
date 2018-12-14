@@ -203,6 +203,9 @@
 #   getMonocharacterString()
 #   countLinesInFile()
 #   fileLinesToArray()
+#   arrayToNewlineDelimitedString()
+#   hashKeysToNewlineDelimitedString()
+#   hashValuesToNewlineDelimitedString()
 #   validateFileExistsAndIsNonEmpty()
 #   concatenateListOfFiles()
 #   md5ChecksumOfFile()
@@ -6146,6 +6149,7 @@ sub formatTimeString {
 # Simple utility subroutines for hashes and arrays:
 #   findNonNumericValueInArray()
 #   numNonNumericValueInArray()
+#   maxLengthScalarKeyInHash()
 #   maxLengthScalarValueInHash()
 #   maxLengthScalarValueInArray()
 #   findValueInArray()
@@ -6232,6 +6236,34 @@ sub numNonNumericValueInArray {
   }
 
   return $ct;
+}
+
+#################################################################
+# Subroutine : maxLengthScalarKeyInHash()
+# Incept:      EPN, Thu Dec 13 15:52:09 2018
+# 
+# Purpose:     Return the maximum length of a scalar key
+#              in a hash.
+#
+# Arguments: 
+#   $HR: reference to the hash
+# 
+# Returns:     The length of the maximum length scalar key.
+#
+################################################################# 
+sub maxLengthScalarKeyInHash { 
+  my $nargs_expected = 1;
+  my $sub_name = "maxLengthScalarKeyInHash()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($HR) = $_[0];
+
+  my $max = 0;
+  my $len = 0;
+  foreach my $key (keys (%{$HR})) { 
+    $len = length($key);
+    if($len > $max) { $max = $len; }
+  }
+  return $max;
 }
 
 #################################################################
@@ -6740,6 +6772,97 @@ sub fileLinesToArray {
 
   return;
 }
+
+#################################################################
+# Subroutine : arrayToNewlineDelimitedString()
+# Incept:      EPN, Fri Dec 14 09:21:41 2018
+#
+# Purpose:     Return a newline delimited string with all values of an array.
+#
+# Arguments: 
+#   $AR:     ref to array
+# 
+# Returns:     string
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub arrayToNewlineDelimitedString {
+  my $nargs_expected = 1;
+  my $sub_name = "arrayToNewlineDelimitedString";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR) = @_;
+
+  my $retstr = "";
+  foreach my $el (@{$AR}) { 
+    $retstr .= $el . "\n";
+  }
+  if($retstr eq "") { 
+    $retstr = "\n";
+  }
+  return $retstr;
+}
+
+#################################################################
+# Subroutine : hashKeysToNewlineDelimitedString()
+# Incept:      EPN, Fri Dec 14 09:25:24 2018
+#
+# Purpose:     Return a newline delimited string with all (sorted) keys in a hash.
+#
+# Arguments: 
+#   $HR:     ref to hash
+# 
+# Returns:     string
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub hashKeysToNewlineDelimitedString {
+  my $nargs_expected = 1;
+  my $sub_name = "hashKeysToNewlineDelimitedString";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($HR) = @_;
+
+  my $retstr = "";
+  foreach my $el (sort keys %{$HR}) { 
+    $retstr .= $el . "\n";
+  }
+  if($retstr eq "") { 
+    $retstr = "\n";
+  }
+  return $retstr;
+}
+
+#################################################################
+# Subroutine : hashValuesToNewlineDelimitedString()
+# Incept:      EPN, Fri Dec 14 09:26:16 2018
+#
+# Purpose:     Return a newline delimited string with all values in a hash.
+#
+# Arguments: 
+#   $HR:     ref to hash
+# 
+# Returns:     string
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub hashValuesToNewlineDelimitedString {
+  my $nargs_expected = 1;
+  my $sub_name = "hashValuesToNewlineDelimitedString";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($HR) = @_;
+
+  my $retstr = "";
+  foreach my $el (sort keys %{$HR}) { 
+    $retstr .= $HR->{$el} . "\n";
+  }
+  if($retstr eq "") { 
+    $retstr = "\n";
+  }
+  return $retstr;
+}
+
 
 #################################################################
 # Subroutine : validateFileExistsAndIsNonEmpty()
