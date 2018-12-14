@@ -1459,7 +1459,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "ext", "feature",  1,
                      "first in-frame stop codon exists 3' of stop position predicted by homology to reference", # description
                      1, 1, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop note
-                     "Mutation at End: (!out_product_out_gene!) expected stop codon could not be identified; !DESC!", # feature table error
+                     "Mutation at End: (!out_product,out_gene!) expected stop codon could not be identified; !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,

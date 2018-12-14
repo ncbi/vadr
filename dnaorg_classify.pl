@@ -665,7 +665,7 @@ else {
   if($width_H{"seq"} < length("#sequence")) { $width_H{"seq"} = length("#sequence"); }
 
   $width_H{"model"} = maxLengthScalarValueInArray(\@ref_list_seqname_A);
-  if($width_H{"model"} < length("topmodel")) { $width_H{"model"} = length("topmodel"); }
+  if($width_H{"model"} < length("#SUM-ASSIGNED")) { $width_H{"model"} = length("#SUM-ASSIGNED"); }
 
   if(defined $ecmap_file) {
     $width_H{"tax"} = maxLengthScalarKeyInHash(\%ecmap_tax2ref_HA);
@@ -717,11 +717,13 @@ else {
   push(@tmp_output_A, sprintf("#\n"));
   push(@tmp_output_A, sprintf("# Number of input sequences assigned to each RefSeq:\n"));
   push(@tmp_output_A, sprintf("#\n"));
-  push(@tmp_output_A, sprintf("%-12s  %10s  %10s    %10s  %10s%s\n", "# RefSeq-acc", "num-PASS", "fract-PASS", "num-FAIL", "fract-FAIL", ($do_annotate) ? "    annotating?" : ""));
-  push(@tmp_output_A, sprintf("%-12s  %10s  %10s    %10s  %10s%s\n", "#-----------", "----------", "----------", "----------", "----------", ($do_annotate) ? "    -----------" : ""));
+  push(@tmp_output_A, sprintf("%-*s  %10s  %10s%s\n", $width_H{"model"}, "#model", "num-PASS", "num-FAIL", ($do_annotate) ? "    annotating?" : ""));
+  push(@tmp_output_A, sprintf("%-*s  %10s  %10s%s\n", $width_H{"model"}, "#" . getMonocharacterString($width_H{"model"}-1, "-", undef), "----------", "----------", ($do_annotate) ? "    -----------" : ""));
   my $cur_nseq_pass = 0; # number of seqs for current refseq that pass
   my $cur_nseq_fail = 0; # number of seqs for current refseq that fail
 
+  my $seqlist_file     = undef; # list of sequences assigned to the current model (PASS+FAIL)
+  my $sub_fasta_file   = undef; # fasta file of sequences assigned to the current model (PASS+FAIL)
   my %seqlist_file_H   = (); # two keys: PASS and FAIL, name of seqlist file for PASS/FAIL seqs
   my %sub_fasta_file_H = (); # two keys: PASS and FAIL, name of sub fasta file for PASS/FAIL seqs 
   my %cur_nseq_H       = (); # two keys: PASS and FAIL, number of seqs that PASS/FAIL
@@ -742,6 +744,9 @@ else {
   my $noannot_assigned_fail = 0; # total number of assigned seqs that FAIL that will not be annotated
 
   foreach my $ref_list_seqname (@reordered_ref_list_seqname_A) {
+    my $seqlist_file          = $out_root . ".$ref_list_seqname.seqlist";
+    my $sub_fasta_file        = $out_root . ".$ref_list_seqname.fa";
+    my $cur_nseq              = 0;
     $seqlist_file_H{"PASS"}   = $out_root . ".$ref_list_seqname.cp.seqlist";
     $sub_fasta_file_H{"PASS"} = $out_root . ".$ref_list_seqname.cp.fa";
     $seqlist_file_H{"FAIL"}   = $out_root . ".$ref_list_seqname.cf.seqlist";
@@ -759,13 +764,14 @@ else {
         DNAORG_FAIL("ERROR, pass_fail_H{$cur_seq} does not equal PASS or FAIL but $pass_fail_H{$cur_seq}", 1, $ofile_info_HH{"FH"});
       }
       $cur_nseq_H{$pass_fail_H{$cur_seq}}++; 
+      $cur_nseq++;
     }
 
     my $annotate_field = "";
     if($do_annotate) { 
       $annotate_field = sprintf("    %11s", ($annotate_ref_list_seqname_H{$ref_list_seqname} ? "yes" : "no"));
     }
-    push(@tmp_output_A, sprintf("%-12s  %10d  %10.4f    %10d  %10.4f%s\n", $ref_list_seqname, $cur_nseq_H{"PASS"}, $cur_nseq_H{"PASS"} / $n_cls_seqs, $cur_nseq_H{"FAIL"}, $cur_nseq_H{"FAIL"} / $n_cls_seqs, $annotate_field));
+    push(@tmp_output_A, sprintf("%-*s  %10d  %10d%s\n", $width_H{"model"}, $ref_list_seqname, $cur_nseq_H{"PASS"}, $cur_nseq_H{"FAIL"}, $annotate_field));
 
     $total_assigned_pass += $cur_nseq_H{"PASS"};
     $total_assigned_fail += $cur_nseq_H{"FAIL"};
@@ -779,24 +785,36 @@ else {
     }
 
     # create files for sequences that PASS and FAIL
-    foreach my $class ("PASS", "FAIL") { 
-      if($cur_nseq_H{$class} > 0) { 
-        if($annotate_ref_list_seqname_H{$ref_list_seqname} == 1) { $nseq_above_zero++; }
-        open(SEQLIST, "> $seqlist_file_H{$class}")  || fileOpenFailure($seqlist_file_H{$class}, $0, $!, "writing", $ofile_info_HH{"FH"});
-        foreach $cur_seq (@{$seqlist_HA{$ref_list_seqname}}) {
-          if($pass_fail_H{$cur_seq} eq $class) { 
-            print SEQLIST "$cur_seq\n";
+    if($cur_nseq > 0) { 
+      open(ALLSEQLIST, "> $seqlist_file")  || fileOpenFailure($seqlist_file, $0, $!, "writing", $ofile_info_HH{"FH"});
+      if($annotate_ref_list_seqname_H{$ref_list_seqname} == 1) { $nseq_above_zero++; }
+      foreach my $class ("PASS", "FAIL") { 
+        if($cur_nseq_H{$class} > 0) { 
+          open(SEQLIST, "> $seqlist_file_H{$class}")  || fileOpenFailure($seqlist_file_H{$class}, $0, $!, "writing", $ofile_info_HH{"FH"});
+          foreach $cur_seq (@{$seqlist_HA{$ref_list_seqname}}) {
+            if($pass_fail_H{$cur_seq} eq $class) { 
+              print ALLSEQLIST "$cur_seq\n";
+              print SEQLIST    "$cur_seq\n";
+            }
           }
+          close(SEQLIST);
+          addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.$class.seqlist", $seqlist_file_H{$class}, 1, sprintf("List of %sing seqs for $ref_list_seqname", $class));
+          
+          # fetch the PASS or FAIL sequences into a new fasta file
+          sleep(0.1); # make sure that SEQLIST is closed
+          $cmd  = "cat $seqlist_file_H{$class} |" . $execs_H{"esl-sfetch"} . " -f $cls_fa - > $sub_fasta_file_H{$class}"; # fetch the sequences
+          runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.$class.fa", $sub_fasta_file_H{$class}, 1, sprintf("Fasta file with %sing seqs assigned to $ref_list_seqname", $class));
         }
-        close(SEQLIST);
-        addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.$class.seqlist", $seqlist_file_H{$class}, 1, sprintf("List of %sing seqs for $ref_list_seqname", $class));
-
-        # fetch the sequences into a new fasta file
-        sleep(0.1); # make sure that SEQLIST is closed
-        $cmd  = "cat $seqlist_file_H{$class} |" . $execs_H{"esl-sfetch"} . " -f $cls_fa - > $sub_fasta_file_H{$class}"; # fetch the sequences
-        runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-        addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.$class.fa", $sub_fasta_file_H{$class}, 1, sprintf("Fasta file with %sing sequences assigned to $ref_list_seqname", $class));
       }
+      close(ALLSEQLIST);
+      addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.seqlist", $seqlist_file, 1, sprintf("List of all seqs for $ref_list_seqname"));
+
+      # fetch PASS+FAIL sequences into a new fasta file
+      sleep(0.1); # make sure that SEQLIST is closed
+      $cmd  = "cat $seqlist_file |" . $execs_H{"esl-sfetch"} . " -f $cls_fa - > $sub_fasta_file"; # fetch the sequences
+      runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+      addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.fa", $sub_fasta_file, 1, sprintf("Fasta file with all seqs assigned to $ref_list_seqname"));
     }
   }
     
@@ -804,7 +822,7 @@ else {
   my $non_assigned_file = $out_root . ".non-assigned";
   
   my $cur_nseq = scalar(@{$seqlist_HA{"non-assigned"}});
-  push(@tmp_output_A, sprintf("%-12s  %10d  %10.4f    %10d  %10.4f%s\n", "NON-ASSIGNED", $cur_nseq, $cur_nseq / $n_cls_seqs, $cur_nseq, $cur_nseq / $n_cls_seqs, ($do_annotate) ? "             no" : ""));
+  push(@tmp_output_A, sprintf("%-*s  %10d  %10d%s\n", $width_H{"model"}, "NON-ASSIGNED", 0, $cur_nseq, ($do_annotate) ? "             no" : ""));
   if($cur_nseq > 0) { 
     open(NALIST, "> $non_assigned_file")  || fileOpenFailure($non_assigned_file, $0, $!, "writing", $ofile_info_HH{"FH"});
     foreach (@{$seqlist_HA{"non-assigned"}}) {
@@ -812,12 +830,12 @@ else {
     }
     addClosedFileToOutputInfo(\%ofile_info_HH, "non-assigned", $non_assigned_file, 1, "List of sequences not assigned to a RefSeq");
   }
-  push(@tmp_output_A, sprintf("%-12s  %10s  %10s    %10s  %10s%s\n", "#-----------", "----------", "----------", "----------", "----------", ($do_annotate) ? "    -----------" : ""));
+  push(@tmp_output_A, sprintf("%-*s  %10s  %10s%s\n", $width_H{"model"}, "#" . getMonocharacterString($width_H{"model"}-1, "-", undef), "----------", "----------", ($do_annotate) ? "    -----------" : ""));
   if($do_annotate) { 
-    push(@tmp_output_A, sprintf("%-12s  %10d  %10.4f    %10d  %10.4f%s\n", "SUM-ASSIGNED", $annot_assigned_pass, $annot_assigned_pass / $n_cls_seqs, $annot_assigned_fail, $annot_assigned_fail / $n_cls_seqs, ($do_annotate) ? "            yes" : ""));
-    push(@tmp_output_A, sprintf("%-12s  %10d  %10.4f    %10d  %10.4f%s\n", "SUM-ASSIGNED", $noannot_assigned_pass, $noannot_assigned_pass / $n_cls_seqs, $noannot_assigned_fail, $noannot_assigned_fail / $n_cls_seqs, ($do_annotate) ? "             no" : ""));
+    push(@tmp_output_A, sprintf("%-*s  %10d  %10d%s\n", $width_H{"model"}, "SUM-ASSIGNED", $annot_assigned_pass,   $annot_assigned_fail,   ($do_annotate) ? "            yes" : ""));
+    push(@tmp_output_A, sprintf("%-*s  %10d  %10d%s\n", $width_H{"model"}, "SUM-ASSIGNED", $noannot_assigned_pass, $noannot_assigned_fail, ($do_annotate) ? "             no" : ""));
   }
-  push(@tmp_output_A, sprintf("%-12s  %10d  %10.4f    %10d  %10.4f%s\n", "SUM-ASSIGNED", $total_assigned_pass, $total_assigned_pass / $n_cls_seqs, $total_assigned_fail, $total_assigned_fail / $n_cls_seqs, ($do_annotate) ? "           both" : ""));
+  push(@tmp_output_A, sprintf("%-*s  %10d  %10d%s\n", $width_H{"model"}, "SUM-ASSIGNED", $total_assigned_pass, $total_assigned_fail, ($do_annotate) ? "           both" : ""));
   
   # add $ref_list and $cls_list to output direcotry
   my $out_ref_list = $out_root . ".all.refseqs";
@@ -851,80 +869,76 @@ else {
     my $cur_out_dir  = "";
     my $cur_out_root = "";
     my $ctr = 1;
-    my %filekey_H = ();
-    $filekey_H{"PASS"} = "cp";
-    $filekey_H{"FAIL"} = "cf";
     # for each family with >0 
     foreach my $ref_list_seqname (@ref_list_seqname_A) {
       if($annotate_ref_list_seqname_H{$ref_list_seqname} == 1) { 
-        foreach my $class ("PASS", "FAIL") { 
-          my $classkey = $filekey_H{$class};
-          my $seqlist_file    = $out_root . ".$ref_list_seqname.$classkey.seqlist";
-          my $sub_fasta_file = $out_root . ".$ref_list_seqname.$classkey.fa";
-          $build_dir = $annotate_dir . "/" . $ref_list_seqname; # do not include $classkey here 
-          $cur_out_root = $dir_tail . "-" . $ref_list_seqname  . ".$classkey";
-          $cur_out_dir  = $dir . "/" . $cur_out_root;
-          $cur_nseq = 0;
-          for(my $z = 0; $z < scalar(@{$seqlist_HA{$ref_list_seqname}}); $z++) { 
-            if($pass_fail_H{$seqlist_HA{$ref_list_seqname}[$z]} eq $class) { 
-              $cur_nseq++; 
-            }
-          }
-          if($cur_nseq > 0) { 
-            $annotate_cons_opts = build_opts_hash_to_opts_string(\%{$buildopts_used_HH{$ref_list_seqname}});
-            $annotate_cmd = $execs_H{"dnaorg_annotate"} . " " . $annotate_cons_opts . " --dirbuild $build_dir --dirout $cur_out_dir";
-            if(defined $annotate_non_cons_opts) { $annotate_cmd .= " " . $annotate_non_cons_opts; }
-            if(opt_IsUsed("--keep",       \%opt_HH)) { $annotate_cmd .= " --keep"; }
-            if(opt_IsUsed("-v",           \%opt_HH)) { $annotate_cmd .= " -v"; }
-            if(opt_IsUsed("--local",      \%opt_HH)) { $annotate_cmd .= " --local"; }
-            if(opt_IsUsed("--xalntol",    \%opt_HH)) { $annotate_cmd .= sprintf(" --xalntol    %s", opt_Get("--xalntol",    \%opt_HH)); }
-            if(opt_IsUsed("--xindeltol",  \%opt_HH)) { $annotate_cmd .= sprintf(" --xindeltol  %s", opt_Get("--xindeltol",  \%opt_HH)); }
-            if(opt_IsUsed("--xlonescore", \%opt_HH)) { $annotate_cmd .= sprintf(" --xlonescore %s", opt_Get("--xlonescore", \%opt_HH)); }
-            if(opt_IsUsed("--local",      \%opt_HH)) { $annotate_cmd .= " --local"; }
-            # and finally, add --classerrors if either --ecall or --eceach was used
-            if((opt_IsUsed("--ecall",  \%opt_HH)) || 
-               (opt_IsUsed("--eceach", \%opt_HH))) { 
-              $annotate_cmd .= " --classerrors " . $ofile_info_HH{"fullpath"}{"all_errors_list"}; 
-            }
+        my $seqlist_file    = $out_root . ".$ref_list_seqname.seqlist";
+        my $sub_fasta_file = $out_root . ".$ref_list_seqname.fa";
+        $build_dir = $annotate_dir . "/" . $ref_list_seqname;
+        $cur_out_root = $dir_tail . "-" . $ref_list_seqname;
+        $cur_out_dir  = $dir . "/" . $cur_out_root;
+        $cur_nseq = scalar(@{$seqlist_HA{$ref_list_seqname}});
+        if($cur_nseq > 0) { 
+          $annotate_cons_opts = build_opts_hash_to_opts_string(\%{$buildopts_used_HH{$ref_list_seqname}});
+          $annotate_cmd = $execs_H{"dnaorg_annotate"} . " " . $annotate_cons_opts . " --dirbuild $build_dir --dirout $cur_out_dir";
+          if(defined $annotate_non_cons_opts) { $annotate_cmd .= " " . $annotate_non_cons_opts; }
+          if(opt_IsUsed("--keep",       \%opt_HH)) { $annotate_cmd .= " --keep"; }
+          if(opt_IsUsed("-v",           \%opt_HH)) { $annotate_cmd .= " -v"; }
+          if(opt_IsUsed("--local",      \%opt_HH)) { $annotate_cmd .= " --local"; }
+          if(opt_IsUsed("--xalntol",    \%opt_HH)) { $annotate_cmd .= sprintf(" --xalntol    %s", opt_Get("--xalntol",    \%opt_HH)); }
+          if(opt_IsUsed("--xindeltol",  \%opt_HH)) { $annotate_cmd .= sprintf(" --xindeltol  %s", opt_Get("--xindeltol",  \%opt_HH)); }
+          if(opt_IsUsed("--xlonescore", \%opt_HH)) { $annotate_cmd .= sprintf(" --xlonescore %s", opt_Get("--xlonescore", \%opt_HH)); }
+          if(opt_IsUsed("--local",      \%opt_HH)) { $annotate_cmd .= " --local"; }
+          # and finally, add --classerrors
+          $annotate_cmd .= " --classerrors " . $ofile_info_HH{"fullpath"}{"all_errors_list"}; 
+          $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
 
-            if($infasta_mode) { 
-              $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
-            }
-            else { # not fasta mode
-              $annotate_cmd .= " $seqlist_file";
-            }
-            runCommand($annotate_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-            # now copy the feature tables and error lists to this top level directory:
-            my $src_pass_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
-            my $src_fail_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
-            my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
-            my $src_pass_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
-            my $src_fail_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
-            my $src_errors_list   = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.errors.list";
-            my $dest_pass_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
-            my $dest_fail_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
-            my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
-            my $dest_pass_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
-            my $dest_fail_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
-            my $dest_errors_list  = $dir . "/" . $cur_out_root . ".dnaorg_annotate.errors.list";
-            runCommand("cp $src_pass_sqtable $dest_pass_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-            runCommand("cp $src_fail_sqtable $dest_fail_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-            runCommand("cp $src_long_sqtable $dest_long_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-            runCommand("cp $src_pass_list    $dest_pass_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-            runCommand("cp $src_fail_list    $dest_fail_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-            runCommand("cp $src_errors_list  $dest_errors_list",  opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-            addClosedFileToOutputInfo(\%ofile_info_HH, "pass-sqtbl"        . $ctr++, $dest_pass_sqtable, 1, "annotation results for $ref_list_seqname sequences that pass dnaorg_annotate.pl");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "fail-sqtbl"        . $ctr++, $dest_fail_sqtable, 1, "annotation results for $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl"         . $ctr++, $dest_long_sqtable, 1, "annotation results for sequences that pass or fail dnaorg_annotate.pl (verbose)");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "pass-list"         . $ctr++, $dest_pass_list,    1, "list of $ref_list_seqname sequences that pass dnaorg_annotate.pl");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "fail-list"         . $ctr++, $dest_fail_list,    1, "list of $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "annot-errors-list" . $ctr++, $dest_errors_list,  1, "list of all sequence table errors in (tab-delimited)");
+          # run dnaorg_annotate.pl
+          runCommand($annotate_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
 
-            # and finally, determine the number of passing sequences, by counting the 
-            # number of lines in the pass_list file
-            my $npass = countLinesInFile($dest_pass_list, $ofile_info_HH{"FH"});
-            push(@annotate_summary_output_A, sprintf("%-12s  %6s  %10d    %10d  %10.4f    %10d  %10.4f\n", $ref_list_seqname, "C-" . $class,  $cur_nseq, $npass, $npass / $cur_nseq, $cur_nseq - $npass, ($cur_nseq - $npass) / $cur_nseq));
+          # now copy the feature tables and error lists to this top level directory:
+          my $src_pass_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
+          my $src_fail_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
+          my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
+          my $src_pass_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
+          my $src_fail_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
+          my $src_fail_co_list  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af-co.list";
+          my $src_errors_list   = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.errors.list";
+          my $dest_pass_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
+          my $dest_fail_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
+          my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
+          my $dest_pass_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
+          my $dest_fail_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
+          my $dest_fail_co_list = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af-co.list";
+          my $dest_errors_list  = $dir . "/" . $cur_out_root . ".dnaorg_annotate.errors.list";
+          runCommand("cp $src_pass_sqtable $dest_pass_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          runCommand("cp $src_fail_sqtable $dest_fail_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          runCommand("cp $src_long_sqtable $dest_long_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          runCommand("cp $src_pass_list    $dest_pass_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          runCommand("cp $src_fail_list    $dest_fail_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          runCommand("cp $src_fail_co_list $dest_fail_co_list", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          runCommand("cp $src_errors_list  $dest_errors_list",  opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          addClosedFileToOutputInfo(\%ofile_info_HH, "pass-sqtbl"        . $ctr++, $dest_pass_sqtable, 1, "annotation results for $ref_list_seqname sequences that pass dnaorg_annotate.pl");
+          addClosedFileToOutputInfo(\%ofile_info_HH, "fail-sqtbl"        . $ctr++, $dest_fail_sqtable, 1, "annotation results for $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
+          addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl"         . $ctr++, $dest_long_sqtable, 1, "annotation results for sequences that pass or fail dnaorg_annotate.pl (verbose)");
+          addClosedFileToOutputInfo(\%ofile_info_HH, "pass-list"         . $ctr++, $dest_pass_list,    1, "list of $ref_list_seqname sequences that pass dnaorg_annotate.pl");
+          addClosedFileToOutputInfo(\%ofile_info_HH, "fail-list"         . $ctr++, $dest_fail_list,    1, "list of $ref_list_seqname sequences that fail dnaorg_annotate.pl");
+          addClosedFileToOutputInfo(\%ofile_info_HH, "fail-co-list"      . $ctr++, $dest_fail_co_list, 1, "list of $ref_list_seqname sequences that fail dnaorg_annotate.pl ONLY do to classification errors");
+          addClosedFileToOutputInfo(\%ofile_info_HH, "annot-errors-list" . $ctr++, $dest_errors_list,  1, "list of all sequence table errors in (tab-delimited)");
+          
+          # and finally, determine the number of passing sequences, by counting the 
+          # number of lines in the pass_list file
+          my $nannot_pass = countLinesInFile($dest_pass_list, $ofile_info_HH{"FH"});
+          my $nclass_pass = 0; 
+          my $nclass_fail = 0; 
+          my $nannot_fail_co = countLinesInFile($dest_fail_co_list, $ofile_info_HH{"FH"});
+          if(exists $ofile_info_HH{"fullpath"}{$ref_list_seqname . ".PASS.seqlist"}) { 
+            $nclass_pass = countLinesInFile($ofile_info_HH{"fullpath"}{$ref_list_seqname . ".PASS.seqlist"}, $ofile_info_HH{"FH"});
           }
+          if(exists $ofile_info_HH{"fullpath"}{$ref_list_seqname . ".FAIL.seqlist"}) { 
+            $nclass_fail = countLinesInFile($ofile_info_HH{"fullpath"}{$ref_list_seqname . ".FAIL.seqlist"}, $ofile_info_HH{"FH"});
+          }
+          push(@annotate_summary_output_A, sprintf("%-*s  %10d  %10d  %10d  %10d  %10d  %12d\n", $width_H{"model"}, $ref_list_seqname, $cur_nseq, $nclass_pass, $nclass_fail, $nannot_pass, $cur_nseq - $nannot_pass, $nannot_fail_co));
         }
       }
     }
@@ -934,8 +948,8 @@ else {
     push(@output_A, sprintf("#\n"));
     push(@output_A, sprintf("# Number of annotated sequences that PASSed/FAILed dnaorg_annotate.pl:\n"));
     push(@output_A, sprintf("#\n"));
-    push(@output_A, sprintf("%-12s  %6s  %10s    %10s  %10s    %10s  %10s\n", "# RefSeq-acc", "C-p/f", "num-annot",  "num-A-PASS",   "frc-A-PASS", "num-A-FAIL",  "frc-A-FAIL"));
-    push(@output_A, sprintf("%-12s  %6s  %10s    %10s  %10s    %10s  %10s\n", "#-----------", "------", "----------", "----------", "----------", "----------", "----------"));
+    push(@output_A, sprintf("%-*s  %10s  %10s  %10s  %10s  %10s  %12s\n", $width_H{"model"}, "#model", "num-annot", "num-C-PASS", "num-C-FAIL", "num-A-PASS", "num-A-FAIL", "num-A-FAIL-CO"));
+    push(@output_A, sprintf("%-*s  %10s  %10s  %10s  %10s  %10s  %12s\n", $width_H{"model"}, "#" . getMonocharacterString($width_H{"model"}-1, "-", undef), "----------", "----------", "---------", "----------", "----------", "------------"));
     # output annotation summary
     foreach my $out_line (@output_A, @annotate_summary_output_A) { 
       outputString($log_FH, 1, $out_line);
@@ -1806,9 +1820,7 @@ sub output_one_sequence {
           my $cur_model = $expref_AR->[$m];
           if(exists $cur_mdlmap_H{$cur_model}) { 
             # there is at least one hit to this model, check if the difference is within threshold
-            #printf("HEYA top_model: " . $cur_prcdata_AH[0]{"model"} . " top_bitpnt: $top_bitscpernt; cur_model: $cur_model bitpnt: " . $cur_prcdata_AH[$cur_mdlmap_H{$cur_model}]{"bitscpnt"} . "\n");
             if(($top_bitscpernt - $cur_prcdata_AH[$cur_mdlmap_H{$cur_model}]{"bitscpnt"}) < $ecthresh_opt) { 
-              #printf("\tHEYA match\n");
               $found_match = 1; 
               $m = scalar(@{$expref_AR}); # breaks loop
             }

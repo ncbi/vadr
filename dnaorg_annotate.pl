@@ -1317,19 +1317,22 @@ if(opt_Get("--doalign", \%opt_HH)) {
 # Step 22. Output annotations and errors
 #########################################
 # open files for writing
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",         $out_root . ".tbl",               1, "All annotations in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tblsum",      $out_root . ".tbl.summary",       1, "Summary of all annotations");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl",     $out_root . ".fail.tbl",          1, "Annotations for all sequences with >= 1 failure in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",      $out_root . ".error.tbl",         1, "Annotations for all sequences with >= 1 error in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",      $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",      $out_root . ".all.errors",        1, "List of errors, one line per error");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",      $out_root . ".errors.summary",    1, "Summary of all errors");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",   $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",   $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",   $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",   $out_root . ".ap.list",           1, "list of passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",   $out_root . ".af.list",           1, "list of failing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errors_list", $out_root . ".errors.list",       1, "list of errors in the sequence tables");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",            $out_root . ".tbl",               1, "All annotations in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tblsum",         $out_root . ".tbl.summary",       1, "Summary of all annotations");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl",        $out_root . ".fail.tbl",          1, "Annotations for all sequences with >= 1 failure in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",         $out_root . ".error.tbl",         1, "Annotations for all sequences with >= 1 error in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",         $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",         $out_root . ".all.errors",        1, "List of errors, one line per error");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",         $out_root . ".errors.summary",    1, "Summary of all errors");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",      $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".ap.list",           1, "list of passing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".af.list",           1, "list of failing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errors_list",    $out_root . ".errors.list",   1, "list of errors in the sequence tables");
+if(opt_IsUsed("--classerrors", \%opt_HH)) { 
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_co_list",   $out_root . ".af-co.list",        1, "list of failing sequences that would have passed if not for a classification error");
+}
 
 my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
 my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
@@ -7164,12 +7167,13 @@ sub output_feature_tbl_all_sequences {
       $class_errors_per_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $pass_ftbl_FH = $FH_HR->{"pass_ftbl"};   # feature table for PASSing sequences
-  my $fail_ftbl_FH = $FH_HR->{"fail_ftbl"};   # feature table for FAILing sequences
-  my $long_ftbl_FH = $FH_HR->{"long_ftbl"};   # long feature table for all sequences
-  my $pass_list_FH = $FH_HR->{"pass_list"};   # list of PASSing seqs
-  my $fail_list_FH = $FH_HR->{"fail_list"};   # list of FAILing seqs
-  my $errors_FH    = $FH_HR->{"errors_list"}; # list of errors 
+  my $pass_ftbl_FH    = $FH_HR->{"pass_ftbl"};   # feature table for PASSing sequences
+  my $fail_ftbl_FH    = $FH_HR->{"fail_ftbl"};   # feature table for FAILing sequences
+  my $long_ftbl_FH    = $FH_HR->{"long_ftbl"};   # long feature table for all sequences
+  my $pass_list_FH    = $FH_HR->{"pass_list"};   # list of PASSing seqs
+  my $fail_list_FH    = $FH_HR->{"fail_list"};    # list of FAILing seqs
+  my $fail_co_list_FH = $FH_HR->{"fail_co_list"}; # list of FAILing seqs, that would have passed if there were no class errors
+  my $errors_FH       = $FH_HR->{"errors_list"}; # list of errors 
 
   my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
 
@@ -7427,6 +7431,9 @@ sub output_feature_tbl_all_sequences {
         }
         if($has_class_errors) { 
           print $errors_FH ($class_errors_per_seq_HR->{$seq_name});
+          if(($nerr == 0) && (defined $fail_co_list_FH)) { 
+            print $fail_co_list_FH $accn_name . "\n";
+          }
           my $ftable_error_str = error_list_output_to_ftable_errors($seq_name, $class_errors_per_seq_HR->{$seq_name}, $ofile_info_HHR->{"FH"});
           print $fail_ftbl_FH $ftable_error_str;
           print $long_ftbl_FH $ftable_error_str;
