@@ -7238,7 +7238,6 @@ sub output_feature_tbl_all_sequences {
     my @seq_error_A = (); # all errors for this sequence
     my @seq_note_A  = (); # all notes for this sequence
 
-    my $nskipped = 0; # number of cds-mp features that were not output due to problem with start/stop coords
     my $missing_codon_start_flag = 0; # set to 1 if a feature for this sequence should have a codon_start value added but doesn't
 
     # loop over features
@@ -7273,10 +7272,7 @@ sub output_feature_tbl_all_sequences {
         $do_ignore      = ($defined_pstart || $xnn_flag) ? 0 : 1;
       }
 
-      if($do_ignore) { 
-        $nskipped++;
-      }
-      else { # ! $do_ignore
+      if(! $do_ignore) { 
         # per-feature values that are modified if we have an exception that covers all errors for this feature
         my $do_misc_feature = 0;
         my $do_start_carrot = 0;
@@ -7386,12 +7382,12 @@ sub output_feature_tbl_all_sequences {
       $has_class_errors = 1; 
     }
 
-    my $noutftr  = scalar(@ftout_AH);
-    my $nerror   = scalar(@seq_error_A);
-    my $nnote    = scalar(@seq_note_A);
+    my $cur_noutftr  = scalar(@ftout_AH);
+    my $cur_nerror   = scalar(@seq_error_A);
+    my $cur_nnote    = scalar(@seq_note_A);
 
     # sort output
-    if($noutftr > 0) { 
+    if($cur_noutftr > 0) { 
       @ftout_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
                              $b->{"carrot"}        <=> $a->{"carrot"}   or
                              $a->{"type_priority"} <=> $b->{"type_priority"} 
@@ -7399,13 +7395,12 @@ sub output_feature_tbl_all_sequences {
     }              
 
     # sequences only pass if:
-    # - at least one feature is annotated ($noutftr > 0)
+    # - at least one feature is annotated ($cur_noutftr > 0)
     # - zero notes and errors
-    # - no features skipped ($nskipped == 0)
-    my $do_pass = ($noutftr > 0 && $nnote == 0 && $nerror == 0 && $nskipped == 0 && (! $has_class_errors)) ? 1 : 0;
+    my $do_pass = (($cur_noutftr > 0) && ($cur_nnote == 0) && ($cur_nerror == 0) && ($has_class_errors == 0)) ? 1 : 0;
 
     # sanity check, if we have no notes, errors and didn't skip anything, we should also have set codon_start for all features
-    if($noutftr > 0 && $nnote == 0 && $nerror == 0 && $nskipped == 0 && ($missing_codon_start_flag)) { 
+    if($cur_noutftr > 0 && $cur_nnote == 0 && $cur_nerror == 0 && ($missing_codon_start_flag)) { 
       DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
     }
               
@@ -7430,7 +7425,7 @@ sub output_feature_tbl_all_sequences {
         print $fail_ftbl_FH $ftout_AH[$i]{"output"};
         print $long_ftbl_FH $ftout_AH[$i]{"long_output"};
       }
-      if($nerr > 0 || $has_class_errors) { 
+      if(($cur_nerror > 0) || ($has_class_errors)) { 
         print $fail_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         print $long_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         for(my $e = 0; $e < scalar(@seq_error_A); $e++) { 
@@ -7446,14 +7441,14 @@ sub output_feature_tbl_all_sequences {
         }
         if($has_class_errors) { 
           print $errors_FH ($class_errors_per_seq_HR->{$seq_name});
-          if(($nerr == 0) && (defined $fail_co_list_FH)) { 
+          if(($cur_nerror == 0) && (defined $fail_co_list_FH)) { 
             print $fail_co_list_FH $accn_name . "\n";
           }
           my $ftable_error_str = error_list_output_to_ftable_errors($seq_name, $class_errors_per_seq_HR->{$seq_name}, $ofile_info_HHR->{"FH"});
           print $fail_ftbl_FH $ftable_error_str;
           print $long_ftbl_FH $ftable_error_str;
         }
-      } # end of 'if($nerr > 0) || $has_class_errors'
+      } # end of 'if($cur_nerror > 0) || $has_class_errors'
     }
   } # end of loop over sequences
 
@@ -8634,7 +8629,6 @@ sub align_hits {
 
         # refdel
         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} = "";
-        #printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refdelstr} to empty string\n");
         foreach $el (@tmp_refdel_A) { 
           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} .= $el . ",";
         }

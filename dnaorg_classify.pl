@@ -581,7 +581,8 @@ else {
     if(opt_IsUsed("--xalntol",     \%opt_HH)) { $auto_add_opts .= ",--xalntol";    }
     if(opt_IsUsed("--xindeltol",   \%opt_HH)) { $auto_add_opts .= ",--xindeltol";  }
     if(opt_IsUsed("--xlonescore",  \%opt_HH)) { $auto_add_opts .= ",--xlonescore"; }
-    if(opt_IsUsed("--local",       \%opt_HH)) { $auto_add_opts .= ",--local"; }
+    if(opt_IsUsed("--nkb",         \%opt_HH)) { $auto_add_opts .= ",--nkb"; }
+    if(opt_IsUsed("--maxnjobs",    \%opt_HH)) { $auto_add_opts .= ",--maxnjobs"; }
     $annotate_non_cons_opts = parseNonConsOptsFile(opt_Get("--optsA", \%opt_HH), "--optsA", $auto_add_opts, $failure_str, $ofile_info_HH{"FH"});
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
@@ -869,6 +870,14 @@ else {
     my $cur_out_dir  = "";
     my $cur_out_root = "";
     my $ctr = 1;
+    
+    my $sum_cur_nseq       = 0;
+    my $sum_nclass_pass    = 0;
+    my $sum_nclass_fail    = 0;
+    my $sum_nannot_pass    = 0;
+    my $sum_nannot_fail    = 0;
+    my $sum_nannot_fail_co = 0;
+
     # for each family with >0 
     foreach my $ref_list_seqname (@ref_list_seqname_A) {
       if($annotate_ref_list_seqname_H{$ref_list_seqname} == 1) { 
@@ -888,7 +897,8 @@ else {
           if(opt_IsUsed("--xalntol",    \%opt_HH)) { $annotate_cmd .= sprintf(" --xalntol    %s", opt_Get("--xalntol",    \%opt_HH)); }
           if(opt_IsUsed("--xindeltol",  \%opt_HH)) { $annotate_cmd .= sprintf(" --xindeltol  %s", opt_Get("--xindeltol",  \%opt_HH)); }
           if(opt_IsUsed("--xlonescore", \%opt_HH)) { $annotate_cmd .= sprintf(" --xlonescore %s", opt_Get("--xlonescore", \%opt_HH)); }
-          if(opt_IsUsed("--local",      \%opt_HH)) { $annotate_cmd .= " --local"; }
+          if(opt_IsUsed("--nkb",        \%opt_HH)) { $annotate_cmd .= sprintf(" --nkb %s",        opt_Get("--nkb",        \%opt_HH)); }
+          if(opt_IsUsed("--maxnjobs",   \%opt_HH)) { $annotate_cmd .= sprintf(" --maxnjobs %s",   opt_Get("--maxnjobs",   \%opt_HH)); }
           # and finally, add --classerrors
           $annotate_cmd .= " --classerrors " . $ofile_info_HH{"fullpath"}{"all_errors_list"}; 
           $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
@@ -938,20 +948,29 @@ else {
           if(exists $ofile_info_HH{"fullpath"}{$ref_list_seqname . ".FAIL.seqlist"}) { 
             $nclass_fail = countLinesInFile($ofile_info_HH{"fullpath"}{$ref_list_seqname . ".FAIL.seqlist"}, $ofile_info_HH{"FH"});
           }
-          push(@annotate_summary_output_A, sprintf("%-*s  %10d  %10d  %10d  %10d  %10d  %12d\n", $width_H{"model"}, $ref_list_seqname, $cur_nseq, $nclass_pass, $nclass_fail, $nannot_pass, $cur_nseq - $nannot_pass, $nannot_fail_co));
+          push(@annotate_summary_output_A, sprintf("%-*s  %10d  %10d  %10d  %10d  %10d  %13d\n", $width_H{"model"}, $ref_list_seqname, $cur_nseq, $nclass_pass, $nclass_fail, $nannot_pass, $cur_nseq - $nannot_pass, $nannot_fail_co));
+          $sum_cur_nseq       += $cur_nseq; 
+          $sum_nclass_pass    += $nclass_pass;
+          $sum_nclass_fail    += $nclass_fail;
+          $sum_nannot_pass    += $nannot_pass;
+          $sum_nannot_fail    += ($cur_nseq - $nannot_pass);
+          $sum_nannot_fail_co += $nannot_fail_co;
         }
       }
     }
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
     
-    my @output_A = ();
-    push(@output_A, sprintf("#\n"));
-    push(@output_A, sprintf("# Number of annotated sequences that PASSed/FAILed dnaorg_annotate.pl:\n"));
-    push(@output_A, sprintf("#\n"));
-    push(@output_A, sprintf("%-*s  %10s  %10s  %10s  %10s  %10s  %12s\n", $width_H{"model"}, "#model", "num-annot", "num-C-PASS", "num-C-FAIL", "num-A-PASS", "num-A-FAIL", "num-A-FAIL-CO"));
-    push(@output_A, sprintf("%-*s  %10s  %10s  %10s  %10s  %10s  %12s\n", $width_H{"model"}, "#" . getMonocharacterString($width_H{"model"}-1, "-", undef), "----------", "----------", "---------", "----------", "----------", "------------"));
+    my @pre_output_A = ();
+    my @post_output_A = ();
+    push(@pre_output_A, sprintf("#\n"));
+    push(@pre_output_A, sprintf("# Number of annotated sequences that PASSed/FAILed dnaorg_annotate.pl:\n"));
+    push(@pre_output_A, sprintf("#\n"));
+    push(@pre_output_A, sprintf("%-*s  %10s  %10s  %10s  %10s  %10s  %13s\n", $width_H{"model"}, "#model", "num-annot", "num-C-PASS", "num-C-FAIL", "num-A-PASS", "num-A-FAIL", "num-A-FAIL-CO"));
+    push(@pre_output_A, sprintf("%-*s  %10s  %10s  %10s  %10s  %10s  %13s\n", $width_H{"model"}, "#" . getMonocharacterString($width_H{"model"}-1, "-", undef), "----------", "----------", "---------", "----------", "----------", "-------------"));
+    push(@post_output_A, sprintf("%-*s  %10s  %10s  %10s  %10s  %10s  %13s\n", $width_H{"model"}, "#" . getMonocharacterString($width_H{"model"}-1, "-", undef), "----------", "----------", "---------", "----------", "----------", "-------------"));
+    push(@post_output_A, sprintf("%-*s  %10d  %10d  %10d  %10d  %10d  %13d\n", $width_H{"model"}, "*ALL*", $sum_cur_nseq, $sum_nclass_pass, $sum_nclass_fail, $sum_nannot_pass, $sum_nannot_fail, $sum_nannot_fail_co));
     # output annotation summary
-    foreach my $out_line (@output_A, @annotate_summary_output_A) { 
+    foreach my $out_line (@pre_output_A, @annotate_summary_output_A, @post_output_A) { 
       outputString($log_FH, 1, $out_line);
     }
   }
