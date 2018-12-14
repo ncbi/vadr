@@ -3867,7 +3867,7 @@ sub ftr_results_add_blastx_errors {
         if($ftr_idx == 0) { 
           @{$out_per_seq_AA[$seq_idx]} = ();
         }
-        push(@{$out_per_seq_AA[$seq_idx]}, sprintf("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %s\n", 
+        push(@{$out_per_seq_AA[$seq_idx]}, sprintf("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n", 
                                                    $seq_name_width,    $seq_name, 
                                                    $ftr_product_width, $ftr_info_HAR->{"out_product"}[$ftr_idx],
                                                    (defined $p_start)                               ? "yes"       : "no",   # CM prediction?
@@ -3905,7 +3905,7 @@ sub ftr_results_add_blastx_errors {
   printf $out_FH ("#bxmaxde:  maximum delete length in top blastx HSP\n");
   printf $out_FH ("#bxtrc:    position of stop codon in top blastx HSP, if there is one\n");
   printf $out_FH ("#errors:   list of errors for this sequence, - if none\n");
-  printf $out_FH ("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %s\n",
+  printf $out_FH ("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n",
          $seq_name_width,    "#sequence", 
          $ftr_product_width, "product", 
          "cm?", "blast?", "cmstart", "cmstop", "bxstart", "bxstop", "bxscore", "startdf", "stopdf", "bxmaxin", "bxmaxde", "bxtrc", "errors");
