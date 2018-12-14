@@ -110,7 +110,7 @@ opt_Add("--errcheck",   "boolean", 0,                        3,    undef,"--loca
 $opt_group_desc_H{"4"} = "options for controlling what unexpected features cause sequences to PASS/FAIL";
 #     option               type        default            group   requires incompat         preamble-output                                              help-output    
 opt_Add("--lowcovpass",    "boolean",  0,                    4,   undef,  "--allfail",      "seqs with low coverage can PASS",                              "sequences with low coverage can PASS",                     \%opt_HH, \@opt_order_A);
-opt_Add("--unexppass",     "boolean",  0,                    4,"--expclass","--allfail",    "seqs with unexpected classification can PASS",                 "sequences with unexpected classification can PASS",        \%opt_HH, \@opt_order_A);
+opt_Add("--unexppass",     "boolean",  0,                    4,   undef,  "--allfail",      "seqs with unexpected classification can PASS",                 "sequences with unexpected classification can PASS",        \%opt_HH, \@opt_order_A);
 opt_Add("--allfail",       "boolean",  0,                    4,"--vlowscfail","--allfail",  "seqs with >=1 unexpected feature(s) FAIL",                     "sequences with >=1 unexpected feature(s) FAIL",            \%opt_HH, \@opt_order_A);
 opt_Add("--lowscfail",     "boolean",  0,                    4,"--vlowscfail","--allfail",  "seqs with Low Score      unexpected feature can PASS",         "sequences with LowScore     unexpected feature FAIL",      \%opt_HH, \@opt_order_A);
 opt_Add("--vlowscfail",    "boolean",  0,                    4,   undef,"--allfail",        "seqs with Very Low Score unexpected feature can PASS",         "sequences with VeryLowScore unexpected feature FAIL",      \%opt_HH, \@opt_order_A);
@@ -282,8 +282,11 @@ if(opt_IsUsed("--lowdiffthresh",\%opt_HH) || opt_IsUsed("--vlowdiffthresh",\%opt
 }
 
 # validate that the expected classification (--ec*) options make sense
-# --ecthresh and --ectoponly only make sense in combination with either --ecall or --eceach
+# --unexppass, --ecthresh and --ectoponly only make sense in combination with either --ecall or --eceach
 # (we could make --ecmap require one of those too, but I won't)
+if((opt_IsUsed("--unexppass", \%opt_HH)) && (! opt_IsUsed("--ecall", \%opt_HH)) && (! opt_IsUsed("--eceach", \%opt_HH))) { 
+  die "ERROR, --unexppass only makes sense in combination with --ecall or -eceach"; 
+}
 if((opt_IsUsed("--ecthresh", \%opt_HH)) && (! opt_IsUsed("--ecall", \%opt_HH)) && (! opt_IsUsed("--eceach", \%opt_HH))) { 
   die "ERROR, --ecthresh only makes sense in combination with --ecall or -eceach"; 
 }
@@ -627,7 +630,7 @@ else {
          (! exists $ecmap_tax2ref_HA{$model_or_tax})) { 
         DNAORG_FAIL(sprintf("ERROR, when --ecmap and --ecall <s> are both used, the specified classifications in <s> must\nbe tax groups read from --ecmap file, but $model_or_tax was not. Tax groups read are:\n%s", hashKeysToNewlineDelimitedString(\%ecmap_tax2ref_HA)), 1, $ofile_info_HH{"FH"});
       }
-      validate_expected_model_or_tax($model_or_tax, "while parsing --ecall argument $ecall_arg, ", \%ecmap_tax2ref_HA, \%ref_list_seqname_H, \%annotate_ref_list_seqname_H, @ecall_A, $ofile_info_HH{"FH"});
+      validate_expected_model_or_tax($model_or_tax, "while parsing --ecall argument $ecall_arg, ", \%ecmap_tax2ref_HA, \%ref_list_seqname_H, \%annotate_ref_list_seqname_H, \@ecall_A, $ofile_info_HH{"FH"});
     }
   }
 
@@ -839,8 +842,7 @@ else {
 # If -A, run dnaorg_annotate.pl for each model that had >0 seqs classified to it,
 # if not, 
 #################################################################################
-  if(0) {
-#  if($do_annotate) { 
+  if($do_annotate) { 
     outputString($log_FH, 1, "#\n#\n");
     $start_secs = outputProgressPrior("Running dnaorg_annotate.pl $nseq_above_zero time(s) to annotate sequences", $progress_w, $log_FH, *STDOUT);
     outputString($log_FH, 1, "\n");
@@ -879,7 +881,11 @@ else {
             if(opt_IsUsed("--xindeltol",  \%opt_HH)) { $annotate_cmd .= sprintf(" --xindeltol  %s", opt_Get("--xindeltol",  \%opt_HH)); }
             if(opt_IsUsed("--xlonescore", \%opt_HH)) { $annotate_cmd .= sprintf(" --xlonescore %s", opt_Get("--xlonescore", \%opt_HH)); }
             if(opt_IsUsed("--local",      \%opt_HH)) { $annotate_cmd .= " --local"; }
-            if(opt_IsUsed("--expclass",   \%opt_HH)) { $annotate_cmd .= " --classerrors " . $ofile_info_HH{"fullpath"}{"all_errors_list"}; }
+            # and finally, add --classerrors if either --ecall or --eceach was used
+            if((opt_IsUsed("--ecall",  \%opt_HH)) || 
+               (opt_IsUsed("--eceach", \%opt_HH))) { 
+              $annotate_cmd .= " --classerrors " . $ofile_info_HH{"fullpath"}{"all_errors_list"}; 
+            }
 
             if($infasta_mode) { 
               $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
@@ -888,27 +894,31 @@ else {
               $annotate_cmd .= " $seqlist_file";
             }
             runCommand($annotate_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-            # now copy the sequin feature tables to this top level directory:
+            # now copy the feature tables and error lists to this top level directory:
             my $src_pass_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
             my $src_fail_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
             my $src_long_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
             my $src_pass_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
             my $src_fail_list     = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
+            my $src_errors_list   = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.errors.list";
             my $dest_pass_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
             my $dest_fail_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.sqtable";
             my $dest_long_sqtable = $dir . "/" . $cur_out_root . ".dnaorg_annotate.long.sqtable";
             my $dest_pass_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.list";
             my $dest_fail_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.list";
+            my $dest_errors_list  = $dir . "/" . $cur_out_root . ".dnaorg_annotate.errors.list";
             runCommand("cp $src_pass_sqtable $dest_pass_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
             runCommand("cp $src_fail_sqtable $dest_fail_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
             runCommand("cp $src_long_sqtable $dest_long_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
             runCommand("cp $src_pass_list    $dest_pass_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
             runCommand("cp $src_fail_list    $dest_fail_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-            addClosedFileToOutputInfo(\%ofile_info_HH, "pass-sqtbl" . $ctr++, $dest_pass_sqtable, 1, "annotation results for $ref_list_seqname sequences that pass dnaorg_annotate.pl");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "fail-sqtbl" . $ctr++, $dest_fail_sqtable, 1, "annotation results for $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl"  . $ctr++, $dest_long_sqtable, 1, "annotation results for sequences that pass or fail dnaorg_annotate.pl (verbose)");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "pass-list"  . $ctr++, $dest_pass_sqtable, 1, "list of $ref_list_seqname sequences that pass dnaorg_annotate.pl");
-            addClosedFileToOutputInfo(\%ofile_info_HH, "fail-list"  . $ctr++, $dest_fail_sqtable, 1, "list of $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
+            runCommand("cp $src_errors_list  $dest_errors_list",  opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+            addClosedFileToOutputInfo(\%ofile_info_HH, "pass-sqtbl"        . $ctr++, $dest_pass_sqtable, 1, "annotation results for $ref_list_seqname sequences that pass dnaorg_annotate.pl");
+            addClosedFileToOutputInfo(\%ofile_info_HH, "fail-sqtbl"        . $ctr++, $dest_fail_sqtable, 1, "annotation results for $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
+            addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl"         . $ctr++, $dest_long_sqtable, 1, "annotation results for sequences that pass or fail dnaorg_annotate.pl (verbose)");
+            addClosedFileToOutputInfo(\%ofile_info_HH, "pass-list"         . $ctr++, $dest_pass_list,    1, "list of $ref_list_seqname sequences that pass dnaorg_annotate.pl");
+            addClosedFileToOutputInfo(\%ofile_info_HH, "fail-list"         . $ctr++, $dest_fail_list,    1, "list of $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
+            addClosedFileToOutputInfo(\%ofile_info_HH, "annot-errors-list" . $ctr++, $dest_errors_list,  1, "list of all sequence table errors in (tab-delimited)");
 
             # and finally, determine the number of passing sequences, by counting the 
             # number of lines in the pass_list file
@@ -1635,7 +1645,7 @@ sub output_one_sequence {
     $nhit = scalar(@{$cur_tbldata_AHR});
   }
   if($nhit == 0) { 
-    $ufeature_fail_str = "No_Annotation;";
+    $ufeature_fail_str = "No Annotation[No hits];";
     printf $rdb_infotbl_FH ("%-*s  %6s  %-*s  %-*s  %7s  %5s  %8s  %8s  %7s  %5s  %6s  %-*s  %-*s  %7s  %7s  %7s  %2s  %4s  %s\n", 
                             $width_HR->{"seq"}, $seq, $seqlen, $width_HR->{"model"}, "-", $width_HR->{"tax"}, "-", "-", "-", "-", "-", "-", "-", "-", $width_HR->{"model"}, "-", $width_HR->{"tax"}, "-", "-", "-", "-", "--", "FAIL", $ufeature_fail_str);
     printf $tab_infotbl_FH ("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
@@ -2078,7 +2088,6 @@ sub validate_expected_model_or_tax {
   
   my @model_to_check_A = (); # the array of models to check
   if((defined $ecmap_tax2ref_HAR) && (exists $ecmap_tax2ref_HAR->{$model_or_tax})) { 
-    printf("model_or_tax: $model_or_tax\n");
     @model_to_check_A = @{$ecmap_tax2ref_HAR->{$model_or_tax}}; # potentially multiple models
   }
   else { 

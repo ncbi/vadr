@@ -289,7 +289,7 @@ $opt_group_desc_H{++$g} = "options for skipping stages and using files from earl
 opt_Add("--skipedirect",   "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipfetch",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipscan",      "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                    $g,"--skipscan",  undef,                      "skip the translation steps, use existing resutls",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skiptranslate", "boolean", 0,                    $g,"--skipscan",  undef,                      "skip the translation steps, use existing results",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "TEMPORARY options for the alternative method of identifying origin sequences";
 #     option               type       default            group   requires                                   incompat     preamble-output                                                         help-output    
@@ -1317,16 +1317,16 @@ if(opt_Get("--doalign", \%opt_HH)) {
 # Step 22. Output annotations and errors
 #########################################
 # open files for writing
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",        $out_root . ".tbl",               1, "All annotations in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tblsum",     $out_root . ".tbl.summary",       1, "Summary of all annotations");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl",    $out_root . ".fail.tbl",          1, "Annotations for all sequences with >= 1 failure in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",     $out_root . ".error.tbl",         1, "Annotations for all sequences with >= 1 error in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",     $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",     $out_root . ".all.errors",        1, "List of errors, one line per error");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",     $out_root . ".errors.summary",    1, "Summary of all errors");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",  $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",  $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",  $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",         $out_root . ".tbl",               1, "All annotations in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "tblsum",      $out_root . ".tbl.summary",       1, "Summary of all annotations");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl",     $out_root . ".fail.tbl",          1, "Annotations for all sequences with >= 1 failure in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",      $out_root . ".error.tbl",         1, "Annotations for all sequences with >= 1 error in tabular format");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",      $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",      $out_root . ".all.errors",        1, "List of errors, one line per error");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",      $out_root . ".errors.summary",    1, "Summary of all errors");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",   $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",   $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",   $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",   $out_root . ".ap.list",           1, "list of passing sequences");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",   $out_root . ".af.list",           1, "list of failing sequences");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "errors_list", $out_root . ".errors.list",       1, "list of errors in the sequence tables");
@@ -7216,9 +7216,8 @@ sub output_feature_tbl_all_sequences {
     my %fidx2idx_H    = (); # key is feature index $fidx, value is $ftidx index in @ftout_AH that $fidx corresponds to
     my $i;
 
-    my @seq_error_A           = (); # all errors for this sequence
-    my @seq_error_product_A   = (); # products corresponding to each error for this sequence
-    my @seq_note_A            = (); # all notes for this sequence
+    my @seq_error_A = (); # all errors for this sequence
+    my @seq_note_A  = (); # all notes for this sequence
 
     my $nskipped = 0; # number of cds-mp features that were not output due to problem with start/stop coords
     my $missing_codon_start_flag = 0; # set to 1 if a feature for this sequence should have a codon_start value added but doesn't
@@ -7278,7 +7277,7 @@ sub output_feature_tbl_all_sequences {
           $do_start_carrot = ($ftr_err_str =~ m/b5e/) ? 1 : 0;
           $do_stop_carrot  = ($ftr_err_str =~ m/b3e/) ? 1 : 0;
           $do_pred_stop = processFeatureErrorsForFTable($ftr_err_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, 
-                                                        \@ftr_note_A, \@seq_error_A, \@seq_error_product_A, $FH_HR);
+                                                        \@ftr_note_A, \@seq_error_A, $FH_HR);
           if(scalar(@ftr_note_A) > 0) { 
             $do_misc_feature = 1;
             $feature_type = "misc_feature";
@@ -7416,12 +7415,11 @@ sub output_feature_tbl_all_sequences {
         print $fail_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         print $long_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         for(my $e = 0; $e < scalar(@seq_error_A); $e++) { 
-          my $error_line    = $seq_error_A[$e];
-          my $error_product = $seq_error_product_A[$e];
+          my $error_line = $seq_error_A[$e];
           print $fail_ftbl_FH "ERROR: " . $error_line . "\n"; 
           print $long_ftbl_FH "ERROR: " . $error_line . "\n"; 
-          if($error_line =~ /([^\:]+)\:(.+)$/) {
-            print $errors_FH ($accn_name . "\t" . $1 . "\t" . $error_product . "\t" . $2 . "\n");
+          if($error_line =~ /([^\:]+)\:\s\(([^\)]+)\)\s*(.+)$/) {
+            print $errors_FH ($accn_name . "\t" . $1 . "\t" . $2 . "\t" . $3 . "\n");
           }
           else {
             DNAORG_FAIL("ERROR in $sub_name, unable to split error_line for output: $error_line", 1, $ofile_info_HHR->{"FH"});

@@ -1440,124 +1440,124 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "nm3", "feature",  0,
                      "length of nucleotide feature is not a multiple of 3", # description
                      1, 0, "similar to !out_product,out_gene!; length is not a multiple of 3", # feature table info: valid, pred_stop, note
-                     "Unexpected Length: not a multiple of 3; !DESC!", # feature table error
+                     "Unexpected Length: (!out_product,out_gene!) length is not a multiple of 3; !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "stp", "feature",  1,
                      "predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA)", # description
                      1, 1, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!", # feature table error
+                     "Mutation at End: (!out_product,out_gene!) expected stop codon could not be identified on !out_product,out_gene!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "trc", "feature",  0,
                      "in-frame stop codon exists 5' of stop position predicted by homology to reference", # description
                      # NOTE: invalidated by int and ctr because int or ctr will handle the feature table note/err
                      1, 1, "similar to !out_product,out_gene!; contains premature stop codon", # feature table info: valid, pred_stop, note
-                     "!FEATURE_TYPE! Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !DESC!", # feature table error
+                     "!FEATURE_TYPE! Has Stop Codon: (!out_product,out_gene!) contains unexpected stop codon; !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "ext", "feature",  1,
                      "first in-frame stop codon exists 3' of stop position predicted by homology to reference", # description
                      1, 1, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop note
-                     "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!; !DESC!", # feature table error
+                     "Mutation at End: (!out_product_out_gene!) expected stop codon could not be identified; !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,
                      "mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
-                     "Peptide Translation Problem: !out_product,out_gene! !DESC!", # feature table error
+                     "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "ctr", "feature",  0,
                      "CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error)", # description
                      # NOTE: currently valid is 1 and this doesn't invalidate trc, but maybe it should?
                      1, 1, "similar to !out_product,out_gene!; contains premature stop codon", # feature table info: valid, pred_stop, note
-                     "!FEATURE_TYPE! Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !DESC!", # feature table error
+                     "!FEATURE_TYPE! Has Stop Codon: (!out_product,out_gene!) contains unexpected stop codon; !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "int", "feature",  0,
                      "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (ntr)", # description
                      1, 1, "similar to !out_product,out_gene!; contains premature stop codon", # feature table info: valid, pred_stop, note
-                     "!FEATURE_TYPE! Has Stop Codon: Contains unexpected stop codon in !out_product,out_gene!; !DESC!", # feature table error
+                     "!FEATURE_TYPE! Has Stop Codon: (!out_product,out_gene!) contains unexpected stop codon; !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,
                      "no in-frame stop codon exists 3' of predicted valid start codon", # description
                      1, 1, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Mutation at End: Expected stop codon could not be identified on !out_product,out_gene!; !DESC!", # feature table error
+                     "Mutation at End: (!out_product,out_gene!) expected stop codon could not be identified; !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "str", "feature",  0,
                      "predicted CDS start position is not beginning of ATG start codon", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Mutation at Start: Expected start codon could not be identified on !out_product,out_gene!", # feature table error
+                     "Mutation at Start: (!out_product,out_gene!) expected start codon could not be identified", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "b5u", "feature",  0,
                      "alignment to reference does not extend to 5' boundary of reference or target", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Indefinite Annotation: does not extend to 5' boundary of reference feature; !DESC!", # feature table error
+                     "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "b3u", "feature",  0,
                      "alignment to reference does not extend to 3' boundary of reference or target", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Indefinite Annotation: does not extend to 3' boundary of reference feature; !DESC!", # feature table error
+                     "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "lsc", "feature",  0,
                      "low homology score", # description
                      1, 0, "!DESC!", # feature table info: valid, pred_stop, note
-                     "Indefinite Annotation: !DESC!", # feature table error
+                     "Indefinite Annotation: (!out_product,out_gene) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "xip", "feature",  0,
                      "blastx protein validation failure", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Indefinite Annotation: !DESC!", # feature table error
+                     "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,
                      "mat_peptide may not be translated because its CDS has a blastx protein validation failure", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
-                     "Indefinite Annotation: !out_product,out_gene! !DESC!", # feature table error
+                     "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "xnn", "feature",  0,
                      "blastx identifies protein not identified in nucleotide-based search", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Indefinite Annotation: !DESC!", # feature table error
+                     "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "dup", "feature",  0,
                      "more than one homologous region", # description
                      1, 0, "!DESC!", # feature table info: valid, pred_stop, note
-                     "Duplicate Feature: !DESC!", # feature table error
+                     "Duplicate Feature: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "aji", "feature",  0,
                      "CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Peptide Adjacency Problem: !out_product,out_gene! !DESC!", # feature table error
+                     "Peptide Adjacency Problem: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,
                      "mat_peptide may not be translated because its CDS has a problem", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
-                     "Peptide Translation Problem: !out_product,out_gene! !DESC!", # feature table error
+                     "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "ost", "feature",  0,
                      "predicted feature is on opposite strand from reference", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Reverse Complement: Sequence may be misassembled; !out_product,out_gene! appears to be reverse complemented", # feature table error
+                     "Reverse Complement: (!out_product,out_gene!) appears to be reverse complemented, sequence may be misassembled", # feature table error
                      $FH_HR);
 
   # errors that cannot be invalidated by other errors in feature table output
   # ori, str, b5u, b3u, ost, lsc, dup, xip, mpi, xnn, mtr (12)
   addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0, # code, per-type, maybe-allowed
                      "there is not exactly 1 occurrence of origin sequence", # description
-                     1, 0, "", "Duplicate Origin: !DESC!", # feature table info: valid, pred_stop, note, err
+                     1, 0, "", "Duplicate Origin: (*sequence*) !DESC!", # feature table info: valid, pred_stop, note, err
                      $FH_HR); 
 
   # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
@@ -1930,7 +1930,6 @@ sub setFTableInvalidatedByErrorInfoHash {
 #   $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
 #   $ret_note_AR:            REF to array of notes, possibly CREATED (not added to) here
 #   $ret_error_AR:           REF to array of errors, possibly added to here (not created)
-#   $ret_error_product_AR:   REF to array of 'product' values corresponding to each error, possibly added to here (not created)
 #   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: $do_pred_stop: '1' if predicted stop should be used for this feature in the feature table
@@ -1939,10 +1938,10 @@ sub setFTableInvalidatedByErrorInfoHash {
 #################################################################
 sub processFeatureErrorsForFTable { 
   my $sub_name = "processFeatureErrorsForFTable";
-  my $nargs_expected = 10;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($err_code_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $ret_note_AR, $ret_error_AR, $ret_error_product_AR, $FH_HR) = (@_);
+  my ($err_code_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $ret_note_AR, $ret_error_AR, $FH_HR) = (@_);
 
   if($err_code_str eq "") { 
     return 0; 
@@ -2002,12 +2001,6 @@ sub processFeatureErrorsForFTable {
           my $idx = findNonNumericValueInArray($ret_error_AR, $error_str, $FH_HR);
           if($idx == -1) { 
             push(@{$ret_error_AR}, $error_str); 
-            if(exists $ftr_info_HAR->{"out_product"}[$ftr_idx]) { 
-              push(@{$ret_error_product_AR}, $ftr_info_HAR->{"out_product"}[$ftr_idx]);
-            }
-            else { 
-              push(@{$ret_error_product_AR}, "-"); # add '-' if out_product does not exist
-            }
           }
         }
       }
