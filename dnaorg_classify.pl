@@ -681,9 +681,10 @@ else {
   openAndAddFileToOutputInfo(\%ofile_info_HH, "all_errors_list", $out_root . ".all.errlist",  1, "List of errors (unexpected features that cause failure) for all sequences");
   if($do_annotate) { 
     openAndAddFileToOutputInfo(\%ofile_info_HH, "na_errors_list",  $out_root . ".noannot.errlist",  1, "List of errors (unexpected features that cause failure) for sequences that will not be annotated");
+    openAndAddFileToOutputInfo(\%ofile_info_HH, "na_seq_list",     $out_root . ".noannot.seqlist",  1, "List of sequences that will not be annotated");
   }
-  printf { $ofile_info_HH{"FH"}{"all_errors_list"}  } "#sequence\terror\tfeature\terror-description\n";
-  printf { $ofile_info_HH{"FH"}{"na_errors_list"}   } "#sequence\terror\tfeature\terror-description\n";
+  print { $ofile_info_HH{"FH"}{"all_errors_list"}  } "#sequence\terror\tfeature\terror-description\n";
+  print { $ofile_info_HH{"FH"}{"na_errors_list"}   } "#sequence\terror\tfeature\terror-description\n";
 
   output_infotbl_header($ofile_info_HH{"FH"}{"rdb_infotbl"}, 0, \%width_H, \%opt_HH); 
   output_infotbl_header($ofile_info_HH{"FH"}{"tab_infotbl"}, 1, \%width_H, \%opt_HH); 
@@ -819,8 +820,8 @@ else {
     }
   }
     
-  # Generate file that lists non-assigned sequences
-  my $non_assigned_file = $out_root . ".noannot.seqlist";
+  # Generate files that list non-annotated and non-assigned sequences
+  my $non_assigned_file  = $out_root . ".noassign.seqlist";
   
   my $cur_nseq = scalar(@{$seqlist_HA{"non-assigned"}});
   push(@tmp_output_A, sprintf("%-*s  %10d  %10d%s\n", $width_H{"model"}, "NON-ASSIGNED", 0, $cur_nseq, ($do_annotate) ? "             no" : ""));
@@ -1666,6 +1667,7 @@ sub output_one_sequence {
   my $tab_infotbl_FH = $FH_HR->{"tab_infotbl"};
   my $all_elist_FH   = $FH_HR->{"all_errors_list"};
   my $na_elist_FH    = (opt_IsUsed("-A", $opt_HHR)) ? $FH_HR->{"na_errors_list"} : undef;
+  my $na_slist_FH    = (opt_IsUsed("-A", $opt_HHR)) ? $FH_HR->{"na_seq_list"}    : undef;
 
   my $ufeature_all_str  = "";
   my $ufeature_fail_str = "";
@@ -1915,6 +1917,7 @@ sub output_one_sequence {
     print $all_elist_FH $error_list_output;
     if((defined $na_elist_FH) && ($no_annot_flag || $unexp_tax_flag)) { # we won't annotate this sequence, need to output errors to a special file
       print $na_elist_FH  $error_list_output;
+      print $na_slist_FH  $seq . "\n";
     }
   }
 

@@ -7190,6 +7190,7 @@ sub output_feature_tbl_all_sequences {
   my $fail_list_FH    = $FH_HR->{"fail_list"};    # list of FAILing seqs
   my $fail_co_list_FH = $FH_HR->{"fail_co_list"}; # list of FAILing seqs, that would have passed if there were no class errors
   my $errors_FH       = $FH_HR->{"errors_list"}; # list of errors 
+  print $errors_FH "#sequence\terror\tfeature\terror-description\n";
 
   my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
 
