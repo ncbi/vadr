@@ -1,6 +1,8 @@
-# EPN, Mon Dec  3 21:28:38 2018
+# EPN, Fri Dec 14 22:35:12 2018
 # git repository url: https://github.com/nawrockie/dnaorg_scripts.git
-# v0.41 Dec 2018
+# v0.42 Dec 2018
+#
+# [Examples last updated with v0.38]
 #
 # This file is organized into the following sections: 
 # -----------
@@ -177,10 +179,10 @@ source ~/.cshrc
 #
 perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -h
 # dnaorg_classify.pl :: classify sequences using an HMM library of RefSeqs
-# dnaorg 0.38 (Nov 2018)
+# dnaorg 0.42 (Dec 2018)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:       Mon Nov  5 15:08:12 2018
-# $DNAORGDIR: /panfs/pan1/infernal/notebook/18_1002_virus_dnaorg_protein_validation
+# date:       Fri Dec 14 22:35:32 2018
+# $DNAORGDIR: /panfs/pan1/infernal/notebook/18_1128_virus_meeting
 #
 Usage: This script must be run in 1 of 3 modes:
 
@@ -188,20 +190,15 @@ Build mode (--onlybuild): Build HMM library and exit (no classification).
 Example usage:
 	dnaorg_classify.pl [-options] --onlybuild <RefSeq list> --dirout <output directory to create with HMM library>
 
-Classify mode given list (--inlist): Use a previously created HMM library to annotate sequence accessions listed in an input file.
-Example usage:
-	dnaorg_classify.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --inlist <list of accessions to classify>
-
-Classify mode given fasta (--infasta): Use a previously created HMM library to annotate sequences in an input fasta file.
+Classify mode (--infasta): Use a previously created HMM library to annotate sequences in an input fasta file.
 Example usage:
 	dnaorg_classify.pl [-options] --dirbuild <directory with HMM library to use> --dirout <output directory to create> --infasta <fasta file with sequences to classify>
 
 REQUIRED options:
   --dirout <s> : REQUIRED: name for output directory to create is <s>
 
-options for selecting mode to run in: build-mode (--onlybuild) or classify-mode (--inlist OR --infasta):
+options for selecting mode to run in: build-mode (--onlybuild) or classify-mode:
   --onlybuild <s> : build an HMM library for sequences listed in <s>, then exit
-  --inlist <s>    : list of sequence accessions to classify is <s>, requires --dirbuild
   --infasta <s>   : fasta file with sequences to classify is <s>, requires --dirbuild
   --dirbuild <s>  : specify directory with HMM library is <s>
 
@@ -216,15 +213,18 @@ basic options:
   --errcheck     : consider any farm stderr output as indicating a job failure
 
 options for controlling what unexpected features cause sequences to PASS/FAIL:
-  --allpass      : all assigned sequences pass, only non-assigned seqs fail
-  --lowscpass    : sequences with LowScore     unexpected feature can PASS
-  --vlowscpass   : sequences with VeryLowScore unexpected feature can PASS
-  --lowdiffpass  : sequences with LowDiff      unexpected feature can PASS
-  --vlowdiffpass : sequences with VeryLowDiff  unexpected feature can PASS
-  --biaspass     : sequences with HighBias     unexpected feature can PASS
+  --lowcovpass   : sequences with low coverage can PASS
+  --unexppass    : sequences with unexpected classification can PASS
+  --allfail      : sequences with >=1 unexpected feature(s) FAIL
+  --lowscfail    : sequences with LowScore     unexpected feature FAIL
+  --vlowscfail   : sequences with VeryLowScore unexpected feature FAIL
+  --lowdifffail  : sequences with LowDiff      unexpected feature FAIL
+  --vlowdifffail : sequences with VeryLowDiff  unexpected feature FAIL
+  --biasfail     : sequences with HighBias     unexpected feature FAIL
   --minusfail    : sequences with MinusStrand  unexpected feature FAIL
 
 options for controlling reporting of unexpected features:
+  --lowcovthresh <x>   : fractional coverage threshold for Low Coverage is <x> [0.9]
   --lowscthresh <x>    : bits per nucleotide threshold for LowScore unexpected feature is <x> [0.3]
   --vlowscthresh <x>   : bits per nucleotide threshold for VeryLowScore unexpected feature is <x> [0.2]
   --lowdiffthresh <x>  : bits per nucleotide diff threshold for LowDiff unexpected feature is <x> [0.06]
@@ -244,25 +244,32 @@ in combination with -A, options for tuning protein validation with blastx (don't
   --xalntol <n>    : max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n> [5]
   --xindeltol <n>  : max allowed nucleotide insertion and deletion length in blastx validation is <n> [27]
   --xlonescore <n> : minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n> [80]
+
+options for defining expected classifications:
+  --ecmap <s>    : read map of model names to taxonomic names from file <s>
+  --ecall <s>    : set expected classification of all seqs to model/tax <s>
+  --eceach <s>   : read expected classification for each sequence from file <s>
+  --ecthresh <x> : expected classification must be within <x> bits/nt of top match [0.3]
+  --ectoponly    : top match must be expected classification
 #
 ############
 #
 # As reported by the dnaorg_classify.pl -h output. dnaorg_classify.pl
-# must be run in 1 of 3 modes. The first time you run it, it must be
+# must be run in 1 of 2 modes. The first time you run it, it must be
 # run in the --onlybuild mode, which builds an HMM library of the
 # RefSeqs that you are going to use to classify input sequences in
-# subsequent runs of the program in the --inlist or --infasta modes.
+# subsequent runs of the program in --infasta modes.
 # An example is given below in "Example 1".
 # 
 # After you've run the --onlybuild mode, you can then run the program
-# in the --inlist or --infasta modes, which will use the HMM library
+# in the --infasta modes, which will use the HMM library
 # that you built when you ran it in --onlybuild mode. Again, examples
 # are below in "Example 1" and "Example 2".
 # 
 ############
 # 
-# After you run dnaorg_classify.pl in either the --inlist or --infasta
-# modes, you will have a list of sequences that have been classified
+# After you run dnaorg_classify.pl in the --infasta
+# mode, you will have a list of sequences that have been classified
 # as most similar to each of the RefSeqs listed in the input list of
 # RefSeqs you specified when you ran dnaorg_classify.pl with the
 # --onlybuild option. You can then use the dnaorg_build.pl and
@@ -338,10 +345,9 @@ options for building models for origin sequences:
 #
 # dnaorg_annotate.pl is typically run with a single command line
 # argument, a .ntlist file that contains a list of accessions, one per
-# line. These ntlists are output from the dnaorg_classify.pl script
-# when it is run with the --inlist option, which you can use as input
-# to dnaorg_annotate.pl or alternatively you can create your own
-# lists. The accessions in the .ntlist file should be the same species
+# line. 
+#
+# The accessions in the .ntlist file should be the same species
 # as the reference aaccession used in dnaorg_build.pl. The reference
 # accession used passed into dnaorg_build.pl should be the first
 # accession listed in the .ntlist file.
