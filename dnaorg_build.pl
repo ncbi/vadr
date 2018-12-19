@@ -447,9 +447,14 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
 # Step 4B. Fetch the CDS protein translations and build BLAST database
 #######################################################################
 $start_secs = outputProgressPrior("Fetching protein translations of CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
-my $prot_fa_file  = fetch_proteins_into_fasta_file($out_root, $ref_accn, \%opt_HH, \%ofile_info_HH);
-create_blast_protein_db(\%execs_H, $prot_fa_file, \%opt_HH, \%ofile_info_HH);
+my @prot_fa_file_A = ();
+fetch_proteins_into_fasta_files($out_root, $ref_accn, \%ftr_info_HA, \@prot_fa_file_A, \%opt_HH, \%ofile_info_HH);
+
+foreach my $prot_fa_file (@prot_fa_file_A) { 
+  create_blast_protein_db(\%execs_H, $prot_fa_file, \%opt_HH, \%ofile_info_HH);
+}
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+exit 0;
 
 ####################################
 # Step 5. Build and calibrate models 
@@ -933,37 +938,42 @@ sub run_cmcalibrate_and_cmpress {
 }
 
 #################################################################
-# Subroutine: fetch_proteins_into_fasta_file()
+# Subroutine: fetch_proteins_into_fasta_files()
 # Incept:     EPN, Wed Oct  3 16:10:26 2018
 # 
 # Purpose:    Fetch the protein translations of CDS for the genome
-#             and create a FASTA file of them.
+#             and create multiple N+1 FASTA files, one with each
+#             single sequence (N) and one with all sequences.
+#             Fill @{$fa_file_AR} with the sequence file names.
 #
 # Arguments:
 #   $out_root:       string for naming output files
 #   $ref_accn:       reference accession
+#   $ftr_info_HAR:   REF to the feature info, pre-filled
+#   $fa_file_AR:     REF to array of fasta file names, filled here 
 #   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
 #   $ofile_info_HHR: REF to the 2D hash of output file information
 #                    
-# Returns:    Name of the fasta file created.
+# Returns: void
+# Dies:    if a fetched location for a feature does not match to any feature's "ref_coords" 
 #
 #################################################################
-sub fetch_proteins_into_fasta_file { 
-  my $sub_name = "fetch_proteins_into_fasta_file";
-  my $nargs_expected = 4;
+sub fetch_proteins_into_fasta_files { 
+  my $sub_name = "fetch_proteins_into_fasta_files";
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_root, $ref_accn, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($out_root, $ref_accn, $ftr_info_HAR, $fa_file_AR, $opt_HHR, $ofile_info_HHR) = @_;
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
-  my $efetch_out_file = $out_root . ".prot.efetch";
-  my $fa_out_file     = $out_root . ".prot.fa";
+  my $efetch_out_file  = $out_root . ".prot.efetch";
+  my $all_fa_out_file  = $out_root . ".all.prot.fa";
   runCommand("esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd CDS protein_id INSDFeature_location translation > $efetch_out_file", opt_Get("-v", $opt_HHR), $FH_HR); 
   # NOTE: could get additional information to add to fasta defline, e.g. add 'product' after 'translation' above.
 
-  # parse that file to create the fasta file
-  open(IN, $efetch_out_file)  || fileOpenFailure($efetch_out_file, $sub_name, $!, "reading", $FH_HR);
-  open(FA, ">", $fa_out_file) || fileOpenFailure($fa_out_file, $sub_name, $!, "writing", $FH_HR);
+  # parse that file to create the fasta files
+  open(IN,         $efetch_out_file) || fileOpenFailure($efetch_out_file,  $sub_name, $!, "reading", $FH_HR);
+  open(ALLFA, ">", $all_fa_out_file) || fileOpenFailure($all_fa_out_file,      $sub_name, $!, "writing", $FH_HR);
   while(my $line = <IN>) { 
     chomp $line;
     my @el_A = split(/\t/, $line);
@@ -972,15 +982,27 @@ sub fetch_proteins_into_fasta_file {
     }
     my ($read_ref_accn, $prot_accn, $location, $translation) = (@el_A);
     my $new_name = $prot_accn . "/" . $location;
-    print FA (">$new_name\n$translation\n");
+
+    print ALLFA  (">$new_name\n$translation\n");
+
+    # determine what feature this corresponds to, and create the individual fasta file for that
+    my $ftr_idx = blastxDbSeqNameToFtrIdx($new_name, $ftr_info_HAR, $ofile_info_HHR->{"FH"}); # this will die if we can't find the feature with $location
+    my $indi_fa_out_file = $out_root . ".f" . $ftr_idx . ".prot.fa";
+    open(INDIFA, ">", $indi_fa_out_file) || fileOpenFailure($indi_fa_out_file, $sub_name, $!, "writing", $FH_HR);
+    print INDIFA (">$new_name\n$translation\n");
+    close(INDIFA);
+    addClosedFileToOutputInfo($ofile_info_HHR, "prot-indi-f" . $ftr_idx . "-fa", $indi_fa_out_file, 0, "protein FASTA file with proteins for feature $ftr_idx");
+    push(@{$fa_file_AR}, $indi_fa_out_file);
   }
   close(IN);
-  close(FA);
+  close(ALLFA);
 
-  addClosedFileToOutputInfo($ofile_info_HHR, "prot-fetch", $efetch_out_file, 0, "efetch output with protein information");
-  addClosedFileToOutputInfo($ofile_info_HHR, "prot-fa", $fa_out_file, 0,        "protein FASTA file");
+  addClosedFileToOutputInfo($ofile_info_HHR, "prot-all-fa", $all_fa_out_file, 0, "protein FASTA file with proteins for all features");
+  push(@{$fa_file_AR}, $all_fa_out_file);
 
-  return $fa_out_file;
+  addClosedFileToOutputInfo($ofile_info_HHR, "prot-fetch",   $efetch_out_file,  0, "efetch output with protein information");
+
+  return;
 }
 
 #################################################################

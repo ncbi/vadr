@@ -592,14 +592,6 @@ $dir_build_tail =~ s/^.+\///; # remove all but last dir
 my $out_root   = $dir_out .   "/" . $dir_out_tail   . ".dnaorg_annotate";
 my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_build";
 
-# validate blast dbs exist
-my $blastx_db_root  = $build_root . ".prot.fa";
-foreach my $sfx (".phr", ".pin", ".psq") { 
-  if(! -s $blastx_db_root . $sfx) { 
-    die "ERROR required blast DB file " . $blastx_db_root . $sfx . " does not exist or is empty"; 
-  }
-}
-
 #############################################
 # output program banner and open output files
 #############################################
@@ -869,6 +861,14 @@ if($nseq != validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $
     DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $orig_infasta_file (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), 1, $ofile_info_HH{"FH"});
   }
 }    
+# also verify that we have all the blastx db files that we need
+validateBlastDbExists($build_root . ".prot.fa", undef);
+for(my $tmp_f = 0; $tmp_f < $nftr; $tmp_f++) { 
+  if(($ftr_info_HA{"type"}[$tmp_f] eq "cds-mp") || 
+     ($ftr_info_HA{"type"}[$tmp_f] eq "cds-notmp")) { 
+    validateBlastDbExists(($build_root . ".f" . $tmp_f . ".prot.fa"), $ofile_info_HH{"FH"});
+  }
+}
 
 # now that we have the ftr_info_HA filled, we can initialize the error data structures
 my @err_ftr_instances_AHH = ();
@@ -1276,13 +1276,11 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 19. Run BLASTX: all full length sequences and all corrected nucleotide features versus all proteins
 ##########################################################################################################
 $start_secs = outputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
-my @blastx_compatibility_AH = (); # array of hashes, 0..$f..$nftr-1, key: query sequence name in $blastx_query_file that 
-                                  # is 'compatible' with feature $f; That query sequence is an allowed hit for feature $f
-run_blastx_and_summarize_output(\%execs_H, $out_root, $seq_file, $blastx_db_root, \%ftr_info_HA, \@blastx_compatibility_AH, \%opt_HH, \%ofile_info_HH);
+run_blastx_and_summarize_output(\%execs_H, $out_root, $seq_file, $build_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the blastx related information
-ftr_results_calculate_blastx($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr_info_HA, \%seq_info_HA, \%seq_name_index_H, \@ftr_results_AAH, \@blastx_compatibility_AH, \%opt_HH, \%ofile_info_HH);
+ftr_results_calculate_blastx($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr_info_HA, \%seq_info_HA, \%seq_name_index_H, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
 # add xi* and mip errors
 openAndAddFileToOutputInfo(\%ofile_info_HH, "blasttbl", $out_root . ".blastx.tbl", 1, "information on blast and CM hits for CDS features in tabular format");
@@ -3570,8 +3568,6 @@ sub ftr_results_add_b3e_errors {
 # Purpose:    Report 'x**' and 'mip' errors for features of type 'cds-notmp' and 'cds-mp'
 #             Uses ftr_results to do this. Possible x** errors are:
 #
-#             "xnn": adds this error if blastx predicts a CDS that does not overlap with
-#                    any CM prediction
 #             "xnh": adds this error if blastx validation of a CDS prediction fails due to
 #                    no blastx hits
 #             "xos": adds this error if blastx validation of a CDS prediction fails due to
@@ -3661,16 +3657,22 @@ sub ftr_results_add_blastx_errors {
                               # "xnn", "xnh", "xws", "xin", "xde", "xst", "xnn", "x5u", "x3u"
 
         # initialize 
-        my $p_start    = undef; # predicted start  from CM 
-        my $p_stop     = undef; # predicted stop   from CM 
-        my $p_strand   = undef; # predicted strand from CM 
-        my $x_start    = undef; # predicted start  from blastx
-        my $x_stop     = undef; # predicted stop   from blastx
-        my $x_strand   = undef; # predicted strand from blastx
-        my $x_maxins   = undef; # maximum insert from blastx
-        my $x_maxdel   = undef; # maximum delete from blastx
-        my $x_trcstop  = undef; # premature stop from blastx
-        my $x_score    = undef; # raw score from blastx
+        my $p_start        = undef; # predicted start  from CM 
+        my $p_stop         = undef; # predicted stop   from CM 
+        my $p_strand       = undef; # predicted strand from CM 
+        my $x_start        = undef; # predicted start  from blastx
+        my $x_stop         = undef; # predicted stop   from blastx
+        my $x_start2print  = undef; # predicted start from blastx, to output
+        my $x_stop2print   = undef; # predicted stop  from blastx, to output
+        my $x_strand       = undef; # predicted strand from blastx
+        my $x_maxins       = undef; # maximum insert from blastx
+        my $x_maxdel       = undef; # maximum delete from blastx
+        my $x_trcstop      = undef; # premature stop from blastx
+        my $x_score        = undef; # raw score from blastx
+        my $x_query        = undef; # query name from blastx hit
+        my $x_qlen         = undef; # length of query sequence, if $x_feature_flag == 1
+        my $x_feature_flag = 0; # set to '1' if $x_query is a fetched feature sequence, not a full length input sequence
+
         my $start_diff = undef; # difference in start values between CM and blastx
         my $stop_diff  = undef; # difference in start values between CM and blastx
         my $p_has_stop = undef; # '1' if predicted CM stop ends with a stop codon, else '0'
@@ -3751,6 +3753,7 @@ sub ftr_results_add_blastx_errors {
           $x_start   = $ftr_results_HR->{"x_start"};
           $x_stop    = $ftr_results_HR->{"x_stop"};
           $x_strand  = $ftr_results_HR->{"x_strand"};
+          $x_query   = $ftr_results_HR->{"x_query"};
           if(defined $ftr_results_HR->{"x_maxins"}) { 
             $x_maxins  = $ftr_results_HR->{"x_maxins"};
           }
@@ -3763,6 +3766,12 @@ sub ftr_results_add_blastx_errors {
           if(defined $ftr_results_HR->{"x_score"}) { 
             $x_score = $ftr_results_HR->{"x_score"};
           }
+          # determine if the query is a full length sequence, or a fetched sequence feature:
+          (undef, undef, $x_qlen) = helper_blastx_breakdown_query($x_query, $seq_name, undef, $FH_HR); 
+          # helper_blastx_breakdown_query() will exit if $x_query is unparseable
+          # first two undefs: seqname after coords_str is removed, and coords_str
+          # $x_qlen will be undefined if $x_query is a full sequence name name
+          $x_feature_flag = (defined $x_qlen) ? 1 : 0; 
         }
 
         if(($xnn_err_possible) && (! defined $p_start) && (defined $x_start))  { # no CM prediction but there is a blastx prediction
@@ -3785,35 +3794,50 @@ sub ftr_results_add_blastx_errors {
             $err_str_H{"xnh"} = "no blastx hit";
           }
           else { # $x_start is defined, we can compare CM and blastx predictions
-            # check for xos: strand mismatch failure
-            if($p_strand ne $x_strand) { 
+            # check for xos: strand mismatch failure, differently depending on $x_feature_flag
+            if(((  $x_feature_flag) && ($x_strand eq "-")) || 
+               ((! $x_feature_flag) && ($p_strand ne $x_strand))) { 
               $err_str_H{"xos"} = "strand mismatch between nucleotide-based and blastx-based predictions";
             }
             else { 
-              # check for 'x5l': blastx alignment extends outside of nucleotide/CM alignment on 5' end
-              if((($p_strand eq "+") && ($x_start < $p_start)) || 
-                 (($p_strand eq "-") && ($x_start > $p_start))) { 
-                $err_str_H{"x5l"} = "blastx alignment extends outside CM alignment on 5' end (strand:$p_strand CM:$p_start blastx:$x_start)";
+              # determine $start_diff and $stop_diff, differently depending on if hit
+              # was to the full sequence or a fetched features (true if $x_feature_flag == 1)
+              if($x_feature_flag) { 
+                $start_diff = $x_start - 1; 
+                $stop_diff  = $x_qlen - $x_stop;
+                $x_start2print = sprintf("$p_start %s $start_diff", ($p_strand eq "+") ? "+" : "-");
+                $x_stop2print  = sprintf("$p_stop %s $stop_diff",  ($p_strand eq "+") ? "-" : "+");
+              }
+              else { 
+                $start_diff = abs($p_start - $x_start);
+                $stop_diff  = abs($p_stop  - $x_stop);
+                $x_start2print = $x_start;
+                $x_stop2print  = $x_stop;
+              }
+              # check for 'x5l': only for non-feature seqs blastx alignment extends outside of nucleotide/CM alignment on 5' end
+              if((! $x_feature_flag) && 
+                 ((($p_strand eq "+") && ($x_start < $p_start)) || 
+                  (($p_strand eq "-") && ($x_start > $p_start)))) { 
+                $err_str_H{"x5l"} = "blastx alignment extends outside CM alignment on 5' end (strand:$p_strand CM:$p_start blastx:$x_start2print)";
               }
 
               # check for 'x5s': blastx 5' end too short, not within $aln_tol nucleotides
-              $start_diff = abs($p_start - $x_start);
               if(! exists $err_str_H{"x5l"}) { # only add x5s if x5l does not exist
                 if($start_diff > $aln_tol) { 
-                  $err_str_H{"x5s"} = "start positions differ by $start_diff > $aln_tol (strand:$p_strand CM:$p_start blastx:$x_start)";
+                  $err_str_H{"x5s"} = "start positions differ by $start_diff > $aln_tol (strand:$p_strand CM:$p_start blastx:$x_start2print)";
                 }                
               }
 
               # check for 'x3l': blastx alignment extends outside of nucleotide/CM alignment on 3' end
-              if((($p_strand eq "+") && ($x_stop  > $p_stop)) || 
-                 (($p_strand eq "-") && ($x_stop  < $p_stop))) { 
-                $err_str_H{"x3l"} = "blastx alignment extends outside CM alignment on 3' end (strand:$p_strand CM:$p_stop blastx:$x_stop)";
+              if((! $x_feature_flag) && 
+                 ((($p_strand eq "+") && ($x_stop  > $p_stop)) || 
+                  (($p_strand eq "-") && ($x_stop  < $p_stop)))) { 
+                $err_str_H{"x3l"} = "blastx alignment extends outside CM alignment on 3' end (strand:$p_strand CM:$p_stop blastx:$x_stop2print)";
               }
 
               # check for 'x3s': blastx 3' end too short, not within $aln_tol nucleotides
               # for the stop coordinates, we do this differently if the CM prediction 
               # includes the stop codon or not, if it does, we allow 3 more positions different
-              $stop_diff  = abs($p_stop  - $x_stop);
               my $cur_aln_tol = undef;
               my $cur_stop_str = undef;
               if((defined $p_has_stop) && ($p_has_stop == 1)) { 
@@ -3826,7 +3850,7 @@ sub ftr_results_add_blastx_errors {
               }
               if(! exists $err_str_H{"x3l"}) { # only add x3s if x3l does not exist
                 if($stop_diff > $cur_aln_tol) { 
-                  $err_str_H{"x3s"} = "stop positions differ by $stop_diff > $cur_aln_tol (strand:$p_strand CM:$p_stop blastx:$x_stop, $cur_stop_str in CM prediction)";
+                  $err_str_H{"x3s"} = "stop positions differ by $stop_diff > $cur_aln_tol (strand:$p_strand CM:$p_stop blastx:$x_stop2print, $cur_stop_str in CM prediction)";
                 }
               }
 
@@ -9865,8 +9889,7 @@ sub aorg_get_origin_output_for_sequence {
 #                      executable paths
 #  $out_root:          output root for the file names
 #  $query_file:        query fasta file (input fasta file to script, same fasta file cmscan searches against)
-#  $blastx_db:         path to blastx database ($blastx_db.phr, $blastx_db.pin and 
-#                      $blastx_db.psq were all verified to exist earlier)
+#  $build_root:        path to build dir
 #  $ftr_info_HAR:      REF to hash of arrays with information on the features
 #  $compatibility_AHR: REF to array of hashes, 0..$f..$nftr-1, key: query sequence name in $blastx_query_file that 
 #                      is 'compatible' with feature $f; that query sequence is an allowed hit for feature $f, FILLED HERE
@@ -9880,58 +9903,55 @@ sub aorg_get_origin_output_for_sequence {
 ################################################################# 
 sub run_blastx_and_summarize_output {
   my $sub_name = "run_blastx_and_summarize_output";
-  my $nargs_exp = 8;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($execs_HR, $out_root, $query_file, $blastx_db, $ftr_info_HAR, $compatibility_AHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $out_root, $query_file, $build_root, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
   my $ncds = 0; 
 
-
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    %{$compatibility_AHR->[$ftr_idx]} = ();
     if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || 
        ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
       $ncds++;
     }
   }
 
-  my $blastx_out_file     = $out_root . ".blastx.out";
-  my $blastx_query_file   = $out_root . ".blastx.in.fa";
-  my $blastx_summary_file = $out_root . ".blastx.summary.txt";
+  # run blastx once on the full sequence file
+  my $cur_db_file = $build_root . ".prot.fa";
+  my $blastx_out_file = $out_root . ".blastx.out";
+#  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -num_descriptions $ncds -num_alignments $ncds -out $blastx_out_file";
+  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -out $blastx_out_file";
+  runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
 
-  # create the target fasta file, this is the original input sequence file plus any fasta files with
-  # fetched and corrected feature sequences we've created
-  my $cur_fa_file = undef;
-  my $cp_cmd = "cp $query_file $blastx_query_file";
-  runCommand($cp_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+  # run blastx once for each of the corrected hits files (one per feature)
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, "corrected.hits.fa", $ofile_info_HHR->{"FH"});
     printf("ftr_idx: $ftr_idx, out_tiny: %s ofile_info_key: $ofile_info_key\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
     if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
-      my $cur_fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+      my $cur_query_file      = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+      my $cur_db_file         = $build_root . ".f" . $ftr_idx . ".prot.fa";
+      my $cur_blastx_out_file = $out_root . ".f" . $ftr_idx . ".blastx.out";
 
-      # add these sequences to the compatibility hash for this feature
-      my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $cur_fa_file });
-      my $sqfile_nseq = $sqfile->nseq_ssi;
-      for(my $s = 0; $s < $sqfile_nseq; $s++) { 
-        my $sqname = $sqfile->fetch_seq_name_given_ssi_number($s);
-        $compatibility_AHR->[$ftr_idx]{$sqname} = 1; 
-        printf("HEYA set compatibility_AHR->[$ftr_idx]{$sqname} to 1\n");
-      }
+      # run blast for this feature
+      #$blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -num_descriptions 1 -num_alignments 1 -out $cur_blastx_out_file";
+      $blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -out $cur_blastx_out_file";
+      runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
 
-      my $concat_cmd = "cat $cur_fa_file >> $blastx_query_file";
+      # concatenate the blastx output for this feature to the growing blastx output for all blastx runs
+      my $concat_cmd = "cat $cur_blastx_out_file >> $blastx_out_file";
       runCommand($concat_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-
+      #if(! opt_Get("--keep", $opt_HHR)) { 
+      if(0) { 
+        removeFileUsingSystemRm($cur_blastx_out_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}); 
+      }
     }
   }
-
-  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $blastx_query_file -db $blastx_db -seg no -num_descriptions $ncds -num_alignments $ncds -out $blastx_out_file";
-  runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
   addClosedFileToOutputInfo($ofile_info_HHR, "blastx-out", $blastx_out_file, 0, "blastx output");
 
   # now summarize its output
+  my $blastx_summary_file = $out_root . ".blastx.summary.txt";
   my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
   runCommand($parse_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
   addClosedFileToOutputInfo($ofile_info_HHR, "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
@@ -9953,10 +9973,6 @@ sub run_blastx_and_summarize_output {
 #  $seq_info_HAR:        REF to hash of sequence information
 #  $seq_name_idx_HR;     REF to hash, key: $seq_name, value: idx of $seq_name in @{$seq_info_HAR->{"seq_name"}} and $ftr_info_HAR
 #  $ftr_results_AAHR:    REF to feature results AAH, ADDED TO HERE
-#  $compatibility_AHR:   REF to array of hashes, 0..$f..$nftr-1, key: query sequence name in $blastx_query_file that 
-#                        is 'compatible' with feature $f; that query sequence is an allowed hit for feature $f, 
-#                        this is necessary because we only want hits between protein targets and their predicted nucleotide queries
-#                        or the full nucleotide query sequence. 
 #  $opt_HHR:             REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -9967,10 +9983,10 @@ sub run_blastx_and_summarize_output {
 ################################################################# 
 sub ftr_results_calculate_blastx { 
   my $sub_name = "ftr_results_calculate_blastx";
-  my $nargs_exp = 8;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($blastx_summary_file, $ftr_info_HAR, $seq_info_HAR, $seq_name_idx_HR, $ftr_results_AAHR, $compatibility_AHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($blastx_summary_file, $ftr_info_HAR, $seq_info_HAR, $seq_name_idx_HR, $ftr_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
@@ -9988,12 +10004,8 @@ sub ftr_results_calculate_blastx {
   my $ftr_idx    = undef;
   my $no_coords_query = undef; # name of query without coords, if query sequence is a predicted feature, e.g. "NC_002549.1/6039-8068" for query "NC_002549.1/6039-8068/10-885,885-2030"
   my $coords_str = undef; # string of coordinates if this is a predicted feature, e.g. "10-885,885-2030" for "NC_002549.1/6039-8068/10-885,885-2030"
-  my $start_offset = undef; # offset index for this hit, e.g. "10" for "NC_002549.1/6039-8068/10-885,885-2030"
-  my $top_score_and_compatible_flag = 0;   # set to '1' if current hit is top scoring one for this sequence/feature pair and sequence is compatible with this feature
-  my $query_is_full_seq_flag = 0; # set to '1' if current hit is to a full sequence, not to a fetched feature sequence
-  my $is_full_sequence_flag  = 0; # set to '1' if current hit is to a full length sequence instead of a fetched feature sequence
-  my $is_compatible_flag     = 0; # set to '1' if current hit is to a compatible sequence, either a full sequence
-                                  # or to a sequence for which $compatibility_AHR->[$ftr_idx]{$query} exists and is 1
+  my $top_score_flag = 0;   # set to '1' if current hit is top scoring one for this sequence/feature pair
+
   while(my $line = <IN>) { 
     chomp $line;
     if($line ne "END_MATCH") { 
@@ -10005,37 +10017,11 @@ sub ftr_results_calculate_blastx {
       if($key eq "QACC") { 
         $query = $value;
         # determine what sequence it is
-        $coords_str   = undef;
-        $start_offset = undef;
-        if(exists $seq_name_idx_HR->{$query}) { 
-          $seq_idx = $seq_name_idx_HR->{$query};
-          $is_full_sequence_flag = 1; 
-          printf("full seq seq_idx: $seq_idx\n");
-        }
-        else { 
-          # sequence name does not exist, as is
-          # example: NC_002549.1/6039-8068/1-885,885-2030
-          # sequence is NC_002549.1/6039-8068 but we fetched the feature 1-885,885-2030 from it
-          $is_full_sequence_flag = 0; 
-          if($query =~ /(\S+)\/([\d\,\-]+)/) { 
-            ($no_coords_query, $coords_str) = ($1, $2);
-            if(! exists $seq_name_idx_HR->{$no_coords_query}) { 
-              DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to find query $query or $no_coords_query in seq_name_idx hash", 1, $FH_HR); 
-            }
-            $seq_idx = $seq_name_idx_HR->{$no_coords_query};
-            printf("no_coords_query: $no_coords_query coords_str: $coords_str seq_idx: $seq_idx\n");
-            if($coords_str =~ /^(\d+\-\d+\,*)+$/) { # make sure it's valid, should be one or more /\d+-\d+/ separated by ','
-              $coords_str =~ /^(\d+)/; 
-              $start_offset = $1;
-            }
-            else { 
-              DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse coordinates string $coords_str from query $query", 1, $FH_HR); 
-            }
-          }
-          else { 
-            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse query: $query", 1, $FH_HR); 
-          }
-        }
+        my $matching_query = undef;
+        ($matching_query, undef, undef) = helper_blastx_breakdown_query($query, undef, $seq_name_idx_HR, $FH_HR); 
+        # helper_blastx_breakdown_query() will exit if $query is unparseable
+        # two undefs: coords_str and query length, both irrelevant here
+        $seq_idx = $seq_name_idx_HR->{$matching_query};
       }
       elsif($key eq "HACC") { 
         if(! defined $query) { 
@@ -10046,29 +10032,7 @@ sub ftr_results_calculate_blastx {
         if($target =~ /(\S+)\/(\S+)/) { 
           my ($accn, $coords) = ($1, $2);
           # find it in @{$ftr_info_HAR->{"ref_coords"}}
-          $ftr_idx = -1;
-          for(my $f = 0; $f < $nftr; $f++) { 
-            if(($ftr_info_HAR->{"type"}[$f] eq "cds-mp") || 
-               ($ftr_info_HAR->{"type"}[$f] eq "cds-notmp")) { 
-              if($ftr_info_HAR->{"ref_coords"}[$f] eq $coords) { 
-                if($ftr_idx != -1) { # found more than 1 features that match
-                  DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, found target $target with coords that match two features, ftr_idx: $ftr_idx and $f", 1, $FH_HR);
-                }                  
-                $ftr_idx = $f;
-                $is_compatible_flag = 0; 
-                if(($is_full_sequence_flag) || 
-                   (exists $compatibility_AHR->[$ftr_idx]{$query})) { 
-                  $is_compatible_flag = 1;
-                }
-              }
-            }
-          }
-          if($ftr_idx == -1) { # did not find match
-            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, found target $target with coords that do not match any features", 1, $FH_HR);
-          }
-        }
-        else { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HACC line $line", 1, $FH_HR); 
+          $ftr_idx = blastxDbSeqNameToFtrIdx($target, $ftr_info_HAR, $FH_HR); # will die if problem parsing $target, or can't find $ftr_idx
         }
       }
       elsif($key eq "HSP") { 
@@ -10088,22 +10052,17 @@ sub ftr_results_calculate_blastx {
         if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read QRANGE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
-        if($top_score_and_compatible_flag) { 
+        if($top_score_flag) { 
           if($value =~ /^(\d+)..(\d+)$/) { 
             my ($blast_start, $blast_stop) = ($1, $2);
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
-            if(defined $start_offset) { 
-              # correct for fact that we hit in a fetched feature sequence, not the original full length sequence
-              $blast_start += ($start_offset - 1); 
-              $blast_stop  += ($start_offset - 1);
-            }
-
             my ($out_start, $out_stop) = create_output_start_and_stop($blast_start, $blast_stop,
                                                                       $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
             # unless -c was used: $xstart will equal $blast_start and $xstop will equal $blast_stop
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $out_start;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $out_stop;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} = $blast_strand;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_query"}  = $query;
             #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
             #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
             #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
@@ -10117,7 +10076,7 @@ sub ftr_results_calculate_blastx {
         if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXIN line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
-        if($top_score_and_compatible_flag) { 
+        if($top_score_flag) { 
           if($value =~ /^(\d+)$/) { 
             my $maxins = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} = $maxins;
@@ -10132,7 +10091,7 @@ sub ftr_results_calculate_blastx {
         if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXDE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
-        if($top_score_and_compatible_flag) {
+        if($top_score_flag) {
           if($value =~ /^(\d+)$/) { 
             my $maxdel = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} = $maxdel;
@@ -10147,7 +10106,7 @@ sub ftr_results_calculate_blastx {
         if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
-        if($top_score_and_compatible_flag) { 
+        if($top_score_flag) { 
           if($value =~ /^[\+\-]([123])$/) { 
             my $frame = $1;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} = $frame;
@@ -10162,7 +10121,7 @@ sub ftr_results_calculate_blastx {
         if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read STOP line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
-        if($top_score_and_compatible_flag) { 
+        if($top_score_flag) { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} = $value;
           #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
         }
@@ -10172,15 +10131,14 @@ sub ftr_results_calculate_blastx {
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
         # is this sequence compatible and the highest scoring hit for this feature for this sequence? 
-        if(($is_compatible_flag) && 
-           ((! exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"}) || # first hit, so must be highest
-            ($value > $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"}))) { # highest scoring hit
+        if((! exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"}) || # first hit, so must be highest
+           ($value > $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"})) { # highest scoring hit
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} = $value;
-          $top_score_and_compatible_flag = 1;
+          $top_score_flag = 1;
           printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_score} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} . "\n");
         }
         else { 
-          $top_score_and_compatible_flag = 0;
+          $top_score_flag = 0;
         }
       }
       # Add elsif($key eq "") blocks here to store more values from the blastx.summary file
@@ -10728,4 +10686,91 @@ sub error_list_output_to_ftable_errors {
   }
 
   return $retstr;
+}
+
+#################################################################
+# Subroutine: helper_blastx_breakdown_query()
+# Incept:     EPN, Wed Dec 19 12:05:02 2018
+#
+# Purpose:    Given a query name from blastx output, determine if
+#             it is for an entire input sequence, or a feature
+#             sequence fetched from an input sequence. 
+#             The way we tell is by looking up $in_query in $seq_info_HAR.
+#             If it exists as a key, then the query is an entire input
+#             sequence. If it does not exist as a key, then it should
+#             be <seqname>/<coords_str>, and <seqname> should be 
+#             a key in $seq_info_HAR.
+#
+# Arguments:
+#   $in_query:     query name from blastx output 
+#   $exp_seqname:  expected sequence name, of undef if unknown
+#                  can only be undef if $seq_HR is undefined
+#   $seq_HR:       ref to hash, keys are possible sequence names, values are irrelevant
+#   $FH_HR:        ref to hash of file handles, including 'log'
+#             
+# Returns:  Three values:
+#           <seqname>:    name of input sequence this query corresponds to
+#           <coords_str>: undef if $in_query == <seqname>, else the coords
+#                         string for the fetched feature from <seqname>
+#           <len>:        undef if $in_query == <seqname>, total length of 
+#                         coordinate ranges listed in <coords_str>
+#
+# Dies: If $in_query is not a valid key in $seq_info_HAR, and we can't
+#       break it down into a valid <seqname> and <coords_str>.
+#
+#################################################################
+sub helper_blastx_breakdown_query {
+  my $sub_name  = "helper_blastx_breakdown_query";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_query, $exp_seqname, $seq_HR, $FH_HR) = (@_);
+
+  my $ret_len = 0;
+  my $ret_seqname = undef;
+  my $ret_coords_str = undef;
+
+  # contract check
+  if((! defined $exp_seqname) && (! defined $seq_HR)) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract failure: both <exp_seqname> and <seq_HR> are undefined", 1, $FH_HR);
+  }
+  if((defined $exp_seqname) && (defined $seq_HR)) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract failure: both <exp_seqname> and <seq_HR> are defined", 1, $FH_HR);
+  }
+
+  if((defined $exp_seqname) && ($in_query eq $exp_seqname)) {   
+    return($in_query, undef, undef);
+  }
+  elsif((! defined $exp_seqname) && (exists $seq_HR->{$in_query})) { 
+    return($in_query, undef, undef);
+  }
+  else { 
+    # sequence name does not exist, as is
+    # example: NC_002549.1/6039-8068/1-885,885-2030
+    # sequence is NC_002549.1/6039-8068 but we fetched the feature 1-885,885-2030 from it
+    if($in_query =~ /^(\S+)\/([\d\,\-]+$)/) { 
+      ($ret_seqname, $ret_coords_str) = ($1, $2);
+      if((defined $exp_seqname) && ($ret_seqname ne $exp_seqname)) { 
+        DNAORG_FAIL("ERROR in $sub_name, unexpected sequence name $ret_seqname != $exp_seqname, derived from $in_query", 1, $FH_HR); 
+      }
+      if((! defined $exp_seqname) && (! exists $seq_HR->{$ret_seqname})) { 
+        DNAORG_FAIL("ERROR in $sub_name, unable to find input sequence with name $in_query or $ret_seqname", 1, $FH_HR); 
+      }
+
+      # if we get here $ret_seqname is a valid sequence
+      my @range_A = split(",", $ret_coords_str);
+      foreach my $range (@range_A) { 
+        if($range =~ /^(\d+)\-(\d+)$/) { 
+          $ret_len += abs($1 - $2) + 1;
+        }
+        else { 
+          DNAORG_FAIL("ERROR in $sub_name, unable to parse coords string $ret_coords_str (element $range) in blastx query sequence $in_query", 1, $FH_HR); 
+        }
+      }
+    }
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, unable to parse blastx query sequence name $in_query", 1, $FH_HR); 
+    }
+  }
+  return ($ret_seqname, $ret_coords_str, $ret_len);
 }

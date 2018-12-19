@@ -8544,6 +8544,94 @@ sub formatTabDelimitedStringForErrorListFile() {
   return $seqname . "\t" . $error_name . "\t" . $feature_name . "\t" . $error_desc;
 }
 
+#################################################################
+# Subroutine:  blastxDbSeqnameToFtrIdx()
+# Incept:      EPN, Tue Dec 18 13:27:50 2018
+#
+# Purpose:    Find the feature $ftr_idx that corresponds to the blastx
+#             db sequence that was named with the convention:
+#
+#             <protein-accession>/<coords-str>
+#
+#             Where <coords-str> is identical to $ftr_info_HAR->{"ref_coords"}[$ftr_idx].
+#
+# Arguments: 
+#  $blastx_seqname: sequence name
+#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $FH_HR:          ref to hash of file handles
+#
+# Returns:    <$ftr_idx>
+#
+# Dies:       If we find zero features that match to this sequence
+#             If we find more than 1 features that match to this sequence
+#
+################################################################# 
+sub blastxDbSeqNameToFtrIdx { 
+  my $sub_name = "blastxDbSeqNameToFtrIdx";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($blastx_seqname, $ftr_info_HAR, $FH_HR) = @_;
+
+  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+
+  my $ret_ftr_idx = undef;
+  if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
+    my ($accn, $coords) = ($1, $2);
+    # find it in @{$ftr_info_HAR->{"ref_coords"}}
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || 
+         ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
+        if($ftr_info_HAR->{"ref_coords"}[$ftr_idx] eq $coords) { 
+          if(defined $ret_ftr_idx) { # found more than 1 features that match
+            DNAORG_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match two features, ftr_idx: $ftr_idx and $ret_ftr_idx", 1, $FH_HR);
+          }                  
+          $ret_ftr_idx = $ftr_idx;
+        }
+      }
+    }
+    if(! defined $ret_ftr_idx) { # did not find match
+      DNAORG_FAIL("ERROR in $sub_name, did not find matching feature for blastx db sequence $blastx_seqname", 1, $FH_HR);
+    }
+  }
+  else { 
+    DNAORG_FAIL("ERROR in $sub_name, unable to parse blastx db sequence name $blastx_seqname", 1, $FH_HR); 
+  }
+
+  return $ret_ftr_idx;
+}
+
+#################################################################
+# Subroutine:  validateBlastDbExists()
+# Incept:      EPN, Tue Dec 18 15:32:50 2018
+#
+# Purpose:    Validate that a blast database exists.
+#
+# Arguments: 
+#  $blastdb_name:  name of the blast db
+#  $FH_HR:         ref to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       If any of the required files for a blast db do not exist.
+#
+################################################################# 
+sub validateBlastDbExists {
+  my $sub_name = "validateBlastDbExists";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($blastdb_name, $FH_HR) = @_;
+
+  foreach my $sfx (".phr", ".pin", ".psq") { 
+    if(! -s $blastdb_name . $sfx) { 
+      DNAORG_FAIL("ERROR in $sub_name, required blast DB file " . $blastdb_name . $sfx . " does not exist or is empty", 1, $FH_HR); 
+    }
+  }
+
+  return;
+}
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
     return 1;
