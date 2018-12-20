@@ -982,7 +982,8 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #         combine all relevant hits into predicted feature sequences
 #########################################################################
 $start_secs = outputProgressPrior("Combining predicted exons into CDS", $progress_w, $log_FH, *STDOUT);
-combine_model_hits("predicted", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+my $combined_model_seqname_maxlen = 
+    combine_model_hits("predicted", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 # we need to do this step even if there are no multi-exon CDS, because the function will update
 # an important part of %ftr_info_HA indicating which file subsequent steps should use 
 # (for models with 1 exon, this will be a file created prior to this (that is, we don't 
@@ -1284,8 +1285,9 @@ ftr_results_calculate_blastx($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr
 
 # add xi* and mip errors
 openAndAddFileToOutputInfo(\%ofile_info_HH, "blasttbl", $out_root . ".blastx.tbl", 1, "information on blast and CM hits for CDS features in tabular format");
-ftr_results_add_blastx_errors($ofile_info_HH{"FH"}{"blasttbl"}, \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
-                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+ftr_results_add_blastx_errors($ofile_info_HH{"FH"}{"blasttbl"}, $combined_model_seqname_maxlen, 
+                              \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
+                              \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 
 ###############################################################
@@ -1825,7 +1827,7 @@ sub fetch_hits_given_results {
 #  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
-# Returns:    void
+# Returns:    Length of longest sequence name in output file
 #
 # Dies:       If we have a problem reading the fasta files
 #
@@ -1844,6 +1846,8 @@ sub combine_model_hits {
   my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
   my $ftr_info_file_key        = $mdl_info_file_key;
   my $ftr_info_append_file_key = $mdl_info_append_file_key;
+
+  my $ret_seqname_maxlen = 0;
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # we only do this for features annotated by models
@@ -1880,13 +1884,15 @@ sub combine_model_hits {
         }
         if($at_least_one_fafile) { 
           # combine the sequences into 1 file
-          combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, 
+
+          my $cur_seqname_maxlen = combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, 
                             0, # do not require sequences be in a contiguous subset of files beginning with the first one to be combined, 
                                # allow any contiguous subset of files
                             $opt_HHR, $ofile_info_HHR->{"FH"});
           
           my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
           addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+          if($cur_seqname_maxlen > $ret_seqname_maxlen) { $ret_seqname_maxlen = $cur_seqname_maxlen; }
         }
         else { 
           # no fasta files exist, redefine $ftr_info_HAR->{"$ftr_info_file_key"}[$ftr_idx] to 
@@ -1910,7 +1916,7 @@ sub combine_model_hits {
     } # end of 'if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model")'
   }
   
-  return;
+  return $ret_seqname_maxlen;
 }
 
 #################################################################
@@ -1930,7 +1936,7 @@ sub combine_model_hits {
 #  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
-# Returns:    void
+# Returns:    Length of longest sequence name in output file
 #
 # Dies:       If we have a problem reading the fasta files
 #
@@ -1940,10 +1946,11 @@ sub combine_feature_hits {
   my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-
   my ($out_key, $seq_name_AR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
+
+  my $ret_seqname_maxlen = 0;
 
   my $ftr_info_file_key        = $out_key . ".hits.fa";
   my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
@@ -1951,7 +1958,7 @@ sub combine_feature_hits {
   # printf("in $sub_name, out_key: $out_key, ftr_info_file_key: $ftr_info_file_key\n");
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features annotated by models
+    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features created by combining other features
       # get the array of primary children feature indices for this feature
       my @primary_children_idx_A = (); # feature indices of the primary children of this feature
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
@@ -1981,13 +1988,13 @@ sub combine_feature_hits {
 
       if($at_least_one_fafile) { 
         # combine the sequences into 1 file
-        combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, 
-                          0, # do not require sequences be in a contiguous subset of files beginning with the first one to be combined, 
-                               # allow any contiguous subset of files
-                          $opt_HHR, $ofile_info_HHR->{"FH"}); 
-
+        my $cur_seqname_maxlen = combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, 
+                                                   0, # do not require sequences be in a contiguous subset of files beginning with the first one to be combined, 
+                                                   # allow any contiguous subset of files
+                                                   $opt_HHR, $ofile_info_HHR->{"FH"}); 
         my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
         addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
+        if($cur_seqname_maxlen > $ret_seqname_maxlen) { $ret_seqname_maxlen = $cur_seqname_maxlen; }
       } # end of 'if($at_least_one_fafile)'
       else { 
         # no fasta files exist, redefine $ftr_info_HAR->{"$ftr_info_file_key"}[$ftr_idx] to 
@@ -1996,7 +2003,8 @@ sub combine_feature_hits {
       }
     }
   } # end of 'for' loop over $ftr_idx
-  return;
+
+  return $ret_seqname_maxlen;
 }
 
 
@@ -2021,7 +2029,7 @@ sub combine_feature_hits {
 #  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:        REF to hash of file handles
 #
-# Returns:    void
+# Returns:    Length of longest sequence name created
 #
 # Dies:       If we have a problem reading the fasta files
 #
@@ -2057,6 +2065,8 @@ sub combine_sequences {
                                           # If $require_first is '0', examples A and B would be included
             
   my @sqname_AA                     = (); # 2D array, 1st dim [0..$file_idx..$nfiles-1], 2nd dim: 0 to number of sequences in file $file_idx
+
+  my $ret_seqname_maxlen = 0;
 
   my $seq_idx;  # counter over seq_name values
   my $file_idx; # counter for files
@@ -2154,6 +2164,8 @@ sub combine_sequences {
     if($seq_name_fetch_me_A[$seq_idx]) { 
       my $seq_name = $seq_name_AR->[$seq_idx];
       print OUT ">" . $seq_name . "/" . $seq_name_coords_A[$seq_idx] . "\n";
+      my $cur_seqname_len = length($seq_name . "/" . $seq_name_coords_A[$seq_idx]);
+      if($cur_seqname_len > $ret_seqname_maxlen) { $ret_seqname_maxlen = $cur_seqname_len; }
       for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
         if($seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] != -1) { 
           my $sqname = $sqname_AA[$file_idx][$seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx]];
@@ -2173,7 +2185,7 @@ sub combine_sequences {
     }
   }
 
-  return;
+  return $ret_seqname_maxlen;
 }
 
 #################################################################
@@ -3591,6 +3603,7 @@ sub ftr_results_add_b3e_errors {
 #
 # Arguments: 
 #  $out_FH:                 file handle to output blast table to 
+#  $query_width:            max length of any query name
 #  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
 #  $ftr_results_AAHR:       REF to feature results AAH, PRE-FILLED
@@ -3606,10 +3619,10 @@ sub ftr_results_add_b3e_errors {
 ################################################################# 
 sub ftr_results_add_blastx_errors { 
   my $sub_name = "ftr_results_add_blastx_errors";
-  my $nargs_exp = 9;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_FH, $ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($out_FH, $query_width, $ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
   
   # total counts of things
   my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
@@ -3624,8 +3637,9 @@ sub ftr_results_add_blastx_errors {
 
   my $seq_name_width    = maxLengthScalarValueInArray($seq_info_HAR->{"seq_name"});
   my $ftr_product_width = maxLengthScalarValueInArray($ftr_info_HAR->{"out_product"});
-  if($seq_name_width < length("#sequence"))  { $seq_name_width    = length("#sequence"); }
-  if($ftr_product_width < length("product")) { $ftr_product_width = length("product"); }
+  if($seq_name_width    < length("#sequence")) { $seq_name_width    = length("#sequence"); }
+  if($ftr_product_width < length("product"))   { $ftr_product_width = length("product"); }
+  if($query_width       < length("bquery"))    { $query_width   = length("bquery"); }
 
   my @out_per_seq_AA = (); # [0..$nseq-1]: per-cds feature output lines for each sequence, we output at end
 
@@ -3772,6 +3786,7 @@ sub ftr_results_add_blastx_errors {
           # first two undefs: seqname after coords_str is removed, and coords_str
           # $x_qlen will be undefined if $x_query is a full sequence name name
           $x_feature_flag = (defined $x_qlen) ? 1 : 0; 
+          #printf("HEYA seq_name: $seq_name ftr: $ftr_idx x_query: $x_query x_feature_flag: $x_feature_flag x_start: $x_start x_stop: $x_stop x_score: $x_score\n");
         }
 
         if(($xnn_err_possible) && (! defined $p_start) && (defined $x_start))  { # no CM prediction but there is a blastx prediction
@@ -3896,11 +3911,14 @@ sub ftr_results_add_blastx_errors {
         if($ftr_idx == 0) { 
           @{$out_per_seq_AA[$seq_idx]} = ();
         }
-        push(@{$out_per_seq_AA[$seq_idx]}, sprintf("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n", 
+        push(@{$out_per_seq_AA[$seq_idx]}, sprintf("%-*s  %-*s  %6s  %6s  %-*s  %8s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n", 
                                                    $seq_name_width,    $seq_name, 
                                                    $ftr_product_width, $ftr_info_HAR->{"out_product"}[$ftr_idx],
                                                    (defined $p_start)                               ? "yes"       : "no",   # CM prediction?
                                                    (defined $x_start  && $x_score >= $min_x_score)  ? "yes"       : "no",   # blastx prediction? 
+                                                   $query_width,                                   
+                                                   (defined $x_query)                               ? $x_query    : "-",    # query name 
+                                                   (defined $x_query && $x_feature_flag)            ? "feature"   : "full", # hit to feature sequence or full sequence?
                                                    (defined $p_start)                               ? $p_start    : "-",    # CM-start
                                                    (defined $p_stop)                                ? $p_stop     : "-",    # CM-stop
                                                    (defined $x_start  && $x_score >= $min_x_score)  ? $x_start    : "-",    # blastx-start
@@ -3923,6 +3941,9 @@ sub ftr_results_add_blastx_errors {
   printf $out_FH ("#product:  CDS product name\n");
   printf $out_FH ("#cm?:      is there a CM (nucleotide-based) prediction/hit? above threshold\n");
   printf $out_FH ("#blast?:   is there a blastx (protein-based) prediction/hit? above threshold\n");
+  printf $out_FH ("#bquery:   name of blastx query name\n");
+  printf $out_FH ("#feature?: 'feature' if blastx query was a fetched feature, from CM prediction\n");
+  printf $out_FH ("#          'full'    if blastx query was a full input sequence\n");
   printf $out_FH ("#cmstart:  start position of CM (nucleotide-based) prediction\n");
   printf $out_FH ("#cmstop:   stop  position of CM (nucleotide-based) prediction\n");
   printf $out_FH ("#bxstart:  start position of blastx top HSP\n");
@@ -3934,10 +3955,12 @@ sub ftr_results_add_blastx_errors {
   printf $out_FH ("#bxmaxde:  maximum delete length in top blastx HSP\n");
   printf $out_FH ("#bxtrc:    position of stop codon in top blastx HSP, if there is one\n");
   printf $out_FH ("#errors:   list of errors for this sequence, - if none\n");
-  printf $out_FH ("%-*s  %-*s  %6s  %6s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n",
-         $seq_name_width,    "#sequence", 
-         $ftr_product_width, "product", 
-         "cm?", "blast?", "cmstart", "cmstop", "bxstart", "bxstop", "bxscore", "startdf", "stopdf", "bxmaxin", "bxmaxde", "bxtrc", "errors");
+  printf $out_FH ("%-*s  %-*s  %6s  %6s  %-*s  %8s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n",
+                  $seq_name_width,    "#sequence", 
+                  $ftr_product_width, "product",
+                  "cm?", "blast?", 
+                  $query_width, "bquery", 
+                  "feature?", "cmstart", "cmstop", "bxstart", "bxstop", "bxscore", "startdf", "stopdf", "bxmaxin", "bxmaxde", "bxtrc", "errors");
 
          
 
@@ -9925,11 +9948,10 @@ sub run_blastx_and_summarize_output {
   my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -out $blastx_out_file";
   runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
 
-  # run blastx once for each of the corrected hits files (one per feature)
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, "corrected.hits.fa", $ofile_info_HHR->{"FH"});
-    printf("ftr_idx: $ftr_idx, out_tiny: %s ofile_info_key: $ofile_info_key\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
+    my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, "predicted.hits.fa", $ofile_info_HHR->{"FH"});
     if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
+      # printf("ftr_idx: $ftr_idx, out_tiny: %s ofile_info_key: $ofile_info_key %s\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $ofile_info_HHR->{"fullpath"}{$ofile_info_key});
       my $cur_query_file      = $ofile_info_HH{"fullpath"}{$ofile_info_key};
       my $cur_db_file         = $build_root . ".f" . $ftr_idx . ".prot.fa";
       my $cur_blastx_out_file = $out_root . ".f" . $ftr_idx . ".blastx.out";
@@ -9993,8 +10015,6 @@ sub ftr_results_calculate_blastx {
   validateFileExistsAndIsNonEmpty($blastx_summary_file, $sub_name, $FH_HR);
   my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, undef, $FH_HR);
 
-  printf("HEYA $blastx_summary_file\n");
-    
   open(IN, $blastx_summary_file) || fileOpenFailure($blastx_summary_file, $sub_name, $!, "reading", $FH_HR);
   # first step, determine which sequence each hit corresponds to
   my $query      = undef;
@@ -10135,7 +10155,7 @@ sub ftr_results_calculate_blastx {
            ($value > $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"})) { # highest scoring hit
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} = $value;
           $top_score_flag = 1;
-          printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_score} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} . "\n");
+          #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_score} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} . "\n");
         }
         else { 
           $top_score_flag = 0;
@@ -10444,7 +10464,7 @@ sub helper_ftable_start_stop_arrays_to_coords {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($start_AR, $stop_AR, $do_start_carrot, $do_stop_carrot, $ret_min_coord, $FH_HR) = @_;
- 
+
   my $ret_coords_str = "";
   my $ncoord = scalar(@{$start_AR});
   my $min_coord = undef;

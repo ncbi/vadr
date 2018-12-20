@@ -161,6 +161,7 @@
 # 
 # Subroutines for dumping data structures, usually for debugging:
 #   dumpInfoHashOfArrays()
+#   dumpHashOfHashes()
 #   dumpArrayOfHashesOfHashes()
 #   dumpArrayOfHashes()
 #
@@ -5143,6 +5144,7 @@ sub outputDividingLine {
 #
 # Subroutines for dumping data structures, usually for debugging:
 #   dumpInfoHashOfArrays()
+#   dumpHashOfHashes()
 #   dumpArrayOfHashesOfHashes()
 #   dumpArrayOfHashes()
 #
@@ -5203,6 +5205,41 @@ sub dumpInfoHashOfArrays {
     }
   }
   
+  return;
+}
+
+#################################################################
+# Subroutine: dumpHashOfHashes()
+# Incept:     EPN, Thu Dec 20 13:36:00 2018
+#
+# Purpose:    Dump the contents of  hashes of hashes,
+#             probably for debugging purposes.
+#
+# Args:       $name2print:  name of array of hashes of hashes
+#             $HHR:         ref of the hash of hashes
+#             $FH:          file handle to print (often *STDOUT)
+#
+# Returns:    void
+# 
+#################################################################
+sub dumpHashOfHashes { 
+  my $sub_name = "dumpHashOfHashes()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($name2print, $HHR, $FH) = @_;
+
+  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
+  
+  foreach my $key1 (sort keys %{$HHR}) { 
+    printf("*H*H key: $key1\n");
+    my $nel = scalar(keys %{$HHR->{$key1}});
+    foreach my $key2 (sort keys %{$HHR->{$key1}}) { 
+      printf("\tH*H* key: $key2 value: %s\n", $HHR->{$key1}{$key2}); 
+    }
+    printf $FH ("\n");
+  }
+
   return;
 }
 
