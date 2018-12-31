@@ -682,9 +682,9 @@ else {
   if($do_annotate) { 
     openAndAddFileToOutputInfo(\%ofile_info_HH, "na_errors_list",  $out_root . ".noannot.errlist",  1, "List of errors (unexpected features that cause failure) for sequences that will not be annotated");
     openAndAddFileToOutputInfo(\%ofile_info_HH, "na_seq_list",     $out_root . ".noannot.seqlist",  1, "List of sequences that will not be annotated");
+    print { $ofile_info_HH{"FH"}{"na_errors_list"}   } "#sequence\terror\tfeature\terror-description\n";
   }
   print { $ofile_info_HH{"FH"}{"all_errors_list"}  } "#sequence\terror\tfeature\terror-description\n";
-  print { $ofile_info_HH{"FH"}{"na_errors_list"}   } "#sequence\terror\tfeature\terror-description\n";
 
   output_infotbl_header($ofile_info_HH{"FH"}{"rdb_infotbl"}, 0, \%width_H, \%opt_HH); 
   output_infotbl_header($ofile_info_HH{"FH"}{"tab_infotbl"}, 1, \%width_H, \%opt_HH); 
