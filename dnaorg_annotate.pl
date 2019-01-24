@@ -10003,10 +10003,13 @@ sub ftr_results_calculate_blastx {
         }
       }
       elsif($key eq "QRANGE") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+        if($value eq "..") { # special case, no hits, silently move on
+          ;
+        }
+        elsif((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read QRANGE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
-        if($hsp_idx eq "1") { 
+        elsif($hsp_idx eq "1") { 
           if($value =~ /^(\d+)..(\d+)$/) { 
             my ($blast_start, $blast_stop) = ($1, $2);
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
