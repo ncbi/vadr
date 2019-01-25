@@ -161,7 +161,7 @@ on a compute farm at least some of the time, then run
 'do-install-tests-parallel.sh' 
 
 Below is example output for do-install-tests-local.sh:
-> sh $DNAORGDIR/testfiles/do-install-tests-local.sh
+> sh $DNAORGDIR/dnaorg_scripts/testfiles/do-install-tests-local.sh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # dnaorg_test.pl :: test dnaorg scripts [TEST SCRIPT]
 # dnaorg 0.44 (Jan 2019)
