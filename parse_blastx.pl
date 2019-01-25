@@ -146,6 +146,19 @@ while($keep_going) {
     while(<INPUT>){    #read in a line
       chomp;           #remove new line character
       ($qdef) = m/^Query= (.*)$/;   #assign to qdef if line starts with Query
+      if($qdef) { 
+        # believe it or not, blast sometimes splits your query sequence name over multiple lines, example:
+        #Query= HQ693446.1:dnaorg-
+        #duplicated:HQ693446.1:1:2690:+:HQ693446.1:1:2690:+/2379-1738,
+        #1645-1204
+        # for the query: HQ693446.1:dnaorg-duplicated:HQ693446.1:1:2690:+:HQ693446.1:1:2690:+/2379-1738,1645-1204
+        my $append_to_query = <INPUT>; 
+        while($append_to_query =~ m/\S/) { # read until we hit a blank line
+          chomp $append_to_query; 
+          $qdef .= $append_to_query;
+          $append_to_query = <INPUT>;
+        }
+      }
       last if($qdef);               #if qdef got defined, exit the loop
     }
   }
@@ -384,7 +397,20 @@ while($keep_going) {
       while(<INPUT>){    #read in a line
         chomp;           #remove new line character
         ($qdef) = m/^Query= (.*)$/;   #assign to qdef if line starts with Query
-        if($qdef) { $new_query = 1; }
+        if($qdef) { 
+          $new_query = 1; 
+          # believe it or not, blast sometimes splits your query sequence name over multiple lines, example:
+          #Query= HQ693446.1:dnaorg-
+          #duplicated:HQ693446.1:1:2690:+:HQ693446.1:1:2690:+/2379-1738,
+          #1645-1204
+          # for the query: HQ693446.1:dnaorg-duplicated:HQ693446.1:1:2690:+:HQ693446.1:1:2690:+/2379-1738,1645-1204
+          my $append_to_query = <INPUT>; 
+          while($append_to_query =~ m/\S/) { # read until we hit a blank line
+            chomp $append_to_query; 
+            $qdef .= $append_to_query;
+            $append_to_query = <INPUT>;
+          }
+        }
         last if($qdef);               #if qdef got defined, exit the loop
       }
       if(! defined $qdef) { # reached end of file
