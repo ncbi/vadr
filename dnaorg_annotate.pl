@@ -82,10 +82,13 @@ require "epn-options.pm";
 #          comprised of multiple mature peptides) concatenate the
 #          individual corrected feature sequences into single
 #          sequences.
-# Step 19. Translate corrected feature sequences into putative proteins.
-# Step 20. (OPTIONAL) Create multiple alignments of DNA sequences, if --doalign.
-# Step 21. (OPTIONAL) Create multiple alignments of protein sequences, if --doalign.
-# Step 22. Output annotations and errors.
+# Step 19. Run BLASTX: all full length sequences and all corrected nucleotide 
+#          features versus all proteins
+# Step 20. Add zft errors for sequences with zero annotated features
+# Step 21. Translate corrected feature sequences into proteins
+# Step 22. (OPTIONAL) Create multiple alignments of DNA sequences, if --doalign.
+# Step 23. (OPTIONAL) Create multiple alignments of protein sequences, if --doalign.
+# Step 24. Output annotations and errors.
 #
 #######################################################################################
 #
