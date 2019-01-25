@@ -454,7 +454,6 @@ foreach my $prot_fa_file (@prot_fa_file_A) {
   create_blast_protein_db(\%execs_H, $prot_fa_file, \%opt_HH, \%ofile_info_HH);
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-exit 0;
 
 ####################################
 # Step 5. Build and calibrate models 

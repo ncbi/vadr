@@ -153,7 +153,7 @@ opt_Add("--ectoponly",    "boolean",  0,                       8,     undef,"--o
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: This script must be run in 1 of 3 modes:\n";
+my $usage    = "Usage: This script must be run in 1 of 2 modes:\n";
 $usage      .= "\nBuild mode (--onlybuild): Build HMM library and exit (no classification).\nExample usage:\n\t";
 $usage      .= "dnaorg_classify.pl [-options] --onlybuild <RefSeq list> --dirout <output directory to create with HMM library>\n";
 $usage      .= "\nClassify mode (--infasta): Use a previously created HMM library to annotate sequences in an input fasta file.\nExample usage:\n\t";

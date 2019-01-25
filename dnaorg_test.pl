@@ -194,6 +194,7 @@ for(my $i = 1; $i <= $ncmd; $i++) {
   my $desc = $desc_A[($i-1)];
   my $outfile_AR = \@{$outfile_AA[($i-1)]};
   my $expfile_AR = \@{$expfile_AA[($i-1)]};
+  my $rmdir_AR   = \@{$rmdir_AA[($i-1)]};
   my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
   if((opt_IsUsed("-s", \%opt_HH)) && (opt_Get("-s", \%opt_HH))) { 
     # -s used, we aren't running commands, just comparing files
@@ -213,6 +214,15 @@ for(my $i = 1; $i <= $ncmd; $i++) {
     my $pass = diff_two_files($outfile_AR->[$j], $expfile_AR->[$j], $diff_file, $ofile_info_HH{"FH"});
     if($pass) { $npass++; }
     else      { $nfail++; }
+  }
+
+  if(($nfail == 0) && (! opt_Get("--keep", \%opt_HH))) { # only remove dir if no tests failed
+    my $nrmdir = (defined $rmdir_AR) ? scalar(@{$rmdir_AR}) : 0;
+    for(my $k = 0; $k < $nrmdir; $k++) { 
+      outputString($log_FH, 1, sprintf("#\t%-60s ... ", "removing directory $rmdir_AR->[$k]"));
+      runCommand("rm -rf $rmdir_AR->[$k]", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"}); 
+      outputString($log_FH, 1, "done\n");
+    }
   }
 }
 
