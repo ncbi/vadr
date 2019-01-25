@@ -1,0 +1,37 @@
+>Feature gi|960312731|gb|KU143800.1|
+56	3026	gene
+			gene	NP
+470	2689	CDS
+			product	nucleoprotein
+3032	4407	gene
+			gene	VP35
+3129	4151	CDS
+			product	polymerase complex protein
+4390	5894	gene
+			gene	VP40
+4479	5459	CDS
+			product	matrix protein
+5900	8305	gene
+			gene	GP
+6039	6923	CDS
+6923	8068
+			product	spike glycoprotein
+			exception	RNA editing
+6039	7133	CDS
+			product	small secreted glycoprotein
+6039	6922	CDS
+6924	6933
+			product	second secreted glycoprotein
+			exception	RNA editing
+8288	9740	gene
+			gene	VP30
+8509	9375	CDS
+			product	minor nucleoprotein
+9885	11518	gene
+			gene	VP24
+10345	11100	CDS
+			product	membrane-associated protein
+11501	18282	gene
+			gene	L
+11581	18219	CDS
+			product	RNA-dependent RNA polymerase

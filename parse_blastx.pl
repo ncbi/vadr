@@ -9,6 +9,8 @@
 
 # Usage: parse_blastx.pl --input <input file>
 
+# dnaorg_scripts 0.44 Jan 2019
+
 use strict;
 use warnings;
 use Getopt::Long;
@@ -146,6 +148,19 @@ while($keep_going) {
     while(<INPUT>){    #read in a line
       chomp;           #remove new line character
       ($qdef) = m/^Query= (.*)$/;   #assign to qdef if line starts with Query
+      if($qdef) { 
+        # believe it or not, blast sometimes splits your query sequence name over multiple lines, example:
+        #Query= HQ693446.1:dnaorg-
+        #duplicated:HQ693446.1:1:2690:+:HQ693446.1:1:2690:+/2379-1738,
+        #1645-1204
+        # for the query: HQ693446.1:dnaorg-duplicated:HQ693446.1:1:2690:+:HQ693446.1:1:2690:+/2379-1738,1645-1204
+        my $append_to_query = <INPUT>; 
+        while($append_to_query =~ m/\S/) { # read until we hit a blank line
+          chomp $append_to_query; 
+          $qdef .= $append_to_query;
+          $append_to_query = <INPUT>;
+        }
+      }
       last if($qdef);               #if qdef got defined, exit the loop
     }
   }
@@ -384,7 +399,20 @@ while($keep_going) {
       while(<INPUT>){    #read in a line
         chomp;           #remove new line character
         ($qdef) = m/^Query= (.*)$/;   #assign to qdef if line starts with Query
-        if($qdef) { $new_query = 1; }
+        if($qdef) { 
+          $new_query = 1; 
+          # believe it or not, blast sometimes splits your query sequence name over multiple lines, example:
+          #Query= HQ693446.1:dnaorg-
+          #duplicated:HQ693446.1:1:2690:+:HQ693446.1:1:2690:+/2379-1738,
+          #1645-1204
+          # for the query: HQ693446.1:dnaorg-duplicated:HQ693446.1:1:2690:+:HQ693446.1:1:2690:+/2379-1738,1645-1204
+          my $append_to_query = <INPUT>; 
+          while($append_to_query =~ m/\S/) { # read until we hit a blank line
+            chomp $append_to_query; 
+            $qdef .= $append_to_query;
+            $append_to_query = <INPUT>;
+          }
+        }
         last if($qdef);               #if qdef got defined, exit the loop
       }
       if(! defined $qdef) { # reached end of file
@@ -405,6 +433,10 @@ while($keep_going) {
     print "INS\t" .$overall_subject_gap_representation . "\n";
     print "MAXIN\t" .$maximum_subject_gap ."\n"; 		    
   }
+  if(! defined $overall_query_start)   { $overall_query_start = ""; }
+  if(! defined $overall_query_end)     { $overall_query_end   = ""; }
+  if(! defined $overall_subject_start) { $overall_subject_start = ""; }
+  if(! defined $overall_subject_end)   { $overall_subject_end   = ""; }
   print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
   print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
   print "END_MATCH\n";  #print END_MATCH

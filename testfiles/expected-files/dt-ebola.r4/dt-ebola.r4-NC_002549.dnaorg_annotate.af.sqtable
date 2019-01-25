@@ -1,0 +1,94 @@
+>Feature gi|973433581|gb|KU296627.1|
+18	2988	gene
+			gene	NP
+432	2651	CDS
+			product	nucleoprotein
+2994	4369	gene
+			gene	VP35
+3091	4113	CDS
+			product	polymerase complex protein
+4352	5856	gene
+			gene	VP40
+4441	5421	CDS
+			product	matrix protein
+5862	8265	gene
+			gene	GP
+6001	6884	misc_feature
+6884	8028
+			note	similar to spike glycoprotein; contains premature stop codon
+6001	7094	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6001	6883	misc_feature
+6885	6894
+			note	similar to second secreted glycoprotein; contains premature stop codon
+8248	9700	gene
+			gene	VP30
+8469	9335	CDS
+			product	minor nucleoprotein
+9845	11477	gene
+			gene	VP24
+10304	11059	CDS
+			product	membrane-associated protein
+11460	18241	gene
+			gene	L
+11540	18178	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: (spike glycoprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6884 exon 1 of 2 revised to 6001..6552 (stop shifted 332 nt)]
+ERROR: Insertion of Nucleotides: (spike glycoprotein) blastx protein validation failure, too large of an insert [spike glycoprotein: longest blastx predicted insert of length 87 > 27]
+ERROR: Deletion of Nucleotides: (spike glycoprotein) blastx protein validation failure, too large of a deletion [spike glycoprotein: longest blastx predicted delete of length 144 > 27]
+ERROR: CDS Has Stop Codon: (spike glycoprotein) blastx protein validation failure, stop codon in protein alignment [spike glycoprotein: blastx alignment includes stop codon (6550;6595;6715;6766;6817;6892;6907;7015;7174;7189;7195;7204;7225)]
+ERROR: CDS Has Stop Codon: (small secreted glycoprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..7094 revised to 6001..6552 (stop shifted 542 nt)]
+ERROR: Indefinite Annotation at Start: (small secreted glycoprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [small secreted glycoprotein: start positions differ by 524 > 5 (strand:+ CM:6001 blastx:6525)]
+ERROR: Indefinite Annotation at Stop: (small secreted glycoprotein) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [small secreted glycoprotein: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:6552 blastx:7091)]
+ERROR: CDS Has Stop Codon: (second secreted glycoprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6001..6883 exon 1 of 2 revised to 6001..6552 (stop shifted 331 nt)]
+ERROR: Indefinite Annotation at Stop: (second secreted glycoprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [second secreted glycoprotein: stop positions differ by 321 > 8 (strand:+ CM:6894 blastx:6573, valid stop codon in CM prediction)]
+ERROR: CDS Has Stop Codon: (second secreted glycoprotein) blastx protein validation failure, stop codon in protein alignment [second secreted glycoprotein: blastx alignment includes stop codon (6550)]
+>Feature gi|973432563|gb|KU296492.1|
+30	3000	gene
+			gene	NP
+444	2663	CDS
+			product	nucleoprotein
+3006	4381	gene
+			gene	VP35
+3103	4125	CDS
+			product	polymerase complex protein
+4364	5868	gene
+			gene	VP40
+4453	5433	CDS
+			product	matrix protein
+5874	8276	gene
+			gene	GP
+6013	6896	misc_feature
+6896	8039
+			note	similar to spike glycoprotein; contains premature stop codon
+6013	7106	misc_feature
+			note	similar to small secreted glycoprotein; contains premature stop codon
+6013	6895	misc_feature
+6897	6906
+			note	similar to second secreted glycoprotein; contains premature stop codon
+8259	9711	gene
+			gene	VP30
+8480	9346	CDS
+			product	minor nucleoprotein
+9856	11489	gene
+			gene	VP24
+10316	11071	CDS
+			product	membrane-associated protein
+11472	18253	gene
+			gene	L
+11552	18190	CDS
+			product	RNA-dependent RNA polymerase
+
+Additional note(s) to submitter:
+ERROR: CDS Has Stop Codon: (spike glycoprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6896 exon 1 of 2 revised to 6013..6564 (stop shifted 332 nt)]
+ERROR: Indefinite Annotation at Start: (spike glycoprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [spike glycoprotein: start positions differ by 524 > 5 (strand:+ CM:6013 blastx:6537)]
+ERROR: Insertion of Nucleotides: (spike glycoprotein) blastx protein validation failure, too large of an insert [spike glycoprotein: longest blastx predicted insert of length 36 > 27]
+ERROR: CDS Has Stop Codon: (spike glycoprotein) blastx protein validation failure, stop codon in protein alignment [spike glycoprotein: blastx alignment includes stop codon (7104;7179;7194;7200;7209;7239)]
+ERROR: CDS Has Stop Codon: (small secreted glycoprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..7106 revised to 6013..6564 (stop shifted 542 nt)]
+ERROR: Indefinite Annotation at Start: (small secreted glycoprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [small secreted glycoprotein: start positions differ by 524 > 5 (strand:+ CM:6013 blastx:6537)]
+ERROR: Indefinite Annotation at Stop: (small secreted glycoprotein) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [small secreted glycoprotein: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:6564 blastx:7103)]
+ERROR: CDS Has Stop Codon: (second secreted glycoprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6013..6895 exon 1 of 2 revised to 6013..6564 (stop shifted 331 nt)]
+ERROR: Indefinite Annotation at Stop: (second secreted glycoprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [second secreted glycoprotein: stop positions differ by 321 > 8 (strand:+ CM:6906 blastx:6585, valid stop codon in CM prediction)]
+ERROR: CDS Has Stop Codon: (second secreted glycoprotein) blastx protein validation failure, stop codon in protein alignment [second secreted glycoprotein: blastx alignment includes stop codon (6562)]

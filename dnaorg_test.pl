@@ -88,8 +88,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.43";
-my $releasedate   = "Dec 2018";
+my $version       = "0.44";
+my $releasedate   = "Jan 2019";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -194,6 +194,7 @@ for(my $i = 1; $i <= $ncmd; $i++) {
   my $desc = $desc_A[($i-1)];
   my $outfile_AR = \@{$outfile_AA[($i-1)]};
   my $expfile_AR = \@{$expfile_AA[($i-1)]};
+  my $rmdir_AR   = \@{$rmdir_AA[($i-1)]};
   my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
   if((opt_IsUsed("-s", \%opt_HH)) && (opt_Get("-s", \%opt_HH))) { 
     # -s used, we aren't running commands, just comparing files
@@ -213,6 +214,15 @@ for(my $i = 1; $i <= $ncmd; $i++) {
     my $pass = diff_two_files($outfile_AR->[$j], $expfile_AR->[$j], $diff_file, $ofile_info_HH{"FH"});
     if($pass) { $npass++; }
     else      { $nfail++; }
+  }
+
+  if(($nfail == 0) && (! opt_Get("--keep", \%opt_HH))) { # only remove dir if no tests failed
+    my $nrmdir = (defined $rmdir_AR) ? scalar(@{$rmdir_AR}) : 0;
+    for(my $k = 0; $k < $nrmdir; $k++) { 
+      outputString($log_FH, 1, sprintf("#\t%-60s ... ", "removing directory $rmdir_AR->[$k]"));
+      runCommand("rm -rf $rmdir_AR->[$k]", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"}); 
+      outputString($log_FH, 1, "done\n");
+    }
   }
 }
 
@@ -407,8 +417,6 @@ sub diff_two_files {
 
   my $out_file_exists   = (-e $out_file) ? 1 : 0;
   my $exp_file_exists   = (-e $exp_file) ? 1 : 0;
-  my $out_file_nonempty = (-s $out_file) ? 1 : 0;
-  my $exp_file_nonempty = (-s $exp_file) ? 1 : 0;
 
   my $conclusion = "";
   my $pass = 0;
@@ -416,13 +424,10 @@ sub diff_two_files {
   if(! $exp_file_exists) { 
     DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file does not exist", 1, $FH_HR) ;
   }
-  if(! $exp_file_nonempty) { 
-    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty", 1, $FH_HR);
-  }
     
   outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-100s ... ", $out_file));
 
-  if($out_file_nonempty) { 
+  if($out_file_exists) { 
     my $cmd = "diff -U 0 $out_file $exp_file > $diff_file";
     # don't use runCommand() because diff 'fails' if files are not identical
     outputString($FH_HR->{"cmd"}, 0, "$cmd\n");
@@ -449,7 +454,7 @@ sub diff_two_files {
     }
   }
   else { 
-    $conclusion = ($out_file_exists) ? "FAIL [output file exists but is empty]" : "FAIL [output file does not exist]";
+    $conclusion = "FAIL [output file does not exist]";
   }
 
   outputString($FH_HR->{"log"}, 1, "$conclusion\n");

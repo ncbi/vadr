@@ -153,7 +153,7 @@ opt_Add("--ectoponly",    "boolean",  0,                       8,     undef,"--o
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: This script must be run in 1 of 3 modes:\n";
+my $usage    = "Usage: This script must be run in 1 of 2 modes:\n";
 $usage      .= "\nBuild mode (--onlybuild): Build HMM library and exit (no classification).\nExample usage:\n\t";
 $usage      .= "dnaorg_classify.pl [-options] --onlybuild <RefSeq list> --dirout <output directory to create with HMM library>\n";
 $usage      .= "\nClassify mode (--infasta): Use a previously created HMM library to annotate sequences in an input fasta file.\nExample usage:\n\t";
@@ -212,8 +212,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.43";
-my $releasedate   = "Dec 2018";
+my $version       = "0.44";
+my $releasedate   = "Jan 2019";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -682,9 +682,9 @@ else {
   if($do_annotate) { 
     openAndAddFileToOutputInfo(\%ofile_info_HH, "na_errors_list",  $out_root . ".noannot.errlist",  1, "List of errors (unexpected features that cause failure) for sequences that will not be annotated");
     openAndAddFileToOutputInfo(\%ofile_info_HH, "na_seq_list",     $out_root . ".noannot.seqlist",  1, "List of sequences that will not be annotated");
+    print { $ofile_info_HH{"FH"}{"na_errors_list"}   } "#sequence\terror\tfeature\terror-description\n";
   }
   print { $ofile_info_HH{"FH"}{"all_errors_list"}  } "#sequence\terror\tfeature\terror-description\n";
-  print { $ofile_info_HH{"FH"}{"na_errors_list"}   } "#sequence\terror\tfeature\terror-description\n";
 
   output_infotbl_header($ofile_info_HH{"FH"}{"rdb_infotbl"}, 0, \%width_H, \%opt_HH); 
   output_infotbl_header($ofile_info_HH{"FH"}{"tab_infotbl"}, 1, \%width_H, \%opt_HH); 
