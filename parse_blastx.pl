@@ -405,6 +405,10 @@ while($keep_going) {
     print "INS\t" .$overall_subject_gap_representation . "\n";
     print "MAXIN\t" .$maximum_subject_gap ."\n"; 		    
   }
+  if(! defined $overall_query_start)   { $overall_query_start = ""; }
+  if(! defined $overall_query_end)     { $overall_query_end   = ""; }
+  if(! defined $overall_subject_start) { $overall_subject_start = ""; }
+  if(! defined $overall_subject_end)   { $overall_subject_end   = ""; }
   print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
   print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
   print "END_MATCH\n";  #print END_MATCH

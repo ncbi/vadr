@@ -1289,9 +1289,14 @@ ftr_results_add_blastx_errors($ofile_info_HH{"FH"}{"blasttbl"}, $combined_model_
                               \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
+####################################################################
+# Step 20. Add zft errors for sequences with zero annotated features
+####################################################################
+# add per-sequence 'zft' errors (zero annotated features)
+add_zft_errors(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
 
 ###############################################################
-# Step 20. Translate corrected feature sequences into proteins
+# Step 21. Translate corrected feature sequences into proteins
 ###############################################################
 if(! opt_Get("--skiptranslate", \%opt_HH)) { 
   $start_secs = outputProgressPrior("Translating corrected nucleotide features into protein sequences", $progress_w, $log_FH, *STDOUT);
@@ -1300,7 +1305,7 @@ if(! opt_Get("--skiptranslate", \%opt_HH)) {
 }
 
 ################################################################################
-# Step 21. (OPTIONAL) Create multiple alignments of DNA sequences, if --doalign
+# Step 22. (OPTIONAL) Create multiple alignments of DNA sequences, if --doalign
 ################################################################################
 if(opt_Get("--doalign", \%opt_HH)) { 
   $step_desc = "Aligning and parsing corrected nucleotide hits";
@@ -1310,7 +1315,7 @@ if(opt_Get("--doalign", \%opt_HH)) {
 }
 
 ####################################################################################
-# Step 22. (OPTIONAL) Create multiple alignments of protein sequences, if --doalign
+# Step 23. (OPTIONAL) Create multiple alignments of protein sequences, if --doalign
 ####################################################################################
 if(opt_Get("--doalign", \%opt_HH)) { 
   $start_secs = outputProgressPrior("Aligning translated protein sequences", $progress_w, $log_FH, *STDOUT);
@@ -1319,7 +1324,7 @@ if(opt_Get("--doalign", \%opt_HH)) {
 }
 
 #########################################
-# Step 23. Output annotations and errors
+# Step 24. Output annotations and errors
 #########################################
 # open files for writing
 openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",            $out_root . ".tbl",               1, "All annotations in tabular format");
@@ -7266,13 +7271,6 @@ sub output_feature_tbl_all_sequences {
   # NOTE: $qval_sep == ';;' is hard-coded value for separating multiple qualifier values for the same 
   # qualifier (see dnaorg.pm::edirectFtableOrMatPept2SingleFeatureTableInfo
 
-  # fail if --origin is used, TODO: write --origin related code
-  #my $origin_offset = undef;
-  if(opt_IsUsed("--origin", $opt_HHR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, --origin used, not set up for this yet", 1, $ofile_info_HHR->{"FH"});
-    #$origin_offset = validate_origin_seq(opt_Get("--origin", $opt_HHR));
-  }
-
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
@@ -7293,6 +7291,10 @@ sub output_feature_tbl_all_sequences {
     my @seq_note_A  = (); # all notes for this sequence
 
     my $missing_codon_start_flag = 0; # set to 1 if a feature for this sequence should have a codon_start value added but doesn't
+
+    # first check for per-sequence errors
+    my $seq_err_str = helper_ftable_get_seq_error_code_strings($seq_name, $err_seq_instances_HHR, $err_info_HAR, $FH_HR);
+    processSequenceErrorsForFTable($seq_err_str, $seq_name, $err_info_HAR, $err_seq_instances_HHR, \@seq_error_A, $FH_HR);
 
     # loop over features
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -10069,10 +10071,13 @@ sub ftr_results_calculate_blastx {
         }
       }
       elsif($key eq "QRANGE") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+        if($value eq "..") { # special case, no hits, silently move on
+          ;
+        }
+        elsif((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read QRANGE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
-        if($top_score_flag) { 
+        elsif($top_score_flag) { 
           if($value =~ /^(\d+)..(\d+)$/) { 
             my ($blast_start, $blast_stop) = ($1, $2);
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
@@ -10263,6 +10268,47 @@ sub helper_ftable_get_ftr_error_code_strings {
                                              $err_code, 
                                              $err_info_HAR->{"desc"}[$err_idx], 
                                              ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]")); 
+      }
+    }
+  }
+  
+  return $ret_err_str;
+}
+
+#################################################################
+# Subroutine:  helper_ftable_get_seq_error_code_strings()
+# Incept:      EPN, Thu Jan 24 12:03:50 2019
+#
+
+# Purpose:    Given a sequence name, construct a string of all 
+#             per-sequence errors and return it.
+#
+# Arguments: 
+#  $seq_name:              name of sequence
+#  $err_seq_instances_HHR: REF to 2D hashes with per-sequence errors, PRE-FILLED
+#  $err_info_HAR:          REF to the error info hash of arrays, PRE-FILLED
+#  $FH_HR:                 REF to hash of file handles
+#
+# Returns:    A string with all per-sequence err codes for this sequence 
+#             concatenated and separated by commas.
+#
+################################################################# 
+sub helper_ftable_get_seq_error_code_strings { 
+  my $sub_name = "helper_ftable_get_seq_error_code_strings";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name, $err_seq_instances_HHR, $err_info_HAR, $FH_HR) = @_;
+
+  my $nerr = scalar(@{$err_info_HAR->{"code"}});
+
+  my $ret_err_str = "";
+  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+    if($err_info_HAR->{"pertype"}[$err_idx] eq "sequence") { 
+      my $err_code = $err_info_HAR->{"code"}[$err_idx];
+      if(exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
+        if($ret_err_str ne "") { $ret_err_str .= ","; }
+        $ret_err_str .= $err_code;
       }
     }
   }
@@ -10793,4 +10839,68 @@ sub helper_blastx_breakdown_query {
     }
   }
   return ($ret_seqname, $ret_coords_str, $ret_len);
+}
+
+# Subroutine: add_zft_errors()
+# Incept:     EPN, Thu Jan 24 12:31:16 2019
+# Purpose:    Adds zft errors for sequences with 0 predicted features
+#
+# Arguments:
+#  $err_ftr_instances_AHHR:  REF to array of 2D hashes with per-feature errors, PRE-FILLED
+#  $err_seq_instances_HHR:   REF to 2D hash with per-sequence errors, PRE-FILLED
+#  $ftr_info_HAR:            REF to hash of arrays with information on the features, PRE-FILLED
+#  $seq_info_HAR:            REF to hash of arrays with information on the sequences, PRE-FILLED
+#  $err_info_HAR:            REF to the error info hash of arrays, PRE-FILLED
+#  $mdl_results_AAHR:        REF to model results AAH, PRE-FILLED
+#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:          REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub add_zft_errors { 
+  my $sub_name = "add_zft_errors";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $ftr_info_HAR, $seq_info_HAR, 
+      $err_info_HAR, $mdl_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+  my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
+    my $seq_nftr = 0; # number of annotated features for this sequence
+
+    # loop over features
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      # determine if this feature can be ignored or cannot be ignored (should be annotated), 
+      # it can be ignored if:
+      # - we do not have a defined "p_start" for any model associated with this feature
+      #   (this is equivalent to having a 'nop' error for all models associated with this feature)
+      # - we do not have a 'xnn' error for this feature
+      my $is_duplicate  = ($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") ? 1 : 0;
+      my $defined_pstart = 0;
+      my $xnn_flag       = 0;
+      my $do_ignore      = 1; 
+      if(! $is_duplicate) { 
+        $defined_pstart = check_for_defined_pstart_in_mdl_results($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR);
+        $xnn_flag       = (exists $err_ftr_instances_AHHR->[$ftr_idx]{"xnn"}{$seq_name}) ? 1 : 0;
+        $do_ignore      = ($defined_pstart || $xnn_flag) ? 0 : 1;
+      }
+      if(! $do_ignore) { 
+        $seq_nftr++;
+        $ftr_idx = $nftr; # breaks for $ftr_idx loop
+      } 
+    }
+    if($seq_nftr == 0) { 
+      error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "zft", $seq_name, "-", $FH_HR);
+    }
+  }
+
+  return;
 }
