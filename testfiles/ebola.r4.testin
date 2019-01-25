@@ -1,0 +1,21 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --local -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/ebola.r4.fa --dirbuild !dirbuild! --dirout dt-ebola.r4 > dt-ebola.r4.out
+desc: classify-ebola-4
+out: dt-ebola.r4/dt-ebola.r4-NC_002549/dt-ebola.r4-NC_002549.dnaorg_annotate.ap.sqtable 
+out: dt-ebola.r4/dt-ebola.r4-NC_002549/dt-ebola.r4-NC_002549.dnaorg_annotate.af.sqtable 
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-ebola.r4/dt-ebola.r4-NC_002549.dnaorg_annotate.ap.sqtable 
+exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-ebola.r4/dt-ebola.r4-NC_002549.dnaorg_annotate.af.sqtable 
+rmdir: dt-ebola.r4

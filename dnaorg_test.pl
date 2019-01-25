@@ -417,29 +417,34 @@ sub diff_two_files {
     
   outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-100s ... ", $out_file));
 
-  my $cmd = "diff -U 0 $out_file $exp_file > $diff_file";
-  # don't use runCommand() because diff 'fails' if files are not identical
-  outputString($FH_HR->{"cmd"}, 0, "$cmd\n");
-  system($cmd);
-  if(-s $diff_file) { 
-    # copy the two files here:
-    my $copy_of_out_file = $diff_file . ".out";
-    my $copy_of_exp_file = $diff_file . ".exp";
-    runCommand("cp $out_file $copy_of_out_file", 0, $FH_HR);
-    runCommand("cp $exp_file $copy_of_exp_file", 0, $FH_HR);
-    # analyze the diff file and print out how many lines 
-    if($out_file =~ m/\.sqtable/ && $exp_file =~ m/\.sqtable/) { 
-      my $sqtable_diff_file = $diff_file . ".man";
-      compare_two_sqtable_files($out_file, $exp_file, $sqtable_diff_file, \%opt_HH, $FH_HR);
-      $conclusion = "FAIL [files differ, see $sqtable_diff_file]";
+  if($out_file_exists) { 
+    my $cmd = "diff -U 0 $out_file $exp_file > $diff_file";
+    # don't use runCommand() because diff 'fails' if files are not identical
+    outputString($FH_HR->{"cmd"}, 0, "$cmd\n");
+    system($cmd);
+    if(-s $diff_file) { 
+      # copy the two files here:
+      my $copy_of_out_file = $diff_file . ".out";
+      my $copy_of_exp_file = $diff_file . ".exp";
+      runCommand("cp $out_file $copy_of_out_file", 0, $FH_HR);
+      runCommand("cp $exp_file $copy_of_exp_file", 0, $FH_HR);
+      # analyze the diff file and print out how many lines 
+      if($out_file =~ m/\.sqtable/ && $exp_file =~ m/\.sqtable/) { 
+        my $sqtable_diff_file = $diff_file . ".man";
+        compare_two_sqtable_files($out_file, $exp_file, $sqtable_diff_file, \%opt_HH, $FH_HR);
+        $conclusion = "FAIL [files differ, see $sqtable_diff_file]";
+      }
+      else { 
+        $conclusion = "FAIL [files differ, see $diff_file]";
+      }
     }
     else { 
-      $conclusion = "FAIL [files differ, see $diff_file]";
+      $conclusion = "pass";
+      $pass = 1;
     }
   }
   else { 
-    $conclusion = "pass";
-    $pass = 1;
+    $conclusion = "FAIL [output file does not exist]";
   }
 
   outputString($FH_HR->{"log"}, 1, "$conclusion\n");

@@ -77,8 +77,8 @@ As mentioned above, when you run 'install.sh' or any of the optional install
 scripts, instructions will be output about how to change your environment
 variables so that you can run the dnaorg scripts. Those instructions are
 also included below for reference, but without the actual path to
-where you ran install.sh, which will be included in the install.sh
-output. 
+where you ran install.sh (below it is replaced with 
+"<full path to directory in which you ran install.sh>")
 
 --
 ********************************************************
@@ -139,21 +139,17 @@ It runs dnaorg scripts on small datasets and compares the
 output with expected outputs. It is also used during development for
 regression testing.
 
-There are 9 shell scripts for running tests. You will want to run one
-or more of these to validate that your installation was successful:
+There are 2 shell scripts for running tests:
 
-     1	do-ribotyper-tests.sh
-     2	do-riboaligner-tests.sh
-     3	do-ribosensor-tests.sh
-     4	do-ribodbmaker-tests.sh
-     5	do-ribotyper-parallel-tests.sh
-     6	do-riboaligner-parallel-tests.sh
-     7	do-ribosensor-parallel-tests.sh
-     8	do-ribodbmaker-parallel-tests.sh
-     9	do-all-tests.sh
+     1	do-install-tests-local.sh
+     2	do-install-tests-parallel.sh
 
-
-OLD:
+The dnaorg scripts can be run locally on your computer or in parallel
+on a compute farm. These two test files test each of those modes. 
+If you plan to run the scripts at locally at least some of the time,
+then run 'do-install-tests-local.sh'. If you plan to run the scripts
+on a compute farm at least some of the time, then run
+'do-install-tests-parallel.sh' 
 
 #####################
 ##PREREQUISITES ###
