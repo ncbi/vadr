@@ -8,7 +8,7 @@
 # for viral sequence classification and annotation.
 #
 DNAORGINSTALLDIR=$PWD
-VERSION="0.43"
+VERSION="0.44"
 DVERSION="dnaorg_scripts-$VERSION"
 
 # The following line will make the script fail if any commands fail

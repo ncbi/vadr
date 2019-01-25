@@ -9,6 +9,8 @@
 
 # Usage: parse_blastx.pl --input <input file>
 
+# dnaorg_scripts 0.44 Jan 2019
+
 use strict;
 use warnings;
 use Getopt::Long;
