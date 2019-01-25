@@ -1404,14 +1404,9 @@ The output directories created by dnaorg_annotate.pl with all of the
 output files from that script are within the noro.9 output
 directory, e.g. noro.9/noro.9-NC_001959.pass/.
 
-You can view the output of the six dnaorg_annotate.pl runs in the
+You can view the output of the five dnaorg_annotate.pl runs in the
 files that end in .log in those directories,
 e.g. noro.9/noro.9-NC_001959.pass/noro.9-NC_001959.pass.dnaorg_annotate.log
-
-The dnaorg_classify.pl command in step 4 above could have been
-repeated with a list of accessions instead of an input fasta file. 
-The relevant command would be:
-#perl /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts/dnaorg_classify.pl -A /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds --inlist testfiles/noro.9.ntlist --dirbuild /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds --dirout noro.9.list
 
 The --optsA <s> option can be used to supply additional options 
 to dnaorg_annotate.pl by creating a file that contains a single
