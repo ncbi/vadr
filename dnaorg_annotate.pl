@@ -945,8 +945,13 @@ my $tblout_file = $out_root . ".tblout"; # concatenated tblout file, created by 
                                          # tblout files in cmscanOrNhmmscanWrapper()
 if(! opt_Get("--skipscan", \%opt_HH)) { 
   my $tot_len_nt = sumArray(\@{$seq_info_HA{"seq_len"}});
-  cmscanOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $tblout_file, $progress_w, 
-                          $mdl_info_HA{"cmfile"}, $mdl_info_HA{"length"}, \%opt_HH, \%ofile_info_HH);
+#  cmscanOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $tblout_file, $progress_w, 
+#                          $mdl_info_HA{"cmfile"}, $mdl_info_HA{"length"}, \%opt_HH, \%ofile_info_HH);
+  my $mdl_file = $mdl_info_HA{"cmfile"}[0];
+  $mdl_file =~ s/\.\d+\.cm$/.cm/; 
+  printf("HEYA mdl_file: $mdl_file\n"); 
+  cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $tblout_file, $progress_w, 
+                           $mdl_file, \%opt_HH, \%ofile_info_HH);
 } 
 
 ####################################################################
