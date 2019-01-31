@@ -8086,17 +8086,18 @@ sub splitFastaFile {
 #              See dnaorg_annotate.pl for examples of these options.
 #
 # Arguments: 
-#  $execs_HR:        ref to executables with "esl-ssplit" and either "cmscan" or "nhmmscan" 
-#                    defined as keys
-#  $do_cmalign:      '1' if we are running cmalign, '0' if we are running nhmmscan
-#  $out_root:        string for naming output files
-#  $seq_file:        name of sequence file with all sequences to run against
-#  $tot_len_nt:      total length of all nucleotides in $seq_file
-#  $tblout_file:     string for name of concatnated tblout file to create
-#  $progress_w:      width for outputProgressPrior output
-#  $mdl_filename:    name of model file to use
-#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information
+#  $execs_HR:              ref to executables with "esl-ssplit" and either "cmscan" or "nhmmscan" 
+#                          defined as keys
+#  $do_cmalign:            '1' if we are running cmalign, '0' if we are running nhmmscan
+#  $out_root:              string for naming output files
+#  $seq_file:              name of sequence file with all sequences to run against
+#  $tot_len_nt:            total length of all nucleotides in $seq_file
+#  $tblout_or_ifile_file:  string for name of concatnated tblout file to create
+#  $progress_w:            width for outputProgressPrior output
+#  $mdl_filename:          name of model file to use
+#  $stk_file_AR:           ref to array of output stockholm files to create, must be undef if $do_cmalign == 0
+#  $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:        REF to 2D hash of output file information
 #
 # Returns:     void, updates $$nfa_created_R with number of
 #              fasta files created.
@@ -8106,15 +8107,16 @@ sub splitFastaFile {
 ################################################################# 
 sub cmalignOrNhmmscanWrapper { 
   my $sub_name = "cmalignOrNhmmscanWrapper";
-  my $nargs_expected = 10;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $do_cmalign, $out_root, $seq_file, $tot_len_nt, $tblout_file, $progress_w,
-      $mdl_filename, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $do_cmalign, $out_root, $seq_file, $tot_len_nt, $tblout_or_ifile_file, $progress_w,
+      $mdl_filename, $stk_file_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $program_choice = ($do_cmalign) ? "cmalign" : "nhmmscan";
   my @tmp_seq_file_A = ();    # array of sequence files created by esl-ssplit, we'll remove after we're done unless --keep
-  my @tmp_tblout_file_A = (); # array of tblout files, we'll remove after we're done, unless --keep
+  my @tmp_tblout_or_ifile_file_A = (); # array of tblout files if we're doing nhmmscan, or ifile files if we're doing cmalign,
+                                       # we'll remove these after we're done and have concatenated them together, unless --keep
   my @tmp_stdout_file_A = (); # array of stdout files created by cmalign/nhmmscan
   my @tmp_err_file_A = ();    # array of error files we'll remove after we're done, unless --keep (empty if we run locally)
   my $nfasta_created = 0;     # number of fasta files created by esl-ssplit
@@ -8138,16 +8140,17 @@ sub cmalignOrNhmmscanWrapper {
   # if($targ_nseqfiles == 1) || (opt_Get("--local", $opt_HHR))) {  # to run single jobs locally, used to be default 
   if(opt_Get("--local", $opt_HHR)) {  # to run single jobs locally, used to be default 
     # run jobs locally
+
+    # NEED TO CHANGE THIS FOR CMALIGN SO EACH SEQ IS ALIGNED SEPARATELY, SO WE CAN CATCH MEMORY OVERFLOWS
     $start_secs = outputProgressPrior("Running $program_choice locally", $progress_w, $log_FH, *STDOUT);
-    # NEW
-    printf("HEYA $mdl_filename\n");
-    my $tmp_stk_file    = $out_root . ".cmalign.stk";
+    my $stk_file        = $out_root . ".cmalign.stk";
+#    my $tmp_ifile_file  = $out_root . ".cmalign.ifile";
     my $tmp_stdout_file = ($do_cmalign || opt_Get("-v", $opt_HHR)) ? $out_root . ".cmalign" : "/dev/null";
     runCmalignOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmalign, 1, $mdl_filename,
-                         $seq_file, $tmp_stdout_file, $tmp_stk_file, $opt_HHR, $ofile_info_HHR); # 1: run locally
+                         $seq_file, $tmp_stdout_file, $tblout_or_ifile_file, $stk_file, $opt_HHR, $ofile_info_HHR); # 1: run locally
 
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-    exit 0;
+    push(@{$stk_file_AR}, $stk_file);
   }
   else { 
     # we need to split up the sequence file, and submit a separate set of nhmmscan/cmalign jobs (one per model file) for each
@@ -8169,20 +8172,22 @@ sub cmalignOrNhmmscanWrapper {
     for(my $s = 1; $s <= $nfasta_created; $s++) { 
       my $tmp_seq_file = $seq_file . "." . $s;
       push(@tmp_seq_file_A, $tmp_seq_file);
-      my $tmp_stk_file    = $out_root . ".s" . $s . ".cmalign.stk";
+      my $stk_file        = $out_root . ".s" . $s . ".cmalign.stk";
+      my $tmp_ifile_file  = $out_root . ".s" . $s . ".cmalign.ifile";
       my $tmp_stdout_file = (($do_cmalign) || (opt_Get("-v", $opt_HHR))) ? $out_root . ".cmalign" : "/dev/null";
       runCmalignOrNhmmscan($execs_HR->{"$program_choice"}, $do_cmalign, 0, $mdl_filename,
-                           $tmp_seq_file, $tmp_stdout_file, $tmp_stk_file, $opt_HHR, $ofile_info_HHR);   # 0: do not run locally
-      #push(@tmp_tblout_file_A, $tmp_stdout_file);
-      #push(@tmp_err_file_A,    $tmp_tblout_file . ".err"); # this will be the name of the error output file, set in run_cmscan
-      #if($tmp_stdout_file ne "/dev/null") { push(@tmp_stdout_file_A, $tmp_stdout_file); }
+                           $tmp_seq_file, $tmp_stdout_file, $tmp_ifile_file, $stk_file, $opt_HHR, $ofile_info_HHR);   # 0: do not run locally
+      push(@{$stk_file_AR}, $stk_file);
+      push(@tmp_tblout_or_ifile_file_A, $tmp_ifile_file);
+      push(@tmp_err_file_A,    $tmp_ifile_file . ".err"); # this will be the name of the error output file, set in run_cmscan
+      if($tmp_stdout_file ne "/dev/null") { push(@tmp_stdout_file_A, $tmp_stdout_file); }
     }
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
     
     # wait for the jobs to finish
     $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                       $progress_w, $log_FH, *STDOUT);
-    my $njobs_finished = waitForFarmJobsToFinish(\@tmp_tblout_file_A, \@tmp_err_file_A, "[ok]", opt_Get("--wait", $opt_HHR), opt_Get("--errcheck", $opt_HHR), $ofile_info_HHR->{"FH"});
+    my $njobs_finished = waitForFarmJobsToFinish(\@tmp_tblout_or_ifile_file_A, \@tmp_err_file_A, ($do_cmalign) ? "\/\/" : "[ok]", opt_Get("--wait", $opt_HHR), opt_Get("--errcheck", $opt_HHR), $ofile_info_HHR->{"FH"});
     if($njobs_finished != $nfarmjobs) { 
       DNAORG_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nfarmjobs are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
     }
@@ -8192,10 +8197,10 @@ sub cmalignOrNhmmscanWrapper {
   } # end of 'else' entered if($nfarmjobs > 1 && ! --local)
     
   # concatenate all the tblout files into one 
-  concatenateListOfFiles(\@tmp_tblout_file_A, $tblout_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+  concatenateListOfFiles(\@tmp_tblout_or_ifile_file_A, $tblout_or_ifile_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
   # remove temporary files if --keep not enabled
   if(! opt_Get("--keep", $opt_HHR)) { 
-    foreach my $tmp_file (@tmp_seq_file_A, @tmp_tblout_file_A, @tmp_err_file_A) { 
+    foreach my $tmp_file (@tmp_seq_file_A, @tmp_tblout_or_ifile_file_A, @tmp_err_file_A) { 
       if(-e $tmp_file) { 
         removeFileUsingSystemRm($tmp_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
         # we don't remove stdout files, they'll only exist if -v, so we assume user wants them
@@ -8422,25 +8427,26 @@ sub determineCmscanFilterSettings {
 #              file $seq_file.
 #
 # Arguments: 
-#  $executable:          path to the cmscan or nhmmscan executable file
-#  $do_cmalign:          '1' if we are running cmalign, '0' if we are running nhmmscan
-#  $do_local:            '1' to run locally, '0' to submit job to farm
-#  $model_file:          path to the CM file
-#  $seq_file:            path to the sequence file
-#  $stdout_file:         path to the stdout file to create, can be "/dev/null", or undef 
-#  $stk_or_tblout_file:  path to the nhmmscan --tblout or cmalign stk file to create
-#  $opt_HHR:             REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:      REF to 2D hash of output file information
+#  $executable:            path to the cmscan or nhmmscan executable file
+#  $do_cmalign:            '1' if we are running cmalign, '0' if we are running nhmmscan
+#  $do_local:              '1' to run locally, '0' to submit job to farm
+#  $model_file:            path to the CM file
+#  $seq_file:              path to the sequence file
+#  $stdout_file:           path to the stdout file to create, can be "/dev/null", or undef 
+#  $tblout_or_ifile_file:  path to the nhmmscan --tblout or cmalign --ifile file to create
+#  $stk_file:              path to the cmalign stockholm alignment output file to create
+#  $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:        REF to 2D hash of output file information
 # 
 # Returns:     void
 # 
 ################################################################# 
 sub runCmalignOrNhmmscan { 
   my $sub_name = "runCmalignOrNhmmscan()";
-  my $nargs_expected = 9;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($executable, $do_cmalign, $do_local, $model_file, $seq_file, $stdout_file, $stk_or_tblout_file, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($executable, $do_cmalign, $do_local, $model_file, $seq_file, $stdout_file, $tblout_or_ifile_file, $stk_file, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
@@ -8452,21 +8458,17 @@ sub runCmalignOrNhmmscan {
   my $opts           = "";
   if($do_cmalign) { 
     $program_choice = "cmalign";
-    $opts .= " --cpu 0 --mxsize 8000 -g -o $stk_or_tblout_file";
-    # remove the stdout file if it exists, this is important because we'll use the existence and
-    # final line of this file to determine when the jobs are finished, if it already exists, we'll
-    # think the job is finished before it actual is.
-    if(-e $stdout_file) { removeFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
+    $opts .= " --cpu 0 --mxsize 8000 -g --ifile $tblout_or_ifile_file -o $stk_file";
   }
   else { 
     $program_choice = "nhmmscan";
     $opts .= (opt_Get("-v", $opt_HHR)) ? " " : " --noali ";
-    $opts .= " --cpu 0 --tblout $stk_or_tblout_file";
-    # remove the tblout file if it exists, this is important because we'll use the existence and
-    # final line of this file to determine when the jobs are finished, if it already exists, we'll
-    # think the job is finished before it actual is.
-    if(-e $stk_or_tblout_file) { removeFileUsingSystemRm($stk_or_tblout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
+    $opts .= " --cpu 0 --tblout $tblout_or_ifile_file";
   }
+  # remove the tblout file or ifile file if it exists, this is important because we'll use the existence and
+  # final line of this file to determine when the jobs are finished, if it already exists, we'll
+  # think the job is finished before it actual is.
+  if(-e $tblout_or_ifile_file) { removeFileUsingSystemRm($tblout_or_ifile_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
 
   my $cmd = "$executable $opts $model_file $seq_file > $stdout_file";
 
@@ -8480,7 +8482,7 @@ sub runCmalignOrNhmmscan {
   else { 
     # submit job to farm and return
     my $jobname = "s" . removeDirPath($seq_file);
-    my $errfile = $stk_or_tblout_file . ".err";
+    my $errfile = $tblout_or_ifile_file . ".err";
     if(-e $errfile) { removeFileUsingSystemRm($errfile, $sub_name, $opt_HHR, $ofile_info_HHR); }
     my $farm_cmd = "qsub -N $jobname -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $errfile -m n -l h_rt=288000,h_vmem=16G,mem_free=16G,reserve_mem=16G,m_mem_free=16G " . "\"" . $cmd . "\" > /dev/null\n";
     runCommand($farm_cmd, opt_Get("-v", $opt_HHR), $FH_HR);

@@ -941,18 +941,15 @@ if(opt_IsUsed("--aorgmodel", \%opt_HH)) {
 my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
 validateFileExistsAndIsNonEmpty($seq_file, "dnaorg_annotate.pl:main", $ofile_info_HH{"FH"});
 
-my $tblout_file = $out_root . ".tblout"; # concatenated tblout file, created by concatenating all of the individual 
-                                         # tblout files in cmscanOrNhmmscanWrapper()
-if(! opt_Get("--skipscan", \%opt_HH)) { 
-  my $tot_len_nt = sumArray(\@{$seq_info_HA{"seq_len"}});
-#  cmscanOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $tblout_file, $progress_w, 
-#                          $mdl_info_HA{"cmfile"}, $mdl_info_HA{"length"}, \%opt_HH, \%ofile_info_HH);
-  my $mdl_file = $mdl_info_HA{"cmfile"}[0];
-  $mdl_file =~ s/\.\d+\.cm$/.cm/; 
-  printf("HEYA mdl_file: $mdl_file\n"); 
-  cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $tblout_file, $progress_w, 
-                           $mdl_file, \%opt_HH, \%ofile_info_HH);
-} 
+my $tot_len_nt = sumArray(\@{$seq_info_HA{"seq_len"}});
+my $mdl_file = $mdl_info_HA{"cmfile"}[0];
+$mdl_file =~ s/\.\d+\.cm$/.cm/; 
+
+my $ifile_file = $out_root . ".ifile"; # concatenated --ifile output files, created by concatenating all of the individual 
+                                       # ifile files in cmalignOrNhmmscanWrapper()
+my @stk_file_A = (); # array of all stk output files created in cmalignOrNhmmscanWrapper()
+cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $ifile_file, $progress_w, 
+                         $mdl_file, \@stk_file_A, \%opt_HH, \%ofile_info_HH);
 
 ####################################################################
 # Step 6. Parse homology search results into usable data structures
@@ -965,7 +962,21 @@ my @mdl_results_AAH = ();  # 1st dim: array, 0..$nmdl-1, one per model
 initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # parse the cmscan results
-parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+#parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+
+# parse the ifile results
+# make an 'order hash' for the sequence names,
+my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
+getIndexHashForArray($seq_info_HA{"seq_name"}, \%seqname_index_H, $ofile_info_HH{"FH"});
+
+my @seq_ifile_spos_A    = ();
+my @seq_ifile_epos_A    = ();
+my @seq_ifile_inserts_A = ();
+parse_cmalign_ifile($ifile_file, \%seqname_index_H, \%seq_info_HA, \@seq_ifile_spos_A, \@seq_ifile_epos_A, \@seq_ifile_inserts_A, $ofile_info_HH{"FH"});
+
+# parse the cmalign alignments
+exit 0;
+#parse_cmalign_stk(
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the lengths of features
@@ -1666,6 +1677,94 @@ sub parse_cmscan_tblout {
       my $seq_len  = $seq_info_HAR->{"seq_len"}[$seqidx]; # total length of sequence searched, could be $accn_len or two times $accn_len if -c used
 
       store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $score, $FH_HR);
+    }
+  }
+  close(IN);
+  
+  return;
+}
+
+#################################################################
+# Subroutine : parse_cmalign_ifile()
+# Incept:      EPN, Thu Jan 31 13:06:54 2019
+#
+# Purpose:    Parse Infernal 1.1 cmalign --ifile output and store
+#             results in %{$seq_file_spos_HR}, %{$seq_file_epos_HR}, 
+#             and %{$seq_file_inserts_HAR}.
+#
+# Arguments: 
+#  $ifile_file:           ifile file to parse
+#  $seqname_idx_HR:       REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
+#                         seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
+#                         in @{$seq_info_HAR{*}} arrays
+#  $seq_info_HAR:         REF to hash of arrays with sequence information, PRE-FILLED
+#  $seq_ifile_spos_AR:    REF to hash of start positions, filled here
+#  $seq_ifile_epos_AR:    REF to hash of end   positions, filled here
+#  $seq_ifile_inserts_AR: REF to hash of with string of all inserts, filled here
+#  $FH_HR:            REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if we find a hit to a model or sequence that we don't
+#             have stored in $mdl_info_HAR or $seq_name_AR
+#
+################################################################# 
+sub parse_cmalign_ifile { 
+  my $sub_name = "parse_cmalign_ifile()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($tblout_file, $seqname_index_HR, $seq_info_HAR, $seq_ifile_spos_AR, $seq_ifile_epos_AR, $seq_ifile_inserts_AR, $FH_HR) = @_;
+  
+  # initialize the arrays
+  my $nseq = scalar(keys %{$seqname_index_HR});
+  for(my $i = 0; $i < $nseq; $i++) { 
+    $seq_ifile_spos_AR->[$i]    = -1;
+    $seq_ifile_epos_AR->[$i]    = -1;
+    $seq_ifile_inserts_AR->[$i] = "";
+  }
+
+  open(IN, $ifile_file) || fileOpenFailure($ifile_file, $sub_name, $!, "reading", $FH_HR);
+
+  my $line_ctr = 0;  # counts lines in tblout_file
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    if($line !~ m/^\#/) { 
+      chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+      # 2 types of lines, those with 2 tokens, and those with 4 or more tokens
+      #norovirus.NC_039477 7567
+      #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
+      my @el_A = split(/\s+/, $line);
+      if   (scalar(@el_A) == 2) { ; } # ignore these lines
+      elsif(scalar(@el_A) >= 4) { 
+        my $nel = scalar(@el_A); 
+        if((($nel - 4) % 3) != 0) { # check number of elements makes sense
+          DNAORG_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", 1, $FH_HR);
+        }          
+        my ($seqname, $seqlen, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
+        if(! exists $seqname_index_HR->{$seqname}) { 
+          DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $ifile_file on line $line_ctr", 1, $FH_HR);
+        }
+        my $seqidx = $seqname_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+        if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
+          DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
+        }
+        if($seqlen != $seq_info_HAR->{"seq_len"}[$seqidx]) { 
+          DNAORG_FAIL(sprintf("ERROR in $sub_name, conflicting length information for sequence $seqname in ifile, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
+        }          
+
+        # create the insert string
+        my $insert_str = "";
+        for(my $el_idx = 4; $el_idx < scalar(@el_A); $el_idx += 3) { 
+          $insert_str .= $el_A[$el_idx] . ":" . $el_A[$el_idx+1] . ":" . $el_A[$el_idx+2] . ";"; 
+        }
+        
+        $seq_ifile_spos_AR->[$seqidx]    = $spos;
+        $seq_ifile_epos_AR->[$seqidx]    = $epos;
+        $seq_ifile_inserts_AR->[$seqidx] = $insert_str;
+        printf("$seqname $spos $epos $insert_str\n");
+      }
     }
   }
   close(IN);
