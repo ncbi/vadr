@@ -969,14 +969,10 @@ initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH
 my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
 getIndexHashForArray($seq_info_HA{"seq_name"}, \%seqname_index_H, $ofile_info_HH{"FH"});
 
-my @seq_ifile_spos_A    = ();
-my @seq_ifile_epos_A    = ();
-my @seq_ifile_inserts_A = ();
-parse_cmalign_ifile($ifile_file, \%seqname_index_H, \%seq_info_HA, \@seq_ifile_spos_A, \@seq_ifile_epos_A, \@seq_ifile_inserts_A, $ofile_info_HH{"FH"});
+parse_cmalign_ifile($ifile_file, \%seqname_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
 
 # parse the cmalign alignments
-exit 0;
-#parse_cmalign_stk(
+parse_cmalign_stk($stk_file, \%seqname_index_H, \%seq_info_HA, \%mdl_results_AAH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the lengths of features
@@ -1601,9 +1597,6 @@ sub validate_cms_built_from_reference {
 #  Subroutines related to preparing CM files for searches:
 #    parse_cmscan_tblout()
 #
-
-
-
 #################################################################
 # Subroutine : parse_cmscan_tblout()
 # Incept:      EPN, Tue Mar  1 13:56:46 2016
@@ -1689,19 +1682,15 @@ sub parse_cmscan_tblout {
 # Incept:      EPN, Thu Jan 31 13:06:54 2019
 #
 # Purpose:    Parse Infernal 1.1 cmalign --ifile output and store
-#             results in %{$seq_file_spos_HR}, %{$seq_file_epos_HR}, 
-#             and %{$seq_file_inserts_HAR}.
+#             results in %{$seq_info_HR}.
 #
 # Arguments: 
-#  $ifile_file:           ifile file to parse
-#  $seqname_idx_HR:       REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
-#                         seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
-#                         in @{$seq_info_HAR{*}} arrays
-#  $seq_info_HAR:         REF to hash of arrays with sequence information, PRE-FILLED
-#  $seq_ifile_spos_AR:    REF to hash of start positions, filled here
-#  $seq_ifile_epos_AR:    REF to hash of end   positions, filled here
-#  $seq_ifile_inserts_AR: REF to hash of with string of all inserts, filled here
-#  $FH_HR:            REF to hash of file handles
+#  $ifile_file:     ifile file to parse
+#  $seqname_idx_HR: REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
+#                   seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
+#                   in @{$seq_info_HAR{*}} arrays
+#  $seq_info_HAR:   REF to hash of arrays with sequence information, PRE-FILLED
+#  $FH_HR:          REF to hash of file handles
 #
 # Returns:    void
 #
@@ -1711,22 +1700,25 @@ sub parse_cmscan_tblout {
 ################################################################# 
 sub parse_cmalign_ifile { 
   my $sub_name = "parse_cmalign_ifile()";
-  my $nargs_exp = 7;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $seqname_index_HR, $seq_info_HAR, $seq_ifile_spos_AR, $seq_ifile_epos_AR, $seq_ifile_inserts_AR, $FH_HR) = @_;
+  my ($ifile_file, $seqname_index_HR, $seq_info_HAR, $FH_HR) = @_;
   
   # initialize the arrays
   my $nseq = scalar(keys %{$seqname_index_HR});
+  @{$seq_info_HAR->{"ifile_spos"}} = ();
+  @{$seq_info_HAR->{"ifile_epos"}} = ();
+  @{$seq_info_HAR->{"ifile_ins"}}  = ();
   for(my $i = 0; $i < $nseq; $i++) { 
-    $seq_ifile_spos_AR->[$i]    = -1;
-    $seq_ifile_epos_AR->[$i]    = -1;
-    $seq_ifile_inserts_AR->[$i] = "";
+    $seq_info_HAR->{"ifile_spos"}[$i] = -1;
+    $seq_info_HAR->{"ifile_epos"}[$i] = -1;
+    $seq_info_HAR->{"ifile_ins"}[$i]  = "";
   }
 
   open(IN, $ifile_file) || fileOpenFailure($ifile_file, $sub_name, $!, "reading", $FH_HR);
 
-  my $line_ctr = 0;  # counts lines in tblout_file
+  my $line_ctr = 0;  # counts lines in ifile_file
   while(my $line = <IN>) { 
     $line_ctr++;
     if($line !~ m/^\#/) { 
@@ -1760,15 +1752,204 @@ sub parse_cmalign_ifile {
           $insert_str .= $el_A[$el_idx] . ":" . $el_A[$el_idx+1] . ":" . $el_A[$el_idx+2] . ";"; 
         }
         
-        $seq_ifile_spos_AR->[$seqidx]    = $spos;
-        $seq_ifile_epos_AR->[$seqidx]    = $epos;
-        $seq_ifile_inserts_AR->[$seqidx] = $insert_str;
-        printf("$seqname $spos $epos $insert_str\n");
+        $seq_info_HAR->{"ifile_spos"}[$seqidx] = $spos;
+        $seq_info_HAR->{"ifile_epos"}[$seqidx] = $epos;
+        $seq_info_HAR->{"ifile_ins"}[$seqidx]  = $insert_str;
       }
     }
   }
   close(IN);
   
+  return;
+}
+
+#################################################################
+# Subroutine : parse_cmalign_stk()
+# Incept:      EPN, Thu Jan 31 13:06:54 2019
+#
+# Purpose:    Parse Infernal 1.1 cmalign stockholm alignment and store
+#             results in %{$seq_file_spos_HR}, %{$seq_file_epos_HR}, 
+#             and %{$seq_file_inserts_HAR}.
+#
+# Arguments: 
+#  $stk_file:         stockholm alignment file to parse
+#  $seqname_idx_HR:   REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
+#                     seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
+#                     in @{$seq_info_HAR{*}} arrays
+#  $seq_info_HAR:     REF to hash of arrays with sequence information, PRE-FILLED
+#  $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
+#  $mdl_results_AAHR: REF to results AAH, FILLED HERE
+#  $FH_HR:            REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:
+#
+################################################################# 
+sub parse_cmalign_stk { 
+  my $sub_name = "parse_cmalign_stk()";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($stk_file, $seqname_index_HR, $seq_info_HAR, $mdl_info_HAR, $mdl_results_AAHR, $FH_HR) = @_;
+
+  # create an ESL_MSA object from the alignment
+  # open and validate file
+  my $msa = Bio::Easel::MSA->new({
+    fileLocation => $stk_file,
+    isDna => 1});  
+
+  # build a map of aligned positions to model RF positions and vice versa, only need to do this once per alignment
+  my $alen = $msa->alen;
+  my @rf2a_A = (); # [1..$rfpos..$rflen] = $apos;  rf position $rfpos maps to alignment position $apos [1..$alen]  ($rf2a_A[0] = -1  (dummy value))
+  my @a2rf_A = (); # [1..$apos..$alen]   = $rfpos; alignment position $apos maps to rf position $rfpos [1..$rflen] ($a2rf_A[0] = -1  (dummy value))
+                     # if $a2rf_A[$apos] = N, where N <= 0, then alignment position $apos maps to an insert *after* rf position abs(N) 
+  my $rf_str = $msa->get_rf;
+  my @rf_A = split("", $rf_str);
+  if(scalar(@rf_A) != $alen) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, unexpected alignment length mismatch $alen != %d\n", scalar(@rf_A)), 1, $FH_HR);
+  }
+  my $rfpos = 0;
+  for(my $apos = 1; $apos <= $alen; $apos++) { 
+    if($rf_A[($apos-1)] ne ".") { 
+      # nongap RF (model position)
+      $rfpos++;
+      $rf2a_A[$rfpos] = $apos;
+      $a2rf_A[$apos]  = $rfpos;
+    }
+    else { # $rf_A[($apos-1)] eq ".") { 
+      # gap RF (insert position)
+      if($rfpos == 0) { $a2rf_A[$apos] = 0; } # special case
+      else            { $a2rf_A[$apos] = -1 * $rfpos; }
+    }
+  }
+
+  # move through each sequence in the alignment and determine its boundaries for each model region
+  my $nseq = $msa->nseq; 
+  my $nmdl = scalar(@{$mdl_results_AAHR});
+  # for each sequence, go through all models and fill in the start and stop (unaligned seq) positions
+  for(my $i = 0; $i < $nseq; $i++) { 
+    my $seqname = $msa->get_sqname($i);
+    if(! exists $seqname_index_HR->{$seqname}) { 
+      DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $ifile_file on line $line_ctr", 1, $FH_HR);
+    }
+    my $seqidx = $seqname_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+    if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
+    }
+    my $seqlen = $seq_info_HAR->{"seq_len"}; # sequence length
+
+    # fill in unaligned sequence info, need to do this once per sequence
+    my @rf2u_A    = (); # [1..$rfpos..$rflen] = $uapos; rf position $rfpos maps to unaligned position $uapos [1..$seqlen] ($rf2u_A[0] = -1  (dummy value))
+    my @rf2ipos_A = (); # [0..$rfpos..$rflen] = $uapos; rf position $rfpos has an insert immediately after it start at unaligned position $uapos [1..$seqlen], 0 for none
+    my @rf2ilen_A = (); # [0..$rfpos..$rflen] = $ilen;  rf position $rfpos has an insert immediately after it of length $ilen, 0 for none
+    # fill insert arrays, need to do this once per sequence
+    # initialize insert arrays
+    for($rfpos = 0; $rfpos <= $rflen; $rfpos++) { 
+      $rf2ipos_A[$rfpos] = -1;
+      $rf2ilen_A[$rfpos] = -1;
+    }
+    if($seq_info_HAR->{"ifile_ins"}[$seqidx] ne "") { 
+      my @ins_A = split(";", $seq_info_HAR->{"ifile_ins"}[$seqidx]); 
+      foreach my $ins_tok (@ins_A) { 
+        if($ins_tok =~ /(\d+)\:(\d+)\:(\d+)/) { 
+          my ($i_rfpos, $i_uapos, $i_len) = ($1, $2, $3);
+          $rf2ipos_A[$i_rfpos] = $i_uapos;
+          $rf2ilen_A[$i_rfpos] = $i_len;
+        }
+        else { 
+          DNAORG_FAIL("ERROR in $sub_name, failed to parse insert information read from ifile for $seqname:\n" . $seq_info_HAR->{"ifile_ins"}[$seqidx], 1, $FH_HR);
+        }
+      }
+    }    
+
+    # fill @rf2u_A map
+    $uapos = 0;
+    $rf2u_A[0] = -1; # dummy value
+    for($rfpos = 1; $rfpos <= $rflen; $rfpos++) { 
+      $apos = $rf2a_A[$rfpos];
+      $rf2u_A[$rfpos] = ($msa->is_residue($i, $apos)) ? ++$uapos : -1;
+    }
+
+    # now we have all the info we need for this sequence to determine sequence boundaries for each model region
+    for(my $m = 0; $m < $nmdl; $m++) { 
+      my $mdl_start_rfpos = $mdl_info_HAR->{"ref_start"}[$m];
+      my $mdl_stop_rfpos  = $mdl_info_HAR->{"ref_stop"}[$m];
+      my $mdl_strand      = $mdl_info_HAR->{"ref_strand"}[$m];
+      # initialize
+      my $start_rfpos = -1; # model position of start of this model region for this aligned sequence, stays at -1 if none
+      my $stop_rfpos  = -1; # model position of stop  of this model region for this aligned sequence, stays at -1 if none
+      my $start_uapos = -1; # unaligned position of start of this model region for this aligned sequence, stays at -1 if none
+      my $stop_uapos  = -1; # unaligned position of stop  of this model region for this aligned sequence, stays at -1 if none
+
+      # determine start
+      for($rfpos = $mdl_start_rfpos; $rfpos <= $mdl_stop_rfpos; $rfpos++) { 
+        if($rf2u_A[$rfpos] != -1) { 
+          # there is a nucleotide aligned at this RF position 
+          $start_rfpos = $rfpos;
+          $start_uapos = $rf2u_A[$rfpos];
+          $rfpos = $mdl_stop_rfpos+1; # breaks loop
+        }
+        elsif(($rf2ipos_A[$rfpos] != -1) && 
+              ($rfpos != $stop_rfpos)) { 
+          # there is no nucleotide aligned at this RF position 
+          # BUT there is at least one nucleotide inserted after it
+          $start_rfpos = $rfpos;
+          $start_uapos = $rfipos_A[$rfpos];
+          $rfpos = $mdl_stop_rfpos+1; # breaks loop
+        }
+      }
+      if($start_uapos != -1) { 
+        # at least one nucleotide is aligned within [$mdl_start_rfpos..$mdl_stop_rfpos]
+        # now, determine stop
+        for($rfpos = $mdl_stop_rfpos; $rfpos >= $mdl_start_rfpos; $rfpos--) { 
+          if($rf2u_A[$rfpos] != -1) { 
+            # there is a nucleotide aligned at this RF position 
+            $stop_rfpos = $rfpos;
+            $stop_uapos = $rf2u_A[$rfpos];
+            $rfpos = $mdl_start_rfpos-1; # breaks loop
+          }
+          elsif(($rfpos != $start_rfpos) && # careful to put this first, so we know $rf2ipos_A[$rfpos-1] definitely exists
+                ($rf2ipos_A[($rfpos-1)] != -1)) { 
+            # there is no nucleotide aligned at this RF position 
+            # BUT there is at least one nucleotide inserted before it (after previous position)
+            $stop_rfpos = $rfpos-1;
+            $stop_uapos = $rfipos_A[($rfpos-1)] + ($rfilen_A[($rfpos-1)] - 1);
+            $rfpos = $mdl_start_rfpos-1; # breaks loop
+          }
+        }
+      }
+      if(($start_uapos != -1) && ($stop_uapos == -1)) { 
+        DNAORG_FAIL("ERROR in $sub_name, found start but failed to find stop for $seqname model $m ($mdl_start_rfpos..$mdl_stop_rfpos)", 1, $FH_HR);
+      }
+      if($start_uapos != -1) { 
+        if($mdl_strand eq "+") { 
+          $p_5seqflush = ($start_uapos == 1)        ? 1 : 0;
+          $p_3seqflush = ($stop_uapos  == $seq_len) ? 1 : 0;
+        }
+        else { 
+          die "implement minus strand models in $sub_name";
+          $p_5seqflush = ($start_uapos == $seq_len) ? 1 : 0;
+          $p_3seqflush = ($stop_uapos  == 1)        ? 1 : 0;
+        }
+        %{$mdl_results_AAHR->[$mdlidx][$seqidx]} = ();
+        $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_start"}     = $start_uapos;
+        $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_stop"}      = $stop_uapos;
+        $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_strand"}    = $mdl_strand;
+        $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5overhang"} = ($mdl_start_rfpos - $start_rfpos);
+        $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3overhang"} = ($mdl_stop_rfpos - $stop_rfpos);
+        $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5seqflush"} = $p_5seqflush;
+        $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3seqflush"} = $p_3seqflush;
+        $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}     = 1;
+
+        printf("model: $mdl_start_rfpos to $mdl_stop_rfpos\n");
+        foreach my $key ("p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush") { 
+          printf("stored $mdlidx $seqidx $mdl_results_AAHR->[$mdlidx][$seqidx]{$key}\n");
+        }
+      }
+    } # end of 'for(my $m = 0; $m < $nmdl; $m++)'
+  } # end of 'for(my $i = 0; $m < $nseq; $m++)'
+  undef $msa;
   return;
 }
 

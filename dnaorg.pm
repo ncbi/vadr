@@ -5658,7 +5658,17 @@ sub validateModelInfoHashIsComplete {
 #                "accn_len":    length of the sequence in GenBank, will be same as value in "seq_len" only if
 #                               the -c option is not used to indicate a circular genome, if the -c option is
 #                               used, then this will equal 2*seq_len.
-#
+#             Optional keys are:
+#                "ifile_spos":  starting model position for this aligned sequence, read from cmalign --ifile output file, 
+#                               -1 if aligned sequence spans 0 model positions
+#                "ifile_epos":  ending   model position for this aligned sequence, read from cmalign --ifile output file,
+#                               -1 if aligned sequence spans 0 model positions
+#                "ifile_ins":   string of all inserts in this aligned sequence, read from cmalign --ifile output file 
+#                               "" if no inserts; else format is : 1 or more "<c_x>:<u_x>:<i_x>;" where
+#                               <c_x> is a model position; if 0: inserts before 1st consensus posn)
+#                               <u_x> is the *unaligned* sequence position of the first inserted residue after <c_x>.
+#                               <i_x> is the number of inserted residues after position <c_x>
+#                               
 #             This function also validates that one of the following is true:
 #             1) -c is 'off' in %{$opt_HHR} and all "seq_len" and "accn_len" values are equal
 #             2) -c is 'on'  in %{$opt_HHR} and all "seq_len" values are 2 * the "accn_len" values
