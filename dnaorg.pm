@@ -6142,6 +6142,8 @@ sub validateFTableErrorExceptions {
 #             $seq_name: name of sequence to fetch part of
 #             $stop:     final position of the stop codon
 #             $strand:   strand we want ("+" or "-")
+#             $short_ok: '1' if it's okay to return a codon less than 3 nucleotides
+#                        if the desired codon runs off the end of the sequence
 #             $FH_HR:    REF to hash of file handles, including "log" and "cmd"
 #             
 # Returns:    The stop codon as a string
@@ -6150,10 +6152,10 @@ sub validateFTableErrorExceptions {
 #################################################################
 sub fetchStopCodon {
   my $sub_name = "fetchStopCodon";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $seq_name, $stop, $strand, $FH_HR) = @_;
+  my ($sqfile, $seq_name, $stop, $strand, $short_ok, $FH_HR) = @_;
 
   my $stop_codon_posn;
   if($strand eq "-") { 
@@ -6167,7 +6169,7 @@ sub fetchStopCodon {
   }
   # printf("in $sub_name, seqname $seqname, stop $stop\n");
 
-  return fetchCodon($sqfile, $seq_name, $stop_codon_posn, $strand, $FH_HR);
+  return fetchCodon($sqfile, $seq_name, $stop_codon_posn, $strand, $short_ok, $FH_HR);
 }
 
 #################################################################
@@ -6182,6 +6184,8 @@ sub fetchStopCodon {
 #             $seq_name: name of sequence to fetch part of
 #             $stop:     final position of the stop codon
 #             $strand:   strand we want ("+" or "-")
+#             $short_ok: '1' if it's okay to return a codon less than 3 nucleotides
+#                        if the desired codon runs off the end of the sequence
 #             $FH_HR:    REF to hash of file handles, including "log" and "cmd"
 #             
 # Returns:    The stop codon as a string
@@ -6190,16 +6194,16 @@ sub fetchStopCodon {
 #################################################################
 sub fetchStartCodon {
   my $sub_name = "fetchStartCodon";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args (expected $nargs_exp)"; }
 
-  my ($sqfile, $seq_name, $start, $strand, $FH_HR) = @_;
+  my ($sqfile, $seq_name, $start, $strand, $short_ok, $FH_HR) = @_;
 
   if($start < 0) { 
     DNAORG_FAIL("ERROR in $sub_name(), trying to fetch start codon for $seq_name at position $start on strand $strand, but we expect positive positions", 1, $FH_HR);
   }
 
-  return fetchCodon($sqfile, $seq_name, $start, $strand, $FH_HR);
+  return fetchCodon($sqfile, $seq_name, $start, $strand, $short_ok, $FH_HR);
 }
 
 #################################################################
@@ -6216,6 +6220,8 @@ sub fetchStartCodon {
 #             $seq_name: name of sequence to fetch part of
 #             $start:    start position of the codon
 #             $strand:   strand we want ("+" or "-")
+#             $short_ok: '1' if it's okay to return a codon less than 3 nucleotides
+#                        if the desired codon runs off the end of the sequence
 #             $FH_HR:    REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    The codon as a string
@@ -6223,24 +6229,49 @@ sub fetchStartCodon {
 #################################################################
 sub fetchCodon {
   my $sub_name = "fetchCodon";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $seqname, $start, $strand, $FH_HR) = @_;
+  my ($sqfile, $seqname, $start, $strand, $short_ok, $FH_HR) = @_;
+
+  my $seqlen = $sqfile->fetch_seq_length_given_name($seqname);
+
+  if($seqlen == -1) { 
+    DNAORG_FAIL("ERROR in $sub_name, unable to fetch sequence $seqname", 1, $FH_HR);
+  }
+
+  if(($start < 1) || ($start > $seqlen)) { 
+    DNAORG_FAIL("ERROR in $sub_name, input start coordinate ($start) invalid (length of sequence ($seqname) is $seqlen", 1, $FH_HR); 
+  }    
 
   my $codon_start = $start;
-  my $codon_stop  = ($strand eq "-") ? $start - 2 : $start + 2; 
+  my $codon_stop  = undef;
+  my $valid_coords = 1; # changed to 0 below if coords are invalid
+
+  if($strand eq "+") { 
+    $codon_stop  = $start + 2; 
+    if($codon_stop > $seqlen) { 
+      if($short_ok) { $codon_stop = $seqlen; }
+      else          { $valid_coords = 0; }
+    }
+  }
+  else { # strand is '-'
+    $codon_start = $start - 2;
+    if($codon_stop < 1) { 
+      if($short_ok) { $codon_stop = 1; } 
+      else          { $valid_coords = 0; }
+    }
+  }
+  if(! $valid_coords) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to fetch codon with coordinates %d..%d for sequence $seqname, valid coordinates are %d..%d\n", 
+                        $codon_start, $codon_stop, 1, $seqlen), 1, $FH_HR);
+  }
+
   my $newname = $seqname . "/" . $codon_start . "-" . $codon_stop;
 
   my @fetch_AA = ();
   # if $seqname does not exist in $sqfile, the following line
   # will cause the script to fail, ungracefully
-  my $seqlen = $sqfile->fetch_seq_length_given_name($seqname);
-  if(($codon_start < 1)       || ($codon_stop < 1) || 
-     ($codon_start > $seqlen) || ($codon_stop > $seqlen)) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to fetch codon with coordinates %d..%d for sequence $seqname, valid coordinates are %d..%d\n", 
-                        $codon_start, $codon_stop, 1, $seqlen), 1, $FH_HR);
-  }
 
   push(@fetch_AA, [$newname, $codon_start, $codon_stop, $seqname]);
 

@@ -1300,6 +1300,10 @@ ftr_results_calculate_blastx($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr
 
 # add xi* and mip errors
 openAndAddFileToOutputInfo(\%ofile_info_HH, "blasttbl", $out_root . ".blastx.tbl", 1, "information on blast and CM hits for CDS features in tabular format");
+my $tmp_len = maxLengthScalarValueInArray($seq_info_HA{"seq_name"});
+if($tmp_len > $combined_model_seqname_maxlen) { 
+  $combined_model_seqname_maxlen = $tmp_len; 
+}
 ftr_results_add_blastx_errors($ofile_info_HH{"FH"}{"blasttbl"}, $combined_model_seqname_maxlen, 
                               \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
@@ -2326,7 +2330,8 @@ sub combine_model_hits {
       }
     } # end of 'if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model")'
   }
-  
+
+  printf("HEYA returning ret_seqname_maxlen: $ret_seqname_maxlen\n");
   return $ret_seqname_maxlen;
 }
 
@@ -3335,7 +3340,8 @@ sub results_calculate_corrected_stops {
             }
             my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, 
                                                     $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, 
-                                                    $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
+                                                    $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}, 1, $FH_HR); 
+                                                    # '1' above: it's okay if codon we fetch is less than 3 nt due to being off end of the sequence
             if(validateStopCodon($stp_err_stop_codon)) { 
               # it's a valid stop, remove the "maybe"
               error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
@@ -4322,24 +4328,32 @@ sub ftr_results_add_blastx_errors {
         if($ftr_idx == 0) { 
           @{$out_per_seq_AA[$seq_idx]} = ();
         }
+        # determine if we should output the best blast hit
+        # we only do this if there's also a CM hit OR
+        # we're above score of at least $min_x_score
+        my $x_hit_printable = 0;
+        if((defined $x_start) && 
+           ((defined $p_start) || ($x_score >= $min_x_score))) { 
+          $x_hit_printable = 1;
+        }
         push(@{$out_per_seq_AA[$seq_idx]}, sprintf("%-*s  %-*s  %6s  %6s  %-*s  %8s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n", 
                                                    $seq_name_width,    $seq_name, 
                                                    $ftr_product_width, $ftr_info_HAR->{"out_product"}[$ftr_idx],
-                                                   (defined $p_start)                               ? "yes"       : "no",   # CM prediction?
-                                                   (defined $x_start  && $x_score >= $min_x_score)  ? "yes"       : "no",   # blastx prediction? 
+                                                   (defined $p_start)                       ? "yes"       : "no",   # CM prediction?
+                                                   (defined $x_start  && $x_hit_printable)  ? "yes"       : "no",   # blastx prediction? 
                                                    $query_width,                                   
-                                                   (defined $x_query)                               ? $x_query    : "-",    # query name 
-                                                   (defined $x_query && $x_feature_flag)            ? "feature"   : "full", # hit to feature sequence or full sequence?
-                                                   (defined $p_start)                               ? $p_start    : "-",    # CM-start
-                                                   (defined $p_stop)                                ? $p_stop     : "-",    # CM-stop
-                                                   (defined $x_start  && $x_score >= $min_x_score)  ? $x_start    : "-",    # blastx-start
-                                                   (defined $x_stop   && $x_score >= $min_x_score)  ? $x_stop     : "-",    # blastx-stop
-                                                   (defined $x_score)                               ? $x_score    : "-",    # blastx-score
-                                                   (defined $start_diff)                            ? $start_diff : "-",    # start-diff
-                                                   (defined $stop_diff)                             ? $stop_diff  : "-",    # stop-diff
-                                                   (defined $x_maxins  && $x_score >= $min_x_score) ? $x_maxins   : "-",    # blastx-maxins
-                                                   (defined $x_maxdel  && $x_score >= $min_x_score) ? $x_maxdel   : "-",    # blastx-maxdel
-                                                   (defined $x_trcstop && $x_score >= $min_x_score) ? $x_trcstop  : "-",    # blastx-maxdel
+                                                   (defined $x_query)                       ? $x_query    : "-",    # query name 
+                                                   (defined $x_query && $x_feature_flag)    ? "feature"   : "full", # hit to feature sequence or full sequence?
+                                                   (defined $p_start)                       ? $p_start    : "-",    # CM-start
+                                                   (defined $p_stop)                        ? $p_stop     : "-",    # CM-stop
+                                                   (defined $x_start  && $x_hit_printable)  ? $x_start    : "-",    # blastx-start
+                                                   (defined $x_stop   && $x_hit_printable)  ? $x_stop     : "-",    # blastx-stop
+                                                   (defined $x_score)                       ? $x_score    : "-",    # blastx-score
+                                                   (defined $start_diff)                    ? $start_diff : "-",    # start-diff
+                                                   (defined $stop_diff)                     ? $stop_diff  : "-",    # stop-diff
+                                                   (defined $x_maxins  && $x_hit_printable) ? $x_maxins   : "-",    # blastx-maxins
+                                                   (defined $x_maxdel  && $x_hit_printable) ? $x_maxdel   : "-",    # blastx-maxdel
+                                                   (defined $x_trcstop && $x_hit_printable) ? $x_trcstop  : "-",    # blastx-maxdel
                                                    $output_err_str));
             
 
@@ -4436,6 +4450,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
   my $seq_idx; # counter over sequences
 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    printf("\tmdl_idx: $mdl_idx\n");
     my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
     my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
     my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
@@ -4446,22 +4461,27 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
       my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
       my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
 
+      printf("\tHEYA0\n");
       if(! exists $mdl_results_HR->{"p_start"}) { 
         ############################
         # nop error (no prediction)
         ############################
+        printf("\tHEYA0A\n");
         error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nop", $seq_name, "", $FH_HR);
       }        
       else { # $mdl_results_HR->{"p_start"} exists, we have a prediction
+        printf("\tHEYA0B\n");
         ##########################
         # update str err message #
         ##########################
         if($is_first && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name})) { 
+          printf("\tHEYA0C\n");
           my $out_start = undef;
           ($out_start, undef) = create_output_start_and_stop($mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_stop"}, 
                                                              $accn_len, $seq_len, $FH_HR);
           my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", 
-                                           fetchStartCodon($sqfile, $seq_name, $mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_strand"}, $FH_HR), 
+                                           fetchStartCodon($sqfile, $seq_name, $mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_strand"}, 1, $FH_HR), 
+                                           # '1' above: it's okay if codon we fetch is less than 3 nt due to being off end of the sequence
                                            $out_start, $mdl_results_HR->{"p_strand"});
           error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
           $mdl_results_HR->{"str_err_flag"} = 1;
@@ -4483,6 +4503,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
             $mdl_results_HR->{"out_5boundary"} = $mdl_results_HR->{"p_5overhang"};
           }
         }
+        printf("\tHEYA1\n");
         # 3' block
         # check for 2 special cases, a trc or ext error, which invalidate the b3e or b3u values
         if(exists $mdl_results_HR->{"trc_err_flag"}) { 
@@ -4512,12 +4533,14 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
           }
 
         }
+        printf("\tHEYA2\n");
         if($mdl_results_HR->{"p_strand"} ne $mdl_info_HAR->{"ref_strand"}[$mdl_idx]) { 
           ################################
           # ost error (incorrect strand) #
           ################################
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ost", $seq_name, "", $FH_HR);
         }
+        printf("\tHEYA3\n");
         if((exists $mdl_results_HR->{"p_score"}) && ($mdl_results_HR->{"p_score"} < 0.)) { 
           #########################
           # lsc error (low score) #
@@ -4543,6 +4566,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop
   } # end of 'for($mdl_idx' loop
+  printf("leaving $sub_name\n");
   return;
 }      
 
@@ -4602,7 +4626,8 @@ sub mdl_results_calculate_out_starts_and_stops {
                                          $accn_len, $seq_len, $FH_HR);
         $mdl_results_HR->{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name,
                                                              (defined $mdl_results_HR->{"c_stop"}) ? $mdl_results_HR->{"c_stop"} : $mdl_results_HR->{"p_stop"}, 
-                                                             $mdl_results_HR->{"p_strand"}, $FH_HR);
+                                                             $mdl_results_HR->{"p_strand"}, 1, $FH_HR);
+                                              # '1' above: it's okay if codon we fetch is less than 3 nt due to being off end of the sequence
 
       }
     }
@@ -5035,7 +5060,8 @@ sub ftr_results_calculate {
             DNAORG_FAIL("ERROR in $sub_name, ext error with non-maybe value for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
           }
           if((defined $cds_fetch_stop) && (defined $cds_out_stop)) { 
-            my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, $cds_fetch_stop, $stop_strand, $FH_HR);
+            my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, $cds_fetch_stop, $stop_strand, 1, $FH_HR);
+            # '1' above: it's okay if codon we fetch is less than 3 nt due to being off end of the sequence
             if(validateStopCodon($stp_err_stop_codon)) { 
               # it's a valid stop, remove the "maybe"
               error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
@@ -5157,7 +5183,8 @@ sub ftr_results_calculate {
 
         # set ftr_results, we can set start if $cds_out_start is defined, 
         if(defined $cds_out_start) { 
-          my $start_codon = fetchStartCodon($sqfile, $seq_name, $cds_fetch_start, $start_strand, $FH_HR);
+          my $start_codon = fetchStartCodon($sqfile, $seq_name, $cds_fetch_start, $start_strand, 1, $FH_HR);
+          # '1' above: it's okay if codon we fetch is less than 3 nt due to being off end of the sequence
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start"}       = $cds_out_start;
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start_codon"} = $start_codon;
           if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
@@ -5190,7 +5217,8 @@ sub ftr_results_calculate {
         if(($aji_errmsg eq "") && ($inp_errmsg eq "") && (defined $cds_out_start) && (defined $cds_out_stop)) { 
           # an aji or inp error means we can't really say where the stop is
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop"}       = $cds_out_stop;
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name, $cds_fetch_stop, $stop_strand, $FH_HR);
+          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name, $cds_fetch_stop, $stop_strand, 1, $FH_HR);
+          # '1' above: it's okay if codon we fetch is less than 3 nt due to being off end of the sequence
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"}       = $cds_len;
           if(($cds_len % 3) != 0) { 
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cds_len", $FH_HR);
