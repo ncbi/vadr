@@ -4461,21 +4461,17 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
       my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
       my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
 
-      printf("\tHEYA0\n");
       if(! exists $mdl_results_HR->{"p_start"}) { 
         ############################
         # nop error (no prediction)
         ############################
-        printf("\tHEYA0A\n");
         error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nop", $seq_name, "", $FH_HR);
       }        
       else { # $mdl_results_HR->{"p_start"} exists, we have a prediction
-        printf("\tHEYA0B\n");
         ##########################
         # update str err message #
         ##########################
         if($is_first && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name})) { 
-          printf("\tHEYA0C\n");
           my $out_start = undef;
           ($out_start, undef) = create_output_start_and_stop($mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_stop"}, 
                                                              $accn_len, $seq_len, $FH_HR);
@@ -4503,7 +4499,6 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
             $mdl_results_HR->{"out_5boundary"} = $mdl_results_HR->{"p_5overhang"};
           }
         }
-        printf("\tHEYA1\n");
         # 3' block
         # check for 2 special cases, a trc or ext error, which invalidate the b3e or b3u values
         if(exists $mdl_results_HR->{"trc_err_flag"}) { 
@@ -4533,14 +4528,12 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
           }
 
         }
-        printf("\tHEYA2\n");
         if($mdl_results_HR->{"p_strand"} ne $mdl_info_HAR->{"ref_strand"}[$mdl_idx]) { 
           ################################
           # ost error (incorrect strand) #
           ################################
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ost", $seq_name, "", $FH_HR);
         }
-        printf("\tHEYA3\n");
         if((exists $mdl_results_HR->{"p_score"}) && ($mdl_results_HR->{"p_score"} < 0.)) { 
           #########################
           # lsc error (low score) #
