@@ -258,7 +258,7 @@ opt_Add("--alladj",     "boolean", 0,                      $g,    undef,   undef
 
 $opt_group_desc_H{++$g} = "options for changing search sensitivity modes";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--midthresh",  "integer", 75,                      $g,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",  "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--midthresh",  "integer", 65,                      $g,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",  "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--smallthresh","integer", 30,                      $g,    undef, undef,      "set max model length for using max sensitivity mode to <n>",  "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--hmmonly",    "integer", 0,                       $g,    undef, undef,      "run in HMM-only mode for models with len >= <n>",             "run in HMM-only mode for models with >= <n> positions", \%opt_HH, \@opt_order_A);
 
