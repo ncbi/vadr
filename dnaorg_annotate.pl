@@ -563,7 +563,7 @@ else {
     if(-d $dir_out) { 
       $cmd = "rm -rf $dir_out";
       if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
-        runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); 
+        runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); 
       }
       else { # dirout exists but -f not used
         if(! ((opt_IsUsed("--skipedirect",   \%opt_HH)) || 
@@ -577,7 +577,7 @@ else {
     }
     elsif(-e $dir_out) { 
       $cmd = "rm $dir_out";
-      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
       else                        { die "ERROR a file named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
     }
   }
@@ -585,7 +585,7 @@ else {
 # if $dir_out does not exist, create it
 if(! -d $dir_out) {
   $cmd = "mkdir $dir_out";
-  runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd);
+  runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd);
 }
 
 my $dir_out_tail   = $dir_out;
@@ -940,7 +940,6 @@ if(opt_IsUsed("--aorgmodel", \%opt_HH)) {
 ####################################
 my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
 validateFileExistsAndIsNonEmpty($seq_file, "dnaorg_annotate.pl:main", $ofile_info_HH{"FH"});
-
 my $tot_len_nt = sumArray(\@{$seq_info_HA{"seq_len"}});
 my $mdl_file = $mdl_info_HA{"cmfile"}[0];
 $mdl_file =~ s/\.\d+\.cm$/.cm/; 
@@ -2918,7 +2917,7 @@ sub wrapper_esl_epn_translate_startstop {
       if(! opt_Get("--skiptranslate", $opt_HHR)) { 
         # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
         $cmd = $esl_epn_translate . " $altstart_opt -startstop $ftr_hit_fafile > $esl_epn_translate_outfile";
-        runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+        runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
       }
       else { # --skiptranslate, validate the output file exists
         validateFileExistsAndIsNonEmpty($esl_epn_translate_outfile, $sub_name, $ofile_info_HHR->{"FH"});
@@ -8959,7 +8958,7 @@ sub translate_feature_sequences {
       
       # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
       $cmd = $esl_epn_translate . " -endatstop -nostop $opts $altstart_opt $nucleotide_fafile > $protein_fafile";
-      runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+      runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
       
       # determine the number of >= 1 segments (exons or mature peptides) we put together to make this protein
       my $nsegments = 0;
@@ -9033,7 +9032,7 @@ sub align_hits {
     # create the alignment
     my $mxsize_opt = sprintf("--mxsize %d", opt_Get("--mxsize", $opt_HHR));
     my $cmd = $execs_HR->{"cmalign"} . " --cpu 0 $mxsize_opt $cm_file $fa_file > $stk_file";
-    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HHR->{"FH"});
+    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HHR->{"FH"});
     # save this file to %{$ofile_info_HHR}
     my $ofile_key = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_stk_file_key, $ofile_info_HHR->{"FH"});
     addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, 0, sprintf("Stockholm alignment of hits for model #%d: %s", $mdl_idx+1, $mdl_info_HAR->{"out_tiny"}[$mdl_idx]));
@@ -9479,7 +9478,7 @@ sub align_protein_sequences {
       
       # build an HMM from this single sequence alignment:
       my $cmd = $execs_HR->{"hmmbuild"} . " $hmm_file $hmmstk_file > $hmmbuild_file";
-      runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"}); 
+      runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"}); 
       
       # store the files we just created
       my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmm_file_key, $ofile_info_HHR->{"FH"});
@@ -9499,7 +9498,7 @@ sub align_protein_sequences {
       
       # align all sequences to this HMM
       $cmd = $execs_HR->{"hmmalign"} . " $hmm_file $fa_file > $stk_file";
-      runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
       
       # store the file in ofile_info_HH
       $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_stk_file_key, $ofile_info_HHR->{"FH"});
@@ -9851,7 +9850,7 @@ sub process_input_fasta_file {
 
   my $ssi_file = $infasta_file . ".ssi";
   if(-e $ssi_file) { 
-    runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
+    runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
   }
   my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infasta_file }); # the sequence file object
   my $nseq = $sqfile->nseq_ssi;
@@ -10058,7 +10057,7 @@ sub aorg_find_origin_sequences {
 
   my $cmd = $execs_HR->{"cmscan"} . " $opts $aorg_model $fasta_file > $cmscan_file";
 
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   addClosedFileToOutputInfo(\%ofile_info_HH, "aorgtblout",  "$tblout_file",     1, "tblout file from cmscan for origin identification");
   addClosedFileToOutputInfo(\%ofile_info_HH, "aorgcmscan",  "$cmscan_file",     1, "standard output file from cmscan for origin identification");
@@ -10085,7 +10084,7 @@ sub aorg_find_origin_sequences {
   my $out_cmalign_file = $out_root . ".cmalign";
   $cmd = $execs_HR->{"cmalign"} . " -o $out_stk_file $aorg_model $out_fasta_file > $out_cmalign_file";
 
-  runCommand($cmd, 0, $ofile_info_HH{"FH"});
+  runCommand($cmd, 0, 0, $ofile_info_HH{"FH"});
   addClosedFileToOutputInfo(\%ofile_info_HH, "outstk",     "$out_stk_file",     1, "alignment of cmscan hits");
   addClosedFileToOutputInfo(\%ofile_info_HH, "outcmalign", "$out_cmalign_file", 1, "cmalign output");
 
@@ -10375,7 +10374,7 @@ sub run_blastx_and_summarize_output {
   my $blastx_out_file = $out_root . ".blastx.out";
 #  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -num_descriptions $ncds -num_alignments $ncds -out $blastx_out_file";
   my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -out $blastx_out_file";
-  runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+  runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, "predicted.hits.fa", $ofile_info_HHR->{"FH"});
@@ -10388,11 +10387,11 @@ sub run_blastx_and_summarize_output {
       # run blast for this feature
       #$blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -num_descriptions 1 -num_alignments 1 -out $cur_blastx_out_file";
       $blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -out $cur_blastx_out_file";
-      runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
       # concatenate the blastx output for this feature to the growing blastx output for all blastx runs
       my $concat_cmd = "cat $cur_blastx_out_file >> $blastx_out_file";
-      runCommand($concat_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      runCommand($concat_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
       #if(! opt_Get("--keep", $opt_HHR)) { 
       if(0) { 
         removeFileUsingSystemRm($cur_blastx_out_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}); 
@@ -10404,7 +10403,7 @@ sub run_blastx_and_summarize_output {
   # now summarize its output
   my $blastx_summary_file = $out_root . ".blastx.summary.txt";
   my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
-  runCommand($parse_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+  runCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   addClosedFileToOutputInfo($ofile_info_HHR, "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
 
   return;
