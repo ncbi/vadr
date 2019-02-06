@@ -1280,7 +1280,8 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 19. Run BLASTX: all full length sequences and all corrected nucleotide features versus all proteins
 ##########################################################################################################
 $start_secs = outputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
-run_blastx_and_summarize_output(\%execs_H, $out_root, $seq_file, $build_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+my $seq_nodesc_file = $ofile_info_HH{"fullpath"}{"fastanodesc"};
+run_blastx_and_summarize_output(\%execs_H, $out_root, $seq_nodesc_file, $build_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the blastx related information

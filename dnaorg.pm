@@ -3074,6 +3074,28 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
       }
     }
   }  
+  # make a duplicate of the fasta file with no descriptions, because blastx adds the 
+  # description on lines immediately after the query, and sometimes breaks up sequence
+  # name across multiple lines, so to be sure that we have the query name and only the
+  # query name we need to read it from >=1 lines when blastx run on an input file with
+  # no descriptions for each sequence. Example from blastx output:
+  #Query= gi|337255678|gb|JF830576.1|
+  #Norovirus/Hu/GII.4/757/10/17-Mar-2010/Slovenia strain 757/10
+  #RNA-dependent RNA polymerase (RdRp) gene, partial cds
+  my $fasta_nodesc_file = $out_root . ".nodesc.fa"; 
+  open(FAOUT, ">", $fasta_nodesc_file)                || fileOpenFailure($fasta_nodesc_file, $sub_name, $!, "writing", $FH_HR);
+  open(FAIN,  $ofile_info_HHR->{"fullpath"}{"fasta"}) || fileOpenFailure($ofile_info_HHR->{"fullpath"}{"fasta"}, $sub_name, $!, "reading", $FH_HR);
+  while(my $fasta_line = <FAIN>) { 
+    if($fasta_line =~ m/^\>(\S+).*/) { 
+      print FAOUT (">" . $1 . "\n"); # only print sequence name, no desc, if there was one
+    }
+    else { 
+      print FAOUT $fasta_line;
+    }
+  }
+  close(FAIN);
+  close(FAOUT);
+  addClosedFileToOutputInfo($ofile_info_HHR, "fastanodesc", $fasta_nodesc_file, 0, "Sequence file with sequence descriptions removed for blastx");
 
   # open the sequence file using Bio-Easel
   # remove the .ssi file first, if it exists
