@@ -1426,15 +1426,13 @@ sub initializeHardCodedErrorInfoHash {
                      "feature (MP or CDS) is not adjacent to same set of features after it as in reference", # description
                      0, 0, "", "", # feature table info: valid, pred_stop, note, err,
                      $FH_HR);
-
+  # errors that can be invalidated by other errors in feature table output, many of these have to do with premature stop codons
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,
                      "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", # description
-                     # NOTE: currently ftbl_valid == 0, because any feature with this error has 
                      # no valid start/stop and so won't show up in the feature table
-                     0, 0, "", "", # feature table info: valid, pred_stop, note, err,
+                     1, 0, "", "", # feature table info: valid, pred_stop, note, err,
                      $FH_HR);
 
-  # errors that can be invalidated by other errors in feature table output, many of these have to do with premature stop codons
   addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,
                      "no in-frame stop codon exists 3' of predicted valid start codon", # description
                      1, 1, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
@@ -1635,20 +1633,25 @@ sub initializeHardCodedErrorInfoHash {
 
   # define the ftbl_invalid_by values, these are one-sided, any error code listed in the 
   # 3rd argument invalidates the 2nd argument error code, but not vice versa
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nm3", "b5e,b3e,m5e,m3e",             $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ext", "b5e,b3e,m5e,m3e",             $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ntr", "b5e,b3e,m5e,m3e",             $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,m5e,m3e",             $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nst", "b5e,b3e,m5e,m3e",             $FH_HR);
+
+  # change between version 0.44 and 0.45: 
+  # "nm3", "ext", "ntr", "nst", "stp", "trc", "ctr" were invalidated by "m5e" and "m3e" in 0.44, but not 0.45
+  # "trc" "
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nm3", "b5e,b3e", $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ext", "b5e,b3e", $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ntr", "b5e,b3e", $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nst", "b5e,b3e", $FH_HR);
 
   # trc, ext and nst are preferred to stp
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "stp", "b5e,b3e,m5e,m3e,trc,ext,nst", $FH_HR); 
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "stp", "b5e,b3e,trc,ext,nst", $FH_HR); 
 
-  # int and ctr are preffered to trc
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "b5e,b3e,m5e,m3e,int,ctr",     $FH_HR);
+  # int and ctr are preferred to trc
+#  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "b5e,b3e,int,ctr",     $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "int,ctr",     $FH_HR);
 
-  # trc is preffered to ctr
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,m5e,m3e,trc",         $FH_HR);
+  # trc is preferred to ctr
+#  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,trc",         $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "trc",         $FH_HR);
 
   # mip and ntr are preferred to mtr
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mtr", "mip,ntr", $FH_HR);
