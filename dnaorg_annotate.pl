@@ -946,10 +946,14 @@ $mdl_file =~ s/\.\d+\.cm$/.cm/;
 
 my $ifile_file = $out_root . ".ifile"; # concatenated --ifile output files, created by concatenating all of the individual 
                                        # ifile files in cmalignOrNhmmscanWrapper()
-my @stk_file_A = (); # array of all stk output files created in cmalignOrNhmmscanWrapper()
-cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $ifile_file, $progress_w, 
-                         $mdl_file, \@stk_file_A, \%opt_HH, \%ofile_info_HH);
-
+my @stk_file_A        = (); # array of all stk output files created in cmalignOrNhmmscanWrapper()
+my @overflow_seq_A    = (); # array of sequences that fail cmalign b/c required matrix was too big
+my @overflow_mxsize_A = (); # array of required matrix sizes for each sequence in @overflow_seq_A
+my $cmalign_stdout_file = $out_root . ".cmalign.stdout";
+my $cmalign_ifile_file  = $out_root . ".cmalign.ifile";
+cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
+                         $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+exit 0;
 ####################################################################
 # Step 6. Parse homology search results into usable data structures
 ####################################################################
@@ -968,10 +972,12 @@ initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH
 my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
 getIndexHashForArray($seq_info_HA{"seq_name"}, \%seqname_index_H, $ofile_info_HH{"FH"});
 
-parse_cmalign_ifile($ifile_file, \%seqname_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
+parse_cmalign_ifile($cmalign_ifile_file, \%seqname_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
 
 # parse the cmalign alignments
-parse_cmalign_stk($stk_file_A[0], \%seqname_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+for(my $a = 0; $a < scalar(@stk_file_A); $a++) { 
+  parse_cmalign_stk($stk_file_A[$a], \%seqname_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+}
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the lengths of features
