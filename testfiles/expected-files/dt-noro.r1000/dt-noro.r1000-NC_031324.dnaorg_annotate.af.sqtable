@@ -1,0 +1,47 @@
+>Feature gi|15341402|gb|AF406993.1|AF406993
+<1	>244	gene
+			gene	ORF2
+<1	>244	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 19 > 5 (strand:+ CM:1 blastx:20)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 21 > 5 (strand:+ CM:244 blastx:223, no valid stop codon in CM prediction)]
+>Feature gi|347802767|gb|JF802508.1|
+<1	531	gene
+			gene	ORF1
+<1	531	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+<1	528	mat_peptide
+			product	RdRp
+515	>796	gene
+			gene	ORF2
+515	>796	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 21 > 5 (strand:+ CM:796 blastx:775, no valid stop codon in CM prediction)]
+>Feature gi|1148301738|gb|KY056133.1|
+<1	47	gene
+			gene	ORF1
+<1	47	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	44	mat_peptide
+			product	RdRp
+31	>148	gene
+			gene	ORF2
+31	>148	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 10 > 5 (strand:+ CM:148 blastx:138, no valid stop codon in CM prediction)]
+>Feature gi|1237971682|gb|KX671914.1|
+<1	>285	gene
+			gene	ORF2
+<1	>285	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 6 > 5 (strand:+ CM:1 blastx:7)]
