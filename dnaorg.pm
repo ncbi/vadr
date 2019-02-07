@@ -6834,6 +6834,8 @@ sub runCommand {
 #   $cmd:            command to run
 #   $job_name:       name for job
 #   $err_file:       name of err file to create, can be "/dev/null"
+#   $mem_gb:         number of Gb of memory required
+#   $nsecs:          maximum number of seconds to allow jobs to take
 #   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
 #   $ofile_info_HHR: REF to the 2D hash of output file information, ADDED TO HERE 
 #
@@ -6843,17 +6845,17 @@ sub runCommand {
 #################################################################
 sub submitJob {
   my $sub_name = "submitJob()";
-  my $nargs_expected = 5;
+  my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($cmd, $job_name, $err_file, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR) = @_;
   
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   if(($err_file ne "/dev/null") && (-e $err_file)) { 
     removeFileUsingSystemRm($err_file, $sub_name, $opt_HHR, $ofile_info_HHR); 
   }
-  my $submit_cmd = "qsub -N $job_name -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $err_file -m n -l h_rt=288000,h_vmem=16G,mem_free=16G,reserve_mem=16G,m_mem_free=16G " . "\"" . $cmd . "\" > /dev/null\n";
+  my $submit_cmd = sprintf("qsub -N $job_name -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $err_file -m n -l h_rt=%d,h_vmem=%dG,mem_free=%dG,reserve_mem=%dG,m_mem_free=%dG " . "\"" . $cmd . "\" > /dev/null\n", $nsecs, $mem_gb, $mem_gb, $mem_gb, $mem_gb);
 
   runCommand($submit_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
@@ -8628,9 +8630,9 @@ sub runCmalign {
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
-#    $opts .= " --cpu 0 --mxsize 8000 -g --ifile $ifile_file -o $stk_file";
-  my  $opts .= " --fixedtau --cpu 0 --mxsize 2 -g --ifile $ifile_file -o $stk_file";
-#  my $opts = " --fixedtau --cpu 0 --mxsize 8000 -g --ifile $ifile_file -o $stk_file";
+  my $opts = sprintf(" --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
+  if(! opt_Get("--noglocal",   $opt_HHR)) { $opts .= " -g"; }
+  if(! opt_Get("--nofixedtau", $opt_HHR)) { $opts .= " --fixedtau"; }
   
   # remove the tblout file or ifile file if it exists, this is important because we'll use the existence and
   # final line of this file to determine when the jobs are finished, if it already exists, we'll
@@ -8647,7 +8649,9 @@ sub runCmalign {
   }
   else { 
     my $job_name = "J" . $seq_file;
-    submitJob($cmd, $job_name, $err_file, $opt_HHR, $ofile_info_HHR);
+    my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
+    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 2; # multiply --mxsize Gb by 2 to be safe
+    submitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
   }
 
   my $success = 1;
@@ -8710,7 +8714,9 @@ sub runNhmmscan {
   }
   else { 
     my $job_name = "J" . $seq_file;
-    submitJob($cmd, $job_name, $err_file, $opt_HHR, $ofile_info_HHR);
+    my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
+    my $mem_gb = 8.; # hardcoded for nhmmscan
+    submitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
   }
   return; 
 }

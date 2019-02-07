@@ -256,11 +256,12 @@ opt_Add("--classerrors","string",  0,                      $g,    undef,   undef
 opt_Add("--allolp",     "boolean", 0,                      $g,    undef,   undef,   "report all olp errors, do not skip due to nop",    "report all olp errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
 opt_Add("--alladj",     "boolean", 0,                      $g,    undef,   undef,   "report all adj errors, do not skip due to nop",    "report all aja/ajb errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for changing search sensitivity modes";
-#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--midthresh",  "integer", 75,                      $g,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",  "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--smallthresh","integer", 30,                      $g,    undef, undef,      "set max model length for using max sensitivity mode to <n>",  "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--hmmonly",    "integer", 0,                       $g,    undef, undef,      "run in HMM-only mode for models with len >= <n>",             "run in HMM-only mode for models with >= <n> positions", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for modifying cmalign runs";
+#        option               type   default                group  requires incompat   preamble-output                                                                help-output    
+opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
+opt_Add("--tau",        "real",    1E-7,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--noglocal",   "boolean", 0,                       $g,    undef, undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "do not fix the tau value when running cmalign, allow it to decrease if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
@@ -273,7 +274,7 @@ opt_Add("--wait",       "integer", 500,                     $g,    undef,"--loca
 $opt_group_desc_H{++$g} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
 opt_Add("--doalign",    "boolean", 0,                      $g,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
-opt_Add("--mxsize",     "integer", 2048,                   $g, "--doalign",undef,   "with --doalign, set --mxsize <n> to <n>",                     "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--amxsize",    "integer", 2048,                   $g, "--doalign",undef,   "with --doalign, set --mxsize <n> to <n>",  "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options that modify the tabular output file";
 #       option               type   default                group  requires incompat preamble-output                                               help-output    
@@ -338,9 +339,10 @@ my $options_okay =
                 'allolp'        => \$GetOptions_H{"--allolp"},
                 'alladj'        => \$GetOptions_H{"--alladj"},
 # options for changing search sensitivity modes
-                'midthresh=s'  => \$GetOptions_H{"--midthresh"},
-                'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
-                'hmmonly=s'    => \$GetOptions_H{"--hmmonly"},
+                'mxsize=s'     => \$GetOptions_H{"--mxsize"},
+                'tau=s'        => \$GetOptions_H{"--tau"},
+                'noglocal'     => \$GetOptions_H{"--noglocal"},
+                'nofixedtau'   => \$GetOptions_H{"--nofixedtau"},
 # options related to parallelization
                 'local'        => \$GetOptions_H{"--local"}, 
                 'errcheck'     => \$GetOptions_H{"--errcheck"},  
@@ -349,7 +351,7 @@ my $options_okay =
                 'wait=s'       => \$GetOptions_H{"--wait"},
 # options for skipping/adding optional stages
                 'doalign'      => \$GetOptions_H{"--doalign"},
-                'mxsize=s'     => \$GetOptions_H{"--mxsize"},
+                'amxsize=s'    => \$GetOptions_H{"--amxsize"},
 # options that affect tabular output file
                 'tblfirst'     => \$GetOptions_H{"--tblfirst"},
                 'tblnocomp'    => \$GetOptions_H{"--tblnocomp"},
@@ -446,43 +448,6 @@ if(opt_Get("--infasta", \%opt_HH)) {
   $infasta_file = $listfile;
   $listfile = undef;
   $do_infasta = 1;
-}
-
-# if --smallthresh or --midthresh or --hmmonly used, validate that the thresholds make sense:
-# small < mid < df < hmmonly
-if(opt_IsUsed("--smallthresh", \%opt_HH)) { 
-  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--midthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
-  }
-  if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
-    if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--hmmonly", \%opt_HH)) { 
-      die sprintf("ERROR, with --smallthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                  opt_Get("--smallthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-    }
-  }
-}
-if(opt_IsUsed("--midthresh", \%opt_HH)) { 
-  if(opt_Get("--midthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
-  }
-  if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
-    if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--hmmonly", \%opt_HH)) { 
-      die sprintf("ERROR, with --midthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                  opt_Get("--midthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-    }
-  }
-}
-if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
-  if(opt_Get("--hmmonly", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-  }
-  if(opt_Get("--hmmonly", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --midthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--midthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-  }
 }
 
 ###############
@@ -1630,7 +1595,7 @@ sub validate_cms_built_from_reference {
 ################################################################# 
 sub parse_cmalign_ifile { 
   my $sub_name = "parse_cmalign_ifile()";
-  my $nargs_exp = 3;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($ifile_file, $seq_name_index_HR, $seq_info_HAR, $FH_HR) = @_;
@@ -1791,12 +1756,12 @@ sub parse_cmalign_stk {
     if($seq_info_HAR->{"ifile_ins"}[$seqidx] ne "") { 
       my @ins_A = split(";", $seq_info_HAR->{"ifile_ins"}[$seqidx]); 
       foreach my $ins_tok (@ins_A) { 
-        printf("ins_tok: $ins_tok\n");
+        #printf("ins_tok: $ins_tok\n");
         if($ins_tok =~ /^(\d+)\:(\d+)\:(\d+)$/) { 
           my ($i_rfpos, $i_uapos, $i_len) = ($1, $2, $3);
           $rf2ipos_A[$i_rfpos] = $i_uapos;
           $rf2ilen_A[$i_rfpos] = $i_len;
-          printf("rf2ipos_A[%5d]: %5d rf2ilen_A[%5d]: %5d\n", $i_rfpos, $i_uapos, $i_rfpos, $i_len);
+          #printf("rf2ipos_A[%5d]: %5d rf2ilen_A[%5d]: %5d\n", $i_rfpos, $i_uapos, $i_rfpos, $i_len);
         }
         else { 
           DNAORG_FAIL("ERROR in $sub_name, failed to parse insert information read from ifile for $seqname:\n" . $seq_info_HAR->{"ifile_ins"}[$seqidx], 1, $FH_HR);
@@ -1838,7 +1803,7 @@ sub parse_cmalign_stk {
       DNAORG_FAIL(sprintf("ERROR in $sub_name, fetched aligned seqstring of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($sqstring_aligned), $alen), 1, $FH_HR);
     }
     my @sq_A = split("", $sqstring_aligned);
-    printf("sq_A size: %d\n", scalar(@sq_A));
+    #printf("sq_A size: %d\n", scalar(@sq_A));
 
     # first pass, from right to left to fill $min_**pos_after arrays:
     my $min_rfpos = -1;
@@ -1937,21 +1902,21 @@ sub parse_cmalign_stk {
       my $mdl_stop_rfpos  = $mdl_info_HAR->{"ref_stop"}[$m];
       my $mdl_strand      = $mdl_info_HAR->{"ref_strand"}[$m];
 
-      printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
-      $rfpos = $mdl_start_rfpos;
-      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
-      $rfpos = $mdl_stop_rfpos;
-      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
+      #printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
+      #$rfpos = $mdl_start_rfpos;
+      #printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+      #       $rfpos, 
+      #       $min_rfpos_after_A[$rfpos],
+      #       $min_uapos_after_A[$rfpos],
+      #       $max_rfpos_before_A[$rfpos],
+      #       $max_uapos_before_A[$rfpos]);
+      #$rfpos = $mdl_stop_rfpos;
+      #printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+      #       $rfpos, 
+      #       $min_rfpos_after_A[$rfpos],
+      #       $min_uapos_after_A[$rfpos],
+      #       $max_rfpos_before_A[$rfpos],
+      #       $max_uapos_before_A[$rfpos]);
 
       my $start_rfpos = -1; # model position of start of this model region for this aligned sequence, stays at -1 if none
       my $stop_rfpos  = -1; # model position of stop  of this model region for this aligned sequence, stays at -1 if none
@@ -1989,10 +1954,10 @@ sub parse_cmalign_stk {
         $mdl_results_AAHR->[$m][$seqidx]{"p_3seqflush"} = $p_3seqflush;
         $mdl_results_AAHR->[$m][$seqidx]{"p_nhits"}     = 1;
 
-        printf("model: $mdl_start_rfpos to $mdl_stop_rfpos\n");
-        foreach my $key ("p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush") { 
-          printf("stored $m $seqidx $key $mdl_results_AAHR->[$m][$seqidx]{$key}\n");
-        }
+        #printf("model: $mdl_start_rfpos to $mdl_stop_rfpos\n");
+        #foreach my $key ("p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush") { 
+        #  printf("stored $m $seqidx $key $mdl_results_AAHR->[$m][$seqidx]{$key}\n");
+        #}
       }
     } # end of 'for(my $m = 0; $m < $nmdl; $m++)'
   } # end of 'for(my $i = 0; $m < $nseq; $m++)'
@@ -4375,7 +4340,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
   my $seq_idx; # counter over sequences
 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    printf("\tmdl_idx: $mdl_idx\n");
+    #printf("\tmdl_idx: $mdl_idx\n");
     my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
     my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
     my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
@@ -8956,7 +8921,7 @@ sub align_hits {
     validateFileExistsAndIsNonEmpty($cm_file, $sub_name, $ofile_info_HHR->{"FH"});
     
     # create the alignment
-    my $mxsize_opt = sprintf("--mxsize %d", opt_Get("--mxsize", $opt_HHR));
+    my $mxsize_opt = sprintf("--mxsize %d", opt_Get("--amxsize", $opt_HHR));
     my $cmd = $execs_HR->{"cmalign"} . " --cpu 0 $mxsize_opt $cm_file $fa_file > $stk_file";
     runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HHR->{"FH"});
     # save this file to %{$ofile_info_HHR}
