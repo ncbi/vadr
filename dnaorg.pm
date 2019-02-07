@@ -1430,7 +1430,8 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,
                      "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", # description
                      # no valid start/stop and so won't show up in the feature table
-                     1, 0, "", "", # feature table info: valid, pred_stop, note, err,
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Peptide Adjacency Problem: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,
@@ -1569,7 +1570,7 @@ sub initializeHardCodedErrorInfoHash {
                      "!FEATURE_TYPE! Has Stop Codon: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,
+  addToErrorInfoHash($err_info_HAR, "mxi", "feature",  0,
                      "mat_peptide may not be translated because its CDS has a blastx protein validation failure", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
                      "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
@@ -1587,8 +1588,26 @@ sub initializeHardCodedErrorInfoHash {
                      "Peptide Adjacency Problem: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,
-                     "mat_peptide may not be translated because its CDS has a problem", # description
+  addToErrorInfoHash($err_info_HAR, "mn3", "feature",  0,
+                     "mat_peptide may not be translated because its CDS' length is not a multiple of 3", # description
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "maj", "feature",  0,
+                     "mat_peptide may not be translated because its CDS has an adjacency inconsistency", # description
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "mit", "feature",  0,
+                     "mat_peptide may not be translated because its CDS is incomplete due to an early stop", # description
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,
+                     "mat_peptide may not be translated because its CDS is not complete", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
                      "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
@@ -1638,6 +1657,7 @@ sub initializeHardCodedErrorInfoHash {
   # "nm3", "ext", "ntr", "nst", "stp", "trc", "ctr" were invalidated by "m5e" and "m3e" in 0.44, but not 0.45
   # "trc" "
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nm3", "b5e,b3e", $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mn3", "b5e,b3e,m5e,m3e", $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ext", "b5e,b3e", $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ntr", "b5e,b3e", $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nst", "b5e,b3e", $FH_HR);
@@ -1653,8 +1673,8 @@ sub initializeHardCodedErrorInfoHash {
 #  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,trc",         $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "trc",         $FH_HR);
 
-  # mip and ntr are preferred to mtr
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mtr", "mip,ntr", $FH_HR);
+  # mxi and ntr are preferred to mit
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mit", "mxi,ntr", $FH_HR);
 
   # validate the error info hash
   validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
