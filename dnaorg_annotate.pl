@@ -953,7 +953,12 @@ my $cmalign_stdout_file = $out_root . ".cmalign.stdout";
 my $cmalign_ifile_file  = $out_root . ".cmalign.ifile";
 cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
                          $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
-exit 0;
+
+my $nmxo_errors = scalar(@overflow_seq_A);
+if($nmxo_errors > 0) { 
+  add_mxo_errors(\@overflow_seq_A, \@overflow_mxsize_A, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
+}
+
 ####################################################################
 # Step 6. Parse homology search results into usable data structures
 ####################################################################
@@ -964,19 +969,17 @@ my @mdl_results_AAH = ();  # 1st dim: array, 0..$nmdl-1, one per model
                            # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_evalue", "p_fid2ref"
 initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
-# parse the cmscan results
-#parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
-
-# parse the ifile results
 # make an 'order hash' for the sequence names,
-my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
-getIndexHashForArray($seq_info_HA{"seq_name"}, \%seqname_index_H, $ofile_info_HH{"FH"});
+my %seq_name_index_H = (); # seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
+getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
 
-parse_cmalign_ifile($cmalign_ifile_file, \%seqname_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
+if($nseq > $nmxo_errors) { # at least 1 sequence was aligned
+  parse_cmalign_ifile($cmalign_ifile_file, \%seq_name_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
 
-# parse the cmalign alignments
-for(my $a = 0; $a < scalar(@stk_file_A); $a++) { 
-  parse_cmalign_stk($stk_file_A[$a], \%seqname_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+  # parse the cmalign alignments
+  for(my $a = 0; $a < scalar(@stk_file_A); $a++) { 
+    parse_cmalign_stk($stk_file_A[$a], \%seq_name_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+  }
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -1052,8 +1055,6 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #          stop codon, look for a downstream in-frame stop
 ####################################################################
 # TODO: make a function that performs this step
-my %seq_name_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
-getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
 
 my $ftr_idx;  # counter over features
 for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -1603,89 +1604,9 @@ sub validate_cms_built_from_reference {
 #################################################################
 #################################################################
 #
-#  Subroutines related to preparing CM files for searches:
-#    parse_cmscan_tblout()
+#  Subroutines related to parsing cmalign output
+#    parse_cmalign_ifile()
 #
-#################################################################
-# Subroutine : parse_cmscan_tblout()
-# Incept:      EPN, Tue Mar  1 13:56:46 2016
-#
-# Purpose:    Parse Infernal 1.1 cmscan --tblout output and store
-#             results in $mdl_results_AAH.
-#
-# Arguments: 
-#  $tblout_file:      tblout file to parse
-#  $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:     REF to hash of arrays with sequence information, PRE-FILLED
-#  $mdl_results_AAHR: REF to results AAH, FILLED HERE
-#  $FH_HR:            REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       if we find a hit to a model or sequence that we don't
-#             have stored in $mdl_info_HAR or $seq_name_AR
-#
-################################################################# 
-sub parse_cmscan_tblout { 
-  my $sub_name = "parse_cmscan_tblout()";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($tblout_file, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $FH_HR) = @_;
-  
-  # make an 'order hash' for the model names and sequence names,
-  my %mdlname_index_H = (); # mdlname_index_H{$model_name} = <n>, means that $model_name is the <n>th model in the @{$mdl_info_HAR{*}} arrays
-  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
-  getIndexHashForArray($mdl_info_HAR->{"cmname"},   \%mdlname_index_H, $FH_HR);
-  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seqname_index_H, $FH_HR);
-
-  open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
-
-  my $did_field_check = 0; # set to '1' below after we check the fields of the file
-  my $line_ctr = 0;  # counts lines in tblout_file
-  while(my $line = <IN>) { 
-    $line_ctr++;
-    if(($line =~ m/^\#/) && (! $did_field_check)) { 
-      # sanity check, make sure the fields are what we expect
-      if($line !~ m/#target name\s+accession\s+query name\s+accession\s+mdl\s+mdl\s+from\s+mdl to\s+seq from\s+seq to\s+strand\s+trunc\s+pass\s+gc\s+bias\s+score\s+E-value inc description of target/) { 
-        DNAORG_FAIL("ERROR in $sub_name, unexpected field names in $tblout_file\n$line\n", 1, $FH_HR);
-      }
-      $did_field_check = 1;
-    }
-    elsif($line !~ m/^\#/) { 
-      chomp $line;
-      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
-      # example line:
-      #Maize-streak_r23.NC_001346.ref.mft.4        -         NC_001346:genome-duplicated:NC_001346:1:2689:+:NC_001346:1:2689:+: -          cm        1      819     2527     1709      -    no    1 0.44   0.2  892.0         0 !   -
-      my @elA = split(/\s+/, $line);
-      my ($mdlname, $seqname, $mod, $mdlfrom, $mdlto, $from, $to, $strand, $score, $evalue) = 
-          ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
-
-      if(! exists $mdlname_index_H{$mdlname}) { 
-        DNAORG_FAIL("ERROR in $sub_name, do not have information for model $mdlname read in $tblout_file on line $line_ctr", 1, $FH_HR);
-      }
-      if(! exists $seqname_index_H{$seqname}) { 
-        DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $tblout_file on line $line_ctr", 1, $FH_HR);
-      }
-
-      my $mdlidx = $mdlname_index_H{$mdlname}; # model    index for the hit in results_AAH (1st dim of results_AAH)
-      my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
-      my $mdllen = $mdl_info_HAR->{"length"}[$mdlidx]; # model length, used to determine how far hit is from boundary of the model
-      if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
-      }
-      my $accn_len = $seq_info_HAR->{"accn_len"}[$seqidx]; # accession length, used to exclude storing of hits that start and stop after $seqlen, 
-                                                           # which can occur in circular genomes, where we've duplicated the sequence
-      my $seq_len  = $seq_info_HAR->{"seq_len"}[$seqidx]; # total length of sequence searched, could be $accn_len or two times $accn_len if -c used
-
-      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $score, $FH_HR);
-    }
-  }
-  close(IN);
-  
-  return;
-}
-
 #################################################################
 # Subroutine : parse_cmalign_ifile()
 # Incept:      EPN, Thu Jan 31 13:06:54 2019
@@ -1694,12 +1615,12 @@ sub parse_cmscan_tblout {
 #             results in %{$seq_info_HR}.
 #
 # Arguments: 
-#  $ifile_file:     ifile file to parse
-#  $seqname_idx_HR: REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
-#                   seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
-#                   in @{$seq_info_HAR{*}} arrays
-#  $seq_info_HAR:   REF to hash of arrays with sequence information, PRE-FILLED
-#  $FH_HR:          REF to hash of file handles
+#  $ifile_file:        ifile file to parse
+#  $seq_name_index_HR: REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
+#                      seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
+#                      in @{$seq_info_HAR{*}} arrays
+#  $seq_info_HAR:      REF to hash of arrays with sequence information, PRE-FILLED
+#  $FH_HR:             REF to hash of file handles
 #
 # Returns:    void
 #
@@ -1709,13 +1630,13 @@ sub parse_cmscan_tblout {
 ################################################################# 
 sub parse_cmalign_ifile { 
   my $sub_name = "parse_cmalign_ifile()";
-  my $nargs_exp = 4;
+  my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($ifile_file, $seqname_index_HR, $seq_info_HAR, $FH_HR) = @_;
+  my ($ifile_file, $seq_name_index_HR, $seq_info_HAR, $FH_HR) = @_;
   
   # initialize the arrays
-  my $nseq = scalar(keys %{$seqname_index_HR});
+  my $nseq = scalar(keys %{$seq_name_index_HR});
   @{$seq_info_HAR->{"ifile_spos"}} = ();
   @{$seq_info_HAR->{"ifile_epos"}} = ();
   @{$seq_info_HAR->{"ifile_ins"}}  = ();
@@ -1744,10 +1665,10 @@ sub parse_cmalign_ifile {
           DNAORG_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", 1, $FH_HR);
         }          
         my ($seqname, $seq_len, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
-        if(! exists $seqname_index_HR->{$seqname}) { 
+        if(! exists $seq_name_index_HR->{$seqname}) { 
           DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $ifile_file on line $line_ctr", 1, $FH_HR);
         }
-        my $seqidx = $seqname_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+        my $seqidx = $seq_name_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
         if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
           DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
         }
@@ -1776,14 +1697,14 @@ sub parse_cmalign_ifile {
 # Subroutine : parse_cmalign_stk()
 # Incept:      EPN, Thu Jan 31 13:06:54 2019
 #
-# Purpose:    Parse Infernal 1.1 cmalign stockholm alignment and store
-#             results in %{$seq_file_spos_HR}, %{$seq_file_epos_HR}, 
+# Purpose:    Parse Infernal 1.1 cmalign stockholm alignment file
+#             and store results in @{$mdl_results_AAHR}. 
 #             and %{$seq_file_inserts_HAR}.
 #
 # Arguments: 
 #  $stk_file:         stockholm alignment file to parse
-#  $seqname_idx_HR:   REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
-#                     seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
+#  $seq_name_index_HR:   REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
+#                     seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
 #                     in @{$seq_info_HAR{*}} arrays
 #  $seq_info_HAR:     REF to hash of arrays with sequence information, PRE-FILLED
 #  $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
@@ -1800,7 +1721,7 @@ sub parse_cmalign_stk {
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($stk_file, $seqname_index_HR, $seq_info_HAR, $mdl_info_HAR, $mdl_results_AAHR, $FH_HR) = @_;
+  my ($stk_file, $seq_name_index_HR, $seq_info_HAR, $mdl_info_HAR, $mdl_results_AAHR, $FH_HR) = @_;
 
   # create an ESL_MSA object from the alignment
   # open and validate file
@@ -1848,10 +1769,10 @@ sub parse_cmalign_stk {
   # for each sequence, go through all models and fill in the start and stop (unaligned seq) positions
   for(my $i = 0; $i < $nseq; $i++) { 
     my $seqname = $msa->get_sqname($i);
-    if(! exists $seqname_index_HR->{$seqname}) { 
+    if(! exists $seq_name_index_HR->{$seqname}) { 
       DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname from alignment in $stk_file", 1, $FH_HR);
     }
-    my $seqidx = $seqname_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+    my $seqidx = $seq_name_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
     if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
       DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
     }
@@ -2336,7 +2257,6 @@ sub combine_model_hits {
     } # end of 'if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model")'
   }
 
-  printf("HEYA returning ret_seqname_maxlen: $ret_seqname_maxlen\n");
   return $ret_seqname_maxlen;
 }
 
@@ -10210,8 +10130,8 @@ sub aorg_parse_cmscan_tblout_s2 {
   
   my ($tblout_file, $seq_info_HAR, $hit_HHR, $opt_HHR, $FH_HR) = @_;
   
-  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
-  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seqname_index_H, $FH_HR);
+  my %seq_name_index_H = (); # seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
+  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seq_name_index_H, $FH_HR);
 
   open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
 
@@ -10236,7 +10156,7 @@ sub aorg_parse_cmscan_tblout_s2 {
       my ($mdlname, $seqname, $mod, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $score, $evalue) = 
           ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
 
-      my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+      my $seqidx = $seq_name_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
       my $seqlen = $seq_info_HAR->{"accn_len"}[$seqidx];
 
       # only consider hits where either the start or end are less than the total length
@@ -11273,6 +11193,7 @@ sub helper_blastx_breakdown_query {
   return ($ret_seqname, $ret_coords_str, $ret_len);
 }
 
+#################################################################
 # Subroutine: add_zft_errors()
 # Incept:     EPN, Thu Jan 24 12:31:16 2019
 # Purpose:    Adds zft errors for sequences with 0 predicted features
@@ -11332,6 +11253,41 @@ sub add_zft_errors {
     if($seq_nftr == 0) { 
       error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "zft", $seq_name, "-", $FH_HR);
     }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: add_mxo_errors()
+# Incept:     EPN, Thu Feb  7 11:54:56 2019
+# Purpose:    Adds mxo errors for sequences listed in the array @overflow_seq_A, if any.
+#
+# Arguments:
+#  $overflow_seq_AR:         REF to array of sequences that failed due to matrix overflows, pre-filled
+#  $overflow_mxsize_AR:      REF to array of required matrix sizes for each sequence that failed due to matrix overflows, pre-filled
+#  $err_seq_instances_HHR:   REF to 2D hash with per-sequence errors, PRE-FILLED
+#  $err_info_HAR:            REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:          REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub add_mxo_errors { 
+  my $sub_name = "add_mxo_errors";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($overflow_seq_AR, $overflow_mxsize_AR, $err_seq_instances_HHR, $err_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+
+  my $noverflow = scalar(@{$overflow_seq_AR});
+  for(my $s = 0; $s < $noverflow; $s++) { 
+    error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "mxo", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
   }
 
   return;

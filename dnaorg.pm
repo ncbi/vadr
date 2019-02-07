@@ -1611,6 +1611,11 @@ sub initializeHardCodedErrorInfoHash {
                      1, 0, "", "No Features Annotated: (*sequence*) zero annotated features", # feature table info: valid, pred_stop, note, err
                      $FH_HR); 
 
+  addToErrorInfoHash($err_info_HAR, "mxo", "sequence", 0, # code, per-type, maybe-allowed
+                     "sequence too distant from reference to annotate", # description
+                     1, 0, "", "Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation", # feature table info: valid, pred_stop, note, err
+                     $FH_HR); 
+
   # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "aji,int,inp", $FH_HR); 
   setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext,b5e", $FH_HR);
@@ -1652,6 +1657,9 @@ sub initializeHardCodedErrorInfoHash {
 
   # mip and ntr are preferred to mtr
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mtr", "mip,ntr", $FH_HR);
+
+  # mxo is preferred to zft
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "zft", "mxo", $FH_HR);
 
   # validate the error info hash
   validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
@@ -8377,7 +8385,7 @@ sub cmalignOrNhmmscanWrapper {
       }
       else { 
         # more than one sequence file we need to rerun for each
-        cmalignOrNhmmscanWrapperHelper($execs_HR, $do_cmalign, $out_root, $progress_w,
+        cmalignOrNhmmscanWrapperHelper($execs_HR, $do_cmalign, $out_root, -1 * $progress_w, # passing in $progress_w < 0 is our flag that we are 'rerunning'
                                        \@r2_seq_file_A, \%r2_out_file_HA, \@r2_success_A, \@r2_mxsize_A, 
                                        $mdl_filename, $opt_HHR, $ofile_info_HHR);
       }
@@ -8400,7 +8408,6 @@ sub cmalignOrNhmmscanWrapper {
             my $overflow_seq = $1;
             push(@{$overflow_seq_AR},    $overflow_seq);
             push(@{$overflow_mxsize_AR}, $r2_mxsize_A[$r2_i]);
-            printf("HEYAA seq overflow: $overflow_seq $r2_mxsize_A[$r2_i]\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name failed to parse sequence name from matrix overflow sequence:\n$r2_seqstring", 1, $ofile_info_HHR->{"FH"});
@@ -8452,7 +8459,7 @@ sub cmalignOrNhmmscanWrapper {
 #                          defined as keys
 #  $do_cmalign:            '1' if we are running cmalign, '0' if we are running nhmmscan
 #  $out_root:              string for naming output files
-#  $progress_w:            width for outputProgressPrior output
+#  $progress_w:            width for outputProgressPrior output, -1 * $progress_w if we are calling this to rerun cmalign again
 #  $seq_file_AR:           ref to array of sequence file names for each cmalign/nhmmscan call, PRE-FILLED
 #  $out_file_HAR:          ref to hash of arrays of output file names, FILLED HERE 
 #  $success_AR:            ref to array of success values, 
@@ -8483,8 +8490,26 @@ sub cmalignOrNhmmscanWrapperHelper {
   my $log_FH         = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $nseq_files     = scalar(@{$seq_file_AR});
 
-  my $start_secs = outputProgressPrior(sprintf("%s", ($do_local) ? "Running $program_choice locally" : "Submitting $nseq_files $program_choice jobs to the farm"), 
-                                       $progress_w, $log_FH, *STDOUT);
+  my $desc = "";
+  if($do_local) { 
+    if($progress_w < 0) { # flag for 'rerunning'
+      $desc = "Rerunning $program_choice locally to find sequences that are too divergent to align";
+      $progress_w *= -1;
+    }
+    else { 
+      $desc = "Running $program_choice locally";
+    }
+  }      
+  else { 
+    if($progress_w < 0) { # flag for 'rerunning'
+      $desc = "Resubmitting $nseq_files $program_choice jobs to the farm to find seqs too divergent to align";
+      $progress_w *= -1;
+    }
+    else { 
+      $desc = "Submitting $nseq_files $program_choice jobs to the farm"
+    }
+  }
+  my $start_secs = outputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
 
   # define output file names
   %{$out_file_HAR} = ();
