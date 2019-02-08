@@ -229,7 +229,7 @@ opt_Add("-h",           "boolean", 0,                        0,    undef, undef,
 opt_Add("-c",           "boolean", 0,                       $g,    undef, undef,      "genome is closed (a.k.a. circular)",                          "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,                       $g,"--dirout",undef,      "forcing directory overwrite (with --dirout)",                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                   $g,    undef, undef,   "output directory specified as",                                  "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string",  undef,                   $g,    undef, undef,      "output directory specified as",                                  "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--dirbuild",   "string",  undef,                   $g,"--dirout",   undef,   "output directory used for dnaorg_build.pl",                   "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--origin",     "string",  undef,                   $g,     "-c", undef,      "identify origin seq <s> in genomes",                          "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                   $g,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
@@ -756,7 +756,6 @@ if(opt_IsUsed("--dfeat", \%opt_HH)) {
 #  4) parses the edirect .mat_peptide file, if necessary
 #  5) parses the edirect .ftable file
 #  6) parses the length file
-
 my $orig_infasta_file = $infasta_file;
 my $outfasta_file     = (opt_Get("-c", \%opt_HH)) ? $out_root . ".fg.fa" : undef;
 if(defined $infasta_file) { 

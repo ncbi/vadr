@@ -808,8 +808,8 @@ sub getReferenceFeatureInfo {
 #  $build_root:        root of file names created by dnaorg_build.pl
 #  $mdl_info_HAR:      ref to hash of arrays with information on the models, FILLED HERE
 #  $ftr_info_HAR:      ref to hash of arrays with information on the features, ADDED TO HERE
-#  $all_stk_file:      name of output file we will write the stockholm single sequence 
-#                      alignments of all features to
+#  $stk_file:          name of output file we will write the stockholm single sequence 
+#                      'alignment' to
 #  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $FH_HR:             REF to hash of file handles, including "log" and "cmd"
 #
@@ -822,7 +822,7 @@ sub fetchReferenceFeatureSequences {
   my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $sqfile, $ref_seq_accn, $ref_totlen, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR) = @_;
+  my ($execs_HR, $sqfile, $ref_seq_accn, $ref_totlen, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $stk_file, $opt_HHR, $FH_HR) = @_;
 
   # contract check
 
@@ -857,6 +857,25 @@ sub fetchReferenceFeatureSequences {
   my @indi_cksum_stk_A  = (); # [0..$nmdl-1]: checksum's of each named individual stockholm alignment
 
   my @files2rm_A = ();  # array of file names to remove at end of this function (remains empty if $do_keep)
+
+  my $cksum  = -1;
+  my $mdllen = undef;
+  my $model_name = removeScriptNameFromString(removeDirPath($build_root)); 
+  printf("HEYA model_name: $model_name\n");
+
+  if(! $do_infasta) { 
+    # fetch the sequence and convert it to stockholm
+    my @fetch_A = ($ref_seq_accn);
+    my $fa_file = $out_root . ".ref.fa";
+    $sqfile->fetch_seqs_given_names(\@fetch_A, 60, $fa_file);
+    my $tmp_stk_file = $stk_file . ".tmp";
+    my $cmd = "$esl_reformat --informat afa stockholm $fa_file > $tmp_stk_file";
+    runCommand($cmd, 0, 0, $FH_HR);
+    if(! $do_keep) { push(@files2rm_A, $tmp_stk_file); }
+    
+    # annotate the stockholm file with a blank SS and with a name
+    my (undef, $cksum) = addNameAndBlankSsToStockholmAlignment($model_name, 1, $tmp_stk_file, $stk_file, $FH_HR); # 1: add blank SS_cons line
+  }
 
   for(my $i = 0; $i < $nftr; $i++) { 
     my $type_fname    = $ftr_info_HAR->{"type_fname"}[$i];
@@ -907,43 +926,10 @@ sub fetchReferenceFeatureSequences {
           $stop  = $tmp;
         }
 
-        my @fetch_AA = ();
-        my $cksum  = undef;
-        my $mdllen = undef;
-        if($do_infasta) { 
-          # do not actually fetch any sequence
-          $cksum  = -1; 
-          $mdllen = abs($stop-$start)+1;
-        }
-        else { 
-          # $do_infasta is false, fetch the sequence
-          push(@fetch_AA, [$cur_out_name_root, $start, $stop, $ref_seq_accn]);
+        $mdllen = abs($stop-$start)+1;
 
-          # fetch the sequence
-          my $cur_fafile = $cur_out_root . ".fa";
-          $sqfile->fetch_subseqs(\@fetch_AA, undef, $cur_fafile);
-          if(! $do_keep) { push(@files2rm_A, $cur_fafile); }
-          
-          # reformat to stockholm
-          my $cur_stkfile = $cur_out_root . ".stk";
-          my $cmd = "$esl_reformat --informat afa stockholm $cur_fafile > $cur_stkfile";
-          runCommand($cmd, 0, 0, $FH_HR);
-          if(! $do_keep) { push(@files2rm_A, $cur_stkfile); }
-    
-          # annotate the stockholm file with a blank SS and with a name
-          my $cur_named_stkfile = $cur_out_root . ".named.stk";
-          ($mdllen, $cksum) = addNameAndBlankSsToStockholmAlignment($cur_out_name_root, 1, $cur_stkfile, $cur_named_stkfile, $FH_HR); # 1: add blank SS_cons line
-          if(! $do_keep) { push(@files2rm_A, $cur_named_stkfile); }
-          
-          # now append the named alignment to the growing stockholm alignment database $all_stk_file
-          $cmd = "cat $cur_named_stkfile";
-          if($nmdl == 0) { $cmd .= " >  $all_stk_file"; }
-          else           { $cmd .= " >> $all_stk_file"; }
-          runCommand($cmd, 0, 0, $FH_HR);
-        }
-
-        $mdl_info_HAR->{"cmname"}[$nmdl]     = $cur_build_name_root;
-        $mdl_info_HAR->{"checksum"}[$nmdl]   = $cksum;
+        $mdl_info_HAR->{"cmname"}[$nmdl]     = $model_name; # will be the same for all models
+        $mdl_info_HAR->{"checksum"}[$nmdl]   = $cksum;      # will be the same for all models
         $mdl_info_HAR->{"length"}[$nmdl]     = $mdllen;
         $mdl_info_HAR->{"ref_start"}[$nmdl]  = $start;
         $mdl_info_HAR->{"ref_stop"}[$nmdl]   = $stop;
@@ -3179,13 +3165,11 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
 
   # 4) fetch the reference feature sequences and populate information on the models and features
   #    we won't actually fetch the reference sequence if --infasta is used (which is why $ref_seqname is undef if --infasta)
-  my $ref_seqname  = ($do_infasta) ? undef          : $seq_info_HAR->{"seq_name"}[0]; # the reference sequence name the fetched sequence file $fasta_file
-  my $all_stk_file = $out_root . ".ref.all.stk";     # name of output alignment file we are about to create, each single reference feature 
-                                                     # sequence is a separate 'Stockholm (stk) alignment', and this single file contains all such 
-                                                     # separate alignments, one per feature
-  fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_accnlen, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $all_stk_file, $opt_HHR, $FH_HR); 
+  my $ref_seqname = ($do_infasta) ? undef  : $seq_info_HAR->{"seq_name"}[0]; # the reference sequence name the fetched sequence file $fasta_file
+  my $stk_file    = $out_root . ".ref.stk";     # name of output alignment file we are about to create, with the single full sequence as the 'alignment'
+  fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_accnlen, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $stk_file, $opt_HHR, $FH_HR); 
   if(! $do_infasta) { 
-    addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $all_stk_file, 0, "Stockholm alignment file with reference features");
+    addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $stk_file, 0, "Stockholm alignment file with reference sequence");
   }
 
   # 5) look for special cases, where we want to append the 3 nt 3' of the final mature peptide in a cds-mp feature type
