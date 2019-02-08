@@ -1613,7 +1613,7 @@ sub initializeHardCodedErrorInfoHash {
 
   addToErrorInfoHash($err_info_HAR, "mxo", "sequence", 0, # code, per-type, maybe-allowed
                      "sequence too distant from reference to annotate", # description
-                     1, 0, "", "Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation", # feature table info: valid, pred_stop, note, err
+                     1, 0, "", "Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation !DESC!", # feature table info: valid, pred_stop, note, err
                      $FH_HR); 
 
   # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
@@ -8387,7 +8387,9 @@ sub cmalignOrNhmmscanWrapper {
       }
       else { 
         # more than one sequence file we need to rerun for each
-        cmalignOrNhmmscanWrapperHelper($execs_HR, $do_cmalign, $out_root, -1 * $progress_w, # passing in $progress_w < 0 is our flag that we are 'rerunning'
+        cmalignOrNhmmscanWrapperHelper($execs_HR, $do_cmalign, 
+                                       $out_root . ".s" . $r1_i,  # make sure we add r1 suffix to $out_root to avoid clobbering cmalign output files from r1
+                                       -1 * $progress_w,          # passing in $progress_w < 0 is our flag that we are 'rerunning'
                                        \@r2_seq_file_A, \%r2_out_file_HA, \@r2_success_A, \@r2_mxsize_A, 
                                        $mdl_filename, $opt_HHR, $ofile_info_HHR);
       }
@@ -8630,7 +8632,7 @@ sub runCmalign {
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
-  my $opts = sprintf(" --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
+  my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
   if(! opt_Get("--noglocal",   $opt_HHR)) { $opts .= " -g"; }
   if(! opt_Get("--nofixedtau", $opt_HHR)) { $opts .= " --fixedtau"; }
   
@@ -8651,6 +8653,7 @@ sub runCmalign {
     my $job_name = "J" . $seq_file;
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 2; # multiply --mxsize Gb by 2 to be safe
+    if($mem_gb < 8.) { $mem_gb = 8.; } # set minimum of 8 Gb
     submitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
   }
 
@@ -8700,8 +8703,8 @@ sub runNhmmscan {
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
-  my $opts = (opt_Get("-v", $opt_HHR)) ? "" : " --noali";
-  $opts   .= " --cpu 0 --tblout $tblout_file";
+  my $opts = " --cpu 0 --tblout $tblout_file";
+  if(opt_Get("-v", $opt_HHR)) { $opts .= " --noali"; }
 
   # remove the tblout file or stdout files if they exist
   if(-e $stdout_file) { removeFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }

@@ -943,7 +943,9 @@ if($nseq > $nmxo_errors) { # at least 1 sequence was aligned
 
   # parse the cmalign alignments
   for(my $a = 0; $a < scalar(@stk_file_A); $a++) { 
-    parse_cmalign_stk($stk_file_A[$a], \%seq_name_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+    if(-s $stk_file_A[$a]) { # skip empty alignments, which will exist for any r1 run that fails
+      parse_cmalign_stk($stk_file_A[$a], \%seq_name_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+    }
   }
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -4449,7 +4451,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop
   } # end of 'for($mdl_idx' loop
-  printf("leaving $sub_name\n");
+
   return;
 }      
 
