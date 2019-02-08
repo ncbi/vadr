@@ -256,11 +256,12 @@ opt_Add("--classerrors","string",  0,                      $g,    undef,   undef
 opt_Add("--allolp",     "boolean", 0,                      $g,    undef,   undef,   "report all olp errors, do not skip due to nop",    "report all olp errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
 opt_Add("--alladj",     "boolean", 0,                      $g,    undef,   undef,   "report all adj errors, do not skip due to nop",    "report all aja/ajb errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for changing search sensitivity modes";
-#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--midthresh",  "integer", 75,                      $g,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",  "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--smallthresh","integer", 30,                      $g,    undef, undef,      "set max model length for using max sensitivity mode to <n>",  "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--hmmonly",    "integer", 0,                       $g,    undef, undef,      "run in HMM-only mode for models with len >= <n>",             "run in HMM-only mode for models with >= <n> positions", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for modifying cmalign runs";
+#        option               type   default                group  requires incompat   preamble-output                                                                help-output    
+opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
+opt_Add("--tau",        "real",    1E-7,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--noglocal",   "boolean", 0,                       $g,    undef, undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "do not fix the tau value when running cmalign, allow it to decrease if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
@@ -273,7 +274,7 @@ opt_Add("--wait",       "integer", 500,                     $g,    undef,"--loca
 $opt_group_desc_H{++$g} = "options for skipping/adding optional stages";
 #       option               type   default                group  requires incompat preamble-output                             help-output    
 opt_Add("--doalign",    "boolean", 0,                      $g,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
-opt_Add("--mxsize",     "integer", 2048,                   $g, "--doalign",undef,   "with --doalign, set --mxsize <n> to <n>",                     "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--amxsize",    "integer", 2048,                   $g, "--doalign",undef,   "with --doalign, set --mxsize <n> to <n>",  "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options that modify the tabular output file";
 #       option               type   default                group  requires incompat preamble-output                                               help-output    
@@ -338,9 +339,10 @@ my $options_okay =
                 'allolp'        => \$GetOptions_H{"--allolp"},
                 'alladj'        => \$GetOptions_H{"--alladj"},
 # options for changing search sensitivity modes
-                'midthresh=s'  => \$GetOptions_H{"--midthresh"},
-                'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
-                'hmmonly=s'    => \$GetOptions_H{"--hmmonly"},
+                'mxsize=s'     => \$GetOptions_H{"--mxsize"},
+                'tau=s'        => \$GetOptions_H{"--tau"},
+                'noglocal'     => \$GetOptions_H{"--noglocal"},
+                'nofixedtau'   => \$GetOptions_H{"--nofixedtau"},
 # options related to parallelization
                 'local'        => \$GetOptions_H{"--local"}, 
                 'errcheck'     => \$GetOptions_H{"--errcheck"},  
@@ -349,7 +351,7 @@ my $options_okay =
                 'wait=s'       => \$GetOptions_H{"--wait"},
 # options for skipping/adding optional stages
                 'doalign'      => \$GetOptions_H{"--doalign"},
-                'mxsize=s'     => \$GetOptions_H{"--mxsize"},
+                'amxsize=s'    => \$GetOptions_H{"--amxsize"},
 # options that affect tabular output file
                 'tblfirst'     => \$GetOptions_H{"--tblfirst"},
                 'tblnocomp'    => \$GetOptions_H{"--tblnocomp"},
@@ -448,43 +450,6 @@ if(opt_Get("--infasta", \%opt_HH)) {
   $do_infasta = 1;
 }
 
-# if --smallthresh or --midthresh or --hmmonly used, validate that the thresholds make sense:
-# small < mid < df < hmmonly
-if(opt_IsUsed("--smallthresh", \%opt_HH)) { 
-  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--midthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
-  }
-  if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
-    if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--hmmonly", \%opt_HH)) { 
-      die sprintf("ERROR, with --smallthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                  opt_Get("--smallthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-    }
-  }
-}
-if(opt_IsUsed("--midthresh", \%opt_HH)) { 
-  if(opt_Get("--midthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
-  }
-  if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
-    if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--hmmonly", \%opt_HH)) { 
-      die sprintf("ERROR, with --midthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                  opt_Get("--midthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-    }
-  }
-}
-if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
-  if(opt_Get("--hmmonly", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-  }
-  if(opt_Get("--hmmonly", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --midthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--midthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-  }
-}
-
 ###############
 # Preliminaries
 ###############
@@ -563,7 +528,7 @@ else {
     if(-d $dir_out) { 
       $cmd = "rm -rf $dir_out";
       if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
-        runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); 
+        runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); 
       }
       else { # dirout exists but -f not used
         if(! ((opt_IsUsed("--skipedirect",   \%opt_HH)) || 
@@ -577,7 +542,7 @@ else {
     }
     elsif(-e $dir_out) { 
       $cmd = "rm $dir_out";
-      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
       else                        { die "ERROR a file named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
     }
   }
@@ -585,7 +550,7 @@ else {
 # if $dir_out does not exist, create it
 if(! -d $dir_out) {
   $cmd = "mkdir $dir_out";
-  runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd);
+  runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd);
 }
 
 my $dir_out_tail   = $dir_out;
@@ -940,16 +905,24 @@ if(opt_IsUsed("--aorgmodel", \%opt_HH)) {
 ####################################
 my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
 validateFileExistsAndIsNonEmpty($seq_file, "dnaorg_annotate.pl:main", $ofile_info_HH{"FH"});
-
 my $tot_len_nt = sumArray(\@{$seq_info_HA{"seq_len"}});
 my $mdl_file = $mdl_info_HA{"cmfile"}[0];
 $mdl_file =~ s/\.\d+\.cm$/.cm/; 
 
 my $ifile_file = $out_root . ".ifile"; # concatenated --ifile output files, created by concatenating all of the individual 
                                        # ifile files in cmalignOrNhmmscanWrapper()
-my @stk_file_A = (); # array of all stk output files created in cmalignOrNhmmscanWrapper()
-cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $ifile_file, $progress_w, 
-                         $mdl_file, \@stk_file_A, \%opt_HH, \%ofile_info_HH);
+my @stk_file_A        = (); # array of all stk output files created in cmalignOrNhmmscanWrapper()
+my @overflow_seq_A    = (); # array of sequences that fail cmalign b/c required matrix was too big
+my @overflow_mxsize_A = (); # array of required matrix sizes for each sequence in @overflow_seq_A
+my $cmalign_stdout_file = $out_root . ".cmalign.stdout";
+my $cmalign_ifile_file  = $out_root . ".cmalign.ifile";
+cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
+                         $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+
+my $nmxo_errors = scalar(@overflow_seq_A);
+if($nmxo_errors > 0) { 
+  add_mxo_errors(\@overflow_seq_A, \@overflow_mxsize_A, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
+}
 
 ####################################################################
 # Step 6. Parse homology search results into usable data structures
@@ -961,18 +934,20 @@ my @mdl_results_AAH = ();  # 1st dim: array, 0..$nmdl-1, one per model
                            # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_evalue", "p_fid2ref"
 initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
-# parse the cmscan results
-#parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
-
-# parse the ifile results
 # make an 'order hash' for the sequence names,
-my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
-getIndexHashForArray($seq_info_HA{"seq_name"}, \%seqname_index_H, $ofile_info_HH{"FH"});
+my %seq_name_index_H = (); # seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
+getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
 
-parse_cmalign_ifile($ifile_file, \%seqname_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
+if($nseq > $nmxo_errors) { # at least 1 sequence was aligned
+  parse_cmalign_ifile($cmalign_ifile_file, \%seq_name_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
 
-# parse the cmalign alignments
-parse_cmalign_stk($stk_file_A[0], \%seqname_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+  # parse the cmalign alignments
+  for(my $a = 0; $a < scalar(@stk_file_A); $a++) { 
+    if(-s $stk_file_A[$a]) { # skip empty alignments, which will exist for any r1 run that fails
+      parse_cmalign_stk($stk_file_A[$a], \%seq_name_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+    }
+  }
+}
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the lengths of features
@@ -1047,8 +1022,6 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #          stop codon, look for a downstream in-frame stop
 ####################################################################
 # TODO: make a function that performs this step
-my %seq_name_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
-getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
 
 my $ftr_idx;  # counter over features
 for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -1598,89 +1571,9 @@ sub validate_cms_built_from_reference {
 #################################################################
 #################################################################
 #
-#  Subroutines related to preparing CM files for searches:
-#    parse_cmscan_tblout()
+#  Subroutines related to parsing cmalign output
+#    parse_cmalign_ifile()
 #
-#################################################################
-# Subroutine : parse_cmscan_tblout()
-# Incept:      EPN, Tue Mar  1 13:56:46 2016
-#
-# Purpose:    Parse Infernal 1.1 cmscan --tblout output and store
-#             results in $mdl_results_AAH.
-#
-# Arguments: 
-#  $tblout_file:      tblout file to parse
-#  $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:     REF to hash of arrays with sequence information, PRE-FILLED
-#  $mdl_results_AAHR: REF to results AAH, FILLED HERE
-#  $FH_HR:            REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       if we find a hit to a model or sequence that we don't
-#             have stored in $mdl_info_HAR or $seq_name_AR
-#
-################################################################# 
-sub parse_cmscan_tblout { 
-  my $sub_name = "parse_cmscan_tblout()";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($tblout_file, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $FH_HR) = @_;
-  
-  # make an 'order hash' for the model names and sequence names,
-  my %mdlname_index_H = (); # mdlname_index_H{$model_name} = <n>, means that $model_name is the <n>th model in the @{$mdl_info_HAR{*}} arrays
-  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
-  getIndexHashForArray($mdl_info_HAR->{"cmname"},   \%mdlname_index_H, $FH_HR);
-  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seqname_index_H, $FH_HR);
-
-  open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
-
-  my $did_field_check = 0; # set to '1' below after we check the fields of the file
-  my $line_ctr = 0;  # counts lines in tblout_file
-  while(my $line = <IN>) { 
-    $line_ctr++;
-    if(($line =~ m/^\#/) && (! $did_field_check)) { 
-      # sanity check, make sure the fields are what we expect
-      if($line !~ m/#target name\s+accession\s+query name\s+accession\s+mdl\s+mdl\s+from\s+mdl to\s+seq from\s+seq to\s+strand\s+trunc\s+pass\s+gc\s+bias\s+score\s+E-value inc description of target/) { 
-        DNAORG_FAIL("ERROR in $sub_name, unexpected field names in $tblout_file\n$line\n", 1, $FH_HR);
-      }
-      $did_field_check = 1;
-    }
-    elsif($line !~ m/^\#/) { 
-      chomp $line;
-      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
-      # example line:
-      #Maize-streak_r23.NC_001346.ref.mft.4        -         NC_001346:genome-duplicated:NC_001346:1:2689:+:NC_001346:1:2689:+: -          cm        1      819     2527     1709      -    no    1 0.44   0.2  892.0         0 !   -
-      my @elA = split(/\s+/, $line);
-      my ($mdlname, $seqname, $mod, $mdlfrom, $mdlto, $from, $to, $strand, $score, $evalue) = 
-          ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
-
-      if(! exists $mdlname_index_H{$mdlname}) { 
-        DNAORG_FAIL("ERROR in $sub_name, do not have information for model $mdlname read in $tblout_file on line $line_ctr", 1, $FH_HR);
-      }
-      if(! exists $seqname_index_H{$seqname}) { 
-        DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $tblout_file on line $line_ctr", 1, $FH_HR);
-      }
-
-      my $mdlidx = $mdlname_index_H{$mdlname}; # model    index for the hit in results_AAH (1st dim of results_AAH)
-      my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
-      my $mdllen = $mdl_info_HAR->{"length"}[$mdlidx]; # model length, used to determine how far hit is from boundary of the model
-      if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
-      }
-      my $accn_len = $seq_info_HAR->{"accn_len"}[$seqidx]; # accession length, used to exclude storing of hits that start and stop after $seqlen, 
-                                                           # which can occur in circular genomes, where we've duplicated the sequence
-      my $seq_len  = $seq_info_HAR->{"seq_len"}[$seqidx]; # total length of sequence searched, could be $accn_len or two times $accn_len if -c used
-
-      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $score, $FH_HR);
-    }
-  }
-  close(IN);
-  
-  return;
-}
-
 #################################################################
 # Subroutine : parse_cmalign_ifile()
 # Incept:      EPN, Thu Jan 31 13:06:54 2019
@@ -1689,12 +1582,12 @@ sub parse_cmscan_tblout {
 #             results in %{$seq_info_HR}.
 #
 # Arguments: 
-#  $ifile_file:     ifile file to parse
-#  $seqname_idx_HR: REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
-#                   seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
-#                   in @{$seq_info_HAR{*}} arrays
-#  $seq_info_HAR:   REF to hash of arrays with sequence information, PRE-FILLED
-#  $FH_HR:          REF to hash of file handles
+#  $ifile_file:        ifile file to parse
+#  $seq_name_index_HR: REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
+#                      seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
+#                      in @{$seq_info_HAR{*}} arrays
+#  $seq_info_HAR:      REF to hash of arrays with sequence information, PRE-FILLED
+#  $FH_HR:             REF to hash of file handles
 #
 # Returns:    void
 #
@@ -1707,10 +1600,10 @@ sub parse_cmalign_ifile {
   my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($ifile_file, $seqname_index_HR, $seq_info_HAR, $FH_HR) = @_;
+  my ($ifile_file, $seq_name_index_HR, $seq_info_HAR, $FH_HR) = @_;
   
   # initialize the arrays
-  my $nseq = scalar(keys %{$seqname_index_HR});
+  my $nseq = scalar(keys %{$seq_name_index_HR});
   @{$seq_info_HAR->{"ifile_spos"}} = ();
   @{$seq_info_HAR->{"ifile_epos"}} = ();
   @{$seq_info_HAR->{"ifile_ins"}}  = ();
@@ -1739,10 +1632,10 @@ sub parse_cmalign_ifile {
           DNAORG_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", 1, $FH_HR);
         }          
         my ($seqname, $seq_len, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
-        if(! exists $seqname_index_HR->{$seqname}) { 
+        if(! exists $seq_name_index_HR->{$seqname}) { 
           DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $ifile_file on line $line_ctr", 1, $FH_HR);
         }
-        my $seqidx = $seqname_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+        my $seqidx = $seq_name_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
         if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
           DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
         }
@@ -1771,14 +1664,14 @@ sub parse_cmalign_ifile {
 # Subroutine : parse_cmalign_stk()
 # Incept:      EPN, Thu Jan 31 13:06:54 2019
 #
-# Purpose:    Parse Infernal 1.1 cmalign stockholm alignment and store
-#             results in %{$seq_file_spos_HR}, %{$seq_file_epos_HR}, 
+# Purpose:    Parse Infernal 1.1 cmalign stockholm alignment file
+#             and store results in @{$mdl_results_AAHR}. 
 #             and %{$seq_file_inserts_HAR}.
 #
 # Arguments: 
 #  $stk_file:         stockholm alignment file to parse
-#  $seqname_idx_HR:   REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
-#                     seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
+#  $seq_name_index_HR:   REF to hash of arrays with sequence index information in seq_info_HAR, PRE-FILLED
+#                     seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name 
 #                     in @{$seq_info_HAR{*}} arrays
 #  $seq_info_HAR:     REF to hash of arrays with sequence information, PRE-FILLED
 #  $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
@@ -1795,7 +1688,7 @@ sub parse_cmalign_stk {
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($stk_file, $seqname_index_HR, $seq_info_HAR, $mdl_info_HAR, $mdl_results_AAHR, $FH_HR) = @_;
+  my ($stk_file, $seq_name_index_HR, $seq_info_HAR, $mdl_info_HAR, $mdl_results_AAHR, $FH_HR) = @_;
 
   # create an ESL_MSA object from the alignment
   # open and validate file
@@ -1843,10 +1736,10 @@ sub parse_cmalign_stk {
   # for each sequence, go through all models and fill in the start and stop (unaligned seq) positions
   for(my $i = 0; $i < $nseq; $i++) { 
     my $seqname = $msa->get_sqname($i);
-    if(! exists $seqname_index_HR->{$seqname}) { 
+    if(! exists $seq_name_index_HR->{$seqname}) { 
       DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname from alignment in $stk_file", 1, $FH_HR);
     }
-    my $seqidx = $seqname_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+    my $seqidx = $seq_name_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
     if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
       DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
     }
@@ -1865,12 +1758,12 @@ sub parse_cmalign_stk {
     if($seq_info_HAR->{"ifile_ins"}[$seqidx] ne "") { 
       my @ins_A = split(";", $seq_info_HAR->{"ifile_ins"}[$seqidx]); 
       foreach my $ins_tok (@ins_A) { 
-        printf("ins_tok: $ins_tok\n");
+        #printf("ins_tok: $ins_tok\n");
         if($ins_tok =~ /^(\d+)\:(\d+)\:(\d+)$/) { 
           my ($i_rfpos, $i_uapos, $i_len) = ($1, $2, $3);
           $rf2ipos_A[$i_rfpos] = $i_uapos;
           $rf2ilen_A[$i_rfpos] = $i_len;
-          printf("rf2ipos_A[%5d]: %5d rf2ilen_A[%5d]: %5d\n", $i_rfpos, $i_uapos, $i_rfpos, $i_len);
+          #printf("rf2ipos_A[%5d]: %5d rf2ilen_A[%5d]: %5d\n", $i_rfpos, $i_uapos, $i_rfpos, $i_len);
         }
         else { 
           DNAORG_FAIL("ERROR in $sub_name, failed to parse insert information read from ifile for $seqname:\n" . $seq_info_HAR->{"ifile_ins"}[$seqidx], 1, $FH_HR);
@@ -1912,7 +1805,7 @@ sub parse_cmalign_stk {
       DNAORG_FAIL(sprintf("ERROR in $sub_name, fetched aligned seqstring of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($sqstring_aligned), $alen), 1, $FH_HR);
     }
     my @sq_A = split("", $sqstring_aligned);
-    printf("sq_A size: %d\n", scalar(@sq_A));
+    #printf("sq_A size: %d\n", scalar(@sq_A));
 
     # first pass, from right to left to fill $min_**pos_after arrays:
     my $min_rfpos = -1;
@@ -2011,21 +1904,21 @@ sub parse_cmalign_stk {
       my $mdl_stop_rfpos  = $mdl_info_HAR->{"ref_stop"}[$m];
       my $mdl_strand      = $mdl_info_HAR->{"ref_strand"}[$m];
 
-      printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
-      $rfpos = $mdl_start_rfpos;
-      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
-      $rfpos = $mdl_stop_rfpos;
-      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
+      #printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
+      #$rfpos = $mdl_start_rfpos;
+      #printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+      #       $rfpos, 
+      #       $min_rfpos_after_A[$rfpos],
+      #       $min_uapos_after_A[$rfpos],
+      #       $max_rfpos_before_A[$rfpos],
+      #       $max_uapos_before_A[$rfpos]);
+      #$rfpos = $mdl_stop_rfpos;
+      #printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+      #       $rfpos, 
+      #       $min_rfpos_after_A[$rfpos],
+      #       $min_uapos_after_A[$rfpos],
+      #       $max_rfpos_before_A[$rfpos],
+      #       $max_uapos_before_A[$rfpos]);
 
       my $start_rfpos = -1; # model position of start of this model region for this aligned sequence, stays at -1 if none
       my $stop_rfpos  = -1; # model position of stop  of this model region for this aligned sequence, stays at -1 if none
@@ -2063,10 +1956,10 @@ sub parse_cmalign_stk {
         $mdl_results_AAHR->[$m][$seqidx]{"p_3seqflush"} = $p_3seqflush;
         $mdl_results_AAHR->[$m][$seqidx]{"p_nhits"}     = 1;
 
-        printf("model: $mdl_start_rfpos to $mdl_stop_rfpos\n");
-        foreach my $key ("p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush") { 
-          printf("stored $m $seqidx $key $mdl_results_AAHR->[$m][$seqidx]{$key}\n");
-        }
+        #printf("model: $mdl_start_rfpos to $mdl_stop_rfpos\n");
+        #foreach my $key ("p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush") { 
+        #  printf("stored $m $seqidx $key $mdl_results_AAHR->[$m][$seqidx]{$key}\n");
+        #}
       }
     } # end of 'for(my $m = 0; $m < $nmdl; $m++)'
   } # end of 'for(my $i = 0; $m < $nseq; $m++)'
@@ -2331,7 +2224,6 @@ sub combine_model_hits {
     } # end of 'if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model")'
   }
 
-  printf("HEYA returning ret_seqname_maxlen: $ret_seqname_maxlen\n");
   return $ret_seqname_maxlen;
 }
 
@@ -2918,7 +2810,7 @@ sub wrapper_esl_epn_translate_startstop {
       if(! opt_Get("--skiptranslate", $opt_HHR)) { 
         # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
         $cmd = $esl_epn_translate . " $altstart_opt -startstop $ftr_hit_fafile > $esl_epn_translate_outfile";
-        runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+        runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
       }
       else { # --skiptranslate, validate the output file exists
         validateFileExistsAndIsNonEmpty($esl_epn_translate_outfile, $sub_name, $ofile_info_HHR->{"FH"});
@@ -4450,7 +4342,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
   my $seq_idx; # counter over sequences
 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    printf("\tmdl_idx: $mdl_idx\n");
+    #printf("\tmdl_idx: $mdl_idx\n");
     my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
     my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
     my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
@@ -4559,7 +4451,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop
   } # end of 'for($mdl_idx' loop
-  printf("leaving $sub_name\n");
+
   return;
 }      
 
@@ -8959,7 +8851,7 @@ sub translate_feature_sequences {
       
       # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
       $cmd = $esl_epn_translate . " -endatstop -nostop $opts $altstart_opt $nucleotide_fafile > $protein_fafile";
-      runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+      runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
       
       # determine the number of >= 1 segments (exons or mature peptides) we put together to make this protein
       my $nsegments = 0;
@@ -9031,9 +8923,9 @@ sub align_hits {
     validateFileExistsAndIsNonEmpty($cm_file, $sub_name, $ofile_info_HHR->{"FH"});
     
     # create the alignment
-    my $mxsize_opt = sprintf("--mxsize %d", opt_Get("--mxsize", $opt_HHR));
+    my $mxsize_opt = sprintf("--mxsize %d", opt_Get("--amxsize", $opt_HHR));
     my $cmd = $execs_HR->{"cmalign"} . " --cpu 0 $mxsize_opt $cm_file $fa_file > $stk_file";
-    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HHR->{"FH"});
+    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HHR->{"FH"});
     # save this file to %{$ofile_info_HHR}
     my $ofile_key = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_stk_file_key, $ofile_info_HHR->{"FH"});
     addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, 0, sprintf("Stockholm alignment of hits for model #%d: %s", $mdl_idx+1, $mdl_info_HAR->{"out_tiny"}[$mdl_idx]));
@@ -9479,7 +9371,7 @@ sub align_protein_sequences {
       
       # build an HMM from this single sequence alignment:
       my $cmd = $execs_HR->{"hmmbuild"} . " $hmm_file $hmmstk_file > $hmmbuild_file";
-      runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"}); 
+      runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"}); 
       
       # store the files we just created
       my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmm_file_key, $ofile_info_HHR->{"FH"});
@@ -9499,7 +9391,7 @@ sub align_protein_sequences {
       
       # align all sequences to this HMM
       $cmd = $execs_HR->{"hmmalign"} . " $hmm_file $fa_file > $stk_file";
-      runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
       
       # store the file in ofile_info_HH
       $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_stk_file_key, $ofile_info_HHR->{"FH"});
@@ -9851,7 +9743,7 @@ sub process_input_fasta_file {
 
   my $ssi_file = $infasta_file . ".ssi";
   if(-e $ssi_file) { 
-    runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
+    runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
   }
   my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infasta_file }); # the sequence file object
   my $nseq = $sqfile->nseq_ssi;
@@ -10058,7 +9950,7 @@ sub aorg_find_origin_sequences {
 
   my $cmd = $execs_HR->{"cmscan"} . " $opts $aorg_model $fasta_file > $cmscan_file";
 
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   addClosedFileToOutputInfo(\%ofile_info_HH, "aorgtblout",  "$tblout_file",     1, "tblout file from cmscan for origin identification");
   addClosedFileToOutputInfo(\%ofile_info_HH, "aorgcmscan",  "$cmscan_file",     1, "standard output file from cmscan for origin identification");
@@ -10085,7 +9977,7 @@ sub aorg_find_origin_sequences {
   my $out_cmalign_file = $out_root . ".cmalign";
   $cmd = $execs_HR->{"cmalign"} . " -o $out_stk_file $aorg_model $out_fasta_file > $out_cmalign_file";
 
-  runCommand($cmd, 0, $ofile_info_HH{"FH"});
+  runCommand($cmd, 0, 0, $ofile_info_HH{"FH"});
   addClosedFileToOutputInfo(\%ofile_info_HH, "outstk",     "$out_stk_file",     1, "alignment of cmscan hits");
   addClosedFileToOutputInfo(\%ofile_info_HH, "outcmalign", "$out_cmalign_file", 1, "cmalign output");
 
@@ -10205,8 +10097,8 @@ sub aorg_parse_cmscan_tblout_s2 {
   
   my ($tblout_file, $seq_info_HAR, $hit_HHR, $opt_HHR, $FH_HR) = @_;
   
-  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
-  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seqname_index_H, $FH_HR);
+  my %seq_name_index_H = (); # seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
+  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seq_name_index_H, $FH_HR);
 
   open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
 
@@ -10231,7 +10123,7 @@ sub aorg_parse_cmscan_tblout_s2 {
       my ($mdlname, $seqname, $mod, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $score, $evalue) = 
           ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
 
-      my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+      my $seqidx = $seq_name_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
       my $seqlen = $seq_info_HAR->{"accn_len"}[$seqidx];
 
       # only consider hits where either the start or end are less than the total length
@@ -10375,7 +10267,7 @@ sub run_blastx_and_summarize_output {
   my $blastx_out_file = $out_root . ".blastx.out";
 #  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -num_descriptions $ncds -num_alignments $ncds -out $blastx_out_file";
   my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -out $blastx_out_file";
-  runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+  runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, "predicted.hits.fa", $ofile_info_HHR->{"FH"});
@@ -10388,11 +10280,11 @@ sub run_blastx_and_summarize_output {
       # run blast for this feature
       #$blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -num_descriptions 1 -num_alignments 1 -out $cur_blastx_out_file";
       $blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -out $cur_blastx_out_file";
-      runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
       # concatenate the blastx output for this feature to the growing blastx output for all blastx runs
       my $concat_cmd = "cat $cur_blastx_out_file >> $blastx_out_file";
-      runCommand($concat_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+      runCommand($concat_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
       #if(! opt_Get("--keep", $opt_HHR)) { 
       if(0) { 
         removeFileUsingSystemRm($cur_blastx_out_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}); 
@@ -10404,7 +10296,7 @@ sub run_blastx_and_summarize_output {
   # now summarize its output
   my $blastx_summary_file = $out_root . ".blastx.summary.txt";
   my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
-  runCommand($parse_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
+  runCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   addClosedFileToOutputInfo($ofile_info_HHR, "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
 
   return;
@@ -11268,6 +11160,7 @@ sub helper_blastx_breakdown_query {
   return ($ret_seqname, $ret_coords_str, $ret_len);
 }
 
+#################################################################
 # Subroutine: add_zft_errors()
 # Incept:     EPN, Thu Jan 24 12:31:16 2019
 # Purpose:    Adds zft errors for sequences with 0 predicted features
@@ -11327,6 +11220,41 @@ sub add_zft_errors {
     if($seq_nftr == 0) { 
       error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "zft", $seq_name, "-", $FH_HR);
     }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: add_mxo_errors()
+# Incept:     EPN, Thu Feb  7 11:54:56 2019
+# Purpose:    Adds mxo errors for sequences listed in the array @overflow_seq_A, if any.
+#
+# Arguments:
+#  $overflow_seq_AR:         REF to array of sequences that failed due to matrix overflows, pre-filled
+#  $overflow_mxsize_AR:      REF to array of required matrix sizes for each sequence that failed due to matrix overflows, pre-filled
+#  $err_seq_instances_HHR:   REF to 2D hash with per-sequence errors, PRE-FILLED
+#  $err_info_HAR:            REF to the error info hash of arrays, PRE-FILLED
+#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:          REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub add_mxo_errors { 
+  my $sub_name = "add_mxo_errors";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($overflow_seq_AR, $overflow_mxsize_AR, $err_seq_instances_HHR, $err_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+
+  my $noverflow = scalar(@{$overflow_seq_AR});
+  for(my $s = 0; $s < $noverflow; $s++) { 
+    error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "mxo", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
   }
 
   return;
