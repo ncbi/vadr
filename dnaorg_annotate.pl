@@ -229,7 +229,7 @@ opt_Add("-h",           "boolean", 0,                        0,    undef, undef,
 opt_Add("-c",           "boolean", 0,                       $g,    undef, undef,      "genome is closed (a.k.a. circular)",                          "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,                       $g,"--dirout",undef,      "forcing directory overwrite (with --dirout)",                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                   $g,    undef, undef,      "output directory specified as",                                  "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string",  undef,                   $g,    undef, undef,      "output directory specified as",                               "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--dirbuild",   "string",  undef,                   $g,"--dirout",   undef,   "output directory used for dnaorg_build.pl",                   "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--origin",     "string",  undef,                   $g,     "-c", undef,      "identify origin seq <s> in genomes",                          "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                   $g,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
@@ -844,24 +844,18 @@ error_instances_initialize_AHH(\@err_ftr_instances_AHH, \%err_seq_instances_HH, 
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-##############################################################################
-# Step 3. Verify we have the model files that we need to do homology searches
-##############################################################################
-my @model_file_A = (); # array of the model files we need
+###################################################################
+# Step 3. Verify we have the model file that we need to run cmalign
+###################################################################
+my $model_file = $build_root . ".cm";
+if(! -s $model_file) { 
+  DNAORG_FAIL("ERROR CM file $model_file should exist but it does not. Did you (successfully) run dnaorg_build.pl?", 1, $ofile_info_HH{"FH"});
+}
 for(my $i = 0; $i < $nmdl; $i++) { 
-  my $model_file = $build_root . ".$i.cm";
-  if(! -s $model_file) { 
-    DNAORG_FAIL("ERROR CM file $model_file should exist but it does not. Did you (successfully) run dnaorg_build.pl?", 1, $ofile_info_HH{"FH"});
-  }
-  for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
-    my $file = $model_file . "." . $suffix;
-    if(! -s $file) { 
-      DNAORG_FAIL("ERROR CM index file $file should exist but it does not. Did you (successfully) run dnaorg_build.pl?", 1, $ofile_info_HH{"FH"});
-    }
-  }
   # set mdl_info_HAR->{"cmfile"}[$i]
   $mdl_info_HA{"cmfile"}[$i] = $model_file;
 }
+
 
 # Validate the CMs we are about to use to annotate were actually created
 # for the current reference sequence and annotation (same accession
@@ -1696,16 +1690,10 @@ sub parse_cmalign_stk {
     fileLocation => $stk_file,
     isDna => 1});  
 
-  ############################################
-  # POTENTIALLY PUT THIS BLOCK INTO BIO-EASEL
-  # WRITE IT IN C IF POSSIBLE
   # build a map of aligned positions to model RF positions and vice versa, only need to do this once per alignment
   my $alen = $msa->alen;
   my @rf2a_A = (); # [1..$rfpos..$rflen] = $apos;  rf position $rfpos maps to alignment position $apos [1..$alen]  ($rf2a_A[0] = -1  (dummy value))
-  my @a2rf_A = (); # [1..$apos..$alen]   = $rfpos; alignment position $apos maps to rf position $rfpos [1..$rflen] ($a2rf_A[0] = -1  (dummy value))
-                   # if $a2rf_A[$apos] = N, where N <= 0, then alignment position $apos maps to an insert *after* rf position abs(N) 
   $rf2a_A[0] = -1; 
-  $a2rf_A[0] = -1;
   my $rf_str = $msa->get_rf;
   my @rf_A = split("", $rf_str);
   if(scalar(@rf_A) != $alen) { 
@@ -1718,17 +1706,9 @@ sub parse_cmalign_stk {
       # nongap RF (model position)
       $rfpos++;
       $rf2a_A[$rfpos] = $apos;
-      $a2rf_A[$apos]  = $rfpos;
-    }
-    else { # $rf_A[($apos-1)] eq ".") { 
-      # gap RF (insert position)
-      if($rfpos == 0) { $a2rf_A[$apos] = 0; } # special case
-      else            { $a2rf_A[$apos] = -1 * $rfpos; }
     }
   }
   my $rflen = $rfpos;
-  # END OF POTENTIAL BIO-EASEL BLOCK
-  ############################################
 
   # move through each sequence in the alignment and determine its boundaries for each model region
   my $nseq = $msa->nseq; 
@@ -1956,10 +1936,10 @@ sub parse_cmalign_stk {
         $mdl_results_AAHR->[$m][$seqidx]{"p_3seqflush"} = $p_3seqflush;
         $mdl_results_AAHR->[$m][$seqidx]{"p_nhits"}     = 1;
 
-        #printf("model: $mdl_start_rfpos to $mdl_stop_rfpos\n");
-        #foreach my $key ("p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush") { 
-        #  printf("stored $m $seqidx $key $mdl_results_AAHR->[$m][$seqidx]{$key}\n");
-        #}
+        printf("model: $mdl_start_rfpos to $mdl_stop_rfpos\n");
+        foreach my $key ("p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush") { 
+          printf("stored $m $seqidx $key $mdl_results_AAHR->[$m][$seqidx]{$key}\n");
+        }
       }
     } # end of 'for(my $m = 0; $m < $nmdl; $m++)'
   } # end of 'for(my $i = 0; $m < $nseq; $m++)'

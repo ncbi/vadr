@@ -861,7 +861,6 @@ sub fetchReferenceFeatureSequences {
   my $cksum  = -1;
   my $mdllen = undef;
   my $model_name = removeScriptNameFromString(removeDirPath($build_root)); 
-  printf("HEYA model_name: $model_name\n");
 
   if(! $do_infasta) { 
     # fetch the sequence and convert it to stockholm
@@ -1473,8 +1472,8 @@ sub initializeHardCodedErrorInfoHash {
   # errors that cannot be invalidated by other errors in feature table output
 
   addToErrorInfoHash($err_info_HAR, "str", "feature",  0,
-                     "predicted CDS start position is not beginning of ATG start codon", # description
-                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "predicted CDS start position is not beginning of start codon", # description
+                     1, 0, "similar to !out_product,out_gene!; no start codon", # feature table info: valid, pred_stop, note
                      "Mutation at Start: (!out_product,out_gene!) expected start codon could not be identified", # feature table error
                      $FH_HR);
 
@@ -6293,7 +6292,7 @@ sub fetchCodon {
     }
   }
   else { # strand is '-'
-    $codon_start = $start - 2;
+    $codon_stop = $start - 2;
     if($codon_stop < 1) { 
       if($short_ok) { $codon_stop = 1; } 
       else          { $valid_coords = 0; }
@@ -9089,13 +9088,9 @@ sub formatTabDelimitedStringForErrorListFile() {
   
   my ($seqname, $errstr, $FH_HR) = (@_);
 
-  printf("HEYA 0 $seqname $errstr\n");
-
   # first replace any '_' characters with single spaces
   chomp $errstr;
   $errstr =~ s/\_/ /g;
-
-  printf("HEYA 1 $seqname $errstr\n");
 
   my $error_name   = undef;
   my $feature_name = undef;
@@ -9103,7 +9098,6 @@ sub formatTabDelimitedStringForErrorListFile() {
 
   if($errstr =~ /^([^\:]+)\:\s*(.+)$/) {
     ($error_name, $error_desc) = ($1, $2);
-    printf("HEYA 2 error_name: $error_name error_desc: $error_desc\n");
     if($error_desc =~ /^\([^\)]+\)\s*(.*)$/) { 
       $feature_name = $1;
       $error_desc   = $2;
@@ -9116,14 +9110,12 @@ sub formatTabDelimitedStringForErrorListFile() {
     # example from dnaorg_classify.pl:
     #Unexpected Classification[NC 001959,NC 029647 was specified, but NC 039476 is predicted];
     ($error_name, $error_desc) = ($1, $2);
-    printf("HEYA 3 error_name: $error_name error_desc: $error_desc\n");
     $feature_name = "*sequence*";
   }
   elsif($errstr =~ /^([^\[\:]+)\;$/) {
     # example from dnaorg_classify.pl:
     #No Annotation;
     ($error_name) = ($1);
-    printf("HEYA 4 error_name: $error_name error_desc: $error_desc\n");
     $feature_name = "*sequence*";
   }
   else { 

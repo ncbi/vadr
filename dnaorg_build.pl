@@ -663,7 +663,7 @@ sub fetch_proteins_into_fasta_files {
 
   # parse that file to create the fasta files
   open(IN,         $efetch_out_file) || fileOpenFailure($efetch_out_file,  $sub_name, $!, "reading", $FH_HR);
-  open(ALLFA, ">", $all_fa_out_file) || fileOpenFailure($all_fa_out_file,      $sub_name, $!, "writing", $FH_HR);
+  open(ALLFA, ">", $all_fa_out_file) || fileOpenFailure($all_fa_out_file,  $sub_name, $!, "writing", $FH_HR);
   while(my $line = <IN>) { 
     chomp $line;
     my @el_A = split(/\t/, $line);
