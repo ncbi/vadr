@@ -376,8 +376,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.44";
-my $releasedate   = "Jan 2019";
+my $version       = "0.45";
+my $releasedate   = "Feb 2019";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -1265,13 +1265,14 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Step 19. Run BLASTX: all full length sequences and all corrected nucleotide features versus all proteins
 ##########################################################################################################
 $start_secs = outputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
-run_blastx_and_summarize_output(\%execs_H, $out_root, $seq_file, $build_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+my $seq_nodesc_file = $ofile_info_HH{"fullpath"}{"fastanodesc"};
+run_blastx_and_summarize_output(\%execs_H, $out_root, $seq_nodesc_file, $build_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the blastx related information
 ftr_results_calculate_blastx($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr_info_HA, \%seq_info_HA, \%seq_name_index_H, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
-# add xi* and mip errors
+# add xi* and mxi errors
 openAndAddFileToOutputInfo(\%ofile_info_HH, "blasttbl", $out_root . ".blastx.tbl", 1, "information on blast and CM hits for CDS features in tabular format");
 my $tmp_len = maxLengthScalarValueInArray($seq_info_HA{"seq_name"});
 if($tmp_len > $combined_model_seqname_maxlen) { 
@@ -3886,7 +3887,7 @@ sub ftr_results_add_b3e_errors {
 # Subroutine:  ftr_results_add_blastx_errors
 # Incept:      EPN, Tue Oct 23 15:54:50 2018
 #
-# Purpose:    Report 'x**' and 'mip' errors for features of type 'cds-notmp' and 'cds-mp'
+# Purpose:    Report 'x**' and 'mxi' errors for features of type 'cds-notmp' and 'cds-mp'
 #             Uses ftr_results to do this. Possible x** errors are:
 #
 #             "xnh": adds this error if blastx validation of a CDS prediction fails due to
@@ -4204,11 +4205,11 @@ sub ftr_results_add_blastx_errors {
           $output_err_str .= $err_code;
         }
         if($output_err_str eq "") { $output_err_str = "-"; }
-        # if we added an error, step through all (not just primary) children of this feature and add mip
+        # if we added an error, step through all (not just primary) children of this feature and add mxi
         if((defined $p_start) && ($err_flag) && ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp")) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mip", $seq_name, 
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mxi", $seq_name, 
                                 sprintf("MP: %s, CDS %s", 
                                         $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
                                         $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
@@ -4714,7 +4715,11 @@ sub ftr_results_calculate {
         my $stop_strand         = undef; # strand stop codon is on
         my $cds_len             = 0;     # length to output for this CDS
         my $child_had_trc       = 0;     # if we find a child with a trc error, set this to 1
-        my $mtr_flag            = 0;     # set to '1' if we set a bad nm3 (no b5e or b3e), aji, int or inp error for the mother CDS
+        my $mn3_flag            = 0;     # set to '1' if we set a bad nm3 (no b5e or b3e) error for mother CDS
+        my $maj_flag            = 0;     # set to '1' if we set a aji error for mother CDS
+        my $mit_flag            = 0;     # set to '1' if we set a int error for mother CDS
+        my $mip_flag            = 0;     # set to '1' if we set a inp error for mother CDS
+
         my $seen_prv_b3e        = 0;     # set to '1' if we see a b3e error for a MP for the mother CDS
         # step through all primary children of this feature
         for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
@@ -4865,7 +4870,7 @@ sub ftr_results_calculate {
                     if($ntr_err_ct > 0) { 
                       # we set at least one ntr error for mature peptides, set int for this CDS
                       error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
-                      $mtr_flag = 1; # this causes 'mtr' in children MPs
+                      $mit_flag = 1; # this causes 'mit' in children MPs
                     }
                     # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
                   } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
@@ -5057,13 +5062,13 @@ sub ftr_results_calculate {
         if($aji_errmsg ne "") { 
           # adjacency error
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aji", $seq_name, $aji_errmsg, $FH_HR);
-          $mtr_flag = 1; # this causes 'mtr' in children MPs
+          $maj_flag = 1; # this causes 'maj' in children MPs
         }
 
         # add the inp (INterrupted due to no Prediction) if necessary
         if($inp_errmsg ne "") { 
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
-          $mtr_flag = 1; # this causes 'mtr' in children MPs
+          $mip_flag = 1; # this causes 'mip' in children MPs
         }
 
         # set ftr_results, we can set start if $cds_out_start is defined, 
@@ -5107,10 +5112,10 @@ sub ftr_results_calculate {
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"}       = $cds_len;
           if(($cds_len % 3) != 0) { 
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cds_len", $FH_HR);
-            # if this is a 'bad' nm3 (no b5e or b3e), then update $mtr_flag
+            # if this is a 'bad' nm3 (no b5e or b3e), then update $mn3_flag
             if((! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) && 
                (! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b3e"}{$seq_name})) { 
-              $mtr_flag = 1;
+              $mn3_flag = 1;
             }
           }
         }
@@ -5153,17 +5158,40 @@ sub ftr_results_calculate {
             }
           }
         }
-        ##################################################################################
-        # add mtr errors for all children if mother CDS had a nm3, aji, int or inp error #
-        ##################################################################################
-        if($mtr_flag) { 
+        #######################################################################################
+        # add mn3, maj, mit, mip errors for all children if mother CDS had corresponding error
+        #######################################################################################
+        if($mn3_flag || $maj_flag || $mit_flag || $mip_flag) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, 
-                                sprintf("MP: %s, CDS %s", 
-                                        $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
-                                        $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
-                                $FH_HR);
+            if($mn3_flag) { 
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mn3", $seq_name, 
+                                  sprintf("MP: %s, CDS %s", 
+                                          $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
+                                          $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
+                                  $FH_HR);
+            }
+            if($maj_flag) { 
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "maj", $seq_name, 
+                                  sprintf("MP: %s, CDS %s", 
+                                          $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
+                                          $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
+                                  $FH_HR);
+            }
+            if($mit_flag) { 
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mit", $seq_name, 
+                                  sprintf("MP: %s, CDS %s", 
+                                          $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
+                                          $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
+                                  $FH_HR);
+            }
+            if($mip_flag) { 
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mip", $seq_name, 
+                                  sprintf("MP: %s, CDS %s", 
+                                          $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
+                                          $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
+                                  $FH_HR);
+            }
           }
         }
       } # end of 'for($seq_idx'

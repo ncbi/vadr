@@ -1,0 +1,8 @@
+>Feature gi|1447973732|gb|MH680297.1|
+<1	>1485	gene
+			gene	POLY
+<1	>1485	CDS
+			product	polyprotein
+			codon_start	1
+1	1485	mat_peptide
+			product	envelope protein E

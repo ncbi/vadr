@@ -1,0 +1,21 @@
+>Feature gi|357433023|gb|JN975544.1|
+<1	40	gene
+			gene	ORF1
+<1	40	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	37	mat_peptide
+			product	RdRp
+27	>1647	gene
+			gene	ORF2
+27	>1647	misc_feature
+			note	similar to VP1
+40	681	gene
+			gene	ORF4
+40	681	misc_feature
+			note	similar to VF1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 516 > 5 (strand:+ CM:27 blastx:543)]
+ERROR: Indefinite Annotation at Stop: (VF1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VF1: stop positions differ by 414 > 8 (strand:+ CM:681 blastx:267, valid stop codon in CM prediction)]
+ERROR: Low Coverage: 0.837<0.900

@@ -1,0 +1,40 @@
+>Feature gi|583157310|gb|KF854634.1|
+<1	>301	gene
+			gene	ORF2
+<1	>301	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 44 > 5 (strand:+ CM:1 blastx:45)]
+>Feature gi|583157338|gb|KF854648.1|
+<1	>301	gene
+			gene	ORF2
+<1	>301	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 11 > 5 (strand:+ CM:1 blastx:12)]
+>Feature gi|74099992|gb|DQ104049.1|
+<1	>228	gene
+			gene	ORF1
+<1	>228	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>228	misc_feature
+			note	similar to RdRp; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation: (RdRp) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: RdRp, CDS nonstructural polyprotein]
+ERROR: Indefinite Annotation at Start: (nonstructural polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [nonstructural polyprotein: start positions differ by 19 > 5 (strand:+ CM:1 blastx:20)]
+>Feature gi|194173141|gb|EU794720.1|
+<1	>150	gene
+			gene	ORF1
+<1	>150	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>150	misc_feature
+			note	similar to RdRp; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation: (RdRp) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: RdRp, CDS nonstructural polyprotein]
+ERROR: Indefinite Annotation at Start: (nonstructural polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [nonstructural polyprotein: start positions differ by 22 > 5 (strand:+ CM:1 blastx:23)]
+ERROR: Indefinite Annotation at Stop: (nonstructural polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [nonstructural polyprotein: stop positions differ by 17 > 5 (strand:+ CM:150 blastx:133, no valid stop codon in CM prediction)]
+ERROR: Low Coverage: 0.833<0.900

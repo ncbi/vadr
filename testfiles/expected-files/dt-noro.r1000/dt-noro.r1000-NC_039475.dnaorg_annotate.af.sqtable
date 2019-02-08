@@ -1,0 +1,90 @@
+>Feature gi|224755322|gb|FJ152440.1|
+1	>282	gene
+			gene	ORF2
+1	>282	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 6 > 5 (strand:+ CM:282 blastx:276, no valid stop codon in CM prediction)]
+>Feature gi|29892747|gb|AY247440.1|
+1	1647	gene
+			gene	ORF2
+1	1647	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Insertion of Nucleotides: (VP1) blastx protein validation failure, too large of an insert [VP1: longest blastx predicted insert of length 39 > 27]
+>Feature gi|820832312|gb|KJ916203.1|
+<1	>303	gene
+			gene	ORF2
+<1	>303	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 13 > 5 (strand:+ CM:303 blastx:290, no valid stop codon in CM prediction)]
+>Feature gi|1108658088|gb|KX018004.1|
+<1	>290	gene
+			gene	ORF2
+<1	>290	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 19 > 5 (strand:+ CM:1 blastx:20)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 13 > 5 (strand:+ CM:290 blastx:277, no valid stop codon in CM prediction)]
+>Feature gi|1043349872|gb|KX171415.1|
+<1	76	gene
+			gene	ORF1
+<1	76	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	73	mat_peptide
+			product	RdRp
+57	1673	gene
+			gene	ORF2
+57	1673	CDS
+			product	VP1
+1673	>2183	gene
+			gene	ORF3
+1673	>2183	misc_feature
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP2: stop positions differ by 22 > 5 (strand:+ CM:2183 blastx:2161, no valid stop codon in CM prediction)]
+>Feature gi|189187800|gb|EU449206.1|
+<1	>597	gene
+			gene	ORF2
+<1	>597	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 6 > 5 (strand:+ CM:597 blastx:591, no valid stop codon in CM prediction)]
+>Feature gi|189187907|gb|EU449263.1|
+<1	>597	gene
+			gene	ORF2
+<1	>597	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 6 > 5 (strand:+ CM:597 blastx:591, no valid stop codon in CM prediction)]
+>Feature gi|156139889|gb|EU072307.1|
+<1	>274	gene
+			gene	ORF1
+<1	>274	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	>274	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: Low Coverage: 0.883<0.900
+>Feature gi|155966084|gb|EF543756.1|
+<1	>237	gene
+			gene	ORF1
+<1	>237	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	>237	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: Low Coverage: 0.895<0.900
