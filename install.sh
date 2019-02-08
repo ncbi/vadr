@@ -8,7 +8,7 @@
 # for viral sequence classification and annotation.
 #
 DNAORGINSTALLDIR=$PWD
-VERSION="0.44"
+VERSION="0.45"
 DVERSION="dnaorg_scripts-$VERSION"
 
 # The following line will make the script fail if any commands fail
@@ -110,7 +110,8 @@ echo "The final step is to update your environment variables."
 echo "(See dnaorg_scripts/README.txt for more information.)"
 echo ""
 echo "If you are using the bash shell, add the following"
-echo "lines to the '.bashrc' file in your home directory:"
+echo "lines to the end of your '.bashrc' file in your home"
+echo "directory:"
 echo ""
 echo "export DNAORGDIR=$DNAORGINSTALLDIR"
 echo "export DNAORGBUILDDIR=\"\$DNAORGDIR\"/dnaorg-build-directories"
@@ -124,7 +125,8 @@ echo "source ~/.bashrc"
 echo ""
 echo "---"
 echo "If you are using the C shell, add the following"
-echo "lines to the '.cshrc' file in your home directory:"
+echo "lines to the end of your '.cshrc' file in your home"
+echo "directory:"
 echo ""
 echo "setenv DNAORGDIR $DNAORGINSTALLDIR"
 echo "setenv DNAORGBUILDDIR \"\$DNAORGDIR\"/dnaorg-build-directories"
