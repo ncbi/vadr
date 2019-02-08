@@ -1,0 +1,182 @@
+>Feature gi|1384806841|emb|LP889494.1|
+
+Additional note(s) to submitter:
+ERROR: No Features Annotated: (*sequence*) zero annotated features
+>Feature gi|1015635088|gb|AH012009.2|
+1	3658	gene
+			gene	POLY
+1	3658	misc_feature
+			note	similar to polyprotein; contains premature stop codon
+1	339	misc_feature
+			note	similar to anchored capsid protein C; polyprotein may not be translated
+1	297	misc_feature
+			note	similar to capsid protein C; polyprotein may not be translated
+340	837	misc_feature
+			note	similar to membrane glycoprotein precursor M; polyprotein may not be translated
+340	612	misc_feature
+			note	similar to protein pr; polyprotein may not be translated
+613	837	misc_feature
+			note	similar to membrane glycoprotein M; polyprotein may not be translated
+838	2322	misc_feature
+			note	similar to envelope protein E; polyprotein may not be translated
+2323	3348	misc_feature
+			note	similar to nonstructural protein NS1; polyprotein may not be translated
+2460	3132	misc_feature
+			note	similar to nonstructural protein NS2A; contains premature stop codon
+			note	similar to nonstructural protein NS2A; polyprotein may not be translated
+2878	3658	misc_feature
+			note	similar to nonstructural protein NS4B; contains premature stop codon
+			note	similar to nonstructural protein NS4B; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: Peptide Translation Problem: (anchored capsid protein C) mat_peptide may not be translated because its CDS has a problem [MP: anchored capsid protein C, CDS polyprotein]
+ERROR: Peptide Translation Problem: (capsid protein C) mat_peptide may not be translated because its CDS has a problem [MP: capsid protein C, CDS polyprotein]
+ERROR: Peptide Translation Problem: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has a problem [MP: membrane glycoprotein precursor M, CDS polyprotein]
+ERROR: Peptide Translation Problem: (protein pr) mat_peptide may not be translated because its CDS has a problem [MP: protein pr, CDS polyprotein]
+ERROR: Peptide Translation Problem: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has a problem [MP: membrane glycoprotein M, CDS polyprotein]
+ERROR: Peptide Translation Problem: (envelope protein E) mat_peptide may not be translated because its CDS has a problem [MP: envelope protein E, CDS polyprotein]
+ERROR: Peptide Translation Problem: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS1, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2460..3132 revised to 2460..2495 (stop shifted 637 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS2A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2878..3658 revised to 2878..3396 (stop shifted 262 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS4B, CDS polyprotein]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error) [mat_peptide nonstructural protein NS2A includes trc error]
+ERROR: Peptide Adjacency Problem: (polyprotein) CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [nonstructural protein NS1 (2323..3348) not adjacent to nonstructural protein NS2A (2460..2495)]
+>Feature gi|1015635056|gb|AH011977.2|
+1	3658	gene
+			gene	POLY
+1	3658	misc_feature
+			note	similar to polyprotein; contains premature stop codon
+1	339	misc_feature
+			note	similar to anchored capsid protein C; polyprotein may not be translated
+1	297	misc_feature
+			note	similar to capsid protein C; polyprotein may not be translated
+340	837	misc_feature
+			note	similar to membrane glycoprotein precursor M; polyprotein may not be translated
+340	612	misc_feature
+			note	similar to protein pr; polyprotein may not be translated
+613	837	misc_feature
+			note	similar to membrane glycoprotein M; polyprotein may not be translated
+838	2322	misc_feature
+			note	similar to envelope protein E; polyprotein may not be translated
+2323	3348	misc_feature
+			note	similar to nonstructural protein NS1; polyprotein may not be translated
+2460	3132	misc_feature
+			note	similar to nonstructural protein NS2A; contains premature stop codon
+			note	similar to nonstructural protein NS2A; polyprotein may not be translated
+2878	3658	misc_feature
+			note	similar to nonstructural protein NS4B; contains premature stop codon
+			note	similar to nonstructural protein NS4B; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: Peptide Translation Problem: (anchored capsid protein C) mat_peptide may not be translated because its CDS has a problem [MP: anchored capsid protein C, CDS polyprotein]
+ERROR: Peptide Translation Problem: (capsid protein C) mat_peptide may not be translated because its CDS has a problem [MP: capsid protein C, CDS polyprotein]
+ERROR: Peptide Translation Problem: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has a problem [MP: membrane glycoprotein precursor M, CDS polyprotein]
+ERROR: Peptide Translation Problem: (protein pr) mat_peptide may not be translated because its CDS has a problem [MP: protein pr, CDS polyprotein]
+ERROR: Peptide Translation Problem: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has a problem [MP: membrane glycoprotein M, CDS polyprotein]
+ERROR: Peptide Translation Problem: (envelope protein E) mat_peptide may not be translated because its CDS has a problem [MP: envelope protein E, CDS polyprotein]
+ERROR: Peptide Translation Problem: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS1, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2460..3132 revised to 2460..2495 (stop shifted 637 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS2A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2878..3658 revised to 2878..3396 (stop shifted 262 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS4B, CDS polyprotein]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error) [mat_peptide nonstructural protein NS2A includes trc error]
+ERROR: Peptide Adjacency Problem: (polyprotein) CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [nonstructural protein NS1 (2323..3348) not adjacent to nonstructural protein NS2A (2460..2495)]
+>Feature gi|1015635081|gb|AH012002.2|
+1	3658	gene
+			gene	POLY
+1	3658	misc_feature
+			note	similar to polyprotein; contains premature stop codon
+1	339	misc_feature
+			note	similar to anchored capsid protein C; polyprotein may not be translated
+1	297	misc_feature
+			note	similar to capsid protein C; polyprotein may not be translated
+340	837	misc_feature
+			note	similar to membrane glycoprotein precursor M; polyprotein may not be translated
+340	612	misc_feature
+			note	similar to protein pr; polyprotein may not be translated
+613	837	misc_feature
+			note	similar to membrane glycoprotein M; polyprotein may not be translated
+838	2322	misc_feature
+			note	similar to envelope protein E; polyprotein may not be translated
+2323	3348	misc_feature
+			note	similar to nonstructural protein NS1; polyprotein may not be translated
+2460	3132	misc_feature
+			note	similar to nonstructural protein NS2A; contains premature stop codon
+			note	similar to nonstructural protein NS2A; polyprotein may not be translated
+2878	3658	misc_feature
+			note	similar to nonstructural protein NS4B; contains premature stop codon
+			note	similar to nonstructural protein NS4B; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: Peptide Translation Problem: (anchored capsid protein C) mat_peptide may not be translated because its CDS has a problem [MP: anchored capsid protein C, CDS polyprotein]
+ERROR: Peptide Translation Problem: (capsid protein C) mat_peptide may not be translated because its CDS has a problem [MP: capsid protein C, CDS polyprotein]
+ERROR: Peptide Translation Problem: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has a problem [MP: membrane glycoprotein precursor M, CDS polyprotein]
+ERROR: Peptide Translation Problem: (protein pr) mat_peptide may not be translated because its CDS has a problem [MP: protein pr, CDS polyprotein]
+ERROR: Peptide Translation Problem: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has a problem [MP: membrane glycoprotein M, CDS polyprotein]
+ERROR: Peptide Translation Problem: (envelope protein E) mat_peptide may not be translated because its CDS has a problem [MP: envelope protein E, CDS polyprotein]
+ERROR: Peptide Translation Problem: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS1, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2460..3132 revised to 2460..2495 (stop shifted 637 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS2A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2878..3658 revised to 2878..3396 (stop shifted 262 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS4B, CDS polyprotein]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error) [mat_peptide nonstructural protein NS2A includes trc error]
+ERROR: Peptide Adjacency Problem: (polyprotein) CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [nonstructural protein NS1 (2323..3348) not adjacent to nonstructural protein NS2A (2460..2495)]
+>Feature gi|359307950|gb|JF923866.1|
+4	>389	gene
+			gene	POLY
+4	>389	misc_feature
+			note	similar to polyprotein
+4	337	misc_feature
+			note	similar to anchored capsid protein C; polyprotein may not be translated
+4	295	misc_feature
+			note	similar to capsid protein C; polyprotein may not be translated
+338	>389	misc_feature
+			note	similar to membrane glycoprotein precursor M; polyprotein may not be translated
+338	>389	misc_feature
+			note	similar to protein pr; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: Indefinite Annotation: (anchored capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: anchored capsid protein C, CDS polyprotein]
+ERROR: Indefinite Annotation: (capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: capsid protein C, CDS polyprotein]
+ERROR: Indefinite Annotation: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein precursor M, CDS polyprotein]
+ERROR: Indefinite Annotation: (protein pr) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein pr, CDS polyprotein]
+ERROR: Mutation at Start: (polyprotein) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [polyprotein: start positions differ by 28 > 5 (strand:+ CM:4 blastx:32)]
+ERROR: Indefinite Annotation at Stop: (polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [polyprotein: stop positions differ by 22 > 5 (strand:+ CM:389 blastx:367, no valid stop codon in CM prediction)]
+>Feature gi|284432056|gb|GU318315.1|
+1	7461	gene
+			gene	POLY
+1	7461	misc_feature
+			note	similar to polyprotein; contains premature stop codon
+1	339	misc_feature
+			note	similar to anchored capsid protein C; polyprotein may not be translated
+1	297	misc_feature
+			note	similar to capsid protein C; polyprotein may not be translated
+340	837	misc_feature
+			note	similar to membrane glycoprotein precursor M; polyprotein may not be translated
+340	612	misc_feature
+			note	similar to protein pr; polyprotein may not be translated
+613	837	misc_feature
+			note	similar to membrane glycoprotein M; polyprotein may not be translated
+838	2322	misc_feature
+			note	similar to envelope protein E; polyprotein may not be translated
+3379	4032	misc_feature
+			note	similar to nonstructural protein NS2A; polyprotein may not be translated
+6734	7461	misc_feature
+			note	similar to nonstructural protein NS4B; contains premature stop codon
+			note	similar to nonstructural protein NS4B; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: Peptide Translation Problem: (anchored capsid protein C) mat_peptide may not be translated because its CDS has a problem [MP: anchored capsid protein C, CDS polyprotein]
+ERROR: Peptide Translation Problem: (capsid protein C) mat_peptide may not be translated because its CDS has a problem [MP: capsid protein C, CDS polyprotein]
+ERROR: Peptide Translation Problem: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has a problem [MP: membrane glycoprotein precursor M, CDS polyprotein]
+ERROR: Peptide Translation Problem: (protein pr) mat_peptide may not be translated because its CDS has a problem [MP: protein pr, CDS polyprotein]
+ERROR: Peptide Translation Problem: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has a problem [MP: membrane glycoprotein M, CDS polyprotein]
+ERROR: Peptide Translation Problem: (envelope protein E) mat_peptide may not be translated because its CDS has a problem [MP: envelope protein E, CDS polyprotein]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS2A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6734..7461 revised to 6734..7039 (stop shifted 422 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has a problem [MP: nonstructural protein NS4B, CDS polyprotein]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error) [mat_peptide nonstructural protein NS4B includes trc error]
+ERROR: Peptide Adjacency Problem: (polyprotein) CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [envelope protein E (838..2322) not adjacent to nonstructural protein NS1 (unknown..unknown), nonstructural protein NS2A (3379..4032) not adjacent to nonstructural protein NS2B (unknown..unknown)]
+ERROR: Low Coverage: 0.383<0.900

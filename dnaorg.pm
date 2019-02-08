@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# version: 0.37 [Nov 2018]
+# version: 0.45 [Feb 2019]
 #
 # dnaorg.pm
 # Eric Nawrocki
@@ -1426,15 +1426,14 @@ sub initializeHardCodedErrorInfoHash {
                      "feature (MP or CDS) is not adjacent to same set of features after it as in reference", # description
                      0, 0, "", "", # feature table info: valid, pred_stop, note, err,
                      $FH_HR);
-
+  # errors that can be invalidated by other errors in feature table output, many of these have to do with premature stop codons
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,
                      "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", # description
-                     # NOTE: currently ftbl_valid == 0, because any feature with this error has 
                      # no valid start/stop and so won't show up in the feature table
-                     0, 0, "", "", # feature table info: valid, pred_stop, note, err,
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Peptide Adjacency Problem: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
-  # errors that can be invalidated by other errors in feature table output, many of these have to do with premature stop codons
   addToErrorInfoHash($err_info_HAR, "nst", "feature",  1,
                      "no in-frame stop codon exists 3' of predicted valid start codon", # description
                      1, 1, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
@@ -1571,7 +1570,7 @@ sub initializeHardCodedErrorInfoHash {
                      "!FEATURE_TYPE! Has Stop Codon: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,
+  addToErrorInfoHash($err_info_HAR, "mxi", "feature",  0,
                      "mat_peptide may not be translated because its CDS has a blastx protein validation failure", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
                      "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
@@ -1589,8 +1588,26 @@ sub initializeHardCodedErrorInfoHash {
                      "Peptide Adjacency Problem: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,
-                     "mat_peptide may not be translated because its CDS has a problem", # description
+  addToErrorInfoHash($err_info_HAR, "mn3", "feature",  0,
+                     "mat_peptide may not be translated because its CDS' length is not a multiple of 3", # description
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "maj", "feature",  0,
+                     "mat_peptide may not be translated because its CDS has an adjacency inconsistency", # description
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "mit", "feature",  0,
+                     "mat_peptide may not be translated because its CDS is incomplete due to an early stop", # description
+                     1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
+                     "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
+                     $FH_HR);
+
+  addToErrorInfoHash($err_info_HAR, "mip", "feature",  0,
+                     "mat_peptide may not be translated because its CDS is not complete", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
                      "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
@@ -1635,23 +1652,29 @@ sub initializeHardCodedErrorInfoHash {
 
   # define the ftbl_invalid_by values, these are one-sided, any error code listed in the 
   # 3rd argument invalidates the 2nd argument error code, but not vice versa
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nm3", "b5e,b3e,m5e,m3e",             $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ext", "b5e,b3e,m5e,m3e",             $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ntr", "b5e,b3e,m5e,m3e",             $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,m5e,m3e",             $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nst", "b5e,b3e,m5e,m3e",             $FH_HR);
+
+  # change between version 0.44 and 0.45: 
+  # "nm3", "ext", "ntr", "nst", "stp", "trc", "ctr" were invalidated by "m5e" and "m3e" in 0.44, but not 0.45
+  # "trc" "
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nm3", "b5e,b3e", $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mn3", "b5e,b3e,m5e,m3e", $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ext", "b5e,b3e", $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ntr", "b5e,b3e", $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nst", "b5e,b3e", $FH_HR);
 
   # trc, ext and nst are preferred to stp
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "stp", "b5e,b3e,m5e,m3e,trc,ext,nst", $FH_HR); 
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "stp", "b5e,b3e,trc,ext,nst", $FH_HR); 
 
-  # int and ctr are preffered to trc
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "b5e,b3e,m5e,m3e,int,ctr",     $FH_HR);
+  # int and ctr are preferred to trc
+#  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "b5e,b3e,int,ctr",     $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "int,ctr",     $FH_HR);
 
-  # trc is preffered to ctr
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,m5e,m3e,trc",         $FH_HR);
+  # trc is preferred to ctr
+#  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,trc",         $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "trc",         $FH_HR);
 
-  # mip and ntr are preferred to mtr
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mtr", "mip,ntr", $FH_HR);
+  # mxi and ntr are preferred to mit
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mit", "mxi,ntr", $FH_HR);
 
   # validate the error info hash
   validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
@@ -3074,6 +3097,28 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
       }
     }
   }  
+  # make a duplicate of the fasta file with no descriptions, because blastx adds the 
+  # description on lines immediately after the query, and sometimes breaks up sequence
+  # name across multiple lines, so to be sure that we have the query name and only the
+  # query name we need to read it from >=1 lines when blastx run on an input file with
+  # no descriptions for each sequence. Example from blastx output:
+  #Query= gi|337255678|gb|JF830576.1|
+  #Norovirus/Hu/GII.4/757/10/17-Mar-2010/Slovenia strain 757/10
+  #RNA-dependent RNA polymerase (RdRp) gene, partial cds
+  my $fasta_nodesc_file = $out_root . ".nodesc.fa"; 
+  open(FAOUT, ">", $fasta_nodesc_file)                || fileOpenFailure($fasta_nodesc_file, $sub_name, $!, "writing", $FH_HR);
+  open(FAIN,  $ofile_info_HHR->{"fullpath"}{"fasta"}) || fileOpenFailure($ofile_info_HHR->{"fullpath"}{"fasta"}, $sub_name, $!, "reading", $FH_HR);
+  while(my $fasta_line = <FAIN>) { 
+    if($fasta_line =~ m/^\>(\S+).*/) { 
+      print FAOUT (">" . $1 . "\n"); # only print sequence name, no desc, if there was one
+    }
+    else { 
+      print FAOUT $fasta_line;
+    }
+  }
+  close(FAIN);
+  close(FAOUT);
+  addClosedFileToOutputInfo($ofile_info_HHR, "fastanodesc", $fasta_nodesc_file, 0, "Sequence file with sequence descriptions removed for blastx");
 
   # open the sequence file using Bio-Easel
   # remove the .ssi file first, if it exists
@@ -8353,7 +8398,7 @@ sub runCmscanOrNhmmscan {
     }
     else { 
 #      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --tau 0.001 --cyk --acyk -g --mxsize 1028. ";
-      $opts .= " --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --cyk --acyk -g --mxsize 1028. ";
+      $opts .= " -T 20 --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --noF6 --olonepass --cyk --acyk -g --mxsize 1028. ";
     }
     # finally add --nohmmonly if we're not a big model
     if(! $do_big) { # do not use hmm unless model is big
