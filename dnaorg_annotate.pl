@@ -1770,6 +1770,10 @@ sub parse_cmalign_stk {
                                  #                       that aligns at or inserts *before* $max_rfpos_before_A[$rfpos]
                                  #                       -1 if $max_rfpos_before_A[$rfpos] == -1
 
+    my @rfpos_pp_A = ();         # [0..$rfpos..rflen+1]: posterior probability character for current sequence at RF position $rfpos
+                                 #                       '.' if sequence is a gap at that RF position $rfpos
+                                 #                       special values: $rfpos_pp_A[0] = -1, $rfpos_pp_A[$rflen+1] = -1
+
     $rfpos = 0;    # model positions (nongap RF position)
     my $uapos = 0; # unaligned sequence position (position in actual sequence)
     # initialize
@@ -1778,16 +1782,22 @@ sub parse_cmalign_stk {
       $max_rfpos_before_A[$rfpos] = -1;
       $min_uapos_after_A[$rfpos]  = -1;
       $max_uapos_before_A[$rfpos] = -1;
+      $rfpos_pp_A[$rfpos]         = ".";
     }
     # get aligned sequence, length will be alen
     my $sqstring_aligned = $msa->get_sqstring_aligned($i);
+    my $ppstring_aligned = $msa->get_ppstring_aligned($i);
     if(length($sqstring_aligned) != $alen) { 
       DNAORG_FAIL(sprintf("ERROR in $sub_name, fetched aligned seqstring of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($sqstring_aligned), $alen), 1, $FH_HR);
     }
+    if(length($ppstring_aligned) != $alen) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, fetched aligned posterior probability string of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($ppstring_aligned), $alen), 1, $FH_HR);
+    }
     my @sq_A = split("", $sqstring_aligned);
+    my @pp_A = split("", $ppstring_aligned);
     #printf("sq_A size: %d\n", scalar(@sq_A));
 
-    # first pass, from right to left to fill $min_**pos_after arrays:
+    # first pass, from right to left to fill $min_**pos_after arrays, and rf
     my $min_rfpos = -1;
     my $min_uapos = $seq_len+1;
     for($rfpos = $rflen; $rfpos >= 0; $rfpos--) { 
@@ -1803,6 +1813,8 @@ sub parse_cmalign_stk {
         if($rf2ipos_A[$rfpos] != -1) { 
           $min_uapos -= $rf2ilen_A[$rfpos]; # subtract inserts
         }
+        $rfpos_pp_A[$rfpos] = $pp_A[($apos-1)];
+        #printf("rfpos: $rfpos apos: $apos set rfpos_pp_A[$rfpos] to " . $pp_A[($apos-1)] . "\n");
       }
       elsif($rf2ipos_A[$rfpos] != -1) { 
         # sequence is a gap at $rfpos but has an insert AFTER it
@@ -1916,7 +1928,7 @@ sub parse_cmalign_stk {
 
         $start_rfpos = $min_rfpos_after_A[$mdl_start_rfpos];
         $stop_rfpos  = $max_rfpos_before_A[$mdl_stop_rfpos];
-        
+
         if($mdl_strand eq "+") { 
           $p_5seqflush = ($start_uapos == 1)        ? 1 : 0;
           $p_3seqflush = ($stop_uapos  == $seq_len) ? 1 : 0;
@@ -1935,9 +1947,13 @@ sub parse_cmalign_stk {
         $mdl_results_AAHR->[$m][$seqidx]{"p_5seqflush"} = $p_5seqflush;
         $mdl_results_AAHR->[$m][$seqidx]{"p_3seqflush"} = $p_3seqflush;
         $mdl_results_AAHR->[$m][$seqidx]{"p_nhits"}     = 1;
+        $mdl_results_AAHR->[$m][$seqidx]{"p_startgap"}  = ($rfpos_pp_A[$mdl_start_rfpos] eq ".") ? 1  : 0;
+        $mdl_results_AAHR->[$m][$seqidx]{"p_stopgap"}   = ($rfpos_pp_A[$mdl_stop_rfpos]  eq ".") ? 1  : 0;
+        $mdl_results_AAHR->[$m][$seqidx]{"p_startpp"}   = ($rfpos_pp_A[$mdl_start_rfpos] eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$mdl_start_rfpos], $FH_HR);
+        $mdl_results_AAHR->[$m][$seqidx]{"p_stoppp"}    = ($rfpos_pp_A[$mdl_stop_rfpos]  eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$mdl_stop_rfpos], $FH_HR);
 
         printf("model: $mdl_start_rfpos to $mdl_stop_rfpos\n");
-        foreach my $key ("p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush") { 
+        foreach my $key ("p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_startgap", "p_stopgap", "p_startpp", "p_stoppp") { 
           printf("stored $m $seqidx $key $mdl_results_AAHR->[$m][$seqidx]{$key}\n");
         }
       }
@@ -11265,4 +11281,43 @@ sub add_mxo_errors {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: convert_pp_char_to_pp_avg()
+# Incept:     EPN, Thu Feb  7 11:54:56 2019
+# Purpose:    Convert a cmalign alignment PP value to the average posterior 
+#             probability it represents.
+#
+# Arguments:
+#  $ppchar:  the PP character from the alignment, cannot be a gap
+#  $FH_HR:   ref to hash of file handles, including 'log'
+#             
+# Returns:  average value for $ppchar
+# 
+# Dies:     if $ppchar is not ['0'-'9'] or '*'
+#
+#################################################################
+sub convert_pp_char_to_pp_avg { 
+  my $sub_name = "convert_pp_char_to_pp_avg";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ppchar, $FH_HR) = @_;
+
+  if($ppchar eq "*") { return 0.975; }
+  if($ppchar eq "9") { return 0.90; }
+  if($ppchar eq "8") { return 0.80; }
+  if($ppchar eq "7") { return 0.70; }
+  if($ppchar eq "6") { return 0.60; }
+  if($ppchar eq "5") { return 0.50; }
+  if($ppchar eq "4") { return 0.40; }
+  if($ppchar eq "3") { return 0.30; }
+  if($ppchar eq "2") { return 0.20; }
+  if($ppchar eq "1") { return 0.10; }
+  if($ppchar eq "0") { return 0.25; }
+
+  DNAORG_FAIL("ERROR in $sub_name, invalid PP char: $ppchar", 1, $FH_HR); 
+
+  return 0.; # NEVER REACHED
 }
