@@ -1,0 +1,2986 @@
+>Feature gi|84105073|gb|DQ323037.1|
+72	>590	gene
+			gene	POLY
+72	>590	CDS
+			product	polyprotein
+72	413	mat_peptide
+			product	anchored capsid protein C
+72	371	mat_peptide
+			product	capsid protein C
+414	>590	mat_peptide
+			product	membrane glycoprotein precursor M
+414	>590	mat_peptide
+			product	protein pr
+>Feature gi|301602329|gb|HM162761.1|
+80	>2823	gene
+			gene	POLY
+80	>2823	CDS
+			product	polyprotein
+80	421	mat_peptide
+			product	anchored capsid protein C
+80	379	mat_peptide
+			product	capsid protein C
+422	919	mat_peptide
+			product	membrane glycoprotein precursor M
+422	694	mat_peptide
+			product	protein pr
+695	919	mat_peptide
+			product	membrane glycoprotein M
+920	2398	mat_peptide
+			product	envelope protein E
+2399	>2823	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|1043526526|gb|KX380842.1|
+63	10235	gene
+			gene	POLY
+63	10235	CDS
+			product	polyprotein
+63	404	mat_peptide
+			product	anchored capsid protein C
+63	362	mat_peptide
+			product	capsid protein C
+405	902	mat_peptide
+			product	membrane glycoprotein precursor M
+405	677	mat_peptide
+			product	protein pr
+678	902	mat_peptide
+			product	membrane glycoprotein M
+903	2381	mat_peptide
+			product	envelope protein E
+2382	3437	mat_peptide
+			product	nonstructural protein NS1
+3438	4091	mat_peptide
+			product	nonstructural protein NS2A
+4092	4481	mat_peptide
+			product	nonstructural protein NS2B
+4482	6338	mat_peptide
+			product	nonstructural protein NS3
+6339	6719	mat_peptide
+			product	nonstructural protein NS4A
+6720	6788	mat_peptide
+			product	protein 2K
+6789	7532	mat_peptide
+			product	nonstructural protein NS4B
+7533	10232	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|239840387|gb|GQ199865.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|428621164|gb|JQ686080.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|228542225|gb|FJ898463.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|263613488|gb|GU131877.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|75705708|gb|DQ109322.1|
+<1	1749	gene
+			gene	POLY
+<1	1749	CDS
+			product	polyprotein
+			codon_start	1
+<1	1746	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|316983482|gb|HQ705622.1|
+80	10252	gene
+			gene	POLY
+80	10252	CDS
+			product	polyprotein
+80	421	mat_peptide
+			product	anchored capsid protein C
+80	379	mat_peptide
+			product	capsid protein C
+422	919	mat_peptide
+			product	membrane glycoprotein precursor M
+422	694	mat_peptide
+			product	protein pr
+695	919	mat_peptide
+			product	membrane glycoprotein M
+920	2398	mat_peptide
+			product	envelope protein E
+2399	3454	mat_peptide
+			product	nonstructural protein NS1
+3455	4108	mat_peptide
+			product	nonstructural protein NS2A
+4109	4498	mat_peptide
+			product	nonstructural protein NS2B
+4499	6355	mat_peptide
+			product	nonstructural protein NS3
+6356	6736	mat_peptide
+			product	nonstructural protein NS4A
+6737	6805	mat_peptide
+			product	protein 2K
+6806	7549	mat_peptide
+			product	nonstructural protein NS4B
+7550	10249	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|970596852|gb|KT250578.1|
+<1	>981	gene
+			gene	POLY
+<1	>981	CDS
+			product	polyprotein
+			codon_start	1
+<1	>981	mat_peptide
+			product	envelope protein E
+>Feature gi|1464451857|gb|MG049798.1|
+<1	>466	gene
+			gene	POLY
+<1	>466	CDS
+			product	polyprotein
+			codon_start	3
+<1	296	mat_peptide
+			product	anchored capsid protein C
+<1	254	mat_peptide
+			product	capsid protein C
+297	>466	mat_peptide
+			product	membrane glycoprotein precursor M
+297	>466	mat_peptide
+			product	protein pr
+>Feature gi|194245176|gb|EU617031.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|1151124414|gb|KY586721.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|74027034|gb|DQ177894.1|
+<1	>2221	gene
+			gene	POLY
+<1	>2221	CDS
+			product	polyprotein
+			codon_start	2
+<1	133	mat_peptide
+			product	anchored capsid protein C
+<1	91	mat_peptide
+			product	capsid protein C
+134	631	mat_peptide
+			product	membrane glycoprotein precursor M
+134	406	mat_peptide
+			product	protein pr
+407	631	mat_peptide
+			product	membrane glycoprotein M
+632	2110	mat_peptide
+			product	envelope protein E
+2111	>2221	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|316983418|gb|HQ541789.1|
+79	10251	gene
+			gene	POLY
+79	10251	CDS
+			product	polyprotein
+79	420	mat_peptide
+			product	anchored capsid protein C
+79	378	mat_peptide
+			product	capsid protein C
+421	918	mat_peptide
+			product	membrane glycoprotein precursor M
+421	693	mat_peptide
+			product	protein pr
+694	918	mat_peptide
+			product	membrane glycoprotein M
+919	2397	mat_peptide
+			product	envelope protein E
+2398	3453	mat_peptide
+			product	nonstructural protein NS1
+3454	4107	mat_peptide
+			product	nonstructural protein NS2A
+4108	4497	mat_peptide
+			product	nonstructural protein NS2B
+4498	6354	mat_peptide
+			product	nonstructural protein NS3
+6355	6735	mat_peptide
+			product	nonstructural protein NS4A
+6736	6804	mat_peptide
+			product	protein 2K
+6805	7548	mat_peptide
+			product	nonstructural protein NS4B
+7549	10248	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1445141669|gb|MG895252.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|75706345|gb|DQ109039.1|
+<1	>879	gene
+			gene	POLY
+<1	>879	CDS
+			product	polyprotein
+			codon_start	1
+<1	>879	mat_peptide
+			product	envelope protein E
+>Feature gi|1151124550|gb|KY586789.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|992324557|gb|KT726348.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|223862834|gb|FJ608519.1|
+<1	>419	gene
+			gene	POLY
+<1	>419	CDS
+			product	polyprotein
+			codon_start	1
+<1	>419	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|389565790|gb|JF808119.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1212897316|emb|LT898451.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|567319939|gb|KF041256.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|189484912|gb|EU715742.1|
+<1	>399	gene
+			gene	POLY
+<1	>399	CDS
+			product	polyprotein
+			codon_start	2
+<1	>399	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|75706251|gb|DQ109259.1|
+77	>752	gene
+			gene	POLY
+77	>752	CDS
+			product	polyprotein
+77	418	mat_peptide
+			product	anchored capsid protein C
+77	376	mat_peptide
+			product	capsid protein C
+419	>752	mat_peptide
+			product	membrane glycoprotein precursor M
+419	691	mat_peptide
+			product	protein pr
+692	>752	mat_peptide
+			product	membrane glycoprotein M
+>Feature gi|325420950|gb|JF295012.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|75705940|gb|DQ109450.1|
+<1	>865	gene
+			gene	POLY
+<1	>865	CDS
+			product	polyprotein
+			codon_start	2
+<1	>865	mat_peptide
+			product	nonstructural protein NS3
+>Feature gi|263613408|gb|GU131875.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1502961714|gb|MH594945.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|75706570|gb|DQ109155.1|
+<1	>879	gene
+			gene	POLY
+<1	>879	CDS
+			product	polyprotein
+			codon_start	1
+<1	>879	mat_peptide
+			product	envelope protein E
+>Feature gi|75706353|gb|DQ109043.1|
+<1	>879	gene
+			gene	POLY
+<1	>879	CDS
+			product	polyprotein
+			codon_start	1
+<1	>879	mat_peptide
+			product	envelope protein E
+>Feature gi|1502961696|gb|MH594936.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|1502961690|gb|MH594933.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|221070415|gb|FJ639799.1|
+63	10235	gene
+			gene	POLY
+63	10235	CDS
+			product	polyprotein
+63	404	mat_peptide
+			product	anchored capsid protein C
+63	362	mat_peptide
+			product	capsid protein C
+405	902	mat_peptide
+			product	membrane glycoprotein precursor M
+405	677	mat_peptide
+			product	protein pr
+678	902	mat_peptide
+			product	membrane glycoprotein M
+903	2381	mat_peptide
+			product	envelope protein E
+2382	3437	mat_peptide
+			product	nonstructural protein NS1
+3438	4091	mat_peptide
+			product	nonstructural protein NS2A
+4092	4481	mat_peptide
+			product	nonstructural protein NS2B
+4482	6338	mat_peptide
+			product	nonstructural protein NS3
+6339	6719	mat_peptide
+			product	nonstructural protein NS4A
+6720	6788	mat_peptide
+			product	protein 2K
+6789	7532	mat_peptide
+			product	nonstructural protein NS4B
+7533	10232	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|937349292|gb|KR347369.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|1343894111|gb|KY794787.1|
+52	10224	gene
+			gene	POLY
+52	10224	CDS
+			product	polyprotein
+52	393	mat_peptide
+			product	anchored capsid protein C
+52	351	mat_peptide
+			product	capsid protein C
+394	891	mat_peptide
+			product	membrane glycoprotein precursor M
+394	666	mat_peptide
+			product	protein pr
+667	891	mat_peptide
+			product	membrane glycoprotein M
+892	2370	mat_peptide
+			product	envelope protein E
+2371	3426	mat_peptide
+			product	nonstructural protein NS1
+3427	4080	mat_peptide
+			product	nonstructural protein NS2A
+4081	4470	mat_peptide
+			product	nonstructural protein NS2B
+4471	6327	mat_peptide
+			product	nonstructural protein NS3
+6328	6708	mat_peptide
+			product	nonstructural protein NS4A
+6709	6777	mat_peptide
+			product	protein 2K
+6778	7521	mat_peptide
+			product	nonstructural protein NS4B
+7522	10221	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|544452329|gb|KF144591.1|
+<1	>524	gene
+			gene	POLY
+<1	>524	CDS
+			product	polyprotein
+			codon_start	1
+<1	>524	mat_peptide
+			product	envelope protein E
+>Feature gi|56411737|gb|AY676417.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|1445141671|gb|MG895253.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|253559757|gb|FJ502954.1|
+<1	>220	gene
+			gene	POLY
+<1	>220	CDS
+			product	polyprotein
+			codon_start	3
+<1	>220	mat_peptide
+			product	envelope protein E
+>Feature gi|3719332|gb|AF086719.1|
+<1	>369	gene
+			gene	POLY
+<1	>369	CDS
+			product	polyprotein
+			codon_start	1
+<1	>369	mat_peptide
+			product	envelope protein E
+>Feature gi|818214376|gb|KP100255.1|
+<1	>824	gene
+			gene	POLY
+<1	>824	CDS
+			product	polyprotein
+			codon_start	1
+<1	96	mat_peptide
+			product	membrane glycoprotein precursor M
+<1	96	mat_peptide
+			product	membrane glycoprotein M
+97	>824	mat_peptide
+			product	envelope protein E
+>Feature gi|75705687|gb|DQ109311.1|
+<1	1749	gene
+			gene	POLY
+<1	1749	CDS
+			product	polyprotein
+			codon_start	1
+<1	1746	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|210161594|gb|FJ375135.1|
+<1	>1977	gene
+			gene	POLY
+<1	>1977	CDS
+			product	polyprotein
+			codon_start	1
+1	498	mat_peptide
+			product	membrane glycoprotein precursor M
+1	273	mat_peptide
+			product	protein pr
+274	498	mat_peptide
+			product	membrane glycoprotein M
+499	1977	mat_peptide
+			product	envelope protein E
+>Feature gi|449042898|gb|JX070127.1|
+<1	>1740	gene
+			gene	POLY
+<1	>1740	CDS
+			product	polyprotein
+			codon_start	3
+<1	146	mat_peptide
+			product	anchored capsid protein C
+<1	104	mat_peptide
+			product	capsid protein C
+147	644	mat_peptide
+			product	membrane glycoprotein precursor M
+147	419	mat_peptide
+			product	protein pr
+420	644	mat_peptide
+			product	membrane glycoprotein M
+645	>1740	mat_peptide
+			product	envelope protein E
+>Feature gi|937959130|gb|KR296744.1|
+88	10260	gene
+			gene	POLY
+88	10260	CDS
+			product	polyprotein
+88	429	mat_peptide
+			product	anchored capsid protein C
+88	387	mat_peptide
+			product	capsid protein C
+430	927	mat_peptide
+			product	membrane glycoprotein precursor M
+430	702	mat_peptide
+			product	protein pr
+703	927	mat_peptide
+			product	membrane glycoprotein M
+928	2406	mat_peptide
+			product	envelope protein E
+2407	3462	mat_peptide
+			product	nonstructural protein NS1
+3463	4116	mat_peptide
+			product	nonstructural protein NS2A
+4117	4506	mat_peptide
+			product	nonstructural protein NS2B
+4507	6363	mat_peptide
+			product	nonstructural protein NS3
+6364	6744	mat_peptide
+			product	nonstructural protein NS4A
+6745	6813	mat_peptide
+			product	protein 2K
+6814	7557	mat_peptide
+			product	nonstructural protein NS4B
+7558	10257	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|343381578|gb|JF297651.1|
+<1	270	gene
+			gene	POLY
+<1	270	CDS
+			product	polyprotein
+			codon_start	1
+<1	267	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|210061819|gb|FJ375565.1|
+<1	>322	gene
+			gene	POLY
+<1	>322	CDS
+			product	polyprotein
+			codon_start	1
+<1	219	mat_peptide
+			product	envelope protein E
+220	>322	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|264669492|gb|FJ464269.1|
+<1	>306	gene
+			gene	POLY
+<1	>306	CDS
+			product	polyprotein
+			codon_start	3
+<1	224	mat_peptide
+			product	envelope protein E
+225	>306	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|699113218|gb|KM226344.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|145413595|gb|AY858040.2|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|263612919|gb|GU131861.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|573974441|gb|KF955481.1|
+74	>10222	gene
+			gene	POLY
+74	>10222	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	>10222	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|204305588|gb|FJ182006.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|796823384|gb|KM114685.1|
+<1	>255	gene
+			gene	POLY
+<1	>255	CDS
+			product	polyprotein
+			codon_start	3
+<1	>255	mat_peptide
+			product	anchored capsid protein C
+<1	>255	mat_peptide
+			product	capsid protein C
+>Feature gi|74027042|gb|DQ177898.1|
+<1	>2221	gene
+			gene	POLY
+<1	>2221	CDS
+			product	polyprotein
+			codon_start	2
+<1	133	mat_peptide
+			product	anchored capsid protein C
+<1	91	mat_peptide
+			product	capsid protein C
+134	631	mat_peptide
+			product	membrane glycoprotein precursor M
+134	406	mat_peptide
+			product	protein pr
+407	631	mat_peptide
+			product	membrane glycoprotein M
+632	2110	mat_peptide
+			product	envelope protein E
+2111	>2221	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|1417724377|emb|LT898494.1|
+<1	>1977	gene
+			gene	POLY
+<1	>1977	CDS
+			product	polyprotein
+			codon_start	1
+1	498	mat_peptide
+			product	membrane glycoprotein precursor M
+1	273	mat_peptide
+			product	protein pr
+274	498	mat_peptide
+			product	membrane glycoprotein M
+499	1977	mat_peptide
+			product	envelope protein E
+>Feature gi|221070309|gb|FJ639749.1|
+58	10230	gene
+			gene	POLY
+58	10230	CDS
+			product	polyprotein
+58	399	mat_peptide
+			product	anchored capsid protein C
+58	357	mat_peptide
+			product	capsid protein C
+400	897	mat_peptide
+			product	membrane glycoprotein precursor M
+400	672	mat_peptide
+			product	protein pr
+673	897	mat_peptide
+			product	membrane glycoprotein M
+898	2376	mat_peptide
+			product	envelope protein E
+2377	3432	mat_peptide
+			product	nonstructural protein NS1
+3433	4086	mat_peptide
+			product	nonstructural protein NS2A
+4087	4476	mat_peptide
+			product	nonstructural protein NS2B
+4477	6333	mat_peptide
+			product	nonstructural protein NS3
+6334	6714	mat_peptide
+			product	nonstructural protein NS4A
+6715	6783	mat_peptide
+			product	protein 2K
+6784	7527	mat_peptide
+			product	nonstructural protein NS4B
+7528	10227	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|2623627|gb|AF029794.1|
+<1	>280	gene
+			gene	POLY
+<1	>280	CDS
+			product	polyprotein
+			codon_start	1
+<1	141	mat_peptide
+			product	envelope protein E
+142	>280	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|1018191877|gb|KT968123.1|
+<1	>200	gene
+			gene	POLY
+<1	>200	CDS
+			product	polyprotein
+			codon_start	1
+<1	>200	mat_peptide
+			product	anchored capsid protein C
+<1	>200	mat_peptide
+			product	capsid protein C
+>Feature gi|1375770185|gb|MG053153.1|
+<1	>502	gene
+			gene	POLY
+<1	>502	CDS
+			product	polyprotein
+			codon_start	3
+<1	296	mat_peptide
+			product	anchored capsid protein C
+<1	254	mat_peptide
+			product	capsid protein C
+297	>502	mat_peptide
+			product	membrane glycoprotein precursor M
+297	>502	mat_peptide
+			product	protein pr
+>Feature gi|1456881873|gb|MG450894.1|
+<1	>479	gene
+			gene	POLY
+<1	>479	CDS
+			product	polyprotein
+			codon_start	1
+<1	>479	mat_peptide
+			product	envelope protein E
+>Feature gi|1152053762|gb|KX926475.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|32441000|gb|AF547226.1|
+<1	>963	gene
+			gene	POLY
+<1	>963	CDS
+			product	polyprotein
+			codon_start	1
+<1	258	mat_peptide
+			product	anchored capsid protein C
+<1	216	mat_peptide
+			product	capsid protein C
+259	756	mat_peptide
+			product	membrane glycoprotein precursor M
+259	531	mat_peptide
+			product	protein pr
+532	756	mat_peptide
+			product	membrane glycoprotein M
+757	>963	mat_peptide
+			product	envelope protein E
+>Feature gi|937349278|gb|KR347362.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|169635128|gb|EU529703.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|75705755|gb|DQ109348.1|
+<1	1749	gene
+			gene	POLY
+<1	1749	CDS
+			product	polyprotein
+			codon_start	1
+<1	1746	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1059061758|gb|KX270820.1|
+<1	>1422	gene
+			gene	POLY
+<1	>1422	CDS
+			product	polyprotein
+			codon_start	1
+<1	1422	mat_peptide
+			product	envelope protein E
+>Feature gi|75706146|gb|DQ109205.1|
+77	>752	gene
+			gene	POLY
+77	>752	CDS
+			product	polyprotein
+77	418	mat_peptide
+			product	anchored capsid protein C
+77	376	mat_peptide
+			product	capsid protein C
+419	>752	mat_peptide
+			product	membrane glycoprotein precursor M
+419	691	mat_peptide
+			product	protein pr
+692	>752	mat_peptide
+			product	membrane glycoprotein M
+>Feature gi|1445141759|gb|MG895297.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|190161852|gb|EU781137.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|74027048|gb|DQ177901.1|
+<1	>2221	gene
+			gene	POLY
+<1	>2221	CDS
+			product	polyprotein
+			codon_start	2
+<1	133	mat_peptide
+			product	anchored capsid protein C
+<1	91	mat_peptide
+			product	capsid protein C
+134	631	mat_peptide
+			product	membrane glycoprotein precursor M
+134	406	mat_peptide
+			product	protein pr
+407	631	mat_peptide
+			product	membrane glycoprotein M
+632	2110	mat_peptide
+			product	envelope protein E
+2111	>2221	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|294986737|gb|GQ357838.1|
+<1	>1410	gene
+			gene	POLY
+<1	>1410	CDS
+			product	polyprotein
+			codon_start	1
+1	>1410	mat_peptide
+			product	envelope protein E
+>Feature gi|389565806|gb|JF808127.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|210061995|gb|FJ375653.1|
+<1	>250	gene
+			gene	POLY
+<1	>250	CDS
+			product	polyprotein
+			codon_start	1
+<1	>250	mat_peptide
+			product	nonstructural protein NS3
+>Feature gi|189484870|gb|EU715721.1|
+<1	>399	gene
+			gene	POLY
+<1	>399	CDS
+			product	polyprotein
+			codon_start	2
+<1	>399	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|263615159|gb|GU131941.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|735659318|gb|KJ737429.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|316983444|gb|HQ541804.1|
+<1	10056	gene
+			gene	POLY
+<1	10056	CDS
+			product	polyprotein
+			codon_start	1
+<1	225	mat_peptide
+			product	anchored capsid protein C
+<1	183	mat_peptide
+			product	capsid protein C
+226	723	mat_peptide
+			product	membrane glycoprotein precursor M
+226	498	mat_peptide
+			product	protein pr
+499	723	mat_peptide
+			product	membrane glycoprotein M
+724	2202	mat_peptide
+			product	envelope protein E
+2203	3258	mat_peptide
+			product	nonstructural protein NS1
+3259	3912	mat_peptide
+			product	nonstructural protein NS2A
+3913	4302	mat_peptide
+			product	nonstructural protein NS2B
+4303	6159	mat_peptide
+			product	nonstructural protein NS3
+6160	6540	mat_peptide
+			product	nonstructural protein NS4A
+6541	6609	mat_peptide
+			product	protein 2K
+6610	7353	mat_peptide
+			product	nonstructural protein NS4B
+7354	10053	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|74027020|gb|DQ177887.1|
+<1	>2221	gene
+			gene	POLY
+<1	>2221	CDS
+			product	polyprotein
+			codon_start	2
+<1	133	mat_peptide
+			product	anchored capsid protein C
+<1	91	mat_peptide
+			product	capsid protein C
+134	631	mat_peptide
+			product	membrane glycoprotein precursor M
+134	406	mat_peptide
+			product	protein pr
+407	631	mat_peptide
+			product	membrane glycoprotein M
+632	2110	mat_peptide
+			product	envelope protein E
+2111	>2221	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|751868838|emb|HG530142.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|204305633|gb|FJ205871.1|
+62	10234	gene
+			gene	POLY
+62	10234	CDS
+			product	polyprotein
+62	403	mat_peptide
+			product	anchored capsid protein C
+62	361	mat_peptide
+			product	capsid protein C
+404	901	mat_peptide
+			product	membrane glycoprotein precursor M
+404	676	mat_peptide
+			product	protein pr
+677	901	mat_peptide
+			product	membrane glycoprotein M
+902	2380	mat_peptide
+			product	envelope protein E
+2381	3436	mat_peptide
+			product	nonstructural protein NS1
+3437	4090	mat_peptide
+			product	nonstructural protein NS2A
+4091	4480	mat_peptide
+			product	nonstructural protein NS2B
+4481	6337	mat_peptide
+			product	nonstructural protein NS3
+6338	6718	mat_peptide
+			product	nonstructural protein NS4A
+6719	6787	mat_peptide
+			product	protein 2K
+6788	7531	mat_peptide
+			product	nonstructural protein NS4B
+7532	10231	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|158851711|gb|EU081221.1|
+94	10266	gene
+			gene	POLY
+94	10266	CDS
+			product	polyprotein
+94	435	mat_peptide
+			product	anchored capsid protein C
+94	393	mat_peptide
+			product	capsid protein C
+436	933	mat_peptide
+			product	membrane glycoprotein precursor M
+436	708	mat_peptide
+			product	protein pr
+709	933	mat_peptide
+			product	membrane glycoprotein M
+934	2412	mat_peptide
+			product	envelope protein E
+2413	3468	mat_peptide
+			product	nonstructural protein NS1
+3469	4122	mat_peptide
+			product	nonstructural protein NS2A
+4123	4512	mat_peptide
+			product	nonstructural protein NS2B
+4513	6369	mat_peptide
+			product	nonstructural protein NS3
+6370	6750	mat_peptide
+			product	nonstructural protein NS4A
+6751	6819	mat_peptide
+			product	protein 2K
+6820	7563	mat_peptide
+			product	nonstructural protein NS4B
+7564	10263	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|210061897|gb|FJ375604.1|
+<1	>389	gene
+			gene	POLY
+<1	>389	CDS
+			product	polyprotein
+			codon_start	3
+<1	>389	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|1389533276|gb|MG569911.1|
+<1	>217	gene
+			gene	POLY
+<1	>217	CDS
+			product	polyprotein
+			codon_start	2
+<1	>217	mat_peptide
+			product	anchored capsid protein C
+<1	>217	mat_peptide
+			product	capsid protein C
+>Feature gi|372478805|gb|JN544412.1|
+<1	>1478	gene
+			gene	POLY
+<1	>1478	CDS
+			product	polyprotein
+			codon_start	1
+1	>1478	mat_peptide
+			product	envelope protein E
+>Feature gi|388849994|gb|JN202585.1|
+<1	>679	gene
+			gene	POLY
+<1	>679	CDS
+			product	polyprotein
+			codon_start	2
+<1	>679	mat_peptide
+			product	envelope protein E
+>Feature gi|187610014|gb|EU660408.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1151124464|gb|KY586746.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|264669484|gb|FJ464265.1|
+<1	>306	gene
+			gene	POLY
+<1	>306	CDS
+			product	polyprotein
+			codon_start	3
+<1	224	mat_peptide
+			product	envelope protein E
+225	>306	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|223862810|gb|FJ608507.1|
+<1	>419	gene
+			gene	POLY
+<1	>419	CDS
+			product	polyprotein
+			codon_start	1
+<1	>419	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|1067154602|gb|KT758759.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|110431911|gb|DQ675522.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|187610156|gb|EU687196.1|
+64	10236	gene
+			gene	POLY
+64	10236	CDS
+			product	polyprotein
+64	405	mat_peptide
+			product	anchored capsid protein C
+64	363	mat_peptide
+			product	capsid protein C
+406	903	mat_peptide
+			product	membrane glycoprotein precursor M
+406	678	mat_peptide
+			product	protein pr
+679	903	mat_peptide
+			product	membrane glycoprotein M
+904	2382	mat_peptide
+			product	envelope protein E
+2383	3438	mat_peptide
+			product	nonstructural protein NS1
+3439	4092	mat_peptide
+			product	nonstructural protein NS2A
+4093	4482	mat_peptide
+			product	nonstructural protein NS2B
+4483	6339	mat_peptide
+			product	nonstructural protein NS3
+6340	6720	mat_peptide
+			product	nonstructural protein NS4A
+6721	6789	mat_peptide
+			product	protein 2K
+6790	7533	mat_peptide
+			product	nonstructural protein NS4B
+7534	10233	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1067154551|gb|KT758741.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|56808999|gb|AY702033.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|323530|gb|L11426.1|DENENVGLYE
+<1	>1977	gene
+			gene	POLY
+<1	>1977	CDS
+			product	polyprotein
+			codon_start	1
+1	498	mat_peptide
+			product	membrane glycoprotein precursor M
+1	273	mat_peptide
+			product	protein pr
+274	498	mat_peptide
+			product	membrane glycoprotein M
+499	1977	mat_peptide
+			product	envelope protein E
+>Feature gi|1419338060|gb|MG812331.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|157416011|gb|EU003504.1|
+<1	>306	gene
+			gene	POLY
+<1	>306	CDS
+			product	polyprotein
+			codon_start	3
+<1	224	mat_peptide
+			product	envelope protein E
+225	>306	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|75706275|gb|DQ109271.1|
+77	>752	gene
+			gene	POLY
+77	>752	CDS
+			product	polyprotein
+77	418	mat_peptide
+			product	anchored capsid protein C
+77	376	mat_peptide
+			product	capsid protein C
+419	>752	mat_peptide
+			product	membrane glycoprotein precursor M
+419	691	mat_peptide
+			product	protein pr
+692	>752	mat_peptide
+			product	membrane glycoprotein M
+>Feature gi|1151124428|gb|KY586728.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|699049616|gb|KM217144.1|
+1	>342	gene
+			gene	POLY
+1	>342	CDS
+			product	polyprotein
+1	342	mat_peptide
+			product	anchored capsid protein C
+1	300	mat_peptide
+			product	capsid protein C
+>Feature gi|25992045|gb|AF495900.1|
+<1	>318	gene
+			gene	POLY
+<1	>318	CDS
+			product	polyprotein
+			codon_start	1
+<1	>318	mat_peptide
+			product	anchored capsid protein C
+<1	279	mat_peptide
+			product	capsid protein C
+>Feature gi|253559791|gb|FJ502971.1|
+<1	>220	gene
+			gene	POLY
+<1	>220	CDS
+			product	polyprotein
+			codon_start	3
+<1	>220	mat_peptide
+			product	envelope protein E
+>Feature gi|189484880|gb|EU715726.1|
+<1	>399	gene
+			gene	POLY
+<1	>399	CDS
+			product	polyprotein
+			codon_start	2
+<1	>399	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|511782682|gb|JX669490.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|91075890|gb|DQ453980.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|32441048|gb|AF547250.1|
+<1	>963	gene
+			gene	POLY
+<1	>963	CDS
+			product	polyprotein
+			codon_start	1
+<1	258	mat_peptide
+			product	anchored capsid protein C
+<1	216	mat_peptide
+			product	capsid protein C
+259	756	mat_peptide
+			product	membrane glycoprotein precursor M
+259	531	mat_peptide
+			product	protein pr
+532	756	mat_peptide
+			product	membrane glycoprotein M
+757	>963	mat_peptide
+			product	envelope protein E
+>Feature gi|167508700|gb|EU418635.1|
+<1	>350	gene
+			gene	POLY
+<1	>350	CDS
+			product	polyprotein
+			codon_start	1
+<1	246	mat_peptide
+			product	envelope protein E
+247	>350	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|1151124536|gb|KY586782.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|210062125|gb|FJ375718.1|
+<1	192	gene
+			gene	POLY
+<1	192	CDS
+			product	polyprotein
+			codon_start	1
+<1	189	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1188238205|gb|KY921906.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|363499542|gb|JN030184.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|264669496|gb|FJ464271.1|
+<1	>306	gene
+			gene	POLY
+<1	>306	CDS
+			product	polyprotein
+			codon_start	3
+<1	224	mat_peptide
+			product	envelope protein E
+225	>306	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|25992081|gb|AF497731.1|
+<1	>366	gene
+			gene	POLY
+<1	>366	CDS
+			product	polyprotein
+			codon_start	1
+<1	>366	mat_peptide
+			product	nonstructural protein NS2B
+>Feature gi|375304216|gb|JN379501.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|99079133|gb|DQ518659.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|169143699|gb|EU482457.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|157416031|gb|EU003514.1|
+<1	>306	gene
+			gene	POLY
+<1	>306	CDS
+			product	polyprotein
+			codon_start	3
+<1	224	mat_peptide
+			product	envelope protein E
+225	>306	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|75705866|gb|DQ109412.1|
+<1	>865	gene
+			gene	POLY
+<1	>865	CDS
+			product	polyprotein
+			codon_start	2
+<1	>865	mat_peptide
+			product	nonstructural protein NS3
+>Feature gi|161408422|dbj|AB008169.1|
+<1	>320	gene
+			gene	POLY
+<1	>320	CDS
+			product	polyprotein
+			codon_start	3
+<1	161	mat_peptide
+			product	envelope protein E
+162	>320	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|449042912|gb|JX070134.1|
+<1	>1740	gene
+			gene	POLY
+<1	>1740	CDS
+			product	polyprotein
+			codon_start	3
+<1	146	mat_peptide
+			product	anchored capsid protein C
+<1	104	mat_peptide
+			product	capsid protein C
+147	644	mat_peptide
+			product	membrane glycoprotein precursor M
+147	419	mat_peptide
+			product	protein pr
+420	644	mat_peptide
+			product	membrane glycoprotein M
+645	>1740	mat_peptide
+			product	envelope protein E
+>Feature gi|568131583|gb|KF971707.1|
+80	>3507	gene
+			gene	POLY
+80	>3507	CDS
+			product	polyprotein
+80	421	mat_peptide
+			product	anchored capsid protein C
+80	379	mat_peptide
+			product	capsid protein C
+422	919	mat_peptide
+			product	membrane glycoprotein precursor M
+422	694	mat_peptide
+			product	protein pr
+695	919	mat_peptide
+			product	membrane glycoprotein M
+920	2398	mat_peptide
+			product	envelope protein E
+2399	3454	mat_peptide
+			product	nonstructural protein NS1
+3455	>3507	mat_peptide
+			product	nonstructural protein NS2A
+>Feature gi|75706152|gb|DQ109208.1|
+77	>752	gene
+			gene	POLY
+77	>752	CDS
+			product	polyprotein
+77	418	mat_peptide
+			product	anchored capsid protein C
+77	376	mat_peptide
+			product	capsid protein C
+419	>752	mat_peptide
+			product	membrane glycoprotein precursor M
+419	691	mat_peptide
+			product	protein pr
+692	>752	mat_peptide
+			product	membrane glycoprotein M
+>Feature gi|1033938936|gb|KU529754.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|110431915|gb|DQ675524.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|161338503|emb|AM748749.1|
+<1	>496	gene
+			gene	POLY
+<1	>496	CDS
+			product	polyprotein
+			codon_start	1
+<1	>496	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1229251267|gb|KY851620.1|
+<1	>1977	gene
+			gene	POLY
+<1	>1977	CDS
+			product	polyprotein
+			codon_start	1
+1	498	mat_peptide
+			product	membrane glycoprotein precursor M
+1	273	mat_peptide
+			product	protein pr
+274	498	mat_peptide
+			product	membrane glycoprotein M
+499	1977	mat_peptide
+			product	envelope protein E
+>Feature gi|1005929717|gb|KU053472.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|582052296|gb|KJ189284.1|
+81	10253	gene
+			gene	POLY
+81	10253	CDS
+			product	polyprotein
+81	422	mat_peptide
+			product	anchored capsid protein C
+81	380	mat_peptide
+			product	capsid protein C
+423	920	mat_peptide
+			product	membrane glycoprotein precursor M
+423	695	mat_peptide
+			product	protein pr
+696	920	mat_peptide
+			product	membrane glycoprotein M
+921	2399	mat_peptide
+			product	envelope protein E
+2400	3455	mat_peptide
+			product	nonstructural protein NS1
+3456	4109	mat_peptide
+			product	nonstructural protein NS2A
+4110	4499	mat_peptide
+			product	nonstructural protein NS2B
+4500	6356	mat_peptide
+			product	nonstructural protein NS3
+6357	6737	mat_peptide
+			product	nonstructural protein NS4A
+6738	6806	mat_peptide
+			product	protein 2K
+6807	7550	mat_peptide
+			product	nonstructural protein NS4B
+7551	10250	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|316983470|gb|HQ705616.1|
+81	10253	gene
+			gene	POLY
+81	10253	CDS
+			product	polyprotein
+81	422	mat_peptide
+			product	anchored capsid protein C
+81	380	mat_peptide
+			product	capsid protein C
+423	920	mat_peptide
+			product	membrane glycoprotein precursor M
+423	695	mat_peptide
+			product	protein pr
+696	920	mat_peptide
+			product	membrane glycoprotein M
+921	2399	mat_peptide
+			product	envelope protein E
+2400	3455	mat_peptide
+			product	nonstructural protein NS1
+3456	4109	mat_peptide
+			product	nonstructural protein NS2A
+4110	4499	mat_peptide
+			product	nonstructural protein NS2B
+4500	6356	mat_peptide
+			product	nonstructural protein NS3
+6357	6737	mat_peptide
+			product	nonstructural protein NS4A
+6738	6806	mat_peptide
+			product	protein 2K
+6807	7550	mat_peptide
+			product	nonstructural protein NS4B
+7551	10250	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|264669454|gb|FJ464250.1|
+<1	>306	gene
+			gene	POLY
+<1	>306	CDS
+			product	polyprotein
+			codon_start	3
+<1	224	mat_peptide
+			product	envelope protein E
+225	>306	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|1272736131|gb|KY709190.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|56411689|gb|AY676393.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|1151124568|gb|KY586798.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|937349394|gb|KR347420.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|229609160|gb|FJ389914.1|
+<1	>1704	gene
+			gene	POLY
+<1	>1704	CDS
+			product	polyprotein
+			codon_start	1
+<1	225	mat_peptide
+			product	membrane glycoprotein precursor M
+1	225	mat_peptide
+			product	membrane glycoprotein M
+226	1704	mat_peptide
+			product	envelope protein E
+>Feature gi|91075888|gb|DQ453979.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|189484850|gb|EU715711.1|
+<1	>399	gene
+			gene	POLY
+<1	>399	CDS
+			product	polyprotein
+			codon_start	2
+<1	>399	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|225691025|gb|FJ850097.1|
+74	10246	gene
+			gene	POLY
+74	10246	CDS
+			product	polyprotein
+74	415	mat_peptide
+			product	anchored capsid protein C
+74	373	mat_peptide
+			product	capsid protein C
+416	913	mat_peptide
+			product	membrane glycoprotein precursor M
+416	688	mat_peptide
+			product	protein pr
+689	913	mat_peptide
+			product	membrane glycoprotein M
+914	2392	mat_peptide
+			product	envelope protein E
+2393	3448	mat_peptide
+			product	nonstructural protein NS1
+3449	4102	mat_peptide
+			product	nonstructural protein NS2A
+4103	4492	mat_peptide
+			product	nonstructural protein NS2B
+4493	6349	mat_peptide
+			product	nonstructural protein NS3
+6350	6730	mat_peptide
+			product	nonstructural protein NS4A
+6731	6799	mat_peptide
+			product	protein 2K
+6800	7543	mat_peptide
+			product	nonstructural protein NS4B
+7544	10243	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|699049606|gb|KM217139.1|
+1	>342	gene
+			gene	POLY
+1	>342	CDS
+			product	polyprotein
+1	342	mat_peptide
+			product	anchored capsid protein C
+1	300	mat_peptide
+			product	capsid protein C
+>Feature gi|359801486|gb|JN376776.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|204305620|gb|FJ182041.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1151124588|gb|KY586808.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|75705847|gb|DQ109401.1|
+<1	1749	gene
+			gene	POLY
+<1	1749	CDS
+			product	polyprotein
+			codon_start	1
+<1	1746	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1123355763|gb|KX518574.1|
+1	>2319	gene
+			gene	POLY
+1	>2319	CDS
+			product	polyprotein
+1	342	mat_peptide
+			product	anchored capsid protein C
+1	300	mat_peptide
+			product	capsid protein C
+343	840	mat_peptide
+			product	membrane glycoprotein precursor M
+343	615	mat_peptide
+			product	protein pr
+616	840	mat_peptide
+			product	membrane glycoprotein M
+841	2319	mat_peptide
+			product	envelope protein E
+>Feature gi|263614376|gb|GU131910.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|32441056|gb|AF547254.1|
+<1	>963	gene
+			gene	POLY
+<1	>963	CDS
+			product	polyprotein
+			codon_start	1
+<1	258	mat_peptide
+			product	anchored capsid protein C
+<1	216	mat_peptide
+			product	capsid protein C
+259	756	mat_peptide
+			product	membrane glycoprotein precursor M
+259	531	mat_peptide
+			product	protein pr
+532	756	mat_peptide
+			product	membrane glycoprotein M
+757	>963	mat_peptide
+			product	envelope protein E
+>Feature gi|374256906|gb|JN662391.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|116874466|gb|DQ863634.1|
+95	>376	gene
+			gene	POLY
+95	>376	CDS
+			product	polyprotein
+95	>376	mat_peptide
+			product	anchored capsid protein C
+95	>376	mat_peptide
+			product	capsid protein C
+>Feature gi|125654585|gb|EF088849.1|
+<1	>519	gene
+			gene	POLY
+<1	>519	CDS
+			product	polyprotein
+			codon_start	1
+<1	246	mat_peptide
+			product	anchored capsid protein C
+<1	204	mat_peptide
+			product	capsid protein C
+247	>519	mat_peptide
+			product	membrane glycoprotein precursor M
+247	519	mat_peptide
+			product	protein pr
+>Feature gi|1445141659|gb|MG895247.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|158851695|gb|EU081213.1|
+95	10267	gene
+			gene	POLY
+95	10267	CDS
+			product	polyprotein
+95	436	mat_peptide
+			product	anchored capsid protein C
+95	394	mat_peptide
+			product	capsid protein C
+437	934	mat_peptide
+			product	membrane glycoprotein precursor M
+437	709	mat_peptide
+			product	protein pr
+710	934	mat_peptide
+			product	membrane glycoprotein M
+935	2413	mat_peptide
+			product	envelope protein E
+2414	3469	mat_peptide
+			product	nonstructural protein NS1
+3470	4123	mat_peptide
+			product	nonstructural protein NS2A
+4124	4513	mat_peptide
+			product	nonstructural protein NS2B
+4514	6370	mat_peptide
+			product	nonstructural protein NS3
+6371	6751	mat_peptide
+			product	nonstructural protein NS4A
+6752	6820	mat_peptide
+			product	protein 2K
+6821	7564	mat_peptide
+			product	nonstructural protein NS4B
+7565	10264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|25992033|gb|AF495894.1|
+<1	>318	gene
+			gene	POLY
+<1	>318	CDS
+			product	polyprotein
+			codon_start	1
+<1	>318	mat_peptide
+			product	anchored capsid protein C
+<1	279	mat_peptide
+			product	capsid protein C
+>Feature gi|12060284|dbj|AB038478.1|
+1	>1050	gene
+			gene	POLY
+1	>1050	CDS
+			product	polyprotein
+1	342	mat_peptide
+			product	anchored capsid protein C
+1	300	mat_peptide
+			product	capsid protein C
+343	840	mat_peptide
+			product	membrane glycoprotein precursor M
+343	615	mat_peptide
+			product	protein pr
+616	840	mat_peptide
+			product	membrane glycoprotein M
+841	>1050	mat_peptide
+			product	envelope protein E
+>Feature gi|294986807|gb|GQ357873.1|
+<1	>1410	gene
+			gene	POLY
+<1	>1410	CDS
+			product	polyprotein
+			codon_start	1
+1	>1410	mat_peptide
+			product	envelope protein E
+>Feature gi|692349675|gb|KF816148.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|112361385|gb|DQ854726.1|
+<1	>390	gene
+			gene	POLY
+<1	>390	CDS
+			product	polyprotein
+			codon_start	1
+<1	>390	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|970596862|gb|KT250583.1|
+<1	>823	gene
+			gene	POLY
+<1	>823	CDS
+			product	polyprotein
+			codon_start	1
+<1	>823	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|255739704|gb|FJ606695.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|75706600|gb|DQ109170.1|
+<1	>879	gene
+			gene	POLY
+<1	>879	CDS
+			product	polyprotein
+			codon_start	1
+<1	>879	mat_peptide
+			product	envelope protein E
+>Feature gi|1152053750|gb|KX926469.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|99079153|gb|DQ518669.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|1040065527|gb|KX224271.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|295148654|gb|GQ330910.1|
+<1	>434	gene
+			gene	POLY
+<1	>434	CDS
+			product	polyprotein
+			codon_start	1
+<1	237	mat_peptide
+			product	anchored capsid protein C
+<1	195	mat_peptide
+			product	capsid protein C
+238	>434	mat_peptide
+			product	membrane glycoprotein precursor M
+238	>434	mat_peptide
+			product	protein pr
+>Feature gi|221070399|gb|FJ639791.1|
+58	10230	gene
+			gene	POLY
+58	10230	CDS
+			product	polyprotein
+58	399	mat_peptide
+			product	anchored capsid protein C
+58	357	mat_peptide
+			product	capsid protein C
+400	897	mat_peptide
+			product	membrane glycoprotein precursor M
+400	672	mat_peptide
+			product	protein pr
+673	897	mat_peptide
+			product	membrane glycoprotein M
+898	2376	mat_peptide
+			product	envelope protein E
+2377	3432	mat_peptide
+			product	nonstructural protein NS1
+3433	4086	mat_peptide
+			product	nonstructural protein NS2A
+4087	4476	mat_peptide
+			product	nonstructural protein NS2B
+4477	6333	mat_peptide
+			product	nonstructural protein NS3
+6334	6714	mat_peptide
+			product	nonstructural protein NS4A
+6715	6783	mat_peptide
+			product	protein 2K
+6784	7527	mat_peptide
+			product	nonstructural protein NS4B
+7528	10227	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|32441046|gb|AF547249.1|
+<1	>963	gene
+			gene	POLY
+<1	>963	CDS
+			product	polyprotein
+			codon_start	1
+<1	258	mat_peptide
+			product	anchored capsid protein C
+<1	216	mat_peptide
+			product	capsid protein C
+259	756	mat_peptide
+			product	membrane glycoprotein precursor M
+259	531	mat_peptide
+			product	protein pr
+532	756	mat_peptide
+			product	membrane glycoprotein M
+757	>963	mat_peptide
+			product	envelope protein E
+>Feature gi|75705817|gb|DQ109382.1|
+<1	1749	gene
+			gene	POLY
+<1	1749	CDS
+			product	polyprotein
+			codon_start	1
+<1	1746	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|221070476|gb|FJ639827.1|
+59	10231	gene
+			gene	POLY
+59	10231	CDS
+			product	polyprotein
+59	400	mat_peptide
+			product	anchored capsid protein C
+59	358	mat_peptide
+			product	capsid protein C
+401	898	mat_peptide
+			product	membrane glycoprotein precursor M
+401	673	mat_peptide
+			product	protein pr
+674	898	mat_peptide
+			product	membrane glycoprotein M
+899	2377	mat_peptide
+			product	envelope protein E
+2378	3433	mat_peptide
+			product	nonstructural protein NS1
+3434	4087	mat_peptide
+			product	nonstructural protein NS2A
+4088	4477	mat_peptide
+			product	nonstructural protein NS2B
+4478	6334	mat_peptide
+			product	nonstructural protein NS3
+6335	6715	mat_peptide
+			product	nonstructural protein NS4A
+6716	6784	mat_peptide
+			product	protein 2K
+6785	7528	mat_peptide
+			product	nonstructural protein NS4B
+7529	10228	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|323560|gb|L11441.1|DENENVGLYT
+<1	>1977	gene
+			gene	POLY
+<1	>1977	CDS
+			product	polyprotein
+			codon_start	1
+1	498	mat_peptide
+			product	membrane glycoprotein precursor M
+1	273	mat_peptide
+			product	protein pr
+274	498	mat_peptide
+			product	membrane glycoprotein M
+499	1977	mat_peptide
+			product	envelope protein E
+>Feature gi|157415973|gb|EU003485.1|
+<1	>306	gene
+			gene	POLY
+<1	>306	CDS
+			product	polyprotein
+			codon_start	3
+<1	224	mat_peptide
+			product	envelope protein E
+225	>306	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|425784432|gb|JQ650065.1|
+<1	>1479	gene
+			gene	POLY
+<1	>1479	CDS
+			product	polyprotein
+			codon_start	1
+1	1479	mat_peptide
+			product	envelope protein E
+>Feature gi|374257733|gb|JF274229.1|
+<1	267	gene
+			gene	POLY
+<1	267	CDS
+			product	polyprotein
+			codon_start	1
+<1	264	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|223862852|gb|FJ608528.1|
+<1	>419	gene
+			gene	POLY
+<1	>419	CDS
+			product	polyprotein
+			codon_start	1
+<1	>419	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|210061951|gb|FJ375631.1|
+<1	>400	gene
+			gene	POLY
+<1	>400	CDS
+			product	polyprotein
+			codon_start	1
+<1	>400	mat_peptide
+			product	nonstructural protein NS1
+>Feature gi|229609146|gb|FJ389907.1|
+<1	>1704	gene
+			gene	POLY
+<1	>1704	CDS
+			product	polyprotein
+			codon_start	1
+<1	225	mat_peptide
+			product	membrane glycoprotein precursor M
+1	225	mat_peptide
+			product	membrane glycoprotein M
+226	1704	mat_peptide
+			product	envelope protein E
+>Feature gi|75706450|gb|DQ109094.1|
+<1	>879	gene
+			gene	POLY
+<1	>879	CDS
+			product	polyprotein
+			codon_start	1
+<1	>879	mat_peptide
+			product	envelope protein E
+>Feature gi|746840837|gb|KM103097.1|
+<1	>281	gene
+			gene	POLY
+<1	>281	CDS
+			product	polyprotein
+			codon_start	1
+<1	>281	mat_peptide
+			product	anchored capsid protein C
+<1	252	mat_peptide
+			product	capsid protein C

@@ -88,8 +88,8 @@ my $options_okay =
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.44";
-my $releasedate   = "Jan 2019";
+my $version       = "0.45";
+my $releasedate   = "Feb 2019";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -417,6 +417,8 @@ sub diff_two_files {
 
   my $out_file_exists   = (-e $out_file) ? 1 : 0;
   my $exp_file_exists   = (-e $exp_file) ? 1 : 0;
+  my $out_file_nonempty = (-s $out_file) ? 1 : 0;
+  my $exp_file_nonempty = (-s $exp_file) ? 1 : 0;
 
   my $conclusion = "";
   my $pass = 0;
@@ -440,9 +442,22 @@ sub diff_two_files {
       runCommand("cp $exp_file $copy_of_exp_file", 0, $FH_HR);
       # analyze the diff file and print out how many lines 
       if($out_file =~ m/\.sqtable/ && $exp_file =~ m/\.sqtable/) { 
-        my $sqtable_diff_file = $diff_file . ".man";
-        compare_two_sqtable_files($out_file, $exp_file, $sqtable_diff_file, \%opt_HH, $FH_HR);
-        $conclusion = "FAIL [files differ, see $sqtable_diff_file]";
+        if($out_file_nonempty && $exp_file_nonempty) { 
+          my $sqtable_diff_file = $diff_file . ".man";
+          compare_two_sqtable_files($out_file, $exp_file, $sqtable_diff_file, \%opt_HH, $FH_HR);
+          $conclusion = "FAIL [files differ, see $sqtable_diff_file]";
+        }
+        else {
+          if(! $exp_file_nonempty) { 
+            $conclusion = "FAIL [files differ, expected file is empty, but output file is not (see $diff_file)]";
+          }
+          elsif(! $out_file_nonempty) { 
+            $conclusion = "FAIL [files differ, output file is empty, but expected file is not (see $diff_file)]";
+          }
+          else { 
+            DNAORG_FAIL("ERROR in $sub_name, unexpected case exp_file_nonempty: $exp_file_nonempty out_file_nonempty: $out_file_nonempty", 1, $FH_HR) ;
+          }
+        }
       }
       else { 
         $conclusion = "FAIL [files differ, see $diff_file]";
@@ -504,6 +519,12 @@ sub compare_two_sqtable_files {
   if(! $exp_file_nonempty) { 
     DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty", 1, $FH_HR);
   }
+  if(! $out_file_exists) { 
+    DNAORG_FAIL("ERROR in $sub_name, output file $out_file does not exist", 1, $FH_HR) ;
+  }
+  if(! $out_file_nonempty) { 
+    DNAORG_FAIL("ERROR in $sub_name, output file $out_file exists but is empty", 1, $FH_HR);
+  }
     
   my @out_line_A = ();  # array of all lines in out file
   my @exp_line_A = ();  # array of all lines in exp file
@@ -532,8 +553,7 @@ sub compare_two_sqtable_files {
   my $tot_nseq_note_out_only  = 0; # number of sequences with >=1 note only in the output file (not in the expected file)
   my $tot_nseq_note_exp_only  = 0; # number of sequences with >=1 note only in the expected file (not in the output file)
 
-
-  if($out_file_nonempty) { 
+  if($out_file_nonempty && $exp_file_nonempty) { 
     open(DIFFOUT, ">", $diff_file) || fileOpenFailure($diff_file, $sub_name, $!, "writing", $FH_HR);
     my %seq_H     = (); # key is sequence name, 1 is if sequence exists in @seq_A or not
     my @seq_A     = (); # array of sequence names in order

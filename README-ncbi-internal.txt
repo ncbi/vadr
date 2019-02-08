@@ -1,6 +1,6 @@
-EPN, Fri Jan 25 10:21:22 2019
+EPN, Fri Feb  8 10:42:31 2019
 
-dnaorg_scripts 0.44 README-ncbi-internal.txt 
+dnaorg_scripts 0.45 README-ncbi-internal.txt 
 
 Organization of this file:
 
@@ -20,7 +20,7 @@ of possible errors that can be output in feature tables.
 ##############################################################################
 INTRODUCTION
 
-dnaorg_scripts version 0.44 is installed in system-wide directories
+dnaorg_scripts version 0.45 is installed in system-wide directories
 for internal use at NCBI. The top-level directory is:
 
 /panfs/pan1/dnaorg/virseqannot/code/dnaorg_scripts
@@ -52,6 +52,9 @@ than the examples used here. That README.txt is here:
 
 Git repository for dnaorg_scripts:
 https://github.com/nawrockie/dnaorg_scripts.git
+
+(To be automatically updated about new releases, you can become a
+watcher of the repo on github.)
 
 authors: Eric Nawrocki and Alejandro Schaffer
 contact: eric.nawrocki@nih.gov
@@ -118,20 +121,25 @@ make sure your environment is set-up correctly and all the dnaorg
 related programs are working as intended, you should run both of these
 and ensure they finish successfully as explained below.
 
+These scripts can take up to several minutes to run. Please be patient.
+If something goes wrong the 'local' script will exit quickly. If the 
+compute farm is busy, the 'parallel' script make take longer as the
+relevant jobs wait to run.
+
 Below is example output for do-install-tests-local.sh:
 > sh $DNAORGDIR/testfiles/do-install-tests-local.sh
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # dnaorg_test.pl :: test dnaorg scripts [TEST SCRIPT]
-# dnaorg 0.44 (Jan 2019)
+# dnaorg 0.45 (Feb 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:       Fri Jan 25 06:05:52 2019
-# $DNAORGDIR: /panfs/pan1/infernal/notebook/19_0124_virus_dnaorg_release_0p44
+# date:       Fri Feb  8 10:38:51 2019
+# $DNAORGDIR: /panfs/pan1/infernal/notebook/19_0205_virus_dengue_linda_premature_stop
 #
-# test file:                                                   /panfs/pan1/infernal/notebook/19_0124_virus_dnaorg_release_0p44/dnaorg_scripts/testfiles/noro.r10.local.testin
+# test file:                                                   /panfs/pan1/infernal/notebook/19_0205_virus_dengue_linda_premature_stop/dnaorg_scripts/testfiles/noro.r10.local.testin
 # forcing directory overwrite:                                 yes [-f]
-# build directory, replaces !dirbuild! in test file with <s>:  /panfs/pan1/infernal/notebook/19_0124_virus_dnaorg_release_0p44/dnaorg-build-directories/norovirus-builds [--dirbuild]
+# build directory, replaces !dirbuild! in test file with <s>:  /panfs/pan1/infernal/notebook/19_0205_virus_dengue_linda_premature_stop/dnaorg-build-directories/norovirus-builds [--dirbuild]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Running command  1 [classify-noro-10-local]        ... done. [52.9 seconds]
+# Running command  1 [classify-noro-10-local]        ... done. [74.7 seconds]
 #	checking dt-noro.r10.l/dt-noro.r10.l-NC_029646/dt-noro.r10.l-NC_029646.dnaorg_annotate.ap.sqtable             ... pass
 #	checking dt-noro.r10.l/dt-noro.r10.l-NC_029646/dt-noro.r10.l-NC_029646.dnaorg_annotate.af.sqtable             ... pass
 #	checking dt-noro.r10.l/dt-noro.r10.l-NC_039476/dt-noro.r10.l-NC_039476.dnaorg_annotate.ap.sqtable             ... pass
@@ -150,14 +158,46 @@ Below is example output for do-install-tests-local.sh:
 #
 # All output files created in directory ./n10-local/
 #
-# CPU time:  00:00:53.25
+# CPU time:  00:01:16.79
+#            hh:mm:ss
+# 
+# DNAORG-SUCCESS
+# dnaorg_test.pl :: test dnaorg scripts [TEST SCRIPT]
+# dnaorg 0.45 (Feb 2019)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:       Fri Feb  8 10:40:09 2019
+# $DNAORGDIR: /panfs/pan1/infernal/notebook/19_0205_virus_dengue_linda_premature_stop
+#
+# test file:                                                   /panfs/pan1/infernal/notebook/19_0205_virus_dengue_linda_premature_stop/dnaorg_scripts/testfiles/dengue.r5.local.testin
+# forcing directory overwrite:                                 yes [-f]
+# build directory, replaces !dirbuild! in test file with <s>:  /panfs/pan1/infernal/notebook/19_0205_virus_dengue_linda_premature_stop/dnaorg-build-directories/dengue-builds [--dirbuild]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Running command  1 [classify-dengue-5-local]       ... done. [51.1 seconds]
+#	checking dt-dengue.r5.l/dt-dengue.r5.l-NC_001474/dt-dengue.r5.l-NC_001474.dnaorg_annotate.ap.sqtable          ... pass
+#	checking dt-dengue.r5.l/dt-dengue.r5.l-NC_001474/dt-dengue.r5.l-NC_001474.dnaorg_annotate.af.sqtable          ... pass
+#	checking dt-dengue.r5.l/dt-dengue.r5.l-NC_001477/dt-dengue.r5.l-NC_001477.dnaorg_annotate.ap.sqtable          ... pass
+#	checking dt-dengue.r5.l/dt-dengue.r5.l-NC_001477/dt-dengue.r5.l-NC_001477.dnaorg_annotate.af.sqtable          ... pass
+#	removing directory dt-dengue.r5.l                            ... done
+#
+#
+# PASS: all 4 files were created correctly.
+#
+#
+# Output printed to screen saved in:                   d5-local.dnaorg_test.log
+# List of executed commands saved in:                  d5-local.dnaorg_test.cmd
+# List and description of all output files saved in:   d5-local.dnaorg_test.list
+#
+# All output files created in directory ./d5-local/
+#
+# CPU time:  00:00:51.60
 #            hh:mm:ss
 # 
 # DNAORG-SUCCESS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The most important line is the line that begins with "# PASS"
+The two most important lines are the lines that begins with "# PASS"
 
 # PASS: all 6 files were created correctly.
+# PASS: all 4 files were created correctly.
 
 This means that the test has passed. You should see similar 
 lines when you run the other tests. If you do not and need help
