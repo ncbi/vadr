@@ -8326,9 +8326,9 @@ sub cmalignOrNhmmscanWrapper {
   # set up output file names
   my @concat_keys_A = (); # %r{1,2}_out_file_HAR keys we are going to concatenate files for
   my %concat_HA = ();     # hash of arrays of all files to concatenate together
-  my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tblout", "err"
+  my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err"
   if($do_cmalign) { 
-    @concat_keys_A = ("stdout", "ifile"); 
+    @concat_keys_A = ("stdout", "ifile", "tfile"); 
   }
   else { 
     @concat_keys_A = ("tblout");
@@ -8549,7 +8549,7 @@ sub cmalignOrNhmmscanWrapperHelper {
   my $s;
   my $key;
   if($do_cmalign) { 
-    @out_keys_A = ("stdout", "err", "ifile", "stk");
+    @out_keys_A = ("stdout", "err", "ifile", "tfile", "stk");
   }
   else { 
     @out_keys_A = ("stdout", "err", "tblout");
@@ -8564,7 +8564,8 @@ sub cmalignOrNhmmscanWrapperHelper {
     }
     if($do_cmalign) { 
       $success_AR->[$s] = runCmalign($execs_HR->{"$program_choice"}, $mdl_filename, $seq_file_AR->[$s], 
-                                     $out_file_HAR->{"stdout"}[$s], $out_file_HAR->{"ifile"}[$s], $out_file_HAR->{"stk"}[$s], $out_file_HAR->{"err"}[$s],
+                                     $out_file_HAR->{"stdout"}[$s], $out_file_HAR->{"ifile"}[$s], $out_file_HAR->{"tfile"}[$s], 
+                                     $out_file_HAR->{"stk"}[$s], $out_file_HAR->{"err"}[$s],
                                      (defined $mxsize_AR) ? \$mxsize_AR->[$s] : undef, 
                                      $opt_HHR, $ofile_info_HHR);   
     }
@@ -8622,6 +8623,7 @@ sub cmalignOrNhmmscanWrapperHelper {
 #  $seq_file:         path to the sequence file
 #  $stdout_file:      path to the stdout file to create
 #  $ifile_file:       path to the cmalign --ifile file to create
+#  $tfile_file:       path to the cmalign --tfile file to create
 #  $stk_file:         path to the cmalign stockholm alignment output file to create
 #  $err_file:         path to the error output file (only used if --local not used)
 #  $ret_mxsize_R:     REF to required matrix size, only filled if return value is '0'
@@ -8641,10 +8643,10 @@ sub cmalignOrNhmmscanWrapperHelper {
 ################################################################# 
 sub runCmalign { 
   my $sub_name = "runCmalign()";
-  my $nargs_expected = 10;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($executable, $model_file, $seq_file, $stdout_file, $ifile_file, $stk_file, $err_file, $ret_mxsize_R, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($executable, $model_file, $seq_file, $stdout_file, $ifile_file, $tfile_file, $stk_file, $err_file, $ret_mxsize_R, $opt_HHR, $ofile_info_HHR) = @_;
 
   if(defined $ret_mxsize_R) { 
     $$ret_mxsize_R = 0; # overwritten below if nec
@@ -8660,7 +8662,7 @@ sub runCmalign {
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
-  my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
+  my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file --tfile $tfile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
   if(! opt_Get("--noglocal",   $opt_HHR)) { $opts .= " -g"; }
   if(! opt_Get("--nofixedtau", $opt_HHR)) { $opts .= " --fixedtau"; }
   
@@ -8669,6 +8671,7 @@ sub runCmalign {
   # think the job is finished before it actual is.
   if(-e $stdout_file) { removeFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
   if(-e $ifile_file)  { removeFileUsingSystemRm($ifile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
+  if(-e $tfile_file)  { removeFileUsingSystemRm($tfile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
   if(-e $stk_file)    { removeFileUsingSystemRm($stk_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
   if(-e $err_file)    { removeFileUsingSystemRm($err_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
 
