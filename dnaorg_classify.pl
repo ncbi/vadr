@@ -88,7 +88,7 @@ my %opt_group_desc_H = ();
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"1"} = "REQUIRED options";
 #     option            type       default               group   requires incompat    preamble-output                          help-output    
-opt_Add("--dirout",     "string", undef,                     1,    undef, undef,       "REQUIRED name for output directory to create is <s>",  "REQUIRED: name for output directory to create is <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",     "string", undef,                     1,    "*",   "*",        "REQUIRED name for output directory to create is <s>",  "REQUIRED: name for output directory to create is <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"2"} = "options for selecting mode to run in: build-mode (--onlybuild) or classify-mode";
 #     option            type       default               group   requires       incompat                 preamble-output                                     help-output    

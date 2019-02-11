@@ -223,14 +223,18 @@ my $g = 0; # option group
 
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
+#     option            type       default               group   requires incompat    preamble-output                                   help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                            "display this help",                                  \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "REQUIRED options";
+opt_Add("--infasta",     "string",  undef,                  $g,    "*",   "*",       "fasta file with sequences to anntoate is <s>",    "fasta file with sequences to annotate is <s>",       \%opt_HH, \@opt_order_A);
+opt_Add("--refaccn",     "string",  undef,                  $g,    "*",   "*",       "reference accession to annotate based on is <s>", "reference accession to annotate based on is <s>",    \%opt_HH, \@opt_order_A);
+opt_Add("--dirout",      "string",  undef,                  $g,    "*",   "*",       "output directory to create is <s>",               "output directory to create is <s>",                  \%opt_HH, \@opt_order_A);
+opt_Add("--dirbuild",    "string",  undef,                  $g,    "*",   "*",       "output directory created by dnaorg_build.pl",     "output directory created by dnaorg_build.pl is <s>", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                                                help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                                         "display this help",                                  \%opt_HH, \@opt_order_A);
 opt_Add("-c",           "boolean", 0,                       $g,    undef, undef,      "genome is closed (circular)",                                 "genome is closed (circular)",                       \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                       $g,"--dirout",undef,      "forcing directory overwrite (with --dirout)",                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "forcing directory overwrite",                                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                   $g,    undef, undef,      "output directory specified as",                               "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--dirbuild",   "string",  undef,                   $g,"--dirout",   undef,   "output directory used for dnaorg_build.pl",                   "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--origin",     "string",  undef,                   $g,     "-c", undef,      "identify origin seq <s> in genomes",                          "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                   $g,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                       $g,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
@@ -241,8 +245,6 @@ opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,
 
 $opt_group_desc_H{++$g} = "options for alternative modes";
 #        option               type   default                group  requires incompat                        preamble-output                                                      help-output    
-opt_Add("--infasta",     "boolean", 0,                      $g,"--refaccn", "--skipedirect,--skipfetch",   "single cmdline argument is a fasta file of sequences, not a list of accessions", "single cmdline argument is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
-opt_Add("--refaccn",     "string",  undef,                  $g,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning protein validation with blastx";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
@@ -306,20 +308,25 @@ opt_Add("--aorgppthresh",  "real",    0.6,                  $g,   "-c,--aorgmode
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>\n";
+my $usage    = "Usage: dnaorg_annotate.pl\n";
+$usage      .= "\t--infasta  <sequence fasta file to annotate>              (REQUIRED option)\n";
+$usage      .= "\t--refaccn  <reference accession to annotate with>         (REQUIRED option)\n";
+$usage      .= "\t--dirbuild <path to directory created by dnaorg_build.pl> (REQUIRED option)\n";
+$usage      .= "\t--dirout   <path to output directory to create>           (REQUIRED option)\n";
+$usage      .= "\t[additional options]\n";
 $usage      .= "\n";
-$usage      .= "       OR\n";
-$usage      .= "\n";
-$usage      .= "       dnaorg_annotate.pl [-options] --refaccn <reference accession> --infasta <fasta sequence file with sequences to annotate>\n";
 my $synopsis = "dnaorg_annotate.pl :: annotate sequences based on a reference annotation";
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
+# REQUIRED options
+                'infasta'      => \$GetOptions_H{"--infasta"},
+                'refaccn=s'    => \$GetOptions_H{"--refaccn"},
+                'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
+                'dirout=s'     => \$GetOptions_H{"--dirout"},
 # basic options
                 'c'            => \$GetOptions_H{"-c"},
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
-                'dirout=s'     => \$GetOptions_H{"--dirout"},
-                'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
                 'origin=s'     => \$GetOptions_H{"--origin"},
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
                 'nomatpept'    => \$GetOptions_H{"--nomatpept"},
@@ -327,9 +334,6 @@ my $options_okay =
                 'dfeat=s'      => \$GetOptions_H{"--dfeat"},
                 'specstart=s'  => \$GetOptions_H{"--specstart"},
                 'keep'         => \$GetOptions_H{"--keep"},
-# options for alternative modes
-                'infasta'      => \$GetOptions_H{"--infasta"},
-                'refaccn=s'    => \$GetOptions_H{"--refaccn"},
 # options for tuning protein validation with blastx
                 'xalntol=s'    => \$GetOptions_H{"--xalntol"},
                 'xindeltol=s'  => \$GetOptions_H{"--xindeltol"},
@@ -450,12 +454,17 @@ if(opt_Get("--infasta", \%opt_HH)) {
   $do_infasta = 1;
 }
 
+if($dir_out eq $dir_build) { 
+  DNAORG_FAIL("ERROR, with --dirout <s1> and --dirbuild <s2>, <s1> and <s2> must be different directories", 1, undef);
+}
+# make sure build directory exists
+if(! -d $dir_build) {
+  DNAORG_FAIL("ERROR, directory $dir_build (specified with --dirbuild) does not exist.\nDid you run \"dnaorg_build.pl --dirout $dir_build\" yet? If not, you need to do that first.", 1, undef);
+}
+
 ###############
 # Preliminaries
 ###############
-# first, parse the list file, we need to do this first because we need
-# to know what the reference accession <refaccn> is to check if the
-# directory <refaccn> exists
 my $cmd;               # a command to run with runCommand()
 my @early_cmd_A = ();  # array of commands we run before our log file is opened
 my %seq_info_HA = ();  # hash of arrays, values are arrays with index range [0..$nseq-1];
@@ -474,79 +483,37 @@ my %infasta_ref_seq_info_HA = ();  # hash of arrays, for reference sequence info
                                    # $infasta_ref_seq_info_HA{"accn_name"}[0] is our reference accession
 
 my $nseq = 0;
-my $ref_accn = undef;
-if(! defined $infasta_file) { # default mode
-  parseListFile($listfile, 1, $seq_info_HA{"accn_name"}, undef); # 1 
-  $nseq = scalar(@{$seq_info_HA{"accn_name"}});
-  $ref_accn = $seq_info_HA{"accn_name"}[0];
-}
-else { # --infasta used
-  if(! (opt_Get("--refaccn", \%opt_HH))) { 
-    # we should never get here, because epn-options.pm should have enforced that
-    # --refaccn and --infasta were both used if one was, but we do a second check
-    # here just to make sure
-    DNAORG_FAIL("ERROR, --infasta requires --refaccn", 1, undef);
-  }
-  else { 
-    $ref_accn = opt_Get("--refaccn", \%opt_HH);
-    stripVersion(\$ref_accn);
-    # initialize the sequence info hash of arrays
-  }
+my $ref_accn = opt_Get("--refaccn", \%opt_HH);
+stripVersion(\$ref_accn);
+if($dir_out eq $ref_accn) { 
+  DNAORG_FAIL("ERROR, with --dirout <s1> and --refaccn <s2>, <s1> and <s2> must be different", 1, undef);
 }
 
-# determine the directory in which dnaorg_build files are in ($dir_build)
-# it will already be defined if --dirbuild was used
-if(! defined $dir_build) { 
-  $dir_build = $ref_accn;
-  if(! -d $dir_build) {
-    DNAORG_FAIL(sprintf("ERROR, directory $dir_build (%s) does not exist.\nDid you run \"dnaorg_build.pl $dir_build\" yet? If not, you need to do that first.", opt_IsUsed("--refaccn", \%opt_HH) ? "specified with --refaccn" : "first accession from in $listfile"), 1, undef);
+# remove dirout if -f used
+# check if one of the skip options was used (begin with --skip) 
+# if so, try to use it. Else tell user to either rerun with -f
+# or delete it.
+if(-d $dir_out) { 
+  $cmd = "rm -rf $dir_out";
+  if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
+    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); 
+  }
+  else { # dirout exists but -f not used
+    if(! ((opt_IsUsed("--skipedirect",   \%opt_HH)) || 
+          (opt_IsUsed("--skipfetch",     \%opt_HH)) || 
+          (opt_IsUsed("--skipscan",      \%opt_HH)) || 
+          (opt_IsUsed("--skiptranslate", \%opt_HH)))) { 
+      die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; 
+    }
+    # if a --skip option is used, we just press on
   }
 }
-else { # --dirbuild was used on the command line
-  # currently --dirbuild requires --dirout (enforced by epn-options.pm) but we double
-  # check that if --dirbuild is on, then --dirout must be too here (just to be safe)
-  if(! defined $dir_out) { 
-    DNAORG_FAIL("ERROR the --dirbuild option requires the --dirout option be used also", 1, undef);
-  }
-  if(! -d $dir_build) {
-    DNAORG_FAIL("ERROR, directory $dir_build (specified with --dirbuild) does not exist.\nDid you run \"dnaorg_build.pl --dirout $dir_build\" yet? If not, you need to do that first.", 1, undef);
-  }
+elsif(-e $dir_out) { 
+  $cmd = "rm $dir_out";
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR a file named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
 }
 
-# determine the directory we'll put output files in,
-# it will already be defined if --dirout was used
-if(! defined $dir_out) { 
-  $dir_out = $ref_accn;
-}
-else { 
-  # --dirout was used to specify $dir_out
-  # if it already exists (and it's not $ref_accn and it's not $dir_build) 
-  # check if one of the skip options was used (begin with --skip) 
-  # if so, try to use it. Else tell user to either rerun with -f
-  # or delete it.
-  if(($dir_out ne $ref_accn) && ($dir_out ne $dir_build)) { 
-    if(-d $dir_out) { 
-      $cmd = "rm -rf $dir_out";
-      if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
-        runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); 
-      }
-      else { # dirout exists but -f not used
-        if(! ((opt_IsUsed("--skipedirect",   \%opt_HH)) || 
-              (opt_IsUsed("--skipfetch",     \%opt_HH)) || 
-              (opt_IsUsed("--skipscan",      \%opt_HH)) || 
-              (opt_IsUsed("--skiptranslate", \%opt_HH)))) { 
-          die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; 
-        }
-        # if a --skip option is used, we just press on
-      }
-    }
-    elsif(-e $dir_out) { 
-      $cmd = "rm $dir_out";
-      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
-      else                        { die "ERROR a file named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
-    }
-  }
-}
 # if $dir_out does not exist, create it
 if(! -d $dir_out) {
   $cmd = "mkdir $dir_out";
@@ -850,25 +817,6 @@ for(my $i = 0; $i < $nmdl; $i++) {
   # set mdl_info_HAR->{"cmfile"}[$i]
   $mdl_info_HA{"cmfile"}[$i] = $model_file;
 }
-
-
-# Validate the CMs we are about to use to annotate were actually created
-# for the current reference sequence and annotation (same accession
-# and features (CDS, etc.)).
-# 
-# One subtle case occurs when the accession name gets changed because
-# a non-RefSeq sequence got promoted to become a RefSeq; in that
-# RefSeq promotion case, the accession name will change and the script
-# has to be rerun.
-if(defined $infasta_file) { 
-  $start_secs = outputProgressPrior("Skipping verification that CMs created for current reference $ref_accn (--infasta)", $progress_w, $log_FH, *STDOUT);
-}
-else { 
-  $start_secs = outputProgressPrior("Verifying CMs were created for current reference $ref_accn", $progress_w, $log_FH, *STDOUT);
-  validate_cms_built_from_reference(\%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
-}
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
 
 ###################################################################
 # Step 4. (OPTIONAL) Search for origin sequences, if --origin used
@@ -1849,17 +1797,17 @@ sub parse_cmalign_stk {
     }      
     
     # DEBUG PRINT
-#    printf("***************************************************\n");
-#    printf("DEBUG print $seqname\n");
-#    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
-#      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_rf_before_A: %5d\n", 
-#             $rfpos, 
-#             $min_rfpos_after_A[$rfpos],
-#             $min_uapos_after_A[$rfpos],
-#             $max_rfpos_before_A[$rfpos],
-#             $max_uapos_before_A[$rfpos]);
-#    }
-#    printf("***************************************************\n");
+    printf("***************************************************\n");
+    printf("DEBUG print $seqname\n");
+    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
+      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_rf_before_A: %5d\n", 
+             $rfpos, 
+             $min_rfpos_after_A[$rfpos],
+             $min_uapos_after_A[$rfpos],
+             $max_rfpos_before_A[$rfpos],
+             $max_uapos_before_A[$rfpos]);
+    }
+    printf("***************************************************\n");
 
     # given model span s..e
     # if strand eq "+"
@@ -1874,21 +1822,21 @@ sub parse_cmalign_stk {
       my $mdl_stop_rfpos  = $mdl_info_HAR->{"ref_stop"}[$m];
       my $mdl_strand      = $mdl_info_HAR->{"ref_strand"}[$m];
 
-      #printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
-      #$rfpos = $mdl_start_rfpos;
-      #printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-      #       $rfpos, 
-      #       $min_rfpos_after_A[$rfpos],
-      #       $min_uapos_after_A[$rfpos],
-      #       $max_rfpos_before_A[$rfpos],
-      #       $max_uapos_before_A[$rfpos]);
-      #$rfpos = $mdl_stop_rfpos;
-      #printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-      #       $rfpos, 
-      #       $min_rfpos_after_A[$rfpos],
-      #       $min_uapos_after_A[$rfpos],
-      #       $max_rfpos_before_A[$rfpos],
-      #       $max_uapos_before_A[$rfpos]);
+      printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
+      $rfpos = $mdl_start_rfpos;
+      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+             $rfpos, 
+             $min_rfpos_after_A[$rfpos],
+             $min_uapos_after_A[$rfpos],
+             $max_rfpos_before_A[$rfpos],
+             $max_uapos_before_A[$rfpos]);
+      $rfpos = $mdl_stop_rfpos;
+      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+             $rfpos, 
+             $min_rfpos_after_A[$rfpos],
+             $min_uapos_after_A[$rfpos],
+             $max_rfpos_before_A[$rfpos],
+             $max_uapos_before_A[$rfpos]);
 
       my $start_rfpos = -1; # model position of start of this model region for this aligned sequence, stays at -1 if none
       my $stop_rfpos  = -1; # model position of stop  of this model region for this aligned sequence, stays at -1 if none
