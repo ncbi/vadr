@@ -40,7 +40,7 @@ require "epn-options.pm";
 # Step 3.  Verify we have the model file that we need to do homology searches.
 #
 #    Steps 1-2 are very similar to those done in dnaorg_build.pl, but
-#    dnaorg_build.pl and dnaorg_annotate,pl are run separately, perhaps
+#    dnaorg_build.pl and dnaorg_annotate.pl are run separately, perhaps
 #    with a big time lag. Therefore, this script, in step 3, verifies 
 #    that the models built by dnaorg_build.pl are still up-to-date with 
 #    respect to the reference used in running this script.
@@ -144,7 +144,7 @@ require "epn-options.pm";
 # 5. ftr_results_calculate()
 # 6. find_origin_sequences()
 # 7. MAIN (not a function but rather the main body of the script):
-# 8. mdl_results_add_b5e_b5u_errors()
+# 8. mdl_results_add_b5e_b5u_l5p_l3p_errors()
 # 9. ftr_results_add_b5e_errors()
 #
 #              annot_type
@@ -934,8 +934,8 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #           for early stops). 
 #########################################################
 $start_secs = outputProgressPrior("Identifying errors associated with incomplete alignment to the model", $progress_w, $log_FH, *STDOUT);
-mdl_results_add_b5e_b5u_errors(\%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+mdl_results_add_b5e_b5u_l5p_l3p_errors(\%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
+                                       \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 ftr_results_add_b5e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
                            \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -3403,7 +3403,7 @@ sub results_calculate_overlaps_and_adjacencies {
 }
 
 #################################################################
-# Subroutine:  mdl_results_add_b5e_b5u_errors
+# Subroutine:  mdl_results_add_b5e_b5u_l5p_l3p_errors
 # Incept:      EPN, Fri Jan 13 13:26:49 2017
 #
 # Purpose:    Report 'b5e' and 'b5u'. The reporting of these
@@ -3421,6 +3421,12 @@ sub results_calculate_overlaps_and_adjacencies {
 #             "b5u": adds this error, predicted hit not flush with 
 #                    model end and not flush with sequence end on 5'
 #
+#             "l5p": adds this error, predicted hit 5' endpoint is a
+#                    gap or has posterior probability below threshold
+#
+#             "l3p": adds this error, predicted hit 3' endpoint is a 
+#                    gap or has a posterior probability below threshold
+#
 # Arguments: 
 #  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
 #  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
@@ -3436,18 +3442,21 @@ sub results_calculate_overlaps_and_adjacencies {
 #       given the lengths of the accession and the sequence we searched.
 #
 ################################################################# 
-sub mdl_results_add_b5e_b5u_errors { 
-  my $sub_name = "mdl_results_add_b5e_b5u_errors";
+sub mdl_results_add_b5e_b5u_l5p_l3p_errors { 
+  my $sub_name = "mdl_results_add_b5e_b5u_l5p_l3p_errors";
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
+
   # total counts of things
   my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
   my $mdl_idx; # counter over models
   my $seq_idx; # counter over sequences
+
+  my $pp_thresh = opt_Get("--ppthresh", $opt_HHR);
+  my $small_value = 0.00001;
 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
@@ -3467,6 +3476,18 @@ sub mdl_results_add_b5e_b5u_errors {
           else { # $mdl_results_HR->{"p_5seqflush"} == 0, b5u
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5u", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end", $FH_HR);
           }
+        }
+        if($mdl_results_HR->{"p_startgap"}) { 
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "l5p", $seq_name, "model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx] . " aligns to gap at the 5' endpoint", $FH_HR);
+        }
+        elsif(($pp_thresh - $mdl_results_HR->{"p_startpp"}) > $small_value) { 
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "l5p", $seq_name, "model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx] . " posterior probability at 5' endpoint is " . $mdl_results_HR->{"p_startpp"} . " < $pp_thresh", $FH_HR);
+        }
+        if($mdl_results_HR->{"p_stopgap"}) { 
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "l3p", $seq_name, "model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx] . " aligns to gap at the 3' endpoint", $FH_HR);
+        }
+        elsif(($pp_thresh - $mdl_results_HR->{"p_stopp"}) > $small_value) { 
+          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "l3p", $seq_name, "model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx] . " posterior probability at 3' endpont is " . $mdl_results_HR->{"p_stoppp"} . " < $pp_thresh", $FH_HR);
         }
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop
