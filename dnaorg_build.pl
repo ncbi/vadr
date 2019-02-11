@@ -324,7 +324,7 @@ my %dfeat_tbl_HHHA = (); # dfeat (duplicate feature) data from feature table fil
                          # 3D: key: column name in gene ftable file
                          # 4D: per-row values for each column
 my %seq_info_HA = ();    # hash of arrays, avlues are arrays [0..$nseq-1];
-                         # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
+                         # 1st dim keys are "seq_name", "accn_name", "len"
                          # $seq_info_HA{"accn_name"}[0] is our reference accession
 @{$seq_info_HA{"accn_name"}} = ($ref_accn);
 
@@ -363,7 +363,7 @@ wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_
 
 if($do_matpept) {  
   # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $seq_info_HA{"accn_len"}[0], $ofile_info_HH{"FH"});
+  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $seq_info_HA{"len"}[0], $ofile_info_HH{"FH"});
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -387,7 +387,7 @@ my $sqfile = undef;            # pointer to the Bio::Easel::SqFile object we'll 
 #   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #   4) fetches the reference sequence feature and populates information on the models and features
 wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $out_root, # yes, $out_root is passed in twice, on purpose
-                                                    undef, undef, undef, undef,  # 4 variables used only if --infasta enabled in dnaorg_annotate.pl (irrelevant here)
+                                                    undef, undef, undef,  # 4 variables used only if --infasta enabled in dnaorg_annotate.pl (irrelevant here)
                                                     \%cds_tbl_HHA, 
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
                                                     ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,

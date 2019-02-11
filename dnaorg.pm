@@ -864,9 +864,25 @@ sub fetchReferenceFeatureSequences {
 
   if(! $do_infasta) { 
     # fetch the sequence and convert it to stockholm
-    my @fetch_A = ($ref_seq_accn);
     my $fa_file = $out_root . ".ref.fa";
-    $sqfile->fetch_seqs_given_names(\@fetch_A, 60, $fa_file);
+    if((opt_Exists("-c", $opt_HHR)) && (opt_Get("-c", $opt_HHR))) { 
+      # -c enabled, build model of *duplicated* full sequence
+      my $fa_string = $sqfile->fetch_seq_to_fasta_string($ref_seq_accn, -1);
+      my @lines_A = split("\n", $fa_string);
+      if(scalar(@lines_A) != 2) { 
+        DNAORG_FAIL("ERROR in $sub_name, error fetching $ref_seq_accn into a fasta string", 1, $FH_HR);
+      }
+      open(FA, ">", $fa_file) || fileOpenFailure($fa_file, $sub_name, $!, "writing", $FH_HR);
+      print FA $lines_A[0] . "\n"; # fasta header line
+      print FA $lines_A[1] . "\n"; # fasta sequence line
+      print FA $lines_A[1] . "\n"; # fasta sequence line again (to duplicate)
+      close(FA);
+    }
+    else { 
+      # -c *not* enabled, build model of full sequence
+      my @fetch_A = ($ref_seq_accn);
+      $sqfile->fetch_seqs_given_names(\@fetch_A, undef, $fa_file);
+    }
     my $tmp_stk_file = $stk_file . ".tmp";
     my $cmd = "$esl_reformat --informat afa stockholm $fa_file > $tmp_stk_file";
     runCommand($cmd, 0, 0, $FH_HR);
@@ -1132,8 +1148,7 @@ sub determineSourcesOfDuplicateFeatures {
 #              "out_olp_str":   string of short model descriptions that overlap by >= 1 nt on
 #                               same strand with this model index
 # Arguments: 
-#   $ref_accnlen:  length of the reference accession 
-#   $ref_seqlen:   length of the reference sequence (possibly 2*$ref_accnlen)
+#   $ref_seqlen:   length of the reference accession 
 #   $mdl_info_HAR: REF to hash of arrays with information on the models, ADDED TO HERE
 #   $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
 #   $FH_HR:        REF to hash of file handles
@@ -1143,10 +1158,10 @@ sub determineSourcesOfDuplicateFeatures {
 # Dies: 
 ################################################################# 
 sub annotateOverlapsAndAdjacencies { 
-  my $nargs_expected = 5;
+  my $nargs_expected = 4;
   my $sub_name = "annotateOverlapsAndAdjacencies()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ref_accnlen, $ref_seqlen, $mdl_info_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($ref_seqlen, $mdl_info_HAR, $opt_HHR, $FH_HR) = @_;
 
   # initialize
   @{$mdl_info_HAR->{"idx_ajb_str"}} = ();
@@ -1158,7 +1173,7 @@ sub annotateOverlapsAndAdjacencies {
 
   overlapsAndAdjacenciesHelper($mdl_info_HAR, 
                                $mdl_info_HAR->{"ref_start"}, $mdl_info_HAR->{"ref_stop"}, $mdl_info_HAR->{"ref_strand"}, 
-                               $ref_seqlen, $ref_accnlen,
+                               $ref_seqlen, 
                                $mdl_info_HAR->{"idx_ajb_str"}, $mdl_info_HAR->{"idx_aja_str"}, $mdl_info_HAR->{"idx_olp_str"}, 
                                $mdl_info_HAR->{"out_ajb_str"}, $mdl_info_HAR->{"out_aja_str"}, $mdl_info_HAR->{"out_olp_str"}, 
                                $opt_HHR, $FH_HR);
@@ -2352,8 +2367,6 @@ sub populateFTableNoteOrError {
 #   $strand_AR:      REF to array with strands
 #   $seq_len:        total length of the sequence in our fetched sequence file, so we can 
 #                    check if we're adjacent $len..1 if -c enabled
-#   $accn_len:       length of the accession in GenBank (maybe half of $seq_len if -c used),
-#                    we need this so we make a special check for overlaps if -c enabled
 #   $idx_ajb_str_AR: REF to array to fill with strings of 'before' adjacency model indices
 #   $idx_aja_str_AR: REF to array to fill with strings of 'after' adjacency model indices
 #   $idx_olp_str_AR: REF to array to fill with strings of overlaps model indices
@@ -2368,11 +2381,11 @@ sub populateFTableNoteOrError {
 # Dies: 
 ################################################################# 
 sub overlapsAndAdjacenciesHelper { 
-  my $nargs_expected = 14;
+  my $nargs_expected = 13;
   my $sub_name = "overlapsAndAdjacenciesHelper()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($mdl_info_HAR, $start_AR, $stop_AR, $strand_AR, $seq_len, $accn_len, $idx_ajb_str_AR, $idx_aja_str_AR, $idx_olp_str_AR, 
+  my ($mdl_info_HAR, $start_AR, $stop_AR, $strand_AR, $seq_len, $idx_ajb_str_AR, $idx_aja_str_AR, $idx_olp_str_AR, 
       $out_ajb_str_AR, $out_aja_str_AR, $out_olp_str_AR, $opt_HHR, $FH_HR) = @_;
 
   my $nmdl = scalar(@{$start_AR});
@@ -2437,24 +2450,24 @@ sub overlapsAndAdjacenciesHelper {
                            ($start2 < $stop2) ? $stop2  : $start2, $FH_HR);
             if((opt_Get("-c", $opt_HHR)) && $nres_overlap1 == 0) { 
               # do a second call iff only one of either start1..stop1
-              # or start2..stop2 straddles $accn_len
+              # or start2..stop2 straddles $seq_len
               # example of why we need to do this is HBV ref NC_003977, CDS1 and CDS4:
               # search results are CDS1: 2309..4807, CDS4: 157..837
-              # accn_len is 3182
-              my $straddles1 = (($start1 < $accn_len && $stop1 > $accn_len) || 
-                                ($start1 > $accn_len && $stop1 < $accn_len)) ? 1 : 0;
-              my $straddles2 = (($start2 < $accn_len && $stop2 > $accn_len) || 
-                                ($start2 > $accn_len && $stop2 < $accn_len)) ? 1 : 0;
-              if($straddles1 && (! $straddles2)) { # start1..stop1 straddles $accn_len, but not start2..stop2
+              # seq_len is 3182
+              my $straddles1 = (($start1 < $seq_len && $stop1 > $seq_len) || 
+                                ($start1 > $seq_len && $stop1 < $seq_len)) ? 1 : 0;
+              my $straddles2 = (($start2 < $seq_len && $stop2 > $seq_len) || 
+                                ($start2 > $seq_len && $stop2 < $seq_len)) ? 1 : 0;
+              if($straddles1 && (! $straddles2)) { # start1..stop1 straddles $seq_len, but not start2..stop2
                 my $adj_start2 = $start2;
                 my $adj_stop2  = $stop2;
-                if($start2 < $accn_len) { # this means $stop2 < $accn_len also
-                  $adj_start2 += $accn_len;
-                  $adj_stop2  += $accn_len;
+                if($start2 < $seq_len) { # this means $stop2 < $seq_len also
+                  $adj_start2 += $seq_len;
+                  $adj_stop2  += $seq_len;
                 }
-                else { # start2 and stop2 are > accn_len
-                  $adj_start2 -= $accn_len;
-                  $adj_stop2  -= $accn_len;
+                else { # start2 and stop2 are > seq_len
+                  $adj_start2 -= $seq_len;
+                  $adj_stop2  -= $seq_len;
                 }
                 $nres_overlap2 = 
                     getOverlap(($start1 < $stop1) ? $start1 : $stop1,
@@ -2462,16 +2475,16 @@ sub overlapsAndAdjacenciesHelper {
                                ($adj_start2 < $adj_stop2) ? $adj_start2 : $adj_stop2,
                                ($adj_start2 < $adj_stop2) ? $adj_stop2  : $adj_start2, $FH_HR);
               }
-              elsif((! $straddles1) && $straddles2) { # start1..stop1 straddles $accn_len, but not start2..stop2
+              elsif((! $straddles1) && $straddles2) { # start1..stop1 straddles $seq_len, but not start2..stop2
                 my $adj_start1 = $start1;
                 my $adj_stop1  = $stop1;
-                if($start1 < $accn_len) { # this means $stop1 < $accn_len also
-                  $adj_start1 += $accn_len;
-                  $adj_stop1  += $accn_len;
+                if($start1 < $seq_len) { # this means $stop1 < $seq_len also
+                  $adj_start1 += $seq_len;
+                  $adj_stop1  += $seq_len;
                 }
                 else { 
-                  $adj_start1 -= $accn_len;
-                  $adj_stop1  -= $accn_len;
+                  $adj_start1 -= $seq_len;
+                  $adj_stop1  -= $seq_len;
                 }
                 $nres_overlap2 = 
                     getOverlap(($adj_start1 < $adj_stop1) ? $adj_start1 : $adj_stop1,
@@ -2898,8 +2911,8 @@ sub wrapperGetInfoUsingEdirect {
   #    if --infasta was enabled, caller will likely have passed in a special $seq_info_HAR
   #    here (something like $ref_seq_info_HAR) which will only hold information on 
   #    the reference sequence, which will be read from the dnaorg_build length file.
-  my %accn_len_H = ();
-  parseLengthFile($len_file, \%accn_len_H, $FH_HR);
+  my %len_H = ();
+  parseLengthFile($len_file, \%len_H, $FH_HR);
   my $nseq = 0;
   if(! $do_infasta) {  
     # we will have already stored all sequences in $seq_info_HAR->{"accn_name"}
@@ -2909,22 +2922,21 @@ sub wrapperGetInfoUsingEdirect {
     }
     for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
       my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-      if(! exists $accn_len_H{$accn_name}) { 
+      if(! exists $len_H{$accn_name}) { 
         DNAORG_FAIL("ERROR in $sub_name, problem fetching length of accession $accn_name", 1, $FH_HR); 
       }
-      $seq_info_HAR->{"accn_len"}[$seq_idx] = $accn_len_H{$accn_name};
+      $seq_info_HAR->{"len"}[$seq_idx] = $len_H{$accn_name};
     }
   }
   else { # $do_infasta is true, $seq_info_HAR->{"accn_name"} is empty, but we should have
          # read exactly 1 length in parseLengthFile
-    $nseq = scalar(keys %accn_len_H);
+    $nseq = scalar(keys %len_H);
     if($nseq != 1) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, not exactly 1 accession read from length file $len_file (%d lengths read)", scalar(keys %accn_len_H)), 1, $FH_HR); 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, not exactly 1 accession read from length file $len_file (%d lengths read)", scalar(keys %len_H)), 1, $FH_HR); 
     }
-    my ($ref_accn) = (keys %accn_len_H);
+    my ($ref_accn) = (keys %len_H);
     $seq_info_HAR->{"accn_name"}[0] = $ref_accn;
-    $seq_info_HAR->{"accn_len"}[0]  = $accn_len_H{$ref_accn};
-    $seq_info_HAR->{"seq_len"}[0]   = (opt_Exists("-c", $opt_HHR) && opt_Get("-c", $opt_HHR)) ? 2 * $accn_len_H{$ref_accn} : $accn_len_H{$ref_accn};
+    $seq_info_HAR->{"len"}[0]       = $len_H{$ref_accn};
   }
 
   return 0;
@@ -2976,8 +2988,7 @@ sub wrapperGetInfoUsingEdirect {
 #   $out_root:              string that is the 'root' for naming output files
 #   $build_root:            string that is the 'root' for files possibly already created with dnaorg_build.pl (may be same as $out_root)
 #   $in_ref_accn:           reference accession, undef unless --infasta enabled
-#   $in_ref_accnlen:        length of the reference accession, undef unless --infasta enabled
-#   $in_ref_seqlen:         length of the reference sequence (possibly double $in_ref_accnlen), undef unless --infasta enabled
+#   $in_ref_len:            length of the reference sequence 
 #   $infasta_file:          name of input fasta file, should be undef unless --infasta enabled
 #   $cds_tbl_HHAR:          REF to CDS hash of hash of arrays, PRE-FILLED
 #   $mp_tbl_HHAR:           REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
@@ -3004,10 +3015,10 @@ sub wrapperGetInfoUsingEdirect {
 ################################################################# 
 sub wrapperFetchAllSequencesAndProcessReferenceSequence { 
   my $sub_name = "wrapperFetchAllSequencesAndProcessReferenceSequence()";
-  my $nargs_expected = 19;
+  my $nargs_expected = 18;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $sqfile_R, $out_root, $build_root, $in_ref_accn, $in_ref_accnlen, $in_ref_seqlen, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $sqfile_R, $out_root, $build_root, $in_ref_accn, $in_ref_len, $infasta_file, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $cds2pmatpept_AAR, $cds2amatpept_AAR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
   
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -3042,19 +3053,19 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option NOT enabled but <infasta_file> is defined", 1, $FH_HR);
   }
 
-  # $in_ref_accn, $in_ref_accnlen and $in_ref_seqlen must be defined if $do_infasta, and must not be defined if ! $do_infasta
-  if($do_infasta && ((! defined $in_ref_accn) || (! defined $in_ref_accnlen) || (! defined $in_ref_seqlen))) { 
-    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option enabled but in_ref_accn and/or in_ref_accnlen and/or in_ref_seqlen variables are not defined", 1, $FH_HR);
+  # $in_ref_accn, $in_ref_len must be defined if $do_infasta, and must not be defined if ! $do_infasta
+  if($do_infasta && ((! defined $in_ref_accn) || (! defined $in_ref_len))) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option enabled but in_ref_accn and/or in_ref_len variables are not defined", 1, $FH_HR);
   }
-  elsif((! $do_infasta) && ((defined $in_ref_accn || defined $in_ref_accnlen || defined $in_ref_seqlen))) { 
-    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option NOT enabled but in_ref_accn and/or in_ref_accnlen and/or in_ref_seqlen variables are defined", 1, $FH_HR);
+  elsif((! $do_infasta) && ((defined $in_ref_accn || defined $in_ref_len))) { 
+    DNAORG_FAIL("ERROR in $sub_name, contract violation, --infasta option NOT enabled but in_ref_accn and/or in_ref_len variables are defined", 1, $FH_HR);
   }
     
   # 1) fetch the sequences into a fasta file and index that fasta file
   my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
   my $have_only_ref = ($nseq == 1) ? 1 : 0; # '1' if we only have the reference
-  my $ref_accn      = ($do_infasta) ? $in_ref_accn    : $seq_info_HAR->{"accn_name"}[0]; # the reference accession
-  my $ref_accnlen   = ($do_infasta) ? $in_ref_accnlen : $seq_info_HAR->{"accn_len"}[0]; # length of the accession
+  my $ref_accn      = ($do_infasta) ? $in_ref_accn : $seq_info_HAR->{"accn_name"}[0]; # the reference accession
+  my $ref_len       = ($do_infasta) ? $in_ref_len  : $seq_info_HAR->{"len"}[0]; # length of the accession
   my $fetch_file    = undef;
   my $fasta_file    = undef;
 
@@ -3072,7 +3083,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   @{$seq_info_HAR->{"seq_name"}} = ();
   if((! $do_skipfetch) && (! $do_infasta)) { 
     # fetch the sequences into a fasta file
-    fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, opt_Get("-c", $opt_HHR), $seq_info_HAR, $FH_HR);
+    fetchSequencesUsingEslFetchCds($execs_HR->{"esl_fetch_cds"}, $fetch_file, $fasta_file, $seq_info_HAR, $FH_HR);
     addClosedFileToOutputInfo($ofile_info_HHR, "fetch", $fetch_file, 0, "Input file for esl-fetch-cds.pl");
     addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (fetched with esl-fetch-cds.pl)");
   }
@@ -3082,12 +3093,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
       addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (fetched on previous run (--skipfetch))");
     }
     else { # $do_infasta is true
-      if(opt_Get("-c", $opt_HHR)) { 
-        addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (same sequences as supplied with --infasta, but all seqs are duplicated)");
-      }
-      else { 
-        addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (supplied with --infasta), NOT CREATED BY THE SCRIPT");
-      }
+      addClosedFileToOutputInfo($ofile_info_HHR, "fasta", $fasta_file, 0, "Sequence file (supplied with --infasta), NOT CREATED BY THE SCRIPT");
     }
   }  
   # make a duplicate of the fasta file with no descriptions, because blastx adds the 
@@ -3124,7 +3130,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   if($do_skipfetch || $do_infasta) { 
     # --skipfetch or --infasta enabled, so we never called 
     # fetchSequencesUsingEslFetchCds() above.
-    # We need to fill $seq_info_HAR->{"seq_name"} and $seq_info_HAR->{"seq_len"}
+    # We need to fill $seq_info_HAR->{"seq_name"} and $seq_info_HAR->{"len"}
     # get index hash for @{$seq_info_HAR->{"seq_accn"}} array
     # this simplifies determining sequence index in @{%seq_info_HAR->{}}
     # arrays for a given accession name.
@@ -3133,8 +3139,8 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $nseq; $sqfile_seq_idx++) { 
       my ($seq_name, $seq_len) = $$sqfile_R->fetch_seq_name_and_length_given_ssi_number($sqfile_seq_idx);
       my $accn_name = undef;
-      if($do_infasta && (! opt_Get("-c", $opt_HHR))) { 
-        # if --infasta and ! -c, then we are fetching directly from the --infasta file, else 
+      if($do_infasta) { 
+        # if --infasta, then we are fetching directly from the --infasta file, else 
         # we created the file we are fetching from, and so we need to determine the
         # accession from the sequence name using accn_name_from_seq_name().
         $accn_name = $seq_name;
@@ -3146,7 +3152,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
         DNAORG_FAIL("ERROR in $sub_name, accession $accn_name derived from sqfile seq name: $seq_name does not exist in accn_name_idx_H", 1, $ofile_info_HHR->{"FH"});
       }
       $seq_info_HAR->{"seq_name"}[$accn_name_idx_H{$accn_name}] = $seq_name;
-      $seq_info_HAR->{"seq_len"}[$accn_name_idx_H{$accn_name}]  = $seq_len;
+      $seq_info_HAR->{"len"}[$accn_name_idx_H{$accn_name}]      = $seq_len;
     }
   }
 
@@ -3166,7 +3172,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   #    we won't actually fetch the reference sequence if --infasta is used (which is why $ref_seqname is undef if --infasta)
   my $ref_seqname = ($do_infasta) ? undef  : $seq_info_HAR->{"seq_name"}[0]; # the reference sequence name the fetched sequence file $fasta_file
   my $stk_file    = $out_root . ".ref.stk";     # name of output alignment file we are about to create, with the single full sequence as the 'alignment'
-  fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_accnlen, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $stk_file, $opt_HHR, $FH_HR); 
+  fetchReferenceFeatureSequences($execs_HR, $$sqfile_R, $ref_seqname, $ref_len, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $stk_file, $opt_HHR, $FH_HR); 
   if(! $do_infasta) { 
     addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $stk_file, 0, "Stockholm alignment file with reference sequence");
   }
@@ -3175,8 +3181,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
   annotateAppendFeatures($ftr_info_HAR, $mdl_info_HAR, $FH_HR);
 
   # 6) add information on the overlaps and adjacencies
-  my $ref_seqlen = ($do_infasta) ? $in_ref_seqlen : $seq_info_HAR->{"seq_len"}[0]; # length of the sequence
-  annotateOverlapsAndAdjacencies($ref_accnlen, $ref_seqlen, $mdl_info_HAR, $opt_HHR, $FH_HR);
+  annotateOverlapsAndAdjacencies($ref_len, $mdl_info_HAR, $opt_HHR, $FH_HR);
 
   # 6) determine the source "dupsource" of any duplicate feature annotations, for
   #    all other non 'duplicate' features the "source_idx" will be -1
@@ -5689,11 +5694,9 @@ sub validateModelInfoHashIsComplete {
 #             'Complete' means it has all the expected keys, each of which is an identically sized array.
 #             The expected keys are:
 #                "seq_name":    name of the sequence in the sequence file we create and search in
-#                "seq_len":     length of the sequence with name in "seq_name"in the sequence file we create and search in
+#                "len":         length of the sequence with name in "seq_name"in the sequence file we create and search in
 #                "accn_name":   accession of the sequence in GenBank
-#                "accn_len":    length of the sequence in GenBank, will be same as value in "seq_len" only if
-#                               the -c option is not used to indicate a circular genome, if the -c option is
-#                               used, then this will equal 2*seq_len.
+#
 #             Optional keys are:
 #                "ifile_spos":  starting model position for this aligned sequence, read from cmalign --ifile output file, 
 #                               -1 if aligned sequence spans 0 model positions
@@ -5705,10 +5708,6 @@ sub validateModelInfoHashIsComplete {
 #                               <u_x> is the *unaligned* sequence position of the first inserted residue after <c_x>.
 #                               <i_x> is the number of inserted residues after position <c_x>
 #                               
-#             This function also validates that one of the following is true:
-#             1) -c is 'off' in %{$opt_HHR} and all "seq_len" and "accn_len" values are equal
-#             2) -c is 'on'  in %{$opt_HHR} and all "seq_len" values are 2 * the "accn_len" values
-#
 #             If @{exceptions_AR} is non-empty, then keys in 
 #             in that array need not be in %{$seq_info_HAR}.
 #
@@ -5724,8 +5723,6 @@ sub validateModelInfoHashIsComplete {
 #            does not exist in $seq_info_HAR
 #          - if two arrays in $seq_info_HAR are of different sizes
 #          - if any key listed in @{$exceptions_AR} is not one of the expected keys
-#          - if -c enabled     but not all seq_len values are 2X corresponding accn_len values
-#          - if -c not enabled but not all seq_len values are equal to corresponding accn_len values
 #
 #################################################################
 sub validateSequenceInfoHashIsComplete { 
@@ -5735,32 +5732,10 @@ sub validateSequenceInfoHashIsComplete {
  
   my ($seq_info_HAR, $exceptions_AR, $opt_HHR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("seq_name", "seq_len", "accn_name", "accn_len");
+  my @expected_keys_A = ("seq_name", "len", "accn_name", "len");
 
   my $nseq = validateInfoHashOfArraysIsComplete($seq_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
   # above call will die if we are invalid
-
-  # make sure seq_len is either 2X accn_len (if -c) or equal to accn_len (if ! -c)
-  if(opt_Get("-c", $opt_HHR)) { 
-    # -c option on, seq_len should be 2X accn_len
-    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      if($seq_info_HAR->{"seq_len"}[$seq_idx] != (2 * $seq_info_HAR->{"accn_len"}[$seq_idx])) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, -c option on, but for sequence %s, seq_len value of %d not equal to 2X accn_len of %d", 
-                            $seq_info_HAR->{"seq_name"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $seq_info_HAR->{"accn_len"}[$seq_idx]),
-                    1, $FH_HR);
-      }
-    }
-  }
-  else { 
-    # -c option off, seq_len should be accn_len
-    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      if($seq_info_HAR->{"seq_len"}[$seq_idx] != $seq_info_HAR->{"accn_len"}[$seq_idx]) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, -c option off, but for sequence %s, seq_len value of %d not equal to accn_len of %d", 
-                            $seq_info_HAR->{"seq_name"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $seq_info_HAR->{"accn_len"}[$seq_idx]),
-                    1, $FH_HR);
-      }
-    }
-  }
 
   # make sure we do not have any duplicate accessions/names
   my %name_H = ();
@@ -7547,9 +7522,8 @@ sub fetchedNameToListName {
 #   $esl_fetch_cds:    path to esl-fetch-cds executable
 #   $out_fetch_file:   name of file to use as input to $esl_fetch_cds, created here
 #   $out_fasta_file:   name of fasta file to create, created here
-#   $do_circular:      '1' to duplicate genome, '0' not to
 #   $seq_info_HAR:     REF to 2D hash with sequence information, ADDED TO HERE
-#                      "seq_name", and "seq_len" arrays filled here
+#                      "seq_name", and "len" arrays filled here
 #   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns:    void
@@ -7559,22 +7533,20 @@ sub fetchedNameToListName {
 #################################################################
 sub fetchSequencesUsingEslFetchCds { 
   my $sub_name = "fetchSequencesUsingEslFetchCds";
-  my $nargs_expected = 6;
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($esl_fetch_cds, $fetch_file, $fasta_file, $do_circular, $seq_info_HAR, $FH_HR) = @_;
+  my ($esl_fetch_cds, $fetch_file, $fasta_file, $seq_info_HAR, $FH_HR) = @_;
 
   # contract check
   if(! -e $esl_fetch_cds) { 
     DNAORG_FAIL("ERROR in $sub_name, required executable $esl_fetch_cds does not exist", 1, $FH_HR); 
   }
 
-  my ($accn_name, $accn_len, $seq_name, $seq_len); # accession name/length (from GenBank) sequence name/length in the sequence file we create
+  my ($accn_name, $seq_name, $seq_len); # accession name/length (from GenBank) sequence name/length in the sequence file we create
 
   @{$seq_info_HAR->{"seq_name"}} = (); # initialize
-  @{$seq_info_HAR->{"seq_len"}}  = (); # initialize
-  my $seq_name_AR  = \@{$seq_info_HAR->{"seq_name"}};
-  my $seq_len_AR = \@{$seq_info_HAR->{"seq_len"}};
+  my $seq_name_AR = \@{$seq_info_HAR->{"seq_name"}};
 
   my $fetch_string; # string output to the input file for esl-fetch-cds.pl
   
@@ -7583,22 +7555,13 @@ sub fetchSequencesUsingEslFetchCds {
   my $naccn = scalar(@{$seq_info_HAR->{"accn_name"}});
   for(my $a = 0; $a < $naccn; $a++) { 
     my $accn_name = $seq_info_HAR->{"accn_name"}[$a];
-    my $accn_len  = $seq_info_HAR->{"accn_len"}[$a];
+    my $seq_len   = $seq_info_HAR->{"len"}[$a];
 
-    if($do_circular) { 
-      $fetch_string = "join(" . $accn_name . ":1.." . $accn_len . "," . $accn_name . ":1.." . $accn_len . ")\n";
-      print OUT $accn_name . ":" . "dnaorg-duplicated" . "\t" . $fetch_string;
-      $seq_name = $accn_name . ":dnaorg-duplicated:" . $accn_name . ":1:" . $accn_len . ":+:" . $accn_name . ":1:" . $accn_len . ":+:";
-      $seq_len  = 2 * $accn_len;
-    }
-    else { # $do_circular is FALSE
-      $fetch_string = $accn_name . ":1.." . $accn_len . "\n";
-      print OUT $accn_name . ":" . "dnaorg" . "\t" . $fetch_string;
-      $seq_name = $accn_name . ":dnaorg:" . $accn_name . ":1:" . $accn_len . ":+:";
-      $seq_len  = $accn_len;
-    }
+    $fetch_string = $accn_name . ":1.." . $seq_len . "\n";
+    print OUT $accn_name . ":" . "dnaorg" . "\t" . $fetch_string;
+    $seq_name = $accn_name . ":dnaorg:" . $accn_name . ":1:" . $seq_len . ":+:";
+
     push(@{$seq_info_HAR->{"seq_name"}}, $seq_name);
-    push(@{$seq_info_HAR->{"seq_len"}}, $seq_len);
   }
   close(OUT);
   
@@ -8458,11 +8421,8 @@ sub cmalignOrNhmmscanWrapper {
   foreach $out_key (@concat_keys_A) { 
     my $concat_file = $out_root . "." . $program_choice . "." . $out_key;
     concatenateListOfFiles($concat_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+    # concatenateListOfFiles() removes individual files unless --keep enabled
     addClosedFileToOutputInfo($ofile_info_HHR, "concat." . $out_key, $concat_file, 0, "concatenated $out_key file");
-    # remove smaller files if --keep not enabled
-    if(! opt_Get("--keep", $opt_HHR)) { 
-      removeListOfFiles($concat_HA{$out_key}, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-    }
   }
   # remove sequence files 
   if(! opt_Get("--keep", $opt_HHR)) { 
@@ -8662,9 +8622,21 @@ sub runCmalign {
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
   validateFileExistsAndIsNonEmpty($seq_file,   $sub_name, $FH_HR);
 
+  # determine cmalign options based on command line options
   my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file --tfile $tfile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
-  if(! opt_Get("--noglocal",   $opt_HHR)) { $opts .= " -g"; }
-  if(! opt_Get("--nofixedtau", $opt_HHR)) { $opts .= " --fixedtau"; }
+  # add -g unless --noglocal used
+  if(! opt_Get("--noglocal", $opt_HHR)) { 
+    $opts .= " -g"; 
+  }
+  # add --sub and --notrunc if -c used
+  if(opt_Get("-c", $opt_HHR)) { 
+    $opts .= " --sub --notrunc"; 
+  }
+  else { # only add --fixedtau if -c NOT used AND --nofixedtau NOT used
+    if(! opt_Get("--nofixedtau", $opt_HHR)) { 
+      $opts .= " --fixedtau"; 
+    }
+  }
   
   # remove the tblout file or ifile file if it exists, this is important because we'll use the existence and
   # final line of this file to determine when the jobs are finished, if it already exists, we'll

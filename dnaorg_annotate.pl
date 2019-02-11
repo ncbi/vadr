@@ -226,7 +226,7 @@ my $g = 0; # option group
 $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default               group   requires incompat    preamble-output                                                help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                                         "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-c",           "boolean", 0,                       $g,    undef, undef,      "genome is closed (a.k.a. circular)",                          "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,                       $g,    undef, undef,      "genome is closed (circular)",                                 "genome is closed (circular)",                       \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,                       $g,"--dirout",undef,      "forcing directory overwrite (with --dirout)",                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--dirout",     "string",  undef,                   $g,    undef, undef,      "output directory specified as",                               "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
@@ -260,8 +260,8 @@ $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
 opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
 opt_Add("--tau",        "real",    1E-7,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--noglocal",   "boolean", 0,                       $g,    undef, undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
-opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "do not fix the tau value when running cmalign, allow it to decrease if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--noglocal",   "boolean", 0,                       $g,    undef, "-c",       "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, "-c",       "do not fix the tau value when running cmalign, allow it to decrease if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
@@ -459,7 +459,7 @@ if(opt_Get("--infasta", \%opt_HH)) {
 my $cmd;               # a command to run with runCommand()
 my @early_cmd_A = ();  # array of commands we run before our log file is opened
 my %seq_info_HA = ();  # hash of arrays, values are arrays with index range [0..$nseq-1];
-                       # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
+                       # 1st dim keys are "seq_name", "accn_name", "len"
                        # $seq_info_HA{"accn_name"}[0] is our reference accession
 @{$seq_info_HA{"accn_name"}} = ();
 
@@ -470,7 +470,7 @@ my %infasta_ref_seq_info_HA = ();  # hash of arrays, for reference sequence info
                                    # structure as %seq_info_HA so we can pass it into 
                                    # functions (namely wrapperGetInfoUsingEdirect) in place
                                    # of %seq_info_HA.
-                                   # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
+                                   # 1st dim keys are "seq_name", "accn_name", "len"
                                    # $infasta_ref_seq_info_HA{"accn_name"}[0] is our reference accession
 
 my $nseq = 0;
@@ -757,17 +757,13 @@ if(opt_IsUsed("--dfeat", \%opt_HH)) {
 #  5) parses the edirect .ftable file
 #  6) parses the length file
 my $orig_infasta_file = $infasta_file;
-my $outfasta_file     = (opt_Get("-c", \%opt_HH)) ? $out_root . ".fg.fa" : undef;
 if(defined $infasta_file) { 
   # note that we pass in a reference to %ref_seq_info_HA to wrapperGetInfoUsingEdirect()
   # and *not* a reference to %seq_info_HA. We will use %infasta_ref_seq_info_HA to 
   # store information on the reference sequence only.
   wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
                              \%opt_HH, $ofile_info_HH{"FH"}); 
-  $nseq = process_input_fasta_file($infasta_file, $outfasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
-  if(defined $outfasta_file) { # this will be true if -c
-    $infasta_file = $outfasta_file; 
-  }
+  $nseq = process_input_fasta_file($infasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
 }
 else { # --infasta not used (default)
   wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%seq_info_HA, \%ofile_info_HH,
@@ -776,7 +772,7 @@ else { # --infasta not used (default)
 
 if($do_matpept) {  
   # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $seq_info_HA{"accn_len"}[0], $ofile_info_HH{"FH"});
+  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $seq_info_HA{"len"}[0], $ofile_info_HH{"FH"});
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -801,8 +797,7 @@ my $sqfile = undef;    # pointer to the Bio::Easel::SqFile object we'll open in 
 #   4) fetches the reference sequence feature and populates information on the models and features
 wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $build_root, 
                                                     ($do_infasta) ? $infasta_ref_seq_info_HA{"accn_name"}[0] : undef,
-                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"accn_len"}[0]  : undef,
-                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"seq_len"}[0]   : undef,
+                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"len"}[0]       : undef,
                                                     ($do_infasta) ? $infasta_file                            : undef,
                                                     \%cds_tbl_HHA,
                                                     ($do_matpept) ? \%mp_tbl_HHA      : undef, 
@@ -898,7 +893,7 @@ if(opt_IsUsed("--aorgmodel", \%opt_HH)) {
 ####################################
 my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
 validateFileExistsAndIsNonEmpty($seq_file, "dnaorg_annotate.pl:main", $ofile_info_HH{"FH"});
-my $tot_len_nt = sumArray(\@{$seq_info_HA{"seq_len"}});
+my $tot_len_nt = sumArray(\@{$seq_info_HA{"len"}});
 my $mdl_file = $mdl_info_HA{"cmfile"}[0];
 $mdl_file =~ s/\.\d+\.cm$/.cm/; 
 
@@ -1019,9 +1014,8 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 my $ftr_idx;  # counter over features
 for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
   foreach my $seq_name (keys %{$err_ftr_instances_AHH[$ftr_idx]{"ext"}}) { 
-    my $seq_idx  = $seq_name_index_H{$seq_name};
-    my $seq_len  = $seq_info_HA{"seq_len"}[$seq_idx];   # differs from accn_len when the sequence is circular and dulicated
-    my $accn_len = $seq_info_HA{"accn_len"}[$seq_idx];  # original length of the sequence without any duplication
+    my $seq_idx = $seq_name_index_H{$seq_name};
+    my $seq_len = $seq_info_HA{"len"}[$seq_idx]; 
 
     # determine the model nearest to the end of the current feature, for which we have a prediction
     my $mdl_idx = undef;  
@@ -1076,35 +1070,27 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
       # (20..18,17..15,14..12,11..9 etc. are in-frame codon positions)
     }
 
-    # check for a special case, where we are not circularized
+    # check for a special case
     my $at_end_of_seq = 0; # set to 1 if we're at the end of the sequence
     if($cur_strand eq "+") { 
-      if($posn_to_start > $accn_len) { 
-        if(opt_Get("-c", \%opt_HH)) { 
-          # genome is circularized, we've duplicated it, it's okay that our possible start is > $accn_len at this point, but we want to subtract $accn_len here
-          $posn_to_start -= $accn_len;
-        }
-        elsif(($posn_to_start-1) == $accn_len) { 
+      if($posn_to_start > $seq_len) { 
+        if(($posn_to_start-1) == $seq_len) { 
           # a special case
           $at_end_of_seq = 1;
         }
         else {
-          DNAORG_FAIL("ERROR when looking for inframe stop for sequence $seq_name, trying to start search at position $posn_to_start but length of sequence is $accn_len", 1, $ofile_info_HH{"FH"}); 
+          DNAORG_FAIL("ERROR when looking for inframe stop for sequence $seq_name, trying to start search at position $posn_to_start but length of sequence is $seq_len", 1, $ofile_info_HH{"FH"}); 
         }
       }
     }
     else { # cur_strand eq "-" 
       if($posn_to_start <= 0) { 
-        if(opt_Get("-c", \%opt_HH)) { 
-          # genome is circularized, we've duplicated it, it's okay that our possible start is < 0 at this point, but we want to add $accn_len here
-          $posn_to_start += $accn_len;
-        }
-        elsif(($posn_to_start+1) == 1) { 
+        if(($posn_to_start+1) == 1) { 
           # a special case
           $at_end_of_seq = 1;
         }
         else { 
-          DNAORG_FAIL("ERROR when looking for inframe stop for sequence $seq_name, trying to start search at position $posn_to_start but length of sequence is $accn_len", 1, $ofile_info_HH{"FH"}); 
+          DNAORG_FAIL("ERROR when looking for inframe stop for sequence $seq_name, trying to start search at position $posn_to_start but length of sequence is $seq_len", 1, $ofile_info_HH{"FH"}); 
         }
       }
     }
@@ -1116,7 +1102,7 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
       $ext_corr_stop = 0;
     }
     else { 
-      ($ext_corr_stop, $ext_stop_codon) = check_for_downstream_stop($sqfile, $seq_name, $posn_to_start, $accn_len, $cur_strand, $ofile_info_HH{"FH"});
+      ($ext_corr_stop, $ext_stop_codon) = check_for_downstream_stop($sqfile, $seq_name, $posn_to_start, $seq_len, $cur_strand, $ofile_info_HH{"FH"});
     }
 
     if($ext_corr_stop == 0) { 
@@ -1124,7 +1110,7 @@ for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
 
       my $updated_nst_errmsg = "";
       if($at_end_of_seq) { 
-        my (undef, $out_stop) = create_output_start_and_stop($cur_start, $cur_stop, $accn_len, $seq_len, $ofile_info_HH{"FH"});
+        my (undef, $out_stop) = create_output_start_and_stop($cur_start, $cur_stop, $seq_len, $ofile_info_HH{"FH"});
         $updated_nst_errmsg = "inferred stop codon position (3 nt 3' of $out_stop on $cur_strand strand) is off the end of the sequence";
       }
       error_instances_update(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "nst", $seq_name, $updated_nst_errmsg, $ofile_info_HH{"FH"});
@@ -1208,14 +1194,6 @@ ftr_results_calculate($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@ft
 
 # recalculate out_start and out_stop and out_stop_codon values, they may have changed for final mature peptides in each CDS
 mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, $ofile_info_HH{"FH"});
-
-# compare our final annotations to GenBank
-mdl_results_compare_to_genbank_annotations(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                                           \%cds_tbl_HHA, 
-                                           ($do_matpept) ? \%mp_tbl_HHA      : undef, 
-                                           ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
-                                           ($do_dfeat)   ? \%dfeat_tbl_HHHA  : undef,
-                                           \%opt_HH, $ofile_info_HH{"FH"});
 
 # validate all of our error instances by checking for incompatibilities
 # and enforcing required combinations, this function dies if any problems are found
@@ -1630,10 +1608,10 @@ sub parse_cmalign_ifile {
           DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $ifile_file on line $line_ctr", 1, $FH_HR);
         }
         my $seqidx = $seq_name_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
-        if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
+        if(! exists $seq_info_HAR->{"len"}[$seqidx]) { 
           DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
         }
-        if($seq_len != $seq_info_HAR->{"seq_len"}[$seqidx]) { 
+        if($seq_len != $seq_info_HAR->{"len"}[$seqidx]) { 
           DNAORG_FAIL(sprintf("ERROR in $sub_name, conflicting length information for sequence $seqname in ifile, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
         }          
 
@@ -1720,10 +1698,10 @@ sub parse_cmalign_stk {
       DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname from alignment in $stk_file", 1, $FH_HR);
     }
     my $seqidx = $seq_name_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
-    if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
+    if(! exists $seq_info_HAR->{"len"}[$seqidx]) { 
       DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
     }
-    my $seq_len = $seq_info_HAR->{"seq_len"}[$seqidx]; # sequence length
+    my $seq_len = $seq_info_HAR->{"len"}[$seqidx]; # sequence length
 
     # fill sequence-specific arrays
     # insert info from seq_info_HAR (read previously from cmalign --ifile output)
@@ -2058,8 +2036,8 @@ sub fetch_hits_given_results {
             }
             # only do the appending if the full region $append_start..$append_stop 
             # exists
-            if(($append_start <= $seq_info_HAR->{"seq_len"}[$seq_idx]) && 
-               ($append_stop  <= $seq_info_HAR->{"seq_len"}[$seq_idx]) && 
+            if(($append_start <= $seq_info_HAR->{"len"}[$seq_idx]) && 
+               ($append_stop  <= $seq_info_HAR->{"len"}[$seq_idx]) && 
                ($append_start >= 1) && 
                ($append_stop  >= 1)) { 
               my $append_new_name = $seq_name . "/" . $append_start . "-" . $append_stop;
@@ -3005,103 +2983,6 @@ sub results_calculate_predicted_lengths {
 }
 
 #################################################################
-# Subroutine : store_hit()
-# Incept:      EPN, Tue Mar  1 14:33:38 2016
-#
-# Purpose:    Helper function for parse_cmscan_tblout().
-#             Given info on a hit and a ref to the results AAH, 
-#             store info on it. 
-#
-# Arguments: 
-#  $mdl_results_AAHR:  REF to results AAH, FILLED HERE
-#  $mdlidx:            model index, 1st dim index in results_AAH to store in
-#  $seqidx:            sequence index, 2nd dim index in results_AAH to store in
-#  $mdllen:            model length
-#  $accn_len:          sequence length (before duplicating, if relevant)
-#  $seq_len:           length of sequence actually searched (after duplicating, if relevant)
-#  $mdlfrom:           start position of hit
-#  $mdlto:             stop position of hit
-#  $seqfrom:           start position of hit
-#  $seqto:             stop position of hit
-#  $strand:            strand of hit
-#  $evalue:            E-value of hit
-#  $score:             bit score of hit
-#  $FH_HR:             REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       never
-#
-################################################################# 
-sub store_hit { 
-  my $sub_name = "store_hit()";
-  my $nargs_exp = 14;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $score, $FH_HR) = @_;
-
-  # only consider hits where either the start or end are less than the total length
-  # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
-  # rule for deciding which of duplicate hits we'll store 
-  if(($seqfrom <= $accn_len) || ($seqto <= $accn_len)) { 
-
-    my $p_5seqflush = undef; # set to '1' if hit is flush with 5' end of sequence (1st nt in seq is 1st nt in hit), else 0
-    my $p_3seqflush = undef; # set to '1' if hit is flush with 3' end of sequence (final nt in seq is final nt in hit), else 0
-
-# Code block below is how we used to modify start/stop if hit spanned
-# stop..start boundary, now we just store it as it is, and then modify
-# the start and/or stop when we output its coordinates. This removes a
-# nasty off-by-one with negative indices that kept recurring in
-# various situations.
-# 
-# The commented out code is kept here for reference
-#
-#    # deal with case where one but not both of from to is > L:
-#    if($seqfrom > $L || $seqto > $L) { 
-#      $seqfrom -= $L; 
-#      $seqto   -= $L; 
-#      if($seqfrom < 0)  { $seqfrom--; }
-#      if($seqto   < 0)  { $seqto--; }
-#    }
-    
-    # we only store the first hit we see, this is safe because we know 
-    # that this will be the lowest E-value
-    if(%{$mdl_results_AAHR->[$mdlidx][$seqidx]}) { 
-      # a hit for this model:seq pair already exists, make sure it has a lower E-value than the current one
-      if($mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"} > $evalue) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, already have hit stored for model index $mdlidx seq index $seqidx with higher evalue (%g > %g), this implies hits were not sorted by E-value...", $mdl_results_AAHR->[$mdlidx][$seqidx]{"evalue"}, $evalue), 1, $FH_HR); 
-      }
-      if($score > 25.) { $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}++; } # yes, this is hard-coded
-    }
-    else { 
-      # no hit yet exists, make one
-      # determine if hit extends to very end of sequence on 5' and 3' end
-      if($strand eq "+") { 
-        $p_5seqflush = (($seqfrom == 1)         || ($seqfrom == ($accn_len+1))) ? 1 : 0; # $accn_len+1 only possible if seq is duplicated
-        $p_3seqflush = (($seqto   == $accn_len) || ($seqto   == $seq_len))      ? 1 : 0; # $accn_len == $seq_len if sequence is not duplicated
-      }
-      else { # strand is -
-        $p_5seqflush = (($seqfrom == $accn_len) || ($seqfrom == $seq_len))      ? 1 : 0; # $accn_len == $seq_len if sequence is not duplicated
-        $p_3seqflush = (($seqto   == 1)         || ($seqto   == ($accn_len+1))) ? 1 : 0; # $accn_len+1 only possible if seq is duplicated
-      }
-      %{$mdl_results_AAHR->[$mdlidx][$seqidx]} = ();
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_start"}     = $seqfrom;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_stop"}      = $seqto;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_strand"}    = $strand;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5overhang"} = ($mdlfrom - 1);
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3overhang"} = ($mdllen - $mdlto);
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5seqflush"} = $p_5seqflush;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3seqflush"} = $p_3seqflush;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"}    = $evalue;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_score"}     = $score;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}     = 1;
-    }
-  }
-
-  return;
-}
-
-#################################################################
 # Subroutine:  results_calculate_corrected_stops()
 # Incept:      EPN, Tue Mar  8 20:23:29 2016
 #
@@ -3299,14 +3180,14 @@ sub results_calculate_corrected_stops {
                 my $updated_trc_errmsg = sprintf("homology search predicted %d..%d", 
                                                  create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
                                                                               $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
-                                                                              $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
+                                                                              $seq_info_HAR->{"len"}[$seq_idx], $FH_HR));
                 if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
                   $updated_trc_errmsg .= sprintf(" %s %d of %d", ($is_cds) ? "exon" : "segment", $mdl_idx - $first_mdl_idx + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
                 }
                 $updated_trc_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
                                                create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
                                                                             $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
-                                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
+                                                                            $seq_info_HAR->{"len"}[$seq_idx], $FH_HR), 
                                                $exon_len_corr);
                 error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_trc_errmsg, $FH_HR);
                 
@@ -3361,14 +3242,14 @@ sub results_calculate_corrected_stops {
             my $updated_ext_errmsg = sprintf("homology search predicted %d..%d", 
                                              create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
                                                                           $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
-                                                                          $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
+                                                                          $seq_info_HAR->{"len"}[$seq_idx], $FH_HR));
             if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
               $updated_ext_errmsg .= sprintf(" %s %d of %d", ($is_cds) ? "exon" : "segment", $mdl_idx - $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
             }
             $updated_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
                                            create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
                                                                         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
-                                                                        $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
+                                                                        $seq_info_HAR->{"len"}[$seq_idx], $FH_HR), 
                                            $len_corr);
             error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_ext_errmsg, $FH_HR);
           } # end of ext block
@@ -3459,7 +3340,7 @@ sub results_calculate_overlaps_and_adjacencies {
     my @out_aja_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing 'after'  adjacencies for each model
     my @out_olp_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing overlaps for each model
     overlapsAndAdjacenciesHelper($mdl_info_HAR, \@start_A, \@stop_A, \@strand_A, 
-                                 $seq_info_HAR->{"seq_len"}[$seq_idx], $seq_info_HAR->{"accn_len"}[$seq_idx], 
+                                 $seq_info_HAR->{"len"}[$seq_idx], 
                                  \@idx_ajb_str_A, \@idx_aja_str_A, \@idx_olp_str_A, 
                                  \@out_ajb_str_A, \@out_aja_str_A, \@out_olp_str_A, 
                                  $opt_HHR, $FH_HR);
@@ -3626,9 +3507,6 @@ sub mdl_results_add_b5e_b5u_errors {
     my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
     for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
       my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
       my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
 
       if(exists $mdl_results_HR->{"p_start"}) { 
@@ -4345,8 +4223,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
     for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
       my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
       my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
+      my $seq_len   = $seq_info_HAR->{"len"}[$seq_idx];
       my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
 
       if(! exists $mdl_results_HR->{"p_start"}) { 
@@ -4362,7 +4239,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
         if($is_first && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name})) { 
           my $out_start = undef;
           ($out_start, undef) = create_output_start_and_stop($mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_stop"}, 
-                                                             $accn_len, $seq_len, $FH_HR);
+                                                             $seq_len, $seq_len, $FH_HR);
           my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", 
                                            fetchStartCodon($sqfile, $seq_name, $mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_strand"}, 1, $FH_HR), 
                                            # '1' above: it's okay if codon we fetch is less than 3 nt due to being off end of the sequence
@@ -4495,8 +4372,7 @@ sub mdl_results_calculate_out_starts_and_stops {
 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
+      my $seq_len   = $seq_info_HAR->{"len"}[$seq_idx];
       my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
       my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
 
@@ -4504,7 +4380,7 @@ sub mdl_results_calculate_out_starts_and_stops {
         ($mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}) = 
             create_output_start_and_stop($mdl_results_HR->{"p_start"},
                                          exists($mdl_results_HR->{"c_stop"}) ? $mdl_results_HR->{"c_stop"} : $mdl_results_HR->{"p_stop"}, 
-                                         $accn_len, $seq_len, $FH_HR);
+                                         $seq_len, $FH_HR);
         $mdl_results_HR->{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name,
                                                              (defined $mdl_results_HR->{"c_stop"}) ? $mdl_results_HR->{"c_stop"} : $mdl_results_HR->{"p_stop"}, 
                                                              $mdl_results_HR->{"p_strand"}, 1, $FH_HR);
@@ -4516,95 +4392,6 @@ sub mdl_results_calculate_out_starts_and_stops {
 
   return;
 }
-
-#################################################################
-# Subroutine:  mdl_results_compare_to_genbank_annotations
-# Incept:      EPN, Thu Mar 31 13:52:15 2016
-#
-# Purpose:    Compute the 'num_genbank_mdl_annot' values for 
-#             the %{$seq_info_HAR} and the 'genbank_mdl_annot_match' 
-#             for the %{$mdl_results_AAHR}. These are the number
-#             annotated features in Genbank, and whether or not
-#             one of our annotated features matches an annotation
-#             in GenBank, respectively.
-#
-# Arguments: 
-#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:   REF to model results AAH, ADDED TO HERE
-#  $cds_tbl_HHAR:       REF to CDS hash of hash of arrays, PRE-FILLED
-#  $mp_tbl_HHAR:        REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
-#  $xfeat_tbl_HHAR:     REF to extra feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
-#  $dfeat_tbl_HHAR:     REF to duplicate feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
-#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:              REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: never
-#
-################################################################# 
-sub mdl_results_compare_to_genbank_annotations { 
-  my $sub_name = "mdl_results_compare_to_genbank_annotations()";
-  my $nargs_exp = 10;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $mdl_idx;
-  my $seq_idx;
-
-  # first, determine how many genbank annotations we have per sequence
-  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    # determine how many annotations CDS or mature peptide annotations there are in GenBank
-    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-    ($seq_info_HAR->{"num_genbank_mdl_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_mdl_exon_annot"}[$seq_idx]) = 
-        count_genbank_annotations((opt_IsUsed("--matpept", $opt_HHR)) ? $mp_tbl_HHAR->{$accn_name} : $cds_tbl_HHAR->{$accn_name}, 
-                                  $accn_len, $opt_HHR, $FH_HR);
-  }
-
-  # now check each of our annotations against the GenBank annotations
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-    my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
-    my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
-    my $is_xfeat   = featureTypeIsExtraFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
-    my $is_dfeat   = featureTypeIsDuplicateFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
-    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
-      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-
-      if(exists $mdl_results_HR->{"p_start"}) { 
-        # check our final annotation against existing annotation in GenBank 
-        my $start  = $mdl_results_HR->{"out_start"};
-        my $stop   = $mdl_results_HR->{"out_stop"};
-        my $strand = $mdl_results_HR->{"p_strand"};
-        my $tbl_HAR = undef;
-        if($is_matpept) { $tbl_HAR = $mp_tbl_HHAR->{$accn_name}; }
-        if($is_cds)     { $tbl_HAR = $cds_tbl_HHAR->{$accn_name}; }
-        if($is_xfeat)   { $tbl_HAR = $xfeat_tbl_HHHAR->{$ftr_info_HAR->{"type_ftable"}[$ftr_idx]}{$accn_name}; }
-        if($is_dfeat)   { $tbl_HAR = $dfeat_tbl_HHHAR->{$ftr_info_HAR->{"type_ftable"}[$ftr_idx]}{$accn_name}; }
-        # TODO: if we get into viruses with many features, will want to do the comparison 
-        # in sorted order by start to avoid quadratic time behavior
-        if(defined $tbl_HAR) { # if there was annotation for this sequence 
-          $mdl_results_HR->{"genbank_mdl_annot_match"} = compare_to_genbank_annotation($start, $stop, $strand, $accn_len, $seq_len, $tbl_HAR, $opt_HHR, $FH_HR);
-        }
-        else { # annotation doesn't exist, so we don't have a match
-          $mdl_results_HR->{"genbank_mdl_annot_match"} = 0;
-        }
-      } # end of 'else' entered if we have a prediction
-    } # end of 'for($seq_idx' loop
-  } # end of 'for($mdl_idx' loop
-
-  return;
-}      
 
 #################################################################
 # Subroutine:  ftr_results_calculate
@@ -4662,7 +4449,6 @@ sub ftr_results_calculate {
   my $seq_name;  # name of one sequence
   my $seq_len;   # length of the sequence, possibly including doubling
   my $accn_name; # name of accession
-  my $accn_len;  # length of the accession, never includes doubling
   my $append_len = 0; # length of appended region
   my $ntr_errmsg = undef; # error message for an ntr error
 
@@ -4685,12 +4471,11 @@ sub ftr_results_calculate {
 
       for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         $seq_name   = $seq_info_HAR->{"seq_name"}[$seq_idx];
-        $seq_len    = $seq_info_HAR->{"seq_len"}[$seq_idx];
+        $seq_len    = $seq_info_HAR->{"len"}[$seq_idx];
         $accn_name  = $seq_info_HAR->{"accn_name"}[$seq_idx];
-        $accn_len   = $seq_info_HAR->{"accn_len"}[$seq_idx];
 
         ($seq_info_HAR->{"num_genbank_ftr_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_ftr_exon_annot"}[$seq_idx]) = 
-            count_genbank_annotations($cds_tbl_HHAR->{$accn_name}, $accn_len, $opt_HHR, $FH_HR);
+            count_genbank_annotations($cds_tbl_HHAR->{$accn_name}, $seq_len, $opt_HHR, $FH_HR);
 
         # set the str_err_flag, if nec
         if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
@@ -4800,14 +4585,14 @@ sub ftr_results_calculate {
                       if(exists $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"}) { 
                         my $cds_pred_stop = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
                         $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
-                                                      create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $accn_len, $seq_len, $FH_HR),
-                                                      create_output_start_and_stop($cds_fetch_start, $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
+                                                      create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $seq_len, $FH_HR),
+                                                      create_output_start_and_stop($cds_fetch_start, $cds_out_stop,  $seq_len, $FH_HR),
                                                       abs($cds_fetch_stop - $cds_pred_stop), $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
                       }
                       else { 
                         $updated_trc_errmsg = sprintf("homology search predicted %d..? revised to %d..%d (due to early stop in %s)", 
                                                       $cds_out_start, 
-                                                      create_output_start_and_stop($cds_out_start,   $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
+                                                      create_output_start_and_stop($cds_out_start, $cds_out_stop, $seq_len, $FH_HR),
                                                       $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
                       }
                       
@@ -4922,7 +4707,7 @@ sub ftr_results_calculate {
                       my ($out_append_start, $out_append_stop) = 
                           create_output_start_and_stop($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}, 
                                                        $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"},
-                                                       $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                                                       $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
                       $cds_out_stop = $out_append_stop;
                       $cds_fetch_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"};
                       # and update the cds_len (this is the final child, so this will only happen once)
@@ -5001,7 +4786,7 @@ sub ftr_results_calculate {
           ($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"out_start"}, $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"out_stop"}) = 
               create_output_start_and_stop($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_start"}, 
                                            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"}, 
-                                           $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                                           $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
           # only the final model is affected by an ext error
           $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"len"}    += ($len_corr - $append_len);
           $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"cumlen"} += ($len_corr - $append_len);
@@ -5010,17 +4795,17 @@ sub ftr_results_calculate {
           # get first part of cds error message using current $cds_out_stop, if it exists
           my $updated_cds_ext_errmsg = sprintf("homology search predicted %d..%d", 
                                                create_output_start_and_stop($cds_out_start, $cds_out_stop,
-                                                                           $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
+                                                                           $seq_info_HAR->{"len"}[$seq_idx], $FH_HR));
           # get first part of mp error message 
           my $mp_ext_errmsg = sprintf("homology search predicted %d..%d", 
                                       create_output_start_and_stop($mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"p_start"},
                                                                    $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"},
-                                                                   $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
+                                                                   $seq_info_HAR->{"len"}[$seq_idx], $FH_HR));
           # now recompute $cds_out_stop
           (undef, $cds_out_stop) = 
               create_output_start_and_stop($cds_fetch_start, # this is irrelevant due to first undef arg
                                            $cds_fetch_stop,
-                                           $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                                           $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
 
           # get second part of CDS error message
           $updated_cds_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", $cds_out_start, $cds_out_stop, $len_corr-$append_len);
@@ -5028,7 +4813,7 @@ sub ftr_results_calculate {
           $mp_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
                                     create_output_start_and_stop($mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"p_start"}, 
                                                                  $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"}, 
-                                                                 $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
+                                                                 $seq_info_HAR->{"len"}[$seq_idx], $FH_HR), 
                                     $len_corr-$append_len);
           error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_cds_ext_errmsg, $FH_HR);
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $final_child_ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $mp_ext_errmsg, $FH_HR);
@@ -5125,7 +4910,7 @@ sub ftr_results_calculate {
           if(defined ($cds_tbl_HHAR->{$accn_name})) { # if there was annotation for this sequence 
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_ftr_annot_match"} = 
                 compare_to_genbank_annotation($cds_out_start, $cds_out_stop, $start_strand,
-                                              $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], 
+                                              $seq_info_HAR->{"len"}[$seq_idx], 
                                               $cds_tbl_HHAR->{$accn_name}, $opt_HHR, $FH_HR);
           }
           else { # annotation doesn't exist, so we don't have a match
@@ -5207,7 +4992,7 @@ sub ftr_results_calculate {
         for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
           $seq_name   = $seq_info_HAR->{"seq_name"}[$seq_idx];
           $accn_name  = $seq_info_HAR->{"accn_name"}[$seq_idx];
-          $accn_len   = $seq_info_HAR->{"accn_len"}[$seq_idx];
+          $seq_len    = $seq_info_HAR->{"len"}[$seq_idx];
           my $cumlen = undef;
           # go through all models instead of just using the final one in case the final one is not annotated
           for($mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
@@ -5262,7 +5047,7 @@ sub dump_results {
                   $mdl_info_HAR->{"cmname"}[$m],
                   $seq_info_HAR->{"seq_name"}[$s],
                   $seq_info_HAR->{"accn_name"}->[$s],
-                  $seq_info_HAR->{"accn_len"}[$s]);
+                  $seq_info_HAR->{"len"}[$s]);
       foreach my $key (sort keys %{$mdl_results_AAHR->[$m][$s]}) { 
         printf $FH ("%s: %s ", $key, $mdl_results_AAHR->[$m][$s]{$key});
       }
@@ -5382,8 +5167,7 @@ sub find_origin_sequences {
     $seq_info_HAR->{"origin_coords_str"}[$seq_idx] = "";
     my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-    my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
+    my $seq_len   = $seq_info_HAR->{"len"}[$seq_idx];
     my $fasta_seq = $sqfile->fetch_seq_to_fasta_string($seq_name, -1);
     my ($header, $seq) = split(/\n/, $fasta_seq);
     my $nfound = 0; # number of occurrences of origin sequence per sequence
@@ -5398,26 +5182,19 @@ sub find_origin_sequences {
 
     while($qseq_posn != -1) { 
       $qseq_posn++;
-      if($qseq_posn <= $accn_len) { # note: we've just incremented qseq_posn by 1 in prv line so now it is in 1..length($seq) coords, not 0..length($seq)-1
+      if($qseq_posn <= $seq_len) { # note: we've just incremented qseq_posn by 1 in prv line so now it is in 1..length($seq) coords, not 0..length($seq)-1
         my $qseq_start = $qseq_posn;
         my $qseq_stop  = $qseq_posn + length($qseq) - 1;
         # adjust coordinates so they're within 1..L
         ($qseq_start, $qseq_stop) = 
-            create_output_start_and_stop($qseq_start, $qseq_stop, $accn_len, $seq_len, $FH_HR);
+            create_output_start_and_stop($qseq_start, $qseq_stop, $seq_len, $FH_HR);
         if($seq_info_HAR->{"origin_coords_str"}[$seq_idx] ne "") { 
           $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= ",";
         }
         $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= $qseq_start . ":" . $qseq_stop;
         $nfound++;
       }
-      if($qseq_posn > $accn_len) { 
-        $qseq_posn = -1; 
-        # this breaks the while loop because we're searching in a duplicated genome, 
-        # and we're into the second copy, no need to keep searching the same seq
-      }
-      else { 
-        $qseq_posn = index($seq, $qseq, $qseq_posn);
-      }
+      $qseq_posn = index($seq, $qseq, $qseq_posn);
     }
     # printf("in $sub_name, $seq_name nfound: $nfound\n");
     if($nfound != 1) { 
@@ -5463,7 +5240,7 @@ sub get_origin_output_for_sequence {
   if(! exists $seq_info_HAR->{"origin_coords_str"}[$seq_idx]) { 
     DNAORG_FAIL("ERROR in $sub_name, no origin_coords_str (not even empty str) exists in seq_info_HAR for $seq_idx", 1, $FH_HR);
   }
-  my $accn_len = $seq_info_HAR->{"accn_len"}[$seq_idx];
+  my $seq_len = $seq_info_HAR->{"len"}[$seq_idx];
 
   # initializereturn values
   my $oseq_start    = "-"; # changed below if $oseq_ct == 1
@@ -5480,8 +5257,8 @@ sub get_origin_output_for_sequence {
     $oseq_offset = ($oseq_start < 0) ? ($oseq_start + $origin_offset) : ($oseq_start + $origin_offset - 1);
     # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
     # $oseq_offset is now number of nts to shift origin in counterclockwise direction
-    if($oseq_offset > ($accn_len / 2)) { # simpler (shorter distance) to move origin clockwise
-      $oseq_offset = $accn_len - $oseq_offset; # note, we don't add 1 here
+    if($oseq_offset > ($seq_len / 2)) { # simpler (shorter distance) to move origin clockwise
+      $oseq_offset = $seq_len - $oseq_offset; # note, we don't add 1 here
     }
     else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
       $oseq_offset *= -1;
@@ -6993,9 +6770,8 @@ sub output_tbl_all_sequences {
 
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
+    my $seq_len   = $seq_info_HAR->{"len"}[$seq_idx];
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
     my @cur_out_A = (); # array of current tokens to print
     my $ngenbank_match = 0; # number of matches with existing annotation
     my $pass_fail_str  = ""; 
@@ -7003,7 +6779,7 @@ sub output_tbl_all_sequences {
     # Create the initial portion of the output line, the accession and length
     push(@cur_out_A, sprintf("%-5d  ", ($seq_idx+1)));
     push(@cur_out_A, sprintf("%-19s  ", $accn_name)); 
-    push(@cur_out_A, sprintf("%6d ", $accn_len));
+    push(@cur_out_A, sprintf("%6d ", $seq_len));
 
     my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail);
     if((opt_IsUsed("--origin",    $opt_HHR)) || 
@@ -7043,7 +6819,7 @@ sub output_tbl_all_sequences {
         # determine output start and output stop
         my ($cur_start, undef) = create_output_start_and_stop($mdl_results_AAHR->[0][$seq_idx]{"p_start"},
                                                               $mdl_results_AAHR->[0][$seq_idx]{"p_stop"},
-                                                              $accn_len, $seq_len, $FH_HR);
+                                                              $seq_len, $FH_HR);
         if($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "+") { 
           # positive strand, easy case
           if($cur_start == 1) { 
@@ -7059,15 +6835,15 @@ sub output_tbl_all_sequences {
         }
         elsif($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "-") { 
           # negative strand, more complicated, slightly
-          if($cur_start == $accn_len) { 
+          if($cur_start == $seq_len) { 
             push(@cur_out_A, sprintf("  %6d", 0)); # start 
             push(@cur_out_A, sprintf("  %6d", 0)); # stop 
             push(@cur_out_A, sprintf("  %6d", 0)); # length
           }
-          else { # 1st feature does not start at nt $accn_len on negative strand
-            push(@cur_out_A, sprintf("  %6d", $accn_len)); # start 
+          else { # 1st feature does not start at nt $seq_len on negative strand
+            push(@cur_out_A, sprintf("  %6d", $seq_len)); # start 
             push(@cur_out_A, sprintf("  %6d", $cur_start + 1)); # stop
-            push(@cur_out_A, sprintf("  %6d", $accn_len - $cur_start)); # length
+            push(@cur_out_A, sprintf("  %6d", $seq_len - $cur_start)); # length
           }
         }
         else { # not + or - strand, weird...
@@ -7333,29 +7109,29 @@ sub output_tbl_all_sequences {
         if(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"}) { 
           (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_start"}, 
                                                             $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"},
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                                                            $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
         }
         elsif(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"}) { 
           (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"},  # irrelevant due to the first undef arg
                                                             $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"},
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                                                            $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
         }
         else { 
           (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
                                                             $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_stop"}, 
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                                                            $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
         }
         if($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "+") { 
           # positive strand, easy case
-          if($cur_stop == $accn_len) { # final model prediction stops at final nt
+          if($cur_stop == $seq_len) { # final model prediction stops at final nt
             push(@cur_out_A, sprintf("  %6d", 0)); # start 
             push(@cur_out_A, sprintf("  %6d", 0)); # stop 
             push(@cur_out_A, sprintf("  %6d", 0)); # length
           }            
           else { 
-            push(@cur_out_A, sprintf("  %6d", $cur_stop + 1));           # start
-            push(@cur_out_A, sprintf("  %6d", $accn_len));               # stop 
-            push(@cur_out_A, sprintf("  %6d", ($accn_len - $cur_stop))); # length
+            push(@cur_out_A, sprintf("  %6d", $cur_stop + 1));          # start
+            push(@cur_out_A, sprintf("  %6d", $seq_len));               # stop 
+            push(@cur_out_A, sprintf("  %6d", ($seq_len - $cur_stop))); # length
           }
         }
         elsif($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "-") { 
@@ -7378,7 +7154,7 @@ sub output_tbl_all_sequences {
     }
 
     # total length
-    push(@cur_out_A, sprintf("  %6d", $accn_len));
+    push(@cur_out_A, sprintf("  %6d", $seq_len));
     # average fid
     if($do_totfid) { 
       push(@cur_out_A, sprintf("  %5.3f", ($tot_id_min_len > 0) ? ($tot_nid / $tot_id_min_len) : 0.));
@@ -7616,9 +7392,8 @@ sub output_feature_tbl_all_sequences {
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
+    my $seq_len   = $seq_info_HAR->{"len"}[$seq_idx];
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
     
     # class for this sequence, possible values:
 
@@ -8580,8 +8355,6 @@ sub output_gap_info {
 #  Miscellaneous subroutines that don't fit in the above categories:
 #    find_inframe_stop()
 #    combine_ajb_and_aja_strings()
-#    compare_to_genbank_annotation()
-#    count_genbank_annotations()
 #    translate_feature_sequences()
 #    align_hits()
 #    update_gap_array()
@@ -8686,147 +8459,6 @@ sub combine_ajb_and_aja_strings {
     $comma_or_not = ",";
   }
   return $ajb_str . $comma_or_not . $aja_str;
-}
-
-#################################################################
-# Subroutine:  compare_to_genbank_annotation
-# Incept:      EPN, Mon Mar 14 08:42:00 2016
-#
-# Purpose:    For a given sequence/model pair and start..stop boundaries
-#             check if any annotation in %{$tbl_HAR} matches start..stop.
-#             Return 1 if it does and 0 if it doesn't.
-#
-# Arguments: 
-#  $pred_start:   predicted start (from our annotation, in -accn_len..accn_len coord space)
-#  $pred_stop:    predicted stop (from our annotation, in -accn_len..accn_len coord space)
-#  $pred_strand:  predicted strand (from our annotation)
-#  $accn_len:     length of the accession's sequence we're interested in
-#  $seq_len:      length of the sequence in the file we searched in
-#  $tbl_HAR:      REF to hash of arrays for accession we're interested in, PRE-FILLED
-#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:        REF to hash of file handles
-#
-# Returns:    '1' if we find a match to $pred_start..$pred_stop to existing (GenBank)
-#             annotation stored in %{$tbl_HAR}, else '0'
-#
-# Dies: If we have a problem getting information we need from $tbl_HAR
-#
-################################################################# 
-sub compare_to_genbank_annotation { 
-  my $sub_name = "compare_to_genbank_annotation()";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($pred_start, $pred_stop, $pred_strand, $accn_len, $seq_len, $tbl_HAR, $opt_HHR, $FH_HR) = @_;
-
-  # printf("in $sub_name, pred: $pred_start..$pred_stop $pred_strand\n");
-
-  # get coordinates into the following format:
-  # start <= stop
-  # coordinate space: -accn_len..accn_len (should already be in this)
-  # check we're in -accn_len..accn_len space
-  if(($pred_start < ($accn_len * -1)) || ($pred_start > $accn_len)) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, predicted start coordinate: $pred_start not in expected -accn_len..accn_len coordinate space (%d..%d)", (-1 * $accn_len), $accn_len), 1, $FH_HR); 
-  }
-  if(($pred_stop < ($accn_len * -1)) || ($pred_stop > $accn_len)) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, predicted stop coordinate: $pred_stop not in expected -accn_len..accn_len coordinate space (%d..%d)", (-1 * $accn_len), $accn_len), 1, $FH_HR); 
-  }
-  if($pred_start > $pred_stop) { 
-    my $tmp     = $pred_start;
-    $pred_start = $pred_stop;
-    $pred_stop  = $tmp;
-  }
-
-  my $found_match = 0; # set to '1' if we find a match
-  my @coords_A    = (); # coordinates of each annotated feature
-  my @len_A       = (); # lengths of each annotated feature (not used)
-  # fill @coords_A and len_A
-  getLengthsAndCoords($tbl_HAR, \@len_A, \@coords_A, $FH_HR);
-
-  # for each annotated feature, check if we have a match to $pred_start..$pred_stop
-  my $nannot = scalar(@len_A);
-  for(my $i = 0; $i < $nannot; $i++) { 
-    my @starts_A  = ();
-    my @stops_A   = ();
-    my @strands_A = ();
-    my $nsegments = 0;
-    startsStopsStrandsFromCoordsLength($coords_A[$i], $accn_len, $opt_HHR, \@starts_A, \@stops_A, \@strands_A, \$nsegments, $FH_HR);
-    for(my $j = 0; $j < $nsegments; $j++) { 
-      # printf("\tcomparing against GB $starts_A[$j]..$stops_A[$j] $strands_A[$j]\n");
-      # get coordinates into the following format:
-      # start <= stop
-      # coordinate space: -accn_len..accn_len
-      my $cur_start = $starts_A[$j];
-      my $cur_stop  = $stops_A[$j];
-      if($cur_start > $cur_stop) { 
-        # swap them (GenBank doesn't follow same order convention that we do, so we always set start < stop)
-        my $tmp    = $cur_start;
-        $cur_start = $cur_stop;
-        $cur_stop  = $tmp;
-      }
-      ($cur_start, $cur_stop) = create_output_start_and_stop($cur_start, $cur_stop, $accn_len, $seq_len, $FH_HR);
-      if(($cur_start == $pred_start) && ($cur_stop == $pred_stop) && ($strands_A[$j] eq $pred_strand)) { 
-        $found_match = 1;
-        $j = $nsegments+1; # breaks j loop
-        $i = $nannot+1;    # breaks i loop
-      }
-    }
-  }
-
-  # printf("returning $found_match\n");
-  return $found_match;
-}
-
-#################################################################
-# Subroutine:  count_genbank_annotations
-# Incept:      EPN, Wed Mar 16 08:40:47 2016
-#
-# Purpose:    Return the number of feature (e.g. CDS) and segment (e.g. exon)
-#             annotations in tbl_HAR.
-#
-# Arguments: 
-#  $tbl_HAR:      REF to hash of arrays for accession we're interested in, PRE-FILLED
-#  $accn_len:     length of the accession's sequence we're interested in
-#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:        REF to hash of file handles
-#
-# Returns:    Two values:
-#             1) number of total feature (e.g. CDS) annotations in $tbl_HAR
-#             2) number of total segment (e.g. exon) annotations in $tbl_HAR
-#
-# Dies: If we have a problem getting information we need from $tbl_HAR
-#
-################################################################# 
-sub count_genbank_annotations { 
-  my $sub_name = "count_genbank_annotations()";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($tbl_HAR, $accn_len, $opt_HHR, $FH_HR) = @_;
-
-  if(! defined $tbl_HAR) { 
-    # no annotations
-    return (0, 0);
-  }
-  
-  my @coords_A    = (); # coordinates of each annotated feature
-  my @len_A       = (); # lengths of each annotated feature (not used)
-
-  # fill @coords_A and len_A
-  getLengthsAndCoords($tbl_HAR, \@len_A, \@coords_A, $FH_HR);
-  
-  my $nannot = scalar(@len_A);
-  my $tot_nsegments = 0;
-  for(my $i = 0; $i < $nannot; $i++) { 
-    my @starts_A  = ();
-    my @stops_A   = ();
-    my @strands_A = ();
-    my $nsegments = 0;
-    startsStopsStrandsFromCoordsLength($coords_A[$i], $accn_len, $opt_HHR, \@starts_A, \@stops_A, \@strands_A, \$nsegments, $FH_HR);
-    $tot_nsegments += $nsegments;
-  }
-
-  return ($nannot, $tot_nsegments);
 }
 
 #################################################################
@@ -9549,7 +9181,6 @@ sub check_for_downstream_stop {
 # Arguments: 
 #  $in_start:   predicted start (from our annotation)
 #  $in_stop:    predicted (possibly corrected) stop (from our annotation)
-#  $accn_len:   length of the GenBank accession's sequence
 #  $seq_len:    length of the sequence we searched, either ($accn_len) or (2 * $accn_len)
 #  $FH_HR:      REF to hash of file handles
 #
@@ -9557,15 +9188,15 @@ sub check_for_downstream_stop {
 #             $out_start: the start coordinate to output
 #             $out_stop:  the stop coordinate to output
 #
-# Dies: If (($seq_len != $accn_len) && ($seq_len != (2*$accn_len))
+# Dies: never
 #
 ################################################################# 
 sub create_output_start_and_stop { 
   my $sub_name = "create_output_start_and_stop()";
-  my $nargs_exp = 5;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($in_start, $in_stop, $accn_len, $seq_len, $FH_HR) = @_;
+  my ($in_start, $in_stop, $seq_len, $FH_HR) = @_;
   
   # contract check
   if((! verify_integer($in_start)) || ($in_start <= 0)) { 
@@ -9576,44 +9207,9 @@ sub create_output_start_and_stop {
   }
 
   my ($out_start, $out_stop);
-  if($seq_len == $accn_len) { # easy case
-    $out_start = $in_start;
-    $out_stop  = $in_stop;
-  }
-  elsif($seq_len == (2 * $accn_len)) { # may need to update $in_start and/or $in_stop
-    # Three possible cases:
-    # case 1: both $in_start and $in_stop are <= $accn_len
-    #         action: do nothing in this case
-    # case 2: both $in_start and $in_stop are > $accn_len
-    #         action: subtract $seq_len from both
-    # case 3: one of $in_start is <= $accn_len and the other is > $accn_len
-    #         action: subtract $seq_len from both, subtract 1 more from either
-    #                 that are now < $seq_len, to account for fact that position '0'
-    #                 does not exist.
-    if(($in_start <= $accn_len) && ($in_stop <= $accn_len)) { 
-      # case 1
-      $out_start = $in_start;
-      $out_stop  = $in_stop;
-    }
-    elsif(($in_start > $accn_len) && ($in_stop > $accn_len)) { 
-      # case 2
-      $out_start = $in_start - $accn_len;
-      $out_stop  = $in_stop  - $accn_len;
-    }
-    elsif(($in_start > $accn_len) || ($in_stop > $accn_len)) { 
-      # case 3
-      $out_start = $in_start - $accn_len;
-      $out_stop  = $in_stop  - $accn_len;
-      if($out_start <= 0) { $out_start--; }
-      if($out_stop  <= 0) { $out_stop--; }
-    }
-    else { 
-      DNAORG_FAIL("ERROR in $sub_name, unforeseen case in_start: $in_start in_stop: $in_stop seq_len: $seq_len accn_len: $accn_len", 1, $FH_HR);
-    }
-  }
-  else { 
-    DNAORG_FAIL("ERROR in $sub_name, input sequence length ($seq_len) is neither accession length ($accn_len), nor 2 * accession length", 1, $FH_HR);
-  }
+  $out_start = $in_start;
+  $out_stop  = $in_stop;
+
   return ($out_start, $out_stop);
 }
 
@@ -9698,24 +9294,11 @@ sub accn_name_from_seq_name {
 #            file, and determine the lengths of all
 #            the N sequences in it. Fill 
 #            $seq_info_HAR->{"accn_name"}[$i] and
-#            $seq_info_HAR->{"accn_len"}[$i]
+#            $seq_info_HAR->{"len"}[$i]
 #            for sequences $i=1..N.
-#
-#            If -c is enabled, then we also create a 
-#            new fasta file, that includes all of the
-#            sequences in $infasta_file, duplicated.
-#            (That is, if a sequence is:
-#             >seq1
-#             AGC
-#             then it will become
-#             >seq1-duplicated
-#             AGCAGC
-#             in the new file).
 #
 # Arguments:
 #  $infasta_file:  name of the input fasta file
-#  $outfasta_file: name of the output fasta file to create with duplicates of seqs from $infasta_file,
-#                  undef if we don't want to do this (if -c *not* enabled)
 #  $out_root:      root for naming output files
 #  $seq_info_HAR:  REF to hash of arrays of sequence information, added to here
 #  $opt_HHR:       REF to 2D hash of option values, see top of epn-options.pm for description
@@ -9723,16 +9306,12 @@ sub accn_name_from_seq_name {
 #  
 # Returns:  Number of sequences read in $infasta_file.
 # 
-# Dies: If $seq_info_HAR->{"accn_len"} and $seq_info_HAR->{"accn_name"} 
+# Dies: If $seq_info_HAR->{"len"} and $seq_info_HAR->{"accn_name"} 
 #       are not both arrays of exactly length 1 (with information on 
 #       *only* the reference accession.)
 #       
 #       If the same sequence exists more than once in the input sequence
 #       file.
-#
-#       If $outfasta_file is defined and -c is not enabled.
-#
-#       If -c is enabled and $outfasta_file is not defined.
 #
 #       If the names of any sequences in $infasta_file include the
 #       string 'dnaorg', this will cause problems later on because
@@ -9744,25 +9323,13 @@ sub accn_name_from_seq_name {
 #################################################################
 sub process_input_fasta_file { 
   my $sub_name = "process_input_fasta_file";
-  my $nargs_exp = 5;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($infasta_file, $outfasta_file, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($infasta_file, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
 
   my %accn_exists_H = ();  # keeps track of which accessions have been read from the sequence file
   my $err_flag = 0;        # changed to '1' if an accession exists more than once in the input fasta file
-
-  my $do_out = (defined $outfasta_file) ? 1 : 0;
-  if($do_out && (! opt_Get("-c", $opt_HHR))) { 
-    DNAORG_FAIL("ERROR in $sub_name, outfasta_file is defined, but -c not enabled", 1, $FH_HR);
-  }
-  if((! $do_out) && (opt_Get("-c", $opt_HHR))) { 
-    DNAORG_FAIL("ERROR in $sub_name, outfasta_file is not defined, but -c is enabled", 1, $FH_HR);
-  }
-    
-  if($do_out) { 
-    open(OUT, ">", $outfasta_file) || fileOpenFailure($outfasta_file, $sub_name, $!, "writing", $FH_HR);
-  }
 
   my $ssi_file = $infasta_file . ".ssi";
   if(-e $ssi_file) { 
@@ -9781,18 +9348,7 @@ sub process_input_fasta_file {
         DNAORG_FAIL("ERROR in $sub_name, sequence $accn read from $infasta_file includes the string \"dnaorg\", this is not allowed", 1, $FH_HR);
       }
       push(@{$seq_info_HAR->{"accn_name"}}, $accn);
-      push(@{$seq_info_HAR->{"accn_len"}}, $len);
-
-      if($do_out) { 
-        # output the sequence if necessary
-        my $outaccn = $accn . ":dnaorg-duplicated:$accn:1:$len:+:$accn:1:$len:+"; 
-        # this mimics how dnaorg.pm:fetchSequencesUsingEslFetchCds names sequences, if that 
-        # changes, this should be changed to match
-        print OUT ">" . $outaccn . "\n";
-        # print out sequence in 100-nt-per-line chunks
-        print OUT $seq . "\n";
-        print OUT $seq . "\n";
-      }
+      push(@{$seq_info_HAR->{"len"}}, $len);
 
       if(exists $accn_exists_H{$accn}) {
         $accn_exists_H{$accn}++;
@@ -9805,10 +9361,6 @@ sub process_input_fasta_file {
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unable to parse fasta sequence string $next_fasta_str", 1, $FH_HR);
     }
-  }
-
-  if($do_out) { 
-    close OUT;
   }
 
   # fail if we found an accession more than once in $infasta_file
@@ -10070,11 +9622,11 @@ sub aorg_find_origin_sequences {
           }
           # adjust coordinates so they're within 1..L
           my ($out_ori_start_uapos, $out_ori_stop_uapos) = 
-              create_output_start_and_stop($cur_ori_start_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+              create_output_start_and_stop($cur_ori_start_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
           
           my $out_ori_offset_uapos;
           ($out_ori_offset_uapos, undef) = 
-              create_output_start_and_stop($cur_ori_offset_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+              create_output_start_and_stop($cur_ori_offset_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
           #printf("cur_ori_start_uapos:  $cur_ori_start_uapos\n");
           #printf("cur_ori_offset_uapos: $cur_ori_offset_uapos\n");
           #printf("cur_ori_stop_uapos:   $cur_ori_stop_uapos\n\n");
@@ -10147,7 +9699,7 @@ sub aorg_parse_cmscan_tblout_s2 {
           ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
 
       my $seqidx = $seq_name_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
-      my $seqlen = $seq_info_HAR->{"accn_len"}[$seqidx];
+      my $seqlen = $seq_info_HAR->{"len"}[$seqidx];
 
       # only consider hits where either the start or end are less than the total length
       # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
@@ -10203,7 +9755,7 @@ sub aorg_get_origin_output_for_sequence {
   if(! exists $seq_info_HAR->{"origin_coords_str"}[$seq_idx]) { 
     DNAORG_FAIL("ERROR in $sub_name, no origin_coords_str (not even empty str) exists in seq_info_HAR for $seq_idx", 1, $FH_HR);
   }
-  my $accn_len = $seq_info_HAR->{"accn_len"}[$seq_idx];
+  my $seq_len = $seq_info_HAR->{"len"}[$seq_idx];
 
   # initializereturn values
   my $oseq_start    = "-"; # changed below if $oseq_ct == 1
@@ -10219,7 +9771,7 @@ sub aorg_get_origin_output_for_sequence {
     ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
     $oseq_firstpos = $seq_info_HAR->{"origin_offset"}[$seq_idx];
     if($oseq_firstpos < 0) { 
-      $oseq_firstpos = $accn_len + $oseq_firstpos + 1;
+      $oseq_firstpos = $seq_len + $oseq_firstpos + 1;
     }
     $oseq_offset = $oseq_firstpos; 
 
@@ -10231,8 +9783,8 @@ sub aorg_get_origin_output_for_sequence {
     if($oseq_offset > 0) { $oseq_offset -= 1; }
     # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
     # $oseq_offset is now number of nts to shift origin in counterclockwise direction
-    if($oseq_offset > ($accn_len / 2)) { # simpler (shorter distance) to move origin clockwise
-      $oseq_offset = $accn_len - $oseq_offset; # note, we don't add 1 here
+    if($oseq_offset > ($seq_len / 2)) { # simpler (shorter distance) to move origin clockwise
+      $oseq_offset = $seq_len - $oseq_offset; # note, we don't add 1 here
     }
     else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
       $oseq_offset *= -1;
@@ -10424,7 +9976,7 @@ sub ftr_results_calculate_blastx {
             my ($blast_start, $blast_stop) = ($1, $2);
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
             my ($out_start, $out_stop) = create_output_start_and_stop($blast_start, $blast_stop,
-                                                                      $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                                                                      $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
             # unless -c was used: $xstart will equal $blast_start and $xstop will equal $blast_stop
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $out_start;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $out_stop;
@@ -10721,8 +10273,8 @@ sub helper_ftable_get_coords_standard {
            ($mdl_results_AAHR->[$m][$seq_idx]{"p_stop"} ne "?")) { 
           $pred_start = $mdl_results_AAHR->[$m][$seq_idx]{"p_start"};
           $pred_stop  = $mdl_results_AAHR->[$m][$seq_idx]{"p_stop"};
-          if(($mdl_results_AAHR->[$m][$seq_idx]{"p_strand"} eq "+") && ($pred_stop > $seq_info_HAR->{"seq_len"})) { $pred_stop = $seq_info_HAR->{"seq_len"}; }
-          if(($mdl_results_AAHR->[$m][$seq_idx]{"p_strand"} eq "-") && ($pred_stop < 1))                          { $pred_stop = 1; }
+          if(($mdl_results_AAHR->[$m][$seq_idx]{"p_strand"} eq "+") && ($pred_stop > $seq_info_HAR->{"len"})) { $pred_stop = $seq_info_HAR->{"len"}; }
+          if(($mdl_results_AAHR->[$m][$seq_idx]{"p_strand"} eq "-") && ($pred_stop < 1))                      { $pred_stop = 1; }
         }
       }
       if((! defined $pred_start) || (! defined $pred_stop)) { 
@@ -10730,7 +10282,7 @@ sub helper_ftable_get_coords_standard {
       }
       (undef, $ftbl_out_stop) = create_output_start_and_stop($pred_start, # irrelevant due to the first undef arg
                                                              $pred_stop, 
-                                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                                                             $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
     }
 
     if(($ftbl_out_start eq "?") || ($ftbl_out_stop eq "?")) { 
@@ -10760,7 +10312,7 @@ sub helper_ftable_get_coords_standard {
           my $pred_stop  = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"} + $mdl_info_HAR->{"append_num"}[$mdl_idx];
           (undef, $out_stop) = create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
                                                             $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"}, 
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                                                            $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
         }
         push(@start_A, $out_start);
         push(@stop_A,  $out_stop);
@@ -10814,7 +10366,7 @@ sub helper_ftable_get_coords_xnn_flag {
 
   my ($out_start, $out_stop) = create_output_start_and_stop($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"},
                                                             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"},
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+                                                            $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
 
 
   my @start_A = ($out_start);
