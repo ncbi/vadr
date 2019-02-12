@@ -881,7 +881,7 @@ sub fetchReferenceFeatureSequences {
     else { 
       # -c *not* enabled, build model of full sequence
       my @fetch_A = ($ref_seq_accn);
-      $sqfile->fetch_seqs_given_names(\@fetch_A, undef, $fa_file);
+      $sqfile->fetch_seqs_given_names(\@fetch_A, -1, $fa_file);
     }
     my $tmp_stk_file = $stk_file . ".tmp";
     my $cmd = "$esl_reformat --informat afa stockholm $fa_file > $tmp_stk_file";
@@ -1623,7 +1623,7 @@ sub initializeHardCodedErrorInfoHash {
                      1, 0, "", "No Features Annotated: (*sequence*) zero annotated features", # feature table info: valid, pred_stop, note, err
                      $FH_HR); 
 
-  addToErrorInfoHash($err_info_HAR, "mxo", "sequence", 0, # code, per-type, maybe-allowed
+  addToErrorInfoHash($err_info_HAR, "dmo", "sequence", 0, # code, per-type, maybe-allowed
                      "sequence too distant from reference to annotate", # description
                      1, 0, "", "Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation !DESC!", # feature table info: valid, pred_stop, note, err
                      $FH_HR); 
@@ -1669,8 +1669,8 @@ sub initializeHardCodedErrorInfoHash {
   # mxi and mtr are preferred to mit
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mit", "mxi,mtr", $FH_HR);
 
-  # mxo is preferred to zft
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "zft", "mxo", $FH_HR);
+  # dmo is preferred to zft
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "zft", "dmo", $FH_HR);
 
   # validate the error info hash
   validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 

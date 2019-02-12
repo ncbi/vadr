@@ -855,9 +855,9 @@ my $cmalign_ifile_file  = $out_root . ".cmalign.ifile";
 cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
                          $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
 
-my $nmxo_errors = scalar(@overflow_seq_A);
-if($nmxo_errors > 0) { 
-  add_mxo_errors(\@overflow_seq_A, \@overflow_mxsize_A, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
+my $ndpo_errors = scalar(@overflow_seq_A);
+if($ndpo_errors > 0) { 
+  add_dpo_errors(\@overflow_seq_A, \@overflow_mxsize_A, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
 }
 
 ####################################################################
@@ -874,7 +874,7 @@ initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH
 my %seq_name_index_H = (); # seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
 getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
 
-if($nseq > $nmxo_errors) { # at least 1 sequence was aligned
+if($nseq > $ndpo_errors) { # at least 1 sequence was aligned
   parse_cmalign_ifile($cmalign_ifile_file, \%seq_name_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
 
   # parse the cmalign alignments
@@ -5344,7 +5344,20 @@ sub error_instances_add {
 
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $value, $FH_HR) = @_;
 
-  # printf("in $sub_name, ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n");
+  my $tmp_errmsg = "ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n";
+  if($err_code eq "olp" || 
+     $err_code eq "ajb" || 
+     $err_code eq "aja" || 
+     $err_code eq "inp" || 
+     $err_code eq "lsc" || 
+     $err_code eq "dup" || 
+     $err_code eq "aji" || 
+     $err_code eq "maj" || 
+     $err_code eq "mip" || 
+     $err_code eq "ost" || 
+     $err_code eq "ori") { 
+    DNAORG_FAIL("ERROR in $sub_name, $tmp_errmsg", 1, $FH_HR);
+  }
   
   my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
   if($err_idx == -1) { 
@@ -10758,9 +10771,9 @@ sub add_zft_errors {
 }
 
 #################################################################
-# Subroutine: add_mxo_errors()
+# Subroutine: add_dpo_errors()
 # Incept:     EPN, Thu Feb  7 11:54:56 2019
-# Purpose:    Adds mxo errors for sequences listed in the array @overflow_seq_A, if any.
+# Purpose:    Adds dpo errors for sequences listed in the array @overflow_seq_A, if any.
 #
 # Arguments:
 #  $overflow_seq_AR:         REF to array of sequences that failed due to matrix overflows, pre-filled
@@ -10775,8 +10788,8 @@ sub add_zft_errors {
 # Dies:     never
 #
 #################################################################
-sub add_mxo_errors { 
-  my $sub_name = "add_mxo_errors";
+sub add_dpo_errors { 
+  my $sub_name = "add_dpo_errors";
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -10786,7 +10799,7 @@ sub add_mxo_errors {
 
   my $noverflow = scalar(@{$overflow_seq_AR});
   for(my $s = 0; $s < $noverflow; $s++) { 
-    error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "mxo", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
+    error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "dpo", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
   }
 
   return;
