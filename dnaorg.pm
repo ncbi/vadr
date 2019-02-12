@@ -1465,7 +1465,7 @@ sub initializeHardCodedErrorInfoHash {
                      "Mutation at End: (!out_product,out_gene!) expected stop codon could not be identified; !DESC!", # feature table error
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "ntr", "feature",  0,
+  addToErrorInfoHash($err_info_HAR, "mtr", "feature",  0,
                      "mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
                      "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
@@ -1479,7 +1479,7 @@ sub initializeHardCodedErrorInfoHash {
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "int", "feature",  0,
-                     "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (ntr)", # description
+                     "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (mtr)", # description
                      1, 1, "similar to !out_product,out_gene!; contains premature stop codon", # feature table info: valid, pred_stop, note
                      "!FEATURE_TYPE! Has Stop Codon: (!out_product,out_gene!) contains unexpected stop codon; !DESC!", # feature table error
                      $FH_HR);
@@ -1641,7 +1641,7 @@ sub initializeHardCodedErrorInfoHash {
   # a nop in one exon or segment of a multi-model feature (e.g. one exon of a 2-exon feature) 
   # could have a nop and the other could have the other errors. May want to revisit this
   # at some point.
-  #  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,b5e,b5u,b3e,b3u,str,stp,trc,ext,ntr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
+  #  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,b5e,b5u,b3e,b3u,str,stp,trc,ext,mtr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
 
   # define the required combinations, these are one-sided, error code arg 2 requires error code arg 3, but error code arg 3 does not require err code arg 2
   #
@@ -1659,12 +1659,12 @@ sub initializeHardCodedErrorInfoHash {
   # 3rd argument invalidates the 2nd argument error code, but not vice versa
 
   # change between version 0.44 and 0.45: 
-  # "nm3", "ext", "ntr", "nst", "stp", "trc", "ctr" were invalidated by "m5e" and "m3e" in 0.44, but not 0.45
+  # "nm3", "ext", "mtr", "nst", "stp", "trc", "ctr" were invalidated by "m5e" and "m3e" in 0.44, but not 0.45
   # "trc" "
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nm3", "b5e,b3e", $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mn3", "b5e,b3e,m5e,m3e", $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ext", "b5e,b3e", $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ntr", "b5e,b3e", $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mtr", "b5e,b3e", $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "nst", "b5e,b3e", $FH_HR);
 
   # trc, ext and nst are preferred to stp
@@ -1678,8 +1678,8 @@ sub initializeHardCodedErrorInfoHash {
 #  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,trc",         $FH_HR);
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "trc",         $FH_HR);
 
-  # mxi and ntr are preferred to mit
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mit", "mxi,ntr", $FH_HR);
+  # mxi and mtr are preferred to mit
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mit", "mxi,mtr", $FH_HR);
 
   # mxo is preferred to zft
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "zft", "mxo", $FH_HR);

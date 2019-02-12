@@ -164,7 +164,7 @@ require "epn-options.pm";
 # aja      3      N/A          N/A                           
 # trc      1,2    1,2          N/A
 # ext      1,7,2  1,7,2        N/A
-# ntr      5      N/A          N/A
+# mtr      5      N/A          N/A
 # nst      1,7    1,7          N/A
 # ost      4      N/A          N/A
 # aji      N/A    5            N/A
@@ -2447,11 +2447,11 @@ sub combine_sequences {
 #
 #             "ext": "maybe" added for features with no in-frame stop, removed or
 #                  updated later (not in this function) when we look for an in-frame
-#                  stop downstream of the predicted stop (ext and ntr are exclusive)
+#                  stop downstream of the predicted stop (ext and mtr are exclusive)
 #
 #             "nst": "maybe" added for features with no in-frame stop, removed or
 #                  updated later (not in this function) when we look for an in-frame
-#                  stop downstream of the predicted stop (ext and ntr are exclusive)
+#                  stop downstream of the predicted stop (ext and mtr are exclusive)
 #
 #             "trc": added here for features with early in-frame stop (detected by 
 #                  esl-epn-translate) with temporary value, the -1 times the number 
@@ -2553,8 +2553,8 @@ sub parse_esl_epn_translate_startstop_outfile {
         #  P4 | true  |false |           true |         true  |              false ||        none |                 no |
         #  P5 | true  |false |           true |         true  |               true ||         trc |                yes |
         # -----------------------------------------------------------------------||-------------------------------------
-        #  P6 | false | true |            any |          any  |              false ||        ntr? |                 no |
-        #  P7 | false | true |            any |          any  |               true ||    trc ntr? |                yes |
+        #  P6 | false | true |            any |          any  |              false ||        mtr? |                 no |
+        #  P7 | false | true |            any |          any  |               true ||    trc mtr? |                yes |
         # --------------------------------------------------------------------------------------------------------------
         # 
         # in table above:
@@ -2608,11 +2608,11 @@ sub parse_esl_epn_translate_startstop_outfile {
         elsif($is_matpept) { 
           if(! $early_inframe_stop) { 
             ; 
-            # possibility 6 (P6): maybe ntr error later, but can't check for it now, do nothing;
+            # possibility 6 (P6): maybe mtr error later, but can't check for it now, do nothing;
             #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 6 (no error)\n");
           }
           else { # $early_inframe_stop is '1'
-            # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
+            # possibility 7 (P7): trc error, maybe mtr error later, but can't check for it now
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
           }
         }
@@ -4357,7 +4357,7 @@ sub mdl_results_calculate_out_starts_and_stops {
 #             "inp": for features with annot_type eq "multifeature" & type eq "cds-mp"
 #             "int": for features with annot_type eq "multifeature" & type eq "cds-mp"
 #             "aji": for features with annot_type eq "multifeature" & type eq "cds-mp"
-#             "ntr": for features that are children of a multifeature/cds-mp feature
+#             "mtr": for features that are children of a multifeature/cds-mp feature
 #
 # Arguments: 
 #  $sqfile:             REF to Bio::Easel::SqFile object, open sequence file containing sequences
@@ -4398,7 +4398,7 @@ sub ftr_results_calculate {
   my $seq_len;   # length of the sequence, possibly including doubling
   my $accn_name; # name of accession
   my $append_len = 0; # length of appended region
-  my $ntr_errmsg = undef; # error message for an ntr error
+  my $mtr_errmsg = undef; # error message for an mtr error
 
   # foreach annot_type:multifeature and type:'cds-mp' feature, 
   # determine 'out_start', 'out_stop',
@@ -4434,7 +4434,7 @@ sub ftr_results_calculate {
         my $aji_errmsg          = "";    # filled if we find two mature peptides that should be adjacent but are not
         my $set_start           = 0;     # set to '1' once we've seen the first model with an annotated hit
         my $inp_errmsg          = "";    # a list of model names ("out_tiny") for which we do not have annotations (nop errors), if any
-        my $int_errmsg          = "";    # a list of model names ("out_tiny") which are not translated due to trc (ntr errors), if any
+        my $int_errmsg          = "";    # a list of model names ("out_tiny") which are not translated due to trc (mtr errors), if any
         my $cds_out_start       = undef; # start position to output for this CDS 
         my $cds_out_stop        = undef; # stop  position to output for this CDS 
         my $cds_fetch_start     = undef; # start position to *fetch* for this CDS' start codon
@@ -4513,7 +4513,7 @@ sub ftr_results_calculate {
                   # - update the trc errmsg for this CDS in @{$err_ftr_instances_AHHR} 
                   #   based on what just figured out about this truncated stop
                   #   (if we don't have a str error for this CDS)
-                  # - set ntr errors for all remaining children 
+                  # - set mtr errors for all remaining children 
                   # - set int error for this CDS
                   # - break the loop over all children (we're done with this CDS)
                   ####################################################
@@ -4567,21 +4567,21 @@ sub ftr_results_calculate {
                         }
                       }
                     }
-                    # all remaining children get a 'ntr' error,
+                    # all remaining children get a 'mtr' error,
                     # and the CDS gets an 'int' error, which we need
                     # to build the error message for
-                    $ntr_errmsg = sprintf("early stop in mat_peptide %s ending at position %d", $ftr_info_HAR->{"out_product"}[$child_ftr_idx], $cds_out_stop);
+                    $mtr_errmsg = sprintf("early stop in mat_peptide %s ending at position %d", $ftr_info_HAR->{"out_product"}[$child_ftr_idx], $cds_out_stop);
                     if($int_errmsg ne "") { 
                       DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);
                     }
                     $child_idx++;
-                    my $ntr_err_ct = 0;
-                    # for all remaining children: throw 'ntr' and append to 'int' err message
+                    my $mtr_err_ct = 0;
+                    # for all remaining children: throw 'mtr' and append to 'int' err message
                     while($child_idx < $np_children) {
                       $child_ftr_idx = $primary_children_idx_A[$child_idx];
                       if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { 
-                        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
-                        $ntr_err_ct++;
+                        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, $mtr_errmsg, $FH_HR);
+                        $mtr_err_ct++;
                         if($int_errmsg ne "") { 
                           $int_errmsg .= ", ";
                         }
@@ -4595,8 +4595,8 @@ sub ftr_results_calculate {
                       }
                       $child_idx++;
                     }
-                    if($ntr_err_ct > 0) { 
-                      # we set at least one ntr error for mature peptides, set int for this CDS
+                    if($mtr_err_ct > 0) { 
+                      # we set at least one mtr error for mature peptides, set int for this CDS
                       error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
                       $mit_flag = 1; # this causes 'mit' in children MPs
                     }
@@ -4866,7 +4866,7 @@ sub ftr_results_calculate {
           }
         }
         # one final step: if we have a 'trc' error for this CDS, check the 'all children' array, 
-        # and throw 'ntr' errors for any mature peptides encoded by this CDS that are not
+        # and throw 'mtr' errors for any mature peptides encoded by this CDS that are not
         # translated. We did this above for the primary peptides, but here we do it for any
         # non-primary peptides.
         if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
@@ -4877,11 +4877,11 @@ sub ftr_results_calculate {
               my $cur_stop = (defined $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"c_stop"}) ? 
                   $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"c_stop"} :
                   $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
-              if(($stop_strand eq "+") && ($cds_fetch_stop < $cur_stop) && (! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"ntr"}{$seq_name})) { 
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
+              if(($stop_strand eq "+") && ($cds_fetch_stop < $cur_stop) && (! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"mtr"}{$seq_name})) { 
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, $mtr_errmsg, $FH_HR);
               }
-              if(($stop_strand eq "-") && ($cds_fetch_stop > $cur_stop) && (! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"ntr"}{$seq_name})) { 
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
+              if(($stop_strand eq "-") && ($cds_fetch_stop > $cur_stop) && (! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"mtr"}{$seq_name})) { 
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, $mtr_errmsg, $FH_HR);
               }
             }
           }
