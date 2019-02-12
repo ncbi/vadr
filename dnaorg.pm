@@ -1633,6 +1633,18 @@ sub initializeHardCodedErrorInfoHash {
                      1, 0, "", "Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation !DESC!", # feature table info: valid, pred_stop, note, err
                      $FH_HR); 
 
+  addToErrorInfoHash($err_info_HAR, "l5p", "sequence", 0, # code, per-type, maybe-allowed
+                     "nucleotide-based alignment uncertain at 5' end", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Indefinite Annotation at Start: (!out_product,out_gene!) !DESC!", # feature table error
+                     $FH_HR); 
+
+  addToErrorInfoHash($err_info_HAR, "l3p", "sequence", 0, # code, per-type, maybe-allowed
+                     "nucleotide-based alignment uncertain at 3' end", # description
+                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
+                     "Indefinite Annotation at Stop: (!out_product,out_gene!) !DESC!", # feature table error
+                     $FH_HR); 
+
   # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
   setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "aji,int,inp", $FH_HR); 
   setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext,b5e", $FH_HR);
@@ -1672,17 +1684,20 @@ sub initializeHardCodedErrorInfoHash {
 
   # int and ctr are preferred to trc
 #  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "b5e,b3e,int,ctr",     $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "int,ctr",     $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "trc", "int,ctr", $FH_HR);
 
   # trc is preferred to ctr
 #  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "b5e,b3e,trc",         $FH_HR);
-  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "trc",         $FH_HR);
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "ctr", "trc", $FH_HR);
 
   # mxi and ntr are preferred to mit
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "mit", "mxi,ntr", $FH_HR);
 
   # mxo is preferred to zft
   setFTableInvalidatedByErrorInfoHash($err_info_HAR, "zft", "mxo", $FH_HR);
+
+  # l3p is invalidated by a trc error, which changes the 3' endpoint
+  setFTableInvalidatedByErrorInfoHash($err_info_HAR, "l3p", "trc", $FH_HR);
 
   # validate the error info hash
   validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
