@@ -318,18 +318,18 @@ my @early_cmd_A = (); # array of commands we run before our log file is opened
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
- if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+ if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
   $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR a file named $dir already exists. Remove it, or use -###f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-runCommand($cmd, opt_Get("-v", \%opt_HH), undef);
+runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -447,7 +447,7 @@ my $nseq_above_zero = 0; # number of refseq accessions assigned > 0 sequences
 # copy the ref list to the build directory if --onlybuild
 if($onlybuild_mode) { 
   validateFileExistsAndIsNonEmpty($onlybuild_file, "main", $ofile_info_HH{"FH"});
-  runCommand("cp $onlybuild_file $ref_list", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  runCommand("cp $onlybuild_file $ref_list", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   addClosedFileToOutputInfo(\%ofile_info_HH, "RefList", $ref_list, 1, "List of reference sequences used to build HMMs");
 }
 fileLinesToArray($ref_list, 1, \@ref_list_seqname_A, $ofile_info_HH{"FH"});
@@ -525,7 +525,7 @@ if($onlybuild_mode) {
 
   if(! -e $ref_fa . ".ssi") { 
     $cmd = $execs_H{"esl-sfetch"} . " --index $ref_fa > /dev/null";
-    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   }
 
   for(my $i = 0; $i < $n_ref; $i++) { 
@@ -539,9 +539,9 @@ if($onlybuild_mode) {
     $cmd  = $execs_H{"esl-sfetch"} . " $ref_fa $ref_fasta_seqname | "; # fetch the sequence
 #    $cmd .= $execs_H{"esl-reformat"} . " --informat afa stockholm - | "; # reformat to stockholm
     $cmd .= $execs_H{"hmmbuild"} . " --informat afa -n $ref_list_seqname $hmm_file - > /dev/null"; # build HMM file
-    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
     $cmd = "cat $hmm_file >> $ref_library";   # adds each individual hmm to the hmm library
-    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
     
     if(! $do_keep) {
       push(@files2rm_A, $hmm_file);
@@ -550,7 +550,7 @@ if($onlybuild_mode) {
   addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib", $ref_library, 1, "Library of HMMs of RefSeqs");
 
   $cmd = $execs_H{"hmmpress"} . " $ref_library > /dev/null";
-  runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.m", $ref_library . ".h3m", 0, "HMM press index file (.h3m)");
   addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.f", $ref_library . ".h3f", 0, "HMM press index file (.h3f)");
   addClosedFileToOutputInfo(\%ofile_info_HH, "HMMLib.press.p", $ref_library . ".h3p", 0, "HMM press index file (.h3p)");
@@ -591,13 +591,13 @@ else {
   # copy the fasta file to our output dir
   validateFileExistsAndIsNonEmpty($infasta_file, "main", $ofile_info_HH{"FH"});
   $cmd = "cp $infasta_file $cls_fa";
-  runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   validateFileExistsAndIsNonEmpty($cls_fa, "main", $ofile_info_HH{"FH"});
   addClosedFileToOutputInfo(\%ofile_info_HH, "SeqFasta", $cls_fa, 1, "Fasta file with sequences to classify (copy of $infasta_file)");
   
   if(! -e $cls_fa . ".ssi") { 
     $cmd = $execs_H{"esl-sfetch"} . " --index $cls_fa > /dev/null";
-    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   }
   
   # create the list file and get sequence lengths using esl-seqstat    
@@ -804,7 +804,7 @@ else {
           # fetch the PASS or FAIL sequences into a new fasta file
           sleep(0.1); # make sure that SEQLIST is closed
           $cmd  = "cat $seqlist_file_H{$class} |" . $execs_H{"esl-sfetch"} . " -f $cls_fa - > $sub_fasta_file_H{$class}"; # fetch the sequences
-          runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
           addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.$class.fa", $sub_fasta_file_H{$class}, 1, sprintf("Fasta file with %sing seqs assigned to $ref_list_seqname", $class));
         }
       }
@@ -814,7 +814,7 @@ else {
       # fetch PASS+FAIL sequences into a new fasta file
       sleep(0.1); # make sure that SEQLIST is closed
       $cmd  = "cat $seqlist_file |" . $execs_H{"esl-sfetch"} . " -f $cls_fa - > $sub_fasta_file"; # fetch the sequences
-      runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+      runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
       addClosedFileToOutputInfo(\%ofile_info_HH, "$ref_list_seqname.fa", $sub_fasta_file, 1, sprintf("Fasta file with all seqs assigned to $ref_list_seqname"));
     }
   }
@@ -842,9 +842,9 @@ else {
   my $out_ref_list = $out_root . ".all.refseqs";
   my $out_cls_list = $out_root . ".all.seqs";
   $cmd = "cat $ref_list | grep . > $out_ref_list";
-  runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   $cmd = "cat $cls_list | grep . > $out_cls_list";
-  runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+  runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   
   addClosedFileToOutputInfo(\%ofile_info_HH, "RefSeqs", $out_ref_list, 1, "List of RefSeqs in the HMM library");
   addClosedFileToOutputInfo(\%ofile_info_HH, "ClsSeqs", $out_cls_list, 1, "List of sequences that were sorted into seqlists");
@@ -904,7 +904,7 @@ else {
           $annotate_cmd .= " --infasta $sub_fasta_file --refaccn $ref_list_seqname";
 
           # run dnaorg_annotate.pl
-          runCommand($annotate_cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          runCommand($annotate_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
 
           # now copy the feature tables and error lists to this top level directory:
           my $src_pass_sqtable  = $cur_out_dir . "/" . $cur_out_root . ".dnaorg_annotate.ap.sqtable";
@@ -921,13 +921,13 @@ else {
           my $dest_fail_list    = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af.seqlist";
           my $dest_fail_co_list = $dir . "/" . $cur_out_root . ".dnaorg_annotate.af-co.seqlist";
           my $dest_errors_list  = $dir . "/" . $cur_out_root . ".dnaorg_annotate.errlist";
-          runCommand("cp $src_pass_sqtable $dest_pass_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-          runCommand("cp $src_fail_sqtable $dest_fail_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-          runCommand("cp $src_long_sqtable $dest_long_sqtable", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-          runCommand("cp $src_pass_list    $dest_pass_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-          runCommand("cp $src_fail_list    $dest_fail_list",    opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-          runCommand("cp $src_fail_co_list $dest_fail_co_list", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-          runCommand("cp $src_errors_list  $dest_errors_list",  opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+          runCommand("cp $src_pass_sqtable $dest_pass_sqtable", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+          runCommand("cp $src_fail_sqtable $dest_fail_sqtable", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+          runCommand("cp $src_long_sqtable $dest_long_sqtable", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+          runCommand("cp $src_pass_list    $dest_pass_list",    opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+          runCommand("cp $src_fail_list    $dest_fail_list",    opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+          runCommand("cp $src_fail_co_list $dest_fail_co_list", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+          runCommand("cp $src_errors_list  $dest_errors_list",  opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
           addClosedFileToOutputInfo(\%ofile_info_HH, "pass-sqtbl"        . $ctr++, $dest_pass_sqtable, 1, "annotation results for $ref_list_seqname sequences that pass dnaorg_annotate.pl");
           addClosedFileToOutputInfo(\%ofile_info_HH, "fail-sqtbl"        . $ctr++, $dest_fail_sqtable, 1, "annotation results for $ref_list_seqname sequences that fail dnaorg_annotate.pl (minimal)");
           addClosedFileToOutputInfo(\%ofile_info_HH, "longsqtbl"         . $ctr++, $dest_long_sqtable, 1, "annotation results for sequences that pass or fail dnaorg_annotate.pl (verbose)");
@@ -1047,7 +1047,7 @@ sub list_to_fasta {
   my ($list_file, $fa_file, $opt_HHR, $FH_HR) = (@_);
   
   $cmd = "cat $list_file | epost -db nuccore -format acc | efetch -format fasta > $fa_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
 }
@@ -1083,7 +1083,7 @@ sub fasta_to_list_and_lengths {
   my ($fa_file, $list_file, $tmp_file, $seqstat, $seqname_AR, $seqlen_HR, $opt_HHR, $FH_HR) = (@_);
 
   $cmd = $seqstat . " --dna -a $fa_file | grep ^\= | awk '{ printf(\"\%s \%s\\n\", \$2, \$3); }' > $tmp_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   open(IN, $tmp_file) || fileOpenFailure($tmp_file, $0, $!, "reading", $FH_HR);
   if(defined $list_file) { 
@@ -2240,7 +2240,7 @@ sub createFastas {
     # create a file containing the concatenated fasta files for all refseqs
     my $all_refseq_fastas = $out_root . ".all.fa";
     $cmd = "cat $accn_list | epost -db nuccore -format acc | efetch -format fasta > $all_refseq_fastas";
-    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+    runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
     # separate that file into individual fasta files
     # This section contains code adopted from break_fasta.pl (created by Alejandro Schaffer)
@@ -2315,7 +2315,7 @@ sub createFastas {
 
     # get rid of concatenated fasta file
     $cmd = "rm $all_refseq_fastas";
-    runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
+    runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 }
 
 
