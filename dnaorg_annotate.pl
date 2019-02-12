@@ -4579,19 +4579,21 @@ sub ftr_results_calculate {
                     # for all remaining children: throw 'mtr' and append to 'int' err message
                     while($child_idx < $np_children) {
                       $child_ftr_idx = $primary_children_idx_A[$child_idx];
-                      if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { 
+                      # check if we have predictions for any (probably just 1) of the models for this feature
+                      my $any_pred_flag = 0;
+                      for(my $tmp_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $tmp_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $tmp_mdl_idx++) { 
+                        if(exists $mdl_results_AHHR->[$tmp_mdl_idx][$seq_idx]{"p_start"}) { 
+                          $any_pred_flag = 1;
+                        }
+                      }
+                      # if we do have predictions for any of the models for this feature, add mtr error
+                      if($any__pred_flag) { 
                         error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, $mtr_errmsg, $FH_HR);
                         $mtr_err_ct++;
                         if($int_errmsg ne "") { 
                           $int_errmsg .= ", ";
                         }
                         $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
-                      }
-                      else { # nop for at least one mdl for this feature
-                        if($int_errmsg ne "") { 
-                          $int_errmsg .= ", ";
-                        }
-                        $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx] . "(nop)";
                       }
                       $child_idx++;
                     }
@@ -4872,7 +4874,14 @@ sub ftr_results_calculate {
         if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { # there is a prediction for all models for this feature
+            # check if we have predictions for all of the models for this feature
+            my $all_pred_flag = 1;
+            for(my $tmp_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $tmp_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $tmp_mdl_idx++) { 
+              if(! exists $mdl_results_AHHR->[$tmp_mdl_idx][$seq_idx]{"p_start"}) { 
+                $all_pred_flag = 0;
+              }
+            }
+            if($all_pred_flag) { # there is a prediction for all models for this feature
               my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx];
               my $cur_stop = (defined $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"c_stop"}) ? 
                   $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"c_stop"} :

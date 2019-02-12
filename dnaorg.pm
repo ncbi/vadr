@@ -1387,11 +1387,6 @@ sub initializeHardCodedErrorInfoHash {
   # with how we try to add it (args to addToErrorInfoHash don't pass the contract check)
 
   # errors that are not valid in the feature table: do not affect feature table output
-  addToErrorInfoHash($err_info_HAR, "nop", "feature",  0,
-                     "unable to identify homologous feature", # description
-                     0, 0, "", "", # feature table info: valid, pred_stop, note, err,
-                     $FH_HR);
-
   addToErrorInfoHash($err_info_HAR, "b5e", "feature",  0,
                      "alignment to reference does not extend to 5' boundary of reference but does extend to 5' boundary of target", # description
                      0, 0, "", "", # feature table info: valid, pred_stop, note, err,
@@ -1428,7 +1423,7 @@ sub initializeHardCodedErrorInfoHash {
                      $FH_HR);
   # errors that can be invalidated by other errors in feature table output, many of these have to do with premature stop codons
   addToErrorInfoHash($err_info_HAR, "inp", "feature",  0,
-                     "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified (nop)", # description
+                     "CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not identified", # description
                      # no valid start/stop and so won't show up in the feature table
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
                      "Peptide Adjacency Problem: (!out_product,out_gene!) !DESC!", # feature table error
@@ -1634,15 +1629,8 @@ sub initializeHardCodedErrorInfoHash {
                      $FH_HR); 
 
   # define the incompatibilities; these are two-sided, any error code listed in the 3rd arg is incompatible with the 2nd argument, and vice versa
-  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "aji,int,inp", $FH_HR); 
   setIncompatibilityErrorInfoHash($err_info_HAR, "str", "stp,trc,ext,b5e", $FH_HR);
   setIncompatibilityErrorInfoHash($err_info_HAR, "trc", "ext,nst,aji,inp,b5e", $FH_HR);
-  # nop incompatibilities were set as in following line up until 05/16/16, when I realized that
-  # a nop in one exon or segment of a multi-model feature (e.g. one exon of a 2-exon feature) 
-  # could have a nop and the other could have the other errors. May want to revisit this
-  # at some point.
-  #  setIncompatibilityErrorInfoHash($err_info_HAR, "nop", "nm3,b5e,b5u,b3e,b3u,str,stp,trc,ext,mtr,nst,aji,int,inp", $FH_HR); # only olp, aja and ajb are compatible with nop
-
   # define the required combinations, these are one-sided, error code arg 2 requires error code arg 3, but error code arg 3 does not require err code arg 2
   #
   # Previously these were set: 
@@ -5763,7 +5751,7 @@ sub validateSequenceInfoHashIsComplete {
 # Purpose:    Validate that a 'error info' hash is valid and complete.
 #             'Complete' means it has all the expected keys, each of which is an identically sized array.
 #             The expected keys are:
-#                "code":            the error code, e.g. "nop"
+#                "code":            the error code, e.g. "b5e"
 #                "pertype":         type of this error, either "feature" (error occurs for a single feature) or "sequence"
 #                                   (error occurs for an entire sequence)
 #                "maybe_allowed":   '1' if a value of 'maybe' is allowed for this error code, '0' if not
