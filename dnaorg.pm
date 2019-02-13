@@ -6156,17 +6156,28 @@ sub fetchStopCodon {
 
   my ($sqfile, $seq_name, $stop, $strand, $short_ok, $FH_HR) = @_;
 
+  my $seqlen = $sqfile->fetch_seq_length_given_name($seq_name);
+
+  # printf("\nin $sub_name, $seq_name stop:$stop strand:$strand short_ok: $short_ok\n");
+
+  if($seqlen == -1) { 
+    DNAORG_FAIL("ERROR in $sub_name, unable to fetch sequence $seq_name", 1, $FH_HR);
+  }
+
+  if(($stop < 1) || ($stop > $seqlen)) { 
+    DNAORG_FAIL("ERROR in $sub_name, input stop coordinate ($stop) invalid (length of sequence ($seq_name) is $seqlen", 1, $FH_HR); 
+  }    
+
   my $stop_codon_posn;
   if($strand eq "-") { 
     $stop_codon_posn = $stop + 2;
+    if($stop_codon_posn > $seqlen) { $stop_codon_posn = $seqlen; }
   }
   else { 
     $stop_codon_posn = $stop - 2;
+    if($stop_codon_posn < 1) { $stop_codon_posn = 1; }
   }
-  if($stop_codon_posn < 0) { 
-    DNAORG_FAIL("ERROR in $sub_name(), trying to fetch stop codon for $seq_name positions $stop_codon_posn..$stop, but we expect positive positions", 1, $FH_HR);
-  }
-  # printf("in $sub_name, seqname $seqname, stop $stop\n");
+  # printf("in $sub_name, seq_name $seq_name, stop $stop\n");
 
   return fetchCodon($sqfile, $seq_name, $stop_codon_posn, $strand, $short_ok, $FH_HR);
 }
@@ -6179,7 +6190,7 @@ sub fetchStopCodon {
 #             and strand.
 #
 # Args:       $sqfile:   Bio::Easel::SqFile object, open sequence
-#                        file containing $seqname;
+#                        file containing $seq_name;
 #             $seq_name: name of sequence to fetch part of
 #             $stop:     final position of the stop codon
 #             $strand:   strand we want ("+" or "-")
@@ -6198,9 +6209,13 @@ sub fetchStartCodon {
 
   my ($sqfile, $seq_name, $start, $strand, $short_ok, $FH_HR) = @_;
 
-  if($start < 0) { 
-    DNAORG_FAIL("ERROR in $sub_name(), trying to fetch start codon for $seq_name at position $start on strand $strand, but we expect positive positions", 1, $FH_HR);
-  }
+  my $seqlen = $sqfile->fetch_seq_length_given_name($seq_name);
+
+  # printf("\nin $sub_name, $seq_name start:$start strand:$strand short_ok: $short_ok\n");
+
+  if(($start < 1) || ($start > $seqlen)) { 
+    DNAORG_FAIL("ERROR in $sub_name, input start coordinate ($start) invalid (length of sequence ($seq_name) is $seqlen", 1, $FH_HR); 
+  }    
 
   return fetchCodon($sqfile, $seq_name, $start, $strand, $short_ok, $FH_HR);
 }
@@ -6215,7 +6230,7 @@ sub fetchStartCodon {
 #             sequence.
 #
 # Args:       $sqfile:   Bio::Easel::SqFile object, open sequence
-#                        file containing $seqname;
+#                        file containing $seq_name;
 #             $seq_name: name of sequence to fetch part of
 #             $start:    start position of the codon
 #             $strand:   strand we want ("+" or "-")
@@ -6231,16 +6246,18 @@ sub fetchCodon {
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $seqname, $start, $strand, $short_ok, $FH_HR) = @_;
+  my ($sqfile, $seq_name, $start, $strand, $short_ok, $FH_HR) = @_;
 
-  my $seqlen = $sqfile->fetch_seq_length_given_name($seqname);
+  my $seqlen = $sqfile->fetch_seq_length_given_name($seq_name);
+
+  # printf("\nin $sub_name, $seq_name start:$start strand:$strand short_ok: $short_ok\n");
 
   if($seqlen == -1) { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to fetch sequence $seqname", 1, $FH_HR);
+    DNAORG_FAIL("ERROR in $sub_name, unable to fetch sequence $seq_name", 1, $FH_HR);
   }
 
   if(($start < 1) || ($start > $seqlen)) { 
-    DNAORG_FAIL("ERROR in $sub_name, input start coordinate ($start) invalid (length of sequence ($seqname) is $seqlen", 1, $FH_HR); 
+    DNAORG_FAIL("ERROR in $sub_name, input start coordinate ($start) invalid (length of sequence ($seq_name) is $seqlen", 1, $FH_HR); 
   }    
 
   my $codon_start = $start;
@@ -6262,24 +6279,22 @@ sub fetchCodon {
     }
   }
   if(! $valid_coords) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to fetch codon with coordinates %d..%d for sequence $seqname, valid coordinates are %d..%d\n", 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to fetch codon with coordinates %d..%d for sequence $seq_name, valid coordinates are %d..%d\n", 
                         $codon_start, $codon_stop, 1, $seqlen), 1, $FH_HR);
   }
 
-  my $newname = $seqname . "/" . $codon_start . "-" . $codon_stop;
+  my $newname = $seq_name . "/" . $codon_start . "-" . $codon_stop;
 
   my @fetch_AA = ();
-  # if $seqname does not exist in $sqfile, the following line
+  # if $seq_name does not exist in $sqfile, the following line
   # will cause the script to fail, ungracefully
 
-  push(@fetch_AA, [$newname, $codon_start, $codon_stop, $seqname]);
+  push(@fetch_AA, [$newname, $codon_start, $codon_stop, $seq_name]);
 
   my $faseq = $sqfile->fetch_subseqs(\@fetch_AA, -1);
 
   my ($header, $seq) = split("\n", $faseq);
 
-  # printf("\nin $sub_name, $seqname $start $strand returning $seq\n");
-  
   return $seq;
 }
 
@@ -8638,14 +8653,18 @@ sub runCmalign {
   my $cmd = "$executable $opts $model_file $seq_file > $stdout_file 2>&1";
 
   if($do_local) { 
-    runCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
+    if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
+      runCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
+    }
   }
   else { 
     my $job_name = "J" . removeDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 2; # multiply --mxsize Gb by 2 to be safe
     if($mem_gb < 8.) { $mem_gb = 8.; } # set minimum of 8 Gb
-    submitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
+    if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
+      submitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
+    }
   }
   
   my $success = 1;
