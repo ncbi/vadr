@@ -8033,7 +8033,7 @@ sub getIndexHashForArray {
 #          return at that point.
 #
 #          If($do_cmalign) behavior changes to a more detailed check
-#          of the cmalign output file, see checkCmalignStdOutput().
+#          of the cmalign output file, see cmalignCheckStdOutput().
 #          
 #          When $do_errcheck is 1, this function considers any output
 #          written to stderr output files in @{$errfile_AR} to mean
@@ -8112,7 +8112,7 @@ sub waitForFarmJobsToFinish {
       if(! $is_finished_A[$i]) { 
         if(-s $outfile_AR->[$i]) { 
           if($do_cmalign) { 
-            my $success = checkCmalignStdOutput($outfile_AR->[$i], 
+            my $success = cmalignCheckStdOutput($outfile_AR->[$i], 
                                                 (defined $mxsize_AR) ? \$mxsize_AR->[$i] : undef,
                                                 $FH_HR);
             if($success == 0 || $success == 1) { 
@@ -8343,6 +8343,13 @@ sub cmalignOrNhmmscanWrapper {
                                  \@r1_seq_file_A, \%r1_out_file_HA, \@r1_success_A, \@r1_mxsize_A,
                                  $mdl_filename, $opt_HHR, $ofile_info_HHR); 
   
+  my $nr2            = 0;  # number of round 2 runs (sequence files)
+  my %r2_out_file_HA = (); # hash of arrays ([0..$nr2-1]) of output files for cmalign/nhmmscan round 2 runs
+  my @r2_success_A   = (); # [0..$nr2-1]: '1' if this run finishes successfully, '0' if not
+  my @r2_mxsize_A    = (); # [0..$nr2-1]: if $r2_success_A[$r2_i] is '0', required size for dp mx, else '0'
+  my @r2_seq_file_A  = (); # [0..$nr2-1]: name of sequence file for this run
+  my $r2_i;                # counter over round 2 runs
+
   # go through each run:
   # if it finished successfully record its output files to concatenate later
   # if it did not finish successfully rerun all of its sequences (if $do_cmalign)
@@ -8362,61 +8369,53 @@ sub cmalignOrNhmmscanWrapper {
         DNAORG_FAIL("ERROR in $sub_name a nhmmscan job failed.", 1, $ofile_info_HHR->{"FH"});
       }
       # if we get here, we know that $do_cmalign is 1
-      # split this sequence file up into multiple files with only 1 sequence each, and rerun each single sequence file to determine
-      # which exact sequences fail
-      my $nr2 = splitFastaFile($execs_HR->{"esl-ssplit"}, $r1_seq_file_A[$r1_i], -1, $opt_HHR, $ofile_info_HHR);
-      my %r2_out_file_HA = (); # hash of arrays ([0..$nr2-1]) of output files for cmalign/nhmmscan round 2 runs
-      my @r2_success_A   = (); # [0..$nr2-1]: '1' if this run finishes successfully, '0' if not
-      my @r2_mxsize_A    = (); # [0..$nr2-1]: if $r2_success_A[$r2_i] is '0', required size for dp mx, else '0'
-      my @r2_seq_file_A  = (); # [0..$nr2-1]: name of sequence file for this run
-      my $r2_i;                 # counter over round 1 runs
-      for($r2_i = 0; $r2_i < $nr2; $r2_i++) { 
-        $r2_seq_file_A[$r2_i] = $r1_seq_file_A[$r1_i] . "." . ($r2_i+1);
-      }
-      if($nr2 == 1) { 
+      # split this sequence file up into multiple files with only 1 sequence each, 
+      # remember which 
+      my $cur_nr2 = splitFastaFile($execs_HR->{"esl-ssplit"}, $r1_seq_file_A[$r1_i], -1, $opt_HHR, $ofile_info_HHR);
+      if($cur_nr2 == 1) { 
         # special case, r1 sequence file had only 1 sequence, so we know the culprit
         # and don't need to rerun cmalign
-        $r2_success_A[0] = 0; # we know this sequence should fail
-        $r2_mxsize_A[0]  = $r1_mxsize_A[$r1_i];
+        cmalignStoreOverflow($r1_seq_file_A[$r1_i], $r1_mxsize_A[$r1_i], $overflow_seq_AR, $overflow_mxsize_AR, $ofile_info_HHR->{"FH"}); 
+        if(! opt_Get("--keep", $opt_HHR)) { 
+          runCommand("rm " . $r1_seq_file_A[$r1_i] . ".1", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+        }
       }
       else { 
-        # more than one sequence file we need to rerun for each
-        cmalignOrNhmmscanWrapperHelper($execs_HR, $do_cmalign, 
-                                       $out_root . ".s" . $r1_i,  # make sure we add r1 suffix to $out_root to avoid clobbering cmalign output files from r1
-                                       -1 * $progress_w,          # passing in $progress_w < 0 is our flag that we are 'rerunning'
-                                       \@r2_seq_file_A, \%r2_out_file_HA, \@r2_success_A, \@r2_mxsize_A, 
-                                       $mdl_filename, $opt_HHR, $ofile_info_HHR);
-      }
-      # go through all round 2 runs: 
-      # if it finished successfully record its output files to concatenate later
-      # if it did not finish successfully, record the name of the sequence and mxsize required
-      for($r2_i = 0; $r2_i < $nr2; $r2_i++) { 
-        if($r2_success_A[$r2_i]) { 
-          # run finished successfully
-          foreach my $out_key (@concat_keys_A) { 
-            push(@{$concat_HA{$out_key}}, $r2_out_file_HA{$out_key}[$r2_i]);
-          }
-          push(@{$stk_file_AR}, $r2_out_file_HA{"stk"}[$r2_i]);
+        # r1 sequence file had > 1 sequence, we need to run each sequence independently through cmalign
+        for($r2_i = 0; $r2_i < $cur_nr2; $r2_i++) { 
+          push(@r2_seq_file_A, $r1_seq_file_A[$r1_i] . "." . ($r2_i+1));
         }
-        else { 
-          # run did not finish successfully
-          my $r2_sqfile = Bio::Easel::SqFile->new({ fileLocation => $r2_seq_file_A[$r2_i] }); # the sequence file object
-          my $r2_seqstring = $r2_sqfile->fetch_consecutive_seqs(1, "", -1); 
-          if($r2_seqstring =~ /^\>(\S+)/) { 
-            my $overflow_seq = $1;
-            push(@{$overflow_seq_AR},    $overflow_seq);
-            push(@{$overflow_mxsize_AR}, $r2_mxsize_A[$r2_i]);
-          }
-          else { 
-            DNAORG_FAIL("ERROR in $sub_name failed to parse sequence name from matrix overflow sequence:\n$r2_seqstring", 1, $ofile_info_HHR->{"FH"});
-          }
-          $r2_sqfile = undef;
+        $nr2 += $cur_nr2;
+      }
+    }
+  }
+
+  # do all round 2 runs
+  if($nr2 > 0) { 
+    cmalignOrNhmmscanWrapperHelper($execs_HR, $do_cmalign, 
+                                   $out_root . ".r2",
+                                   -1 * $progress_w,          # passing in $progress_w < 0 is our flag that we are 'rerunning'
+                                   \@r2_seq_file_A, \%r2_out_file_HA, \@r2_success_A, \@r2_mxsize_A, 
+                                   $mdl_filename, $opt_HHR, $ofile_info_HHR);
+    # go through all round 2 runs: 
+    # if it finished successfully record its output files to concatenate later
+    # if it did not finish successfully, record the name of the sequence and mxsize required
+    for($r2_i = 0; $r2_i < $nr2; $r2_i++) { 
+      if($r2_success_A[$r2_i]) { 
+        # run finished successfully
+        foreach my $out_key (@concat_keys_A) { 
+          push(@{$concat_HA{$out_key}}, $r2_out_file_HA{$out_key}[$r2_i]);
         }
+        push(@{$stk_file_AR}, $r2_out_file_HA{"stk"}[$r2_i]);
       }
-      # remove sequence files if --keep not used
-      if(! opt_Get("--keep", $opt_HHR)) { 
-        removeListOfFiles(\@r2_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+      else { 
+        # run did not finish successfully
+        cmalignStoreOverflow($r2_seq_file_A[$r2_i], $r2_mxsize_A[$r2_i], $overflow_seq_AR, $overflow_mxsize_AR, $ofile_info_HHR->{"FH"}); 
       }
+    }
+    # remove sequence files if --keep not used
+    if(! opt_Get("--keep", $opt_HHR)) { 
+      removeListOfFiles(\@r2_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
     }
   }
     
@@ -8670,7 +8669,7 @@ sub runCmalign {
   my $success = 1;
   if($do_local) { 
     # command has completed, check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
-    $success = checkCmalignStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
+    $success = cmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
     if($success == -1) { # indicates job did not finish properly, this shouldn't happen because runCommand() didn't die
       DNAORG_FAIL("ERROR in $sub_name, cmalign failed in a bad way, see $stdout_file for error output", 1, $ofile_info_HHR->{"FH"});
     }
@@ -8735,7 +8734,7 @@ sub runNhmmscan {
 }
 
 #################################################################
-# Subroutine : checkCmalignStdOutput()
+# Subroutine : cmalignCheckStdOutput()
 # Incept:      EPN, Wed Feb  6 14:18:59 2019
 #
 # Purpose:     Check cmalign output to see if it indicates that 
@@ -8757,8 +8756,8 @@ sub runNhmmscan {
 # Dies: If $stdout_file does not exist or is empty
 # 
 ################################################################# 
-sub checkCmalignStdOutput { 
-  my $sub_name = "checkCmalignStdOutput";
+sub cmalignCheckStdOutput { 
+  my $sub_name = "cmalignCheckStdOutput";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -8797,6 +8796,48 @@ sub checkCmalignStdOutput {
   }
     
   return -1; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine : cmalignStoreOverflow()
+# Incept:      EPN, Wed Feb 13 16:04:53 2019
+#
+# Purpose:     Store information on a sequence that has caused
+#              a DP matrix memory overflow. 
+#              
+# Arguments: 
+#  $seq_file:           the sequence file with the single sequence that failed in it
+#  $mxsize:             matrix size to add to @{$overflow_mxsize_AR}
+#  $overflow_seq_AR:    ref to array of sequences that failed due to matrix overflows, to add to
+#  $overflow_mxsize_AR: ref to array of required matrix sizes for each sequence that failed due to matrix overflows, to add to
+#  $FH_HR:              ref to file handle hash
+# 
+# Returns:     void
+#
+# Dies: if there's some problem opening the sequence file
+#
+################################################################# 
+sub cmalignStoreOverflow { 
+  my $sub_name = "cmalignStoreOverflow";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($seq_file, $mxsize, $overflow_seq_AR, $overflow_mxsize_AR, $FH_HR) = @_;
+
+  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $seq_file }); # the sequence file object
+
+  my $r2_seqstring = $sqfile->fetch_consecutive_seqs(1, "", -1); 
+  if($r2_seqstring =~ /^\>(\S+)/) { 
+    my $overflow_seq = $1;
+    push(@{$overflow_seq_AR},    $overflow_seq);
+    push(@{$overflow_mxsize_AR}, $mxsize);
+  }
+  else { 
+    DNAORG_FAIL("ERROR in $sub_name failed to parse sequence name from matrix overflow sequence:\n$r2_seqstring", 1, $FH_HR);
+  }
+  $sqfile = undef;
+
+  return;
 }
 
 #################################################################

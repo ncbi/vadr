@@ -5313,19 +5313,19 @@ sub error_instances_add {
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $value, $FH_HR) = @_;
 
   my $tmp_errmsg = "ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n";
-  if($err_code eq "olp" || 
-     $err_code eq "ajb" || 
-     $err_code eq "aja" || 
-     $err_code eq "inp" || 
-     $err_code eq "lsc" || 
-     $err_code eq "dup" || 
-     $err_code eq "aji" || 
-     $err_code eq "maj" || 
-     $err_code eq "mip" || 
-     $err_code eq "ost" || 
-     $err_code eq "ori") { 
-    DNAORG_FAIL("ERROR in $sub_name, $tmp_errmsg", 1, $FH_HR);
-  }
+#  if($err_code eq "olp" || 
+#     $err_code eq "ajb" || 
+#     $err_code eq "aja" || 
+#     $err_code eq "inp" || 
+#     $err_code eq "lsc" || 
+#     $err_code eq "dup" || 
+#     $err_code eq "aji" || 
+#     $err_code eq "maj" || 
+#     $err_code eq "mip" || 
+#     $err_code eq "ost" || 
+#     $err_code eq "ori") { 
+#    DNAORG_FAIL("ERROR in $sub_name, $tmp_errmsg", 1, $FH_HR);
+#  }
   
   my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
   if($err_idx == -1) { 
