@@ -319,7 +319,7 @@ my $synopsis = "dnaorg_annotate.pl :: annotate sequences based on a reference an
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # REQUIRED options
-                'infasta'      => \$GetOptions_H{"--infasta"},
+                'infasta=s'    => \$GetOptions_H{"--infasta"},
                 'refaccn=s'    => \$GetOptions_H{"--refaccn"},
                 'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
                 'dirout=s'     => \$GetOptions_H{"--dirout"},
@@ -397,13 +397,12 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
 }
 
 # check that number of command line args is correct
-if(scalar(@ARGV) != 1) {   
+if(scalar(@ARGV) != 0) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
   print "\nTo see more help on available options, do dnaorg_annotate.pl -h\n\n";
   exit(1);
 }
-my ($listfile) = (@ARGV);
 
 # set options in opt_HH
 opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
@@ -434,25 +433,14 @@ if(opt_IsUsed("--aorgmodel", \%opt_HH)) {
   }
 }
 
+my $orig_infasta_file = opt_Get("--infasta", \%opt_HH);
 my $dir_build  = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
 my $dir_out    = opt_Get("--dirout",   \%opt_HH);  # this will be undefined unless --dirout set on cmdline
 my $do_matpept = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --matpept set on cmdline 
+my $do_infasta = 1;
 
-if(defined $dir_out) { 
-  $dir_out =~ s/\/$//; # remove final '/' if there is one
-}
-if(defined $dir_build) { 
-  $dir_build =~ s/\/$//; # remove final '/' if there is one
-}
-
-# if --infasta used, $listfile is actually a fasta file
-my $infasta_file = undef;
-my $do_infasta = 0;
-if(opt_Get("--infasta", \%opt_HH)) { 
-  $infasta_file = $listfile;
-  $listfile = undef;
-  $do_infasta = 1;
-}
+$dir_out =~ s/\/$//; # remove final '/' if there is one
+$dir_build =~ s/\/$//; # remove final '/' if there is one
 
 if($dir_out eq $dir_build) { 
   DNAORG_FAIL("ERROR, with --dirout <s1> and --dirbuild <s2>, <s1> and <s2> must be different directories", 1, undef);
@@ -533,18 +521,6 @@ my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_build";
 # output preamble
 my @arg_desc_A = ();
 my @arg_A      = ();
-
-if(defined $listfile) { 
-  push(@arg_desc_A, "file with list of accessions");
-  push(@arg_A, $listfile);
-}
-elsif(defined $infasta_file) { 
-  push(@arg_desc_A, "fasta file with sequences to annotate (--infasta)");
-  push(@arg_A, $infasta_file);
-}
-else { 
-  DNAORG_FAIL("ERROR, both listfile and infasta_file are undefined...", 1, undef);
-}
 
 outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
@@ -666,7 +642,7 @@ initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
 ###########################################################################
 # Step 1. Gather and process information on reference genome using Edirect.
 ###########################################################################
-my $progress_str = sprintf("Gathering information on %d sequences using edirect", $nseq);
+my $progress_str = undef;
 if(opt_Get("--skipedirect", \%opt_HH)) { 
   $progress_str = sprintf("Processing information on %d sequences fetched earlier using edirect", $nseq);
 }
@@ -723,19 +699,15 @@ if(opt_IsUsed("--dfeat", \%opt_HH)) {
 #  4) parses the edirect .mat_peptide file, if necessary
 #  5) parses the edirect .ftable file
 #  6) parses the length file
-my $orig_infasta_file = $infasta_file;
-if(defined $infasta_file) { 
-  # note that we pass in a reference to %ref_seq_info_HA to wrapperGetInfoUsingEdirect()
-  # and *not* a reference to %seq_info_HA. We will use %infasta_ref_seq_info_HA to 
-  # store information on the reference sequence only.
-  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
-                             \%opt_HH, $ofile_info_HH{"FH"}); 
-  $nseq = process_input_fasta_file($infasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
-}
-else { # --infasta not used (default)
-  wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%seq_info_HA, \%ofile_info_HH,
-                             \%opt_HH, $ofile_info_HH{"FH"}); 
-}
+# make a copy of the fasta file in the current directory
+my $infasta_file = $out_root . ".in.fa";
+runCommand("cp $orig_infasta_file $infasta_file", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});;
+# note that we pass in a reference to %ref_seq_info_HA to wrapperGetInfoUsingEdirect()
+# and *not* a reference to %seq_info_HA. We will use %infasta_ref_seq_info_HA to 
+# store information on the reference sequence only.
+wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
+                           \%opt_HH, $ofile_info_HH{"FH"}); 
+$nseq = process_input_fasta_file($infasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
 
 if($do_matpept) {  
   # validate the CDS:mat_peptide relationships that we read from the $matpept input file
@@ -780,15 +752,7 @@ wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_ro
 my $nftr = validateFeatureInfoHashIsComplete  (\%ftr_info_HA, undef, $ofile_info_HH{"FH"}); # nftr: number of features
 my $nmdl = validateModelInfoHashIsComplete    (\%mdl_info_HA, undef, $ofile_info_HH{"FH"}); # nmdl: number of homology models
 if($nseq != validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"})) { 
-  if(defined $listfile) { 
-    DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $listfile (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), $ofile_info_HH{"FH"});
-    # $seq_info_HA won't have any duplicate accessions because it was initially filled by parseListFile()
-    # which dies if any duplicates are found. However, if somehow there were duplicates in %seq_info_HA,
-    # validateSequenceInfoHashComplete() will die in error.
-  }
-  else { # --infasta enabled 
-    DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $orig_infasta_file (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), 1, $ofile_info_HH{"FH"});
-  }
+  DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $orig_infasta_file (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), 1, $ofile_info_HH{"FH"});
 }    
 # also verify that we have all the blastx db files that we need
 validateBlastDbExists($build_root . ".prot.fa", undef);
@@ -855,9 +819,9 @@ my $cmalign_ifile_file  = $out_root . ".cmalign.ifile";
 cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
                          $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
 
-my $ndpo_errors = scalar(@overflow_seq_A);
-if($ndpo_errors > 0) { 
-  add_dpo_errors(\@overflow_seq_A, \@overflow_mxsize_A, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
+my $ndmo_errors = scalar(@overflow_seq_A);
+if($ndmo_errors > 0) { 
+  add_dmo_errors(\@overflow_seq_A, \@overflow_mxsize_A, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
 }
 
 ####################################################################
@@ -874,7 +838,7 @@ initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH
 my %seq_name_index_H = (); # seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
 getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
 
-if($nseq > $ndpo_errors) { # at least 1 sequence was aligned
+if($nseq > $ndmo_errors) { # at least 1 sequence was aligned
   parse_cmalign_ifile($cmalign_ifile_file, \%seq_name_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
 
   # parse the cmalign alignments
@@ -1797,17 +1761,17 @@ sub parse_cmalign_stk {
     }      
     
     # DEBUG PRINT
-    printf("***************************************************\n");
-    printf("DEBUG print $seqname\n");
-    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
-      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_rf_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
-    }
-    printf("***************************************************\n");
+#    printf("***************************************************\n");
+#    printf("DEBUG print $seqname\n");
+#    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
+#      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_rf_before_A: %5d\n", 
+#             $rfpos, 
+#             $min_rfpos_after_A[$rfpos],
+#             $min_uapos_after_A[$rfpos],
+#             $max_rfpos_before_A[$rfpos],
+#             $max_uapos_before_A[$rfpos]);
+#    }
+#    printf("***************************************************\n");
 
     # given model span s..e
     # if strand eq "+"
@@ -1822,21 +1786,21 @@ sub parse_cmalign_stk {
       my $mdl_stop_rfpos  = $mdl_info_HAR->{"ref_stop"}[$m];
       my $mdl_strand      = $mdl_info_HAR->{"ref_strand"}[$m];
 
-      printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
-      $rfpos = $mdl_start_rfpos;
-      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
-      $rfpos = $mdl_stop_rfpos;
-      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
+#      printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
+#      $rfpos = $mdl_start_rfpos;
+#      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+#             $rfpos, 
+#             $min_rfpos_after_A[$rfpos],
+#             $min_uapos_after_A[$rfpos],
+#             $max_rfpos_before_A[$rfpos],
+#             $max_uapos_before_A[$rfpos]);
+#      $rfpos = $mdl_stop_rfpos;
+#      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+#             $rfpos, 
+#             $min_rfpos_after_A[$rfpos],
+#             $min_uapos_after_A[$rfpos],
+#             $max_rfpos_before_A[$rfpos],
+#             $max_uapos_before_A[$rfpos]);
 
       my $start_rfpos = -1; # model position of start of this model region for this aligned sequence, stays at -1 if none
       my $stop_rfpos  = -1; # model position of stop  of this model region for this aligned sequence, stays at -1 if none
@@ -4187,7 +4151,7 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
         if($is_first && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name})) { 
           my $out_start = undef;
           ($out_start, undef) = create_output_start_and_stop($mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_stop"}, 
-                                                             $seq_len, $seq_len, $FH_HR);
+                                                             $seq_len, $FH_HR);
           my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", 
                                            fetchStartCodon($sqfile, $seq_name, $mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_strand"}, 1, $FH_HR), 
                                            # '1' above: it's okay if codon we fetch is less than 3 nt due to being off end of the sequence
@@ -4582,12 +4546,12 @@ sub ftr_results_calculate {
                       # check if we have predictions for any (probably just 1) of the models for this feature
                       my $any_pred_flag = 0;
                       for(my $tmp_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $tmp_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $tmp_mdl_idx++) { 
-                        if(exists $mdl_results_AHHR->[$tmp_mdl_idx][$seq_idx]{"p_start"}) { 
+                        if(exists $mdl_results_AAHR->[$tmp_mdl_idx][$seq_idx]{"p_start"}) { 
                           $any_pred_flag = 1;
                         }
                       }
                       # if we do have predictions for any of the models for this feature, add mtr error
-                      if($any__pred_flag) { 
+                      if($any_pred_flag) { 
                         error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, $mtr_errmsg, $FH_HR);
                         $mtr_err_ct++;
                         if($int_errmsg ne "") { 
@@ -4877,7 +4841,7 @@ sub ftr_results_calculate {
             # check if we have predictions for all of the models for this feature
             my $all_pred_flag = 1;
             for(my $tmp_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $tmp_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $tmp_mdl_idx++) { 
-              if(! exists $mdl_results_AHHR->[$tmp_mdl_idx][$seq_idx]{"p_start"}) { 
+              if(! exists $mdl_results_AAHR->[$tmp_mdl_idx][$seq_idx]{"p_start"}) { 
                 $all_pred_flag = 0;
               }
             }
@@ -10771,9 +10735,9 @@ sub add_zft_errors {
 }
 
 #################################################################
-# Subroutine: add_dpo_errors()
+# Subroutine: add_dmo_errors()
 # Incept:     EPN, Thu Feb  7 11:54:56 2019
-# Purpose:    Adds dpo errors for sequences listed in the array @overflow_seq_A, if any.
+# Purpose:    Adds dmo errors for sequences listed in the array @overflow_seq_A, if any.
 #
 # Arguments:
 #  $overflow_seq_AR:         REF to array of sequences that failed due to matrix overflows, pre-filled
@@ -10788,8 +10752,8 @@ sub add_zft_errors {
 # Dies:     never
 #
 #################################################################
-sub add_dpo_errors { 
-  my $sub_name = "add_dpo_errors";
+sub add_dmo_errors { 
+  my $sub_name = "add_dmo_errors";
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -10799,7 +10763,7 @@ sub add_dpo_errors {
 
   my $noverflow = scalar(@{$overflow_seq_AR});
   for(my $s = 0; $s < $noverflow; $s++) { 
-    error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "dpo", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
+    error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "dmo", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
   }
 
   return;

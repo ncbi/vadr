@@ -648,12 +648,12 @@ else {
   }
 
   ########### RUN nhmmscan and generate output files ####################################################################################################
-  my $tblout_file = $out_root . ".tblout"; # concatenated tblout file, created by concatenating all of the individual 
-                                           # tblout files in cmscanOrNhmmscanWrapper()
+  my $tblout_file = $out_root . ".nhmmscan.tblout"; # concatenated tblout file, created by concatenating all of the individual 
+                                                    # tblout files in cmscanOrNhmmscanWrapper()
   my $mdl_file = ($ref_library); # cmscanOrNhmmscanWrapper() needs an array of model files
 
   my $cls_tot_len_nt = sumHashValues(\%cls_seqlen_H);
-  cmalignOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $tblout_file, $progress_w, $mdl_file, \%opt_HH, \%ofile_info_HH); 
+  cmalignOrNhmmscanWrapper(\%execs_H, 0, $out_root, $cls_fa, $cls_tot_len_nt, $progress_w, $mdl_file, undef, undef, undef, \%opt_HH, \%ofile_info_HH); 
   # in above cmalignOrNhmmscanWrapper call: '0' means run nhmmscan, not cmalign
 
   # parse nhmmscan tblout file to create infotbl file and determine pass/fails

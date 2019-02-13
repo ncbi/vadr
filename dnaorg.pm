@@ -8641,7 +8641,7 @@ sub runCmalign {
     runCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
   }
   else { 
-    my $job_name = "J" . $seq_file;
+    my $job_name = "J" . removeDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 2; # multiply --mxsize Gb by 2 to be safe
     if($mem_gb < 8.) { $mem_gb = 8.; } # set minimum of 8 Gb
@@ -8683,7 +8683,7 @@ sub runCmalign {
 ################################################################# 
 sub runNhmmscan {
   my $sub_name = "runNhmmscan()";
-  my $nargs_expected = 7;
+  my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($executable, $model_file, $seq_file, $stdout_file, $tblout_file, $err_file, $opt_HHR, $ofile_info_HHR) = @_;
@@ -8707,7 +8707,7 @@ sub runNhmmscan {
     runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
   }
   else { 
-    my $job_name = "J" . $seq_file;
+    my $job_name = "J" . removeDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = 8.; # hardcoded for nhmmscan
     submitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
