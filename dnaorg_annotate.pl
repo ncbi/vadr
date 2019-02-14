@@ -1237,18 +1237,18 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ############################
 # tabular annotation files #
 ############################
-$start_secs = outputProgressPrior("Generating tabular annotation output", $progress_w, $log_FH, *STDOUT);
+#$start_secs = outputProgressPrior("Generating tabular annotation output", $progress_w, $log_FH, *STDOUT);
 
 # fill the data structures with the header information for the tabular annotation file
-output_tbl_get_headings(\@out_row_header_A, \@out_header_exp_A, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+#output_tbl_get_headings(\@out_row_header_A, \@out_header_exp_A, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
 
 # for each sequence, output the tabular annotation
-output_tbl_all_sequences(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
+#output_tbl_all_sequences(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
 # output the explanatory text
-output_tbl_explanations(\@out_header_exp_A, \%ofile_info_HH);
+#output_tbl_explanations(\@out_header_exp_A, \%ofile_info_HH);
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+#outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ######################
 # feature table file #
