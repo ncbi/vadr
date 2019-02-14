@@ -1614,11 +1614,6 @@ sub initializeHardCodedErrorInfoHash {
                      "Reverse Complement: (!out_product,out_gene!) appears to be reverse complemented, sequence may be misassembled", # feature table error
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "ori", "sequence", 0, # code, per-type, maybe-allowed
-                     "there is not exactly 1 occurrence of origin sequence", # description
-                     1, 0, "", "Duplicate Origin: (*sequence*) !DESC!", # feature table info: valid, pred_stop, note, err
-                     $FH_HR); 
-
   addToErrorInfoHash($err_info_HAR, "zft", "sequence", 0, # code, per-type, maybe-allowed
                      "zero features annotated", # description
                      1, 0, "", "No Features Annotated: (*sequence*) zero annotated features", # feature table info: valid, pred_stop, note, err
