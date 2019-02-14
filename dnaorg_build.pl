@@ -79,9 +79,7 @@ my %opt_group_desc_H = ();
 $opt_group_desc_H{"1"} = "basic options";
 #     option            type       default               group   requires incompat    preamble-output                                 help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                          "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-c",           "boolean", 0,                        1,    undef, undef,      "genome is circular",                           "genome is circular",                                 \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",                  "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
-opt_Add("-n",           "integer", "4",                      1,    undef, undef,      "set number of CPUs for calibration to <n>",    "for non-big models, set number of CPUs for calibration to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                   "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as <s>",            "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",         "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
@@ -115,9 +113,7 @@ my $synopsis = "dnaorg_build.pl :: build homology models for features of a refer
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
-                'c'            => \$GetOptions_H{"-c"},
                 'f'            => \$GetOptions_H{"-f"},
-                'n=s'          => \$GetOptions_H{"-n"},
                 'v'            => \$GetOptions_H{"-v"},
                 'dirout=s'     => \$GetOptions_H{"--dirout"},
                 'matpept=s'    => \$GetOptions_H{"--matpept"},
@@ -363,7 +359,7 @@ wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_
 
 if($do_matpept) {  
   # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $seq_info_HA{"len"}[0], $ofile_info_HH{"FH"});
+  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, 0, $seq_info_HA{"len"}[0], $ofile_info_HH{"FH"});
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -462,7 +458,7 @@ exit 0;
 #            information on options that must be kept consistent
 #            between dnaorg_build.pl and dnaorg_annotate.pl.
 #            Currently this is only "--matpept", "--nomatpept",
-#            "--xfeat", "--dfeat", and "-c".
+#            "--xfeat", and "--dfeat".
 #
 # Arguments:
 #  $consopts_file:     name of the file to create
@@ -491,10 +487,6 @@ sub output_consopts_file {
   open(OUT, ">", $consopts_file) || fileOpenFailure($consopts_file, $sub_name, $!, "writing", $ofile_info_HHR->{"FH"});
 
   my $printed_any_options = 0;
-  if(opt_Get("-c", $opt_HHR)) { 
-    print OUT ("-c\n");
-    $printed_any_options = 1;
-  }
   if(opt_Get("--nomatpept", $opt_HHR)) { 
     print OUT ("--nomatpept\n");
     $printed_any_options = 1;

@@ -232,10 +232,9 @@ opt_Add("--dirout",      "string",  undef,                  $g,    "*",   "*",  
 opt_Add("--dirbuild",    "string",  undef,                  $g,    "*",   "*",       "output directory created by dnaorg_build.pl",     "output directory created by dnaorg_build.pl is <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "basic options";
-opt_Add("-c",           "boolean", 0,                       $g,    undef, undef,      "genome is closed (circular)",                                 "genome is closed (circular)",                       \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "forcing directory overwrite",                                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--origin",     "string",  undef,                   $g,     "-c", undef,      "identify origin seq <s> in genomes",                          "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
+opt_Add("--origin",     "string",  undef,                   $g,    undef, undef,      "identify origin seq <s> in genomes",                          "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
 opt_Add("--matpept",    "string",  undef,                   $g,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
 opt_Add("--nomatpept",  "boolean", 0,                       $g,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
 opt_Add("--xfeat",      "string",  undef,                   $g,    undef, undef,      "use models of additional qualifiers",                         "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
@@ -262,8 +261,9 @@ $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
 opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
 opt_Add("--tau",        "real",    1E-7,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--noglocal",   "boolean", 0,                       $g,    undef, "-c",       "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
-opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, "-c",       "do not fix the tau value when running cmalign, allow it to decrease if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--noglocal",   "boolean", 0,                       $g,    undef,"--sub",     "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef,"--sub",     "do not fix the tau value when running cmalign, allow it to decrease if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--sub",        "boolean", 0,                       $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
@@ -299,12 +299,12 @@ opt_Add("--skiptranslate", "boolean", 0,                    $g,"--skipalign",  u
 
 $opt_group_desc_H{++$g} = "TEMPORARY options for the alternative method of identifying origin sequences";
 #     option               type       default            group   requires                                   incompat     preamble-output                                                         help-output    
-opt_Add("--aorgmodel",     "string",  undef,                $g,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgstart",     "integer", 0,                    $g,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
-opt_Add("--aorgoffset",    "integer", 0,                    $g,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
-opt_Add("--aorglen",       "integer", 0,                    $g,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgethresh",   "real",    1.0,                  $g,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgppthresh",  "real",    0.6,                  $g,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgmodel",     "string",  undef,                $g,   "--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgstart",     "integer", 0,                    $g,   "--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
+opt_Add("--aorgoffset",    "integer", 0,                    $g,   "--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
+opt_Add("--aorglen",       "integer", 0,                    $g,   "--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgethresh",   "real",    1.0,                  $g,   "--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--aorgppthresh",  "real",    0.6,                  $g,   "--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -324,7 +324,6 @@ my $options_okay =
                 'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
                 'dirout=s'     => \$GetOptions_H{"--dirout"},
 # basic options
-                'c'            => \$GetOptions_H{"-c"},
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
                 'origin=s'     => \$GetOptions_H{"--origin"},
@@ -347,6 +346,7 @@ my $options_okay =
                 'tau=s'        => \$GetOptions_H{"--tau"},
                 'noglocal'     => \$GetOptions_H{"--noglocal"},
                 'nofixedtau'   => \$GetOptions_H{"--nofixedtau"},
+                'sub'          => \$GetOptions_H{"--sub"},
 # options related to parallelization
                 'local'        => \$GetOptions_H{"--local"}, 
                 'errcheck'     => \$GetOptions_H{"--errcheck"},  
@@ -718,7 +718,7 @@ $nseq = process_input_fasta_file($infasta_file, \%seq_info_HA, \%opt_HH, $ofile_
 
 if($do_matpept) {  
   # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $seq_info_HA{"len"}[0], $ofile_info_HH{"FH"});
+  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, 0, $seq_info_HA{"len"}[0], $ofile_info_HH{"FH"});
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -4988,220 +4988,6 @@ sub dump_results {
   }
   return;
 }
-
-#################################################################
-#################################################################
-#  Subroutines related to origin sequences:
-#    validate_origin_seq()
-#    find_origin_sequences()
-#    get_origin_output_for_sequence
-#
-#################################################################
-# Subroutine: validate_origin_seq
-# Incept:     EPN, Tue Mar 15 12:34:21 2016
-#
-# Synopsis:   Validate an origin sequence passed in
-#             as <s> with --origin <s>. It should have 
-#             a single '|' in it, which occurs 
-#             just before what should be the first nt
-#             of the genome. Return the origin offset:
-#             the number of nts before the "|".
-#
-#             For example: "TAATATT|AC"
-#             indicates that the final 7 nts of each
-#             genome should be "TAATAAT" and the first
-#             two should be "AC". In this case the origin
-#             offset is 7.
-#
-# Args:
-#   $origin_seq: the origin sequence
-#
-# Returns:  Origin offset, as explained in synopsis, above.
-#
-# Dies: if $origin_seq is incorrectly formatted. We die without
-#       outputting to any file handles, because this function is 
-#       called before the log and cmd files are set-up.
-#
-####################################
-sub validate_origin_seq { 
-  my $sub_name = "validate_origin_seq";
-  my $nargs_exp = 1;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($origin_seq) = @_;
-
-  if($origin_seq =~ m/[^ACGT\|\\]/) { 
-    die "ERROR with -origin <s>, <s> can only contain characters A, C, G, T or \|";
-  }
-
-  my $origin_offset = index($origin_seq, "|");
-  if($origin_offset == -1) { 
-    die "ERROR with --origin <s>, <s> must contain a single | character immediately before the nucleotide that should be the first nt of the genome";
-  }
-  elsif($origin_offset < (length($origin_seq)-1)) { # if this isn't the final character of the string, look for another one
-    my $second_offset = index($origin_seq, "|", $origin_offset+1);
-    if($second_offset != -1) { 
-      die "ERROR with --origin <s>, <s> must contain a single | character, $origin_seq has more than one";
-    }
-  }
-
-  # printf("in $sub_name, $origin_seq returning $origin_offset\n");
-
-  return $origin_offset;
-}
-
-#################################################################
-# Subroutine: find_origin_sequences
-# Incept:     EPN, Tue Mar 15 12:34:30 2016
-# 
-# Purpose:    Identify all exact occurrences of a sequence in a file
-#             of sequences, and a string with the coordinates of the
-#             matches in @{$seq_info_HAR->{$key}}. Each sequence
-#             name is in @{$seq_info_HAR->{"seq_name"}}.
-#
-#             Checks for and adds the following error codes: "ori".
-#
-# Args:   
-#  $sqfile:                 Bio::Easel::SqFile object, the sequence file to search in
-#  $qseq:                   query sequence we're looking for
-#  $seq_info_HAR:           REF to hash of arrays with information 
-#                           on the sequences, PRE-FILLED
-#  $err_seq_instances_HHR:  REF to the 2D hash of per-sequence errors, initialized here
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, 
-#                           see top of epn-options.pm for description
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: if --origin option is not used according to %{$opt_HHR}
-#       if -c option is not used according to %{$opt_HHR}
-#
-#################################################################
-sub find_origin_sequences { 
-  my $sub_name = "find_origin_sequences";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $qseq, $seq_info_HAR, $err_seq_instances_HHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-
-  if(! opt_IsUsed("--origin", $opt_HHR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, --origin not used...."); 
-  }
-  if(! opt_IsOn("-c", $opt_HHR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, -c not used...."); 
-  }
-
-  # fetch each sequence and look for $qseq in it
-  # (could (and probably should) make this more efficient...)
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    $seq_info_HAR->{"origin_coords_str"}[$seq_idx] = "";
-    my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $seq_len   = $seq_info_HAR->{"len"}[$seq_idx];
-    my $fasta_seq = $sqfile->fetch_seq_to_fasta_string($seq_name, -1);
-    my ($header, $seq) = split(/\n/, $fasta_seq);
-    my $nfound = 0; # number of occurrences of origin sequence per sequence
-    chomp $seq;
-    if($seq =~ m/\r$/) { chop $seq; } # remove ^M if it exists
-
-    # now use Perl's index() function to find all occurrences of $qseq
-    my $qseq_posn = index($seq, $qseq);
-    # if $qseq_posn == -1, then no occurrences were found. In this case we don't store 
-    # any entry in coords_HAR for this $accn. The caller needs to know what to do
-    # if it sees no entry for an $accn
-
-    while($qseq_posn != -1) { 
-      $qseq_posn++;
-      if($qseq_posn <= $seq_len) { # note: we've just incremented qseq_posn by 1 in prv line so now it is in 1..length($seq) coords, not 0..length($seq)-1
-        my $qseq_start = $qseq_posn;
-        my $qseq_stop  = $qseq_posn + length($qseq) - 1;
-        # adjust coordinates so they're within 1..L
-        ($qseq_start, $qseq_stop) = 
-            create_output_start_and_stop($qseq_start, $qseq_stop, $seq_len, $FH_HR);
-        if($seq_info_HAR->{"origin_coords_str"}[$seq_idx] ne "") { 
-          $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= ",";
-        }
-        $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= $qseq_start . ":" . $qseq_stop;
-        $nfound++;
-      }
-      $qseq_posn = index($seq, $qseq, $qseq_posn);
-    }
-    # printf("in $sub_name, $seq_name nfound: $nfound\n");
-    if($nfound != 1) { 
-      error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, $nfound . " occurrences", $FH_HR);
-    }
-  }
-  
-  return;
-}
-
-
-#################################################################
-# Subroutine: get_origin_output_for_sequence
-# Incept:     EPN, Tue Mar 15 13:33:29 2016
-#
-# Synopsis:   For a given sequence index $seq_idx, determine 
-#             the output strings related to the origin sequence
-#
-# Args: 
-#  $seq_info_HAR:  REF to hash of arrays with information 
-#                  on the sequences (including origins), PRE-FILLED
-#  $seq_idx:       index of sequence we're working on
-#  $origin_offset: offset of origin, 1st genome position within origin sequence
-#  $FH_HR:         REF to hash of file handles
-#
-# Returns: 5 values:
-#          $oseq_ct:       number of occurrences of origin sequence found
-#          $oseq_start:    start position of origin seq if $oseq_ct == 1, else '-'
-#          $oseq_stop:     stop  position of origin seq if $oseq_ct == 1, else '-'
-#          $oseq_offset:   offset position of origin seq if $oseq_ct == 1, else '-'
-#          $oseq_passfail: 'P' if $oseq_ct is 1, else 'F'
-#
-# Dies: if $seq_info_HAR->{"origin_coords_str"}[$seq_idx] does not exist.
-# 
-#################################################################
-sub get_origin_output_for_sequence { 
-  my $sub_name = "get_origin_output_for_sequence";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($seq_info_HAR, $seq_idx, $origin_offset, $FH_HR) = @_;
-
-  if(! exists $seq_info_HAR->{"origin_coords_str"}[$seq_idx]) { 
-    DNAORG_FAIL("ERROR in $sub_name, no origin_coords_str (not even empty str) exists in seq_info_HAR for $seq_idx", 1, $FH_HR);
-  }
-  my $seq_len = $seq_info_HAR->{"len"}[$seq_idx];
-
-  # initializereturn values
-  my $oseq_start    = "-"; # changed below if $oseq_ct == 1
-  my $oseq_stop     = "-"; # changed below if $oseq_ct == 1
-  my $oseq_offset   = "-"; # changed below if $oseq_ct == 1
-  my $oseq_passfail = "F"; # changed below if $oseq_ct == 1
-
-  my @coords_A = split(",", $seq_info_HAR->{"origin_coords_str"}[$seq_idx]);
-  my $oseq_ct = scalar(@coords_A);
-
-  if($oseq_ct == 1) { 
-    ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
-    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_start: $oseq_start oseq_stop: $oseq_stop\n");
-    $oseq_offset = ($oseq_start < 0) ? ($oseq_start + $origin_offset) : ($oseq_start + $origin_offset - 1);
-    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
-    # $oseq_offset is now number of nts to shift origin in counterclockwise direction
-    if($oseq_offset > ($seq_len / 2)) { # simpler (shorter distance) to move origin clockwise
-      $oseq_offset = $seq_len - $oseq_offset; # note, we don't add 1 here
-    }
-    else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
-      $oseq_offset *= -1;
-    }
-    $oseq_passfail = "P";
-  }
-
-  return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail);
-}
-
-
 
 #################################################################
 #################################################################

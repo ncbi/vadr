@@ -836,7 +836,7 @@ sub fetchReferenceFeatureSequences {
   my $do_infasta   = (opt_Exists("--infasta",   $opt_HHR) && opt_Get("--infasta",   $opt_HHR)) ? 1 : 0;
 
   my $do_keep     = opt_Get("--keep", $opt_HHR); # should we leave intermediates files on disk, instead of removing them?
-  my $do_circular = opt_Get("-c", $opt_HHR); # are we allowing circular genomes?
+  my $do_circular = 0; # placeholder for possibly circular genomes in the future, always FALSE for now
   my $esl_reformat = $execs_HR->{"esl-reformat"};
 
   my $cur_out_root;        # output root plus the name of a current file 
@@ -865,8 +865,9 @@ sub fetchReferenceFeatureSequences {
   if(! $do_infasta) { 
     # fetch the sequence and convert it to stockholm
     my $fa_file = $out_root . ".ref.fa";
-    if((opt_Exists("-c", $opt_HHR)) && (opt_Get("-c", $opt_HHR))) { 
-      # -c enabled, build model of *duplicated* full sequence
+    if($do_circular) { 
+      # placeholder for circulare genomes, in that case, we build a model of *duplicated* full sequence
+      DNAORG_FAIL("ERROR in $sub_name, do_circular is TRUE", 1, $FH_HR);
       my $fa_string = $sqfile->fetch_seq_to_fasta_string($ref_seq_accn, -1);
       my @lines_A = split("\n", $fa_string);
       if(scalar(@lines_A) != 2) { 
@@ -879,7 +880,7 @@ sub fetchReferenceFeatureSequences {
       close(FA);
     }
     else { 
-      # -c *not* enabled, build model of full sequence
+      # ! $do_circular, normal case
       my @fetch_A = ($ref_seq_accn);
       $sqfile->fetch_seqs_given_names(\@fetch_A, -1, $fa_file);
     }
@@ -2387,6 +2388,8 @@ sub overlapsAndAdjacenciesHelper {
   my $mdl_idx1; # counter over models
   my $mdl_idx2; # counter over models
 
+  my $do_circular = 0;
+
   # initialize
   for($mdl_idx1 = 0; $mdl_idx1 < $nmdl; $mdl_idx1++) { 
     for($mdl_idx2 = 0; $mdl_idx2 < $nmdl; $mdl_idx2++) { 
@@ -2419,7 +2422,7 @@ sub overlapsAndAdjacenciesHelper {
               $adj_AA[$mdl_idx1][$mdl_idx2] = 1;
               #printf("HEYAA $mdl_idx1 and $mdl_idx2 are adjacent\n");
             }
-            if((opt_Get("-c", $opt_HHR)) && 
+            if(($do_circular) && 
                ((($strand1 eq "+") && ($stop1 == $seq_len) && ($start2 == 1)) || 
                 (($strand1 eq "-") && ($stop1 == 1)        && ($start2 == $seq_len)) || 
                 (($strand1 eq "+") && ($stop2 == $seq_len) && ($start1 == 1)) || 
@@ -2436,7 +2439,7 @@ sub overlapsAndAdjacenciesHelper {
                            ($start1 < $stop1) ? $stop1  : $start1,
                            ($start2 < $stop2) ? $start2 : $stop2,
                            ($start2 < $stop2) ? $stop2  : $start2, $FH_HR);
-            if((opt_Get("-c", $opt_HHR)) && $nres_overlap1 == 0) { 
+            if(($do_circular) && $nres_overlap1 == 0) { 
               # do a second call iff only one of either start1..stop1
               # or start2..stop2 straddles $seq_len
               # example of why we need to do this is HBV ref NC_003977, CDS1 and CDS4:
@@ -4441,10 +4444,6 @@ sub parseConsOptsFile {
     if(($line eq "none") && ($line_ct == 1)) { 
       ; # this is fine, none of the options that need to be consistent were set by dnaorg_build.pl
     }
-    elsif($line =~ /^\-c$/) { 
-      $consopts_used_HR->{"-c"} = "";
-      $consmd5_HR->{"-c"}  = "";
-    }
     elsif($line =~ /^\-\-nomatpept$/) { 
       $consopts_used_HR->{"--nomatpept"} = "";
       $consmd5_HR->{"--nomatpept"}  = "";
@@ -4467,7 +4466,7 @@ sub parseConsOptsFile {
   close(IN);
 
   # fill %{$consopts_notused_HR}
-  foreach my $opt ("-c", "--nomatpept", "--matpept", "--xfeat", "--dfeat") { 
+  foreach my $opt ("--nomatpept", "--matpept", "--xfeat", "--dfeat") { 
     if(! exists $consopts_used_HR->{$opt}) { 
       $consopts_notused_HR->{$opt} = 1;
     }
@@ -8631,10 +8630,10 @@ sub runCmalign {
     $opts .= " -g"; 
   }
   # add --sub and --notrunc if -c used
-  if(opt_Get("-c", $opt_HHR)) { 
+  if(opt_Get("--sub", $opt_HHR)) { 
     $opts .= " --sub --notrunc"; 
   }
-  else { # only add --fixedtau if -c NOT used AND --nofixedtau NOT used
+  else { # only add --fixedtau if --sub NOT used AND --nofixedtau NOT used
     if(! opt_Get("--nofixedtau", $opt_HHR)) { 
       $opts .= " --fixedtau"; 
     }
