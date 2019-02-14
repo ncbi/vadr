@@ -1,0 +1,519 @@
+>Feature NC_001477-sample1
+113	10621	gene
+			gene	POLY
+113	10621	misc_feature
+			note	similar to polyprotein; contains premature stop codon
+			note	similar to polyprotein; no start codon
+113	460	misc_feature
+			note	similar to anchored capsid protein C; contains premature stop codon
+			note	similar to anchored capsid protein C; polyprotein may not be translated
+113	418	misc_feature
+			note	similar to capsid protein C; contains premature stop codon
+			note	similar to capsid protein C; polyprotein may not be translated
+461	1000	misc_feature
+			note	similar to membrane glycoprotein precursor M; contains premature stop codon
+			note	similar to membrane glycoprotein precursor M; polyprotein may not be translated
+461	738	misc_feature
+			note	similar to protein pr; contains premature stop codon
+			note	similar to protein pr; polyprotein may not be translated
+739	1000	misc_feature
+			note	similar to membrane glycoprotein M; length is not a multiple of 3
+			note	similar to membrane glycoprotein M; polyprotein may not be translated
+1001	2537	misc_feature
+			note	similar to envelope protein E; contains premature stop codon
+			note	similar to envelope protein E; polyprotein may not be translated
+2538	3652	misc_feature
+			note	similar to nonstructural protein NS1; contains premature stop codon
+			note	similar to nonstructural protein NS1; polyprotein may not be translated
+3653	4293	misc_feature
+			note	similar to nonstructural protein NS2A; contains premature stop codon
+			note	similar to nonstructural protein NS2A; polyprotein may not be translated
+4294	4689	misc_feature
+			note	similar to nonstructural protein NS2B; contains premature stop codon
+			note	similar to nonstructural protein NS2B; polyprotein may not be translated
+4690	6574	misc_feature
+			note	similar to nonstructural protein NS3; contains premature stop codon
+			note	similar to nonstructural protein NS3; polyprotein may not be translated
+6575	6972	misc_feature
+			note	similar to nonstructural protein NS4A; contains premature stop codon
+			note	similar to nonstructural protein NS4A; polyprotein may not be translated
+6973	7045	misc_feature
+			note	similar to protein 2K; length is not a multiple of 3
+			note	similar to protein 2K; polyprotein may not be translated
+7046	7820	misc_feature
+			note	similar to nonstructural protein NS4B; contains premature stop codon
+			note	similar to nonstructural protein NS4B; polyprotein may not be translated
+7821	10621	misc_feature
+			note	similar to RNA-dependent RNA polymerase NS5; contains premature stop codon
+			note	similar to RNA-dependent RNA polymerase NS5; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (anchored capsid protein C) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 113..460 revised to 113..148 (stop shifted 312 nt)]
+ERROR: Indefinite Annotation: (anchored capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: anchored capsid protein C, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (capsid protein C) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 113..418 revised to 113..148 (stop shifted 270 nt)]
+ERROR: Indefinite Annotation: (capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: capsid protein C, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (membrane glycoprotein precursor M) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 461..1000 revised to 461..502 (stop shifted 498 nt)]
+ERROR: Peptide Translation Problem: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 148]
+ERROR: Indefinite Annotation: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein precursor M, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (protein pr) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 461..738 revised to 461..502 (stop shifted 236 nt)]
+ERROR: Indefinite Annotation: (protein pr) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein pr, CDS polyprotein]
+ERROR: Unexpected Length: (membrane glycoprotein M) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [262]
+ERROR: Indefinite Annotation: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein M, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (envelope protein E) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1001..2537 revised to 1001..1051 (stop shifted 1486 nt)]
+ERROR: Peptide Translation Problem: (envelope protein E) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 148]
+ERROR: Indefinite Annotation: (envelope protein E) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: envelope protein E, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2538..3652 revised to 2538..2633 (stop shifted 1019 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 148]
+ERROR: Indefinite Annotation: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS1, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3653..4293 revised to 3653..3676 (stop shifted 617 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 148]
+ERROR: Indefinite Annotation: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS2A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4294..4689 revised to 4294..4317 (stop shifted 372 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2B) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 148]
+ERROR: Indefinite Annotation: (nonstructural protein NS2B) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS2B, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS3) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4690..6574 revised to 4690..4755 (stop shifted 1819 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS3) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 148]
+ERROR: Indefinite Annotation: (nonstructural protein NS3) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS3, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6575..6972 revised to 6575..6583 (stop shifted 389 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4A) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 148]
+ERROR: Indefinite Annotation: (nonstructural protein NS4A) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS4A, CDS polyprotein]
+ERROR: Unexpected Length: (protein 2K) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [73]
+ERROR: Peptide Translation Problem: (protein 2K) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 148]
+ERROR: Indefinite Annotation: (protein 2K) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein 2K, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 7046..7820 revised to 7046..7048 (stop shifted 772 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 148]
+ERROR: Indefinite Annotation: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS4B, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (RNA-dependent RNA polymerase NS5) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 7821..10621 revised to 7821..7823 (stop shifted 2798 nt)]
+ERROR: Peptide Translation Problem: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 148]
+ERROR: Indefinite Annotation: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: RNA-dependent RNA polymerase NS5, CDS polyprotein]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error) [mat_peptide anchored capsid protein C includes trc error]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (mtr) [MP#3, MP#6, MP#7, MP#8, MP#9, MP#10, MP#11, MP#12, MP#13, MP#14]
+ERROR: Mutation at Start: (polyprotein) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [polyprotein: start positions differ by 4010 > 5 (strand:+ CM:113 blastx:4123)]
+ERROR: Indefinite Annotation at Stop: (polyprotein) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [polyprotein: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:148 blastx:4713)]
+ERROR: CDS Has Stop Codon: (polyprotein) blastx protein validation failure, stop codon in protein alignment [polyprotein: blastx alignment includes stop codon (4138;4264;4288;4315;4330;4345;4360;4450;4480;4534;4573;4630)]
+>Feature NC_001477-sample2
+1984	3039	gene
+			gene	POLY
+1984	3039	misc_feature
+			note	similar to polyprotein
+
+Additional note(s) to submitter:
+ERROR: Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation sequence too distant from reference to annotate [required matrix size: 105481.70 Mb]
+ERROR: Indefinite Annotation: (polyprotein) blastx identifies protein not identified in nucleotide-based search [polyprotein: blastx hit from 1984 to 3039 with score 199, but no CM hit]
+>Feature NC_001477-sample3
+90	10494	gene
+			gene	POLY
+90	10494	misc_feature
+			note	similar to polyprotein; contains premature stop codon
+			note	similar to polyprotein; no start codon
+90	432	misc_feature
+			note	similar to anchored capsid protein C; contains premature stop codon
+			note	similar to anchored capsid protein C; polyprotein may not be translated
+90	392	misc_feature
+			note	similar to capsid protein C; contains premature stop codon
+			note	similar to capsid protein C; polyprotein may not be translated
+433	939	misc_feature
+			note	similar to membrane glycoprotein precursor M; contains premature stop codon
+			note	similar to membrane glycoprotein precursor M; polyprotein may not be translated
+433	700	misc_feature
+			note	similar to protein pr; contains premature stop codon
+			note	similar to protein pr; polyprotein may not be translated
+701	939	misc_feature
+			note	similar to membrane glycoprotein M; contains premature stop codon
+			note	similar to membrane glycoprotein M; polyprotein may not be translated
+940	2458	misc_feature
+			note	similar to envelope protein E; contains premature stop codon
+			note	similar to envelope protein E; polyprotein may not be translated
+2459	3564	misc_feature
+			note	similar to nonstructural protein NS1; contains premature stop codon
+			note	similar to nonstructural protein NS1; polyprotein may not be translated
+3565	4244	misc_feature
+			note	similar to nonstructural protein NS2A; contains premature stop codon
+			note	similar to nonstructural protein NS2A; polyprotein may not be translated
+4245	4646	misc_feature
+			note	similar to nonstructural protein NS2B; contains premature stop codon
+			note	similar to nonstructural protein NS2B; polyprotein may not be translated
+4647	6510	misc_feature
+			note	similar to nonstructural protein NS3; contains premature stop codon
+			note	similar to nonstructural protein NS3; polyprotein may not be translated
+6511	6901	misc_feature
+			note	similar to nonstructural protein NS4A; contains premature stop codon
+			note	similar to nonstructural protein NS4A; polyprotein may not be translated
+6902	6969	misc_feature
+			note	similar to protein 2K; contains premature stop codon
+			note	similar to protein 2K; polyprotein may not be translated
+6970	7727	misc_feature
+			note	similar to nonstructural protein NS4B; contains premature stop codon
+			note	similar to nonstructural protein NS4B; polyprotein may not be translated
+7728	10494	misc_feature
+			note	similar to RNA-dependent RNA polymerase NS5; contains premature stop codon
+			note	similar to RNA-dependent RNA polymerase NS5; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (anchored capsid protein C) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 90..432 revised to 90..278 (stop shifted 154 nt)]
+ERROR: Indefinite Annotation: (anchored capsid protein C) alignment to reference does not extend to 5' boundary of reference or target [11 nt from 5' end]
+ERROR: Indefinite Annotation: (anchored capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: anchored capsid protein C, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (capsid protein C) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 90..392 revised to 90..278 (stop shifted 114 nt)]
+ERROR: Indefinite Annotation: (capsid protein C) alignment to reference does not extend to 5' boundary of reference or target [11 nt from 5' end]
+ERROR: Indefinite Annotation: (capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: capsid protein C, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (membrane glycoprotein precursor M) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 433..939 revised to 433..498 (stop shifted 441 nt)]
+ERROR: Peptide Translation Problem: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 278]
+ERROR: Indefinite Annotation: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein precursor M, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (protein pr) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 433..700 revised to 433..498 (stop shifted 202 nt)]
+ERROR: Indefinite Annotation: (protein pr) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein pr, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (membrane glycoprotein M) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 701..939 revised to 701..799 (stop shifted 140 nt)]
+ERROR: Indefinite Annotation: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein M, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (envelope protein E) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 940..2458 revised to 940..954 (stop shifted 1504 nt)]
+ERROR: Peptide Translation Problem: (envelope protein E) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 278]
+ERROR: Indefinite Annotation: (envelope protein E) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: envelope protein E, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2459..3564 revised to 2459..2467 (stop shifted 1097 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 278]
+ERROR: Indefinite Annotation: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS1, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3565..4244 revised to 3565..3570 (stop shifted 674 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 278]
+ERROR: Indefinite Annotation: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS2A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4245..4646 revised to 4245..4250 (stop shifted 396 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2B) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 278]
+ERROR: Indefinite Annotation: (nonstructural protein NS2B) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS2B, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS3) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4647..6510 revised to 4647..4760 (stop shifted 1750 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS3) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 278]
+ERROR: Indefinite Annotation: (nonstructural protein NS3) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS3, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6511..6901 revised to 6511..6573 (stop shifted 328 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4A) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 278]
+ERROR: Indefinite Annotation: (nonstructural protein NS4A) alignment to reference does not extend to 5' boundary of reference or target [5 nt from 5' end]
+ERROR: Indefinite Annotation: (nonstructural protein NS4A) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS4A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (protein 2K) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6902..6969 revised to 6902..6937 (stop shifted 32 nt)]
+ERROR: Peptide Translation Problem: (protein 2K) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 278]
+ERROR: Indefinite Annotation: (protein 2K) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein 2K, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6970..7727 revised to 6970..6996 (stop shifted 731 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 278]
+ERROR: Indefinite Annotation: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS4B, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (RNA-dependent RNA polymerase NS5) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 7728..10494 revised to 7728..7823 (stop shifted 2671 nt)]
+ERROR: Peptide Translation Problem: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 278]
+ERROR: Indefinite Annotation: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: RNA-dependent RNA polymerase NS5, CDS polyprotein]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error) [mat_peptide anchored capsid protein C includes trc error]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (mtr) [MP#3, MP#6, MP#7, MP#8, MP#9, MP#10, MP#11, MP#12, MP#13, MP#14]
+ERROR: Mutation at Start: (polyprotein) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [polyprotein: start positions differ by 5070 > 5 (strand:+ CM:90 blastx:5160)]
+ERROR: Indefinite Annotation at Stop: (polyprotein) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [polyprotein: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:278 blastx:6374)]
+ERROR: Insertion of Nucleotides: (polyprotein) blastx protein validation failure, too large of an insert [polyprotein: longest blastx predicted insert of length 33 > 27]
+ERROR: CDS Has Stop Codon: (polyprotein) blastx protein validation failure, stop codon in protein alignment [polyprotein: blastx alignment includes stop codon (5388;5406;5430;5442;5847;5823;5838;5853;5892;6012;6135;6162;6252;6273;6315)]
+>Feature NC_001477-sample4
+8945	10630	gene
+			gene	POLY
+8945	10630	misc_feature
+			note	similar to polyprotein
+
+Additional note(s) to submitter:
+ERROR: Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation sequence too distant from reference to annotate [required matrix size: 29159.39 Mb]
+ERROR: Indefinite Annotation: (polyprotein) blastx identifies protein not identified in nucleotide-based search [polyprotein: blastx hit from 8945 to 10630 with score 216, but no CM hit]
+>Feature NC_001477-sample5
+3986	4906	gene
+			gene	POLY
+3986	4906	misc_feature
+			note	similar to polyprotein
+
+Additional note(s) to submitter:
+ERROR: Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation sequence too distant from reference to annotate [required matrix size: 70415.74 Mb]
+ERROR: Indefinite Annotation: (polyprotein) blastx identifies protein not identified in nucleotide-based search [polyprotein: blastx hit from 3986 to 4906 with score 272, but no CM hit]
+>Feature NC_001477-sample6
+8884	10455	gene
+			gene	POLY
+8884	10455	misc_feature
+			note	similar to polyprotein
+
+Additional note(s) to submitter:
+ERROR: Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation sequence too distant from reference to annotate [required matrix size: 20944.52 Mb]
+ERROR: Indefinite Annotation: (polyprotein) blastx identifies protein not identified in nucleotide-based search [polyprotein: blastx hit from 8884 to 10455 with score 446, but no CM hit]
+>Feature NC_001477-sample7
+3676	4149	gene
+			gene	POLY
+3676	4149	misc_feature
+			note	similar to polyprotein
+
+Additional note(s) to submitter:
+ERROR: Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation sequence too distant from reference to annotate [required matrix size: 83970.47 Mb]
+ERROR: Indefinite Annotation: (polyprotein) blastx identifies protein not identified in nucleotide-based search [polyprotein: blastx hit from 3676 to 4149 with score 186, but no CM hit]
+>Feature NC_001477-sample8
+105	10481	gene
+			gene	POLY
+105	10481	misc_feature
+			note	similar to polyprotein; contains premature stop codon
+			note	similar to polyprotein; no start codon
+105	458	misc_feature
+			note	similar to anchored capsid protein C; contains premature stop codon
+			note	similar to anchored capsid protein C; polyprotein may not be translated
+105	404	misc_feature
+			note	similar to capsid protein C; contains premature stop codon
+			note	similar to capsid protein C; polyprotein may not be translated
+459	949	misc_feature
+			note	similar to membrane glycoprotein precursor M; contains premature stop codon
+			note	similar to membrane glycoprotein precursor M; polyprotein may not be translated
+459	738	misc_feature
+			note	similar to protein pr; contains premature stop codon
+			note	similar to protein pr; polyprotein may not be translated
+739	949	misc_feature
+			note	similar to membrane glycoprotein M; contains premature stop codon
+			note	similar to membrane glycoprotein M; polyprotein may not be translated
+950	2413	misc_feature
+			note	similar to envelope protein E; contains premature stop codon
+			note	similar to envelope protein E; polyprotein may not be translated
+2414	3515	misc_feature
+			note	similar to nonstructural protein NS1; contains premature stop codon
+			note	similar to nonstructural protein NS1; polyprotein may not be translated
+3516	4204	misc_feature
+			note	similar to nonstructural protein NS2A; contains premature stop codon
+			note	similar to nonstructural protein NS2A; polyprotein may not be translated
+4205	4594	misc_feature
+			note	similar to nonstructural protein NS2B; contains premature stop codon
+			note	similar to nonstructural protein NS2B; polyprotein may not be translated
+4599	6484	misc_feature
+			note	similar to nonstructural protein NS3; contains premature stop codon
+			note	similar to nonstructural protein NS3; polyprotein may not be translated
+6485	6900	misc_feature
+			note	similar to nonstructural protein NS4A; contains premature stop codon
+			note	similar to nonstructural protein NS4A; polyprotein may not be translated
+6901	6969	misc_feature
+			note	similar to protein 2K; polyprotein may not be translated
+6970	7744	misc_feature
+			note	similar to nonstructural protein NS4B; contains premature stop codon
+			note	similar to nonstructural protein NS4B; polyprotein may not be translated
+7745	10481	misc_feature
+			note	similar to RNA-dependent RNA polymerase NS5; contains premature stop codon
+			note	similar to RNA-dependent RNA polymerase NS5; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (anchored capsid protein C) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 105..458 revised to 105..161 (stop shifted 297 nt)]
+ERROR: Indefinite Annotation: (anchored capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: anchored capsid protein C, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (capsid protein C) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 105..404 revised to 105..161 (stop shifted 243 nt)]
+ERROR: Indefinite Annotation: (capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: capsid protein C, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (membrane glycoprotein precursor M) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 459..949 revised to 459..695 (stop shifted 254 nt)]
+ERROR: Peptide Translation Problem: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 161]
+ERROR: Indefinite Annotation: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein precursor M, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (protein pr) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 459..738 revised to 459..695 (stop shifted 43 nt)]
+ERROR: Indefinite Annotation: (protein pr) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein pr, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (membrane glycoprotein M) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 739..949 revised to 739..753 (stop shifted 196 nt)]
+ERROR: Indefinite Annotation: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein M, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (envelope protein E) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 950..2413 revised to 950..1009 (stop shifted 1404 nt)]
+ERROR: Peptide Translation Problem: (envelope protein E) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 161]
+ERROR: Indefinite Annotation: (envelope protein E) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: envelope protein E, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2414..3515 revised to 2414..2422 (stop shifted 1093 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 161]
+ERROR: Indefinite Annotation: (nonstructural protein NS1) alignment to reference does not extend to 5' boundary of reference or target [3 nt from 5' end]
+ERROR: Indefinite Annotation: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS1, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3516..4204 revised to 3516..3560 (stop shifted 644 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 161]
+ERROR: Indefinite Annotation: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS2A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4205..4594 revised to 4205..4261 (stop shifted 333 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2B) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 161]
+ERROR: Indefinite Annotation: (nonstructural protein NS2B) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS2B, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS3) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4599..6484 revised to 4599..4643 (stop shifted 1841 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS3) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 161]
+ERROR: Indefinite Annotation: (nonstructural protein NS3) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS3, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6485..6900 revised to 6485..6502 (stop shifted 398 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4A) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 161]
+ERROR: Indefinite Annotation: (nonstructural protein NS4A) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS4A, CDS polyprotein]
+ERROR: Peptide Translation Problem: (protein 2K) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 161]
+ERROR: Indefinite Annotation: (protein 2K) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein 2K, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6970..7744 revised to 6970..7158 (stop shifted 586 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 161]
+ERROR: Indefinite Annotation: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS4B, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (RNA-dependent RNA polymerase NS5) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 7745..10481 revised to 7745..7987 (stop shifted 2494 nt)]
+ERROR: Peptide Translation Problem: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 161]
+ERROR: Indefinite Annotation: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: RNA-dependent RNA polymerase NS5, CDS polyprotein]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error) [mat_peptide anchored capsid protein C includes trc error]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (mtr) [MP#3, MP#6, MP#7, MP#8, MP#9, MP#10, MP#11, MP#12, MP#13, MP#14]
+ERROR: Mutation at Start: (polyprotein) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [polyprotein: start positions differ by 8932 > 5 (strand:+ CM:105 blastx:105 + 8932)]
+ERROR: Indefinite Annotation at Stop: (polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [polyprotein: stop positions differ by 739 > 8 (strand:+ CM:161 blastx:161 - 739, valid stop codon in CM prediction)]
+ERROR: Insertion of Nucleotides: (polyprotein) blastx protein validation failure, too large of an insert [polyprotein: longest blastx predicted insert of length 42 > 27]
+ERROR: Deletion of Nucleotides: (polyprotein) blastx protein validation failure, too large of a deletion [polyprotein: longest blastx predicted delete of length 36 > 27]
+ERROR: CDS Has Stop Codon: (polyprotein) blastx protein validation failure, stop codon in protein alignment [polyprotein: blastx alignment includes stop codon (9098;9185;9260;9287;9332;9422;9437;9578)]
+>Feature NC_001477-sample9
+100	10504	gene
+			gene	POLY
+100	10504	misc_feature
+			note	similar to polyprotein; contains premature stop codon
+100	435	misc_feature
+			note	similar to anchored capsid protein C; contains premature stop codon
+			note	similar to anchored capsid protein C; polyprotein may not be translated
+100	393	misc_feature
+			note	similar to capsid protein C; contains premature stop codon
+			note	similar to capsid protein C; polyprotein may not be translated
+436	914	misc_feature
+			note	similar to membrane glycoprotein precursor M; contains premature stop codon
+			note	similar to membrane glycoprotein precursor M; polyprotein may not be translated
+436	698	misc_feature
+			note	similar to protein pr; contains premature stop codon
+			note	similar to protein pr; polyprotein may not be translated
+699	914	misc_feature
+			note	similar to membrane glycoprotein M; contains premature stop codon
+			note	similar to membrane glycoprotein M; polyprotein may not be translated
+915	2434	misc_feature
+			note	similar to envelope protein E; contains premature stop codon
+			note	similar to envelope protein E; polyprotein may not be translated
+2435	3484	misc_feature
+			note	similar to nonstructural protein NS1; contains premature stop codon
+			note	similar to nonstructural protein NS1; polyprotein may not be translated
+3485	4150	misc_feature
+			note	similar to nonstructural protein NS2A; contains premature stop codon
+			note	similar to nonstructural protein NS2A; polyprotein may not be translated
+4151	4559	misc_feature
+			note	similar to nonstructural protein NS2B; contains premature stop codon
+			note	similar to nonstructural protein NS2B; polyprotein may not be translated
+4560	6447	misc_feature
+			note	similar to nonstructural protein NS3; contains premature stop codon
+			note	similar to nonstructural protein NS3; polyprotein may not be translated
+6448	6838	misc_feature
+			note	similar to nonstructural protein NS4A; contains premature stop codon
+			note	similar to nonstructural protein NS4A; polyprotein may not be translated
+6839	6903	misc_feature
+			note	similar to protein 2K; length is not a multiple of 3
+			note	similar to protein 2K; polyprotein may not be translated
+6904	7689	misc_feature
+			note	similar to nonstructural protein NS4B; contains premature stop codon
+			note	similar to nonstructural protein NS4B; polyprotein may not be translated
+7690	10504	misc_feature
+			note	similar to RNA-dependent RNA polymerase NS5; contains premature stop codon
+			note	similar to RNA-dependent RNA polymerase NS5; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (anchored capsid protein C) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 100..435 revised to 100..147 (stop shifted 288 nt)]
+ERROR: Indefinite Annotation: (anchored capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: anchored capsid protein C, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (capsid protein C) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 100..393 revised to 100..147 (stop shifted 246 nt)]
+ERROR: Indefinite Annotation: (capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: capsid protein C, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (membrane glycoprotein precursor M) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 436..914 revised to 436..441 (stop shifted 473 nt)]
+ERROR: Peptide Translation Problem: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein precursor M, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (protein pr) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 436..698 revised to 436..441 (stop shifted 257 nt)]
+ERROR: Peptide Translation Problem: (protein pr) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (protein pr) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein pr, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (membrane glycoprotein M) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 699..914 revised to 699..818 (stop shifted 96 nt)]
+ERROR: Peptide Translation Problem: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein M, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (envelope protein E) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 915..2434 revised to 915..947 (stop shifted 1487 nt)]
+ERROR: Peptide Translation Problem: (envelope protein E) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (envelope protein E) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: envelope protein E, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2435..3484 revised to 2435..2449 (stop shifted 1035 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS1, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3485..4150 revised to 3485..3490 (stop shifted 660 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS2A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4151..4559 revised to 4151..4342 (stop shifted 217 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2B) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (nonstructural protein NS2B) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS2B, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS3) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4560..6447 revised to 4560..4751 (stop shifted 1696 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS3) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (nonstructural protein NS3) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS3, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6448..6838 revised to 6448..6462 (stop shifted 376 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4A) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (nonstructural protein NS4A) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS4A, CDS polyprotein]
+ERROR: Unexpected Length: (protein 2K) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [65]
+ERROR: Peptide Translation Problem: (protein 2K) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (protein 2K) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein 2K, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6904..7689 revised to 6904..6909 (stop shifted 780 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS4B, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (RNA-dependent RNA polymerase NS5) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 7690..10504 revised to 7690..7704 (stop shifted 2800 nt)]
+ERROR: Peptide Translation Problem: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 147]
+ERROR: Indefinite Annotation: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: RNA-dependent RNA polymerase NS5, CDS polyprotein]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (mtr) [MP#3, MP#6, MP#7, MP#8, MP#9, MP#10, MP#11, MP#12, MP#13, MP#14]
+ERROR: Indefinite Annotation at Start: (polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [polyprotein: start positions differ by 3410 > 5 (strand:+ CM:100 blastx:3510)]
+ERROR: Indefinite Annotation at Stop: (polyprotein) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [polyprotein: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:147 blastx:3869)]
+ERROR: CDS Has Stop Codon: (polyprotein) blastx protein validation failure, stop codon in protein alignment [polyprotein: blastx alignment includes stop codon (3552;3681;3693;3753;3765)]
+>Feature NC_001477-sample10
+92	10541	gene
+			gene	POLY
+92	10541	misc_feature
+			note	similar to polyprotein; contains premature stop codon
+92	433	misc_feature
+			note	similar to anchored capsid protein C; contains premature stop codon
+			note	similar to anchored capsid protein C; polyprotein may not be translated
+92	391	misc_feature
+			note	similar to capsid protein C; contains premature stop codon
+			note	similar to capsid protein C; polyprotein may not be translated
+434	959	misc_feature
+			note	similar to membrane glycoprotein precursor M; contains premature stop codon
+			note	similar to membrane glycoprotein precursor M; polyprotein may not be translated
+434	727	misc_feature
+			note	similar to protein pr; contains premature stop codon
+			note	similar to protein pr; polyprotein may not be translated
+728	959	misc_feature
+			note	similar to membrane glycoprotein M; contains premature stop codon
+			note	similar to membrane glycoprotein M; polyprotein may not be translated
+960	2485	misc_feature
+			note	similar to envelope protein E; contains premature stop codon
+			note	similar to envelope protein E; polyprotein may not be translated
+2486	3549	misc_feature
+			note	similar to nonstructural protein NS1; contains premature stop codon
+			note	similar to nonstructural protein NS1; polyprotein may not be translated
+3550	4245	misc_feature
+			note	similar to nonstructural protein NS2A; contains premature stop codon
+			note	similar to nonstructural protein NS2A; polyprotein may not be translated
+4246	4660	misc_feature
+			note	similar to nonstructural protein NS2B; contains premature stop codon
+			note	similar to nonstructural protein NS2B; polyprotein may not be translated
+4661	6547	misc_feature
+			note	similar to nonstructural protein NS3; contains premature stop codon
+			note	similar to nonstructural protein NS3; polyprotein may not be translated
+6548	6947	misc_feature
+			note	similar to nonstructural protein NS4A; contains premature stop codon
+			note	similar to nonstructural protein NS4A; polyprotein may not be translated
+6948	7015	misc_feature
+			note	similar to protein 2K; contains premature stop codon
+			note	similar to protein 2K; polyprotein may not be translated
+7016	7799	misc_feature
+			note	similar to nonstructural protein NS4B; contains premature stop codon
+			note	similar to nonstructural protein NS4B; polyprotein may not be translated
+7800	10541	misc_feature
+			note	similar to RNA-dependent RNA polymerase NS5; contains premature stop codon
+			note	similar to RNA-dependent RNA polymerase NS5; polyprotein may not be translated
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (anchored capsid protein C) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 92..433 revised to 92..214 (stop shifted 219 nt)]
+ERROR: Indefinite Annotation: (anchored capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: anchored capsid protein C, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (capsid protein C) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 92..391 revised to 92..214 (stop shifted 177 nt)]
+ERROR: Indefinite Annotation: (capsid protein C) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: capsid protein C, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (membrane glycoprotein precursor M) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 434..959 revised to 434..448 (stop shifted 511 nt)]
+ERROR: Peptide Translation Problem: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (membrane glycoprotein precursor M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein precursor M, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (protein pr) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 434..727 revised to 434..448 (stop shifted 279 nt)]
+ERROR: Peptide Translation Problem: (protein pr) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (protein pr) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein pr, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (membrane glycoprotein M) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 728..959 revised to 728..748 (stop shifted 211 nt)]
+ERROR: Peptide Translation Problem: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (membrane glycoprotein M) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: membrane glycoprotein M, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (envelope protein E) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 960..2485 revised to 960..977 (stop shifted 1508 nt)]
+ERROR: Peptide Translation Problem: (envelope protein E) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (envelope protein E) alignment to reference does not extend to 5' boundary of reference or target [1 nt from 5' end]
+ERROR: Indefinite Annotation: (envelope protein E) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: envelope protein E, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2486..3549 revised to 2486..2491 (stop shifted 1058 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (nonstructural protein NS1) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS1, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3550..4245 revised to 3550..3762 (stop shifted 483 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (nonstructural protein NS2A) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS2A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS2B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4246..4660 revised to 4246..4296 (stop shifted 364 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS2B) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (nonstructural protein NS2B) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS2B, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS3) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4661..6547 revised to 4661..4741 (stop shifted 1806 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS3) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (nonstructural protein NS3) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS3, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4A) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6548..6947 revised to 6548..6667 (stop shifted 280 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4A) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (nonstructural protein NS4A) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS4A, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (protein 2K) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6948..7015 revised to 6948..6983 (stop shifted 32 nt)]
+ERROR: Peptide Translation Problem: (protein 2K) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (protein 2K) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: protein 2K, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 7016..7799 revised to 7016..7066 (stop shifted 733 nt)]
+ERROR: Peptide Translation Problem: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (nonstructural protein NS4B) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: nonstructural protein NS4B, CDS polyprotein]
+ERROR: mat_peptide Has Stop Codon: (RNA-dependent RNA polymerase NS5) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 7800..10541 revised to 7800..7856 (stop shifted 2685 nt)]
+ERROR: Peptide Translation Problem: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide anchored capsid protein C ending at position 214]
+ERROR: Indefinite Annotation: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: RNA-dependent RNA polymerase NS5, CDS polyprotein]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (mtr) [MP#3, MP#6, MP#7, MP#8, MP#9, MP#10, MP#11, MP#12, MP#13, MP#14]
+ERROR: Indefinite Annotation at Start: (polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [polyprotein: start positions differ by 6276 > 5 (strand:+ CM:92 blastx:6368)]
+ERROR: Indefinite Annotation at Stop: (polyprotein) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [polyprotein: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:214 blastx:7333)]
+ERROR: CDS Has Stop Codon: (polyprotein) blastx protein validation failure, stop codon in protein alignment [polyprotein: blastx alignment includes stop codon (6449;6506;6665;6719;6812;7064;7193;7196;7211;7226;7244)]

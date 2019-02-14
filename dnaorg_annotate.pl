@@ -433,10 +433,16 @@ if(opt_IsUsed("--aorgmodel", \%opt_HH)) {
   }
 }
 
+my $dir_build         = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
+my $dir_out           = opt_Get("--dirout",   \%opt_HH);  # this will be undefined unless --dirout set on cmdline
+my $do_matpept        = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --matpept set on cmdline 
 my $orig_infasta_file = opt_Get("--infasta", \%opt_HH);
-my $dir_build  = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
-my $dir_out    = opt_Get("--dirout",   \%opt_HH);  # this will be undefined unless --dirout set on cmdline
-my $do_matpept = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --matpept set on cmdline 
+if(! -e $orig_infasta_file) { 
+  DNAORG_FAIL("ERROR, fasta file $orig_infasta_file specified with --infasta does not exist", 1, undef);
+}
+if(! -s $orig_infasta_file) { 
+  DNAORG_FAIL("ERROR, fasta file $orig_infasta_file specified with --infasta exists but is empty", 1, undef);
+}
 my $do_infasta = 1;
 
 $dir_out =~ s/\/$//; # remove final '/' if there is one
@@ -701,6 +707,7 @@ if(opt_IsUsed("--dfeat", \%opt_HH)) {
 #  6) parses the length file
 # make a copy of the fasta file in the current directory
 my $infasta_file = $out_root . ".in.fa";
+
 runCommand("cp $orig_infasta_file $infasta_file", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});;
 # note that we pass in a reference to %ref_seq_info_HA to wrapperGetInfoUsingEdirect()
 # and *not* a reference to %seq_info_HA. We will use %infasta_ref_seq_info_HA to 
