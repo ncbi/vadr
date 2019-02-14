@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_annotate.pl -f --dirbuild !dirbuild!/NC_039477 --matpept !dirbuild!/NC_039477.matpept.in --dfeat gene --dirout da-noro-cmemit-1000 --refaccn NC_039477 --infasta noro.cmemit.1000.fa > da-noro-cmemit-1000.out"
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_annotate.pl -f --dirbuild !dirbuild!/NC_039477 --matpept !dirbuild!/NC_039477.matpept.in --dfeat gene --dirout da-noro-cmemit-1000 --refaccn NC_039477 --infasta noro.cmemit.1000.fa > da-noro-cmemit-1000.out
 desc: annotate-noro-cmemit-1000-parallel
 out: da-noro-cmemit-1000/da-noro-cmemit-1000.dnaorg_annotate.ap.sqtable
 out: da-noro-cmemit-1000/da-noro-cmemit-1000.dnaorg_annotate.af.sqtable
