@@ -1657,17 +1657,17 @@ sub parse_cmalign_stk {
     }      
     
     # DEBUG PRINT
-#    printf("***************************************************\n");
-#    printf("DEBUG print $seqname\n");
-#    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
-#      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-#             $rfpos, 
-#             $min_rfpos_after_A[$rfpos],
-#             $min_uapos_after_A[$rfpos],
-#             $max_rfpos_before_A[$rfpos],
-#             $max_uapos_before_A[$rfpos]);
-#    }
-#    printf("***************************************************\n");
+    printf("***************************************************\n");
+    printf("DEBUG print $seqname\n");
+    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
+      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+             $rfpos, 
+             $min_rfpos_after_A[$rfpos],
+             $min_uapos_after_A[$rfpos],
+             $max_rfpos_before_A[$rfpos],
+             $max_uapos_before_A[$rfpos]);
+    }
+    printf("***************************************************\n");
 
     # given model span s..e
     # if strand eq "+"

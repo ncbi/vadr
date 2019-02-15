@@ -271,10 +271,6 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
     DNAORG_FAIL("ERROR in $sub_name, special primary_or_all variable is neither \"primary\" nor \"all\"", 1, $FH_HR);
   }    
 
-  if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "multifeature") { 
-    DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but it is not annotated type of multifeature.", 1, $FH_HR);
-  }
-
   @{$AR} = ();
   if($primary_or_all eq "primary") { 
     @{$AR} = split(/\s+/, $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]);
@@ -306,17 +302,14 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #              "type"        values are one of: "cds-notmp", "cds-mp", "mp", 'xfeat', or 'dfeat'
 #              "type_idx"    values are indices of each feature for its type
 #                            so a '2' means it's the 2nd of its type.
-#              "annot_type": annotation type, either "model", "multifeature", or "duplicate"
-#                            "model": a homology model's prediction annotates 
+#              "annot_type": annotation type, either "model" or "duplicate"
+#                            "model": the homology model's prediction annotates 
 #                            these features
-#                            "multifeature": derived from multiple "model" annot_type
-#                            features, these are usually type: cds-mp, a CDS comprised
-#                            of mature peptides.
 #                            "duplicate": the annotation of this feature is copied from 
 #                            another. Example is a 'gene' that is a copy of a 'CDS'.
 #                            The feature that is the source to copy is stored in the
 #                            "source_idx" key.
-#               "primary_children_ftr_str": for features with annot_type eq "multifeature",
+#               "primary_children_ftr_str": for features with children (e.g. cds-mp type) this
 #                            string of feature indices that are the primary children of this
 #                            feature (when the primary children are concatenated they make up
 #                            the CDS that encodes all the primary children). Each index is
@@ -324,7 +317,7 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #                            "model".
 #               "primary_children_ftr_num": number of primary children (0 for features with
 #                            annot_type eq "model").
-#               "all_children_ftr_str": for features with annot_type eq "multifeature",
+#               "all_children_ftr_str": for features with children (e.g. cds-mp type) this
 #                            string of all feature indices that are encoded by this CDS, 
 #                            includes all primary children plus any secondarily processed
 #                            mature peptides. Each index is separated by a space. Empty 
@@ -332,8 +325,7 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #               "all_children_ftr_num": number of all children (0 for features with
 #                            annot_type eq "model").
 #               "parent_ftr": index of parent feature for 'mp' types, this is the feature
-#                            index of the annot_type eq "multifeature" of which the current
-#                            feature is a child.
+#                            index of the feature of which the current feature is a child.
 #
 # Arguments:
 #   $nmp:              number of mature peptides, may be 0
@@ -370,7 +362,6 @@ sub determineFeatureTypes {
   @{$ftr_info_HAR->{"type"}}                     = ();
   @{$ftr_info_HAR->{"type_idx"}}                 = ();
   @{$ftr_info_HAR->{"annot_type"}}               = ();
-  @{$ftr_info_HAR->{"has_children"}}             = ();
   @{$ftr_info_HAR->{"primary_children_ftr_str"}} = ();
   @{$ftr_info_HAR->{"primary_children_ftr_num"}} = ();
   @{$ftr_info_HAR->{"all_children_ftr_str"}}     = ();
@@ -383,30 +374,30 @@ sub determineFeatureTypes {
   # xfeat
   # dfeat
   for($c = 0; $c < $nmp; $c++) { 
-    addAndInitializeFeatureInfoElement($ftr_info_HAR, "mp", undef, undef, $FH_HR);
+    determineFeatureTypesHelper($ftr_info_HAR, "mp", undef, undef, $FH_HR);
   }
   for($c = 0; $c < $ncds; $c++) { 
     # determine type of CDS
     if((defined $cds2pmatpept_AAR) && (defined $cds2pmatpept_AAR->[$c])) {
       # CDS comprised of mature peptides
-      addAndInitializeFeatureInfoElement($ftr_info_HAR, "cds-mp", $cds2pmatpept_AAR->[$c], $cds2amatpept_AAR->[$c], $FH_HR);
+      determineFeatureTypesHelper($ftr_info_HAR, "cds-mp", $cds2pmatpept_AAR->[$c], $cds2amatpept_AAR->[$c], $FH_HR);
     }
     else { 
       # CDS NOT comprised of mature peptides
-      addAndInitializeFeatureInfoElement($ftr_info_HAR, "cds-notmp", undef, undef, $FH_HR);
+      determineFeatureTypesHelper($ftr_info_HAR, "cds-notmp", undef, undef, $FH_HR);
     }
   }
   for(my $xfeat_idx = 0; $xfeat_idx < $nxfeat; $xfeat_idx++) { 
-    addAndInitializeFeatureInfoElement($ftr_info_HAR, "xfeat", $FH_HR);
+    determineFeatureTypesHelper($ftr_info_HAR, "xfeat", undef, undef, $FH_HR);
   }
   for(my $dfeat_idx = 0; $dfeat_idx < $ndfeat; $dfeat_idx++) { 
-    addAndInitializeFeatureInfoElement($ftr_info_HAR, "dfeat", $FH_HR);
+    determineFeatureTypesHelper($ftr_info_HAR, "dfeat", undef, undef, $FH_HR);
   }
   return;
 }
 
 #################################################################
-# Subroutine: addAndInitializeFeatureInfoElement()
+# Subroutine: determineFeatureTypesHelper()
 # Incept:     EPN, Fri Feb 15 11:23:58 2019
 #
 # Purpose:    Initialize element $c of the feature info hash of arrays
@@ -428,26 +419,27 @@ sub determineFeatureTypes {
 #
 # Dies:       if $ftr_info_HAR is not valid upon entering.
 #################################################################
-sub addAndInitializeFeatureInfoElement { 
-  my $sub_name  = "addAndInitializeFeatureInfoElement()";
+sub determineFeatureTypesHelper { 
+  my $sub_name  = "determineFeatureTypesHelper()";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
   my ($ftr_info_HAR, $type, $cds2pmatpept_AR, $cds2amatpept_AR, $FH_HR) = (@_);
 
   my @reqd_ftr_info_A = ();
-  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
+  # we can't use validateAndGetSizeOfInfoHashOfArrays() because we probably will not have the 
+  # same number of elements for all values, e.g. "type" may be > 0, but "type" may be 0
+  my $nftr_type = scalar(@{$ftr_info_HAR->{"type"}});
 
   # determine type index
   my $type_idx = 1;
   my $ftr_idx;
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"type_idx"}[$ftr_idx] eq $type) { 
+  for($ftr_idx = 0; $ftr_idx < $nftr_type; $ftr_idx++) { 
+    if($ftr_info_HAR->{"type"}[$ftr_idx] eq $type) { 
       $type_idx++;
     }
   }
-
-  $ftr_idx = $nftr; 
+  $ftr_idx = $nftr_type; 
 
   # initialize
   $ftr_info_HAR->{"type"}[$ftr_idx]                     = $type;
@@ -468,6 +460,7 @@ sub addAndInitializeFeatureInfoElement {
     $ftr_info_HAR->{"annot_type"}[$ftr_idx]  = "duplicate"; # this feature is modeled as a duplicate of another feature
   }
   elsif($type eq "cds-mp") { 
+    $ftr_info_HAR->{"annot_type"}[$ftr_idx]  = "model"; # this feature is annotated by homology models
     if(! defined $cds2pmatpept_AR) { 
       DNAORG_FAIL("ERROR in $sub_name, type is cds-mp but cds2pmatpept_AR is undefined", 1, $FH_HR);
     }
@@ -782,8 +775,7 @@ sub getReferenceFeatureInfo {
 #           The following values are filled in the %{$ftr_info_HAR}:
 #                "final_mdl":   index (in arrays of %mdl_info_HA) of final model for this feature
 #                "first_mdl":   index (in arrays of %mdl_info_HA) of first model for this feature
-#                "nmodels":     number of models for this feature (e.g. number of exons or segments) for this feature, 
-#                               0 if 'annotation' eq 'multifeature'
+#                "nmodels":     number of models for this feature (e.g. number of segments) for this feature, 
 #                "out_short":   output value: short name for this feature (e.g. "CDS #4 [1 exon; +]")
 #                "out_tiny":    output value: very short name for this feature (e.g. "CDS#4")
 #
@@ -948,7 +940,6 @@ sub fetchReferenceFeatureSequences {
                                                       $type_fname,
                                                       ($nexons == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
         
-
         $mdl_info_HAR->{"map_ftr"}[$nmdl]    = $i;
         $mdl_info_HAR->{"is_first"}[$nmdl]   = ($e == 0)           ? 1 : 0;
         $mdl_info_HAR->{"is_final"}[$nmdl]   = ($e == ($nexons-1)) ? 1 : 0;
@@ -987,14 +978,6 @@ sub fetchReferenceFeatureSequences {
     if($ftr_info_HAR->{"annot_type"}[$i] eq "model") { 
       if($ftr_info_HAR->{"nmodels"}[$i] > 1) { $short .= sprintf(" [%d %s; %s]", $ftr_info_HAR->{"nmodels"}[$i], featureTypeIsCds($ftr_info_HAR->{"type"}[$i]) ? "exons" : "segments", $ftr_info_HAR->{"ref_strand"}[$i]); }
       else                                   { $short .= sprintf(" [single %s; %s]",  featureTypeIsCds($ftr_info_HAR->{"type"}[$i]) ? "exon" : "segment", $ftr_info_HAR->{"ref_strand"}[$i]); }
-    }
-    elsif($ftr_info_HAR->{"annot_type"}[$i] eq "multifeature") { 
-      if($ftr_type eq "cds-mp") { 
-        $short .= sprintf(" [%d mature_peptide(s)]", $ftr_info_HAR->{"primary_children_ftr_num"}[$i]);
-      }
-      else { 
-        DNAORG_FAIL("ERROR in $sub_name, unexpected feature type for multifeature feature: $ftr_type.", 1, $FH_HR);
-      }
     }
     $ftr_info_HAR->{"out_tiny"}[$i]      = $tiny;
     $ftr_info_HAR->{"out_short"}[$i]     = $short;
@@ -1046,8 +1029,7 @@ sub annotateAppendFeatures {
 
   my $nftr = getConsistentSizeOfInfoHashOfArrays($ftr_info_HAR, $FH_HR);
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp" && 
-       $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
+    if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") {
       # find final feature 
       my @primary_children_idx_A = (); # feature indices of the primary children of this feature
       getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
