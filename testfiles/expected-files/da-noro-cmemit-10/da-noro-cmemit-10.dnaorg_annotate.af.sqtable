@@ -142,7 +142,7 @@ ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon i
 2112	2637	misc_feature
 			note	similar to p22; contains premature stop codon
 			note	similar to p22; polyprotein may not be translated
-2649	3046	misc_feature
+2638	3046	misc_feature
 			note	similar to VPg; contains premature stop codon
 			note	similar to VPg; polyprotein may not be translated
 3047	3638	misc_feature
@@ -169,7 +169,7 @@ ERROR: Indefinite Annotation: (NTPase) mat_peptide may not be translated because
 ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2112..2637 revised to 2112..2144 (stop shifted 493 nt)]
 ERROR: Peptide Translation Problem: (p22) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide p48 ending at position 76]
 ERROR: Indefinite Annotation: (p22) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: p22, CDS nonstructural polyprotein]
-ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2649..3046 revised to 2649..2681 (stop shifted 365 nt)]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2638..3046 revised to 2638..2730 (stop shifted 316 nt)]
 ERROR: Peptide Translation Problem: (VPg) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide p48 ending at position 76]
 ERROR: Indefinite Annotation: (VPg) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: VPg, CDS nonstructural polyprotein]
 ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3047..3638 revised to 3047..3064 (stop shifted 574 nt)]
@@ -221,9 +221,9 @@ ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, p
 			gene	ORF2
 5155	6774	misc_feature
 			note	similar to VP1; no start codon
-6787	7594	gene
+6774	7594	gene
 			gene	ORF3
-6787	7594	misc_feature
+6774	7594	misc_feature
 			note	similar to VP2; length is not a multiple of 3
 			note	similar to VP2; no start codon
 
@@ -256,8 +256,9 @@ ERROR: Mutation at Start: (VP1) expected start codon could not be identified
 ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 53 > 5 (strand:+ CM:5155 blastx:5208)]
 ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 985 > 5 (strand:+ CM:6774 blastx:5789, no valid stop codon in CM prediction)]
 ERROR: CDS Has Stop Codon: (VP1) blastx protein validation failure, stop codon in protein alignment [VP1: blastx alignment includes stop codon (5220;5379;5418;5544;5550;5673)]
-ERROR: Unexpected Length: (VP2) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [808]
+ERROR: Unexpected Length: (VP2) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [821]
 ERROR: Mutation at Start: (VP2) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP2: start positions differ by 13 > 5 (strand:+ CM:6774 blastx:6787)]
 ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP2: stop positions differ by 511 > 5 (strand:+ CM:7594 blastx:7083, no valid stop codon in CM prediction)]
 ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon in protein alignment [VP2: blastx alignment includes stop codon (6880;6928;6931;6967)]
 >Feature NC_039477-sample5
@@ -394,7 +395,7 @@ ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon i
 			gene	ORF1
 <1	5202	misc_feature
 			note	similar to nonstructural polyprotein; contains premature stop codon
-<1	1082	misc_feature
+<1	1093	misc_feature
 			note	similar to p48; polyprotein may not be translated
 1094	2225	misc_feature
 			note	similar to NTPase; contains premature stop codon
@@ -402,7 +403,7 @@ ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon i
 2226	2733	misc_feature
 			note	similar to p22; contains premature stop codon
 			note	similar to p22; polyprotein may not be translated
-2734	3118	misc_feature
+2734	3123	misc_feature
 			note	similar to VPg; contains premature stop codon
 			note	similar to VPg; polyprotein may not be translated
 3124	3654	misc_feature
@@ -422,19 +423,26 @@ ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon i
 			note	similar to VP2; contains premature stop codon
 
 Additional note(s) to submitter:
-ERROR: Peptide Translation Problem: (p48) mat_peptide may not be translated because its CDS has an adjacency inconsistency [MP: p48, CDS nonstructural polyprotein]
+ERROR: Indefinite Annotation: (p48) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: p48, CDS nonstructural polyprotein]
 ERROR: mat_peptide Has Stop Codon: (NTPase) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1094..2225 revised to 1094..1156 (stop shifted 1069 nt)]
-ERROR: Peptide Translation Problem: (NTPase) mat_peptide may not be translated because its CDS has an adjacency inconsistency [MP: NTPase, CDS nonstructural polyprotein]
+ERROR: Indefinite Annotation: (NTPase) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: NTPase, CDS nonstructural polyprotein]
 ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2226..2733 revised to 2226..2255 (stop shifted 478 nt)]
-ERROR: Peptide Translation Problem: (p22) mat_peptide may not be translated because its CDS has an adjacency inconsistency [MP: p22, CDS nonstructural polyprotein]
-ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2734..3118 revised to 2734..2757 (stop shifted 361 nt)]
-ERROR: Peptide Translation Problem: (VPg) mat_peptide may not be translated because its CDS has an adjacency inconsistency [MP: VPg, CDS nonstructural polyprotein]
+ERROR: Peptide Translation Problem: (p22) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1156]
+ERROR: Indefinite Annotation: (p22) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: p22, CDS nonstructural polyprotein]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2734..3123 revised to 2734..2757 (stop shifted 366 nt)]
+ERROR: Peptide Translation Problem: (VPg) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1156]
+ERROR: Indefinite Annotation: (VPg) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: VPg, CDS nonstructural polyprotein]
 ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3124..3654 revised to 3124..3141 (stop shifted 513 nt)]
-ERROR: Peptide Translation Problem: (Pro) mat_peptide may not be translated because its CDS has an adjacency inconsistency [MP: Pro, CDS nonstructural polyprotein]
+ERROR: Peptide Translation Problem: (Pro) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1156]
+ERROR: Indefinite Annotation: (Pro) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: Pro, CDS nonstructural polyprotein]
 ERROR: mat_peptide Has Stop Codon: (RdRp) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3655..5202 revised to 3655..3705 (stop shifted 1497 nt)]
-ERROR: Peptide Translation Problem: (RdRp) mat_peptide may not be translated because its CDS has an adjacency inconsistency [MP: RdRp, CDS nonstructural polyprotein]
+ERROR: Peptide Translation Problem: (RdRp) mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start [early stop in mat_peptide NTPase ending at position 1156]
+ERROR: Indefinite Annotation: (RdRp) mat_peptide may not be translated because its CDS has a blastx protein validation failure [MP: RdRp, CDS nonstructural polyprotein]
 ERROR: CDS Has Stop Codon: (nonstructural polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides includes a mat_peptide that may be truncated (has a trc error) [mat_peptide NTPase includes trc error]
-ERROR: Peptide Adjacency Problem: (nonstructural polyprotein) CDS comprised of mat_peptides has at least one adjacency inconsistency between 2 primary mat_peptides [p48 (1..1082) not adjacent to NTPase (1094..1156)]
+ERROR: CDS Has Stop Codon: (nonstructural polyprotein) contains unexpected stop codon; CDS comprised of mat_peptides is incomplete: at least one primary mat_peptide is not translated due to early stop (mtr) [MP#3, MP#4, MP#5, MP#6]
+ERROR: Indefinite Annotation at Start: (nonstructural polyprotein) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [nonstructural polyprotein: start positions differ by 1887 > 5 (strand:+ CM:1 blastx:1888)]
+ERROR: Indefinite Annotation at Stop: (nonstructural polyprotein) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [nonstructural polyprotein: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:1156 blastx:2643)]
+ERROR: CDS Has Stop Codon: (nonstructural polyprotein) blastx protein validation failure, stop codon in protein alignment [nonstructural polyprotein: blastx alignment includes stop codon (1918;2092;2101;2191;2230;2326;2344;2446;2506;2554;2563;2575)]
 ERROR: Unexpected Length: (VP1) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [1609]
 ERROR: Mutation at Start: (VP1) expected start codon could not be identified
 ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 194 > 5 (strand:+ CM:5186 blastx:5380)]
