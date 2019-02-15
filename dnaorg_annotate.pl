@@ -69,7 +69,6 @@ require "epn-options.pm";
 #          data structure, the 'corrected' stop. We utilize
 #          the 'cumlen' values in the @mdl_results_AAH to 
 #          simplify this for multi-exon features. 
-# Step 14. Identify overlap and adjacency errors.
 # Step 15. Finalize the mdl_results, and fill ftr_results and check
 #          for incompatible error combinations.
 # Step 16. Refetch corrected matches into new files.
@@ -136,7 +135,6 @@ require "epn-options.pm";
 # List of functions in which errors may be detected: 
 # 1. parse_esl_epn_translate_startstop_outfile()
 # 2. results_calculate_corrected_stops()
-# 3. results_calculate_overlaps_and_adjacencies() 
 # 4. mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
 # 5. ftr_results_calculate()
 # 7. MAIN (not a function but rather the main body of the script):
@@ -153,20 +151,15 @@ require "epn-options.pm";
 # b5u      8      N/A          N/A
 # b3e      4      N/A          N/A
 # b3u      4      N/A          N/A
-# olp      3      N/A          N/A
 # str      1,4    1,5          N/A
 # stp      1,2    1,5          N/A
-# ajb      3      N/A          N/A
-# aja      3      N/A          N/A                           
 # trc      1,2    1,2          N/A
 # ext      1,7,2  1,7,2        N/A
 # mtr      5      N/A          N/A
 # nst      1,7    1,7          N/A
 # ost      4      N/A          N/A
-# aji      N/A    5            N/A
 # int      N/A    5            N/A
 # inp      N/A    5            N/A
-# ori      N/A    N/A          6
 # 
 #######################################################################################
 
@@ -249,8 +242,6 @@ opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, unde
 $opt_group_desc_H{++$g} = "options for modifying which errors are reported";
 #       option               type   default                group  requires incompat preamble-output                                     help-output    
 opt_Add("--classerrors","string",  0,                      $g,    undef,   undef,   "read per-sequence classification errors from <s>", "read per-sequence classification errors from <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--allolp",     "boolean", 0,                      $g,    undef,   undef,   "report all olp errors, do not skip due to nop",    "report all olp errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
-opt_Add("--alladj",     "boolean", 0,                      $g,    undef,   undef,   "report all adj errors, do not skip due to nop",    "report all aja/ajb errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
@@ -324,8 +315,6 @@ my $options_okay =
                 'xlonescore=s' => \$GetOptions_H{"--xlonescore"},
 # options for modifying which errors are reported
                 'classerrors=s' => \$GetOptions_H{"--classerrors"},
-                'allolp'        => \$GetOptions_H{"--allolp"},
-                'alladj'        => \$GetOptions_H{"--alladj"},
 # options for changing search sensitivity modes
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
                 'tau=s'        => \$GetOptions_H{"--tau"},
@@ -1010,14 +999,6 @@ $start_secs = outputProgressPrior("Correcting homology search stop codon predict
 results_calculate_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-#################################################
-# Step 14. Identify overlap and adjacency errors
-#################################################
-
-$start_secs = outputProgressPrior("Identifying overlap and adjacency errors", $progress_w, $log_FH, *STDOUT);
-results_calculate_overlaps_and_adjacencies(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
 ####################################################################
 # Step 15. Finalize the mdl_results, and fill ftr_results and check
 #          for incompatible error combinations.
@@ -1285,7 +1266,6 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #    results_calculate_predicted_lengths()
 #    store_hit()
 #    results_calculate_corrected_stops()
-#    results_calculate_overlaps_and_adjacencies()
 #    mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
@@ -1315,7 +1295,6 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 #
 #  Miscellaneous subroutines that don't fit in the above categories:
 #    find_inframe_stop()
-#    combine_ajb_and_aja_strings()
 #    compare_to_genbank_annotation
 #    translate_feature_sequences
 #    align_hits()
@@ -1638,8 +1617,8 @@ sub parse_cmalign_stk {
         $min_uapos--;
         $min_rfpos_after_A[$rfpos] = $min_rfpos;
         $min_uapos_after_A[$rfpos] = $min_uapos;
-        if($rf2ipos_A[$rfpos] != -1) { 
-          $min_uapos -= $rf2ilen_A[$rfpos]; # subtract inserts
+        if($rf2ipos_A[($rfpos-1)] != -1) { 
+          $min_uapos -= $rf2ilen_A[($rfpos-1)]; # subtract inserts between ($rfpos-1) and $rfpos
         }
         $rfpos_pp_A[$rfpos] = $pp_A[($apos-1)];
         #printf("rfpos: $rfpos apos: $apos set rfpos_pp_A[$rfpos] to " . $pp_A[($apos-1)] . "\n");
@@ -1647,9 +1626,9 @@ sub parse_cmalign_stk {
       elsif($rf2ipos_A[$rfpos] != -1) { 
         # sequence is a gap at $rfpos but has an insert AFTER it
         $min_rfpos = $rfpos;
-        $min_uapos -= $rf2ilen_A[$rfpos]; # subtract inserts
         $min_rfpos_after_A[$rfpos] = $min_rfpos;
         $min_uapos_after_A[$rfpos] = $min_uapos;
+        $min_uapos -= $rf2ilen_A[($rfpos-1)]; # subtract inserts between ($rfpos-1) and $rfpos
       }
       elsif($min_rfpos != -1) { 
         # sequence is a gap at $rfpos and has no insert AFTER it
@@ -1675,16 +1654,16 @@ sub parse_cmalign_stk {
         $max_uapos++;
         $max_rfpos_before_A[$rfpos] = $max_rfpos;
         $max_uapos_before_A[$rfpos] = $max_uapos;
-        if($rf2ipos_A[($rfpos-1)] != -1) { 
-          $max_uapos += $rf2ilen_A[($rfpos-1)]; # add inserts
+        if($rf2ipos_A[$rfpos] != -1) { 
+          $max_uapos += $rf2ilen_A[$rfpos]; # add inserts between $rfpos and $rfpos+1
         }          
       }
       elsif($rf2ipos_A[($rfpos-1)] != -1) { 
         # sequence is a gap at $rfpos but has an insert BEFORE it
         $max_rfpos  = $rfpos;
-        $max_uapos += $rf2ilen_A[($rfpos-1)]; # add inserts
         $max_rfpos_before_A[$rfpos] = $max_rfpos;
         $max_uapos_before_A[$rfpos] = $max_uapos;
+        $max_uapos += $rf2ilen_A[$rfpos]; # add inserts between $rfpos and $rfpos+1
       }
       elsif($max_rfpos != -1) { 
         # sequence is a gap at $rfpos and has no insert BEFORE it
@@ -1699,17 +1678,17 @@ sub parse_cmalign_stk {
     }      
     
     # DEBUG PRINT
-#    printf("***************************************************\n");
-#    printf("DEBUG print $seqname\n");
-#    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
-#      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_rf_before_A: %5d\n", 
-#             $rfpos, 
-#             $min_rfpos_after_A[$rfpos],
-#             $min_uapos_after_A[$rfpos],
-#             $max_rfpos_before_A[$rfpos],
-#             $max_uapos_before_A[$rfpos]);
-#    }
-#    printf("***************************************************\n");
+    printf("***************************************************\n");
+    printf("DEBUG print $seqname\n");
+    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
+      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+             $rfpos, 
+             $min_rfpos_after_A[$rfpos],
+             $min_uapos_after_A[$rfpos],
+             $max_rfpos_before_A[$rfpos],
+             $max_uapos_before_A[$rfpos]);
+    }
+    printf("***************************************************\n");
 
     # given model span s..e
     # if strand eq "+"
@@ -1724,21 +1703,21 @@ sub parse_cmalign_stk {
       my $mdl_stop_rfpos  = $mdl_info_HAR->{"ref_stop"}[$m];
       my $mdl_strand      = $mdl_info_HAR->{"ref_strand"}[$m];
 
-#      printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
-#      $rfpos = $mdl_start_rfpos;
-#      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-#             $rfpos, 
-#             $min_rfpos_after_A[$rfpos],
-#             $min_uapos_after_A[$rfpos],
-#             $max_rfpos_before_A[$rfpos],
-#             $max_uapos_before_A[$rfpos]);
-#      $rfpos = $mdl_stop_rfpos;
-#      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-#             $rfpos, 
-#             $min_rfpos_after_A[$rfpos],
-#             $min_uapos_after_A[$rfpos],
-#             $max_rfpos_before_A[$rfpos],
-#             $max_uapos_before_A[$rfpos]);
+      printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
+      $rfpos = $mdl_start_rfpos;
+      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+             $rfpos, 
+             $min_rfpos_after_A[$rfpos],
+             $min_uapos_after_A[$rfpos],
+             $max_rfpos_before_A[$rfpos],
+             $max_uapos_before_A[$rfpos]);
+      $rfpos = $mdl_stop_rfpos;
+      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+             $rfpos, 
+             $min_rfpos_after_A[$rfpos],
+             $min_uapos_after_A[$rfpos],
+             $max_rfpos_before_A[$rfpos],
+             $max_uapos_before_A[$rfpos]);
 
       my $start_rfpos = -1; # model position of start of this model region for this aligned sequence, stays at -1 if none
       my $stop_rfpos  = -1; # model position of stop  of this model region for this aligned sequence, stays at -1 if none
@@ -2662,7 +2641,6 @@ sub wrapper_esl_epn_translate_startstop {
 #    results_calculate_predicted_lengths()
 #    store_hit()
 #    results_calculate_corrected_stops()
-#    results_calculate_overlaps_and_adjacencies()
 #    mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
 #    mdl_results_calculate_out_starts_and_stops()
 #    mdl_results_compare_to_genbank_annotations()
@@ -3107,200 +3085,6 @@ sub results_calculate_corrected_stops {
       } # end of loop over $seq_idx
     } # end of if $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model"
   } # end of loop over $ftr_idx
-  return;
-}
-
-
-#################################################################
-# Subroutine:  results_calculate_overlaps_and_adjacencies()
-# Incept:      EPN, Sat Mar 12 10:40:29 2016
-#
-# Purpose:    For all results in @{$mdl_results_AAH}, determine which
-#             predictions for the same sequence are adjacent to 
-#             and overlap with each other and save those strings
-#             in $mdl_results_AAHR. For those that are 
-#             inconsistent with the reference, create the 
-#             appropriate 'olp', 'aja', or 'ajb' error in 
-#             \@err_ftr_instances_AHH, 
-#
-#             Checks for and adds the following error codes for features
-#             with "annot_type" eq "model":
-#
-#             "olp": adds with error message depicting deviation from reference 
-#             "ajb": adds with error message depicting deviation from reference 
-#             "aja": adds with error message depicting deviation from reference 
-#
-# Arguments: 
-#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:   REF to results AAH, ADDED TO HERE
-#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $err_info_HAR:       REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:              REF to hash of file handles
-#
-# Returns:    void
-#
-################################################################# 
-sub results_calculate_overlaps_and_adjacencies { 
-  my $sub_name = "results_calculate_overlaps_and_adjacencies()";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $ftr_idx; # counter over features
-  my $mdl_idx; # counter over models
-  my $seq_idx; # counter over sequences
-
-  my $do_all_olp = opt_Get("--allolp", $opt_HHR);
-  my $do_all_adj = opt_Get("--allolp", $opt_HHR);
-  
-  # for each sequence, fill a temporary array with starts, stops and strands
-  # then send it to overlapsAndAdjacenciesHelper() to get the adjacency and
-  # overlap strings
-  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my @start_A  = ();
-    my @stop_A   = ();
-    my @strand_A = ();
-    for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-      if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
-        push(@start_A,  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"});
-        push(@stop_A,   (exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"} ? 
-                         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"} : 
-                         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"}));
-        push(@strand_A, $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_strand"});
-      }
-      else { 
-        push(@start_A,  -1);
-        push(@stop_A,   -1);
-        push(@strand_A, "");
-      }
-    }
-    my @idx_ajb_str_A = (); # [0..$nmdl-1] string of mdl indices describing 'before' adjacencies for each model
-    my @idx_aja_str_A = (); # [0..$nmdl-1] string of mdl indices describing 'after'  adjacencies for each model
-    my @idx_olp_str_A = (); # [0..$nmdl-1] string of mdl indices describing overlaps for each model
-    my @out_ajb_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing 'before' adjacencies for each model
-    my @out_aja_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing 'after'  adjacencies for each model
-    my @out_olp_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing overlaps for each model
-    overlapsAndAdjacenciesHelper($mdl_info_HAR, \@start_A, \@stop_A, \@strand_A, 
-                                 $seq_info_HAR->{"len"}[$seq_idx], 
-                                 \@idx_ajb_str_A, \@idx_aja_str_A, \@idx_olp_str_A, 
-                                 \@out_ajb_str_A, \@out_aja_str_A, \@out_olp_str_A, 
-                                 $opt_HHR, $FH_HR);
-    
-
-    # populate @mdl_results_AAHR, and keep track of per-feature error messages
-    my @ftr_olp_err_msg_A = ();
-    my @ftr_ajb_err_msg_A = ();
-    my @ftr_aja_err_msg_A = ();
-    # initialize
-    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      $ftr_olp_err_msg_A[$ftr_idx] = "";
-      $ftr_ajb_err_msg_A[$ftr_idx] = "";
-      $ftr_aja_err_msg_A[$ftr_idx] = "";
-    }
-    for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-      my $ftr_idx = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"idx_ajb_str"} = $idx_ajb_str_A[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"idx_aja_str"} = $idx_aja_str_A[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"idx_olp_str"} = $idx_olp_str_A[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_ajb_str"} = $out_ajb_str_A[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_aja_str"} = $out_aja_str_A[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_olp_str"} = $out_olp_str_A[$mdl_idx];
-
-      # construct ajb err message
-      if(($start_A[$mdl_idx] != -1) || # this model has a prediction (does not have a 'nop' error)
-         ($do_all_adj)) {              # --alladj option used, report all aja/ajb errors for models without predictions (with 'nop')
-        if($idx_ajb_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx]) { 
-          my @diff_A = ();
-          compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx], 
-                                                   $idx_ajb_str_A[$mdl_idx], 
-                                                   $nmdl-1,
-                                                   \@diff_A, $FH_HR);
-          if(! $do_all_adj) { # --alladj option not used, so we ignore any aja/ajb errors with models without predictions (with 'nop' errors)
-            for(my $a = 0; $a < $nmdl; $a++) { 
-              if($start_A[$a] == -1) { $diff_A[$a] = 0; } # now, in next for($i) loop diff values for model $i where $i has no prediction won't be printed
-            }
-          }
-          for(my $i = 0; $i < $nmdl; $i++) { 
-            if($diff_A[$i] != 0) { 
-              $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
-                                                      ($ftr_ajb_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
-                                                      ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
-                                                      $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
-            }
-          }
-        }
-      }
-      # construct aja err message
-      if(($start_A[$mdl_idx] != -1) || # this model has a prediction (does not have a 'nop' error)
-         ($do_all_adj)) {              # --alladj option used, report all aja/ajb errors for models without predictions (with 'nop')
-        if($idx_aja_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_aja_str"}[$mdl_idx]) { 
-          my @diff_A = ();
-          compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_aja_str"}[$mdl_idx], 
-                                                 $idx_aja_str_A[$mdl_idx], 
-                                                 $nmdl-1,
-                                                 \@diff_A, $FH_HR);
-          if(! $do_all_adj) { # --alladj option not used, so we ignore any aja/ajb errors with models without predictions (with 'nop' errors)
-            for(my $a = 0; $a < $nmdl; $a++) { 
-              if($start_A[$a] == -1) { $diff_A[$a] = 0; } # now, in next for($i) loop diff values for model $i where $i has no prediction won't be printed
-            }
-          }
-          for(my $i = 0; $i < $nmdl; $i++) { 
-            if($diff_A[$i] != 0) { 
-              $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
-                                                      ($ftr_aja_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
-                                                      ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
-                                                      $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
-            }
-          }
-        }
-      }
-
-      # construct olp err message
-      if(($start_A[$mdl_idx] != -1) || # this model has a prediction (does not have a 'nop' error)
-         ($do_all_olp)) {              # --allolp option used, report all olp errors for models without predictions (with 'nop')
-        if($idx_olp_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_olp_str"}[$mdl_idx]) { 
-          my @diff_A = ();
-          compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_olp_str"}[$mdl_idx], 
-                                                   $idx_olp_str_A[$mdl_idx], 
-                                                   $nmdl-1,
-                                                   \@diff_A, $FH_HR);
-          if(! $do_all_olp) { # --allolp option not used, so we ignore any olp errors with models without predictions (with 'nop' errors)
-            for(my $a = 0; $a < $nmdl; $a++) { 
-              if($start_A[$a] == -1) { $diff_A[$a] = 0; } # now, in next for($i) loop diff values for model $i where $i has no prediction won't be printed
-            }
-          }
-          for(my $i = 0; $i < $nmdl; $i++) { 
-            if($diff_A[$i] != 0) { 
-            $ftr_olp_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
-                                                    ($ftr_olp_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
-                                                    ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
-                                                    $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
-            }
-          }
-        }
-      }
-    } # end of 'for(mdl_idx'
-    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if($ftr_olp_err_msg_A[$ftr_idx] ne "") { 
-        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "olp", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_olp_err_msg_A[$ftr_idx], $FH_HR);
-      }
-      if($ftr_ajb_err_msg_A[$ftr_idx] ne "") { 
-        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ajb", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_ajb_err_msg_A[$ftr_idx], $FH_HR);
-      }
-      if($ftr_aja_err_msg_A[$ftr_idx] ne "") { 
-        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aja", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_aja_err_msg_A[$ftr_idx], $FH_HR);
-      }
-    }
-  } # end of 'for(my $seq_idx"
   return;
 }
 
@@ -4252,7 +4036,6 @@ sub mdl_results_calculate_out_starts_and_stops {
 #             "stp": for features with annot_type eq "multifeature" & type eq "cds-mp"
 #             "inp": for features with annot_type eq "multifeature" & type eq "cds-mp"
 #             "int": for features with annot_type eq "multifeature" & type eq "cds-mp"
-#             "aji": for features with annot_type eq "multifeature" & type eq "cds-mp"
 #             "mtr": for features that are children of a multifeature/cds-mp feature
 #
 # Arguments: 
@@ -4317,16 +4100,14 @@ sub ftr_results_calculate {
         $seq_name   = $seq_info_HAR->{"seq_name"}[$seq_idx];
         $seq_len    = $seq_info_HAR->{"len"}[$seq_idx];
         $accn_name  = $seq_info_HAR->{"accn_name"}[$seq_idx];
-
+        
         # set the str_err_flag, if nec
         if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"str_err_flag"} = 1;
         }
 
         # initialize our error-related variables
-        my $aji_errmsg          = "";    # filled if we find two mature peptides that should be adjacent but are not
         my $set_start           = 0;     # set to '1' once we've seen the first model with an annotated hit
-        my $inp_errmsg          = "";    # a list of model names ("out_tiny") for which we do not have annotations (nop errors), if any
         my $int_errmsg          = "";    # a list of model names ("out_tiny") which are not translated due to trc (mtr errors), if any
         my $cds_out_start       = undef; # start position to output for this CDS 
         my $cds_out_stop        = undef; # stop  position to output for this CDS 
@@ -4337,9 +4118,7 @@ sub ftr_results_calculate {
         my $cds_len             = 0;     # length to output for this CDS
         my $child_had_trc       = 0;     # if we find a child with a trc error, set this to 1
         my $mn3_flag            = 0;     # set to '1' if we set a bad nm3 (no b5e or b3e) error for mother CDS
-        my $maj_flag            = 0;     # set to '1' if we set a aji error for mother CDS
         my $mit_flag            = 0;     # set to '1' if we set a int error for mother CDS
-        my $mip_flag            = 0;     # set to '1' if we set a inp error for mother CDS
 
         my $seen_prv_b3e        = 0;     # set to '1' if we see a b3e error for a MP for the mother CDS
 
@@ -4353,7 +4132,7 @@ sub ftr_results_calculate {
             }
           }
         }
-
+        
         if($cds_any_pred_flag) { 
           # step through all primary children of this feature
           for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
@@ -4362,7 +4141,7 @@ sub ftr_results_calculate {
                ($mdl_results_AAHR->[$ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]][$seq_idx]{"p_3seqflush"})) { # rare case: we don't have a b3e but final nt of prediction is final nt of sequence, so for our purposes here, we do have a b3e
               $seen_prv_b3e = 1;
             }
-
+            
             for(my $child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $child_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $child_mdl_idx++) { 
               if(! $child_had_trc) { # if $child_had_trc is true, then we dealt with this feature completely below
                 # check to make sure we have a hit annotated for this model
@@ -4371,18 +4150,8 @@ sub ftr_results_calculate {
                 # we have a relevant b3e if: either this MP or a previous one has a b3e ($seen_prv_b3e == 1)
                 # we do not have a relevant b5e if: $set_start has been set
                 # we do not have a relevant b3e if: this MP does not have a b3e and no previous MP had a b3e
-                if(! exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { 
-                  # we might need to trigger an inp, check if we have a relevant b5e or b3e
-                  my $have_relevant_b5e = ((! $set_start) && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name})) ? 1 : 0;
-                  my $have_relevant_b3e = ($seen_prv_b3e) ? 1 : 0;
-                  if((! $have_relevant_b5e) && (! $have_relevant_b3e)) { 
-                    if($inp_errmsg ne "") { 
-                      $inp_errmsg .= ", ";
-                    }
-                    $inp_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
-                  }
-                }
-                else { # we do have a hit for $child_mdl_idx in $seq_idx
+                if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { 
+                  # we have a hit for $child_mdl_idx in $seq_idx
                   $cds_len += $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"len"};
                   
                   if(! $set_start) { # first model, set cds_out_start
@@ -4398,7 +4167,7 @@ sub ftr_results_calculate {
                       $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
                       $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
                   $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
-                  
+
                   # check if we have a trc in this child model, and deal with it if we do
                   if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"trc_err_flag"}) { 
                     $child_had_trc = 1;
@@ -4419,7 +4188,7 @@ sub ftr_results_calculate {
                     # - update the trc errmsg for this CDS in @{$err_ftr_instances_AHHR} 
                     #   based on what just figured out about this truncated stop
                     #   (if we don't have a str error for this CDS)
-                    # - set mtr errors for all remaining children 
+                    # - set ntr errors for all remaining children 
                     # - set int error for this CDS
                     # - break the loop over all children (we're done with this CDS)
                     ####################################################
@@ -4429,126 +4198,90 @@ sub ftr_results_calculate {
                         $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
                         $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
                     $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
-                    
-                    if($inp_errmsg eq "" && $aji_errmsg eq "") { 
-                      if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
-                        # if we don't have a str error, update the trc error message
-                        # use the final childs stop prediction as the predicted stop, if it exists
-                        my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$primary_children_idx_A[$np_children-1]];
-                        my $updated_trc_errmsg  = "";
-                        if(exists $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"}) { 
-                          my $cds_pred_stop = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
-                          $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
-                                                        create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $seq_len, $FH_HR),
-                                                        create_output_start_and_stop($cds_fetch_start, $cds_out_stop,  $seq_len, $FH_HR),
-                                                        abs($cds_fetch_stop - $cds_pred_stop), $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
-                        }
-                        else { 
-                          $updated_trc_errmsg = sprintf("homology search predicted %d..? revised to %d..%d (due to early stop in %s)", 
-                                                        $cds_out_start, 
-                                                        create_output_start_and_stop($cds_out_start, $cds_out_stop, $seq_len, $FH_HR),
-                                                        $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
-                        }
-                        
-                        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
-                          # update it
-                          error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                  
+                    if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
+                      # if we don't have a str error, update the trc error message
+                      # use the final childs stop prediction as the predicted stop, if it exists
+                      my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$primary_children_idx_A[$np_children-1]];
+                      my $updated_trc_errmsg  = "";
+                      if(exists $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"}) { 
+                        my $cds_pred_stop = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
+                        $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
+                                                      create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $seq_len, $FH_HR),
+                                                      create_output_start_and_stop($cds_fetch_start, $cds_out_stop,  $seq_len, $FH_HR),
+                                                      abs($cds_fetch_stop - $cds_pred_stop), $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
+                      }
+                      else { 
+                        $updated_trc_errmsg = sprintf("homology search predicted %d..? revised to %d..%d (due to early stop in %s)", 
+                                                      $cds_out_start, 
+                                                      create_output_start_and_stop($cds_out_start, $cds_out_stop, $seq_len, $FH_HR),
+                                                      $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
+                      }
+                      
+                      if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
+                        # update it
+                        error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
+                        # set the trc_err_flag for this feature
+                        $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
+                      }
+                      else { 
+                        # it doesn't yet exist, so add the trc error IF 
+                        # we don't have a b5e for this guy. This
+                        # is rare, but we may have no trc error for this
+                        # CDS yet, if the predicted child mature peptide
+                        # sequences didn't all exist, then we won't have
+                        # combined those predictions into a predicted CDS,
+                        # and thus we didn't check that predicted CDS for
+                        # trc errors in
+                        # parse_esl_epn_translate_startstop_outfile().
+                        if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) { 
+                          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
                           # set the trc_err_flag for this feature
                           $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
                         }
-                        else { 
-                          # it doesn't yet exist, so add the trc error IF 
-                          # we don't have a b5e for this guy. This
-                          # is rare, but we may have no trc error for this
-                          # CDS yet, if the predicted child mature peptide
-                          # sequences didn't all exist, then we won't have
-                          # combined those predictions into a predicted CDS,
-                          # and thus we didn't check that predicted CDS for
-                          # trc errors in
-                          # parse_esl_epn_translate_startstop_outfile().
-                          if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) { 
-                            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
-                            # set the trc_err_flag for this feature
-                            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
-                          }
-                        }
-                      }
-                      # all remaining children get a 'mtr' error,
-                      # and the CDS gets an 'int' error, which we need
-                      # to build the error message for
-                      $mtr_errmsg = sprintf("early stop in mat_peptide %s ending at position %d", $ftr_info_HAR->{"out_product"}[$child_ftr_idx], $cds_out_stop);
-                      if($int_errmsg ne "") { 
-                        DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);
-                      }
-                      $child_idx++;
-                      my $mtr_err_ct = 0;
-                      # for all remaining children: throw 'mtr' and append to 'int' err message
-                      while($child_idx < $np_children) {
-                        $child_ftr_idx = $primary_children_idx_A[$child_idx];
-                        # check if we have predictions for any (probably just 1) of the models for this feature
-                        my $any_pred_flag = 0;
-                        for(my $tmp_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $tmp_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $tmp_mdl_idx++) { 
-                          if(exists $mdl_results_AAHR->[$tmp_mdl_idx][$seq_idx]{"p_start"}) { 
-                            $any_pred_flag = 1;
-                          }
-                        }
-                        # if we do have predictions for any of the models for this feature, add mtr error
-                        if($any_pred_flag) { 
-                          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, $mtr_errmsg, $FH_HR);
-                          $mtr_err_ct++;
-                          if($int_errmsg ne "") { 
-                            $int_errmsg .= ", ";
-                          }
-                          $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
-                        }
-                        $child_idx++;
-                      }
-                      if($mtr_err_ct > 0) { 
-                        # we set at least one mtr error for mature peptides, set int for this CDS
-                        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
-                        $mit_flag = 1; # this causes 'mit' in children MPs
-                      }
-                      # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
-                    } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
-                    else { 
-                      # we had a trc in one of the children, but it didn't trigger
-                      # a trc in the CDS because we already have an adjacency error
-                      # and/or an inp error (one of the mature peptides was not predicted)
-                      # which means we cannot confidently say the CDS is truncated.
-                      # remove the CDS' trc error IF it exists (it may not if 
-                      # there wasn't an early stop due to a frameshift or something
-                      # before or after the trc in the child mature peptide).
-                      if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
-                        error_instances_remove_not_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $FH_HR);
                       }
                     }
-                    # deal with a potential stp error, if we have one
+                    # all remaining children get a 'mtr' error,
+                    # and the CDS gets an 'int' error, which we need
+                    # to build the error message for
+                    $mtr_errmsg = sprintf("early stop in mat_peptide %s ending at position %d", $ftr_info_HAR->{"out_product"}[$child_ftr_idx], $cds_out_stop);
+                    if($int_errmsg ne "") { 
+                      DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);
+                    }
+                    $child_idx++;
+                    my $mtr_err_ct = 0;
+                    # for all remaining children: throw 'mtr' and append to 'int' err message
+                    while($child_idx < $np_children) {
+                      $child_ftr_idx = $primary_children_idx_A[$child_idx];
+                      # check if we have predictions for any (probably just 1) of the models for this feature
+                      my $any_pred_flag = 0;
+                      for(my $tmp_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $tmp_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $tmp_mdl_idx++) { 
+                        if(exists $mdl_results_AAHR->[$tmp_mdl_idx][$seq_idx]{"p_start"}) { 
+                        $any_pred_flag = 1;
+                      }
+                    }
+                      # if we do have predictions for any of the models for this feature, add mtr error
+                      if($any_pred_flag) { 
+                        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mtr", $seq_name, $mtr_errmsg, $FH_HR);
+                        $mtr_err_ct++;
+                        if($int_errmsg ne "") { 
+                          $int_errmsg .= ", ";
+                        }
+                      $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
+                      }
+                      $child_idx++;
+                    }
+                    if($mtr_err_ct > 0) { 
+                      # we set at least one mtr error for mature peptides, set int for this CDS
+                      error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
+                      $mit_flag = 1; # this causes 'mit' in children MPs
+                    }
+                    # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
                   } # end of 'if trc_err_flag'
                   else { 
                     ###########################################################
                     # we do not have a trc in this child model $child_mdl_idx #
                     ###########################################################
-                    # check if we're adjacent to the next feature, we only need to 
-                    # do this if we're the final model for the current feature and
-                    # we're not the final child feature, and we haven't seen a b3e 
-                    # for this CDS yet
-                    if(($child_idx < ($np_children-1)) && 
-                       ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]) && 
-                       (! $seen_prv_b3e)) { 
-                      my $nxt_child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$primary_children_idx_A[($child_idx+1)]];
-                      # check if they are adjacent 
-                      if(! checkForIndexInOverlapOrAdjacencyIndexString($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"idx_aja_str"}, $nxt_child_mdl_idx, $FH_HR)) { 
-                        if($aji_errmsg ne "") { $aji_errmsg .= ", "; }
-                        $aji_errmsg .= sprintf("%s (%s..%s) not adjacent to %s (%s..%s)", 
-                                               $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$child_mdl_idx]], 
-                                               (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
-                                               (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown", 
-                                               $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$nxt_child_mdl_idx]], 
-                                               (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
-                                               (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown");
-                      }        
-                    } # end of 'if($child_idx < ($np_children-1))'
-
                     # if we are the final model of the final child feature, determine the stop position/strand
                     if(($child_idx == ($np_children-1)) && 
                        ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx])) { 
@@ -4609,8 +4342,7 @@ sub ftr_results_calculate {
           # it's important we do this *after* handling (either validating or removing) a potential 'stp' error
           # in the block again, because we redfine $cds_out_stop, $cds_fetch_stop and $cds_len here.
           ####################################################################################################
-          if((exists $err_ftr_instances_AHHR->[$ftr_idx]{"ext"}{$seq_name}) && 
-             ($aji_errmsg eq "") && ($inp_errmsg eq "") && (defined $cds_out_stop)) { 
+          if((exists $err_ftr_instances_AHHR->[$ftr_idx]{"ext"}{$seq_name}) && (defined $cds_out_stop)) { 
             my $len_corr = $err_ftr_instances_AHH[$ftr_idx]{"ext"}{$seq_name};
             if($len_corr <= 0) { 
               DNAORG_FAIL("ERROR in $sub_name, ext error with non-positive correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
@@ -4694,19 +4426,6 @@ sub ftr_results_calculate {
             }
           }
 
-          # add the aji (adjacency) error if necessary
-          if($aji_errmsg ne "") { 
-            # adjacency error
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aji", $seq_name, $aji_errmsg, $FH_HR);
-            $maj_flag = 1; # this causes 'maj' in children MPs
-          }
-
-          # add the inp (INterrupted due to no Prediction) if necessary
-          if($inp_errmsg ne "") { 
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
-            $mip_flag = 1; # this causes 'mip' in children MPs
-          }
-
           # set ftr_results, we can set start if $cds_out_start is defined, 
           if(defined $cds_out_start) { 
             my $start_codon = fetchStartCodon($sqfile, $seq_name, $cds_fetch_start, $start_strand, 1, $FH_HR);
@@ -4735,13 +4454,10 @@ sub ftr_results_calculate {
 
           # for the stop and length attributes to be anything but "?" 
           # we require the following: 
-          # - no aji error
-          # - no inp error
           # - $cds_out_start defined
           # - $cds_out_stop defined
           # 
-          if(($aji_errmsg eq "") && ($inp_errmsg eq "") && (defined $cds_out_start) && (defined $cds_out_stop)) { 
-            # an aji or inp error means we can't really say where the stop is
+          if((defined $cds_out_start) && (defined $cds_out_stop)) { 
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop"}       = $cds_out_stop;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name, $cds_fetch_stop, $stop_strand, 1, $FH_HR);
             # '1' above: it's okay if codon we fetch is less than 3 nt due to being off end of the sequence
@@ -4802,9 +4518,9 @@ sub ftr_results_calculate {
             }
           }
           #######################################################################################
-          # add mn3, maj, mit, mip errors for all children if mother CDS had corresponding error
+          # add mn3, mit, errors for all children if mother CDS had corresponding error
           #######################################################################################
-          if($mn3_flag || $maj_flag || $mit_flag || $mip_flag) { 
+          if($mn3_flag || $mit_flag) { 
             for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
               my $child_ftr_idx = $all_children_idx_A[$child_idx];
               if($mn3_flag) { 
@@ -4814,22 +4530,8 @@ sub ftr_results_calculate {
                                             $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
                                     $FH_HR);
               }
-              if($maj_flag) { 
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "maj", $seq_name, 
-                                    sprintf("MP: %s, CDS %s", 
-                                            $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
-                                            $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
-                                    $FH_HR);
-              }
               if($mit_flag) { 
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mit", $seq_name, 
-                                    sprintf("MP: %s, CDS %s", 
-                                            $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
-                                            $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
-                                    $FH_HR);
-              }
-              if($mip_flag) { 
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mip", $seq_name, 
                                     sprintf("MP: %s, CDS %s", 
                                             $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
                                             $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
@@ -5038,17 +4740,9 @@ sub error_instances_add {
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $value, $FH_HR) = @_;
 
   my $tmp_errmsg = "ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n";
-#  if($err_code eq "olp" || 
-#     $err_code eq "ajb" || 
-#     $err_code eq "aja" || 
-#     $err_code eq "inp" || 
-#     $err_code eq "lsc" || 
+#  if($err_code eq "lsc" ||
 #     $err_code eq "dup" || 
-#     $err_code eq "aji" || 
-#     $err_code eq "maj" || 
-#     $err_code eq "mip" || 
-#     $err_code eq "ost" || 
-#     $err_code eq "ori") { 
+#     $err_code eq "ost") { 
 #    DNAORG_FAIL("ERROR in $sub_name, $tmp_errmsg", 1, $FH_HR);
 #  }
   
@@ -5575,10 +5269,7 @@ sub output_tbl_get_headings {
   my $do_ss3       = 1; # '1' to do ss3 output, '0' to skip it
   my $do_stop      = 1; # '1' to do stop output, '0' to skip it
   my $do_mdlb      = 1; # '1' to do model boundary output, '0' to skip it
-  my $do_olap      = 1; # '1' to do overlap output, '0' to skip it
   my $do_exist     = (opt_Get("--infasta", $opt_HHR) || opt_Get("--tblnocomp", $opt_HHR)) ? 0 : 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
-  my $do_fullolap  = 0; # '1' to output full overlap strings
-  my $do_fulladj   = 0; # '1' to output full adjacency strings
   my $do_matpept   = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
   my $do_cds_notmp = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "cds-notmp", $FH_HR) > 0) ? 1 : 0;
   my $do_xfeat     = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "xfeat", $FH_HR) > 0) ? 1 : 0;
@@ -5632,7 +5323,6 @@ sub output_tbl_get_headings {
 #  GenBank annotation:cds
 #  GenBank annotation:exons
 #  GenBank annotation:match
-#  overlaps?
 #  result
 
   # first, initialize the @{$out_header_exp_AR} with the first two lines:
@@ -5800,7 +5490,6 @@ sub output_tbl_get_headings {
         my $is_dfeat     = featureTypeIsDuplicateFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
         if($do_fid)  { $width += 6;  }
         if($do_mdlb) { $width += 4;  }
-        if($do_olap) { $width += 11; }
         if($is_matpept)  { $width += 11; }
         if($mdl_info_HAR->{"is_final"}[$mdl_idx]) { 
           $width += 9;
@@ -5923,18 +5612,6 @@ sub output_tbl_get_headings {
         my $expl_str = "sequence";
         if($is_matpept) { $expl_str = "mat_peptide"; }
         if($is_cds)     { $expl_str = "exon"; }
-        if($do_olap) { 
-          $tok4 = sprintf(" %10s", sprintf("%s%s", "overlaps", $mdl_exon_idx+1));
-          $exp_tok4 = "overlaps<j>";
-          $tok5 = sprintf(" %10s", "----------");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-          if($do_model_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of features this feature overlaps with $expl_str"), $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);
-            $need_to_define_H{"overlap"} = 1;
-          }
-        }
 
         if($is_matpept) { 
           $tok4 = sprintf(" %10s", sprintf("%s%s", "adjcnces", $mdl_exon_idx+1));
@@ -5996,10 +5673,6 @@ sub output_tbl_get_headings {
               output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
               output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) has a pairwise alignment to the homologous reference met_peptide that", $FH_HR);
               output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      extends to the 5' and 3' boundary of the reference annotation", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) overlaps with exact same set of other mat_peptides as the homologous", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference mat_peptide", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (6) is adjacent to the exact same set of other mat_peptides as the", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference mat_peptide", $FH_HR);
               push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d mature peptides, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
               $pf_idx += $nftr;
               $need_to_define_H{"adjacent"} = 1;
@@ -6014,11 +5687,8 @@ sub output_tbl_get_headings {
               output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of its exons have a pairwise alignment to the homologous", $FH_HR);
               output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference exon that extends to the 5' and 3' boundary of the", $FH_HR);
               output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference annotation.", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) all of its exons overlap with exact same set of other exons as the", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference CDS", $FH_HR);
               push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
               $pf_idx += $nftr;
-              $need_to_define_H{"overlap"} = 1;
             }
             else { 
               my $cur_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
@@ -6028,11 +5698,8 @@ sub output_tbl_get_headings {
               output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) all of its segments have a pairwise alignment to the homologous", $FH_HR);
               output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference exon that extends to the 5' and 3' boundary of the", $FH_HR);
               output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference annotation.", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) all of its segments overlap with exact same set of other segments as the", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference $cur_type", $FH_HR);
               push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d $cur_type, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
               $pf_idx += $nftr;
-              $need_to_define_H{"overlap"} = 1;
             }
             output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
           }
@@ -6141,20 +5808,6 @@ sub output_tbl_get_headings {
   }
   output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "See explanations of the individual P/F values above.", $FH_HR);
 
-  if((defined $need_to_define_H{"overlap"}) || (defined $need_to_define_H{"adjacent"})) {
-     output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-     push(@{$out_header_exp_AR}, "# Definitions of non-obvious terms above:\n");
-     output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-     if(defined $need_to_define_H{"overlap"}) { 
-       push(@{$out_header_exp_AR}, "# overlap:  two features i and j overlap if they are on both on the same strand and overlap by >= 1 nt.\n");
-     }
-     if(defined $need_to_define_H{"adjacent"}) { 
-       push(@{$out_header_exp_AR}, "# adjacent: two features i and j are adjacent if they are on the same strand and\n");
-       push(@{$out_header_exp_AR}, "#           start_i < start_j and stop_i+1 == start_j.\n");
-       push(@{$out_header_exp_AR}, "#           (Note that on the positive strand start_i <= stop_i for all i,\n");
-       push(@{$out_header_exp_AR}, "#           (and that  on the negative strand start_i >= stop_i for all i)\n");
-     }
-  }
   return;
 }
 
@@ -6352,7 +6005,6 @@ sub output_tbl_all_sequences {
   my $do_ss3      = 1; # '1' to do ss3 output, '0' to skip it
   my $do_stop     = 1; # '1' to do stop output, '0' to skip it
   my $do_mdlb     = 1; # '1' to do model boundary output, '0' to skip it
-  my $do_olap     = 1; # '1' to do overlap output, '0' to skip it 
   my $do_exist    = (opt_Get("--infasta", $opt_HHR) || opt_Get("--tblnocomp", $opt_HHR)) ? 0 : 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
   my $do_matpept  = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
 
@@ -6507,7 +6159,6 @@ sub output_tbl_all_sequences {
           my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
           my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
           my $ref_olp_str = $mdl_info_HAR->{"out_olp_str"}[$mdl_idx];
-          my $ref_adj_str = combine_ajb_and_aja_strings($mdl_info_HAR->{"out_ajb_str"}[$mdl_idx], $mdl_info_HAR->{"out_aja_str"}[$mdl_idx]);
           
           if($is_first) { # reset variables
             $at_least_one_fail  = 0; 
@@ -6527,7 +6178,6 @@ sub output_tbl_all_sequences {
               push(@cur_out_A, sprintf("%8s", "-"));                         # stop
               if($do_fid)      { push(@cur_out_A, sprintf(" %5s", "-")); }   # fid
               if($do_mdlb)     { push(@cur_out_A, "  " . "--"); }            # mdlb
-              if($do_olap)     { push(@cur_out_A, sprintf(" %10s", "-")); }  # olap
               if($is_matpept)  { push(@cur_out_A, sprintf(" %10s", "-")); }  # adj
             }
             else { 
@@ -6562,28 +6212,7 @@ sub output_tbl_all_sequences {
                   $at_least_one_fail = 1;
                 }
               }
-              if($do_olap) { 
-                my $out_olp_str = ($mdl_results_HR->{"out_olp_str"} eq "") ? "NONE" : $mdl_results_HR->{"out_olp_str"};
-                if($mdl_results_HR->{"out_olp_str"} ne $ref_olp_str) { 
-                  $at_least_one_fail = 1; 
-                  push(@cur_out_A, sprintf(" %10s", "F:" . $out_olp_str));
-                }
-                else { 
-                  push(@cur_out_A, sprintf(" %10s", "P:" . $out_olp_str));
-                }
-              }
               
-              if($is_matpept) { 
-                my $adj_str = combine_ajb_and_aja_strings($mdl_results_HR->{"out_ajb_str"}, $mdl_results_HR->{"out_aja_str"});
-                my $out_adj_str = ($adj_str eq "") ? "NONE" : $adj_str;
-                if($adj_str ne $ref_adj_str) { 
-                  $at_least_one_fail = 1; 
-                  push(@cur_out_A, sprintf(" %10s", "F:" . $out_adj_str));
-                }
-                else { 
-                  push(@cur_out_A, sprintf(" %10s", "P:" . $out_adj_str));
-                }
-              }
               if($is_first) { 
                 if($mdl_results_HR->{"str_err_flag"}) { 
                   $at_least_one_fail = 1; 
@@ -6635,7 +6264,6 @@ sub output_tbl_all_sequences {
             push(@cur_out_A, sprintf("%8s",  "NP"));   # stop position
             if($do_fid)  { push(@cur_out_A, sprintf(" %5s", "NP")); } # fid 
             if($do_mdlb) { push(@cur_out_A, "  NP"); } # model boundaries
-            if($do_olap) { push(@cur_out_A, "  NP"); } # overlaps
             if($is_matpept)  { push(@cur_out_A, "  NP"); } # adjacencies
             if($is_final) { 
               push(@cur_out_A, sprintf(" %6s", "NP")); # length
@@ -7936,7 +7564,6 @@ sub output_gap_info {
 #
 #  Miscellaneous subroutines that don't fit in the above categories:
 #    find_inframe_stop()
-#    combine_ajb_and_aja_strings()
 #    translate_feature_sequences()
 #    align_hits()
 #    update_gap_array()
@@ -8012,35 +7639,6 @@ sub find_inframe_stop {
   }
   
   return ($ret_posn, $stop_codon);
-}
-
-#################################################################
-# Subroutine: combine_ajb_and_aja_strings()
-# Incept:     EPN, Mon Mar 14 15:10:25 2016
-#
-# Purpose:    Given a string describing adjacencies-before ($ajb_str)
-#             and another describing adjacencies-after ($aja_str),
-#             combine them into a single string.
-#
-# Args:
-#  $ajb_str:       adjacencies before string
-#  $aja_str:       adjacencies after string
-#
-# Returns: the combine string
-#
-#################################################################
-sub combine_ajb_and_aja_strings { 
-  my $sub_name = "combine_ajb_and_aja_strings";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ajb_str, $aja_str) = @_;
-
-  my $comma_or_not = "";
-  if(($ajb_str ne "") && ($aja_str ne "")) { 
-    $comma_or_not = ",";
-  }
-  return $ajb_str . $comma_or_not . $aja_str;
 }
 
 #################################################################
