@@ -428,7 +428,7 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   $start_secs = outputProgressPrior("Building model (this could take a while)", $progress_w, $log_FH, *STDOUT);
 
   my $cmbuild_cmd  = $execs_H{"cmbuild"} . " --verbose -F $out_root.cm " . $ofile_info_HH{"fullpath"}{"refstk"} . " > $out_root.cmbuild";
-  runCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+  #runCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
 
   outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 

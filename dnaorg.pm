@@ -370,141 +370,139 @@ sub determineFeatureTypes {
   @{$ftr_info_HAR->{"type"}}                     = ();
   @{$ftr_info_HAR->{"type_idx"}}                 = ();
   @{$ftr_info_HAR->{"annot_type"}}               = ();
+  @{$ftr_info_HAR->{"has_children"}}             = ();
   @{$ftr_info_HAR->{"primary_children_ftr_str"}} = ();
   @{$ftr_info_HAR->{"primary_children_ftr_num"}} = ();
   @{$ftr_info_HAR->{"all_children_ftr_str"}}     = ();
   @{$ftr_info_HAR->{"all_children_ftr_num"}}     = ();
   @{$ftr_info_HAR->{"parent_ftr"}}               = ();
 
-  if(! defined $cds2pmatpept_AAR) { 
-    # first $ncds features are CDS, remainder (if any) are afeat features
-    for($c = 0; $c < $ncds; $c++) { 
-      $ftr_info_HAR->{"type"}[$c]                     = "cds-notmp";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $c+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+  # order: 
+  # Mature peptides
+  # CDS
+  # xfeat
+  # dfeat
+  for($c = 0; $c < $nmp; $c++) { 
+    addAndInitializeFeatureInfoElement($ftr_info_HAR, "mp", undef, undef, $FH_HR);
+  }
+  for($c = 0; $c < $ncds; $c++) { 
+    # determine type of CDS
+    if((defined $cds2pmatpept_AAR) && (defined $cds2pmatpept_AAR->[$c])) {
+      # CDS comprised of mature peptides
+      addAndInitializeFeatureInfoElement($ftr_info_HAR, "cds-mp", $cds2pmatpept_AAR->[$c], $cds2amatpept_AAR->[$c], $FH_HR);
     }
-    for(my $xfeat_idx = 0; $xfeat_idx < $nxfeat; $xfeat_idx++) { 
-      $c = $ncds + $xfeat_idx;
-      $ftr_info_HAR->{"type"}[$c]                     = "xfeat";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $xfeat_idx+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+    else { 
+      # CDS NOT comprised of mature peptides
+      addAndInitializeFeatureInfoElement($ftr_info_HAR, "cds-notmp", undef, undef, $FH_HR);
     }
-    for(my $dfeat_idx = 0; $dfeat_idx < $ndfeat; $dfeat_idx++) { 
-      $c = $ncds + $nxfeat + $dfeat_idx;
-      $ftr_info_HAR->{"type"}[$c]                     = "dfeat";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "duplicate"; # this feature is modeled as a duplicate of another feature
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $dfeat_idx+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+  }
+  for(my $xfeat_idx = 0; $xfeat_idx < $nxfeat; $xfeat_idx++) { 
+    addAndInitializeFeatureInfoElement($ftr_info_HAR, "xfeat", $FH_HR);
+  }
+  for(my $dfeat_idx = 0; $dfeat_idx < $ndfeat; $dfeat_idx++) { 
+    addAndInitializeFeatureInfoElement($ftr_info_HAR, "dfeat", $FH_HR);
+  }
+  return;
+}
+
+#################################################################
+# Subroutine: addAndInitializeFeatureInfoElement()
+# Incept:     EPN, Fri Feb 15 11:23:58 2019
+#
+# Purpose:    Initialize element $c of the feature info hash of arrays
+#             of type $type.
+#
+# Arguments: 
+#   $ftr_info_HAR:     ref to hash of arrays with feature info.
+#                      must have at least the "annot_types" array, else we die 
+#   $type:             type of the feature: "cds-notmp", "xfeat", "dfeat", "mp", or "cds-mp"
+#   $cds2pmatpept_AR:  array of primary matpept indices that comprise this CDS, 
+#                      OR undefined if $type ne "cds-mp"
+#                      PRE-FILLED
+#   $cds2amatpept_AR:  array of all matpept indices that comprise this CDS, 
+#                      OR undefined if $type ne "cds-mp"
+#                      PRE-FILLED
+#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $ftr_info_HAR is not valid upon entering.
+#################################################################
+sub addAndInitializeFeatureInfoElement { 
+  my $sub_name  = "addAndInitializeFeatureInfoElement()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_HAR, $type, $cds2pmatpept_AR, $cds2amatpept_AR, $FH_HR) = (@_);
+
+  my @reqd_ftr_info_A = ();
+  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
+
+  # determine type index
+  my $type_idx = 1;
+  my $ftr_idx;
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_HAR->{"type_idx"}[$ftr_idx] eq $type) { 
+      $type_idx++;
+    }
+  }
+
+  $ftr_idx = $nftr; 
+
+  # initialize
+  $ftr_info_HAR->{"type"}[$ftr_idx]                     = $type;
+  $ftr_info_HAR->{"type_idx"}[$ftr_idx]                 = $type_idx;
+  $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] = "";  # created later for certain types (e.g. 'cds-mp')
+  $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx] = 0;   # created later for certain types (e.g. 'cds-mp')
+  $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]     = "";  # created later for certain types (e.g. 'cds-mp')
+  $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]     = 0;   # created later for certain types (e.g. 'cds-mp')
+  $ftr_info_HAR->{"parent_ftr"}[$ftr_idx]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+
+  # set annot_type, children strings and validate $type at the same time:
+  if(($type eq "cds-notmp") ||
+     ($type eq "xfeat")     ||
+     ($type eq "mp")) { 
+    $ftr_info_HAR->{"annot_type"}[$ftr_idx]  = "model"; # this feature is annotated by homology models
+  }
+  elsif($type eq "dfeat") { 
+    $ftr_info_HAR->{"annot_type"}[$ftr_idx]  = "duplicate"; # this feature is modeled as a duplicate of another feature
+  }
+  elsif($type eq "cds-mp") { 
+    if(! defined $cds2pmatpept_AR) { 
+      DNAORG_FAIL("ERROR in $sub_name, type is cds-mp but cds2pmatpept_AR is undefined", 1, $FH_HR);
+    }
+    if(! defined $cds2amatpept_AR) { 
+      DNAORG_FAIL("ERROR in $sub_name, type is cds-mp but cds2amatpept_AR is undefined", 1, $FH_HR);
+    }
+    # step through @{$cds2pmatpept_AR} and create the primary_children_ftr_str for this CDS
+    my $np = scalar(@{$cds2pmatpept_AR});
+    my $z;
+    my $mp_idx;
+    for($z = 0; $z < $np; $z++) { 
+      if($ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] ne "") { 
+        $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] .= " ";
+      }
+      $mp_idx = $cds2pmatpept_AR->[$z];
+      $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] .= $mp_idx;
+      $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx]++;
+
+      # step through @{$cds2amatpept_AR} and create the all_children_ftr_str for this CDS
+      my $np = scalar(@{$cds2pmatpept_AR});
+      for($z = 0; $z < $np; $z++) { 
+        if($ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx] ne "") { 
+          $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx] .= " ";
+        }
+        $mp_idx = $cds2amatpept_AR->[$z];
+        $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx] .= $mp_idx;
+        $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]++;
+        # set the parent ftr index for this mature peptide
+        $ftr_info_HAR->{"parent_ftr"}[$mp_idx] = $ftr_idx;
+      }          
     }
   }
   else { 
-    # some features are mature peptides, some are CDS, some of the CDS are comprised of mature peptides, 
-    # and (possibly) some of the CDS are not, and possibly some are xfeat
-
-    # first comes the $nmp mature peptides
-    for($c = 0; $c < $nmp; $c++) { 
-      $ftr_info_HAR->{"type"}[$c]                     = "mp";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $c+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
-    }
-
-    # then come the CDS, but we need to consult $cds2pmatpept_AAR to see if they are comprised of mature peptides ("cds-mp") 
-    # or not ("cds-notmp")
-    my $nnotmp_idxed = 0; # we increment this as we index cds-notmp 
-    my $nnotmp_extra = 0; # # of cds-notmp that occur after final cds-mp (idx >= scalar(@cds2pmatpept_AA))
-    for(my $cds_idx = 0; $cds_idx < $ncds; $cds_idx++) { 
-      $c = $nmp + $cds_idx;
-      if(defined $cds2pmatpept_AAR->[$cds_idx]) {
-        if(! defined $cds2amatpept_AAR->[$cds_idx]) { 
-          DNAORG_FAIL("ERROR in $sub_name, cds_idx has 'primary' mature peptide information but not 'all' mature peptide information.", 1, $FH_HR);
-        }
-        # a CDS that is comprised of mature peptides
-        $ftr_info_HAR->{"type"}[$c]                     = "cds-mp";
-        $ftr_info_HAR->{"annot_type"}[$c]               = "multifeature"; # this feature is annotated by multiple other features
-        $ftr_info_HAR->{"type_idx"}[$c]                 = $cds_idx+1;
-        $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = ""; # added to below when we go through $cds2pmatpept_AAR
-        $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;  # added to below when we go through $cds2pmatpept_AAR
-        $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = ""; # added to below when we go through $cds2amatpept_AAR
-        $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;  # added to below when we go through $cds2amatpept_AAR
-        $ftr_info_HAR->{"parent_ftr"}[$c]               = -1; # changed to a valid value below
-
-        # step through @{$cds2pmatpept_AAR} and create the primary_children_ftr_str for this CDS
-        for(my $z = 0; $z < scalar(@{$cds2pmatpept_AAR->[$cds_idx]}); $z++) { 
-          if($ftr_info_HAR->{"primary_children_ftr_str"}[$c] ne "") { 
-            $ftr_info_HAR->{"primary_children_ftr_str"}[$c] .= " ";
-          }
-          my $mp_idx = $cds2pmatpept_AAR->[$cds_idx][$z];
-          $ftr_info_HAR->{"primary_children_ftr_str"}[$c] .= $mp_idx;
-          $ftr_info_HAR->{"primary_children_ftr_num"}[$c]++;
-        }
-        # step through @{$cds2amatpept_AAR} and create the all_children_ftr_str for this CDS
-        for(my $z = 0; $z < scalar(@{$cds2amatpept_AAR->[$cds_idx]}); $z++) { 
-          if($ftr_info_HAR->{"all_children_ftr_str"}[$c] ne "") { 
-            $ftr_info_HAR->{"all_children_ftr_str"}[$c] .= " ";
-          }
-          my $mp_idx = $cds2amatpept_AAR->[$cds_idx][$z];
-          $ftr_info_HAR->{"all_children_ftr_str"}[$c] .= $mp_idx;
-          $ftr_info_HAR->{"all_children_ftr_num"}[$c]++;
-          $ftr_info_HAR->{"parent_ftr"}[$mp_idx] = $c;
-        }          
-      }
-      else { 
-        # a CDS that is NOT comprised of mature peptides
-        $ftr_info_HAR->{"type"}[$c]                     = "cds-notmp";
-        $ftr_info_HAR->{"type_idx"}[$c]                 = $cds_idx+1;
-        $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
-        $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-        $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-        $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-        $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-        $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
-      }
-    }
-    # add 'xfeat' features, if any
-    for(my $xfeat_idx = 0; $xfeat_idx < $nxfeat; $xfeat_idx++) { 
-      $c = $nmp + $ncds + $xfeat_idx;
-      $ftr_info_HAR->{"type"}[$c]                     = "xfeat";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $xfeat_idx+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
-    }
-    # add 'dfeat' features, if any
-    for(my $dfeat_idx = 0; $dfeat_idx < $ndfeat; $dfeat_idx++) { 
-      $c = $nmp + $ncds + $nxfeat + $dfeat_idx;
-      $ftr_info_HAR->{"type"}[$c]                     = "dfeat";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "duplicate"; # this feature is modeled as a duplicate of another feature
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $dfeat_idx+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
-    }
+    DNAORG_FAIL("ERROR in $sub_name, invalid type: $type.", 1, $FH_HR);
   }
-
   return;
 }
 
