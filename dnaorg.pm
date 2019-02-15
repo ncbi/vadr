@@ -1416,12 +1416,6 @@ sub initializeHardCodedErrorInfoHash {
                      "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "lsc", "feature",  0,
-                     "low homology score", # description
-                     1, 0, "!DESC!", # feature table info: valid, pred_stop, note
-                     "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
-                     $FH_HR);
-
   addToErrorInfoHash($err_info_HAR, "xnn", "feature",  0,
                      "blastx identifies protein not identified in nucleotide-based search", # description
                      1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
@@ -1488,12 +1482,6 @@ sub initializeHardCodedErrorInfoHash {
                      "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "dup", "feature",  0,
-                     "more than one homologous region", # description
-                     1, 0, "!DESC!", # feature table info: valid, pred_stop, note
-                     "Duplicate Feature: (!out_product,out_gene!) !DESC!", # feature table error
-                     $FH_HR);
-
   addToErrorInfoHash($err_info_HAR, "mn3", "feature",  0,
                      "mat_peptide may not be translated because its CDS' length is not a multiple of 3", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
@@ -1504,12 +1492,6 @@ sub initializeHardCodedErrorInfoHash {
                      "mat_peptide may not be translated because its CDS is incomplete due to an early stop", # description
                      1, 0, "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table info: valid, pred_stop, note
                      "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
-                     $FH_HR);
-
-  addToErrorInfoHash($err_info_HAR, "ost", "feature",  0,
-                     "predicted feature is on opposite strand from reference", # description
-                     1, 0, "similar to !out_product,out_gene!", # feature table info: valid, pred_stop, note
-                     "Reverse Complement: (!out_product,out_gene!) appears to be reverse complemented, sequence may be misassembled", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "zft", "sequence", 0, # code, per-type, maybe-allowed

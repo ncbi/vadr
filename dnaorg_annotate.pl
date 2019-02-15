@@ -1602,41 +1602,28 @@ sub parse_cmalign_stk {
     }
     my @sq_A = split("", $sqstring_aligned);
     my @pp_A = split("", $ppstring_aligned);
-    #printf("sq_A size: %d\n", scalar(@sq_A));
+ #   printf("sq_A size: %d\n", scalar(@sq_A));
 
     # first pass, from right to left to fill $min_**pos_after arrays, and rf
     my $min_rfpos = -1;
     my $min_uapos = $seq_len+1;
     for($rfpos = $rflen; $rfpos >= 0; $rfpos--) { 
-      # is this position a gap for this sequence in the alignment? 
       $apos = $rf2a_A[$rfpos];
-      #printf("rfpos: %5d  apos: %5d  min_rfpos: %5d  min_uapos: %5d\n", $rfpos, $apos, $min_rfpos, $min_uapos);
-      if(($rfpos > 0) && ($sq_A[($apos-1)] ne ".") && ($sq_A[($apos-1)] ne "-")) { 
-        # sequence is NOT a gap at $rfpos
+      my $nongap_rf    = (($rfpos > 0) && ($sq_A[($apos-1)] ne ".") && ($sq_A[($apos-1)] ne "-")) ? 1 : 0;
+      my $insert_after = ($rf2ipos_A[$rfpos] != -1) ? 1 : 0;
+      if($nongap_rf || $insert_after) { 
         $min_rfpos = $rfpos;
+      }
+      if($insert_after) { 
+        $min_uapos -= $rf2ilen_A[$rfpos]; # subtract inserts between $rfpos and ($rfpos+1)
+      }
+      if($nongap_rf) { 
         $min_uapos--;
-        $min_rfpos_after_A[$rfpos] = $min_rfpos;
-        $min_uapos_after_A[$rfpos] = $min_uapos;
-        if($rf2ipos_A[($rfpos-1)] != -1) { 
-          $min_uapos -= $rf2ilen_A[($rfpos-1)]; # subtract inserts between ($rfpos-1) and $rfpos
-        }
         $rfpos_pp_A[$rfpos] = $pp_A[($apos-1)];
-        #printf("rfpos: $rfpos apos: $apos set rfpos_pp_A[$rfpos] to " . $pp_A[($apos-1)] . "\n");
       }
-      elsif($rf2ipos_A[$rfpos] != -1) { 
-        # sequence is a gap at $rfpos but has an insert AFTER it
-        $min_rfpos = $rfpos;
-        $min_rfpos_after_A[$rfpos] = $min_rfpos;
-        $min_uapos_after_A[$rfpos] = $min_uapos;
-        $min_uapos -= $rf2ilen_A[($rfpos-1)]; # subtract inserts between ($rfpos-1) and $rfpos
-      }
-      elsif($min_rfpos != -1) { 
-        # sequence is a gap at $rfpos and has no insert AFTER it
-        # but we have seen at least 1 nucleotide thus far (at rfpos $min_rfpos)
-        $min_rfpos_after_A[$rfpos] = $min_rfpos;
-        $min_uapos_after_A[$rfpos] = $min_uapos;
-      }
-      # else we haven't seen any nucleotides yet, leave values as -1 
+      $min_rfpos_after_A[$rfpos] = $min_rfpos;
+      $min_uapos_after_A[$rfpos] = $min_uapos;
+#      printf("rfpos: %5d  apos: %5d  min_rfpos: %5d  min_uapos: %5d\n", $rfpos, $apos, $min_rfpos, $min_uapos);
     }
     if($min_uapos != 1) { 
       DNAORG_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seqname, pass 1 (min_uapos should be 1 but it is $min_uapos)", 1, $FH_HR);
@@ -1646,49 +1633,41 @@ sub parse_cmalign_stk {
     my $max_rfpos = -1;
     my $max_uapos = 0;
     for($rfpos = 1; $rfpos <= ($rflen+1); $rfpos++) { 
-      # is this position a gap for this sequence in the alignment? 
       $apos = $rf2a_A[$rfpos];
-      if(($rfpos <= $rflen) && ($sq_A[($apos-1)] ne ".") && ($sq_A[($apos-1)] ne "-")) { 
-        # sequence is NOT a gap at $rfpos
+      my $nongap_rf     = (($rfpos <= $rflen) && ($sq_A[($apos-1)] ne ".") && ($sq_A[($apos-1)] ne "-")) ? 1 : 0;
+      my $insert_before = ($rf2ipos_A[($rfpos-1)] != -1) ? 1 : 0;
+      if($nongap_rf || $insert_before) { 
         $max_rfpos = $rfpos;
+      }
+      if($insert_before) { 
+        $max_uapos += $rf2ilen_A[($rfpos-1)]; # subtract inserts between ($rfpos-1) and $rfpos
+      }
+      if($nongap_rf) { 
         $max_uapos++;
-        $max_rfpos_before_A[$rfpos] = $max_rfpos;
-        $max_uapos_before_A[$rfpos] = $max_uapos;
-        if($rf2ipos_A[$rfpos] != -1) { 
-          $max_uapos += $rf2ilen_A[$rfpos]; # add inserts between $rfpos and $rfpos+1
-        }          
+        $rfpos_pp_A[$rfpos] = $pp_A[($apos-1)];
       }
-      elsif($rf2ipos_A[($rfpos-1)] != -1) { 
-        # sequence is a gap at $rfpos but has an insert BEFORE it
-        $max_rfpos  = $rfpos;
-        $max_rfpos_before_A[$rfpos] = $max_rfpos;
-        $max_uapos_before_A[$rfpos] = $max_uapos;
-        $max_uapos += $rf2ilen_A[$rfpos]; # add inserts between $rfpos and $rfpos+1
-      }
-      elsif($max_rfpos != -1) { 
-        # sequence is a gap at $rfpos and has no insert BEFORE it
-        # but we have seen at least 1 nucleotide thus far (at rfpos $max_rfpos)
-        $max_rfpos_before_A[$rfpos] = $max_rfpos;
-        $max_uapos_before_A[$rfpos] = $max_uapos;
-      }
-      # else we haven't seen any nucleotides yet, leave values as -1 
+      $max_rfpos_before_A[$rfpos] = $max_rfpos;
+      $max_uapos_before_A[$rfpos] = $max_uapos;
+ #     if($rfpos <= $rflen) { 
+ #       printf("rfpos: %5d  apos: %5d  max_rfpos: %5d  max_uapos: %5d\n", $rfpos, $apos, $max_rfpos, $max_uapos);
+ #     }
     }
     if($max_uapos != $seq_len) { 
       DNAORG_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seqname, pass 2 (max_uapos should be $seq_len but it is $max_uapos)", 1, $FH_HR);
     }      
     
     # DEBUG PRINT
-    printf("***************************************************\n");
-    printf("DEBUG print $seqname\n");
-    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
-      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
-    }
-    printf("***************************************************\n");
+#    printf("***************************************************\n");
+#    printf("DEBUG print $seqname\n");
+#    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
+#      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+#             $rfpos, 
+#             $min_rfpos_after_A[$rfpos],
+#             $min_uapos_after_A[$rfpos],
+#             $max_rfpos_before_A[$rfpos],
+#             $max_uapos_before_A[$rfpos]);
+#    }
+#    printf("***************************************************\n");
 
     # given model span s..e
     # if strand eq "+"
@@ -1703,21 +1682,21 @@ sub parse_cmalign_stk {
       my $mdl_stop_rfpos  = $mdl_info_HAR->{"ref_stop"}[$m];
       my $mdl_strand      = $mdl_info_HAR->{"ref_strand"}[$m];
 
-      printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
-      $rfpos = $mdl_start_rfpos;
-      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
-      $rfpos = $mdl_stop_rfpos;
-      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
+#      printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
+#      $rfpos = $mdl_start_rfpos;
+#      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+#             $rfpos, 
+#             $min_rfpos_after_A[$rfpos],
+#             $min_uapos_after_A[$rfpos],
+#             $max_rfpos_before_A[$rfpos],
+#             $max_uapos_before_A[$rfpos]);
+#      $rfpos = $mdl_stop_rfpos;
+#      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+#             $rfpos, 
+#             $min_rfpos_after_A[$rfpos],
+#             $min_uapos_after_A[$rfpos],
+#             $max_rfpos_before_A[$rfpos],
+#             $max_uapos_before_A[$rfpos]);
 
       my $start_rfpos = -1; # model position of start of this model region for this aligned sequence, stays at -1 if none
       my $stop_rfpos  = -1; # model position of stop  of this model region for this aligned sequence, stays at -1 if none
@@ -3800,24 +3779,20 @@ sub ftr_results_add_blastx_errors {
 }    
 
 #################################################################
-# Subroutine:  mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors
+# Subroutine:  mdl_results_add_str_b3e_b3u_errors
 # Incept:      EPN, Thu Mar 31 13:43:58 2016
 #
-# Purpose:    Report 'str', 'nop', 'ost', 'lsc', 'dup', 'b3e', and 'b3u' errors
+# Purpose:    Report 'str', 'b3e', and 'b3u' errors
 #             and fill in the following keys in $mdl_results_AAHR:
 #             "out_5boundary" and "out_3boundary".
 #
 #             Checks for and adds or updates the following error 
 #             codes for features with "annot_type" eq "model":
 #             
-#             "nop": adds this error, no model prediction
-#             
 #             "str": updates this error, originally added in 
 #                  parse_esl_epn_translate_startstop_outfile()
 #                  by making the error message more informative
 #                  to include position and codon of predicted start
-#
-#             "ost": adds this error, model prediction is on incorrect strand
 #
 # Arguments: 
 #  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
@@ -3920,34 +3895,6 @@ sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors {
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3u", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
           }
 
-        }
-        if($mdl_results_HR->{"p_strand"} ne $mdl_info_HAR->{"ref_strand"}[$mdl_idx]) { 
-          ################################
-          # ost error (incorrect strand) #
-          ################################
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ost", $seq_name, "", $FH_HR);
-        }
-        if((exists $mdl_results_HR->{"p_score"}) && ($mdl_results_HR->{"p_score"} < 0.)) { 
-          #########################
-          # lsc error (low score) #
-          #########################
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"lsc"}{$seq_name}) { # lsc error already exists, update it
-            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"lsc"}{$seq_name} . ", " . $mdl_results_HR->{"p_score"} . " bits", $FH_HR);
-          }
-          else { # first lsc error
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, sprintf("%s: %s bits", $ftr_info_HAR->{"out_product"}[$ftr_idx], $mdl_results_HR->{"p_score"}), $FH_HR);
-          }
-        }
-        if($mdl_results_HR->{"p_nhits"} > 1) { 
-          ##############################
-          # dup error (duplicate hits) #
-          ##############################
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name}) { # dup error already exists, update it
-            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "dup", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name} . ", " . $mdl_results_HR->{"p_nhits"} . " hits", $FH_HR);
-          }
-          else { # first dup error
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "dup", $seq_name, sprintf("%s: %d regions", $ftr_info_HAR->{"out_product"}[$ftr_idx], $mdl_results_HR->{"p_nhits"}), $FH_HR);
-          }
         }
       } # end of 'else' entered if we have a prediction
     } # end of 'for($seq_idx' loop
@@ -4740,11 +4687,6 @@ sub error_instances_add {
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $value, $FH_HR) = @_;
 
   my $tmp_errmsg = "ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n";
-#  if($err_code eq "lsc" ||
-#     $err_code eq "dup" || 
-#     $err_code eq "ost") { 
-#    DNAORG_FAIL("ERROR in $sub_name, $tmp_errmsg", 1, $FH_HR);
-#  }
   
   my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
   if($err_idx == -1) { 
