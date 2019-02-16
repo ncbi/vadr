@@ -91,7 +91,6 @@
 #
 # Subroutines related to the feature and model info hash data
 # structures:
-#   getPrimaryOrAllChildrenFromFeatureInfo()
 #   determineFeatureTypes()
 #   getNumFeaturesAnnotatedByModels()
 #   getReferenceFeatureInfo()
@@ -227,62 +226,13 @@ use Cwd;
 #
 # Subroutines related to the feature and model info hash data
 # structures:
-#   getPrimaryOrAllChildrenFromFeatureInfo()
 #   determineFeatureTypes()
 #   getNumFeaturesAnnotatedByModels()
 #   getReferenceFeatureInfo()
 #   fetchReferenceFeatureSequences()
+#   featureHasChildren()
+#   featureHasParent()
 #
-#################################################################
-# Subroutine : getPrimaryOrAllChildrenFromFeatureInfo()
-# Incept:      EPN, Thu Mar  3 12:27:38 2016
-#
-# Purpose:     Fill @{$AR} with the space delimited tokens of 
-#              @{$ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]}
-#              (if $primary_or_all eq "primary") or of
-#              @{$ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]}
-#              (if $primary_or_all eq "all") and return.
-#              
-# Arguments: 
-#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
-#   $ftr_idx:        index of feature we're interested in
-#   $primary_or_all: "primary" to fill array with primary children ("primary_children_ftr_str")
-#                    "all" to fill array with all children ("all_children_ftr_str")
-#   $AR:             REF to array to fill, FILLED HERE
-#   $FH_HR:          REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies: if feature info hash is not 'complete', or if
-#       there are no primary/all children for feature index $ftr_idx,
-#       or if it is not of type 'multifeature', or
-#       if $primary_or_all is neither "primary" nor "all"
-#
-################################################################# 
-sub getPrimaryOrAllChildrenFromFeatureInfo { 
-  my $nargs_expected = 5;
-  my $sub_name = "getPrimaryOrAllChildrenFromFeatureInfo";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $ftr_idx, $primary_or_all, $AR, $FH_HR) = @_;
-
-  if(($primary_or_all ne "primary") && ($primary_or_all ne "all")) { 
-    DNAORG_FAIL("ERROR in $sub_name, special primary_or_all variable is neither \"primary\" nor \"all\"", 1, $FH_HR);
-  }    
-
-  @{$AR} = ();
-  if($primary_or_all eq "primary") { 
-    @{$AR} = split(/\s+/, $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]);
-  }
-  elsif($primary_or_all eq "all") { 
-    @{$AR} = split(/\s+/, $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]);
-  }
-
-  if(scalar(@{$AR}) == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but it has no $primary_or_all children.", 1, $FH_HR);
-  }
-
-  return;
-}
 
 #################################################################
 # Subroutine: determineFeatureTypes()
@@ -764,10 +714,10 @@ sub getReferenceFeatureInfo {
 #                "filename_root": 'root' string for output file names related to this model: 
 #                "out_tiny":      output value: very short name for this model (e.g. "CDS#4.2")
 #                "map_ftr":       the feature index (array index in ftr_info_HAR) this model models
-#                "is_final":      '1' if this model is the final model (e.g. final exon) for the feature it models ("map_ftr")
-#                "is_first":      '1' if this model is the first model (e.g. final exon) for the feature it models ("map_ftr")
-#                "map_exon":      the exon index this model models (1.."map_nexon" value)
-#                "map_nexon":     the number of exons the feature this model models has 
+#                "is_final":      '1' if this model is the final model (e.g. final segment/exon) for the feature it models ("map_ftr")
+#                "is_first":      '1' if this model is the first model (e.g. final segment/exon) for the feature it models ("map_ftr")
+#                "map_segment":   the segment index this model models (1.."map_nsegment" value)
+#                "map_nsegment":  the number of segments the feature this model models has 
 #                "out_idx":       output value: feature index and segment index this model (e.g. "4.2")
 #
 #           The following values are filled in the %{$ftr_info_HAR}:
@@ -831,8 +781,8 @@ sub fetchReferenceFeatureSequences {
   my $nmdl = 0;               # number of HMMs (and alignments used to build those HMMs)
   my @mdl_A = ();             # [0..$nmdl-1]: array of model names, also name of stockholm alignments used to build those models
   my %mdllen_H          = (); # key: model name from @mdl_A, value is model length
-  my @ref_nexons_A      = (); # [0..$c..$ref_nmft-1]: number of exons in CDS or mat_peptide $c+1
-  my $ref_tot_nexons    = 0;  # total number of exons in all CDS or mat_peptides
+  my @ref_nsegments_A   = (); # [0..$c..$ref_nmft-1]: number of segments in CDS or mat_peptide $c+1
+  my $ref_tot_nsegments = 0;  # total number of segments in all CDS or mat_peptides
   my @indi_ref_name_A   = (); # [0..$nmdl-1]: name of individual stockholm alignments and models
   my @indi_cksum_stk_A  = (); # [0..$nmdl-1]: checksum's of each named individual stockholm alignment
 
@@ -887,9 +837,9 @@ sub fetchReferenceFeatureSequences {
       # determine start and stop positions of all exons/segments
       my @starts_A = ();
       my @stops_A  = ();
-      my $nexons   = 0;
-      startsStopsStrandsFromCoordsLength($ftr_info_HAR->{"ref_coords"}[$i], $ref_totlen, $do_circular, \@starts_A, \@stops_A, undef, \$nexons, $FH_HR);
-      $ftr_info_HAR->{"nmodels"}[$i] = $nexons;
+      my $nsegments   = 0;
+      startsStopsStrandsFromCoordsLength($ftr_info_HAR->{"ref_coords"}[$i], $ref_totlen, $do_circular, \@starts_A, \@stops_A, undef, \$nsegments, $FH_HR);
+      $ftr_info_HAR->{"nmodels"}[$i] = $nsegments;
       my $strand = $ftr_info_HAR->{"ref_strand"}[$i];
 
       # if we're on the negative strand, reverse the arrays, they'll be in the incorrect order
@@ -898,12 +848,12 @@ sub fetchReferenceFeatureSequences {
         @stops_A  = reverse @stops_A;
       }
 
-      for(my $e = 0; $e < $nexons; $e++) { 
-        if($nexons > 1) { 
-          $cur_out_root        = $out_root .       ".ref." . $type_fname . "." . $ftr_type_idx . ".exon." . ($e+1);
-          $cur_out_name_root   = $out_dir_tail .   ".ref." . $type_fname . "." . $ftr_type_idx . ".exon." . ($e+1);
-          $cur_build_root      = $build_root .     ".ref." . $type_fname . "." . $ftr_type_idx . ".exon." . ($e+1);
-          $cur_build_name_root = $build_dir_tail . ".ref." . $type_fname . "." . $ftr_type_idx . ".exon." . ($e+1);
+      for(my $e = 0; $e < $nsegments; $e++) { 
+        if($nsegments > 1) { 
+          $cur_out_root        = $out_root .       ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
+          $cur_out_name_root   = $out_dir_tail .   ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
+          $cur_build_root      = $build_root .     ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
+          $cur_build_name_root = $build_dir_tail . ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
         }
         else { 
           $cur_out_root        = $out_root .       ".ref." . $type_fname . "." . $ftr_type_idx;
@@ -932,23 +882,23 @@ sub fetchReferenceFeatureSequences {
 
         # store information on this model's name for output purposes
         $mdl_info_HAR->{"filename_root"}[$nmdl] = sprintf("$ftr_type.%s", 
-                                                          ($nexons == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
+                                                          ($nsegments == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
         $mdl_info_HAR->{"out_tiny"}[$nmdl]  = sprintf("%s#%s", 
                                                       $type_fname,
-                                                      ($nexons == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
+                                                      ($nsegments == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
         
-        $mdl_info_HAR->{"map_ftr"}[$nmdl]    = $i;
-        $mdl_info_HAR->{"is_first"}[$nmdl]   = ($e == 0)           ? 1 : 0;
-        $mdl_info_HAR->{"is_final"}[$nmdl]   = ($e == ($nexons-1)) ? 1 : 0;
-        $mdl_info_HAR->{"map_exon"}[$nmdl]   = $e;
-        $mdl_info_HAR->{"map_nexon"}[$nmdl]  = $nexons;
-        $mdl_info_HAR->{"out_idx"}[$nmdl] = sprintf("%d.%d", 
-                                                    $mdl_info_HAR->{"map_ftr"}[$nmdl]+1, $mdl_info_HAR->{"map_exon"}[$nmdl]+1);
+        $mdl_info_HAR->{"map_ftr"}[$nmdl]       = $i;
+        $mdl_info_HAR->{"is_first"}[$nmdl]      = ($e == 0)           ? 1 : 0;
+        $mdl_info_HAR->{"is_final"}[$nmdl]      = ($e == ($nsegments-1)) ? 1 : 0;
+        $mdl_info_HAR->{"map_segment"}[$nmdl]   = $e;
+        $mdl_info_HAR->{"map_nsegment"}[$nmdl]  = $nsegments;
+        $mdl_info_HAR->{"out_idx"}[$nmdl]       = sprintf("%d.%d", 
+                                                          $mdl_info_HAR->{"map_ftr"}[$nmdl]+1, $mdl_info_HAR->{"map_segment"}[$nmdl]+1);
 
         if($e == 0) { 
           $ftr_info_HAR->{"first_mdl"}[$i] = $nmdl;
         }
-        if($e == ($nexons-1)) { 
+        if($e == ($nsegments-1)) { 
           $ftr_info_HAR->{"final_mdl"}[$i] = $nmdl;
         }
         $nmdl++;
@@ -1040,6 +990,232 @@ sub determineSourcesOfDuplicateFeatures {
     # else $ftr_info_HAR->{"source_idx"}[$ftr_idx] will stay as it was initialized (-1)
   }
   
+  return;
+}
+
+#################################################################
+# Subroutine : featureHasChildren()
+# Incept:      EPN, Sat Feb 16 06:43:26 2019
+#
+# Purpose:     Return '1' if a feature has >= 1 children features.
+#              Return '0' if a feature has    0 children features.
+#              
+# Arguments: 
+#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
+#   $ftr_idx:      index of feature we are interested in
+#   $FH_HR:        REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: If any of the following are undefined or have 
+#       fewer than $ftr_idx elements.
+#       @{$ftr_info_HAR->{"primary_children_ftr_str"}}
+#       @{$ftr_info_HAR->{"primary_children_ftr_num"}}
+#       @{$ftr_info_HAR->{"all_children_ftr_str"}}
+#       @{$ftr_info_HAR->{"all_children_ftr_num"}}
+# 
+################################################################# 
+sub featureHasChildren { 
+  my $nargs_expected = 3;
+  my $sub_name = "featureHasChildren";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+
+  foreach my $key ("primary_children_ftr_str", 
+                "primary_children_ftr_num",
+                "all_children_ftr_str",
+                "all_children_ftr_num") { 
+    if(! defined $ftr_info_HAR->{$key}) { 
+      DNAORG_FAIL("ERROR in $sub_name, ftr_info_HAR->{$key} is not defined", 1, $FH_HR);
+    }
+    if(scalar(@{$ftr_info_HAR->{$key}}) < $ftr_idx) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, ftr_idx: $ftr_idx, ftr_info_HAR->{$key} only has %d elements", scalar(@{$ftr_info_HAR->{$key}})), 1, $FH_HR);
+    }
+  }        
+
+  if(featureHasPrimaryChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
+    return 1; 
+  }
+  if(featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
+    return 1; 
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine : featureHasPrimaryChildren()
+# Incept:      EPN, Sat Feb 16 06:51:52 2019
+#
+# Purpose:     Return '1' if a feature has >= 1 primary children features.
+#              Return '0' if a feature has    0 primary children features.
+#              
+# Arguments: 
+#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
+#   $ftr_idx:      index of feature we are interested in
+#   $FH_HR:        REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: If any of the following are undefined or have 
+#       fewer than $ftr_idx elements.
+#       @{$ftr_info_HAR->{"primary_children_ftr_str"}}
+#       @{$ftr_info_HAR->{"primary_children_ftr_num"}}
+#
+################################################################# 
+sub featureHasPrimaryChildren { 
+  my $nargs_expected = 3;
+  my $sub_name = "featureHasPrimaryChildren";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+
+  foreach my $key ("primary_children_ftr_str", 
+                   "primary_children_ftr_num") { 
+    if(! defined $ftr_info_HAR->{$key}) { 
+      DNAORG_FAIL("ERROR in $sub_name, ftr_info_HAR->{$key} is not defined", 1, $FH_HR);
+    }
+    if(scalar(@{$ftr_info_HAR->{$key}}) < $ftr_idx) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, ftr_idx: $ftr_idx, ftr_info_HAR->{$key} only has %d elements", scalar(@{$ftr_info_HAR->{$key}})), 1, $FH_HR);
+    }
+  }        
+
+  if($ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx] > 0) { 
+    return 1;
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine : featureHasAllChildren()
+# Incept:      EPN, Sat Feb 16 06:51:52 2019
+#
+# Purpose:     Return '1' if a feature has >= 1 all children features.
+#              Return '0' if a feature has    0 all children features.
+#              
+# Arguments: 
+#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
+#   $ftr_idx:      index of feature we are interested in
+#   $FH_HR:        REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: If any of the following are undefined or have 
+#       fewer than $ftr_idx elements.
+#       @{$ftr_info_HAR->{"all_children_ftr_str"}}
+#       @{$ftr_info_HAR->{"all_children_ftr_num"}}
+#
+################################################################# 
+sub featureHasAllChildren { 
+  my $nargs_expected = 3;
+  my $sub_name = "featureHasAllChildren";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+
+  foreach my $key ("all_children_ftr_str", 
+                   "all_children_ftr_num") { 
+    if(! defined $ftr_info_HAR->{$key}) { 
+      DNAORG_FAIL("ERROR in $sub_name, ftr_info_HAR->{$key} is not defined", 1, $FH_HR);
+    }
+    if(scalar(@{$ftr_info_HAR->{$key}}) < $ftr_idx) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, ftr_idx: $ftr_idx, ftr_info_HAR->{$key} only has %d elements", scalar(@{$ftr_info_HAR->{$key}})), 1, $FH_HR);
+    }
+  }        
+
+  if($ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx] > 0) { 
+    return 1;
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine : featureGetPrimaryChildren()
+# Incept:      EPN, Sat Feb 16 07:00:13 2019
+#
+# Purpose:     Fill @{$AR} with the space delimited tokens of 
+#              @{$ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]}
+#              and return;
+# 
+# Arguments: 
+#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:        index of feature we're interested in
+#   $AR:             REF to array to fill, FILLED HERE
+#   $FH_HR:          REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: If there are no primary children for feature index $ftr_idx,
+#       If number of primary children in $ftr_info_HAR->{"primary_children_ftr_str"}
+#       disagrees with $ftr_info_HAR->{"primary_children_ftr_num"}.
+#
+################################################################# 
+sub featureGetPrimaryChildren { 
+  my $nargs_expected = 4;
+  my $sub_name = "featureGetPrimaryChildren";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $AR, $FH_HR) = @_;
+
+  if(! featureHasPrimaryChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
+    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no primary children", 1, $FH_HR);
+  }
+
+  @{$AR} = ();
+  @{$AR} = split(/\s+/, $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]);
+
+  if(scalar(@{$AR}) == 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no primary children (on second pass -- shouldn't happen)", 1, $FH_HR);
+  }
+  if(scalar(@{$AR}) != $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx]) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, feature $ftr_idx has %d children in ftr_info_HAR->{primary_children_ftr_str} but ftr_info_HAR->{primary_children_ftr_num} is %d", 
+                        scalar(@{$AR}), $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx]), 1, $FH_HR); 
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine : featureGetAllChildren()
+# Incept:      EPN, Sat Feb 16 07:00:08 2019
+#
+# Purpose:     Fill @{$AR} with the space delimited tokens of 
+#              @{$ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]}
+#              and return;
+# 
+# Arguments: 
+#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:        index of feature we're interested in
+#   $AR:             REF to array to fill, FILLED HERE
+#   $FH_HR:          REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: If there are no all children for feature index $ftr_idx,
+#       If number of all children in $ftr_info_HAR->{"all_children_ftr_str"}
+#       disagrees with $ftr_info_HAR->{"all_children_ftr_num"}.
+#
+################################################################# 
+sub featureGetAllChildren { 
+  my $nargs_expected = 4;
+  my $sub_name = "featureGetAllChildren";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $AR, $FH_HR) = @_;
+
+  if(! featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
+    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no all children", 1, $FH_HR);
+  }
+
+  @{$AR} = ();
+  @{$AR} = split(/\s+/, $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]);
+
+  if(scalar(@{$AR}) == 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no all children (on second pass -- shouldn't happen)", 1, $FH_HR);
+  }
+  if(scalar(@{$AR}) != $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, feature $ftr_idx has %d children in ftr_info_HAR->{all_children_ftr_str} but ftr_info_HAR->{all_children_ftr_num} is %d", 
+                        scalar(@{$AR}), $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]), 1, $FH_HR); 
+  }
+
   return;
 }
 
@@ -2926,7 +3102,7 @@ sub helperBreakdownFac {
   }
   else { # normal case, all exons/segments are on the same strand
     # if we're on the reverse strand, we need to reverse the order of the 
-    # exons, because the order of reverse strand exons in a feature table is 
+    # segments, because the order of reverse strand segments in a feature table is 
     # opposite what it is in Entrez, and our other scripts use Entrez
     # format, so we enforce that convention here.
     if($nrev > 0) { 
@@ -2945,7 +3121,7 @@ sub helperBreakdownFac {
   if($nsegments > 1) { # more than one segment
     $ncbi_coords = "join(" . $ncbi_coords . ")";
   }
-  # now add complement for cases where are exons/segments are on reverse strand
+  # now add complement for cases where are segments/segments are on reverse strand
   # impt to do this after the join, so we get complement(join()) instead of
   # join(complement())
   if($nfwd == 0 && $nrev > 0) { # all segments are on reverse strand
@@ -4040,11 +4216,11 @@ sub getStrandStats {
 #   $do_circular: '1' if we're searching a circular (duplicated) genome and we'll allow stop..start boundary spans
 #   $starts_AR:   ref to array to fill with start positions
 #   $stops_AR:    ref to array to fill with stop positions
-#   $strands_AR:  ref to array to fill with strands of each exon, can be undef
-#   $nexons_R:    ref to scalar that fill with the number of exons
+#   $strands_AR:  ref to array to fill with strands of each segment, can be undef
+#   $nsegments_R: ref to scalar that fill with the number of segments
 #   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    void; but fills @{$starts_AR}, @{$stops_AR}, and $$nexons_R.
+# Returns:    void; but fills @{$starts_AR}, @{$stops_AR}, and $$nsegments_R.
 #
 # Dies:       if we see a feature that spans stop..start but $do_circular is 0
 #################################################################
@@ -4053,12 +4229,12 @@ sub startsStopsStrandsFromCoordsLength {
   my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($coords, $totlen, $do_circular, $starts_AR, $stops_AR, $strands_AR, $nexons_R, $FH_HR) = @_;
+  my ($coords, $totlen, $do_circular, $starts_AR, $stops_AR, $strands_AR, $nsegments_R, $FH_HR) = @_;
 
   # zero/initialize what we will be determining in this subroutine
   @{$starts_AR} = ();
   @{$stops_AR}  = ();
-  $$nexons_R    = 0;
+  $$nsegments_R    = 0;
   
   my $orig_coords = $coords;
   # Examples:
@@ -4085,7 +4261,7 @@ sub startsStopsStrandsFromCoordsLength {
     # rare case: remove 'complement(' ')' that still exists:
     $cur_strand = $strand;
     if($el =~ m/^complement\(/) { 
-      DNAORG_FAIL("ERROR in $sub_name: found internal complement in coords string $coords, we assume all exons are on same strand...", 1, $FH_HR); 
+      DNAORG_FAIL("ERROR in $sub_name: found internal complement in coords string $coords, we assume all segments are on same strand...", 1, $FH_HR); 
       $el =~ s/^complement\(//;
       if($cur_strand eq "-") { DNAORG_FAIL("ERROR in $sub_name, found nested 'complement' annotations in coord string: $coords", 1, $FH_HR); }
       $cur_strand = "-";
@@ -4097,29 +4273,29 @@ sub startsStopsStrandsFromCoordsLength {
       push(@{$starts_AR}, $1);
       push(@{$stops_AR},  $2);
       if(defined $strands_AR) { push(@{$strands_AR}, $cur_strand); }
-      $$nexons_R++;
+      $$nsegments_R++;
     }
     elsif($el =~ m/^(\d+)$/) { # a single nucleotide
       push(@{$starts_AR}, $1);
       push(@{$stops_AR},  $1);
       if(defined $strands_AR) { push(@{$strands_AR}, $cur_strand); }
-      $$nexons_R++;
+      $$nsegments_R++;
     }
     else { 
       DNAORG_FAIL("ERROR unable to parse $orig_coords in $sub_name", 1, $FH_HR); 
     }
   }
 
-  # check if we have a spanning exon (that spans stop..start) and if we do
+  # check if we have a spanning segment (that spans stop..start) and if we do
   # and (! $do_circular) then die, because that shouldn't happen.
-  my $have_spanning_exon = checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nexons_R, 0, $strand, $totlen); # 1 says: do correct the spanning exon
-  if($have_spanning_exon) { 
+  my $have_spanning_segment = checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nsegments_R, 0, $strand, $totlen); # 1 says: do correct the spanning segment
+  if($have_spanning_segment) { 
     if(! $do_circular) { 
-      DNAORG_FAIL("ERROR in $sub_name, found exon that spanned stop..start boundary, but we're not allowing circular genomes...", 1, $FH_HR); 
+      DNAORG_FAIL("ERROR in $sub_name, found segment that spanned stop..start boundary, but we're not allowing circular genomes...", 1, $FH_HR); 
     }
     else { 
       # fix it
-      checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nexons_R, 1, $strand, $totlen); # 0 says: don't correct the spanning exon
+      checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nsegments_R, 1, $strand, $totlen); # 0 says: don't correct the spanning segment
     }
   }
 
@@ -4132,13 +4308,13 @@ sub startsStopsStrandsFromCoordsLength {
 # Purpose:    Extract the starts and stops from a coords string.
 #
 # Args:
-#   $coords:    the coords string
-#   $starts_AR: REF to array to fill with start positions, FILLED HERE
-#   $stops_AR:  REF to array to fill with stop positions, FILLED HERE
-#   $nexons_R:  REF to scalar that fill with the number of exons, FILLED HERE
-#   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#   $coords:      the coords string
+#   $starts_AR:   REF to array to fill with start positions, FILLED HERE
+#   $stops_AR:    REF to array to fill with stop positions, FILLED HERE
+#   $nsegments_R: REF to scalar that fill with the number of segments, FILLED HERE
+#   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:      void; but fills @{$starts_AR}, @{$stops_AR}, and $$nexons_R.
+# Returns:      void; but fills @{$starts_AR}, @{$stops_AR}, and $$nsegments_R.
 #
 # Dies:         if we can't parse $coords
 #################################################################
@@ -4147,11 +4323,11 @@ sub startsStopsFromCoords {
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($coords, $starts_AR, $stops_AR, $nexons_R, $FH_HR) = @_;
+  my ($coords, $starts_AR, $stops_AR, $nsegments_R, $FH_HR) = @_;
 
   @{$starts_AR} = ();
   @{$stops_AR}  = ();
-  $$nexons_R    = 0;
+  $$nsegments_R    = 0;
   
   my $orig_coords = $coords;
   # Examples:
@@ -4178,12 +4354,12 @@ sub startsStopsFromCoords {
     if($el =~ m/^(\d+)\.\.(\d+)$/) { 
       push(@{$starts_AR}, $1);
       push(@{$stops_AR},  $2);
-      $$nexons_R++;
+      $$nsegments_R++;
     }
     elsif($el =~ m/^(\d+)$/) { # a single nucleotide
       push(@{$starts_AR}, $1);
       push(@{$stops_AR},  $1);
-      $$nexons_R++;
+      $$nsegments_R++;
     }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unable to parse coordinates $orig_coords", 1, $FH_HR); 
@@ -4248,12 +4424,12 @@ sub lengthFromCoords {
 
   my @starts_A = ();
   my @stops_A  = ();
-  my $nexons   = 0;
+  my $nsegments   = 0;
 
-  startsStopsFromCoords($coords, \@starts_A, \@stops_A, \$nexons, $FH_HR);
+  startsStopsFromCoords($coords, \@starts_A, \@stops_A, \$nsegments, $FH_HR);
 
   my $length = 0;
-  for(my $i = 0; $i < $nexons; $i++) { 
+  for(my $i = 0; $i < $nsegments; $i++) { 
     $length += abs($starts_A[$i] - $stops_A[$i]) + 1;
   }
 
@@ -4951,13 +5127,11 @@ sub validateExecutableHash {
 #             The expected keys are:
 #                "annot_type":    annotation type:
 #                                 "model":        if this feature's annotation is derived from models (type: 'mp' or 'cds-notmp'
-#                                 "multifeature": if this feature's annotation is derived from multiple other features (type: 'cds-mp')
 #                                 "duplicate":    if this feature's annotation is derived by copying data from another (e.g., type: 'gene')
 #                "filename_root": 'root' string for output file names related to this model: 
 #                "final_mdl":     index (in arrays of %mdl_info_HA) of final model for this feature
 #                "first_mdl":     index (in arrays of %mdl_info_HA) of first model for this feature
-#                "nmodels":       number of models for this feature (e.g. number of exons or segments) for this feature, 
-#                                 0 if 'annotation' eq 'multifeature'
+#                "nmodels":       number of models for this feature (e.g. number of segments) for this feature, 
 #                "out_product":   output value: name of product for this feature (e.g. "replication-associated protein")
 #                "out_gene":      output value: name of gene for this feature (e.g. "ORF2")
 #                "out_exception": output value: name of exception for this feature (e.g. "RNA editing")
@@ -5016,15 +5190,15 @@ sub validateFeatureInfoHashIsComplete {
 #                "checksum":      checksum of the 'alignment' (single sequence) file the model was built from
 #                "cmname":        name of the model, used in infernal output 
 #                "filename_root": 'root' string for output file names related to this model: 
-#                "is_final":      '1' if this model is the final model (e.g. final exon) for the feature it models ("map_ftr")
-#                "is_first":      '1' if this model is the first model (e.g. final exon) for the feature it models ("map_ftr")
+#                "is_final":      '1' if this model is the final model (e.g. final segment) for the feature it models ("map_ftr")
+#                "is_first":      '1' if this model is the first model (e.g. final segment) for the feature it models ("map_ftr")
 #                "length":        length, in nucleotides, of the model
 #                "ref_start":     start position of modelled region in the reference genome
 #                "ref_stop":      stop position of modelled region in the reference genome
 #                "ref_strand":    strand of modelled region in the reference genome
-#                "map_exon":      the exon index this model models (1.."map_nexon" value)
+#                "map_segment":   the segment index this model models (1.."map_nsegment" value)
 #                "map_ftr":       the feature index (array index in ftr_info_HAR) this model models
-#                "map_nexon":     the number of exons the feature this model models has 
+#                "map_nsegment":  the number of segments the feature this model models has 
 #                "out_tiny":      output value: very short name for this model (e.g. "CDS#4.2")
 #                "out_idx":       output value: feature index and segment index this model (e.g. "4.2")
 #
@@ -5052,7 +5226,8 @@ sub validateModelInfoHashIsComplete {
   my ($mdl_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
   my @expected_keys_A = ("checksum", "cmname", "filename_root", "is_final", "is_first", 
-                         "length", "ref_start", "ref_stop", "ref_strand", "map_exon", "map_ftr", "map_nexon", "out_tiny", "out_idx");
+                         "length", "ref_start", "ref_stop", "ref_strand", "map_segment", 
+                         "map_ftr", "map_nsegment", "out_tiny", "out_idx");
 
   return validateInfoHashOfArraysIsComplete($mdl_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
@@ -7201,27 +7376,27 @@ sub matpeptValidateCdsRelationships {
     my @cds_starts_A  = ();
     my @cds_stops_A   = ();
     my @cds_strands_A = ();
-    my $cds_nexons    = 0;
-    startsStopsStrandsFromCoordsLength($ref_cds_coords_A[$cds_idx], $ref_totlen, $do_circular, \@cds_starts_A, \@cds_stops_A, \@cds_strands_A, \$cds_nexons, $FH_HR);
+    my $cds_nsegments = 0;
+    startsStopsStrandsFromCoordsLength($ref_cds_coords_A[$cds_idx], $ref_totlen, $do_circular, \@cds_starts_A, \@cds_stops_A, \@cds_strands_A, \$cds_nsegments, $FH_HR);
     my $cds_start = $cds_starts_A[0];
-    my $cds_stop  = $cds_stops_A[$cds_nexons-1];
-    if($cds_nexons != 1) { 
-      if($cds_nexons != 2) { 
-        DNAORG_FAIL("ERROR in $sub_name, triple or more exon CDS broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
+    my $cds_stop  = $cds_stops_A[$cds_nsegments-1];
+    if($cds_nsegments != 1) { 
+      if($cds_nsegments != 2) { 
+        DNAORG_FAIL("ERROR in $sub_name, triple or more segment CDS broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
       }
       if($cds_strands_A[0] ne $cds_strands_A[1]) { 
-        DNAORG_FAIL("ERROR in $sub_name, double exon CDS with each exon on different strands to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, double segment CDS with each segment on different strands to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
       }
-      # two exon CDS, if any introns exist (any nt is not included between $cds_start..$cds_stop) then we can't handle it
-      # example of a multi-'exon' CDS that we CAN handle is West Nile Virus CDS #2: NC_001563.2 join(97..3540,3540..3671)
+      # two segment CDS, if any introns exist (any nt is not included between $cds_start..$cds_stop) then we can't handle it
+      # example of a multi-'segment' CDS that we CAN handle is West Nile Virus CDS #2: NC_001563.2 join(97..3540,3540..3671)
       if($cds_strands_A[0] eq "+") { 
         if(($cds_starts_A[1] - $cds_stops_A[0] - 1) > 0) { 
-#          DNAORG_FAIL("ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
+#          DNAORG_FAIL("ERROR in $sub_name, multiple segment CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
         }
       }
       else { # negative strand
         if(($cds_stops_A[0] - $cds_starts_A[1] - 1) > 0) { 
-#          DNAORG_FAIL("ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
+#          DNAORG_FAIL("ERROR in $sub_name, multiple segment CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
         }
       }
     }
@@ -7236,8 +7411,8 @@ sub matpeptValidateCdsRelationships {
       }
       my @mp_starts_A = ();
       my @mp_stops_A  = ();
-      my $mp_nexons   = 0;
-      startsStopsStrandsFromCoordsLength($ref_mp_coords_A[$mp_idx], $ref_totlen, $do_circular, \@mp_starts_A, \@mp_stops_A, undef, \$mp_nexons, $FH_HR);
+      my $mp_nsegments   = 0;
+      startsStopsStrandsFromCoordsLength($ref_mp_coords_A[$mp_idx], $ref_totlen, $do_circular, \@mp_starts_A, \@mp_stops_A, undef, \$mp_nsegments, $FH_HR);
       if($x == 0) { # verify start matches with CDS start
         if($mp_starts_A[0] != $cds_start) { 
           DNAORG_FAIL("ERROR in $sub_name, for cds_idx $cds_idx start of first mat_peptide doesn't match CDS start ($mp_starts_A[0] != $cds_start)", 1, $FH_HR); 
@@ -7249,12 +7424,12 @@ sub matpeptValidateCdsRelationships {
         }
       }
       if($x == ($nmp2check-1)) { # verify stop matches with CDS stop-3
-        if(($mp_stops_A[($mp_nexons-1)]+3) != $cds_stop) { 
-          DNAORG_FAIL(sprintf("ERROR in $sub_name, for cds_idx $cds_idx stop of final mat_peptide doesn't match CDS stop (%d != %d)", $mp_stops_A[($mp_nexons-1)], $cds_stop), 1, $FH_HR);
+        if(($mp_stops_A[($mp_nsegments-1)]+3) != $cds_stop) { 
+          DNAORG_FAIL(sprintf("ERROR in $sub_name, for cds_idx $cds_idx stop of final mat_peptide doesn't match CDS stop (%d != %d)", $mp_stops_A[($mp_nsegments-1)], $cds_stop), 1, $FH_HR);
         }
       }
-      $prv_stop = $mp_stops_A[($mp_nexons-1)];
-      # printf("checked mp $mp_idx %d..%d\n", $mp_starts_A[0], $mp_stops_A[($mp_nexons-1)]);
+      $prv_stop = $mp_stops_A[($mp_nsegments-1)];
+      # printf("checked mp $mp_idx %d..%d\n", $mp_starts_A[0], $mp_stops_A[($mp_nsegments-1)]);
     }
   }
 
@@ -7271,15 +7446,15 @@ sub matpeptValidateCdsRelationships {
 #             code of the subroutine.)
 #
 # Arguments:
-#   $starts_AR: ref of array of start positions to potentially overwrite (if we find this is really only one exon)
-#   $stops_AR:  ref of array of stop positions to potentially overwrite (if we find this is really only one exon)
-#   $nexons_R:  ref to scalar of number of exons to overwrite (if we find this is really only one exon)
-#   $do_update: '1' to update $starts_AR, $stops_AR and $nexons_R if we find two exons that span stop..start
-#   $strand:    strand the exons are on
-#   $totlen:    total length of the sequence
+#   $starts_AR:   ref of array of start positions to potentially overwrite (if we find this is really only one segment)
+#   $stops_AR:    ref of array of stop positions to potentially overwrite (if we find this is really only one segment)
+#   $nsegments_R: ref to scalar of number of segments to overwrite (if we find this is really only one segment)
+#   $do_update:   '1' to update $starts_AR, $stops_AR and $nsegments_R if we find two segments that span stop..start
+#   $strand:      strand the segments are on
+#   $totlen:      total length of the sequence
 #           
-# Returns:    '1' if we found two exons that spanned stop..start 
-#             (and if ($do_update) then we also updated @{$starts_AR}, @{$stops_AR} and $$nexons_R)
+# Returns:    '1' if we found two segments that spanned stop..start 
+#             (and if ($do_update) then we also updated @{$starts_AR}, @{$stops_AR} and $$nsegments_R)
 # 
 # Dies:       Never.
 # 
@@ -7289,50 +7464,50 @@ sub checkForSpanningSequenceSegments {
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($starts_AR, $stops_AR, $nexons_R, $do_update, $strand, $totlen) = @_;
+  my ($starts_AR, $stops_AR, $nsegments_R, $do_update, $strand, $totlen) = @_;
 
-  my $found_spanning_exons = 0;
+  my $found_spanning_segments = 0;
 
-  # if $$nexons_R is not '2', we skip this block and return '0'.
-  # 'spanning' exons can only occur if there are exactly 2 exons that
+  # if $$nsegments_R is not '2', we skip this block and return '0'.
+  # 'spanning' segments can only occur if there are exactly 2 segments that
   # we are checking. 
-  if($$nexons_R == 2) { 
+  if($$nsegments_R == 2) { 
     # if we're in a circular genome, we need to check for a special case, where 
-    # what looks like a 2-exon CDS is really a single exon that spans the stop..start boundary.
-    # [Note that if the stop..start boundary is spanned by an intron (i.e. exon i is before stop,
+    # what looks like a 2-segment CDS is really a single segment that spans the stop..start boundary.
+    # [Note that if the stop..start boundary is spanned by an intron (i.e. segment i is before stop,
     # and i+1 is after start) then we don't need to modify anything, we'll still fetch the proper
     # sequence even in a duplicated genome].
     #
-    # Example 1: single exon that spans stop..start boundary on positive strand
-    # join(2309..3182,1..1625) in a seq of length 3182, this should really be a single exon
+    # Example 1: single segment that spans stop..start boundary on positive strand
+    # join(2309..3182,1..1625) in a seq of length 3182, this should really be a single segment
     # $starts_A[0] = 2309
     # $stops_A[0]  = 3182
     # $starts_A[1] = 1
     # $stops_A[1]  = 1625
-    # $nexons = 2;
+    # $nsegments = 2;
     # 
     # should become:
     # $starts_A[0] = 2309
     # $stops_A[0]  = 4807
-    # $nexons = 1;
+    # $nsegments = 1;
     # 
-    # Example 2: single exon that spans stop..start boundary on negative strand
-    # complement(join(2309..3182,1..1625))   in a seq of length 3182, this should really be a single exon
+    # Example 2: single segment that spans stop..start boundary on negative strand
+    # complement(join(2309..3182,1..1625))   in a seq of length 3182, this should really be a single segment
     # $starts_A[0] = 3182
     # $stops_A[0]  = 2309
     # $starts_A[1] = 1625
     # $stops_A[1]  = 1
-    # $nexons = 2;
+    # $nsegments = 2;
     # 
     # should become:
     # $starts_A[0] = 4807
     # $stops_A[0]  = 2309
-    # $nexons = 1;
+    # $nsegments = 1;
     #
     # we can easily check and fix these cases:
     my $tmp_start = undef;
     my $tmp_stop  = undef;
-    # remember if we get here, we know we only have 2 exons, i.e scalar(@{$starts_AR}) and scalar(@{$stops_AR}) is 2
+    # remember if we get here, we know we only have 2 segments, i.e scalar(@{$starts_AR}) and scalar(@{$stops_AR}) is 2
     if($strand eq "+" && $stops_AR->[0] == $totlen && $starts_AR->[1] == 1) { 
       $tmp_start = $starts_AR->[0];
       $tmp_stop  = $stops_AR->[1] + $totlen;
@@ -7346,11 +7521,11 @@ sub checkForSpanningSequenceSegments {
       @{$stops_AR} = ();
       $starts_AR->[0] = $tmp_start;
       $stops_AR->[0]  = $tmp_stop;
-      $$nexons_R = 1;
-      $found_spanning_exons = 1;
+      $$nsegments_R   = 1;
+      $found_spanning_segments = 1;
     }    
   }
-  return $found_spanning_exons;
+  return $found_spanning_segments;
 }
 
 #################################################################
