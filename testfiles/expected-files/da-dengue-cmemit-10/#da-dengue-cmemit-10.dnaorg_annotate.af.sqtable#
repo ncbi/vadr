@@ -248,7 +248,7 @@ ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4A) contains unexpec
 ERROR: Unexpected Length: (protein 2K) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [65]
 ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6904..7689 revised to 6904..6909 (stop shifted 780 nt)]
 ERROR: mat_peptide Has Stop Codon: (RNA-dependent RNA polymerase NS5) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 7690..10504 revised to 7690..7704 (stop shifted 2800 nt)]
-ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 100..10507 revised to 100..147 (stop shifted 10360 nt)]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 100..10507 revised to 100..150 (stop shifted 10357 nt)]
 >Feature NC_001477-sample10
 92	10544	gene
 			gene	POLY
@@ -299,4 +299,4 @@ ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4A) contains unexpec
 ERROR: mat_peptide Has Stop Codon: (protein 2K) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6948..7015 revised to 6948..6983 (stop shifted 32 nt)]
 ERROR: mat_peptide Has Stop Codon: (nonstructural protein NS4B) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 7016..7799 revised to 7016..7066 (stop shifted 733 nt)]
 ERROR: mat_peptide Has Stop Codon: (RNA-dependent RNA polymerase NS5) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 7800..10541 revised to 7800..7856 (stop shifted 2685 nt)]
-ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 92..10544 revised to 92..214 (stop shifted 10330 nt)]
+ERROR: CDS Has Stop Codon: (polyprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 92..10544 revised to 92..217 (stop shifted 10327 nt)]

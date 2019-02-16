@@ -96,7 +96,6 @@
 #   getNumFeaturesAnnotatedByModels()
 #   getReferenceFeatureInfo()
 #   fetchReferenceFeatureSequences()
-#   annotateAppendFeatures()
 #
 # Subroutines related to the output info hash:
 #   openAndAddFileToOutputInfo()
@@ -233,7 +232,6 @@ use Cwd;
 #   getNumFeaturesAnnotatedByModels()
 #   getReferenceFeatureInfo()
 #   fetchReferenceFeatureSequences()
-#   annotateAppendFeatures()
 #
 #################################################################
 # Subroutine : getPrimaryOrAllChildrenFromFeatureInfo()
@@ -883,7 +881,6 @@ sub fetchReferenceFeatureSequences {
     $ftr_info_HAR->{"first_mdl"}[$i]  = -1; # remains -1 if $do_model is FALSE
     $ftr_info_HAR->{"final_mdl"}[$i]  = -1; # remains -1 if $do_model is FALSE
     $ftr_info_HAR->{"nmodels"}[$i]    = 0;  # remains 0 if $do_model is FALSE
-    $ftr_info_HAR->{"append_num"}[$i] = 0;  # maybe changed later in determineFeatureTypes()
     $ftr_info_HAR->{"source_idx"}[$i] = -1; # maybe changed later in determineSourcesOfDuplicateFeatures()
 
     if($do_model) { 
@@ -945,7 +942,6 @@ sub fetchReferenceFeatureSequences {
         $mdl_info_HAR->{"is_final"}[$nmdl]   = ($e == ($nexons-1)) ? 1 : 0;
         $mdl_info_HAR->{"map_exon"}[$nmdl]   = $e;
         $mdl_info_HAR->{"map_nexon"}[$nmdl]  = $nexons;
-        $mdl_info_HAR->{"append_num"}[$nmdl] = 0; # maybe changed later in determineFeatureTypes()
         $mdl_info_HAR->{"out_idx"}[$nmdl] = sprintf("%d.%d", 
                                                     $mdl_info_HAR->{"map_ftr"}[$nmdl]+1, $mdl_info_HAR->{"map_exon"}[$nmdl]+1);
 
@@ -991,58 +987,6 @@ sub fetchReferenceFeatureSequences {
 
   return;
 }
-
-#################################################################
-# Subroutine : annotateAppendFeatures()
-# Incept:      EPN, Thu Mar  3 16:36:09 2016
-#
-# Purpose:     Look for and add information about special features
-#              and their corresponding models where we want to 
-#              annotate *past* the 3' end for the multifeature
-#              that is comprised of other features. The specific
-#              case we want to handle is to annotate the 3 nt 3'
-#              of the end of the final mature peptide of a mature
-#              peptide derived CDS, which is the stop codon.
-#              
-#              Fills for both %{$ftr_info_HAR} and %{$mdl_info_HAR}.
-#                "append_num":    number of nucleotides to append for this model, usually 0, unless this
-#                                 model is the final mature peptide of a CDS, in which case it is usually 3,
-#                                 this informs other parts of the pipeline that we need to append the 3 
-#                                 downstream nucleotides: the stop codon, which is not included in the 
-#                                 annotation of the final mature peptide in NCBI, but is included in the
-#                                 parent CDS annotation.
-#
-# Arguments: 
-#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
-#   $mdl_info_HAR: REF to hash of arrays with information on the models, ADDED TO HERE
-#   $FH_HR:        REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies: 
-################################################################# 
-sub annotateAppendFeatures { 
-  my $nargs_expected = 3;
-  my $sub_name = "annotateAppendFeatures()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $mdl_info_HAR, $FH_HR) = @_;
-
-  my $nftr = getConsistentSizeOfInfoHashOfArrays($ftr_info_HAR, $FH_HR);
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") {
-      # find final feature 
-      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
-      my $final_ftr_idx = $primary_children_idx_A[(scalar(@primary_children_idx_A)-1)];
-      my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
-      $mdl_info_HAR->{"append_num"}[$final_mdl_idx] = 3; # we want to append the 3 nt 3' of this model 
-      $ftr_info_HAR->{"append_num"}[$ftr_idx] = 3; # we want to append the 3 nt 3' of this feature
-    }
-  }
-
-  return;
-}
-
 
 #################################################################
 # Subroutine : determineSourcesOfDuplicateFeatures()
@@ -2422,8 +2366,6 @@ sub wrapperGetInfoUsingEdirect {
 #              2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #              3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #              4) fetches the reference sequence feature and populates information on the models and features
-#              5) look for special cases, where we want to append the 3 nt 3' of the final mature peptide in a cds-mp feature type
-#              6) add information on the overlaps and adjacencies
 #
 #              Creates the following output files and stores
 #              information on them in the ofile* data structures
@@ -2641,10 +2583,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $stk_file, 0, "Stockholm alignment file with reference sequence");
   }
 
-  # 5) look for special cases, where we want to append the 3 nt 3' of the final mature peptide in a cds-mp feature type
-  annotateAppendFeatures($ftr_info_HAR, $mdl_info_HAR, $FH_HR);
-
-  # 6) determine the source "dupsource" of any duplicate feature annotations, for
+  # 5) determine the source "dupsource" of any duplicate feature annotations, for
   #    all other non 'duplicate' features the "source_idx" will be -1
   determineSourcesOfDuplicateFeatures($ftr_info_HAR, $FH_HR);
   
@@ -5014,12 +4953,6 @@ sub validateExecutableHash {
 #                                 "model":        if this feature's annotation is derived from models (type: 'mp' or 'cds-notmp'
 #                                 "multifeature": if this feature's annotation is derived from multiple other features (type: 'cds-mp')
 #                                 "duplicate":    if this feature's annotation is derived by copying data from another (e.g., type: 'gene')
-#                "append_num":    number of nucleotides to append for this model, usually 0, unless this
-#                                 model is the final mature peptide of a CDS, in which case it is usually 3,
-#                                 this informs other parts of the pipeline that we need to append the 3 
-#                                 downstream nucleotides: the stop codon, which is not included in the 
-#                                 annotation of the final mature peptide in NCBI, but is included in the
-#                                 parent CDS annotation.
 #                "filename_root": 'root' string for output file names related to this model: 
 #                "final_mdl":     index (in arrays of %mdl_info_HA) of final model for this feature
 #                "first_mdl":     index (in arrays of %mdl_info_HA) of first model for this feature
@@ -5063,7 +4996,7 @@ sub validateFeatureInfoHashIsComplete {
  
   my ($ftr_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("append_num", "final_mdl", "first_mdl", "annot_type", "nmodels", 
+  my @expected_keys_A = ("final_mdl", "first_mdl", "annot_type", "nmodels", 
                          "out_product", "out_gene", "out_exception", 
                          "out_tiny", "out_short", "out_tiny", "ref_coords",
                          "ref_len", "ref_strand", "type", "type_idx", 
@@ -5080,12 +5013,6 @@ sub validateFeatureInfoHashIsComplete {
 # Purpose:    Validate that a 'model info' hash is valid and complete.
 #             'Complete' means it has all the expected keys, each of which is an identically sized array.
 #             The expected keys are:
-#                "append_num":    number of nucleotides to append for this model, usually 0, unless this
-#                                 model is the final mature peptide of a CDS, in which case it is usually 3,
-#                                 this informs other parts of the pipeline that we need to append the 3 
-#                                 downstream nucleotides: the stop codon, which is not included in the 
-#                                 annotation of the final mature peptide in NCBI, but is included in the
-#                                 parent CDS annotation.
 #                "checksum":      checksum of the 'alignment' (single sequence) file the model was built from
 #                "cmname":        name of the model, used in infernal output 
 #                "filename_root": 'root' string for output file names related to this model: 
@@ -5124,7 +5051,7 @@ sub validateModelInfoHashIsComplete {
  
   my ($mdl_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("append_num", "checksum", "cmname", "filename_root", "is_final", "is_first", 
+  my @expected_keys_A = ("checksum", "cmname", "filename_root", "is_final", "is_first", 
                          "length", "ref_start", "ref_stop", "ref_strand", "map_exon", "map_ftr", "map_nexon", "out_tiny", "out_idx");
 
   return validateInfoHashOfArraysIsComplete($mdl_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
@@ -6906,7 +6833,6 @@ sub nseBreakdown {
 #   createCmDb()
 #   matpeptValidateCdsRelationships()
 #   checkForSpanningSequenceSegments()
-#   annotateAppendFeatures()
 #   getIndexHashForArray()
 #
 #################################################################

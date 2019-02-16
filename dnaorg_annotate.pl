@@ -1765,11 +1765,7 @@ sub parse_cmalign_stk {
 #
 # Purpose:    Given the results data structure, fetch all
 #             hits to fasta files.
-#             As an extra step, fetch any 'appended' sequence
-#             for models in which $mdl_info_HAR->{"append_num"}[$mdl_idx]
-#             is non-zero. This will go to a separate file,
-#             and we'll append it to sequence hits from other 
-#             models in combine_feature_hits().
+#
 # Arguments: 
 #  $sqfile:            REF to Bio::Easel::SqFile object, open sequence file containing sequences,
 #                      usually $out_root . ".predicted", or $out_root . ".corrected"
@@ -1795,15 +1791,11 @@ sub fetch_hits_given_results {
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $ofile_info_HHR->{"FH"});
 
   my $mdl_info_file_key        = $out_key . ".hits.fa";
-  my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
 
   for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     my @fetch_AA        = ();
-    my @fetch_append_AA = ();
     my $mdl_name = $mdl_info_HAR->{"cmname"}[$mdl_idx];
     my $nseq2fetch        = 0; # number of sequences we'll fetch
-    my $nseq2fetch_append = 0; # number of sequences we'll fetch for append file
-    my $append_num = ($mdl_info_HAR->{"append_num"}[$mdl_idx]);
 
     for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
       my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
@@ -1829,69 +1821,21 @@ sub fetch_hits_given_results {
           # "+" if start < stop, "-" if start > stop, ambiguous if start==stop
           push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
           $nseq2fetch++;
-
-          # append sequence, if nec
-          if($append_num > 0) { 
-            my $append_start;
-            my $append_stop;
-            if($strand eq "+") { 
-              $append_start = $stop + 1;
-              $append_stop  = $stop + $append_num;
-            }
-            else { 
-              $append_start = $stop - 1;
-              $append_stop  = $stop - $append_num;
-            }
-            # only do the appending if the full region $append_start..$append_stop 
-            # exists
-            if(($append_start <= $seq_info_HAR->{"len"}[$seq_idx]) && 
-               ($append_stop  <= $seq_info_HAR->{"len"}[$seq_idx]) && 
-               ($append_start >= 1) && 
-               ($append_stop  >= 1)) { 
-              my $append_new_name = $seq_name . "/" . $append_start . "-" . $append_stop;
-              # we always put $start first and $stop second so that we can (usually) tell strand from the name,
-              # "+" if start < stop, "-" if start > stop, ambiguous if start==stop
-
-              # update mdl_results with 'append_start' and 'append_stop'
-              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_start"} = $append_start;
-              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_stop"}  = $append_stop;
-              # printf("added $append_new_name $append_start $append_stop $seq_name to fetch_append_AA\n");
-              push(@fetch_append_AA, [$append_new_name, $append_start, $append_stop, $seq_name]);
-              
-              $nseq2fetch_append++;
-            }
-            else { 
-              if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_start"}) { 
-                delete $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_start"};
-              }
-              if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_stop"}) { 
-                delete $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_stop"};
-              }
-            }
-          }
         }
       }
     } # end of for loop over $seq_idx
 
     my $fa_file               = $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx];
-    my $fa_append_file        = $mdl_info_HAR->{$mdl_info_append_file_key}[$mdl_idx];
     my $ofile_info_key        = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_info_file_key, $ofile_info_HHR->{"FH"});
-    my $ofile_info_append_key = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_info_append_file_key, $ofile_info_HHR->{"FH"});
 
     if($nseq2fetch > 0) { 
       $sqfile->fetch_subseqs(\@fetch_AA, undef, $fa_file);
       # save information on this to the output file info hash
       addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $fa_file, 0, "fasta file with $out_key hits for model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
-
-      if($nseq2fetch_append > 0) { 
-        $sqfile->fetch_subseqs(\@fetch_append_AA, undef, $fa_append_file);
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_append_key, $fa_append_file, 0, "fasta file with $out_key appended hits for model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
-      }
     }
     else { 
       # no sequences were fetched update the 
       $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx]        = "/dev/null"; # indicates to downstream functions that this file does not exist
-      $mdl_info_HAR->{$mdl_info_append_file_key}[$mdl_idx] = "/dev/null"; # indicates to downstream functions that this file does not exist
     }
   } # end of for loop over model indices
 
@@ -1933,9 +1877,7 @@ sub combine_model_hits {
   my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nmdl: number of homology models
 
   my $mdl_info_file_key        = $out_key . ".hits.fa";
-  my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
   my $ftr_info_file_key        = $mdl_info_file_key;
-  my $ftr_info_append_file_key = $mdl_info_append_file_key;
 
   my $ret_seqname_maxlen = 0;
 
@@ -1990,19 +1932,6 @@ sub combine_model_hits {
           $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = "/dev/null";
         }
       }
-
-      # check if there's a file to append
-      my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
-      my $mdl_ofile_info_append_key = get_mdl_or_ftr_ofile_info_key("mdl", $final_mdl_idx, $mdl_info_append_file_key, $ofile_info_HHR->{"FH"});
-      if(exists $ofile_info_HHR->{"fullpath"}{$mdl_ofile_info_append_key}) { 
-        # yes, there is
-        my $mdl_hit_append_fafile = $ofile_info_HH{"fullpath"}{$mdl_ofile_info_append_key};
-        if($mdl_hit_append_fafile ne "/dev/null") { 
-          validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-        }
-        # this was initialized to something else, redefine it here:
-        $ftr_info_HAR->{$ftr_info_append_file_key}[$ftr_idx] = $mdl_hit_append_fafile;
-      }
     } # end of 'if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model")'
   }
 
@@ -2043,7 +1972,6 @@ sub combine_feature_hits {
   my $ret_seqname_maxlen = 0;
 
   my $ftr_info_file_key        = $out_key . ".hits.fa";
-  my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
 
   # printf("in $sub_name, out_key: $out_key, ftr_info_file_key: $ftr_info_file_key\n");
 
@@ -2061,18 +1989,6 @@ sub combine_feature_hits {
           validateFileExistsAndIsNonEmpty($cur_ftr_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
           push(@tmp_hit_fafile_A, $cur_ftr_hit_fafile);
           $at_least_one_fafile = 1;
-        }
-        # check if this feature has a mandatory file to append
-        my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$cur_ftr_idx];
-        my $mdl_ofile_info_append_key = get_mdl_or_ftr_ofile_info_key("mdl", $final_mdl_idx, $mdl_info_append_file_key, $ofile_info_HHR->{"FH"});
-        if(exists $ofile_info_HHR->{"fullpath"}{$mdl_ofile_info_append_key}) {
-          # it does, append it
-          my $mdl_hit_append_fafile = $ofile_info_HH{"fullpath"}{$mdl_ofile_info_append_key};
-          if($mdl_hit_append_fafile ne "/dev/null") { 
-            validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-            push(@tmp_hit_fafile_A, $mdl_hit_append_fafile);
-            $at_least_one_fafile = 1;
-          } 
         }
       } # end of 'foreach $cur_ftr_idx'
 
@@ -2343,12 +2259,6 @@ sub parse_esl_epn_translate_startstop_outfile {
   # is this a mature peptide?
   my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
   my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
-  my $append_num = 0; # the number of nucleotides that were appended to this features
-                      # sequence past the final predicted nucleotide, we need to 
-                      # account for these when we determine the correction
-  if((defined $ftr_info_HAR->{"append_num"}) && (defined $ftr_info_HAR->{"append_num"}[$ftr_idx])) { 
-    $append_num = $ftr_info_HAR->{"append_num"}[$ftr_idx];
-  }
 
   open(IN, $translate_outfile) || fileOpenFailure($translate_outfile, "main", $!, "reading", $FH_HR);
 
@@ -2377,7 +2287,7 @@ sub parse_esl_epn_translate_startstop_outfile {
         }
         else { # there is an early stop
           $early_inframe_stop = 1; 
-          $corr_len = (-1 * ($final_codon_posn1 - $first_stop_posn1)) + $append_num; # negative because early stop shortens length
+          $corr_len = (-1 * ($final_codon_posn1 - $first_stop_posn1)); # negative because early stop shortens length
         }
 
         # We now have all of the relevant data on the current
@@ -4023,7 +3933,6 @@ sub ftr_results_calculate {
   my $seq_name;  # name of one sequence
   my $seq_len;   # length of the sequence, possibly including doubling
   my $accn_name; # name of accession
-  my $append_len = 0; # length of appended region
   my $mtr_errmsg = undef; # error message for an mtr error
 
   # foreach annot_type:multifeature and type:'cds-mp' feature, 
@@ -4234,22 +4143,6 @@ sub ftr_results_calculate {
                        ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx])) { 
                       # the final child, determine the stop position/strand, and deal with ext error if we have one
                       $stop_strand = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
-                      # we should have to append the stop codon
-                      # (GenBank annotation of final mature peptides doesn't include the stop codon,
-                      #  so it's not covered in our homology model and we have to take special care
-                      #  to annotate it.
-                      $append_len = 0; 
-                      if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}) { 
-                        my ($out_append_start, $out_append_stop) = 
-                            create_output_start_and_stop($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}, 
-                                                         $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"},
-                                                         $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
-                        $cds_out_stop = $out_append_stop;
-                        $cds_fetch_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"};
-                        # and update the cds_len (this is the final child, so this will only happen once)
-                        $append_len = abs($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"} - $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}) + 1; 
-                        $cds_len += $append_len;
-                      }
                     }
                   }
                 } # end of 'else' entered if we don't have a trc error
@@ -4307,25 +4200,22 @@ sub ftr_results_calculate {
             if(! exists $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"cumlen"}) { 
               DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{cumlen} does not exist, but it should.", 1, $FH_HR); 
             }
-            if(! exists $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"append_stop"}) { 
-              DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{append_stop} does not exist, but it should.", 1, $FH_HR); 
-            }
             if($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_strand"} eq "+") { 
-              $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"} + ($len_corr - $append_len);
-              $cds_fetch_stop = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} + $append_len;
+              $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"} + ($len_corr);
+              $cds_fetch_stop = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"};
             }
             else { # negative strand
-              $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"} - ($len_corr - $append_len);
-              $cds_fetch_stop = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} - $append_len;
+              $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"} - ($len_corr);
+              $cds_fetch_stop = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"};
             }
             ($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"out_start"}, $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"out_stop"}) = 
                 create_output_start_and_stop($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_start"}, 
                                              $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"}, 
                                              $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
             # only the final model is affected by an ext error
-            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"len"}    += ($len_corr - $append_len);
-            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"cumlen"} += ($len_corr - $append_len);
-            $cds_len += ($len_corr - $append_len);
+            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"len"}    += $len_corr;
+            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"cumlen"} += $len_corr;
+            $cds_len += $len_corr;
             
             # get first part of cds error message using current $cds_out_stop, if it exists
             my $updated_cds_ext_errmsg = sprintf("homology search predicted %d..%d", 
@@ -4343,13 +4233,13 @@ sub ftr_results_calculate {
                                              $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
 
             # get second part of CDS error message
-            $updated_cds_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", $cds_out_start, $cds_out_stop, $len_corr-$append_len);
+            $updated_cds_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", $cds_out_start, $cds_out_stop, $len_corr);
             # get second part of MP error message
             $mp_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
                                       create_output_start_and_stop($mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"p_start"}, 
                                                                    $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"}, 
                                                                    $seq_info_HAR->{"len"}[$seq_idx], $FH_HR), 
-                                      $len_corr-$append_len);
+                                      $len_corr);
             error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_cds_ext_errmsg, $FH_HR);
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $final_child_ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $mp_ext_errmsg, $FH_HR);
             # and finally, update the results out_3boundary value for this model
@@ -6258,12 +6148,7 @@ sub output_tbl_all_sequences {
       else { # we know that $mdl_results_AAHR->[0][$seq_idx]{"p_start"} exists) { 
         # determine output start and output stop
         my $cur_stop = undef; # final stop position
-        if(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"}) { 
-          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_start"}, 
-                                                            $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"},
-                                                            $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
-        }
-        elsif(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"}) { 
+        if(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"}) { 
           (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"},  # irrelevant due to the first undef arg
                                                             $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"},
                                                             $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
@@ -8008,7 +7893,7 @@ sub define_model_and_feature_output_file_names {
   my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
   my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
 
-  my @both_file_types_A = ("predicted.hits.fa", "predicted.hits.append.fa", "corrected.hits.fa", "corrected.hits.append.fa");
+  my @both_file_types_A = ("predicted.hits.fa", "corrected.hits.fa");
   my @mdl_only_file_types_A  = ("corrected.hits.stk");
   my @ftr_only_file_types_A  = ("predicted.hits.fa.esl-epn-translate", "corrected.translated.hits.fa", 
                                 "corrected.translated.hits.stk", "corrected.translated.hmm", 
@@ -9104,7 +8989,7 @@ sub helper_ftable_get_coords_standard {
         }
         if($do_pred_stop) { 
           my $pred_start = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"};
-          my $pred_stop  = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"} + $mdl_info_HAR->{"append_num"}[$mdl_idx];
+          my $pred_stop  = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"};
           (undef, $out_stop) = create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
                                                             $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"}, 
                                                             $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
