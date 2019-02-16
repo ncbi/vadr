@@ -1,4 +1,11 @@
 >Feature gi|1339273835|gb|MG746117.1|
+<1	20	gene
+			gene	ORF1
+<1	20	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	17	mat_peptide
+			product	RdRp
 1	>1626	gene
 			gene	ORF2
 1	>1626	CDS

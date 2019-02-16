@@ -12,14 +12,14 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --local -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/dengue.r5.fa --dirbuild !dirbuild! --dirout dt-dengue.r5.l > dt-dengue.r5.l.out
+command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --local -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/dengue.r5.fa --dirbuild !dirbuild! --dirout dt-dengue.r5 > dt-dengue.r5.out
 desc: classify-dengue-5-local
-out: dt-dengue.r5.l/dt-dengue.r5.l-NC_001474/dt-dengue.r5.l-NC_001474.dnaorg_annotate.ap.sqtable 
-out: dt-dengue.r5.l/dt-dengue.r5.l-NC_001474/dt-dengue.r5.l-NC_001474.dnaorg_annotate.af.sqtable 
-out: dt-dengue.r5.l/dt-dengue.r5.l-NC_001477/dt-dengue.r5.l-NC_001477.dnaorg_annotate.ap.sqtable 
-out: dt-dengue.r5.l/dt-dengue.r5.l-NC_001477/dt-dengue.r5.l-NC_001477.dnaorg_annotate.af.sqtable 
+out: dt-dengue.r5/dt-dengue.r5-NC_001474/dt-dengue.r5-NC_001474.dnaorg_annotate.ap.sqtable 
+out: dt-dengue.r5/dt-dengue.r5-NC_001474/dt-dengue.r5-NC_001474.dnaorg_annotate.af.sqtable 
+out: dt-dengue.r5/dt-dengue.r5-NC_001477/dt-dengue.r5-NC_001477.dnaorg_annotate.ap.sqtable 
+out: dt-dengue.r5/dt-dengue.r5-NC_001477/dt-dengue.r5-NC_001477.dnaorg_annotate.af.sqtable 
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r5/dt-dengue.r5-NC_001474.dnaorg_annotate.ap.sqtable 
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r5/dt-dengue.r5-NC_001474.dnaorg_annotate.af.sqtable 
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r5/dt-dengue.r5-NC_001477.dnaorg_annotate.ap.sqtable 
 exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r5/dt-dengue.r5-NC_001477.dnaorg_annotate.af.sqtable 
-rmdir: dt-dengue.r5.l
+rmdir: dt-dengue.r5
