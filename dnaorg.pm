@@ -91,12 +91,10 @@
 #
 # Subroutines related to the feature and model info hash data
 # structures:
-#   getPrimaryOrAllChildrenFromFeatureInfo()
 #   determineFeatureTypes()
 #   getNumFeaturesAnnotatedByModels()
 #   getReferenceFeatureInfo()
 #   fetchReferenceFeatureSequences()
-#   annotateAppendFeatures()
 #
 # Subroutines related to the output info hash:
 #   openAndAddFileToOutputInfo()
@@ -228,67 +226,13 @@ use Cwd;
 #
 # Subroutines related to the feature and model info hash data
 # structures:
-#   getPrimaryOrAllChildrenFromFeatureInfo()
 #   determineFeatureTypes()
 #   getNumFeaturesAnnotatedByModels()
 #   getReferenceFeatureInfo()
 #   fetchReferenceFeatureSequences()
-#   annotateAppendFeatures()
+#   featureHasChildren()
+#   featureHasParent()
 #
-#################################################################
-# Subroutine : getPrimaryOrAllChildrenFromFeatureInfo()
-# Incept:      EPN, Thu Mar  3 12:27:38 2016
-#
-# Purpose:     Fill @{$AR} with the space delimited tokens of 
-#              @{$ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]}
-#              (if $primary_or_all eq "primary") or of
-#              @{$ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]}
-#              (if $primary_or_all eq "all") and return.
-#              
-# Arguments: 
-#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
-#   $ftr_idx:        index of feature we're interested in
-#   $primary_or_all: "primary" to fill array with primary children ("primary_children_ftr_str")
-#                    "all" to fill array with all children ("all_children_ftr_str")
-#   $AR:             REF to array to fill, FILLED HERE
-#   $FH_HR:          REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies: if feature info hash is not 'complete', or if
-#       there are no primary/all children for feature index $ftr_idx,
-#       or if it is not of type 'multifeature', or
-#       if $primary_or_all is neither "primary" nor "all"
-#
-################################################################# 
-sub getPrimaryOrAllChildrenFromFeatureInfo { 
-  my $nargs_expected = 5;
-  my $sub_name = "getPrimaryOrAllChildrenFromFeatureInfo";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $ftr_idx, $primary_or_all, $AR, $FH_HR) = @_;
-
-  if(($primary_or_all ne "primary") && ($primary_or_all ne "all")) { 
-    DNAORG_FAIL("ERROR in $sub_name, special primary_or_all variable is neither \"primary\" nor \"all\"", 1, $FH_HR);
-  }    
-
-  if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "multifeature") { 
-    DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but it is not annotated type of multifeature.", 1, $FH_HR);
-  }
-
-  @{$AR} = ();
-  if($primary_or_all eq "primary") { 
-    @{$AR} = split(/\s+/, $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]);
-  }
-  elsif($primary_or_all eq "all") { 
-    @{$AR} = split(/\s+/, $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]);
-  }
-
-  if(scalar(@{$AR}) == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, requesting info for feature index $ftr_idx, but it has no $primary_or_all children.", 1, $FH_HR);
-  }
-
-  return;
-}
 
 #################################################################
 # Subroutine: determineFeatureTypes()
@@ -306,17 +250,14 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #              "type"        values are one of: "cds-notmp", "cds-mp", "mp", 'xfeat', or 'dfeat'
 #              "type_idx"    values are indices of each feature for its type
 #                            so a '2' means it's the 2nd of its type.
-#              "annot_type": annotation type, either "model", "multifeature", or "duplicate"
-#                            "model": a homology model's prediction annotates 
+#              "annot_type": annotation type, either "model" or "duplicate"
+#                            "model": the homology model's prediction annotates 
 #                            these features
-#                            "multifeature": derived from multiple "model" annot_type
-#                            features, these are usually type: cds-mp, a CDS comprised
-#                            of mature peptides.
 #                            "duplicate": the annotation of this feature is copied from 
 #                            another. Example is a 'gene' that is a copy of a 'CDS'.
 #                            The feature that is the source to copy is stored in the
 #                            "source_idx" key.
-#               "primary_children_ftr_str": for features with annot_type eq "multifeature",
+#               "primary_children_ftr_str": for features with children (e.g. cds-mp type) this
 #                            string of feature indices that are the primary children of this
 #                            feature (when the primary children are concatenated they make up
 #                            the CDS that encodes all the primary children). Each index is
@@ -324,7 +265,7 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #                            "model".
 #               "primary_children_ftr_num": number of primary children (0 for features with
 #                            annot_type eq "model").
-#               "all_children_ftr_str": for features with annot_type eq "multifeature",
+#               "all_children_ftr_str": for features with children (e.g. cds-mp type) this
 #                            string of all feature indices that are encoded by this CDS, 
 #                            includes all primary children plus any secondarily processed
 #                            mature peptides. Each index is separated by a space. Empty 
@@ -332,8 +273,7 @@ sub getPrimaryOrAllChildrenFromFeatureInfo {
 #               "all_children_ftr_num": number of all children (0 for features with
 #                            annot_type eq "model").
 #               "parent_ftr": index of parent feature for 'mp' types, this is the feature
-#                            index of the annot_type eq "multifeature" of which the current
-#                            feature is a child.
+#                            index of the feature of which the current feature is a child.
 #
 # Arguments:
 #   $nmp:              number of mature peptides, may be 0
@@ -376,135 +316,134 @@ sub determineFeatureTypes {
   @{$ftr_info_HAR->{"all_children_ftr_num"}}     = ();
   @{$ftr_info_HAR->{"parent_ftr"}}               = ();
 
-  if(! defined $cds2pmatpept_AAR) { 
-    # first $ncds features are CDS, remainder (if any) are afeat features
-    for($c = 0; $c < $ncds; $c++) { 
-      $ftr_info_HAR->{"type"}[$c]                     = "cds-notmp";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $c+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+  # order: 
+  # Mature peptides
+  # CDS
+  # xfeat
+  # dfeat
+  for($c = 0; $c < $nmp; $c++) { 
+    determineFeatureTypesHelper($ftr_info_HAR, "mp", undef, undef, $FH_HR);
+  }
+  for($c = 0; $c < $ncds; $c++) { 
+    # determine type of CDS
+    if((defined $cds2pmatpept_AAR) && (defined $cds2pmatpept_AAR->[$c])) {
+      # CDS comprised of mature peptides
+      determineFeatureTypesHelper($ftr_info_HAR, "cds-mp", $cds2pmatpept_AAR->[$c], $cds2amatpept_AAR->[$c], $FH_HR);
     }
-    for(my $xfeat_idx = 0; $xfeat_idx < $nxfeat; $xfeat_idx++) { 
-      $c = $ncds + $xfeat_idx;
-      $ftr_info_HAR->{"type"}[$c]                     = "xfeat";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $xfeat_idx+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+    else { 
+      # CDS NOT comprised of mature peptides
+      determineFeatureTypesHelper($ftr_info_HAR, "cds-notmp", undef, undef, $FH_HR);
     }
-    for(my $dfeat_idx = 0; $dfeat_idx < $ndfeat; $dfeat_idx++) { 
-      $c = $ncds + $nxfeat + $dfeat_idx;
-      $ftr_info_HAR->{"type"}[$c]                     = "dfeat";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "duplicate"; # this feature is modeled as a duplicate of another feature
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $dfeat_idx+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+  }
+  for(my $xfeat_idx = 0; $xfeat_idx < $nxfeat; $xfeat_idx++) { 
+    determineFeatureTypesHelper($ftr_info_HAR, "xfeat", undef, undef, $FH_HR);
+  }
+  for(my $dfeat_idx = 0; $dfeat_idx < $ndfeat; $dfeat_idx++) { 
+    determineFeatureTypesHelper($ftr_info_HAR, "dfeat", undef, undef, $FH_HR);
+  }
+  return;
+}
+
+#################################################################
+# Subroutine: determineFeatureTypesHelper()
+# Incept:     EPN, Fri Feb 15 11:23:58 2019
+#
+# Purpose:    Initialize element $c of the feature info hash of arrays
+#             of type $type.
+#
+# Arguments: 
+#   $ftr_info_HAR:     ref to hash of arrays with feature info.
+#                      must have at least the "annot_types" array, else we die 
+#   $type:             type of the feature: "cds-notmp", "xfeat", "dfeat", "mp", or "cds-mp"
+#   $cds2pmatpept_AR:  array of primary matpept indices that comprise this CDS, 
+#                      OR undefined if $type ne "cds-mp"
+#                      PRE-FILLED
+#   $cds2amatpept_AR:  array of all matpept indices that comprise this CDS, 
+#                      OR undefined if $type ne "cds-mp"
+#                      PRE-FILLED
+#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $ftr_info_HAR is not valid upon entering.
+#################################################################
+sub determineFeatureTypesHelper { 
+  my $sub_name  = "determineFeatureTypesHelper()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_HAR, $type, $cds2pmatpept_AR, $cds2amatpept_AR, $FH_HR) = (@_);
+
+  my @reqd_ftr_info_A = ();
+  # we can't use validateAndGetSizeOfInfoHashOfArrays() because we probably will not have the 
+  # same number of elements for all values, e.g. "type" may be > 0, but "type" may be 0
+  my $nftr_type = scalar(@{$ftr_info_HAR->{"type"}});
+
+  # determine type index
+  my $type_idx = 1;
+  my $ftr_idx;
+  for($ftr_idx = 0; $ftr_idx < $nftr_type; $ftr_idx++) { 
+    if($ftr_info_HAR->{"type"}[$ftr_idx] eq $type) { 
+      $type_idx++;
+    }
+  }
+  $ftr_idx = $nftr_type; 
+
+  # initialize
+  $ftr_info_HAR->{"type"}[$ftr_idx]                     = $type;
+  $ftr_info_HAR->{"type_idx"}[$ftr_idx]                 = $type_idx;
+  $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] = "";  # created later for certain types (e.g. 'cds-mp')
+  $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx] = 0;   # created later for certain types (e.g. 'cds-mp')
+  $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]     = "";  # created later for certain types (e.g. 'cds-mp')
+  $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]     = 0;   # created later for certain types (e.g. 'cds-mp')
+  $ftr_info_HAR->{"parent_ftr"}[$ftr_idx]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
+
+  # set annot_type, children strings and validate $type at the same time:
+  if(($type eq "cds-notmp") ||
+     ($type eq "xfeat")     ||
+     ($type eq "mp")) { 
+    $ftr_info_HAR->{"annot_type"}[$ftr_idx]  = "model"; # this feature is annotated by homology models
+  }
+  elsif($type eq "dfeat") { 
+    $ftr_info_HAR->{"annot_type"}[$ftr_idx]  = "duplicate"; # this feature is modeled as a duplicate of another feature
+  }
+  elsif($type eq "cds-mp") { 
+    $ftr_info_HAR->{"annot_type"}[$ftr_idx]  = "model"; # this feature is annotated by homology models
+    if(! defined $cds2pmatpept_AR) { 
+      DNAORG_FAIL("ERROR in $sub_name, type is cds-mp but cds2pmatpept_AR is undefined", 1, $FH_HR);
+    }
+    if(! defined $cds2amatpept_AR) { 
+      DNAORG_FAIL("ERROR in $sub_name, type is cds-mp but cds2amatpept_AR is undefined", 1, $FH_HR);
+    }
+    # step through @{$cds2pmatpept_AR} and create the primary_children_ftr_str for this CDS
+    my $np = scalar(@{$cds2pmatpept_AR});
+    my $z;
+    my $mp_idx;
+    for($z = 0; $z < $np; $z++) { 
+      if($ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] ne "") { 
+        $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] .= " ";
+      }
+      $mp_idx = $cds2pmatpept_AR->[$z];
+      $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] .= $mp_idx;
+      $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx]++;
+
+      # step through @{$cds2amatpept_AR} and create the all_children_ftr_str for this CDS
+      my $np = scalar(@{$cds2pmatpept_AR});
+      for($z = 0; $z < $np; $z++) { 
+        if($ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx] ne "") { 
+          $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx] .= " ";
+        }
+        $mp_idx = $cds2amatpept_AR->[$z];
+        $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx] .= $mp_idx;
+        $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]++;
+        # set the parent ftr index for this mature peptide
+        $ftr_info_HAR->{"parent_ftr"}[$mp_idx] = $ftr_idx;
+      }          
     }
   }
   else { 
-    # some features are mature peptides, some are CDS, some of the CDS are comprised of mature peptides, 
-    # and (possibly) some of the CDS are not, and possibly some are xfeat
-
-    # first comes the $nmp mature peptides
-    for($c = 0; $c < $nmp; $c++) { 
-      $ftr_info_HAR->{"type"}[$c]                     = "mp";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $c+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
-    }
-
-    # then come the CDS, but we need to consult $cds2pmatpept_AAR to see if they are comprised of mature peptides ("cds-mp") 
-    # or not ("cds-notmp")
-    my $nnotmp_idxed = 0; # we increment this as we index cds-notmp 
-    my $nnotmp_extra = 0; # # of cds-notmp that occur after final cds-mp (idx >= scalar(@cds2pmatpept_AA))
-    for(my $cds_idx = 0; $cds_idx < $ncds; $cds_idx++) { 
-      $c = $nmp + $cds_idx;
-      if(defined $cds2pmatpept_AAR->[$cds_idx]) {
-        if(! defined $cds2amatpept_AAR->[$cds_idx]) { 
-          DNAORG_FAIL("ERROR in $sub_name, cds_idx has 'primary' mature peptide information but not 'all' mature peptide information.", 1, $FH_HR);
-        }
-        # a CDS that is comprised of mature peptides
-        $ftr_info_HAR->{"type"}[$c]                     = "cds-mp";
-        $ftr_info_HAR->{"annot_type"}[$c]               = "multifeature"; # this feature is annotated by multiple other features
-        $ftr_info_HAR->{"type_idx"}[$c]                 = $cds_idx+1;
-        $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = ""; # added to below when we go through $cds2pmatpept_AAR
-        $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;  # added to below when we go through $cds2pmatpept_AAR
-        $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = ""; # added to below when we go through $cds2amatpept_AAR
-        $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;  # added to below when we go through $cds2amatpept_AAR
-        $ftr_info_HAR->{"parent_ftr"}[$c]               = -1; # changed to a valid value below
-
-        # step through @{$cds2pmatpept_AAR} and create the primary_children_ftr_str for this CDS
-        for(my $z = 0; $z < scalar(@{$cds2pmatpept_AAR->[$cds_idx]}); $z++) { 
-          if($ftr_info_HAR->{"primary_children_ftr_str"}[$c] ne "") { 
-            $ftr_info_HAR->{"primary_children_ftr_str"}[$c] .= " ";
-          }
-          my $mp_idx = $cds2pmatpept_AAR->[$cds_idx][$z];
-          $ftr_info_HAR->{"primary_children_ftr_str"}[$c] .= $mp_idx;
-          $ftr_info_HAR->{"primary_children_ftr_num"}[$c]++;
-        }
-        # step through @{$cds2amatpept_AAR} and create the all_children_ftr_str for this CDS
-        for(my $z = 0; $z < scalar(@{$cds2amatpept_AAR->[$cds_idx]}); $z++) { 
-          if($ftr_info_HAR->{"all_children_ftr_str"}[$c] ne "") { 
-            $ftr_info_HAR->{"all_children_ftr_str"}[$c] .= " ";
-          }
-          my $mp_idx = $cds2amatpept_AAR->[$cds_idx][$z];
-          $ftr_info_HAR->{"all_children_ftr_str"}[$c] .= $mp_idx;
-          $ftr_info_HAR->{"all_children_ftr_num"}[$c]++;
-          $ftr_info_HAR->{"parent_ftr"}[$mp_idx] = $c;
-        }          
-      }
-      else { 
-        # a CDS that is NOT comprised of mature peptides
-        $ftr_info_HAR->{"type"}[$c]                     = "cds-notmp";
-        $ftr_info_HAR->{"type_idx"}[$c]                 = $cds_idx+1;
-        $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
-        $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-        $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-        $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-        $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-        $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
-      }
-    }
-    # add 'xfeat' features, if any
-    for(my $xfeat_idx = 0; $xfeat_idx < $nxfeat; $xfeat_idx++) { 
-      $c = $nmp + $ncds + $xfeat_idx;
-      $ftr_info_HAR->{"type"}[$c]                     = "xfeat";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "model"; # this feature is annotated by homology models
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $xfeat_idx+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
-    }
-    # add 'dfeat' features, if any
-    for(my $dfeat_idx = 0; $dfeat_idx < $ndfeat; $dfeat_idx++) { 
-      $c = $nmp + $ncds + $nxfeat + $dfeat_idx;
-      $ftr_info_HAR->{"type"}[$c]                     = "dfeat";
-      $ftr_info_HAR->{"annot_type"}[$c]               = "duplicate"; # this feature is modeled as a duplicate of another feature
-      $ftr_info_HAR->{"type_idx"}[$c]                 = $dfeat_idx+1;
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$c] = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$c] = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_str"}[$c]     = "";  # will remain "", only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"all_children_ftr_num"}[$c]     = 0;   # will remain 0, only changed for annot_type eq "multifeature"
-      $ftr_info_HAR->{"parent_ftr"}[$c]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
-    }
+    DNAORG_FAIL("ERROR in $sub_name, invalid type: $type.", 1, $FH_HR);
   }
-
   return;
 }
 
@@ -775,17 +714,16 @@ sub getReferenceFeatureInfo {
 #                "filename_root": 'root' string for output file names related to this model: 
 #                "out_tiny":      output value: very short name for this model (e.g. "CDS#4.2")
 #                "map_ftr":       the feature index (array index in ftr_info_HAR) this model models
-#                "is_final":      '1' if this model is the final model (e.g. final exon) for the feature it models ("map_ftr")
-#                "is_first":      '1' if this model is the first model (e.g. final exon) for the feature it models ("map_ftr")
-#                "map_exon":      the exon index this model models (1.."map_nexon" value)
-#                "map_nexon":     the number of exons the feature this model models has 
+#                "is_final":      '1' if this model is the final model (e.g. final segment/exon) for the feature it models ("map_ftr")
+#                "is_first":      '1' if this model is the first model (e.g. final segment/exon) for the feature it models ("map_ftr")
+#                "map_segment":   the segment index this model models (1.."map_nsegment" value)
+#                "map_nsegment":  the number of segments the feature this model models has 
 #                "out_idx":       output value: feature index and segment index this model (e.g. "4.2")
 #
 #           The following values are filled in the %{$ftr_info_HAR}:
 #                "final_mdl":   index (in arrays of %mdl_info_HA) of final model for this feature
 #                "first_mdl":   index (in arrays of %mdl_info_HA) of first model for this feature
-#                "nmodels":     number of models for this feature (e.g. number of exons or segments) for this feature, 
-#                               0 if 'annotation' eq 'multifeature'
+#                "nmodels":     number of models for this feature (e.g. number of segments) for this feature, 
 #                "out_short":   output value: short name for this feature (e.g. "CDS #4 [1 exon; +]")
 #                "out_tiny":    output value: very short name for this feature (e.g. "CDS#4")
 #
@@ -843,8 +781,8 @@ sub fetchReferenceFeatureSequences {
   my $nmdl = 0;               # number of HMMs (and alignments used to build those HMMs)
   my @mdl_A = ();             # [0..$nmdl-1]: array of model names, also name of stockholm alignments used to build those models
   my %mdllen_H          = (); # key: model name from @mdl_A, value is model length
-  my @ref_nexons_A      = (); # [0..$c..$ref_nmft-1]: number of exons in CDS or mat_peptide $c+1
-  my $ref_tot_nexons    = 0;  # total number of exons in all CDS or mat_peptides
+  my @ref_nsegments_A   = (); # [0..$c..$ref_nmft-1]: number of segments in CDS or mat_peptide $c+1
+  my $ref_tot_nsegments = 0;  # total number of segments in all CDS or mat_peptides
   my @indi_ref_name_A   = (); # [0..$nmdl-1]: name of individual stockholm alignments and models
   my @indi_cksum_stk_A  = (); # [0..$nmdl-1]: checksum's of each named individual stockholm alignment
 
@@ -893,16 +831,15 @@ sub fetchReferenceFeatureSequences {
     $ftr_info_HAR->{"first_mdl"}[$i]  = -1; # remains -1 if $do_model is FALSE
     $ftr_info_HAR->{"final_mdl"}[$i]  = -1; # remains -1 if $do_model is FALSE
     $ftr_info_HAR->{"nmodels"}[$i]    = 0;  # remains 0 if $do_model is FALSE
-    $ftr_info_HAR->{"append_num"}[$i] = 0;  # maybe changed later in determineFeatureTypes()
     $ftr_info_HAR->{"source_idx"}[$i] = -1; # maybe changed later in determineSourcesOfDuplicateFeatures()
 
     if($do_model) { 
       # determine start and stop positions of all exons/segments
       my @starts_A = ();
       my @stops_A  = ();
-      my $nexons   = 0;
-      startsStopsStrandsFromCoordsLength($ftr_info_HAR->{"ref_coords"}[$i], $ref_totlen, $do_circular, \@starts_A, \@stops_A, undef, \$nexons, $FH_HR);
-      $ftr_info_HAR->{"nmodels"}[$i] = $nexons;
+      my $nsegments   = 0;
+      startsStopsStrandsFromCoordsLength($ftr_info_HAR->{"ref_coords"}[$i], $ref_totlen, $do_circular, \@starts_A, \@stops_A, undef, \$nsegments, $FH_HR);
+      $ftr_info_HAR->{"nmodels"}[$i] = $nsegments;
       my $strand = $ftr_info_HAR->{"ref_strand"}[$i];
 
       # if we're on the negative strand, reverse the arrays, they'll be in the incorrect order
@@ -911,12 +848,12 @@ sub fetchReferenceFeatureSequences {
         @stops_A  = reverse @stops_A;
       }
 
-      for(my $e = 0; $e < $nexons; $e++) { 
-        if($nexons > 1) { 
-          $cur_out_root        = $out_root .       ".ref." . $type_fname . "." . $ftr_type_idx . ".exon." . ($e+1);
-          $cur_out_name_root   = $out_dir_tail .   ".ref." . $type_fname . "." . $ftr_type_idx . ".exon." . ($e+1);
-          $cur_build_root      = $build_root .     ".ref." . $type_fname . "." . $ftr_type_idx . ".exon." . ($e+1);
-          $cur_build_name_root = $build_dir_tail . ".ref." . $type_fname . "." . $ftr_type_idx . ".exon." . ($e+1);
+      for(my $e = 0; $e < $nsegments; $e++) { 
+        if($nsegments > 1) { 
+          $cur_out_root        = $out_root .       ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
+          $cur_out_name_root   = $out_dir_tail .   ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
+          $cur_build_root      = $build_root .     ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
+          $cur_build_name_root = $build_dir_tail . ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
         }
         else { 
           $cur_out_root        = $out_root .       ".ref." . $type_fname . "." . $ftr_type_idx;
@@ -945,25 +882,23 @@ sub fetchReferenceFeatureSequences {
 
         # store information on this model's name for output purposes
         $mdl_info_HAR->{"filename_root"}[$nmdl] = sprintf("$ftr_type.%s", 
-                                                          ($nexons == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
+                                                          ($nsegments == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
         $mdl_info_HAR->{"out_tiny"}[$nmdl]  = sprintf("%s#%s", 
                                                       $type_fname,
-                                                      ($nexons == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
+                                                      ($nsegments == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
         
-
-        $mdl_info_HAR->{"map_ftr"}[$nmdl]    = $i;
-        $mdl_info_HAR->{"is_first"}[$nmdl]   = ($e == 0)           ? 1 : 0;
-        $mdl_info_HAR->{"is_final"}[$nmdl]   = ($e == ($nexons-1)) ? 1 : 0;
-        $mdl_info_HAR->{"map_exon"}[$nmdl]   = $e;
-        $mdl_info_HAR->{"map_nexon"}[$nmdl]  = $nexons;
-        $mdl_info_HAR->{"append_num"}[$nmdl] = 0; # maybe changed later in determineFeatureTypes()
-        $mdl_info_HAR->{"out_idx"}[$nmdl] = sprintf("%d.%d", 
-                                                    $mdl_info_HAR->{"map_ftr"}[$nmdl]+1, $mdl_info_HAR->{"map_exon"}[$nmdl]+1);
+        $mdl_info_HAR->{"map_ftr"}[$nmdl]       = $i;
+        $mdl_info_HAR->{"is_first"}[$nmdl]      = ($e == 0)           ? 1 : 0;
+        $mdl_info_HAR->{"is_final"}[$nmdl]      = ($e == ($nsegments-1)) ? 1 : 0;
+        $mdl_info_HAR->{"map_segment"}[$nmdl]   = $e;
+        $mdl_info_HAR->{"map_nsegment"}[$nmdl]  = $nsegments;
+        $mdl_info_HAR->{"out_idx"}[$nmdl]       = sprintf("%d.%d", 
+                                                          $mdl_info_HAR->{"map_ftr"}[$nmdl]+1, $mdl_info_HAR->{"map_segment"}[$nmdl]+1);
 
         if($e == 0) { 
           $ftr_info_HAR->{"first_mdl"}[$i] = $nmdl;
         }
-        if($e == ($nexons-1)) { 
+        if($e == ($nsegments-1)) { 
           $ftr_info_HAR->{"final_mdl"}[$i] = $nmdl;
         }
         $nmdl++;
@@ -990,14 +925,6 @@ sub fetchReferenceFeatureSequences {
       if($ftr_info_HAR->{"nmodels"}[$i] > 1) { $short .= sprintf(" [%d %s; %s]", $ftr_info_HAR->{"nmodels"}[$i], featureTypeIsCds($ftr_info_HAR->{"type"}[$i]) ? "exons" : "segments", $ftr_info_HAR->{"ref_strand"}[$i]); }
       else                                   { $short .= sprintf(" [single %s; %s]",  featureTypeIsCds($ftr_info_HAR->{"type"}[$i]) ? "exon" : "segment", $ftr_info_HAR->{"ref_strand"}[$i]); }
     }
-    elsif($ftr_info_HAR->{"annot_type"}[$i] eq "multifeature") { 
-      if($ftr_type eq "cds-mp") { 
-        $short .= sprintf(" [%d mature_peptide(s)]", $ftr_info_HAR->{"primary_children_ftr_num"}[$i]);
-      }
-      else { 
-        DNAORG_FAIL("ERROR in $sub_name, unexpected feature type for multifeature feature: $ftr_type.", 1, $FH_HR);
-      }
-    }
     $ftr_info_HAR->{"out_tiny"}[$i]      = $tiny;
     $ftr_info_HAR->{"out_short"}[$i]     = $short;
     $ftr_info_HAR->{"filename_root"}[$i] = $ftr_type . "." . $ftr_type_idx;
@@ -1010,59 +937,6 @@ sub fetchReferenceFeatureSequences {
 
   return;
 }
-
-#################################################################
-# Subroutine : annotateAppendFeatures()
-# Incept:      EPN, Thu Mar  3 16:36:09 2016
-#
-# Purpose:     Look for and add information about special features
-#              and their corresponding models where we want to 
-#              annotate *past* the 3' end for the multifeature
-#              that is comprised of other features. The specific
-#              case we want to handle is to annotate the 3 nt 3'
-#              of the end of the final mature peptide of a mature
-#              peptide derived CDS, which is the stop codon.
-#              
-#              Fills for both %{$ftr_info_HAR} and %{$mdl_info_HAR}.
-#                "append_num":    number of nucleotides to append for this model, usually 0, unless this
-#                                 model is the final mature peptide of a CDS, in which case it is usually 3,
-#                                 this informs other parts of the pipeline that we need to append the 3 
-#                                 downstream nucleotides: the stop codon, which is not included in the 
-#                                 annotation of the final mature peptide in NCBI, but is included in the
-#                                 parent CDS annotation.
-#
-# Arguments: 
-#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
-#   $mdl_info_HAR: REF to hash of arrays with information on the models, ADDED TO HERE
-#   $FH_HR:        REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies: 
-################################################################# 
-sub annotateAppendFeatures { 
-  my $nargs_expected = 3;
-  my $sub_name = "annotateAppendFeatures()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $mdl_info_HAR, $FH_HR) = @_;
-
-  my $nftr = getConsistentSizeOfInfoHashOfArrays($ftr_info_HAR, $FH_HR);
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp" && 
-       $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
-      # find final feature 
-      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
-      my $final_ftr_idx = $primary_children_idx_A[(scalar(@primary_children_idx_A)-1)];
-      my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
-      $mdl_info_HAR->{"append_num"}[$final_mdl_idx] = 3; # we want to append the 3 nt 3' of this model 
-      $ftr_info_HAR->{"append_num"}[$ftr_idx] = 3; # we want to append the 3 nt 3' of this feature
-    }
-  }
-
-  return;
-}
-
 
 #################################################################
 # Subroutine : determineSourcesOfDuplicateFeatures()
@@ -1116,6 +990,232 @@ sub determineSourcesOfDuplicateFeatures {
     # else $ftr_info_HAR->{"source_idx"}[$ftr_idx] will stay as it was initialized (-1)
   }
   
+  return;
+}
+
+#################################################################
+# Subroutine : featureHasChildren()
+# Incept:      EPN, Sat Feb 16 06:43:26 2019
+#
+# Purpose:     Return '1' if a feature has >= 1 children features.
+#              Return '0' if a feature has    0 children features.
+#              
+# Arguments: 
+#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
+#   $ftr_idx:      index of feature we are interested in
+#   $FH_HR:        REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: If any of the following are undefined or have 
+#       fewer than $ftr_idx elements.
+#       @{$ftr_info_HAR->{"primary_children_ftr_str"}}
+#       @{$ftr_info_HAR->{"primary_children_ftr_num"}}
+#       @{$ftr_info_HAR->{"all_children_ftr_str"}}
+#       @{$ftr_info_HAR->{"all_children_ftr_num"}}
+# 
+################################################################# 
+sub featureHasChildren { 
+  my $nargs_expected = 3;
+  my $sub_name = "featureHasChildren";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+
+  foreach my $key ("primary_children_ftr_str", 
+                "primary_children_ftr_num",
+                "all_children_ftr_str",
+                "all_children_ftr_num") { 
+    if(! defined $ftr_info_HAR->{$key}) { 
+      DNAORG_FAIL("ERROR in $sub_name, ftr_info_HAR->{$key} is not defined", 1, $FH_HR);
+    }
+    if(scalar(@{$ftr_info_HAR->{$key}}) < $ftr_idx) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, ftr_idx: $ftr_idx, ftr_info_HAR->{$key} only has %d elements", scalar(@{$ftr_info_HAR->{$key}})), 1, $FH_HR);
+    }
+  }        
+
+  if(featureHasPrimaryChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
+    return 1; 
+  }
+  if(featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
+    return 1; 
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine : featureHasPrimaryChildren()
+# Incept:      EPN, Sat Feb 16 06:51:52 2019
+#
+# Purpose:     Return '1' if a feature has >= 1 primary children features.
+#              Return '0' if a feature has    0 primary children features.
+#              
+# Arguments: 
+#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
+#   $ftr_idx:      index of feature we are interested in
+#   $FH_HR:        REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: If any of the following are undefined or have 
+#       fewer than $ftr_idx elements.
+#       @{$ftr_info_HAR->{"primary_children_ftr_str"}}
+#       @{$ftr_info_HAR->{"primary_children_ftr_num"}}
+#
+################################################################# 
+sub featureHasPrimaryChildren { 
+  my $nargs_expected = 3;
+  my $sub_name = "featureHasPrimaryChildren";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+
+  foreach my $key ("primary_children_ftr_str", 
+                   "primary_children_ftr_num") { 
+    if(! defined $ftr_info_HAR->{$key}) { 
+      DNAORG_FAIL("ERROR in $sub_name, ftr_info_HAR->{$key} is not defined", 1, $FH_HR);
+    }
+    if(scalar(@{$ftr_info_HAR->{$key}}) < $ftr_idx) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, ftr_idx: $ftr_idx, ftr_info_HAR->{$key} only has %d elements", scalar(@{$ftr_info_HAR->{$key}})), 1, $FH_HR);
+    }
+  }        
+
+  if($ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx] > 0) { 
+    return 1;
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine : featureHasAllChildren()
+# Incept:      EPN, Sat Feb 16 06:51:52 2019
+#
+# Purpose:     Return '1' if a feature has >= 1 all children features.
+#              Return '0' if a feature has    0 all children features.
+#              
+# Arguments: 
+#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
+#   $ftr_idx:      index of feature we are interested in
+#   $FH_HR:        REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: If any of the following are undefined or have 
+#       fewer than $ftr_idx elements.
+#       @{$ftr_info_HAR->{"all_children_ftr_str"}}
+#       @{$ftr_info_HAR->{"all_children_ftr_num"}}
+#
+################################################################# 
+sub featureHasAllChildren { 
+  my $nargs_expected = 3;
+  my $sub_name = "featureHasAllChildren";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+
+  foreach my $key ("all_children_ftr_str", 
+                   "all_children_ftr_num") { 
+    if(! defined $ftr_info_HAR->{$key}) { 
+      DNAORG_FAIL("ERROR in $sub_name, ftr_info_HAR->{$key} is not defined", 1, $FH_HR);
+    }
+    if(scalar(@{$ftr_info_HAR->{$key}}) < $ftr_idx) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, ftr_idx: $ftr_idx, ftr_info_HAR->{$key} only has %d elements", scalar(@{$ftr_info_HAR->{$key}})), 1, $FH_HR);
+    }
+  }        
+
+  if($ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx] > 0) { 
+    return 1;
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine : featureGetPrimaryChildren()
+# Incept:      EPN, Sat Feb 16 07:00:13 2019
+#
+# Purpose:     Fill @{$AR} with the space delimited tokens of 
+#              @{$ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]}
+#              and return;
+# 
+# Arguments: 
+#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:        index of feature we're interested in
+#   $AR:             REF to array to fill, FILLED HERE
+#   $FH_HR:          REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: If there are no primary children for feature index $ftr_idx,
+#       If number of primary children in $ftr_info_HAR->{"primary_children_ftr_str"}
+#       disagrees with $ftr_info_HAR->{"primary_children_ftr_num"}.
+#
+################################################################# 
+sub featureGetPrimaryChildren { 
+  my $nargs_expected = 4;
+  my $sub_name = "featureGetPrimaryChildren";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $AR, $FH_HR) = @_;
+
+  if(! featureHasPrimaryChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
+    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no primary children", 1, $FH_HR);
+  }
+
+  @{$AR} = ();
+  @{$AR} = split(/\s+/, $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]);
+
+  if(scalar(@{$AR}) == 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no primary children (on second pass -- shouldn't happen)", 1, $FH_HR);
+  }
+  if(scalar(@{$AR}) != $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx]) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, feature $ftr_idx has %d children in ftr_info_HAR->{primary_children_ftr_str} but ftr_info_HAR->{primary_children_ftr_num} is %d", 
+                        scalar(@{$AR}), $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx]), 1, $FH_HR); 
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine : featureGetAllChildren()
+# Incept:      EPN, Sat Feb 16 07:00:08 2019
+#
+# Purpose:     Fill @{$AR} with the space delimited tokens of 
+#              @{$ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]}
+#              and return;
+# 
+# Arguments: 
+#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:        index of feature we're interested in
+#   $AR:             REF to array to fill, FILLED HERE
+#   $FH_HR:          REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies: If there are no all children for feature index $ftr_idx,
+#       If number of all children in $ftr_info_HAR->{"all_children_ftr_str"}
+#       disagrees with $ftr_info_HAR->{"all_children_ftr_num"}.
+#
+################################################################# 
+sub featureGetAllChildren { 
+  my $nargs_expected = 4;
+  my $sub_name = "featureGetAllChildren";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $AR, $FH_HR) = @_;
+
+  if(! featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
+    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no all children", 1, $FH_HR);
+  }
+
+  @{$AR} = ();
+  @{$AR} = split(/\s+/, $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]);
+
+  if(scalar(@{$AR}) == 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no all children (on second pass -- shouldn't happen)", 1, $FH_HR);
+  }
+  if(scalar(@{$AR}) != $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]) { 
+    DNAORG_FAIL(sprintf("ERROR in $sub_name, feature $ftr_idx has %d children in ftr_info_HAR->{all_children_ftr_str} but ftr_info_HAR->{all_children_ftr_num} is %d", 
+                        scalar(@{$AR}), $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]), 1, $FH_HR); 
+  }
+
   return;
 }
 
@@ -2442,8 +2542,6 @@ sub wrapperGetInfoUsingEdirect {
 #              2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
 #              3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
 #              4) fetches the reference sequence feature and populates information on the models and features
-#              5) look for special cases, where we want to append the 3 nt 3' of the final mature peptide in a cds-mp feature type
-#              6) add information on the overlaps and adjacencies
 #
 #              Creates the following output files and stores
 #              information on them in the ofile* data structures
@@ -2661,10 +2759,7 @@ sub wrapperFetchAllSequencesAndProcessReferenceSequence {
     addClosedFileToOutputInfo($ofile_info_HHR, "refstk", $stk_file, 0, "Stockholm alignment file with reference sequence");
   }
 
-  # 5) look for special cases, where we want to append the 3 nt 3' of the final mature peptide in a cds-mp feature type
-  annotateAppendFeatures($ftr_info_HAR, $mdl_info_HAR, $FH_HR);
-
-  # 6) determine the source "dupsource" of any duplicate feature annotations, for
+  # 5) determine the source "dupsource" of any duplicate feature annotations, for
   #    all other non 'duplicate' features the "source_idx" will be -1
   determineSourcesOfDuplicateFeatures($ftr_info_HAR, $FH_HR);
   
@@ -3007,7 +3102,7 @@ sub helperBreakdownFac {
   }
   else { # normal case, all exons/segments are on the same strand
     # if we're on the reverse strand, we need to reverse the order of the 
-    # exons, because the order of reverse strand exons in a feature table is 
+    # segments, because the order of reverse strand segments in a feature table is 
     # opposite what it is in Entrez, and our other scripts use Entrez
     # format, so we enforce that convention here.
     if($nrev > 0) { 
@@ -3026,7 +3121,7 @@ sub helperBreakdownFac {
   if($nsegments > 1) { # more than one segment
     $ncbi_coords = "join(" . $ncbi_coords . ")";
   }
-  # now add complement for cases where are exons/segments are on reverse strand
+  # now add complement for cases where are segments/segments are on reverse strand
   # impt to do this after the join, so we get complement(join()) instead of
   # join(complement())
   if($nfwd == 0 && $nrev > 0) { # all segments are on reverse strand
@@ -4121,11 +4216,11 @@ sub getStrandStats {
 #   $do_circular: '1' if we're searching a circular (duplicated) genome and we'll allow stop..start boundary spans
 #   $starts_AR:   ref to array to fill with start positions
 #   $stops_AR:    ref to array to fill with stop positions
-#   $strands_AR:  ref to array to fill with strands of each exon, can be undef
-#   $nexons_R:    ref to scalar that fill with the number of exons
+#   $strands_AR:  ref to array to fill with strands of each segment, can be undef
+#   $nsegments_R: ref to scalar that fill with the number of segments
 #   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    void; but fills @{$starts_AR}, @{$stops_AR}, and $$nexons_R.
+# Returns:    void; but fills @{$starts_AR}, @{$stops_AR}, and $$nsegments_R.
 #
 # Dies:       if we see a feature that spans stop..start but $do_circular is 0
 #################################################################
@@ -4134,12 +4229,12 @@ sub startsStopsStrandsFromCoordsLength {
   my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($coords, $totlen, $do_circular, $starts_AR, $stops_AR, $strands_AR, $nexons_R, $FH_HR) = @_;
+  my ($coords, $totlen, $do_circular, $starts_AR, $stops_AR, $strands_AR, $nsegments_R, $FH_HR) = @_;
 
   # zero/initialize what we will be determining in this subroutine
   @{$starts_AR} = ();
   @{$stops_AR}  = ();
-  $$nexons_R    = 0;
+  $$nsegments_R    = 0;
   
   my $orig_coords = $coords;
   # Examples:
@@ -4166,7 +4261,7 @@ sub startsStopsStrandsFromCoordsLength {
     # rare case: remove 'complement(' ')' that still exists:
     $cur_strand = $strand;
     if($el =~ m/^complement\(/) { 
-      DNAORG_FAIL("ERROR in $sub_name: found internal complement in coords string $coords, we assume all exons are on same strand...", 1, $FH_HR); 
+      DNAORG_FAIL("ERROR in $sub_name: found internal complement in coords string $coords, we assume all segments are on same strand...", 1, $FH_HR); 
       $el =~ s/^complement\(//;
       if($cur_strand eq "-") { DNAORG_FAIL("ERROR in $sub_name, found nested 'complement' annotations in coord string: $coords", 1, $FH_HR); }
       $cur_strand = "-";
@@ -4178,29 +4273,29 @@ sub startsStopsStrandsFromCoordsLength {
       push(@{$starts_AR}, $1);
       push(@{$stops_AR},  $2);
       if(defined $strands_AR) { push(@{$strands_AR}, $cur_strand); }
-      $$nexons_R++;
+      $$nsegments_R++;
     }
     elsif($el =~ m/^(\d+)$/) { # a single nucleotide
       push(@{$starts_AR}, $1);
       push(@{$stops_AR},  $1);
       if(defined $strands_AR) { push(@{$strands_AR}, $cur_strand); }
-      $$nexons_R++;
+      $$nsegments_R++;
     }
     else { 
       DNAORG_FAIL("ERROR unable to parse $orig_coords in $sub_name", 1, $FH_HR); 
     }
   }
 
-  # check if we have a spanning exon (that spans stop..start) and if we do
+  # check if we have a spanning segment (that spans stop..start) and if we do
   # and (! $do_circular) then die, because that shouldn't happen.
-  my $have_spanning_exon = checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nexons_R, 0, $strand, $totlen); # 1 says: do correct the spanning exon
-  if($have_spanning_exon) { 
+  my $have_spanning_segment = checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nsegments_R, 0, $strand, $totlen); # 1 says: do correct the spanning segment
+  if($have_spanning_segment) { 
     if(! $do_circular) { 
-      DNAORG_FAIL("ERROR in $sub_name, found exon that spanned stop..start boundary, but we're not allowing circular genomes...", 1, $FH_HR); 
+      DNAORG_FAIL("ERROR in $sub_name, found segment that spanned stop..start boundary, but we're not allowing circular genomes...", 1, $FH_HR); 
     }
     else { 
       # fix it
-      checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nexons_R, 1, $strand, $totlen); # 0 says: don't correct the spanning exon
+      checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nsegments_R, 1, $strand, $totlen); # 0 says: don't correct the spanning segment
     }
   }
 
@@ -4213,13 +4308,13 @@ sub startsStopsStrandsFromCoordsLength {
 # Purpose:    Extract the starts and stops from a coords string.
 #
 # Args:
-#   $coords:    the coords string
-#   $starts_AR: REF to array to fill with start positions, FILLED HERE
-#   $stops_AR:  REF to array to fill with stop positions, FILLED HERE
-#   $nexons_R:  REF to scalar that fill with the number of exons, FILLED HERE
-#   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#   $coords:      the coords string
+#   $starts_AR:   REF to array to fill with start positions, FILLED HERE
+#   $stops_AR:    REF to array to fill with stop positions, FILLED HERE
+#   $nsegments_R: REF to scalar that fill with the number of segments, FILLED HERE
+#   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:      void; but fills @{$starts_AR}, @{$stops_AR}, and $$nexons_R.
+# Returns:      void; but fills @{$starts_AR}, @{$stops_AR}, and $$nsegments_R.
 #
 # Dies:         if we can't parse $coords
 #################################################################
@@ -4228,11 +4323,11 @@ sub startsStopsFromCoords {
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($coords, $starts_AR, $stops_AR, $nexons_R, $FH_HR) = @_;
+  my ($coords, $starts_AR, $stops_AR, $nsegments_R, $FH_HR) = @_;
 
   @{$starts_AR} = ();
   @{$stops_AR}  = ();
-  $$nexons_R    = 0;
+  $$nsegments_R    = 0;
   
   my $orig_coords = $coords;
   # Examples:
@@ -4259,12 +4354,12 @@ sub startsStopsFromCoords {
     if($el =~ m/^(\d+)\.\.(\d+)$/) { 
       push(@{$starts_AR}, $1);
       push(@{$stops_AR},  $2);
-      $$nexons_R++;
+      $$nsegments_R++;
     }
     elsif($el =~ m/^(\d+)$/) { # a single nucleotide
       push(@{$starts_AR}, $1);
       push(@{$stops_AR},  $1);
-      $$nexons_R++;
+      $$nsegments_R++;
     }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unable to parse coordinates $orig_coords", 1, $FH_HR); 
@@ -4329,12 +4424,12 @@ sub lengthFromCoords {
 
   my @starts_A = ();
   my @stops_A  = ();
-  my $nexons   = 0;
+  my $nsegments   = 0;
 
-  startsStopsFromCoords($coords, \@starts_A, \@stops_A, \$nexons, $FH_HR);
+  startsStopsFromCoords($coords, \@starts_A, \@stops_A, \$nsegments, $FH_HR);
 
   my $length = 0;
-  for(my $i = 0; $i < $nexons; $i++) { 
+  for(my $i = 0; $i < $nsegments; $i++) { 
     $length += abs($starts_A[$i] - $stops_A[$i]) + 1;
   }
 
@@ -5032,19 +5127,11 @@ sub validateExecutableHash {
 #             The expected keys are:
 #                "annot_type":    annotation type:
 #                                 "model":        if this feature's annotation is derived from models (type: 'mp' or 'cds-notmp'
-#                                 "multifeature": if this feature's annotation is derived from multiple other features (type: 'cds-mp')
 #                                 "duplicate":    if this feature's annotation is derived by copying data from another (e.g., type: 'gene')
-#                "append_num":    number of nucleotides to append for this model, usually 0, unless this
-#                                 model is the final mature peptide of a CDS, in which case it is usually 3,
-#                                 this informs other parts of the pipeline that we need to append the 3 
-#                                 downstream nucleotides: the stop codon, which is not included in the 
-#                                 annotation of the final mature peptide in NCBI, but is included in the
-#                                 parent CDS annotation.
 #                "filename_root": 'root' string for output file names related to this model: 
 #                "final_mdl":     index (in arrays of %mdl_info_HA) of final model for this feature
 #                "first_mdl":     index (in arrays of %mdl_info_HA) of first model for this feature
-#                "nmodels":       number of models for this feature (e.g. number of exons or segments) for this feature, 
-#                                 0 if 'annotation' eq 'multifeature'
+#                "nmodels":       number of models for this feature (e.g. number of segments) for this feature, 
 #                "out_product":   output value: name of product for this feature (e.g. "replication-associated protein")
 #                "out_gene":      output value: name of gene for this feature (e.g. "ORF2")
 #                "out_exception": output value: name of exception for this feature (e.g. "RNA editing")
@@ -5083,7 +5170,7 @@ sub validateFeatureInfoHashIsComplete {
  
   my ($ftr_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("append_num", "final_mdl", "first_mdl", "annot_type", "nmodels", 
+  my @expected_keys_A = ("final_mdl", "first_mdl", "annot_type", "nmodels", 
                          "out_product", "out_gene", "out_exception", 
                          "out_tiny", "out_short", "out_tiny", "ref_coords",
                          "ref_len", "ref_strand", "type", "type_idx", 
@@ -5100,24 +5187,18 @@ sub validateFeatureInfoHashIsComplete {
 # Purpose:    Validate that a 'model info' hash is valid and complete.
 #             'Complete' means it has all the expected keys, each of which is an identically sized array.
 #             The expected keys are:
-#                "append_num":    number of nucleotides to append for this model, usually 0, unless this
-#                                 model is the final mature peptide of a CDS, in which case it is usually 3,
-#                                 this informs other parts of the pipeline that we need to append the 3 
-#                                 downstream nucleotides: the stop codon, which is not included in the 
-#                                 annotation of the final mature peptide in NCBI, but is included in the
-#                                 parent CDS annotation.
 #                "checksum":      checksum of the 'alignment' (single sequence) file the model was built from
 #                "cmname":        name of the model, used in infernal output 
 #                "filename_root": 'root' string for output file names related to this model: 
-#                "is_final":      '1' if this model is the final model (e.g. final exon) for the feature it models ("map_ftr")
-#                "is_first":      '1' if this model is the first model (e.g. final exon) for the feature it models ("map_ftr")
+#                "is_final":      '1' if this model is the final model (e.g. final segment) for the feature it models ("map_ftr")
+#                "is_first":      '1' if this model is the first model (e.g. final segment) for the feature it models ("map_ftr")
 #                "length":        length, in nucleotides, of the model
 #                "ref_start":     start position of modelled region in the reference genome
 #                "ref_stop":      stop position of modelled region in the reference genome
 #                "ref_strand":    strand of modelled region in the reference genome
-#                "map_exon":      the exon index this model models (1.."map_nexon" value)
+#                "map_segment":   the segment index this model models (1.."map_nsegment" value)
 #                "map_ftr":       the feature index (array index in ftr_info_HAR) this model models
-#                "map_nexon":     the number of exons the feature this model models has 
+#                "map_nsegment":  the number of segments the feature this model models has 
 #                "out_tiny":      output value: very short name for this model (e.g. "CDS#4.2")
 #                "out_idx":       output value: feature index and segment index this model (e.g. "4.2")
 #
@@ -5144,8 +5225,9 @@ sub validateModelInfoHashIsComplete {
  
   my ($mdl_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("append_num", "checksum", "cmname", "filename_root", "is_final", "is_first", 
-                         "length", "ref_start", "ref_stop", "ref_strand", "map_exon", "map_ftr", "map_nexon", "out_tiny", "out_idx");
+  my @expected_keys_A = ("checksum", "cmname", "filename_root", "is_final", "is_first", 
+                         "length", "ref_start", "ref_stop", "ref_strand", "map_segment", 
+                         "map_ftr", "map_nsegment", "out_tiny", "out_idx");
 
   return validateInfoHashOfArraysIsComplete($mdl_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
@@ -6926,7 +7008,6 @@ sub nseBreakdown {
 #   createCmDb()
 #   matpeptValidateCdsRelationships()
 #   checkForSpanningSequenceSegments()
-#   annotateAppendFeatures()
 #   getIndexHashForArray()
 #
 #################################################################
@@ -7295,27 +7376,27 @@ sub matpeptValidateCdsRelationships {
     my @cds_starts_A  = ();
     my @cds_stops_A   = ();
     my @cds_strands_A = ();
-    my $cds_nexons    = 0;
-    startsStopsStrandsFromCoordsLength($ref_cds_coords_A[$cds_idx], $ref_totlen, $do_circular, \@cds_starts_A, \@cds_stops_A, \@cds_strands_A, \$cds_nexons, $FH_HR);
+    my $cds_nsegments = 0;
+    startsStopsStrandsFromCoordsLength($ref_cds_coords_A[$cds_idx], $ref_totlen, $do_circular, \@cds_starts_A, \@cds_stops_A, \@cds_strands_A, \$cds_nsegments, $FH_HR);
     my $cds_start = $cds_starts_A[0];
-    my $cds_stop  = $cds_stops_A[$cds_nexons-1];
-    if($cds_nexons != 1) { 
-      if($cds_nexons != 2) { 
-        DNAORG_FAIL("ERROR in $sub_name, triple or more exon CDS broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
+    my $cds_stop  = $cds_stops_A[$cds_nsegments-1];
+    if($cds_nsegments != 1) { 
+      if($cds_nsegments != 2) { 
+        DNAORG_FAIL("ERROR in $sub_name, triple or more segment CDS broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
       }
       if($cds_strands_A[0] ne $cds_strands_A[1]) { 
-        DNAORG_FAIL("ERROR in $sub_name, double exon CDS with each exon on different strands to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
+        DNAORG_FAIL("ERROR in $sub_name, double segment CDS with each segment on different strands to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
       }
-      # two exon CDS, if any introns exist (any nt is not included between $cds_start..$cds_stop) then we can't handle it
-      # example of a multi-'exon' CDS that we CAN handle is West Nile Virus CDS #2: NC_001563.2 join(97..3540,3540..3671)
+      # two segment CDS, if any introns exist (any nt is not included between $cds_start..$cds_stop) then we can't handle it
+      # example of a multi-'segment' CDS that we CAN handle is West Nile Virus CDS #2: NC_001563.2 join(97..3540,3540..3671)
       if($cds_strands_A[0] eq "+") { 
         if(($cds_starts_A[1] - $cds_stops_A[0] - 1) > 0) { 
-#          DNAORG_FAIL("ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
+#          DNAORG_FAIL("ERROR in $sub_name, multiple segment CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
         }
       }
       else { # negative strand
         if(($cds_stops_A[0] - $cds_starts_A[1] - 1) > 0) { 
-#          DNAORG_FAIL("ERROR in $sub_name, multiple exon CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
+#          DNAORG_FAIL("ERROR in $sub_name, multiple segment CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
         }
       }
     }
@@ -7330,8 +7411,8 @@ sub matpeptValidateCdsRelationships {
       }
       my @mp_starts_A = ();
       my @mp_stops_A  = ();
-      my $mp_nexons   = 0;
-      startsStopsStrandsFromCoordsLength($ref_mp_coords_A[$mp_idx], $ref_totlen, $do_circular, \@mp_starts_A, \@mp_stops_A, undef, \$mp_nexons, $FH_HR);
+      my $mp_nsegments   = 0;
+      startsStopsStrandsFromCoordsLength($ref_mp_coords_A[$mp_idx], $ref_totlen, $do_circular, \@mp_starts_A, \@mp_stops_A, undef, \$mp_nsegments, $FH_HR);
       if($x == 0) { # verify start matches with CDS start
         if($mp_starts_A[0] != $cds_start) { 
           DNAORG_FAIL("ERROR in $sub_name, for cds_idx $cds_idx start of first mat_peptide doesn't match CDS start ($mp_starts_A[0] != $cds_start)", 1, $FH_HR); 
@@ -7343,12 +7424,12 @@ sub matpeptValidateCdsRelationships {
         }
       }
       if($x == ($nmp2check-1)) { # verify stop matches with CDS stop-3
-        if(($mp_stops_A[($mp_nexons-1)]+3) != $cds_stop) { 
-          DNAORG_FAIL(sprintf("ERROR in $sub_name, for cds_idx $cds_idx stop of final mat_peptide doesn't match CDS stop (%d != %d)", $mp_stops_A[($mp_nexons-1)], $cds_stop), 1, $FH_HR);
+        if(($mp_stops_A[($mp_nsegments-1)]+3) != $cds_stop) { 
+          DNAORG_FAIL(sprintf("ERROR in $sub_name, for cds_idx $cds_idx stop of final mat_peptide doesn't match CDS stop (%d != %d)", $mp_stops_A[($mp_nsegments-1)], $cds_stop), 1, $FH_HR);
         }
       }
-      $prv_stop = $mp_stops_A[($mp_nexons-1)];
-      # printf("checked mp $mp_idx %d..%d\n", $mp_starts_A[0], $mp_stops_A[($mp_nexons-1)]);
+      $prv_stop = $mp_stops_A[($mp_nsegments-1)];
+      # printf("checked mp $mp_idx %d..%d\n", $mp_starts_A[0], $mp_stops_A[($mp_nsegments-1)]);
     }
   }
 
@@ -7365,15 +7446,15 @@ sub matpeptValidateCdsRelationships {
 #             code of the subroutine.)
 #
 # Arguments:
-#   $starts_AR: ref of array of start positions to potentially overwrite (if we find this is really only one exon)
-#   $stops_AR:  ref of array of stop positions to potentially overwrite (if we find this is really only one exon)
-#   $nexons_R:  ref to scalar of number of exons to overwrite (if we find this is really only one exon)
-#   $do_update: '1' to update $starts_AR, $stops_AR and $nexons_R if we find two exons that span stop..start
-#   $strand:    strand the exons are on
-#   $totlen:    total length of the sequence
+#   $starts_AR:   ref of array of start positions to potentially overwrite (if we find this is really only one segment)
+#   $stops_AR:    ref of array of stop positions to potentially overwrite (if we find this is really only one segment)
+#   $nsegments_R: ref to scalar of number of segments to overwrite (if we find this is really only one segment)
+#   $do_update:   '1' to update $starts_AR, $stops_AR and $nsegments_R if we find two segments that span stop..start
+#   $strand:      strand the segments are on
+#   $totlen:      total length of the sequence
 #           
-# Returns:    '1' if we found two exons that spanned stop..start 
-#             (and if ($do_update) then we also updated @{$starts_AR}, @{$stops_AR} and $$nexons_R)
+# Returns:    '1' if we found two segments that spanned stop..start 
+#             (and if ($do_update) then we also updated @{$starts_AR}, @{$stops_AR} and $$nsegments_R)
 # 
 # Dies:       Never.
 # 
@@ -7383,50 +7464,50 @@ sub checkForSpanningSequenceSegments {
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($starts_AR, $stops_AR, $nexons_R, $do_update, $strand, $totlen) = @_;
+  my ($starts_AR, $stops_AR, $nsegments_R, $do_update, $strand, $totlen) = @_;
 
-  my $found_spanning_exons = 0;
+  my $found_spanning_segments = 0;
 
-  # if $$nexons_R is not '2', we skip this block and return '0'.
-  # 'spanning' exons can only occur if there are exactly 2 exons that
+  # if $$nsegments_R is not '2', we skip this block and return '0'.
+  # 'spanning' segments can only occur if there are exactly 2 segments that
   # we are checking. 
-  if($$nexons_R == 2) { 
+  if($$nsegments_R == 2) { 
     # if we're in a circular genome, we need to check for a special case, where 
-    # what looks like a 2-exon CDS is really a single exon that spans the stop..start boundary.
-    # [Note that if the stop..start boundary is spanned by an intron (i.e. exon i is before stop,
+    # what looks like a 2-segment CDS is really a single segment that spans the stop..start boundary.
+    # [Note that if the stop..start boundary is spanned by an intron (i.e. segment i is before stop,
     # and i+1 is after start) then we don't need to modify anything, we'll still fetch the proper
     # sequence even in a duplicated genome].
     #
-    # Example 1: single exon that spans stop..start boundary on positive strand
-    # join(2309..3182,1..1625) in a seq of length 3182, this should really be a single exon
+    # Example 1: single segment that spans stop..start boundary on positive strand
+    # join(2309..3182,1..1625) in a seq of length 3182, this should really be a single segment
     # $starts_A[0] = 2309
     # $stops_A[0]  = 3182
     # $starts_A[1] = 1
     # $stops_A[1]  = 1625
-    # $nexons = 2;
+    # $nsegments = 2;
     # 
     # should become:
     # $starts_A[0] = 2309
     # $stops_A[0]  = 4807
-    # $nexons = 1;
+    # $nsegments = 1;
     # 
-    # Example 2: single exon that spans stop..start boundary on negative strand
-    # complement(join(2309..3182,1..1625))   in a seq of length 3182, this should really be a single exon
+    # Example 2: single segment that spans stop..start boundary on negative strand
+    # complement(join(2309..3182,1..1625))   in a seq of length 3182, this should really be a single segment
     # $starts_A[0] = 3182
     # $stops_A[0]  = 2309
     # $starts_A[1] = 1625
     # $stops_A[1]  = 1
-    # $nexons = 2;
+    # $nsegments = 2;
     # 
     # should become:
     # $starts_A[0] = 4807
     # $stops_A[0]  = 2309
-    # $nexons = 1;
+    # $nsegments = 1;
     #
     # we can easily check and fix these cases:
     my $tmp_start = undef;
     my $tmp_stop  = undef;
-    # remember if we get here, we know we only have 2 exons, i.e scalar(@{$starts_AR}) and scalar(@{$stops_AR}) is 2
+    # remember if we get here, we know we only have 2 segments, i.e scalar(@{$starts_AR}) and scalar(@{$stops_AR}) is 2
     if($strand eq "+" && $stops_AR->[0] == $totlen && $starts_AR->[1] == 1) { 
       $tmp_start = $starts_AR->[0];
       $tmp_stop  = $stops_AR->[1] + $totlen;
@@ -7440,11 +7521,11 @@ sub checkForSpanningSequenceSegments {
       @{$stops_AR} = ();
       $starts_AR->[0] = $tmp_start;
       $stops_AR->[0]  = $tmp_stop;
-      $$nexons_R = 1;
-      $found_spanning_exons = 1;
+      $$nsegments_R   = 1;
+      $found_spanning_segments = 1;
     }    
   }
-  return $found_spanning_exons;
+  return $found_spanning_segments;
 }
 
 #################################################################
