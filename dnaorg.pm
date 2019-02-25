@@ -545,6 +545,9 @@ sub getReferenceFeatureInfo {
 
   if($do_matpept) { 
     (undef, undef, undef, undef, undef, $ref_mp_strand_str) = getStrandStats($mp_tbl_HHAR, $ref_accn, $FH_HR);
+    if($ref_mp_strand_str !~ /^[+-]+$/) { 
+      DNAORG_FAIL("ERROR in $sub_name, at least one MP is not + or - strand (must be single nt MP or mixed strand MP), ref_mp_strand_str: $ref_mp_strand_str", 1, $FH_HR);
+    }
     getLengthsAndCoords(\%{$mp_tbl_HHAR->{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
     $nadded_product   = getQualifierValues($mp_tbl_HHAR, $ref_accn, "product",   \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
     $nadded_gene      = getQualifierValues($mp_tbl_HHAR, $ref_accn, "gene",      \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
@@ -576,6 +579,11 @@ sub getReferenceFeatureInfo {
   }
 
   (undef, undef, undef, undef, undef, $ref_cds_strand_str) = getStrandStats($cds_tbl_HHAR, $ref_accn, $FH_HR);
+  # CDS strand must be all + or -, we can't deal with unknown strands or mixed strands because we need to 
+  # identify starts and stops in CDS 
+  if($ref_cds_strand_str !~ /^[+-]+$/) { 
+    DNAORG_FAIL("ERROR in $sub_name, at least one CDS is not + or - strand (must be single nt CDS or mixed strand CDS), ref_cds_strand_str: $ref_cds_strand_str", 1, $FH_HR);
+  }
   getLengthsAndCoords(\%{$cds_tbl_HHAR->{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
   $nadded_product   = getQualifierValues($cds_tbl_HHAR, $ref_accn, "product",   \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
   $nadded_gene      = getQualifierValues($cds_tbl_HHAR, $ref_accn, "gene",      \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
@@ -684,7 +692,6 @@ sub getReferenceFeatureInfo {
       }
     }
   }
-
 
   @{$ftr_info_HAR->{"ref_strand"}} = split("", $ref_mp_strand_str . $ref_cds_strand_str . $ref_xfeat_strand_full_str . $ref_dfeat_strand_full_str);
 
@@ -4191,7 +4198,6 @@ sub getStrandStats {
   $nfeatures = scalar(@{$tbl_HHAR->{$accn}{"coords"}});
   if ($nfeatures > 0) { 
     for(my $i = 0; $i < $nfeatures; $i++) { 
-
       if   ($tbl_HHAR->{$accn}{"strand"}[$i] eq "+") { $npos++; }
       elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "-") { $nneg++; }
       elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "!") { $nbth++; }
@@ -5883,6 +5889,65 @@ sub validateStopCodon {
      $codon eq "TGA" || 
      $codon eq "TAG" || 
      $codon eq "TAR") { 
+    return 1;
+  }
+
+  return 0;
+}
+
+
+#################################################################
+# Subroutine: validateCapitalizedDnaStopCodon()
+# Incept:     EPN, Mon Mar 14 13:47:57 2016
+# 
+# Purpose:    Given an already capitalized DNA codon, return '1' 
+#             if it's a valid stop codon, else return 0.
+#
+# Args:
+#  $codon:  the codon
+#
+# Returns:    The codon as a string
+#
+#################################################################
+sub validateCapitalizedDnaStopCodon {
+  my $sub_name = "validateCapitaliedDnaStopCodon";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($codon) = @_;
+  
+  if($codon eq "TAA" || 
+     $codon eq "TGA" || 
+     $codon eq "TAG" || 
+     $codon eq "TAR") { 
+    return 1;
+  }
+
+  return 0;
+}
+
+
+#################################################################
+# Subroutine: validateCapitalizedDnaStartCodon()
+# Incept:     EPN, Sat Feb 23 10:01:55 2019
+# 
+# Purpose:    Given an already capitalized DNA codon, return '1' 
+#             if it's a valid start codon, else return 0.
+#
+# Args:
+#  $codon:  the codon
+#
+# Returns:    The codon as a string
+#
+#################################################################
+sub validateCapitalizedDnaStartCodon {
+  my $sub_name = "validateCapitaliedDnaStartCodon";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($codon) = @_;
+  
+  if($codon eq "ATG") { 
     return 1;
   }
 
@@ -8794,6 +8859,83 @@ sub validateBlastDbExists {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine:  countFeatureType()
+# Incept:      EPN, Sat Feb 23 07:29:49 2019
+#
+# Purpose:    Return number of features of type $type.
+#             Does not check that $type is a valid type.
+#
+# Arguments: 
+#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $type:           feature 'type'
+#
+# Returns:    Number of features of type $type.
+#
+# Dies:       Never (does not validate $ftr_info_HAR or enforce that $type 
+#             is a valid type)
+#
+################################################################# 
+sub countFeatureType { 
+  my $sub_name = "countFeatureType";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $type) = @_;
+
+  my $ret_n = 0;
+  foreach my $ftype (@{$ftr_info_HAR->{"type"}}) { 
+    if($ftype eq $type) { $ret_n++; }
+  }
+  return $ret_n;
+}
+
+#################################################################
+# Subroutine:  countFeatureTypeAndStrand()
+# Incept:      EPN, Sat Feb 23 07:32:39 2019
+#
+# Purpose:    Return number of features of type $type
+#             *and* ref_strand $strand.
+#             Does not check that $type is a valid type
+#             or $strand is a valid strand value.
+#
+# Arguments: 
+#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $type:           feature 'type'
+#  $strand:         feature 'ref_strand'
+#  $FH_HR:          ref to hash of file handles
+#
+# Returns:    Number of features of type $type.
+#
+# Dies:       If number of "type" values differs from number of 
+#             "ref_strand" values.
+#
+################################################################# 
+sub countFeatureTypeAndStrand { 
+  my $sub_name = "countFeatureTypeAndStrand";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $type, $strand, $FH_HR) = @_;
+
+  my @type_A   = @{$ftr_info_HAR->{"type"}};
+  my @strand_A = @{$ftr_info_HAR->{"ref_strand"}};
+
+  my $ntype   = scalar(@type_A);
+  my $nstrand = scalar(@strand_A);
+  if($ntype != $nstrand) { 
+    DNAORG_FAIL("ERROR in $sub_name, number of types ($ntype) != number of strands ($nstrand)", 1, $FH_HR); 
+  }
+  my $ret_n = 0;
+  for(my $i = 0; $i < $ntype; $i++) { 
+    if(($type_A[$i]   eq $type) &&
+       ($strand_A[$i] eq $strand)) { 
+      $ret_n++;
+    }
+  }
+  return $ret_n;
 }
 
 ###########################################################################

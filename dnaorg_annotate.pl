@@ -745,12 +745,12 @@ my @overflow_seq_A    = (); # array of sequences that fail cmalign b/c required 
 my @overflow_mxsize_A = (); # array of required matrix sizes for each sequence in @overflow_seq_A
 my $cmalign_stdout_file = $out_root . ".cmalign.stdout";
 my $cmalign_ifile_file  = $out_root . ".cmalign.ifile";
-cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
-                         $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+#!#cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
+#!#                         $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
 
 my $ndmo_errors = scalar(@overflow_seq_A);
 if($ndmo_errors > 0) { 
-  add_dmo_errors(\@overflow_seq_A, \@overflow_mxsize_A, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
+#!#  add_dmo_errors(\@overflow_seq_A, \@overflow_mxsize_A, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
 }
 
 ####################################################################
@@ -768,21 +768,31 @@ my %seq_name_index_H = (); # seq_name_index_H{$seq_name} = <n>, means that $seq_
 getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
 
 if($nseq > $ndmo_errors) { # at least 1 sequence was aligned
-  parse_cmalign_ifile($cmalign_ifile_file, \%seq_name_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
+#!#  parse_cmalign_ifile($cmalign_ifile_file, \%seq_name_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
 
   # parse the cmalign alignments
   for(my $a = 0; $a < scalar(@stk_file_A); $a++) { 
     if(-s $stk_file_A[$a]) { # skip empty alignments, which will exist for any r1 run that fails
-      parse_cmalign_stk($stk_file_A[$a], \%seq_name_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+#!#      parse_cmalign_stk($stk_file_A[$a], \%seq_name_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
     }
   }
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
+##########################################
+# Step 7. Fetch features and detect errors
+##########################################
+
+fetch_features_and_detect_cds_and_mp_errors($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@err_ftr_instances_AHH, \%opt_HH, \%ofile_info_HH);
+
+
+# OLD BELOW
 # calculate the lengths of features
 $start_secs = outputProgressPrior("Calculating predicted feature lengths ", $progress_w, $log_FH, *STDOUT);
 results_calculate_predicted_lengths(\%mdl_info_HA, \%ftr_info_HA, $nseq, \@mdl_results_AAH, $ofile_info_HH{"FH"});
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+
 
 ###########################################################################################
 # Step 7. Define names of all per-model and per-feature output files we're about to create
@@ -7390,4 +7400,220 @@ sub convert_pp_char_to_pp_avg {
   DNAORG_FAIL("ERROR in $sub_name, invalid PP char: $ppchar", 1, $FH_HR); 
 
   return 0.; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: fetch_features_and_detect_cds_and_mp_errors()
+# Incept:     EPN, Fri Feb 22 14:25:49 2019
+#
+# Purpose:   For each sequence, fetch each feature sequence, and 
+#            detect str, trc, stp, nst, ext, and nm3 errors 
+#            where appropriate. For trc errors, correct the predictions
+#            and fetch the corrected feature.
+#
+# Arguments:
+#  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
+#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
+#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED, we add "nerrors" values here
+#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
+#  $mdl_results_AAHR:       REF to mdl results AAH, pre-filled
+#  $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:         REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub fetch_features_and_detect_cds_and_mp_errors { 
+  my $sub_name = "fetch_features_and_detect_cds_and_mp_errors";
+  my $nargs_exp = 9;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $err_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
+
+  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+
+  my $ncds = countFeatureType($ftr_info_HAR, "cds-mp") + countFeatureType($ftr_info_HAR, "cds-notmp");
+  my $nmp  = countFeatureType($ftr_info_HAR, "mp");
+  my $npos = countFeatureTypeAndStrand($ftr_info_HAR, "cds-mp", "+", $FH_HR) + countFeatureTypeAndStrand($ftr_info_HAR, "cds-notmp", "+", $FH_HR);
+  my $nneg = countFeatureTypeAndStrand($ftr_info_HAR, "cds-mp", "-", $FH_HR) + countFeatureTypeAndStrand($ftr_info_HAR, "cds-notmp", "-", $FH_HR);
+  # getReferenceFeatureInfo() has enforced that all cds and mp features are either + or - strand 
+  # (all segments are same strand, either + or -)
+
+  if(($ncds + $nmp) == 0) { return; } # no CDS or mature peptides, we don't need to 
+
+  my @seq_nxt_stp_A = ();
+  my @seq_prv_stp_A = ();
+
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
+    my $seq_sqstring = $sqfile->fetch_seq_to_sqstring($seq_name); 
+    sqstring_find_stops($seq_sqstring, \@seq_nxt_stp_A, \@seq_prv_stp_A, $FH_HR);
+
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      my $ftr_sqstring = "";
+      my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
+      $ftr2org_pos_A[0] = -1;
+      my $ftr_len = 0;
+      for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx < $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
+        my $mdl_results_HR = $mdl_results_AAHR->[$mdl_idx][$seq_idx]; # for convenience
+        if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
+          my ($start, $stop, $strand) = ($mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_stop"}, $mdl_results_HR->{"p_strand"});
+          my $mdl_len = abs($stop - $start) + 1;
+          $ftr_sqstring .= $sqfile->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+          # update ftr2org_pos_A
+          my $mdl_offset = 0;
+          for(my $mdl_offset = 0; $mdl_offset < $mdl_len; $mdl_offset++) { 
+            $ftr2org_pos_A[$ftr_len + $mdl_offset + 1] = ($strand eq "-") ? $start - $mdl_offset : $start + $mdl_offset;
+          }
+          $ftr_len += $mdl_len;
+        }
+      }
+      # now we have the full feature sequence string, identify starts and stops in it in both strands
+      # ONLY NEED TO DO THIS IF CDS OR MP
+      #find_starts_stops_in_sqstring($seq_sqstring, 
+      #                              \@ftr_pos_nxt_str_A, \@ftr_rev_nxt_str_A, \@ftr_pos_prv_str_A, \@ftr_rev_prv_str_A,
+      #                              \@ftr_pos_nxt_stp_A, \@ftr_rev_nxt_stp_A, \@ftr_pos_prv_stp_A, \@ftr_rev_prv_stp_A);
+      
+    }
+  }
+}  
+
+#################################################################
+# Subroutine: sqstring_check_start()
+# Incept:     EPN, Sat Feb 23 10:18:22 2019
+#
+# Arguments:
+#  $sqstring: the sequence string
+#  $FH_HR:    REF to hash of file handles
+#  
+# Returns: '1' if $sqstring starts with a valid
+#           start codon on the positive strand
+#           '0' if not
+#################################################################
+sub sqstring_check_start {
+  my $sub_name = "sqstring_check_start";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqstring, $FH_HR) = @_;
+
+  my $sqlen = length($sqstring);
+  if($sqlen < 3) { return 0; } 
+
+  $sqstring =~ tr/a-z/A-Z/; # convert to uppercase
+  $sqstring =~ tr/U/T/;     # convert to DNA
+  my $start_codon = substr($sqstring, 0, 3);
+
+  return validateCapitalizedDnaStartCodon($start_codon);
+
+}
+
+#################################################################
+# Subroutine: sqstring_find_stops()
+# Incept:     EPN, Fri Feb 22 14:52:53 2019
+#
+# Purpose:   Find all occurences of stop codons in an 
+#            input sqstring (on the positive strand only),
+#            and update the 2 input arrays.
+#
+# Arguments:
+#  $sqstring:       the sequence string
+#  $nxt_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 3' of position
+#                   $i in same frame as $i on positive strand *begins* at position $x; 
+#                   '0' if there are none.
+#                   special values: 
+#                   $nxt_stp_AR->[0] = -1
+#  $prv_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 5' of position
+#                   $i in same frame as $i on positive strand *begins* at position $x;
+#                   '0' if there are none.
+#                   special values: 
+#                   $prv_stp_AR->[0] = -1
+#  $FH_HR:          REF to hash of file handles
+#             
+# Returns:  void, updates arrays that are not undef
+# 
+# Dies:     If one but not both pos*AAR are undef
+#           If one but not both neg*AAR are undef
+#
+#################################################################
+sub sqstring_find_stops { 
+  my $sub_name = "sqstring_find_stops";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqstring, $nxt_stp_AR, $prv_stp_AR, $FH_HR) = @_;
+  
+  @{$nxt_stp_AR} = ();
+  @{$prv_stp_AR} = ();
+  $nxt_stp_AR->[0] = -1;
+  $prv_stp_AR->[0] = -1;
+
+  # create the @sqstring_A we'll use to find the stops
+  $sqstring =~ tr/a-z/A-Z/; # convert to uppercase
+  $sqstring =~ tr/U/T/;     # convert to DNA
+  my $sqlen = length($sqstring);
+  # add a " " as first character of $sqstart so we get nts in elements 1..$sqlen 
+  my @sqstring_A = split("", " " . $sqstring);
+
+  my $i;      # [1..$i..$sqlen]: sequence position
+  my $frame;  # 1, 2, or 3
+  my $cstart; # [1..$sqlen] start position of current codon
+  my $cstop;  # [1..$sqlen] stop  position of current codon
+  my $codon;  # the codon
+  my @stp_by_frame_A = (); # [0,1..$f..3]: $x; closest stop codon at or 3' of current position
+                           # in frame $f *begins* at position $x; $prv_stop_A[0] is -1 always 
+                           # (there is no frame '0')
+
+  # first pass left to right, filling @{$prv_stp_AR}
+  # initialize
+  $stp_by_frame_A[0] = -1;
+  for($frame = 1; $frame <= 3; $frame++) { 
+    $stp_by_frame_A[$frame] = 0;
+  }
+  for($i = 1; $i <= ($sqlen-2); $i++) { 
+    $frame  = (($i - 1) % 3) + 1; # 1 -> 1; 2 -> 2; 3 -> 3; 
+    $cstart = $i;
+    $cstop  = $i+2; 
+    $codon = $sqstring_A[$cstart] . $sqstring_A[($cstart+1)] . $sqstring_A[($cstart+2)];
+    if(validateCapitalizedDnaStopCodon($codon)) { 
+      $stp_by_frame_A[$frame] = $i;
+    }
+    $prv_stp_AR->[$i] = $stp_by_frame_A[$frame];
+  }
+  $prv_stp_AR->[($sqlen-1)] = 0;
+  $prv_stp_AR->[$sqlen]     = 0;
+
+  # second pass right to left, filling @{$nxt_stp_AAR}
+  # initialize
+  $stp_by_frame_A[0] = -1;
+  for($frame = 1; $frame <= 3; $frame++) { 
+    $stp_by_frame_A[$frame] = 0;
+  }
+  for($i = ($sqlen-2); $i >= 1; $i--) { 
+    $frame  = (($i - 1) % 3) + 1; # 1 -> 1; 2 -> 2; 3 -> 3; 
+    $cstart = $i;
+    $cstop  = $i+2; 
+    $codon = $sqstring_A[$cstart] . $sqstring_A[($cstart+1)] . $sqstring_A[($cstart+2)];
+    if(validateCapitalizedDnaStopCodon($codon)) { 
+      $stp_by_frame_A[$frame] = $i;
+    }
+    $nxt_stp_AR->[$i] = $stp_by_frame_A[$frame];
+  }
+  $nxt_stp_AR->[($sqlen-1)] = 0;
+  $nxt_stp_AR->[$sqlen]     = 0;
+
+  for($i = 1; $i <= $sqlen; $i++) { 
+    printf("HEYA position i: %5d  nxt_stp: %5d  prv_stp: %5d\n", $i, $nxt_stp_AR->[$i], $prv_stp_AR->[$i]);
+  }
+
+  exit 0;
+  return;
 }
