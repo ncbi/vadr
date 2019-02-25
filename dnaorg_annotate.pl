@@ -760,7 +760,7 @@ $start_secs = outputProgressPrior("Parsing cmalign results", $progress_w, $log_F
 
 my @mdl_results_AAH = ();  # 1st dim: array, 0..$nmdl-1, one per model
                            # 2nd dim: array, 0..$nseq-1, one per sequence
-                           # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_evalue", "p_fid2ref"
+                           # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5seqflush", "p_3seqflush", "p_5trunc", "p_3trunc"
 initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # make an 'order hash' for the sequence names,
@@ -1041,7 +1041,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 my @ftr_results_AAH = (); # per-feature blastx results
                           # 1st dim: array, 0..$ftr_idx..$nftr-1, one per feature
                           # 2nd dim: array, 0..$nseq-1, one per sequence
-                          # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_evalue", "fid2ref"
+                          # 3rd dim: hash, per feature results 
 
 initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
@@ -1701,10 +1701,10 @@ sub parse_cmalign_stk {
         $mdl_results_AAHR->[$m][$seqidx]{"p_start"}     = $start_uapos;
         $mdl_results_AAHR->[$m][$seqidx]{"p_stop"}      = $stop_uapos;
         $mdl_results_AAHR->[$m][$seqidx]{"p_strand"}    = $mdl_strand;
-        $mdl_results_AAHR->[$m][$seqidx]{"p_5overhang"} = $start_rfpos - $mdl_start_rfpos;
-        $mdl_results_AAHR->[$m][$seqidx]{"p_3overhang"} = $mdl_stop_rfpos - $stop_rfpos;
         $mdl_results_AAHR->[$m][$seqidx]{"p_5seqflush"} = $p_5seqflush;
         $mdl_results_AAHR->[$m][$seqidx]{"p_3seqflush"} = $p_3seqflush;
+        $mdl_results_AAHR->[$m][$seqidx]{"p_5trunc"}    = ($p_5seqflush && ($start_rfpos != $mdl_start_rfpos)) ? 1 : 0;
+        $mdl_results_AAHR->[$m][$seqidx]{"p_3trunc"}    = ($p_3seqflush && ($stop_rfpos  != $mdl_stop_rfpos))  ? 1 : 0;
         $mdl_results_AAHR->[$m][$seqidx]{"p_nhits"}     = 1;
         $mdl_results_AAHR->[$m][$seqidx]{"p_startgap"}  = ($rfpos_pp_A[$mdl_start_rfpos] eq ".") ? 1  : 0;
         $mdl_results_AAHR->[$m][$seqidx]{"p_stopgap"}   = ($rfpos_pp_A[$mdl_stop_rfpos]  eq ".") ? 1  : 0;
@@ -1712,7 +1712,7 @@ sub parse_cmalign_stk {
         $mdl_results_AAHR->[$m][$seqidx]{"p_stoppp"}    = ($rfpos_pp_A[$mdl_stop_rfpos]  eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$mdl_stop_rfpos], $FH_HR);
 
         printf("model: $mdl_start_rfpos to $mdl_stop_rfpos\n");
-        foreach my $key ("p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_startgap", "p_stopgap", "p_startpp", "p_stoppp") { 
+        foreach my $key ("p_start", "p_stop", "p_strand", "p_5seqflush", "p_3seqflush", "p_5trunc", "p_3trunc", "p_startgap", "p_stopgap", "p_startpp", "p_stoppp") { 
           printf("stored $m $seqidx $key $mdl_results_AAHR->[$m][$seqidx]{$key}\n");
         }
       }
@@ -3421,132 +3421,6 @@ sub ftr_results_add_blastx_errors {
 
   return;
 }    
-
-#################################################################
-# Subroutine:  mdl_results_add_str_b3e_b3u_errors
-# Incept:      EPN, Thu Mar 31 13:43:58 2016
-#
-# Purpose:    Report 'str', 'b3e', and 'b3u' errors
-#             and fill in the following keys in $mdl_results_AAHR:
-#             "out_5boundary" and "out_3boundary".
-#
-#             Checks for and adds or updates the following error 
-#             codes for features with "annot_type" eq "model":
-#             
-#             "str": updates this error, originally added in 
-#                  parse_esl_epn_translate_startstop_outfile()
-#                  by making the error message more informative
-#                  to include position and codon of predicted start
-#
-# Arguments: 
-#  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
-#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
-#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: If we have predicted start and stop coordinates that don't make sense
-#       given the lengths of the accession and the sequence we searched.
-#
-################################################################# 
-sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors { 
-  my $sub_name = "mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()";
-  my $nargs_exp = 9;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $ftr_info_HAR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $mdl_idx; # counter over models
-  my $seq_idx; # counter over sequences
-
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    #printf("\tmdl_idx: $mdl_idx\n");
-    my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-    my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
-    my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
-    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-      my $seq_len   = $seq_info_HAR->{"len"}[$seq_idx];
-      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-
-      if(exists $mdl_results_HR->{"p_start"}) { 
-        ##########################
-        # update str err message #
-        ##########################
-        if($is_first && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name})) { 
-          my $out_start = undef;
-          ($out_start, undef) = create_output_start_and_stop($mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_stop"}, 
-                                                             $seq_len, $FH_HR);
-          my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", 
-                                           fetchStartCodon($sqfile, $seq_name, $mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_strand"}, 1, $FH_HR), 
-                                           # '1' above: it's okay if codon we fetch is less than 3 nt due to being off end of the sequence
-                                           $out_start, $mdl_results_HR->{"p_strand"});
-          error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
-          $mdl_results_HR->{"str_err_flag"} = 1;
-        }
-        #######################################
-        # set out_5boundary and out_3boundary #
-        #######################################
-        # update p_5overhang and p_3overhang
-        # at this point, $mdl_results_HR->{"p_5overhang"} and $results->{"p_3overhang"} are both integers >= 0
-        # 5' block
-        if($mdl_results_HR->{"p_5overhang"} == 0) { 
-          $mdl_results_HR->{"out_5boundary"} = ".";
-        }
-        else { 
-          if($mdl_results_HR->{"p_5overhang"} > 9) { 
-            $mdl_results_HR->{"out_5boundary"} = "+"; 
-          }
-          else { 
-            $mdl_results_HR->{"out_5boundary"} = $mdl_results_HR->{"p_5overhang"};
-          }
-        }
-        # 3' block
-        # check for 2 special cases, a trc or ext error, which invalidate the b3e or b3u values
-        if(exists $mdl_results_HR->{"trc_err_flag"}) { 
-          $mdl_results_HR->{"out_3boundary"} = "t";
-        }
-        elsif(exists $mdl_results_HR->{"ext_err_flag"}) { 
-          $mdl_results_HR->{"out_3boundary"} = "e";
-        }
-        elsif($mdl_results_HR->{"p_3overhang"} == 0) { 
-          $mdl_results_HR->{"out_3boundary"} = ".";
-        }
-        else { 
-          if($mdl_results_HR->{"p_3overhang"} > 9) { 
-            $mdl_results_HR->{"out_3boundary"} = "+"; 
-          }
-          else { 
-            $mdl_results_HR->{"out_3boundary"} = $mdl_results_HR->{"p_3overhang"};
-          }
-
-          # b3e or b3u error
-          if($mdl_results_HR->{"p_3seqflush"} == 1) { # b3e
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3e", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
-            # special case for which we will not allow a trc error later
-          }
-          else { # $mdl_results_HR->{"p_3seqflush"} == 0, b3u
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3u", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
-          }
-
-        }
-      } # end of 'else' entered if we have a prediction
-    } # end of 'for($seq_idx' loop
-  } # end of 'for($mdl_idx' loop
-
-  return;
-}      
-
 
 #################################################################
 # Subroutine:  mdl_results_calculate_out_starts_and_stops
@@ -7449,33 +7323,168 @@ sub fetch_features_and_detect_cds_and_mp_errors {
 
   if(($ncds + $nmp) == 0) { return; } # no CDS or mature peptides, we don't need to 
 
-  my @seq_nxt_stp_A = ();
-  my @seq_prv_stp_A = ();
-
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $seq_sqstring = $sqfile->fetch_seq_to_sqstring($seq_name); 
-    sqstring_find_stops($seq_sqstring, \@seq_nxt_stp_A, \@seq_prv_stp_A, $FH_HR);
+    my $seq_len  = $seq_info_HAR->{"len"}[$seq_idx];
+    my $seq_sqstring_pos = undef;
+    my $seq_sqstring_neg = undef;
+    my @seq_pos_nxt_stp_A = ();
+    my @seq_pos_prv_stp_A = ();
+    my @seq_neg_nxt_stp_A = ();
+    my @seq_neg_prv_stp_A = ();
+    
+    if($npos > 0) { 
+      $seq_sqstring_pos = $sqfile->fetch_seq_to_sqstring($seq_name); 
+      sqstring_find_stops($seq_sqstring_pos, \@seq_pos_nxt_stp_A, \@seq_pos_prv_stp_A, $FH_HR);
+    }
+    if($nneg > 0) { 
+      $seq_sqstring_neg = $sqfile->fetch_subseq_to_sqstring($seq_name, $seq_len, 1, 1); 
+      sqstring_find_stops($seq_sqstring, \@seq_neg_nxt_stp_A, \@seq_neg_prv_stp_A, $FH_HR);
+    }    
 
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      my $ftr_sqstring = "";
-      my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
-      $ftr2org_pos_A[0] = -1;
-      my $ftr_len = 0;
-      for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx < $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-        my $mdl_results_HR = $mdl_results_AAHR->[$mdl_idx][$seq_idx]; # for convenience
-        if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
-          my ($start, $stop, $strand) = ($mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_stop"}, $mdl_results_HR->{"p_strand"});
-          my $mdl_len = abs($stop - $start) + 1;
-          $ftr_sqstring .= $sqfile->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
-          # update ftr2org_pos_A
-          my $mdl_offset = 0;
-          for(my $mdl_offset = 0; $mdl_offset < $mdl_len; $mdl_offset++) { 
-            $ftr2org_pos_A[$ftr_len + $mdl_offset + 1] = ($strand eq "-") ? $start - $mdl_offset : $start + $mdl_offset;
+      # we only have to do this for certain features
+      if(checkFeatureIsCdsOrMp($ftr_info_HAR, $ftr_idx)) { 
+        my $ftr_sqstring = "";
+        my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
+        my @ftr2mdl_idx_A = (); # [1..$ftr_pos..$ftr_len] model index that corresponds to this position in the feature
+        $ftr2org_pos_A[0] = -1; # invalid
+        $ftr2mdl_idx_A[0] = -1; # invalid
+        my $ftr_len = 0;
+        my $ftr_strand = undef;
+        my $ftr_is_5trunc = undef;
+        my $ftr_is_3trunc = undef;
+        my $ftr_sqstring_corrected = undef; # we'll update this as necessary
+        my $ftr_p_start = undef; # predicted start for the feature
+        my $ftr_p_stop  = undef; # predicted stop  for the feature
+        my $ftr_c_stop  = undef; # corrected stop  for the feature, stays undef if no correction needed (no 'trc' or 'ext')
+        for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx < $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
+          my $mdl_results_HR = $mdl_results_AAHR->[$mdl_idx][$seq_idx]; # for convenience
+          if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
+            my ($start, $stop, $strand) = ($mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_stop"}, $mdl_results_HR->{"p_strand"});
+            
+            # update truncated mode
+            if($mdl_idx == $ftr_info_HAR->{"first_mdl"}) { 
+              $ftr_p_start = $start;
+              $ftr_is_5trunc = $mdl_results_HR->{"p_5trunc"};
+            }
+            if($mdl_idx == $ftr_info_HAR->{"final_mdl"}) { 
+              $ftr_p_stop = $stop;
+              $ftr_is_3trunc = $mdl_results_HR->{"p_3trunc"};
+            }
+            
+            # check or update feature strand
+            if(! defined $ftr_strand) { 
+              if(($strand ne "+") && ($strand ne "-")) { 
+                # this 'shouldn't happen' for a CDS or mature peptide, getReferenceFeatureInfo should have 
+                # enforced this earlier and failed if it was violated
+                DNAORG_FAIL("ERROR, in $sub_name, strand not + or - for feature $ftr_idx", 1, undef);
+              }
+              $ftr_strand = $strand; 
+            }
+            elsif($ftr_strand ne $strand) { 
+              # this 'shouldn't happen' for a CDS or mature peptide, getReferenceFeatureInfo should have 
+              # enforced this earlier and failed if it was violated
+              DNAORG_FAIL("ERROR, in $sub_name, different models have different strands for feature $ftr_idx", 1, undef);
+            }
+            
+            # update $ftr_sqstring, $ftr_len, @ftr2org_pos_A, and @ftr2mdl_idx_A
+            my $mdl_len = abs($stop - $start) + 1;
+            $ftr_sqstring .= $sqfile->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+            # update ftr2org_pos_A
+            my $mdl_offset = 0;
+            for(my $mdl_offset = 0; $mdl_offset < $mdl_len; $mdl_offset++) { 
+              $ftr2org_pos_A[$ftr_len + $mdl_offset + 1] = ($strand eq "-") ? $start - $mdl_offset : $start + $mdl_offset;
+              $ftr2mdl_idx_A[$ftr_len + $mdl_offset + 1] = $mdl_idx;
+              # slightly wasteful in certain cases, if truncated mode is 5&3 then we won't use this
+            }
+            $ftr_len += $mdl_len;
           }
-          $ftr_len += $mdl_len;
         }
+        
+        if($ftr_len > 0) { 
+          # we had a prediction for at least one of the models for this feature
+          if(! $ftr_is_5trunc) { 
+            # feature is not 5' truncated, look for a start codon if it's the proper feature
+            if(checkIfFeatureShouldHaveStartCodon($ftr_info_HAR, $ftr_idx)) { 
+              if(! $sqstring_check_start($ftr_sqstring, $FH_HR)) { 
+                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, "", $FH_HR);
+              }
+            }
+          }
+          if((! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
+            # feature is not truncated on either end, look for stop codons
+            if(($ftr_len % 3) != 0) { 
+              # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
+              # but which could cause weird downstream problems)
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$ftr_len", $FH_HR);
+            }
+            else { 
+              # feature length is a multiple of 3, look for all valid in-frame stops 
+              my @ftr_nxt_stp_A = ();
+              my @ftr_prv_stp_A = ();
+              sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, \@ftr_prv_stp_A, $FH_HR);
+
+              if(checkIfFeatureShouldHaveStopCodon($ftr_info_HAR, $ftr_idx)) { 
+                # check that final add codon is a valid stop, and add 'stp' error if not
+                if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
+                  my $err_msg = sprintf("%s ending at position %d on %s strand", 
+                                        substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
+                                        $ftr2org_pos_A[$ftr_len], $ftr_strand);
+                  error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $err_msg, $FH_HR);
+                }
+              }
+
+              # check for any early stops, and add 'trc' error if found
+              if($ftr_nxt_stp_A[1] != $ftr_len) { 
+                if($ftr_nxt_stp_A[1] == 0) { 
+                  # there are no valid in-frame stops in $ftr_sqstring
+                  # we have a 'nst' or 'ext' error
+                  # 'nst': zero in-frame stops exist in the remainder of the sequence 3' of end of the feature sequence
+                  # 'ext': at least one in-frame stop does exist in the remainder of the sequence 3' of end of the feature sequence
+                  # to do this we need to fetch the sequence ending at $fstop to the end of the sequence 
+                  my 
+                  if($ftr_stop < $seq_len) { 
+                    # we have some sequence left 3' of ftr_stop
+                    my $ext_sqstring = undef;
+                    if($ftr_strand eq "+") { 
+                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
+                    }
+                    else { # negative strand
+                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
+                    }
+                    my @ext_nxt_stp_A = ();
+                    my @ext_prv_stp_A = ();
+                    sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, \@ftr_prv_stp_A, $FH_HR);
+
+
+                }
+                else { 
+                  # there is an early stop (trc) in $ftr_sqstring
+                  if($ftr_nxt_stp_A[1] > $ftr_len) { 
+                    # this shouldn't happen, it means there's a bug in sqstring_find_stops()
+                    DNAORG_FAIL("ERROR, in $sub_name, error identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                  }
+                  $ftr_c_stop = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
+
+                  error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, 
+                                      sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_p_start, $ftr_c_stop, abs($ftr_p_stop - $ftr_c_stop)), 
+                                      $FH_HR);
+                }
+              }
+            } # end of 'else' entered if feature is a multiple of 3
+          } # end of 'if((! $ftr_is_5runc) && (! $ftr_is_3trunc))
+        } # end of 'if($ftr_len > 0)'
+      } # end of 'if(checkFeatureIsCdsOrMp($ftr_info_HAR, $ftr_idx)) {'
+    } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
+
+        
+
+          
       }
+      
+
+
       # now we have the full feature sequence string, identify starts and stops in it in both strands
       # ONLY NEED TO DO THIS IF CDS OR MP
       #find_starts_stops_in_sqstring($seq_sqstring, 
@@ -7523,16 +7532,21 @@ sub sqstring_check_start {
 # Purpose:   Find all occurences of stop codons in an 
 #            input sqstring (on the positive strand only),
 #            and update the 2 input arrays.
+#           
+#            This subroutine could be easily modified to 
+#            find the nearest stop codon in each frame, 
+#            but currently it is only concerned with 
+#            frame 1.           
 #
 # Arguments:
 #  $sqstring:       the sequence string
 #  $nxt_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 3' of position
-#                   $i in same frame as $i on positive strand *begins* at position $x; 
+#                   $i in frame 1 on positive strand *ends* at position $x; 
 #                   '0' if there are none.
 #                   special values: 
 #                   $nxt_stp_AR->[0] = -1
 #  $prv_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 5' of position
-#                   $i in same frame as $i on positive strand *begins* at position $x;
+#                   $i in frame 1 on positive strand *ends* at position $x;
 #                   '0' if there are none.
 #                   special values: 
 #                   $prv_stp_AR->[0] = -1
@@ -7563,49 +7577,40 @@ sub sqstring_find_stops {
   # add a " " as first character of $sqstart so we get nts in elements 1..$sqlen 
   my @sqstring_A = split("", " " . $sqstring);
 
-  my $i;      # [1..$i..$sqlen]: sequence position
-  my $frame;  # 1, 2, or 3
-  my $cstart; # [1..$sqlen] start position of current codon
-  my $cstop;  # [1..$sqlen] stop  position of current codon
-  my $codon;  # the codon
-  my @stp_by_frame_A = (); # [0,1..$f..3]: $x; closest stop codon at or 3' of current position
-                           # in frame $f *begins* at position $x; $prv_stop_A[0] is -1 always 
-                           # (there is no frame '0')
+  my $i       = undef; # [1..$i..$sqlen]: sequence position
+  my $frame   = undef; # 1, 2, or 3
+  my $cstart  = undef; # [1..$sqlen] start position of current codon
+  my $codon   = undef; # the codon
+  my $cur_stp = undef; # closest stop codon at or 3' of current position
+                       # in frame 1 *ends* at position $cur_stp;
 
   # first pass left to right, filling @{$prv_stp_AR}
-  # initialize
-  $stp_by_frame_A[0] = -1;
-  for($frame = 1; $frame <= 3; $frame++) { 
-    $stp_by_frame_A[$frame] = 0;
-  }
+  $cur_stp = 0;
   for($i = 1; $i <= ($sqlen-2); $i++) { 
     $frame  = (($i - 1) % 3) + 1; # 1 -> 1; 2 -> 2; 3 -> 3; 
     $cstart = $i;
-    $cstop  = $i+2; 
-    $codon = $sqstring_A[$cstart] . $sqstring_A[($cstart+1)] . $sqstring_A[($cstart+2)];
-    if(validateCapitalizedDnaStopCodon($codon)) { 
-      $stp_by_frame_A[$frame] = $i;
+    if($frame == 1) { 
+      $codon = $sqstring_A[$cstart] . $sqstring_A[($cstart+1)] . $sqstring_A[($cstart+2)];
+      if(validateCapitalizedDnaStopCodon($codon)) { 
+        $cur_stp = $i+2;
+      }
     }
-    $prv_stp_AR->[$i] = $stp_by_frame_A[$frame];
+    $prv_stp_AR->[$i] = $cur_stp;
   }
   $prv_stp_AR->[($sqlen-1)] = 0;
   $prv_stp_AR->[$sqlen]     = 0;
 
   # second pass right to left, filling @{$nxt_stp_AAR}
-  # initialize
-  $stp_by_frame_A[0] = -1;
-  for($frame = 1; $frame <= 3; $frame++) { 
-    $stp_by_frame_A[$frame] = 0;
-  }
+  $cur_stp = 0;
   for($i = ($sqlen-2); $i >= 1; $i--) { 
     $frame  = (($i - 1) % 3) + 1; # 1 -> 1; 2 -> 2; 3 -> 3; 
     $cstart = $i;
-    $cstop  = $i+2; 
     $codon = $sqstring_A[$cstart] . $sqstring_A[($cstart+1)] . $sqstring_A[($cstart+2)];
-    if(validateCapitalizedDnaStopCodon($codon)) { 
-      $stp_by_frame_A[$frame] = $i;
-    }
-    $nxt_stp_AR->[$i] = $stp_by_frame_A[$frame];
+    if($frame == 1) { 
+      if(validateCapitalizedDnaStopCodon($codon)) { 
+        $cur_stp = $i+2;
+      }
+      $nxt_stp_AR->[$i] = $cur_stp;
   }
   $nxt_stp_AR->[($sqlen-1)] = 0;
   $nxt_stp_AR->[$sqlen]     = 0;
