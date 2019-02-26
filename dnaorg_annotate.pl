@@ -243,9 +243,9 @@ $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
 opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
 opt_Add("--tau",        "real",    1E-7,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--noglocal",   "boolean", 0,                       $g,    undef,"--sub",     "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
-opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef,"--sub",     "do not fix the tau value when running cmalign, allow it to decrease if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
-opt_Add("--sub",        "boolean", 0,                       $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "fix the tau value when running cmalign, allow it to increase if nec",          "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--nosub",      "boolean", 0,                       $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
+opt_Add("--noglocal",   "boolean", 0,                       $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
@@ -276,7 +276,7 @@ $opt_group_desc_H{++$g} = "options for skipping stages and using files from earl
 #     option               type       default            group   requires    incompat                    preamble-output                                            help-output    
 opt_Add("--skipedirect",   "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipfetch",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the cmalign step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",         "skip the cmalign step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skiptranslate", "boolean", 0,                    $g,"--skipalign",  undef,                      "skip the translation steps, use existing results",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
@@ -314,9 +314,9 @@ my $options_okay =
 # options for changing search sensitivity modes
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
                 'tau=s'        => \$GetOptions_H{"--tau"},
-                'noglocal'     => \$GetOptions_H{"--noglocal"},
                 'nofixedtau'   => \$GetOptions_H{"--nofixedtau"},
-                'sub'          => \$GetOptions_H{"--sub"},
+                'nosub'        => \$GetOptions_H{"--nosub"},
+                'noglocal'     => \$GetOptions_H{"--noglocal"},
 # options related to parallelization
                 'local'        => \$GetOptions_H{"--local"}, 
                 'errcheck'     => \$GetOptions_H{"--errcheck"},  
@@ -435,7 +435,7 @@ if(-d $dir_out) {
   else { # dirout exists but -f not used
     if(! ((opt_IsUsed("--skipedirect",   \%opt_HH)) || 
           (opt_IsUsed("--skipfetch",     \%opt_HH)) || 
-          (opt_IsUsed("--skipalign",      \%opt_HH)) || 
+          (opt_IsUsed("--skipalign",     \%opt_HH)) || 
           (opt_IsUsed("--skiptranslate", \%opt_HH)))) { 
       die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; 
     }
@@ -704,7 +704,7 @@ if($nseq != validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $
 # also verify that we have all the blastx db files that we need
 validateBlastDbExists($build_root . ".prot.fa", undef);
 for(my $tmp_f = 0; $tmp_f < $nftr; $tmp_f++) { 
-  if(($ftr_info_HA{"type"}[$tmp_f] eq "cds") { 
+  if($ftr_info_HA{"type"}[$tmp_f] eq "cds") { 
     validateBlastDbExists(($build_root . ".f" . $tmp_f . ".prot.fa"), $ofile_info_HH{"FH"});
   }
 }
@@ -744,12 +744,12 @@ my @overflow_seq_A    = (); # array of sequences that fail cmalign b/c required 
 my @overflow_mxsize_A = (); # array of required matrix sizes for each sequence in @overflow_seq_A
 my $cmalign_stdout_file = $out_root . ".cmalign.stdout";
 my $cmalign_ifile_file  = $out_root . ".cmalign.ifile";
-#!#cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
-#!#                         $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
+                         $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
 
 my $ndmo_errors = scalar(@overflow_seq_A);
 if($ndmo_errors > 0) { 
-#!#  add_dmo_errors(\@overflow_seq_A, \@overflow_mxsize_A, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
+  add_dmo_errors(\@overflow_seq_A, \@overflow_mxsize_A, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
 }
 
 ####################################################################
@@ -766,13 +766,15 @@ initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH
 my %seq_name_index_H = (); # seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
 getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
 
+printf("HEYA nseq: $nseq\n");
 if($nseq > $ndmo_errors) { # at least 1 sequence was aligned
-#!#  parse_cmalign_ifile($cmalign_ifile_file, \%seq_name_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
+  parse_cmalign_ifile($cmalign_ifile_file, \%seq_name_index_H, \%seq_info_HA, $ofile_info_HH{"FH"});
 
   # parse the cmalign alignments
+  printf("HEYA stk_file_A: %d\n", scalar(@stk_file_A));
   for(my $a = 0; $a < scalar(@stk_file_A); $a++) { 
     if(-s $stk_file_A[$a]) { # skip empty alignments, which will exist for any r1 run that fails
-#!#      parse_cmalign_stk($stk_file_A[$a], \%seq_name_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
+      parse_cmalign_stk($stk_file_A[$a], \%seq_name_index_H, \%seq_info_HA, \%mdl_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
     }
   }
 }
@@ -789,12 +791,7 @@ my @ftr_results_AAH = (); # per-feature blastx results
 initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 fetch_features_and_detect_cds_and_mp_errors($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \@err_ftr_instances_AHH, \%opt_HH, \%ofile_info_HH);
-
-# validate all of our error instances by checking for incompatibilities
-# and enforcing required combinations, this function dies if any problems are found
-error_instances_validate_all(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-
-
+    
 ##########################################################################################################
 # Step X. Run BLASTX: all full length sequences and all corrected nucleotide features versus all proteins
 ##########################################################################################################
@@ -809,10 +806,7 @@ ftr_results_calculate_blastx($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr
 
 # add xi* and mxi errors
 openAndAddFileToOutputInfo(\%ofile_info_HH, "blasttbl", $out_root . ".blastx.tbl", 1, "information on blast and CM hits for CDS features in tabular format");
-my $tmp_len = maxLengthScalarValueInArray($seq_info_HA{"seq_name"});
-if($tmp_len > $combined_model_seqname_maxlen) { 
-  $combined_model_seqname_maxlen = $tmp_len; 
-}
+my $combined_model_seqname_maxlen = maxLengthScalarValueInArray($seq_info_HA{"seq_name"});
 ftr_results_add_blastx_errors($ofile_info_HH{"FH"}{"blasttbl"}, $combined_model_seqname_maxlen, 
                               \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
@@ -821,7 +815,13 @@ ftr_results_add_blastx_errors($ofile_info_HH{"FH"}{"blasttbl"}, $combined_model_
 # Step X. Add zft errors for sequences with zero annotated features
 ####################################################################
 # add per-sequence 'zft' errors (zero annotated features)
-add_zft_errors(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
+add_zft_errors(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
+
+
+# validate all of our error instances by checking for incompatibilities
+# and enforcing required combinations, this function dies if any problems are found
+error_instances_validate_all(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+
 
 
 #########################################
@@ -1195,17 +1195,17 @@ sub parse_cmalign_stk {
     }      
     
     # DEBUG PRINT
-    printf("***************************************************\n");
-    printf("DEBUG print $seqname\n");
-    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
-      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-             $rfpos, 
-             $min_rfpos_after_A[$rfpos],
-             $min_uapos_after_A[$rfpos],
-             $max_rfpos_before_A[$rfpos],
-             $max_uapos_before_A[$rfpos]);
-    }
-    printf("***************************************************\n");
+#    printf("***************************************************\n");
+#    printf("DEBUG print $seqname\n");
+#    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
+#      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+#             $rfpos, 
+#             $min_rfpos_after_A[$rfpos],
+#             $min_uapos_after_A[$rfpos],
+#             $max_rfpos_before_A[$rfpos],
+#             $max_uapos_before_A[$rfpos]);
+#    }
+#    printf("***************************************************\n");
 
     # given model span s..e
     # if strand eq "+"
@@ -2027,7 +2027,7 @@ sub error_instances_validate_all {
 #    output_errors_header()
 #    output_errors_all_sequences()
 #    output_errors_summary()
-#    output_multifeature_relationships()
+#    output_parent_child_relationships()
 #    output_gap_info()
 #################################################################
 
@@ -2389,8 +2389,8 @@ sub output_errors_header {
   printf $allerr_FH ("#\n");
 
   # output multifeature relationships (e.g. CDS made up of mature peptides)
-  output_multifeature_relationships($pererr_FH, $ftr_info_HAR, $ofile_info_HH{"FH"});
-  output_multifeature_relationships($allerr_FH, $ftr_info_HAR, $ofile_info_HH{"FH"});
+  output_parent_child_relationships($pererr_FH, $ftr_info_HAR, $ofile_info_HH{"FH"});
+  output_parent_child_relationships($allerr_FH, $ftr_info_HAR, $ofile_info_HH{"FH"});
 
   printf $allerr_FH ("%-10s  %3s  %-9s  %4s  error-message\n", "#accn", "idx", "desc", "code");
   printf $pererr_FH ("#\n");
@@ -2622,7 +2622,7 @@ sub output_parent_child_relationships {
   my $nprinted = 0;
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(featureHasChildren($ftr_info_HAR, $ftr_idx, $FH_HR) { 
+    if(featureHasChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
       if($nprinted == 0) { 
         print $FH ("#\n");
         print $FH ("# CDS:MATURE_PEPTIDE relationships:\n"); # need to update this if we ever have other parent/child relationships in the future
@@ -2889,7 +2889,7 @@ sub run_blastx_and_summarize_output {
   runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, "predicted.hits.fa", $ofile_info_HHR->{"FH"});
+    my $ofile_info_key = "pfa." . $ftr_idx;
     if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
       # printf("ftr_idx: $ftr_idx, out_tiny: %s ofile_info_key: $ofile_info_key %s\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $ofile_info_HHR->{"fullpath"}{$ofile_info_key});
       my $cur_query_file      = $ofile_info_HH{"fullpath"}{$ofile_info_key};
@@ -3019,11 +3019,8 @@ sub ftr_results_calculate_blastx {
           if($value =~ /^(\d+)..(\d+)$/) { 
             my ($blast_start, $blast_stop) = ($1, $2);
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
-            my ($out_start, $out_stop) = create_output_start_and_stop($blast_start, $blast_stop,
-                                                                      $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
-            # unless -c was used: $xstart will equal $blast_start and $xstop will equal $blast_stop
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $out_start;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $out_stop;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $blast_start;
+            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $blast_stop;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} = $blast_strand;
             $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_query"}  = $query;
             #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
@@ -3290,13 +3287,8 @@ sub helper_ftable_get_coords_xnn_flag {
     DNAORG_FAIL("ERROR in $sub_name, ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start|x_stop} does not exists", 1, $FH_HR);
   }
 
-  my ($out_start, $out_stop) = create_output_start_and_stop($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"},
-                                                            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"},
-                                                            $seq_info_HAR->{"len"}[$seq_idx], $FH_HR);
-
-
-  my @start_A = ($out_start);
-  my @stop_A  = ($out_stop);
+  my @start_A = ($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"});
+  my @stop_A  = ($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"});
 
   return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $do_start_carrot, $do_stop_carrot, $ret_min_coord, $FH_HR);
 }
@@ -3667,7 +3659,7 @@ sub helper_blastx_breakdown_query {
 #  $ftr_info_HAR:            REF to hash of arrays with information on the features, PRE-FILLED
 #  $seq_info_HAR:            REF to hash of arrays with information on the sequences, PRE-FILLED
 #  $err_info_HAR:            REF to the error info hash of arrays, PRE-FILLED
-#  $mdl_results_AAHR:        REF to model results AAH, PRE-FILLED
+#  $ftr_results_AAHR:        REF to feature results AAH, PRE-FILLED
 #  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -3682,7 +3674,7 @@ sub add_zft_errors {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $ftr_info_HAR, $seq_info_HAR, 
-      $err_info_HAR, $mdl_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $err_info_HAR, $ftr_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
@@ -3704,7 +3696,7 @@ sub add_zft_errors {
       my $xnn_flag       = 0;
       my $do_ignore      = 1; 
       if(! $is_duplicate) { 
-        $defined_pstart = check_for_defined_pstart_in_mdl_results($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR);
+        $defined_pstart = (exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_start"}) ? 1 : 0;
         $xnn_flag       = (exists $err_ftr_instances_AHHR->[$ftr_idx]{"xnn"}{$seq_name}) ? 1 : 0;
         $do_ignore      = ($defined_pstart || $xnn_flag) ? 0 : 1;
       }
@@ -3834,16 +3826,12 @@ sub fetch_features_and_detect_cds_and_mp_errors {
   my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
 
-  my $ncds_or_mp = countFeatureType($ftr_info_HAR, "cds") + count_FeatureType($ftr_info_HAR, "mp");
-  if($ncds_or_mp == 0) { return; } # no CDS or mature peptides, we don't need to 
-
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
     my $seq_len  = $seq_info_HAR->{"len"}[$seq_idx];
 
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      # we only have to do this for certain features
-      my $ftr_is_cds_or_mp = checkFeatureIsCdsOrMp($ftr_info_HAR, $ftr_idx);
+      my $ftr_is_cds_or_mp = checkIfFeatureIsCdsOrMp($ftr_info_HAR, $ftr_idx);
       my $ftr_sqstring = "";
       my $ftr_seq_name = undef;
       my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
@@ -3856,7 +3844,7 @@ sub fetch_features_and_detect_cds_and_mp_errors {
       my $ftr_p_stop  = undef; # predicted stop  for the feature
       my $ftr_c_stop  = undef; # corrected stop  for the feature, stays undef if no correction needed (no 'trc' or 'ext')
       my $ftr_ofile_key = "pfa." . $ftr_idx;
-      my $ftr_results_HR = $ftr_results_AAHR->[$mdl_idx][$seq_idx]; # for convenience
+      my $ftr_results_HR = $ftr_results_AAHR->[$ftr_idx][$seq_idx]; # for convenience
 
       for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx < $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
         my $mdl_results_HR = $mdl_results_AAHR->[$mdl_idx][$seq_idx]; # for convenience
@@ -3919,12 +3907,12 @@ sub fetch_features_and_detect_cds_and_mp_errors {
           if(! exists $ofile_info_HHR->{$ftr_ofile_key}) { 
             openAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $ftr_info_HAR->{"filename_root"}[$ftr_idx] . ".predicted.hits.fa", 1, "predicted hits for feature " . $ftr_info_HAR->{"out_tiny"}); 
           }
-          print $ofile_info_HHR->{$ftr_ofile_key} ">" . $ftr_seq_name . "\n" . $ftr_sqstring; 
+          print $ofile_info_HHR->{$ftr_ofile_key} (">" . $ftr_seq_name . "\n" . $ftr_sqstring . "\n"); 
 
           if(! $ftr_is_5trunc) { 
             # feature is not 5' truncated, look for a start codon if it's the proper feature
             if(checkIfFeatureShouldHaveStartCodon($ftr_info_HAR, $ftr_idx)) { 
-              if(! $sqstring_check_start($ftr_sqstring, $FH_HR)) { 
+              if(! sqstring_check_start($ftr_sqstring, $FH_HR)) { 
                 error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, "", $FH_HR);
               }
             }
@@ -4109,6 +4097,7 @@ sub sqstring_find_stops {
         $cur_stp = $i+2;
       }
       $nxt_stp_AR->[$i] = $cur_stp;
+    }
   }
   $nxt_stp_AR->[($sqlen-1)] = 0;
   $nxt_stp_AR->[$sqlen]     = 0;

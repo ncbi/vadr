@@ -8159,20 +8159,28 @@ sub cmalignOrNhmmscanWrapperHelper {
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   if(! $do_local) { 
-    # wait for the jobs to finish
-    $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
-                                      $progress_w, $log_FH, *STDOUT);
-    my $njobs_finished = waitForFarmJobsToFinish($do_cmalign, 
-                                                 ($do_cmalign) ? $out_file_HAR->{"stdout"} : $out_file_HAR->{"tblout"}, 
-                                                 $out_file_HAR->{"err"}, 
-                                                 $success_AR,  
-                                                 $mxsize_AR, # this may be undef
-                                                 ($do_cmalign) ? "" : "[ok]", # value is irrelevant for cmalign
-                                                 opt_Get("--wait", $opt_HHR), opt_Get("--errcheck", $opt_HHR), $ofile_info_HHR->{"FH"});
-    if($njobs_finished != $nseq_files) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
+    if((opt_Exists("--skipalign", $opt_HHR)) && (opt_Get("--skipalign", $opt_HHR))) { 
+      for($s = 0; $s < $nseq_files; $s++) { 
+        $success_AR->[$s] = 1; 
+      }
     }
-    outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
+    else { 
+      # --skipalign not enabled
+      # wait for the jobs to finish
+      $start_secs = outputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
+                                        $progress_w, $log_FH, *STDOUT);
+      my $njobs_finished = waitForFarmJobsToFinish($do_cmalign, 
+                                                   ($do_cmalign) ? $out_file_HAR->{"stdout"} : $out_file_HAR->{"tblout"}, 
+                                                   $out_file_HAR->{"err"}, 
+                                                   $success_AR,  
+                                                   $mxsize_AR, # this may be undef
+                                                   ($do_cmalign) ? "" : "[ok]", # value is irrelevant for cmalign
+                                                   opt_Get("--wait", $opt_HHR), opt_Get("--errcheck", $opt_HHR), $ofile_info_HHR->{"FH"});
+      if($njobs_finished != $nseq_files) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
+      }
+      outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
+    }
   }
   
   return;
@@ -8242,28 +8250,28 @@ sub runCmalign {
 
   # determine cmalign options based on command line options
   my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file --tfile $tfile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
+  # add --sub and --notrunc unless --nosub used
+  if(! opt_Get("--nosub", $opt_HHR)) { 
+    $opts .= " --sub --notrunc"; 
+  }
   # add -g unless --noglocal used
   if(! opt_Get("--noglocal", $opt_HHR)) { 
     $opts .= " -g"; 
   }
-  # add --sub and --notrunc if -c used
-  if(opt_Get("--sub", $opt_HHR)) { 
-    $opts .= " --sub --notrunc"; 
-  }
-  else { # only add --fixedtau if --sub NOT used AND --nofixedtau NOT used
-    if(! opt_Get("--nofixedtau", $opt_HHR)) { 
-      $opts .= " --fixedtau"; 
-    }
+  if(! opt_Get("--nofixedtau", $opt_HHR)) { 
+    $opts .= " --fixedtau"; 
   }
   
   # remove the tblout file or ifile file if it exists, this is important because we'll use the existence and
   # final line of this file to determine when the jobs are finished, if it already exists, we'll
   # think the job is finished before it actual is.
-  if(-e $stdout_file) { removeFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
-  if(-e $ifile_file)  { removeFileUsingSystemRm($ifile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
-  if(-e $tfile_file)  { removeFileUsingSystemRm($tfile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
-  if(-e $stk_file)    { removeFileUsingSystemRm($stk_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
-  if(-e $err_file)    { removeFileUsingSystemRm($err_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
+  if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
+    if(-e $stdout_file) { removeFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
+    if(-e $ifile_file)  { removeFileUsingSystemRm($ifile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
+    if(-e $tfile_file)  { removeFileUsingSystemRm($tfile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
+    if(-e $stk_file)    { removeFileUsingSystemRm($stk_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
+    if(-e $err_file)    { removeFileUsingSystemRm($err_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
+  }
 
   my $cmd = "$executable $opts $model_file $seq_file > $stdout_file 2>&1";
 
@@ -8788,7 +8796,7 @@ sub blastxDbSeqNameToFtrIdx {
     my ($accn, $coords) = ($1, $2);
     # find it in @{$ftr_info_HAR->{"ref_coords"}}
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") { 
+      if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds")) { 
         if($ftr_info_HAR->{"ref_coords"}[$ftr_idx] eq $coords) { 
           if(defined $ret_ftr_idx) { # found more than 1 features that match
             DNAORG_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match two features, ftr_idx: $ftr_idx and $ret_ftr_idx", 1, $FH_HR);
@@ -8971,6 +8979,36 @@ sub checkIfFeatureShouldHaveStopCodon {
   my ($ftr_info_HAR, $ftr_idx) = @_;
 
   if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") { 
+    return 1; 
+  }
+  return 0;
+}
+
+#################################################################
+# Subroutine:  checkIfFeatureIsCdsOrMp()
+# Incept:      EPN, Mon Feb 25 14:30:34 2019
+#
+# Purpose:    Return '1' if feature is of a type that 
+#             should have a stop codon, else '0'.
+#
+# Arguments: 
+#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $ftr_idx:        feature index
+#
+# Returns:    '1' if $ftr_info_HAR->{"type"}[$ftr_idx] is "cds" or "mp"
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub checkIfFeatureIsCdsOrMp { 
+  my $sub_name = "checkIfFeatureIsCdsOrMp";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $ftr_idx) = @_;
+
+  if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") ||
+     ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp")) { 
     return 1; 
   }
   return 0;
