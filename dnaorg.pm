@@ -8954,48 +8954,19 @@ sub checkIfFeatureShouldHaveStartCodon {
   return 0;
 }
 
-#################################################################
-# Subroutine:  checkIfFeatureShouldHaveStopCodon()
-# Incept:      EPN, Mon Feb 25 14:30:34 2019
-#
-# Purpose:    Return '1' if feature is of a type that 
-#             should have a stop codon, else '0'.
-#
-# Arguments: 
-#  $ftr_info_HAR:   ref to the feature info hash of arrays 
-#  $ftr_idx:        feature index
-#
-# Returns:    '1' if $ftr_info_HAR->{"type"}[$ftr_idx] is of a type
-#             that should have a start codon, else '0'.
-#
-# Dies:       never; does not validate anything.
-#
-################################################################# 
-sub checkIfFeatureShouldHaveStopCodon {
-  my $sub_name = "checkIfFeatureShouldHaveStopCodon";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_HAR, $ftr_idx) = @_;
-
-  if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") { 
-    return 1; 
-  }
-  return 0;
-}
 
 #################################################################
 # Subroutine:  checkIfFeatureIsCdsOrMp()
 # Incept:      EPN, Mon Feb 25 14:30:34 2019
 #
-# Purpose:    Return '1' if feature is of a type that 
-#             should have a stop codon, else '0'.
+# Purpose:    Return '1' if feature is type is 'cds' or 'mp', else return '0'.
 #
 # Arguments: 
 #  $ftr_info_HAR:   ref to the feature info hash of arrays 
 #  $ftr_idx:        feature index
 #
 # Returns:    '1' if $ftr_info_HAR->{"type"}[$ftr_idx] is "cds" or "mp"
+#             else '0'
 #
 # Dies:       never; does not validate anything.
 #
@@ -9009,6 +8980,64 @@ sub checkIfFeatureIsCdsOrMp {
 
   if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") ||
      ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp")) { 
+    return 1; 
+  }
+  return 0;
+}
+
+#################################################################
+# Subroutine:  checkIfFeatureIsCds()
+# Incept:      EPN, Wed Feb 27 10:38:34 2019
+#
+# Purpose:    Return '1' if feature type is 'cds', else return '0'.
+#
+# Arguments: 
+#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $ftr_idx:        feature index
+#
+# Returns:    '1' if $ftr_info_HAR->{"type"}[$ftr_idx] is "cds"
+#             else '0'
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub checkIfFeatureIsCds { 
+  my $sub_name = "checkIfFeatureIsCds";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $ftr_idx) = @_;
+
+  if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") {
+    return 1; 
+  }
+  return 0;
+}
+
+#################################################################
+# Subroutine:  checkIfFeatureIsDuplicate()
+# Incept:      EPN, Mon Feb 25 14:30:34 2019
+#
+# Purpose:    Return '1' if feature type is 'dfeat', else return '0'.
+#
+# Arguments: 
+#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $ftr_idx:        feature index
+#
+# Returns:    '1' if $ftr_info_HAR->{"type"}[$ftr_idx] is "dfeat"
+#             else '0'
+# 
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub checkIfFeatureIsDuplicate { 
+  my $sub_name = "checkIfFeatureIsDuplicate"; 
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $ftr_idx) = @_;
+
+  if($ftr_info_HAR->{"type"}[$ftr_idx] eq "dfeat") { 
     return 1; 
   }
   return 0;
