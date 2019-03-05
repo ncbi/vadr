@@ -83,6 +83,7 @@ require "epn-options.pm";
 # 
 # * b_per errors can be added in two places, and are only added in add_blastx_errors for
 #   features for which they weren't already added
+#
 #######################################################################################
 
 # first, determine the paths to all modules, scripts and executables that we'll need
@@ -653,8 +654,8 @@ if($n_div_errors > 0) {
 ##################################
 $start_secs = outputProgressPrior("Parsing cmalign results", $progress_w, $log_FH, *STDOUT);
 
-my @mdl_results_AAH = ();  # 1st dim: array, 0..$nmdl-1, one per model
-                           # 2nd dim: array, 0..$nseq-1, one per sequence
+my @mdl_results_AAH = ();  # 1st dim: array, 0..$nseq-1, one per sequence
+                           # 2nd dim: array, 0..$nmdl-1, one per model
                            # 3rd dim: hash, keys are "start", "stop", "strand", "5seqflush", "3seqflush", "5trunc", "3trunc"
 initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
@@ -708,7 +709,7 @@ parse_blastx_results($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr_info_HA
 openAndAddFileToOutputInfo(\%ofile_info_HH, "blasttbl", $out_root . ".blastx.tbl", 1, "information on blast and CM hits for CDS features in tabular format");
 my $combined_model_seqname_maxlen = maxLengthScalarValueInArray($seq_info_HA{"seq_name"});
 add_blastx_errors($ofile_info_HH{"FH"}{"blasttbl"}, $combined_model_seqname_maxlen, 
-                              \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
+                              \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, 
                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 #####################################################################
@@ -987,6 +988,7 @@ sub parse_cmalign_stk_and_add_alignment_errors {
 
   my $pp_thresh = opt_Get("--ppmin", $opt_HHR);
   my $small_value = 0.000001; # for checking if PPs are below threshold
+  my $nmdl = getInfoHashSize($mdl_info_HAR, "is_first", $FH_HR);
 
   # create an ESL_MSA object from the alignment
   # open and validate file
@@ -1016,18 +1018,17 @@ sub parse_cmalign_stk_and_add_alignment_errors {
 
   # move through each sequence in the alignment and determine its boundaries for each model region
   my $nseq = $msa->nseq; 
-  my $nmdl = scalar(@{$mdl_results_AAHR});
   # for each sequence, go through all models and fill in the start and stop (unaligned seq) positions
   for(my $i = 0; $i < $nseq; $i++) { 
-    my $seqname = $msa->get_sqname($i);
-    if(! exists $seq_name_index_HR->{$seqname}) { 
-      DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname from alignment in $stk_file", 1, $FH_HR);
+    my $seq_name = $msa->get_sqname($i);
+    if(! exists $seq_name_index_HR->{$seq_name}) { 
+      DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seq_name from alignment in $stk_file", 1, $FH_HR);
     }
-    my $seqidx = $seq_name_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
-    if(! exists $seq_info_HAR->{"len"}[$seqidx]) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
+    my $seq_idx = $seq_name_index_HR->{$seq_name}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
+    if(! exists $seq_info_HAR->{"len"}[$seq_idx]) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seq_name, accession %s", $seq_info_HAR->{"accn_name"}[$seq_idx]), 1, $FH_HR);
     }
-    my $seq_len = $seq_info_HAR->{"len"}[$seqidx]; # sequence length
+    my $seq_len = $seq_info_HAR->{"len"}[$seq_idx]; # sequence length
 
     # fill sequence-specific arrays
     # insert info from seq_info_HAR (read previously from cmalign --ifile output)
@@ -1039,8 +1040,8 @@ sub parse_cmalign_stk_and_add_alignment_errors {
       $rf2ipos_A[$rfpos] = -1;
       $rf2ilen_A[$rfpos] = -1;
     }
-    if($seq_info_HAR->{"ifile_ins"}[$seqidx] ne "") { 
-      my @ins_A = split(";", $seq_info_HAR->{"ifile_ins"}[$seqidx]); 
+    if($seq_info_HAR->{"ifile_ins"}[$seq_idx] ne "") { 
+      my @ins_A = split(";", $seq_info_HAR->{"ifile_ins"}[$seq_idx]); 
       foreach my $ins_tok (@ins_A) { 
         #printf("ins_tok: $ins_tok\n");
         if($ins_tok =~ /^(\d+)\:(\d+)\:(\d+)$/) { 
@@ -1050,7 +1051,7 @@ sub parse_cmalign_stk_and_add_alignment_errors {
           #printf("rf2ipos_A[%5d]: %5d rf2ilen_A[%5d]: %5d\n", $i_rfpos, $i_uapos, $i_rfpos, $i_len);
         }
         else { 
-          DNAORG_FAIL("ERROR in $sub_name, failed to parse insert information read from ifile for $seqname:\n" . $seq_info_HAR->{"ifile_ins"}[$seqidx], 1, $FH_HR);
+          DNAORG_FAIL("ERROR in $sub_name, failed to parse insert information read from ifile for $seq_name:\n" . $seq_info_HAR->{"ifile_ins"}[$seq_idx], 1, $FH_HR);
         }
       }
     }    
@@ -1123,7 +1124,7 @@ sub parse_cmalign_stk_and_add_alignment_errors {
 #      printf("rfpos: %5d  apos: %5d  min_rfpos: %5d  min_uapos: %5d\n", $rfpos, $apos, $min_rfpos, $min_uapos);
     }
     if($min_uapos != 1) { 
-      DNAORG_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seqname, pass 1 (min_uapos should be 1 but it is $min_uapos)", 1, $FH_HR);
+      DNAORG_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 1 (min_uapos should be 1 but it is $min_uapos)", 1, $FH_HR);
     }      
 
     # second pass, from left to right to fill $max_**pos_before arrays:
@@ -1150,12 +1151,12 @@ sub parse_cmalign_stk_and_add_alignment_errors {
  #     }
     }
     if($max_uapos != $seq_len) { 
-      DNAORG_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seqname, pass 2 (max_uapos should be $seq_len but it is $max_uapos)", 1, $FH_HR);
+      DNAORG_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 2 (max_uapos should be $seq_len but it is $max_uapos)", 1, $FH_HR);
     }      
     
     # Debugging print block
 #    printf("***************************************************\n");
-#    printf("DEBUG print $seqname\n");
+#    printf("DEBUG print $seq_name\n");
 #    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
 #      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
 #             $rfpos, 
@@ -1174,10 +1175,10 @@ sub parse_cmalign_stk_and_add_alignment_errors {
     #        hit rf span is from A[rfpos] to B[rfpos]
 
     # now we have all the info we need for this sequence to determine sequence boundaries for each model region
-    for(my $m = 0; $m < $nmdl; $m++) { 
-      my $mdl_start_rfpos = $mdl_info_HAR->{"ref_start"}[$m];
-      my $mdl_stop_rfpos  = $mdl_info_HAR->{"ref_stop"}[$m];
-      my $mdl_strand      = $mdl_info_HAR->{"ref_strand"}[$m];
+    for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+      my $mdl_start_rfpos = $mdl_info_HAR->{"ref_start"}[$mdl_idx];
+      my $mdl_stop_rfpos  = $mdl_info_HAR->{"ref_stop"}[$mdl_idx];
+      my $mdl_strand      = $mdl_info_HAR->{"ref_strand"}[$mdl_idx];
 
 # Debugging print block
 #      printf("model $m $mdl_start_rfpos..$mdl_stop_rfpos\n");
@@ -1222,42 +1223,42 @@ sub parse_cmalign_stk_and_add_alignment_errors {
           $p_3seqflush = ($stop_uapos  == 1)        ? 1 : 0;
         }
 
-        %{$mdl_results_AAHR->[$m][$seqidx]} = ();
-        $mdl_results_AAHR->[$m][$seqidx]{"start"}     = $start_uapos;
-        $mdl_results_AAHR->[$m][$seqidx]{"stop"}      = $stop_uapos;
-        $mdl_results_AAHR->[$m][$seqidx]{"strand"}    = $mdl_strand;
-        $mdl_results_AAHR->[$m][$seqidx]{"5seqflush"} = $p_5seqflush;
-        $mdl_results_AAHR->[$m][$seqidx]{"3seqflush"} = $p_3seqflush;
-        $mdl_results_AAHR->[$m][$seqidx]{"5trunc"}    = ($p_5seqflush && ($start_rfpos != $mdl_start_rfpos)) ? 1 : 0;
-        $mdl_results_AAHR->[$m][$seqidx]{"3trunc"}    = ($p_3seqflush && ($stop_rfpos  != $mdl_stop_rfpos))  ? 1 : 0;
-        $mdl_results_AAHR->[$m][$seqidx]{"nhits"}     = 1;
-        $mdl_results_AAHR->[$m][$seqidx]{"startgap"}  = ($rfpos_pp_A[$mdl_start_rfpos] eq ".") ? 1  : 0;
-        $mdl_results_AAHR->[$m][$seqidx]{"stopgap"}   = ($rfpos_pp_A[$mdl_stop_rfpos]  eq ".") ? 1  : 0;
-        $mdl_results_AAHR->[$m][$seqidx]{"startpp"}   = ($rfpos_pp_A[$mdl_start_rfpos] eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$mdl_start_rfpos], $FH_HR);
-        $mdl_results_AAHR->[$m][$seqidx]{"stoppp"}    = ($rfpos_pp_A[$mdl_stop_rfpos]  eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$mdl_stop_rfpos], $FH_HR);
+        %{$mdl_results_AAHR->[$seq_idx][$mdl_idx]} = ();
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"start"}     = $start_uapos;
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stop"}      = $stop_uapos;
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"strand"}    = $mdl_strand;
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"5seqflush"} = $p_5seqflush;
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"3seqflush"} = $p_3seqflush;
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"5trunc"}    = ($p_5seqflush && ($start_rfpos != $mdl_start_rfpos)) ? 1 : 0;
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"3trunc"}    = ($p_3seqflush && ($stop_rfpos  != $mdl_stop_rfpos))  ? 1 : 0;
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"nhits"}     = 1;
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startgap"}  = ($rfpos_pp_A[$mdl_start_rfpos] eq ".") ? 1  : 0;
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stopgap"}   = ($rfpos_pp_A[$mdl_stop_rfpos]  eq ".") ? 1  : 0;
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startpp"}   = ($rfpos_pp_A[$mdl_start_rfpos] eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$mdl_start_rfpos], $FH_HR);
+        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stoppp"}    = ($rfpos_pp_A[$mdl_stop_rfpos]  eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$mdl_stop_rfpos], $FH_HR);
         
         # add errors, if nec
-        if(! $mdl_results_AAHR->[$m][$seqidx]{"5trunc"}) { 
-          if($mdl_results_AAHR->[$m][$seqidx]{"startgap"}) { 
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$m], "n_gp5", $seqname, 
-                                "RF position $mdl_start_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $m), 
+        if(! $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"5trunc"}) { 
+          if($mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startgap"}) { 
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$mdl_idx], "n_gp5", $seq_name, 
+                                "RF position $mdl_start_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), 
                                 $FH_HR);
           } 
-          elsif(($mdl_results_AAHR->[$m][$seqidx]{"startpp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$m], "n_lp5", $seqname, 
-                                sprintf("%.2f < %.2f, RF position $mdl_start_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $m), $mdl_results_AAHR->[$m][$seqidx]{"startpp"}, $pp_thresh),
+          elsif(($mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startpp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$mdl_idx], "n_lp5", $seq_name, 
+                                sprintf("%.2f < %.2f, RF position $mdl_start_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startpp"}, $pp_thresh),
                                 $FH_HR);
           }
         }
-        if(! $mdl_results_AAHR->[$m][$seqidx]{"3trunc"}) { 
-          if($mdl_results_AAHR->[$m][$seqidx]{"stopgap"}) { 
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$m], "n_gp3", $seqname, 
-                                "RF position $mdl_stop_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $m), 
+        if(! $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"3trunc"}) { 
+          if($mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stopgap"}) { 
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$mdl_idx], "n_gp3", $seq_name, 
+                                "RF position $mdl_stop_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), 
                                 $FH_HR);
           }
-          elsif(($mdl_results_AAHR->[$m][$seqidx]{"stoppp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$m], "n_lp3", $seqname, 
-                                sprintf("%.2f < %.2f, RF position $mdl_stop_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $m), $mdl_results_AAHR->[$m][$seqidx]{"stoppp"}, $pp_thresh),
+          elsif(($mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stoppp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
+            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$mdl_idx], "n_lp3", $seq_name, 
+                                sprintf("%.2f < %.2f, RF position $mdl_stop_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stoppp"}, $pp_thresh),
                               $FH_HR);
           }
         }
@@ -1265,7 +1266,7 @@ sub parse_cmalign_stk_and_add_alignment_errors {
         # Debugging print block
         #printf("model: $mdl_start_rfpos to $mdl_stop_rfpos\n");
         #foreach my $key ("start", "stop", "strand", "5seqflush", "3seqflush", "5trunc", "3trunc", "startgap", "stopgap", "startpp", "stoppp") { 
-        #  printf("stored $m $seqidx $key $mdl_results_AAHR->[$m][$seqidx]{$key}\n");
+        #  printf("stored $m $seq_idx $key $mdl_results_AAHR->[$seq_idx][$mdl_idx]{$key}\n");
         #}
       }
     } # end of 'for(my $m = 0; $m < $nmdl; $m++)'
@@ -1320,7 +1321,6 @@ sub parse_cmalign_stk_and_add_alignment_errors {
 #  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
 #  $ftr_results_AAHR:       REF to feature results AAH, PRE-FILLED
-#  $mdl_results_AAHR:       REF to model results AAH, PRE-FILLED
 #  $err_ftr_instances_AHHR: REF to error instances AHH, ADDED TO HERE
 #  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
 #  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
@@ -1332,10 +1332,10 @@ sub parse_cmalign_stk_and_add_alignment_errors {
 ################################################################# 
 sub add_blastx_errors { 
   my $sub_name = "add_blastx_errors";
-  my $nargs_exp = 10;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_FH, $query_width, $ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($out_FH, $query_width, $ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
   
   # total counts of things
   my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
@@ -1370,7 +1370,7 @@ sub add_blastx_errors {
       
       for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-        my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
+        my $ftr_results_HR = \%{$ftr_results_AAHR->[$seq_idx][$ftr_idx]}; # for convenience
         
         # determine if we have any CM predictions for any models related to this feature
         my $b_non_err_possible = 1; 
@@ -1805,13 +1805,13 @@ sub parse_blastx_results {
           if($value =~ /^(\d+)..(\d+)$/) { 
             my ($blast_start, $blast_stop) = ($1, $2);
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_start"}  = $blast_start;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_stop"}   = $blast_stop;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_strand"} = $blast_strand;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_query"}  = $query;
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_start"} . "\n");
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_stop"} . "\n");
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_strand"} . "\n");
+            $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_start"}  = $blast_start;
+            $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_stop"}   = $blast_stop;
+            $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_strand"} = $blast_strand;
+            $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_query"}  = $query;
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_start}  to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_start"} . "\n");
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_stop}   to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_stop"} . "\n");
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_strand} to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_strand"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", 1, $FH_HR);
@@ -1825,8 +1825,8 @@ sub parse_blastx_results {
         if($top_score_flag) { 
           if($value =~ /^(\d+)$/) { 
             my $maxins = $1;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_maxins"} = $maxins;
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_maxins"} . "\n");
+            $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_maxins"} = $maxins;
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_maxins} to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_maxins"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", 1, $FH_HR);
@@ -1840,8 +1840,8 @@ sub parse_blastx_results {
         if($top_score_flag) {
           if($value =~ /^(\d+)$/) { 
             my $maxdel = $1;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_maxdel"} = $maxdel;
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxdel} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_maxdel"} . "\n");
+            $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_maxdel"} = $maxdel;
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_maxdel} to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_maxdel"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXDE line $line", 1, $FH_HR);
@@ -1855,8 +1855,8 @@ sub parse_blastx_results {
         if($top_score_flag) { 
           if($value =~ /^[\+\-]([123])$/) { 
             my $frame = $1;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_frame"} = $frame;
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_frame"} . "\n");
+            $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_frame"} = $frame;
+            #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_frame} to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_frame"} . "\n");
           }
           else { 
             DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
@@ -1868,8 +1868,8 @@ sub parse_blastx_results {
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read STOP line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
         if($top_score_flag) { 
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_trcstop"} = $value;
-          #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_trcstop"} . "\n");
+          $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_trcstop"} = $value;
+          #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_trcstop} to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_trcstop"} . "\n");
         }
       }
       elsif($key eq "SCORE") { 
@@ -1877,11 +1877,11 @@ sub parse_blastx_results {
           DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
         }
         # is this sequence compatible and the highest scoring hit for this feature for this sequence? 
-        if((! exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_score"}) || # first hit, so must be highest
-           ($value > $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_score"})) { # highest scoring hit
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_score"} = $value;
+        if((! exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_score"}) || # first hit, so must be highest
+           ($value > $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_score"})) { # highest scoring hit
+          $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_score"} = $value;
           $top_score_flag = 1;
-          #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_score} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_score"} . "\n");
+          #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_score} to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_score"} . "\n");
         }
         else { 
           $top_score_flag = 0;
@@ -2050,7 +2050,7 @@ sub fetch_features_and_add_cds_and_mp_errors {
         my $ftr_stop   = undef; # predicted stop  for the feature
         my $ftr_stop_c = undef; # corrected stop  for the feature, stays undef if no correction needed (no 'trc' or 'ext')
         my $ftr_ofile_key = "pfa." . $ftr_idx;
-        my $ftr_results_HR = $ftr_results_AAHR->[$ftr_idx][$seq_idx]; # for convenience
+        my $ftr_results_HR = $ftr_results_AAHR->[$seq_idx][$ftr_idx]; # for convenience
         my $err_flag = 0; # set to '1' if we set an error for this feature
 
         my $na_children = 0;
@@ -2063,8 +2063,8 @@ sub fetch_features_and_add_cds_and_mp_errors {
         }
         
         for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-          my $mdl_results_HR = $mdl_results_AAHR->[$mdl_idx][$seq_idx]; # for convenience
-          if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"start"}) { 
+          my $mdl_results_HR = $mdl_results_AAHR->[$seq_idx][$mdl_idx]; # for convenience
+          if(exists $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"start"}) { 
             my ($start, $stop, $strand) = ($mdl_results_HR->{"start"}, $mdl_results_HR->{"stop"}, $mdl_results_HR->{"strand"});
             
             # update truncated mode
@@ -2454,8 +2454,7 @@ sub error_instances_add {
 #                  with unmodified lines from $in_file
 #  $FH_HR:         ref to hash of file handles
 #
-# Returns:    "" if $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key} does not exist
-#             else a string for the feature table
+# Returns:    void
 #
 # Dies: never
 #
@@ -2580,8 +2579,8 @@ sub add_b_zft_errors {
 
     # loop over features
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if(defined $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"n_start"} || 
-         defined $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_start"}) { 
+      if(defined $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"n_start"} || 
+         defined $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_start"}) { 
         $seq_nftr++;
         $ftr_idx = $nftr; # breaks for $ftr_idx loop
       } 
@@ -2667,10 +2666,10 @@ sub initialize_mdl_results {
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
 
   @{$mdl_results_AAHR} = ();
-  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    @{$mdl_results_AAHR->[$mdl_idx]} = ();
-    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      %{$mdl_results_AAHR->[$mdl_idx][$seq_idx]} = ();
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    @{$mdl_results_AAHR->[$seq_idx]} = ();
+    for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+      %{$mdl_results_AAHR->[$seq_idx][$mdl_idx]} = ();
     }
   }
 
@@ -2709,10 +2708,10 @@ sub initialize_ftr_results {
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
 
   @{$ftr_results_AAHR} = ();
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    @{$ftr_results_AAHR->[$ftr_idx]} = ();
-    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      %{$ftr_results_AAHR->[$ftr_idx][$seq_idx]} = ();
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    @{$ftr_results_AAHR->[$seq_idx]} = ();
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      %{$ftr_results_AAHR->[$seq_idx][$ftr_idx]} = ();
     }
   }
   return;
@@ -2857,19 +2856,19 @@ sub output_tabular {
         my $ftr_prefix = $ftr_info_HAR->{"out_tiny"}[$ftr_idx]; 
         if(defined $ftr_info_HAR->{"out_product"}[$ftr_idx]) { $ftr_prefix .= ":" . $ftr_info_HAR->{"out_product"}[$ftr_idx]; } 
         my $ftr_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
-        my $defined_n_start = (exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"n_start"}) ? 1 : 0;
-        my $defined_p_start = (exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_start"}) ? 1 : 0;
+        my $defined_n_start = (exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"n_start"}) ? 1 : 0;
+        my $defined_p_start = (exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_start"}) ? 1 : 0;
         if($defined_n_start || $defined_p_start) { 
           $nftr_defined++;
-          if($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"n_5trunc"}) { $nftr_5trunc++; }
-          if($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"n_3trunc"}) { $nftr_3trunc++; }
+          if($ftr_results_AAHR->[$seq_idx][$ftr_idx]{"n_5trunc"}) { $nftr_5trunc++; }
+          if($ftr_results_AAHR->[$seq_idx][$ftr_idx]{"n_3trunc"}) { $nftr_3trunc++; }
           my $ftr_err_str = helper_ftable_get_ftr_error_code_strings($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, undef, $FH_HR);
           if($ftr_err_str ne "") { 
             if($full_ftr_err_str ne "") { $full_ftr_err_str .= ",";  }
             $full_ftr_err_str .= $ftr_prefix . "(" . $ftr_err_str . ")"; 
           } 
 #          for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-#            if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]->{"start"}) { 
+#            if(exists $mdl_results_AAHR->[$seq_idx][$mdl_idx]->{"start"}) { 
         }
       }
     }
@@ -2995,8 +2994,8 @@ sub output_feature_table {
         }
       }
       else { # not a duplicate feature
-        $defined_n_start = (exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"n_start"}) ? 1 : 0;
-        $defined_p_start = (exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_start"}) ? 1 : 0;
+        $defined_n_start = (exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"n_start"}) ? 1 : 0;
+        $defined_p_start = (exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_start"}) ? 1 : 0;
         $do_ignore       = ($defined_n_start || $defined_p_start) ? 0 : 1;
       }
 
@@ -3016,8 +3015,8 @@ sub output_feature_table {
         if(! $is_duplicate) { # only look up errors if we're not a duplicate feature
           # fill an array and strings with all errors for this sequence/feature combo
           my $ftr_err_str = helper_ftable_get_ftr_error_code_strings($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, \@ftr_long_output_A, $FH_HR);
-          $is_5trunc = $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"n_5trunc"}; 
-          $is_3trunc = $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"n_3trunc"}; 
+          $is_5trunc = $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"n_5trunc"}; 
+          $is_3trunc = $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"n_3trunc"}; 
           processFeatureErrorsForFTable($ftr_err_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, 
                                         \@ftr_note_A, \@seq_error_A, $FH_HR);
           if(scalar(@ftr_note_A) > 0) { 
@@ -3468,7 +3467,7 @@ sub output_parent_child_relationships {
 
   my ($FH, $ftr_info_HAR, $FH_HR) = @_;
 
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nftr = getInfoHashSize($ftr_info_HAR, "primary_children_ftr_str", $FH_HR); # nftr: number of features
 
   my $nprinted = 0;
 
@@ -3619,9 +3618,9 @@ sub helper_ftable_get_seq_error_code_strings {
 #  $FH_HR:             REF to hash of file handles
 #
 # Returns:    A string that gives the coordinates for the seq_idx/ftr_idx
-#             pair in feature table format.
+#             pair in feature table format, or "" if no predictions exist.
 #
-# Dies:       if n_start or n_stop does not exist in the ftr_results_AAHR->[$ftr_idx][$seq_idx] hash
+# Dies:       Never
 ################################################################# 
 sub helper_ftable_get_coords_from_nt_prediction { 
   my $sub_name = "helper_ftable_get_coords_from_nt_prediction";
@@ -3634,9 +3633,9 @@ sub helper_ftable_get_coords_from_nt_prediction {
   my @stop_A  = ();
   
   for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-    if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]->{"start"}) { 
-      push(@start_A, $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"start"});
-      push(@stop_A,  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"stop"});
+    if(exists $mdl_results_AAHR->[$seq_idx][$mdl_idx]->{"start"}) { 
+      push(@start_A, $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"start"});
+      push(@stop_A,  $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stop"});
     }
   }
   return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $is_5trunc, $is_3trunc, $ret_min_coord, $FH_HR);
@@ -3665,7 +3664,7 @@ sub helper_ftable_get_coords_from_nt_prediction {
 # Returns:    A string that gives the coordinates for the seq_idx/ftr_idx
 #             pair in feature table format.
 #
-# Dies:       if x_start or x_stop does not exist in the ftr_results_AAHR->[$ftr_idx][$seq_idx] hash
+# Dies:       if p_start or p_stop does not exist in the ftr_results_AAHR->[$seq_idx][$ftr_idx] hash
 ################################################################# 
 sub helper_ftable_get_coords_prot_only_prediction { 
   my $sub_name = "helper_ftable_get_coords_prot_only_prediction";
@@ -3675,13 +3674,13 @@ sub helper_ftable_get_coords_prot_only_prediction {
   my ($seq_idx, $ftr_idx, $is_5trunc, $is_3trunc, $ret_min_coord, $ftr_results_AAHR, $FH_HR) = @_;
 
   # NOTE: for 'b_non' errors, the x_start and x_stop are always set at the feature level
-  if((! exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_start"}) ||
-     (! exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_stop"})) { 
-    DNAORG_FAIL("ERROR in $sub_name, ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start|x_stop} does not exists", 1, $FH_HR);
+  if((! exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_start"}) ||
+     (! exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_stop"})) { 
+    DNAORG_FAIL("ERROR in $sub_name, ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_start|x_stop} does not exists", 1, $FH_HR);
   }
 
-  my @start_A = ($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_start"});
-  my @stop_A  = ($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_stop"});
+  my @start_A = ($ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_start"});
+  my @stop_A  = ($ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_stop"});
 
   return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $is_5trunc, $is_3trunc, $ret_min_coord, $FH_HR);
 }
@@ -3834,7 +3833,7 @@ sub helper_ftable_add_qualifier_from_ftr_info {
 #  $ftr_results_AAHR:  REF to feature results AAH, PRE-FILLED
 #  $FH_HR:             REF to hash of file handles
 #
-# Returns:    "" if $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key} does not exist
+# Returns:    "" if $ftr_results_AAHR->[$seq_idx][$ftr_idx]{$results_key} does not exist
 #             else a string for the feature table
 #
 # Dies: never
@@ -3849,8 +3848,8 @@ sub helper_ftable_add_qualifier_from_ftr_results {
 
   my $ret_str = "";
 
-  if(defined $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key}) { 
-    $ret_str = sprintf("\t\t\t%s\t%s\n", $qualifier, $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key});
+  if(defined $ftr_results_AAHR->[$seq_idx][$ftr_idx]{$results_key}) { 
+    $ret_str = sprintf("\t\t\t%s\t%s\n", $qualifier, $ftr_results_AAHR->[$seq_idx][$ftr_idx]{$results_key});
   }
   return $ret_str;
 }

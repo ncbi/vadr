@@ -5349,6 +5349,40 @@ sub getConsistentSizeOfInfoHashOfArrays {
 }
 
 #################################################################
+# Subroutine: getInfoHashSize()
+# Incept:     EPN, Tue Mar  5 08:00:34 2019
+#
+# Purpose:    Quickly determine the size of 'info hash' without
+#             validating it, using key $key.
+#
+# Arguments:
+#   $info_HAR:  REF to info hash of arrays
+#   $key:       key to use to get size
+#   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: Number of elements in @{$info_HAR->{$key}}
+#
+# Dies:    - if $info_HAR is undefined or $info_HAR->{$key} does not exist
+#
+#################################################################
+sub getInfoHashSize { 
+  my $sub_name = "getInfoHashSize()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($info_HAR, $key, $FH_HR) = (@_);
+  
+  if(! defined $info_HAR) { 
+    DNAORG_FAIL("ERROR in $sub_name, input info_HAR undefined", 1, $FH_HR);
+  }
+  if(! exists $info_HAR->{$key}) { 
+    DNAORG_FAIL("ERROR in $sub_name, key $key does not exist in info_HAR hash", 1, $FH_HR);
+  }
+
+  return(scalar(@{$info_HAR->{$key}}));
+}
+
+#################################################################
 #
 # Subroutines related to codons:
 #   fetchStopCodon()
