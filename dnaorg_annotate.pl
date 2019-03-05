@@ -2837,6 +2837,28 @@ sub output_tabular {
       $nftr_nondup++;
     }
   }
+  # determine number of sequence errors
+  my $nerr_seq_possible = 0;
+  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
+    if($err_info_HAR->{"pertype"}[$err_idx] eq "sequence") { 
+      $nerr_seq_possible++;
+    }
+  }
+
+  # determine max width of text strings
+  my $w_idx      = numberOfDigits($nseq);
+  my $w_seq_name = maxLengthScalarValueInArray($seq_info_HAR->{"seq_name"}); 
+  my $w_seq_len  = maxLengthScalarValueInArray($seq_info_HAR->{"len"});
+  my $w_seq_err  = 4 * $nerr_seq_possible - 1;
+  if($w_idx      < length("#idx"))    { $w_idx      = length("#idx"); }
+  if($w_seq_name < length("seqname")) { $w_seq_name = length("seqname"); }
+  if($w_seq_len  < length("len"))     { $w_seq_len  = length("len"); }
+  if($w_seq_err  < length("seqerr"))  { $w_seq_len  = length("seqerr"); }
+
+  # header lines
+  print("\n");
+  printf("%-*s  %-*s  %-*s  %3s  %3s  %3s  %3s  %-*s  %s\n", 
+         $w_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "nfa", "nfn", "nf5", "nf3", $w_seq_err, "seqerr", "ftrerr");
 
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
@@ -2874,8 +2896,9 @@ sub output_tabular {
     }
     if($full_ftr_err_str eq "") { $full_ftr_err_str = "-"; }
     if($seq_err_str      eq "") { $seq_err_str = "-"; }
-    printf("%d  %s  %d  %d  %d  %d  %d  %s  %s\n", 
-           $seq_idx+1, $seq_name, $seq_len, $nftr_defined, ($nftr_nondup-$nftr_defined), $nftr_5trunc, $nftr_3trunc, $seq_err_str, $full_ftr_err_str);
+    printf("%-*d  %-*s  %-*d  %3d  %3d  %3d  %3d  %-*s  %s\n", 
+           $w_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $nftr_defined, ($nftr_nondup-$nftr_defined), $nftr_5trunc, $nftr_3trunc, 
+           $w_seq_err, $seq_err_str, $full_ftr_err_str);
   }
 
   exit 0;

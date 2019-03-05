@@ -183,7 +183,8 @@
 #   maxLengthScalarValueInHash()
 #   maxLengthScalarValueInArray()
 #   findValueInArray()
-#
+#   numberOfDigits()
+# 
 # Simple utility subroutines:
 #   DNAORG_FAIL()
 #   fileOpenFailure()
@@ -5727,6 +5728,7 @@ sub formatTimeString {
 #   maxLengthScalarKeyInHash()
 #   maxLengthScalarValueInHash()
 #   maxLengthScalarValueInArray()
+#   numberOfDigits()
 #   findValueInArray()
 #   sumArray()
 #   sumHashValues()
@@ -5895,6 +5897,32 @@ sub maxLengthScalarValueInArray {
     if($len > $max) { $max = $len; }
   }
   return $max;
+}
+
+#################################################################
+# Subroutine : numberOfDigits()
+# Incept:      EPN, Tue May  9 11:33:50 2017 [ribovore]
+#              EPN, Fri Nov 13 06:17:25 2009 [ssu-align:ssu.pm:NumberOfDigits()]
+# 
+# Purpose:     Return the number of digits in a number before
+#              the decimal point. (ex: 1234.56 would return 4).
+# Arguments:
+# $num:        the number
+# 
+# Returns:     the number of digits before the decimal point
+#
+################################################################# 
+sub numberOfDigits { 
+    my $nargs_expected = 1;
+    my $sub_name = "numberOfDigits()";
+    if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+    my ($num) = (@_);
+
+    my $ndig = 1; 
+    while($num > 10) { $ndig++; $num /= 10.; }
+
+    return $ndig;
 }
 
 #################################################################
