@@ -5920,7 +5920,7 @@ sub numberOfDigits {
     my ($num) = (@_);
 
     my $ndig = 1; 
-    while($num > 10) { $ndig++; $num /= 10.; }
+    while($num >= 10) { $ndig++; $num /= 10.; }
 
     return $ndig;
 }
@@ -8370,6 +8370,31 @@ sub featureTypeIsDuplicateFeature() {
 }
 
 #################################################################
+# Subroutine: featureNumModels()
+# Incept:     EPN, Tue Mar  5 13:05:38 2019
+#
+# Purpose:    Return number of models that pertain to a feature.
+#
+# Arguments: 
+#   $ftr_info_HAR:  REF to hash of arrays of feature information
+#   $ftr_idx:       feature index we are interested in
+#
+# Returns:    Number of models for $ftr_idx.
+#
+# Dies: Never, nothing is validated
+# 
+#################################################################
+sub featureNumModels { 
+  my $sub_name  = "featureNumModels";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_HAR, $ftr_idx) = (@_);
+
+  return ($ftr_info_HAR->{"final_mdl"}[$ftr_idx] - $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1);
+}
+
+#################################################################
 # Subroutine: getNumExtraOrDuplicateFeatures()
 # Incept:     EPN, Sun Jul 22 13:10:33 2018
 #
@@ -8779,5 +8804,5 @@ sub summarizeModelForFeature {
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value
-    return 1;
+return 1;
 ###########################################################################

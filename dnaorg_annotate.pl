@@ -724,6 +724,7 @@ add_b_zft_errors(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA,
 # open files for writing
 openAndAddFileToOutputInfo(\%ofile_info_HH, "seq_tab",      $out_root . ".seq.tab", 1, "per-sequence tabular file");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "ftr_tab",      $out_root . ".ftr.tab", 1, "per-feature tabular file");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "mdl_tab",      $out_root . ".mdl.tab", 1, "per-model-segment tabular file");
 
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",         $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",         $out_root . ".all.errors",        1, "List of errors, one line per error");
@@ -761,7 +762,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ######################
 $start_secs = outputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 
-my $npass = output_feature_tbl(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
+my $npass = output_feature_table(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -1231,7 +1232,6 @@ sub parse_cmalign_stk_and_add_alignment_errors {
         $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"3seqflush"} = $p_3seqflush;
         $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"5trunc"}    = ($p_5seqflush && ($start_rfpos != $mdl_start_rfpos)) ? 1 : 0;
         $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"3trunc"}    = ($p_3seqflush && ($stop_rfpos  != $mdl_stop_rfpos))  ? 1 : 0;
-        $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"nhits"}     = 1;
         $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startgap"}  = ($rfpos_pp_A[$mdl_start_rfpos] eq ".") ? 1  : 0;
         $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stopgap"}   = ($rfpos_pp_A[$mdl_stop_rfpos]  eq ".") ? 1  : 0;
         $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startpp"}   = ($rfpos_pp_A[$mdl_start_rfpos] eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$mdl_start_rfpos], $FH_HR);
@@ -1374,7 +1374,7 @@ sub add_blastx_errors {
         
         # determine if we have any CM predictions for any models related to this feature
         my $b_non_err_possible = 1; 
-        if(exists $ftr_results_HR->{"start"}) { 
+        if(exists $ftr_results_HR->{"n_start"}) { 
           $b_non_err_possible = 0; # we have at least one prediction for this feature, we can't have a b_non error
         }
         
@@ -2823,9 +2823,10 @@ sub output_tabular {
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $seq_tab_FH = $FH_HR->{"seq_tab"};  # one-line-per-sequence tabular file
   my $ftr_tab_FH = $FH_HR->{"ftr_tab"};  # one-line-per-model tabular file
+  my $mdl_tab_FH = $FH_HR->{"mdl_tab"};  # one-line-per-model tabular file
 
   # validate input and get counts of things
-  my $nmdl = validateModelInfoHashIsComplete    ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nmdl = validateModelInfoHashIsComplete    ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology model segments
   my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
   my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); # nerr: number of different error codes
@@ -2844,21 +2845,88 @@ sub output_tabular {
       $nerr_seq_possible++;
     }
   }
+  # determine maximum number of models for a single feature
+  my $ftr_max_nmdl = 0;
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $nmdl = featureNumModels($ftr_info_HAR, $ftr_idx);
+    if($ftr_max_nmdl < $nmdl) { 
+      $ftr_max_nmdl = $nmdl;
+    }
+  }
 
   # determine max width of text strings
-  my $w_idx      = numberOfDigits($nseq);
+  my $w_seq_idx  = numberOfDigits($nseq);
   my $w_seq_name = maxLengthScalarValueInArray($seq_info_HAR->{"seq_name"}); 
   my $w_seq_len  = maxLengthScalarValueInArray($seq_info_HAR->{"len"});
   my $w_seq_err  = 4 * $nerr_seq_possible - 1;
-  if($w_idx      < length("#idx"))    { $w_idx      = length("#idx"); }
-  if($w_seq_name < length("seqname")) { $w_seq_name = length("seqname"); }
-  if($w_seq_len  < length("len"))     { $w_seq_len  = length("len"); }
-  if($w_seq_err  < length("seqerr"))  { $w_seq_len  = length("seqerr"); }
+
+  my $w_ftr_idx  = $w_seq_idx + 1 + numberOfDigits($nftr+1);
+  my $w_ftr_name = maxLengthScalarValueInArray($ftr_info_HAR->{"out_product"});
+  if($w_ftr_name < maxLengthScalarValueInArray($ftr_info_HAR->{"out_gene"})) { 
+    $w_ftr_name = maxLengthScalarValueInArray($ftr_info_HAR->{"out_gene"});
+  }
+  my $w_ftr_seqlen = $w_seq_len;
+  my $w_ftr_ftrlen = $w_seq_len;
+  my $w_ftr_ftridx = numberOfDigits($nftr);
+  my $w_ftr_type   = maxLengthScalarValueInArray($ftr_info_HAR->{"type_fname"});
+  my $w_ftr_strand = length("str");
+  my $w_ftr_start  = $w_seq_len;
+  my $w_ftr_stop   = $w_seq_len;
+  my $w_ftr_cstop  = $w_seq_len;
+  my $w_ftr_dupidx = $w_ftr_ftridx;
+  my $w_ftr_nmdl   = numberOfDigits($nmdl);
+  my $w_ftr_coords = ($ftr_max_nmdl * (($w_seq_len * 2) + 2)) - 1;
+  my $w_ftr_trunc  = length("5'&3'");
+
+  my $w_mdl_idx    = $w_seq_idx + 1 + numberOfDigits($nftr+1) + 1 + numberOfDigits($ftr_max_nmdl);
+  my $w_mdl_mdlidx = numberOfDigits($ftr_max_nmdl);
+  my $w_mdl_start  = $w_seq_len;
+  my $w_mdl_stop   = $w_seq_len;
+  my $w_mdl_len    = $w_seq_len;
+  my $w_mdl_pp     = 5;
+  my $w_mdl_gap    = 4;
+
+  if($w_seq_idx    < length("#idx"))    { $w_seq_idx    = length("#idx");    }
+  if($w_seq_name   < length("seqname")) { $w_seq_name   = length("seqname"); }
+  if($w_seq_len    < length("len"))     { $w_seq_len    = length("len");     }
+  if($w_seq_err    < length("seqerr"))  { $w_seq_len    = length("seqerr");  }
+
+  if($w_ftr_idx    < length("#idx"))    { $w_ftr_idx    = length("#idx");    }
+  if($w_ftr_name   < length("ftrname")) { $w_ftr_name   = length("ftrname"); }
+  if($w_ftr_seqlen < length("seqlen"))  { $w_ftr_seqlen = length("seqlen");  }
+  if($w_ftr_ftrlen < length("ftrlen"))  { $w_ftr_ftrlen = length("ftrlen");  }
+  if($w_ftr_ftridx < length("fidx"))    { $w_ftr_ftridx = length("fidx");    }
+  if($w_ftr_start  < length("n_start")) { $w_ftr_start  = length("n_start"); }
+  if($w_ftr_stop   < length("n_start")) { $w_ftr_stop   = length("n_start"); }
+  if($w_ftr_cstop  < length("n_start")) { $w_ftr_cstop  = length("n_start"); }
+  if($w_ftr_dupidx < length("didx"))    { $w_ftr_dupidx = length("didx");    }
+  if($w_ftr_nmdl   < length("nma"))     { $w_ftr_nmdl   = length("nma");     }
+  if($w_ftr_coords < length("coords"))  { $w_ftr_coords = length("coords");  }
+
+  if($w_mdl_idx    < length("#idx"))  { $w_mdl_idx    = length("#idx"); }
+  if($w_mdl_mdlidx < length("midx"))  { $w_mdl_mdlidx = length("midx"); }
+  if($w_mdl_start  < length("start")) { $w_mdl_start  = length("start"); }
+  if($w_mdl_stop   < length("stop"))  { $w_mdl_stop   = length("stop"); }
+  if($w_mdl_len    < length("len"))   { $w_mdl_len    = length("len"); }
 
   # header lines
-  print("\n");
-  printf("%-*s  %-*s  %-*s  %3s  %3s  %3s  %3s  %-*s  %s\n", 
-         $w_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "nfa", "nfn", "nf5", "nf3", $w_seq_err, "seqerr", "ftrerr");
+  printf $seq_tab_FH ("%-*s  %-*s  %-*s  %3s  %3s  %3s  %3s  %-*s  %s\n", 
+                      $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "nfa", "nfn", "nf5", "nf3", $w_seq_err, "seqerr", "ftrerr");
+
+  printf $ftr_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %s\n", 
+                      $w_ftr_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "seqlen", 
+                      $w_ftr_type, "type", $w_ftr_name, "ftrname", $w_ftr_ftrlen, "ftrlen", $w_ftr_ftridx, "fidx", 
+                      $w_ftr_strand, "str", 
+                      $w_ftr_start, "n_start", $w_ftr_stop, "n_end", $w_ftr_cstop, "n_end_c", $w_ftr_trunc, "trunc", 
+                      $w_ftr_start, "p_start", $w_ftr_stop, "p_end", $w_ftr_dupidx, "didx",
+                      $w_ftr_nmdl, "nma", $w_ftr_nmdl, "nmn", $w_ftr_coords, "coords", 
+                      "ftrerr");
+  printf $mdl_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s\n", 
+                      $w_mdl_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "seqlen", 
+                      $w_ftr_type, "type", $w_ftr_name, "ftrname", $w_ftr_ftridx, "fidx", 
+                      $w_mdl_mdlidx, "nmdl", $w_mdl_mdlidx, "midx", $w_mdl_start, "start", $w_mdl_stop, "stop", 
+                      $w_mdl_len, "len", $w_ftr_strand, "str", 
+                      $w_mdl_pp, "5pp", $w_mdl_pp, "3pp", $w_mdl_gap, "5gap", $w_mdl_gap, "3gap");
 
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
@@ -2868,40 +2936,102 @@ sub output_tabular {
     
     my $seq_err_str = helper_ftable_get_seq_error_code_strings($seq_name, $err_seq_instances_HHR, $err_info_HAR, $FH_HR);
     my $full_ftr_err_str = "";
-    my $nftr_defined = 0;
-    my $nftr_5trunc  = 0;
-    my $nftr_3trunc  = 0;
+    my $nftr_annot  = 0;
+    my $nftr_5trunc = 0;
+    my $nftr_3trunc = 0;
     
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "duplicate") { 
-        # skip duplicate features
+      my $src_idx = ($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") ? 
+          $ftr_info_HAR->{"source_idx"}[$ftr_idx] : $ftr_idx;
+      my $ftr_results_HR = $ftr_results_AAHR->[$seq_idx][$src_idx]; # for convenience
+
+      if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
+        $nftr_annot++;
+        my $ftr_idx2print = ($seq_idx + 1) . "." . $nftr_annot;
         my $ftr_prefix = $ftr_info_HAR->{"out_tiny"}[$ftr_idx]; 
-        if(defined $ftr_info_HAR->{"out_product"}[$ftr_idx]) { $ftr_prefix .= ":" . $ftr_info_HAR->{"out_product"}[$ftr_idx]; } 
-        my $ftr_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
-        my $defined_n_start = (exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"n_start"}) ? 1 : 0;
-        my $defined_p_start = (exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_start"}) ? 1 : 0;
-        if($defined_n_start || $defined_p_start) { 
-          $nftr_defined++;
-          if($ftr_results_AAHR->[$seq_idx][$ftr_idx]{"n_5trunc"}) { $nftr_5trunc++; }
-          if($ftr_results_AAHR->[$seq_idx][$ftr_idx]{"n_3trunc"}) { $nftr_3trunc++; }
-          my $ftr_err_str = helper_ftable_get_ftr_error_code_strings($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, undef, $FH_HR);
-          if($ftr_err_str ne "") { 
-            if($full_ftr_err_str ne "") { $full_ftr_err_str .= ",";  }
-            $full_ftr_err_str .= $ftr_prefix . "(" . $ftr_err_str . ")"; 
-          } 
-#          for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-#            if(exists $mdl_results_AAHR->[$seq_idx][$mdl_idx]->{"start"}) { 
+        my $ftr_product_or_gene = $ftr_info_HAR->{"out_product"}[$ftr_idx];
+        if($ftr_product_or_gene eq "") { $ftr_product_or_gene = $ftr_info_HAR->{"out_gene"}[$ftr_idx]; }
+        $ftr_product_or_gene =~ s/\s+/\_/g;
+        my $ftr_type = $ftr_info_HAR->{"type_fname"}[$ftr_idx];
+        my $ftr_strand   = strand_from_feature_results($ftr_info_HAR, $ftr_results_HR, $src_idx);
+        my $ftr_trunc    = trunc_string_from_feature_results($ftr_results_HR);
+        my $ftr_n_start  = (defined $ftr_results_HR->{"n_start"})   ? $ftr_results_HR->{"n_start"}   : "-";
+        my $ftr_n_stop   = (defined $ftr_results_HR->{"n_stop"})    ? $ftr_results_HR->{"n_stop"}    : "-";
+        my $ftr_n_stop_c = (defined $ftr_results_HR->{"n_stop_c"})  ? $ftr_results_HR->{"n_stop_c"}  : "-";
+        if($ftr_n_stop_c == $ftr_n_stop) { $ftr_n_stop_c = "-"; }
+        my $ftr_p_start  = (defined $ftr_results_HR->{"p_start"})   ? $ftr_results_HR->{"p_start"}   : "-";
+        my $ftr_p_stop   = (defined $ftr_results_HR->{"p_stop"})    ? $ftr_results_HR->{"p_stop"}    : "-";
+        my $ftr_dupidx   = ($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") ? $ftr_info_HAR->{"source_idx"}[$ftr_idx] : "-";
+        if((defined $ftr_results_HR->{"n_5trunc"}) && ($ftr_results_HR->{"n_5trunc"})) { 
+          $nftr_5trunc++; 
         }
+        if((defined $ftr_results_HR->{"n_3trunc"}) && ($ftr_results_HR->{"n_3trunc"})) { 
+          $nftr_3trunc++; 
+        }
+
+        my $ftr_err_str = helper_ftable_get_ftr_error_code_strings($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, undef, $FH_HR);
+        if($ftr_err_str ne "") { 
+          if($full_ftr_err_str ne "") { $full_ftr_err_str .= ",";  }
+          $full_ftr_err_str .= $ftr_prefix . "(" . $ftr_err_str . ")"; 
+        } 
+        else { 
+          $ftr_err_str = "-";
+        }
+        my $coords_str     = "";
+        my $ftr_nmdl_annot = 0;
+        my $ftr_len_by_mdl = 0;
+        my $ftr_first_mdl  = $ftr_info_HAR->{"first_mdl"}[$src_idx];
+        my $ftr_final_mdl  = $ftr_info_HAR->{"final_mdl"}[$src_idx];
+        my $ftr_nmdl       = $ftr_final_mdl - $ftr_first_mdl + 1;
+        for(my $mdl_idx = $ftr_first_mdl; $mdl_idx <= $ftr_final_mdl; $mdl_idx++) { 
+          if(exists $mdl_results_AAHR->[$seq_idx][$mdl_idx]->{"start"}) { 
+            $ftr_nmdl_annot++;
+            my $mdl_idx2print = ($seq_idx + 1) . "." . $nftr_annot . "." . $ftr_nmdl_annot;
+            my $mdl_results_HR = $mdl_results_AAHR->[$seq_idx][$mdl_idx]; # for convenience
+            my $mdl_start  = $mdl_results_HR->{"start"};
+            my $mdl_stop   = $mdl_results_HR->{"stop"};
+            my $mdl_len    = abs($mdl_start - $mdl_stop) + 1;
+            my $mdl_strand = $mdl_results_HR->{"strand"};
+            my $mdl_trunc  = trunc_string_from_model_results($mdl_results_HR);
+            my $mdl_pp5    = $mdl_results_HR->{"startpp"};
+            my $mdl_pp3    = $mdl_results_HR->{"stoppp"};
+            my $mdl_gap5   = ($mdl_results_HR->{"startgap"}) ? "yes" : "no";
+            my $mdl_gap3   = ($mdl_results_HR->{"stopgap"})  ? "yes" : "no";
+            
+            if($coords_str ne "") { $coords_str .= ","; }
+            $coords_str .= $mdl_results_AAHR->[$seq_idx][$mdl_idx]->{"start"} . "-" . $mdl_results_AAHR->[$seq_idx][$mdl_idx]->{"stop"};
+            $ftr_len_by_mdl += abs($mdl_results_AAHR->[$seq_idx][$mdl_idx]->{"start"} - $mdl_results_AAHR->[$seq_idx][$mdl_idx]->{"stop"}) + 1;
+
+            if($ftr_dupidx eq "-") { 
+              printf $mdl_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s\n", 
+                                  $w_mdl_idx, $mdl_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
+                                  $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_product_or_gene, $w_ftr_ftridx, $ftr_idx+1, 
+                                  $w_mdl_mdlidx, $ftr_nmdl, $w_mdl_mdlidx, ($mdl_idx-$ftr_first_mdl+1), $w_mdl_start, $mdl_start, $w_mdl_stop, $mdl_stop, 
+                                  $w_mdl_len, $mdl_len, $w_ftr_strand, $mdl_strand, 
+                                  $w_mdl_pp, $mdl_pp5, $w_mdl_pp, $mdl_pp3, $w_mdl_gap, $mdl_gap5, $w_mdl_gap, $mdl_gap3);
+            }
+          }
+        }
+        my $ftr_nmdl_noannot = $ftr_nmdl - $ftr_nmdl_annot;
+        if($ftr_len_by_mdl == 0) { $ftr_len_by_mdl = "-"; }
+
+        printf $ftr_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %s\n", 
+                            $w_ftr_idx, $ftr_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
+                            $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_product_or_gene, $w_ftr_ftrlen, $ftr_len_by_mdl, $w_ftr_ftridx, $ftr_idx+1, 
+                            $w_ftr_strand, $ftr_strand, 
+                            $w_ftr_start, $ftr_n_start, $w_ftr_stop, $ftr_n_stop, $w_ftr_cstop, $ftr_n_stop_c,
+                            $w_ftr_trunc, $ftr_trunc, 
+                            $w_ftr_start, $ftr_p_start, $w_ftr_stop, $ftr_p_stop, $w_ftr_dupidx, ($ftr_dupidx eq "-") ? "-" : $ftr_dupidx+1, 
+                            $w_ftr_nmdl, $ftr_nmdl_annot, $w_ftr_nmdl, $ftr_nmdl_noannot, $w_ftr_coords, $coords_str, $ftr_err_str);
       }
     }
     if($full_ftr_err_str eq "") { $full_ftr_err_str = "-"; }
     if($seq_err_str      eq "") { $seq_err_str = "-"; }
-    printf("%-*d  %-*s  %-*d  %3d  %3d  %3d  %3d  %-*s  %s\n", 
-           $w_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $nftr_defined, ($nftr_nondup-$nftr_defined), $nftr_5trunc, $nftr_3trunc, 
-           $w_seq_err, $seq_err_str, $full_ftr_err_str);
+    printf $seq_tab_FH ("%-*d  %-*s  %-*d  %3d  %3d  %3d  %3d  %-*s  %s\n", 
+                        $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $nftr_annot, ($nftr_nondup-$nftr_annot), $nftr_5trunc, $nftr_3trunc, 
+                        $w_seq_err, $seq_err_str, $full_ftr_err_str);
   }
 
-  exit 0;
   return;
 }
     
@@ -4156,6 +4286,131 @@ sub dump_results {
   return;
 }
 
+#################################################################
+# Subroutine : trunc_string_from_feature_results()
+# Incept:      EPN, Tue Mar  5 09:10:36 2019
+#
+# Purpose:    Return string describing truncation mode based on 
+#             $ftr_results_HR->{"n_5trunc"} && $ftr_results_HR->{"n_3trunc"}
+#
+# Arguments: 
+#  $ftr_results_HR:   REF to hash of feature results for one sequence/feature pair
+#
+# Returns:    "5'&3'", "5'", "3'", "no", or "?"
+#
+# Dies:       never
+#
+################################################################# 
+sub trunc_string_from_feature_results { 
+  my $sub_name = "trunc_string_from_feature_results()";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
+  my ($ftr_results_HR) = (@_);
 
+  if((! defined $ftr_results_HR->{"n_5trunc"}) || 
+     (! defined $ftr_results_HR->{"n_3trunc"})) { 
+    return "?";
+  }
+  if(($ftr_results_HR->{"n_5trunc"}) && 
+     ($ftr_results_HR->{"n_3trunc"})) { 
+    return "5'&3'";
+  }
+  if($ftr_results_HR->{"n_5trunc"}) { 
+    return "5'";
+  }
+  if($ftr_results_HR->{"n_3trunc"}) { 
+    return "3'";
+  }
+  return "no";
+}
 
+#################################################################
+# Subroutine : trunc_string_from_model_results()
+# Incept:      EPN, Tue Mar  5 15:02:34 2019
+#
+# Purpose:    Return string describing truncation mode based on 
+#             $mdl_results_HR->{"5trunc"} && $mdl_results_HR->{"3trunc"}
+#
+# Arguments: 
+#  $mdl_results_HR:   REF to hash of model results for one sequence/model pair
+#
+# Returns:    "5'&3'", "5'", "3'", "no", or "?"
+#
+# Dies:       never
+#
+################################################################# 
+sub trunc_string_from_model_results { 
+  my $sub_name = "trunc_string_from_model_results()";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_results_HR) = (@_);
+
+  if((! defined $mdl_results_HR->{"5trunc"}) || 
+     (! defined $mdl_results_HR->{"3trunc"})) { 
+    return "?";
+  }
+  if(($mdl_results_HR->{"5trunc"}) && 
+     ($mdl_results_HR->{"3trunc"})) { 
+    return "5'&3'";
+  }
+  if($mdl_results_HR->{"5trunc"}) { 
+    return "5'";
+  }
+  if($mdl_results_HR->{"3trunc"}) { 
+    return "3'";
+  }
+  return "no";
+}
+
+#################################################################
+# Subroutine : strand_from_feature_results()
+# Incept:      EPN, Tue Mar  5 09:10:36 2019
+#
+# Purpose:    Return string describing feature strand based on 
+#             $ftr_results_HR->{"n_strand"} && $ftr_results_HR->{"p_strand"}
+#
+# Arguments: 
+#  $ftr_info_HAR:    REF to hash of arrays with information on the features, PRE-FILLED
+#  $ftr_results_HR:  REF to hash of feature results for one sequence/feature pair
+#  $ftr_idx:         feature index
+# 
+# Returns:    "+", "-" or "?" (if n_strand && p_strand disagree or neither exists)
+#
+# Dies:       never
+#
+################################################################# 
+sub strand_from_feature_results { 
+  my $sub_name = "strand_from_feature_results()";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $ftr_results_HR, $ftr_idx) = (@_);
+
+  if(checkIfFeatureIsCds($ftr_info_HAR, $ftr_idx)) { 
+    if((! defined $ftr_results_HR->{"n_strand"}) || 
+       (! defined $ftr_results_HR->{"p_strand"})) { 
+      # neither defined
+      return "?";
+    }
+    if((defined $ftr_results_HR->{"n_strand"}) && 
+       (defined $ftr_results_HR->{"p_strand"})) { 
+      if($ftr_results_HR->{"n_strand"} ne $ftr_results_HR->{"p_strand"}) { 
+        # both defined, but they disagree
+        return "?";
+      }
+      # both defined and both agree
+      return $ftr_results_HR->{"n_strand"}; 
+    }
+    if(defined $ftr_results_HR->{"n_strand"}) { 
+      # only n_strand defined
+      return $ftr_results_HR->{"n_strand"}; 
+    }
+    # only p_strand defined
+    return $ftr_results_HR->{"p_strand"}; 
+  }
+  else { 
+    return (defined $ftr_results_HR->{"n_strand"}) ? $ftr_results_HR->{"n_strand"} : "?";
+  }
+}
