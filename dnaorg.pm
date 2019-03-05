@@ -1445,7 +1445,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "n_trc", "feature",
                      "in-frame stop codon exists 5' of stop position predicted by homology to reference", # description
                      "similar to !out_product,out_gene!; contains premature stop codon", # feature table note
-                     "!FEATURE_TYPE! Has Stop Codon: (!out_product,out_gene!) contains unexpected stop codon; !DESC!", # feature table error
+                     "CDS has Stop Codon: (!out_product,out_gene!) contains unexpected stop codon; !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "n_ext", "feature",
@@ -1454,9 +1454,9 @@ sub initializeHardCodedErrorInfoHash {
                      "Mutation at End: (!out_product,out_gene!) expected stop codon could not be identified; !DESC!", # feature table error
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "n_pe", "feature",
-                     "mat_peptide may not be translated because its CDS has an in-frame stop 5' of the mat_peptide's predicted start", # description
-                     "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table note
+  addToErrorInfoHash($err_info_HAR, "b_per", "feature",
+                     "mat_peptide may not be translated because its CDS has a problem", # description
+                     "", # feature table note
                      "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
@@ -1475,7 +1475,7 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "n_gp3", "feature",
                      "alignment to reference is a gap at 3' boundary", # description
                      "similar to !out_product,out_gene!", # feature table note
-                     "Indefinite Annotation at Stop: (!out_product,out_gene!) !DESC!", # feature table error
+                     "Indefinite Annotation at End: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "n_lp5", "feature",
@@ -1487,73 +1487,67 @@ sub initializeHardCodedErrorInfoHash {
   addToErrorInfoHash($err_info_HAR, "n_lp3", "feature",
                      "alignment to reference has low confidence at 3' boundary", # description
                      "similar to !out_product,out_gene!", # feature table note
-                     "Indefinite Annotation at Stop: (!out_product,out_gene!) !DESC!", # feature table error
+                     "Indefinite Annotation at End: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "b_non", "feature",
-                     "blastx identifies protein not identified in nucleotide-based search", # description
+                     "protein-based search identifies CDS not identified in nucleotide-based search", # description
                      "similar to !out_product,out_gene!", # feature table note
                      "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
-  addToErrorInfoHash($err_info_HAR, "b_xnh", "feature",
-                     "blastx protein validation failure, no blastx hits", # description
+  addToErrorInfoHash($err_info_HAR, "b_nop", "feature",
+                     "nucleotide-based search identifies CDS not identified in protein-based search", # description
                      "similar to !out_product,out_gene!", # feature table note
                      "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "b_cst", "feature",
-                     "blastx protein validation failure, strand mismatch between protein and nucleotide predictions", # description
+                     "strand mismatch between protein and nucleotide predictions", # description
                      "similar to !out_product,out_gene!", # feature table note
                      "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "b_p5l", "feature",
-                     "blastx protein validation failure, protein alignment extends past nucleotide alignment at 5' end", # description
+                     "protein alignment extends past nucleotide alignment at 5' end", # description
                      "similar to !out_product,out_gene!", # feature table note
                      "Indefinite Annotation at Start: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "b_p5s", "feature",
-                     "blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint", # description
+                     "protein alignment does not extend close enough to nucleotide alignment 5' endpoint", # description
                      "similar to !out_product,out_gene!", # feature table note
                      "Indefinite Annotation at Start: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "b_p3l", "feature",
-                     "blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end", # description
+                     "protein alignment extends past nucleotide alignment at 3' end", # description
                      "similar to !out_product,out_gene!", # feature table note
-                     "Indefinite Annotation at Stop: (!out_product,out_gene!) !DESC!", # feature table error
+                     "Indefinite Annotation at End: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "b_p3s", "feature",
-                     "blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint", # description
+                     "protein alignment does not extend close enough to nucleotide alignment 3' endpoint", # description
                      "similar to !out_product,out_gene!", # feature table note
-                     "Indefinite Annotation at Stop: (!out_product,out_gene!) !DESC!", # feature table error
+                     "Indefinite Annotation at End: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "p_lin", "feature",
-                     "blastx protein validation failure, too large of an insert", # description
+                     "too large of an insertion in protein alignment", # description
                      "similar to !out_product,out_gene!", # feature table note
                      "Insertion of Nucleotides: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "p_lde", "feature",
-                     "blastx protein validation failure, too large of a deletion", # description
+                     "too large of a deletion in protein alignment", # description
                      "similar to !out_product,out_gene!", # feature table note
                      "Deletion of Nucleotides: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "p_trc", "feature",
-                     "blastx protein validation failure, stop codon in protein alignment", # description
+                     "stop codon in protein alignment", # description
                      "similar to !out_product,out_gene!", # feature table note
-                     "!FEATURE_TYPE! Has Stop Codon: (!out_product,out_gene!) !DESC!", # feature table error
-                     $FH_HR);
-
-  addToErrorInfoHash($err_info_HAR, "p_per", "feature",
-                     "mat_peptide may not be translated because its CDS has a blastx protein validation failure", # description
-                     "similar to !out_product,out_gene!; polyprotein may not be translated", # feature table note
-                     "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table error
+                     "CDS has Stop Codon: (!out_product,out_gene!) !DESC!", # feature table error
                      $FH_HR);
 
   addToErrorInfoHash($err_info_HAR, "b_zft", "sequence",
@@ -1619,21 +1613,6 @@ sub addToErrorInfoHash {
   # make sure $pertype is valid
   if(($pertype ne "feature") && ($pertype ne "sequence")) { 
     DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\".", 1, $FH_HR); 
-  }
-  
-  # make sure $ftbl_note is valid
-  if(! defined $ftbl_note) { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code but ftbl_note is undefined", 1, $FH_HR);
-  }
-  if($pertype eq "sequence") { 
-    if($ftbl_note ne "") { 
-      DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with pertype of sequence but ftbl_note is not empty", 1, $FH_HR);
-    }
-  }
-  elsif($pertype eq "feature") { 
-    if($ftbl_note eq "") { 
-      DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with pertype of feature but ftbl_note is empty", 1, $FH_HR);
-    }
   }
   
   # make sure $ftbl_err is valid

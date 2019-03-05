@@ -73,14 +73,16 @@ require "epn-options.pm";
 #    n_gp5, n_lp5, n_gp3, n_lp3 (4)
 #
 # 3. fetch_features_and_add_cds_and_mp_errors()
-#    n_str, n_nm3, n_stp, n_ext, n_nst, n_trc (6)
+#    n_str, n_nm3, n_stp, n_ext, n_nst, n_trc, b_per* (7)
 #
 # 4. add_blastx_errors()
-#    b_xnh, b_cst, b_p5l, b_p5s, b_p3l, b_p3s, p_lin, p_lde, p_trc, b_non (10)
+#    b_xnh, b_cst, b_p5l, b_p5s, b_p3l, b_p3s, p_lin, p_lde, p_trc, b_non, b_per* (11)
 #
 # 5. add_b_zft_errors()
 #    b_zft (1)
 # 
+# * b_per errors can be added in two places, and are only added in add_blastx_errors for
+#   features for which they weren't already added
 #######################################################################################
 
 # first, determine the paths to all modules, scripts and executables that we'll need
@@ -719,6 +721,9 @@ add_b_zft_errors(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA,
 # Step 9. Output annotations and errors
 #########################################
 # open files for writing
+openAndAddFileToOutputInfo(\%ofile_info_HH, "seq_tab",      $out_root . ".seq.tab", 1, "per-sequence tabular file");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "ftr_tab",      $out_root . ".ftr.tab", 1, "per-feature tabular file");
+
 openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",         $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",         $out_root . ".all.errors",        1, "List of errors, one line per error");
 openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",         $out_root . ".errors.summary",    1, "Summary of all errors");
@@ -731,6 +736,14 @@ openAndAddFileToOutputInfo(\%ofile_info_HH, "errors_list",    $out_root . ".errl
 if(opt_IsUsed("--classerrors", \%opt_HH)) { 
   openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_co_list",   $out_root . ".af-co.seqlist",   1, "list of failing sequences that would have passed if not for a classification error");
 }
+
+########################
+# tabular output files #
+########################
+$start_secs = outputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
+output_tabular(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
+
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###############
 # error files #
@@ -747,7 +760,7 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ######################
 $start_secs = outputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 
-my $npass = output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
+my $npass = output_feature_tbl(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -820,7 +833,7 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 # error_instances_initialize_AHH 
 # 
 # Subroutines for creating output:
-# output_feature_tbl_all_sequences 
+# output_feature_table
 # output_errors_header 
 # output_errors_all_sequences 
 # output_errors_summary 
@@ -1342,7 +1355,7 @@ sub add_blastx_errors {
   if($query_width       < length("bquery"))    { $query_width   = length("bquery"); }
   
   my @out_per_seq_AA = (); # [0..$nseq-1]: per-cds feature output lines for each sequence, we output at end
-  
+
   # foreach type 'cds' feature
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") { 
@@ -1528,15 +1541,13 @@ sub add_blastx_errors {
           $output_err_str .= $err_code;
         }
         if($output_err_str eq "") { $output_err_str = "-"; }
-        # if we added an error, step through all (not just primary) children of this feature (if any) and add n_per
+        # if we added an error, step through all (not just primary) children of this feature (if any) and add p_per
         if(($err_flag) && ($na_children > 0)) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
             my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "p_per", $seq_name, 
-                                sprintf("MP: %s, CDS %s", 
-                                        $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
-                                        $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
-                                $FH_HR);
+            if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"b_per"}{$seq_name}) { 
+              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "b_per", $seq_name, "", $FH_HR);
+            }
           }
         }
         
@@ -2040,6 +2051,16 @@ sub fetch_features_and_add_cds_and_mp_errors {
         my $ftr_stop_c = undef; # corrected stop  for the feature, stays undef if no correction needed (no 'trc' or 'ext')
         my $ftr_ofile_key = "pfa." . $ftr_idx;
         my $ftr_results_HR = $ftr_results_AAHR->[$ftr_idx][$seq_idx]; # for convenience
+        my $err_flag = 0; # set to '1' if we set an error for this feature
+
+        my $na_children = 0;
+        my @all_children_idx_A = ();
+        if(featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
+          # get the all children array
+          @all_children_idx_A = (); # feature indices of the primary children of this feature
+          featureGetAllChildren($ftr_info_HAR, $ftr_idx, \@all_children_idx_A, $FH_HR);
+          $na_children = scalar(@all_children_idx_A);
+        }
         
         for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
           my $mdl_results_HR = $mdl_results_AAHR->[$mdl_idx][$seq_idx]; # for convenience
@@ -2110,6 +2131,7 @@ sub fetch_features_and_add_cds_and_mp_errors {
               if($ftr_is_cds) { 
                 if(! sqstring_check_start($ftr_sqstring, $FH_HR)) { 
                   error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "n_str", $seq_name, "", $FH_HR);
+                  $err_flag = 1;
                 }
               }
             }
@@ -2120,6 +2142,7 @@ sub fetch_features_and_add_cds_and_mp_errors {
                   # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
                   # but which could cause weird downstream problems)
                   error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "n_nm3", $seq_name, "$ftr_len", $FH_HR);
+                  $err_flag = 1;
                 }
                 else { 
                   # feature length is a multiple of 3, look for all valid in-frame stops 
@@ -2133,6 +2156,7 @@ sub fetch_features_and_add_cds_and_mp_errors {
                                             substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
                                             $ftr2org_pos_A[$ftr_len], $ftr_strand);
                       error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "n_stp", $seq_name, $err_msg, $FH_HR);
+                      $err_flag = 1;
                     }
                     if($ftr_nxt_stp_A[1] != $ftr_len) { 
                       # first stop codon 3' of $ftr_start is not $ftr_stop
@@ -2160,6 +2184,7 @@ sub fetch_features_and_add_cds_and_mp_errors {
                             # determine what position it is
                             $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
                             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "n_ext", $seq_name, $ftr_stop_c, $FH_HR);
+                            $err_flag = 1;
                           }
                         } # end of 'if($ftr_stop < $seq_len)'
                         if(! defined $ftr_stop_c) { 
@@ -2168,6 +2193,7 @@ sub fetch_features_and_add_cds_and_mp_errors {
                           # either way, we have a nst error:
                           $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
                           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "n_nst", $seq_name, "", $FH_HR);
+                          $err_flag = 1;
                         }
                       } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
                       else { 
@@ -2181,10 +2207,18 @@ sub fetch_features_and_add_cds_and_mp_errors {
                         error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "n_trc", $seq_name, 
                                             sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c)), 
                                             $FH_HR);
+                        $err_flag = 1;
                       }
                     } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
                   } # end of 'if($ftr_is_cds) {' 
                 } # end of 'else' entered if feature is a multiple of 3
+                # if we added an error for a CDS, step through all (not just primary) children of this feature (if any) and add p_per
+                if($ftr_is_cds && $err_flag && ($na_children > 0)) { 
+                  for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
+                    my $child_ftr_idx = $all_children_idx_A[$child_idx];
+                    error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "b_per", $seq_name, "", $FH_HR);
+                  }
+                }
               } # end of 'if($ftr_is_cds_or_mp'
             } # end of 'if((! $ftr_is_5runc) && (! $ftr_is_3trunc))
             # update %ftr_results_HR
@@ -2510,6 +2544,8 @@ sub error_list_output_to_ftable_errors {
 # Subroutine: add_b_zft_errors()
 # Incept:     EPN, Thu Jan 24 12:31:16 2019
 # Purpose:    Adds b_zft errors for sequences with 0 predicted features
+#             and b_per errors for mature peptides that have parent 
+#             CDS with problems.
 #
 # Arguments:
 #  $err_ftr_instances_AHHR:  REF to array of 2D hashes with per-feature errors, PRE-FILLED
@@ -2740,7 +2776,7 @@ sub error_instances_initialize_AHH {
 #################################################################
 #
 # Subroutines for creating output:
-# output_feature_tbl_all_sequences 
+# output_feature_table
 # output_errors_header 
 # output_errors_all_sequences 
 # output_errors_summary 
@@ -2755,7 +2791,100 @@ sub error_instances_initialize_AHH {
 # helper_ftable_add_qualifier_from_ftr_results
 #
 #################################################################
-# Subroutine: output_feature_tbl_all_sequences()
+# Subroutine: output_tabular()
+# Incept:     EPN, Mon Mar  4 21:02:12 2019
+# Purpose:    Output tabular files.
+#
+# Arguments:
+#  $err_ftr_instances_AHHR:  REF to array of 2D hashes with per-feature errors, PRE-FILLED
+#  $err_seq_instances_HHR:   REF to 2D hash with per-sequence errors, PRE-FILLED
+#  $mdl_info_HAR:            REF to hash of arrays with information on the models, PRE-FILLED
+#  $ftr_info_HAR:            REF to hash of arrays with information on the features, PRE-FILLED
+#  $seq_info_HAR:            REF to hash of arrays with information on the sequences, PRE-FILLED
+#  $err_info_HAR:            REF to the error info hash of arrays, PRE-FILLED
+#  $mdl_results_AAHR:        REF to model results AAH, PRE-FILLED
+#  $ftr_results_AAHR:        REF to feature results AAH, PRE-FILLED
+#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:          REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub output_tabular { 
+  my $sub_name = "output_tabular";
+  my $nargs_exp = 11;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, 
+      $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR,
+      $class_errors_per_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+  my $seq_tab_FH = $FH_HR->{"seq_tab"};  # one-line-per-sequence tabular file
+  my $ftr_tab_FH = $FH_HR->{"ftr_tab"};  # one-line-per-model tabular file
+
+  # validate input and get counts of things
+  my $nmdl = validateModelInfoHashIsComplete    ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
+  my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); # nerr: number of different error codes
+
+  # determine number of non-duplicate features
+  my $nftr_nondup = 0;
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "duplicate") { 
+      $nftr_nondup++;
+    }
+  }
+
+  # main loop: for each sequence
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
+    my $seq_len   = $seq_info_HAR->{"len"}[$seq_idx];
+    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
+    
+    my $seq_err_str = helper_ftable_get_seq_error_code_strings($seq_name, $err_seq_instances_HHR, $err_info_HAR, $FH_HR);
+    my $full_ftr_err_str = "";
+    my $nftr_defined = 0;
+    my $nftr_5trunc  = 0;
+    my $nftr_3trunc  = 0;
+    
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "duplicate") { 
+        # skip duplicate features
+        my $ftr_prefix = $ftr_info_HAR->{"out_tiny"}[$ftr_idx]; 
+        if(defined $ftr_info_HAR->{"out_product"}[$ftr_idx]) { $ftr_prefix .= ":" . $ftr_info_HAR->{"out_product"}[$ftr_idx]; } 
+        my $ftr_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
+        my $defined_n_start = (exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"n_start"}) ? 1 : 0;
+        my $defined_p_start = (exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"p_start"}) ? 1 : 0;
+        if($defined_n_start || $defined_p_start) { 
+          $nftr_defined++;
+          if($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"n_5trunc"}) { $nftr_5trunc++; }
+          if($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"n_3trunc"}) { $nftr_3trunc++; }
+          my $ftr_err_str = helper_ftable_get_ftr_error_code_strings($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, undef, $FH_HR);
+          if($ftr_err_str ne "") { 
+            if($full_ftr_err_str ne "") { $full_ftr_err_str .= ",";  }
+            $full_ftr_err_str .= $ftr_prefix . "(" . $ftr_err_str . ")"; 
+          } 
+#          for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
+#            if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]->{"start"}) { 
+        }
+      }
+    }
+    if($full_ftr_err_str eq "") { $full_ftr_err_str = "-"; }
+    if($seq_err_str      eq "") { $seq_err_str = "-"; }
+    printf("%d  %s  %d  %d  %d  %d  %d  %s  %s\n", 
+           $seq_idx+1, $seq_name, $seq_len, $nftr_defined, ($nftr_nondup-$nftr_defined), $nftr_5trunc, $nftr_3trunc, $seq_err_str, $full_ftr_err_str);
+  }
+
+  exit 0;
+  return;
+}
+    
+#################################################################
+# Subroutine: output_feature_table()
 # Incept:     EPN, Tue Dec  5 13:49:17 2017 [rewritten Tue Oct 30 05:59:04 2018]
 # Purpose:    Output the feature table for all sequences.
 #
@@ -2776,8 +2905,8 @@ sub error_instances_initialize_AHH {
 # Dies:     never
 #
 #################################################################
-sub output_feature_tbl_all_sequences { 
-  my $sub_name = "output_feature_tbl_all_sequences";
+sub output_feature_table { 
+  my $sub_name = "output_feature_table";
   my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -2823,8 +2952,6 @@ sub output_feature_tbl_all_sequences {
     my $seq_len   = $seq_info_HAR->{"len"}[$seq_idx];
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
     
-    # class for this sequence, possible values:
-
     my @ftout_AH      = (); # array of hashes with output for feature table, kept in a hash so we can sort before outputting
     my $ftidx         = 0;  # index in @ftout_AH
     my $min_coord     = -1; # minimum coord in this feature
@@ -2856,7 +2983,6 @@ sub output_feature_tbl_all_sequences {
 
       my $defined_n_start = 0;
       my $defined_p_start = 0;
-#      my $b_non_flag      = 0;
       my $do_ignore       = 1; 
       if($is_duplicate) { 
         if($ftr_info_HAR->{"source_idx"}[$ftr_idx] == -1) { 
@@ -2949,7 +3075,9 @@ sub output_feature_tbl_all_sequences {
         # add notes and full error messages (if !duplicate)
         if(! $is_duplicate) { 
           foreach my $note_value (@ftr_note_A) { 
-            $ftr_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
+            if($note_value ne "") { # skip empty notes, we use these for b_per errors, which only occur for MPs for which the parent CDS has >= 1 error
+              $ftr_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
+            }
           }
           # add the full error messages as 'notes' to the long output string, which will be output to the long feature table
           foreach my $long_line (@ftr_long_output_A) { 
@@ -3394,7 +3522,7 @@ sub output_parent_child_relationships {
 #  $ftr_idx:                feature index
 #  $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
 #  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $ftr_long_output_AR:     REF to array of long output strings, FILLED HERE
+#  $ftr_long_output_AR:     REF to array of long output strings, FILLED HERE, if defined
 #  $FH_HR:                  REF to hash of file handles
 #
 # Returns:    A string with all err codes for this sequence/feature combo concatenated and 
@@ -3418,10 +3546,12 @@ sub helper_ftable_get_ftr_error_code_strings {
       if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
         if($ret_err_str ne "") { $ret_err_str .= ","; }
         $ret_err_str .= $err_code;
-        push(@{$ftr_long_output_AR}, sprintf("%3s error code: %s%s", 
-                                             $err_code, 
-                                             $err_info_HAR->{"desc"}[$err_idx], 
-                                             ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]")); 
+        if(defined $ftr_long_output_AR) { 
+          push(@{$ftr_long_output_AR}, sprintf("%3s error code: %s%s", 
+                                               $err_code, 
+                                               $err_info_HAR->{"desc"}[$err_idx], 
+                                               ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]")); 
+        }
       }
     }
   }
