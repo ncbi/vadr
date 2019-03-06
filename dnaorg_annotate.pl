@@ -2873,6 +2873,9 @@ sub output_tabular {
   my $w_ftr_start  = $w_seq_len;
   my $w_ftr_stop   = $w_seq_len;
   my $w_ftr_cstop  = $w_seq_len;
+  my $w_ftr_pscore = 5;
+  my $w_ftr_maxin  = length("p_ins");
+  my $w_ftr_maxde  = length("p_del");
   my $w_ftr_dupidx = $w_ftr_ftridx;
   my $w_ftr_nmdl   = numberOfDigits($nmdl);
   my $w_ftr_coords = ($ftr_max_nmdl * (($w_seq_len * 2) + 2)) - 1;
@@ -2913,13 +2916,14 @@ sub output_tabular {
   printf $seq_tab_FH ("%-*s  %-*s  %-*s  %3s  %3s  %3s  %3s  %-*s  %s\n", 
                       $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "nfa", "nfn", "nf5", "nf3", $w_seq_err, "seqerr", "ftrerr");
 
-  printf $ftr_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %s\n", 
+  printf $ftr_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %s\n", 
                       $w_ftr_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "seqlen", 
                       $w_ftr_type, "type", $w_ftr_name, "ftrname", $w_ftr_ftrlen, "ftrlen", $w_ftr_ftridx, "fidx", 
                       $w_ftr_strand, "str", 
-                      $w_ftr_start, "n_start", $w_ftr_stop, "n_end", $w_ftr_cstop, "n_end_c", $w_ftr_trunc, "trunc", 
-                      $w_ftr_start, "p_start", $w_ftr_stop, "p_end", $w_ftr_dupidx, "didx",
-                      $w_ftr_nmdl, "nma", $w_ftr_nmdl, "nmn", $w_ftr_coords, "coords", 
+                      $w_ftr_start, "n_start", $w_ftr_stop, "n_end", $w_ftr_cstop, "n_instp", $w_ftr_trunc, "trunc", 
+                      $w_ftr_start, "p_start", $w_ftr_stop, "p_end", $w_ftr_cstop, "p_instp", 
+                      $w_ftr_maxde, "p_ins", $w_ftr_maxin, "p_del", $w_ftr_pscore, "p_sc",
+                      $w_ftr_dupidx, "didx", $w_ftr_nmdl, "nma", $w_ftr_nmdl, "nmn", $w_ftr_coords, "coords", 
                       "ftrerr");
   printf $mdl_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s\n", 
                       $w_mdl_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "seqlen", 
@@ -2961,6 +2965,13 @@ sub output_tabular {
         if($ftr_n_stop_c == $ftr_n_stop) { $ftr_n_stop_c = "-"; }
         my $ftr_p_start  = (defined $ftr_results_HR->{"p_start"})   ? $ftr_results_HR->{"p_start"}   : "-";
         my $ftr_p_stop   = (defined $ftr_results_HR->{"p_stop"})    ? $ftr_results_HR->{"p_stop"}    : "-";
+        my $ftr_p_stop_c = (defined $ftr_results_HR->{"p_trcstop"}) ? $ftr_results_HR->{"p_trcstop"} : "-";
+        if($ftr_p_stop_c ne "-") { 
+          $ftr_p_stop_c =~ s/;.*$//; # keep only first early stop position
+        }
+        my $ftr_p_maxin  = (defined $ftr_results_HR->{"p_maxins"})  ? $ftr_results_HR->{"p_maxins"}  : "-";
+        my $ftr_p_maxde  = (defined $ftr_results_HR->{"p_maxdel"})  ? $ftr_results_HR->{"p_maxdel"}  : "-";
+        my $ftr_p_score  = (defined $ftr_results_HR->{"p_score"})   ? $ftr_results_HR->{"p_score"}   : "-";
         my $ftr_dupidx   = ($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") ? $ftr_info_HAR->{"source_idx"}[$ftr_idx] : "-";
         if((defined $ftr_results_HR->{"n_5trunc"}) && ($ftr_results_HR->{"n_5trunc"})) { 
           $nftr_5trunc++; 
@@ -3015,13 +3026,14 @@ sub output_tabular {
         my $ftr_nmdl_noannot = $ftr_nmdl - $ftr_nmdl_annot;
         if($ftr_len_by_mdl == 0) { $ftr_len_by_mdl = "-"; }
 
-        printf $ftr_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %s\n", 
+        printf $ftr_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %s\n", 
                             $w_ftr_idx, $ftr_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
                             $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_product_or_gene, $w_ftr_ftrlen, $ftr_len_by_mdl, $w_ftr_ftridx, $ftr_idx+1, 
                             $w_ftr_strand, $ftr_strand, 
-                            $w_ftr_start, $ftr_n_start, $w_ftr_stop, $ftr_n_stop, $w_ftr_cstop, $ftr_n_stop_c,
-                            $w_ftr_trunc, $ftr_trunc, 
-                            $w_ftr_start, $ftr_p_start, $w_ftr_stop, $ftr_p_stop, $w_ftr_dupidx, ($ftr_dupidx eq "-") ? "-" : $ftr_dupidx+1, 
+                            $w_ftr_start, $ftr_n_start, $w_ftr_stop, $ftr_n_stop, $w_ftr_cstop, $ftr_n_stop_c, $w_ftr_trunc, $ftr_trunc, 
+                            $w_ftr_start, $ftr_p_start, $w_ftr_stop, $ftr_p_stop, $w_ftr_cstop, $ftr_p_stop_c, 
+                            $w_ftr_maxde, $ftr_p_maxde, $w_ftr_maxin, $ftr_p_maxin, $w_ftr_pscore, $ftr_p_score, 
+                            $w_ftr_dupidx, ($ftr_dupidx eq "-") ? "-" : $ftr_dupidx+1, 
                             $w_ftr_nmdl, $ftr_nmdl_annot, $w_ftr_nmdl, $ftr_nmdl_noannot, $w_ftr_coords, $coords_str, $ftr_err_str);
       }
     }
