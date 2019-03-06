@@ -76,7 +76,7 @@ require "epn-options.pm";
 #    n_str, n_nm3, n_stp, n_ext, n_nst, n_trc, b_per* (7)
 #
 # 4. add_blastx_errors()
-#    b_xnh, b_cst, b_p5l, b_p5s, b_p3l, b_p3s, p_lin, p_lde, p_trc, b_non, b_per* (11)
+#    b_nop, b_cst, b_p5l, b_p5s, b_p3l, b_p3s, p_lin, p_lde, p_trc, b_non, b_per* (11)
 #
 # 5. add_b_zft_errors()
 #    b_zft (1)
@@ -705,12 +705,9 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # calculate the blastx related information
 parse_blastx_results($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr_info_HA, \%seq_info_HA, \%seq_name_index_H, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
-# add xi* and n_per errors
-openAndAddFileToOutputInfo(\%ofile_info_HH, "blasttbl", $out_root . ".blastx.tbl", 1, "information on blast and CM hits for CDS features in tabular format");
-my $combined_model_seqname_maxlen = maxLengthScalarValueInArray($seq_info_HA{"seq_name"});
-add_blastx_errors($ofile_info_HH{"FH"}{"blasttbl"}, $combined_model_seqname_maxlen, 
-                              \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, 
-                              \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+
+add_blastx_errors(\%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, 
+                  \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 #####################################################################
 # Step 8. Add b_zft errors for sequences with zero annotated features
@@ -1294,7 +1291,9 @@ sub parse_cmalign_stk_and_add_alignment_errors {
 #             in @{$ftr_results_AAH} (filled in parse_blastx_results()).
 #
 #             Types of errors added are:
-#             "b_xnh": adds this error if blastx validation of a CDS prediction fails due to
+#             "b_non": adds this error if blastx has a prediction 
+#                      for a feature for which there is no CM/nucleotide based prediction
+#             "b_nop": adds this error if blastx validation of a CDS prediction fails due to
 #                      no blastx hits
 #             "b_cst": adds this error if blastx validation of a CDS prediction fails due to
 #                      strand mismatch between CM and blastx prediction
@@ -1312,8 +1311,6 @@ sub parse_cmalign_stk_and_add_alignment_errors {
 #                      too long of a delete
 #             "p_trc": adds this error if blastx validation of a CDS prediction fails due to
 #                      an in-frame stop codon in the blastx alignment
-#             "b_non": adds this error if blastx has a prediction of sufficient score 
-#                      for a feature for which there is no CM/nucleotide based prediction
 #
 # Arguments: 
 #  $out_FH:                 file handle to output blast table to 
@@ -1332,10 +1329,10 @@ sub parse_cmalign_stk_and_add_alignment_errors {
 ################################################################# 
 sub add_blastx_errors { 
   my $sub_name = "add_blastx_errors";
-  my $nargs_exp = 9;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_FH, $query_width, $ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
+  my ($ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
   
   # total counts of things
   my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
@@ -1344,21 +1341,12 @@ sub add_blastx_errors {
   my $seq_idx;   # counter over sequences
   my $seq_name;  # name of one sequence
 
-  my $aln_tol     = opt_Get("--xalntol",    $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
-  my $indel_tol   = opt_Get("--xindeltol",  $opt_HHR); # maximum allowed insertion and deletion length in blastx output
-  my $min_x_score = opt_Get("--xlonescore", $opt_HHR); # minimum score for a lone hit (no corresponding CM prediction) to be considered
+  my $aln_tol   = opt_Get("--xalntol",    $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
+  my $indel_tol = opt_Get("--xindeltol",  $opt_HHR); # maximum allowed insertion and deletion length in blastx output
   
-  my $seq_name_width    = maxLengthScalarValueInArray($seq_info_HAR->{"seq_name"});
-  my $ftr_product_width = maxLengthScalarValueInArray($ftr_info_HAR->{"out_product"});
-  if($seq_name_width    < length("#sequence")) { $seq_name_width    = length("#sequence"); }
-  if($ftr_product_width < length("product"))   { $ftr_product_width = length("product"); }
-  if($query_width       < length("bquery"))    { $query_width   = length("bquery"); }
-  
-  my @out_per_seq_AA = (); # [0..$nseq-1]: per-cds feature output lines for each sequence, we output at end
-
   # foreach type 'cds' feature
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") { 
+    if(checkIfFeatureIsCds($ftr_info_HAR, $ftr_idx)) { 
       my @all_children_idx_A = ();
       my $na_children = 0;
       if(featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
@@ -1371,15 +1359,8 @@ sub add_blastx_errors {
       for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
         my $ftr_results_HR = \%{$ftr_results_AAHR->[$seq_idx][$ftr_idx]}; # for convenience
-        
-        # determine if we have any CM predictions for any models related to this feature
-        my $b_non_err_possible = 1; 
-        if(exists $ftr_results_HR->{"n_start"}) { 
-          $b_non_err_possible = 0; # we have at least one prediction for this feature, we can't have a b_non error
-        }
-        
         my %err_str_H = ();   # added to as we find errors below, possible keys are:
-                              # "b_non", "b_xnh", "xws", "p_lin", "p_lde", "xst", "b_non", "x5u", "x3u"
+                              # "b_non", "b_nop", "b_cst", "b_p5l", "b_p5s", "b_p3l", "b_p3s", "p_lin", "p_lde", "p_trc"
         
         # initialize 
         my $n_start        = undef; # predicted start  from CM 
@@ -1387,8 +1368,8 @@ sub add_blastx_errors {
         my $n_strand       = undef; # predicted strand from CM 
         my $p_start        = undef; # predicted start  from blastx
         my $p_stop         = undef; # predicted stop   from blastx
-        my $p_start2print  = undef; # predicted start from blastx, to output
-        my $p_stop2print   = undef; # predicted stop  from blastx, to output
+        my $p_start2print  = undef; # predicted start  from blastx, to output
+        my $p_stop2print   = undef; # predicted stop   from blastx, to output
         my $p_strand       = undef; # predicted strand from blastx
         my $p_maxins       = undef; # maximum insert from blastx
         my $p_maxdel       = undef; # maximum delete from blastx
@@ -1400,68 +1381,57 @@ sub add_blastx_errors {
         
         my $start_diff = undef; # difference in start values between CM and blastx
         my $stop_diff  = undef; # difference in start values between CM and blastx
-        my $n_has_stop = undef; # '1' if predicted CM stop ends with a stop codon, else '0'
         
-        # first, determine predicted start/stop/strand from CM and blastx for this feature
-        # and get the p_start and p_stop values from "out_start", "out_stop"
-        $n_start  = $ftr_results_HR->{"n_start"};
-        $n_stop   = $ftr_results_HR->{"n_stop"};
-        $n_strand = $ftr_results_HR->{"n_strand"};
-        
+        if(defined $ftr_results_HR->{"n_start"}) { 
+          $n_start  = $ftr_results_HR->{"n_start"};
+          $n_stop   = $ftr_results_HR->{"n_stop"};
+          $n_strand = $ftr_results_HR->{"n_strand"};
+        }
+
         if((defined $ftr_results_HR->{"p_start"}) && 
            (defined $ftr_results_HR->{"p_stop"})) { 
           $p_start   = $ftr_results_HR->{"p_start"};
           $p_stop    = $ftr_results_HR->{"p_stop"};
           $p_strand  = $ftr_results_HR->{"p_strand"};
           $p_query   = $ftr_results_HR->{"p_query"};
-          if(defined $ftr_results_HR->{"p_maxins"}) { 
-            $p_maxins  = $ftr_results_HR->{"p_maxins"};
-          }
-          if(defined $ftr_results_HR->{"p_maxdel"}) { 
-            $p_maxdel  = $ftr_results_HR->{"p_maxdel"};
-          }
-          if(defined $ftr_results_HR->{"p_trcstop"}) { 
-            $p_trcstop = $ftr_results_HR->{"p_trcstop"};
-          }
-          if(defined $ftr_results_HR->{"p_score"}) { 
-            $p_score = $ftr_results_HR->{"p_score"};
-          }
+          if(defined $ftr_results_HR->{"p_maxins"})  { $p_maxins  = $ftr_results_HR->{"p_maxins"};  }
+          if(defined $ftr_results_HR->{"p_maxdel"})  { $p_maxdel  = $ftr_results_HR->{"p_maxdel"};  }
+          if(defined $ftr_results_HR->{"p_trcstop"}) { $p_trcstop = $ftr_results_HR->{"p_trcstop"}; }
+          if(defined $ftr_results_HR->{"p_score"})   { $p_score   = $ftr_results_HR->{"p_score"};   }
+
           # determine if the query is a full length sequence, or a fetched sequence feature:
           (undef, undef, $p_qlen) = helper_blastx_breakdown_query($p_query, $seq_name, undef, $FH_HR); 
           # helper_blastx_breakdown_query() will exit if $p_query is unparseable
           # first two undefs: seqname after coords_str is removed, and coords_str
-          # $p_qlen will be undefined if $p_query is a full sequence name name
+          # $p_qlen will be undefined if $p_query is a full sequence name
+
           $p_feature_flag = (defined $p_qlen) ? 1 : 0; 
           #printf("HEYA seq_name: $seq_name ftr: $ftr_idx x_query: $p_query x_feature_flag: $p_feature_flag x_start: $p_start x_stop: $p_stop x_score: $p_score\n");
         }
-        
-        if(($b_non_err_possible) && (! defined $n_start) && (defined $p_start))  { # no CM prediction but there is a blastx prediction
-          if((defined $p_score) && ($p_score >= $min_x_score)) { 
-            $err_str_H{"b_non"} = "blastx hit from $p_start to $p_stop with score $p_score, but no CM hit";
-          }
+
+        # add errors as needed:
+        # check for b_non
+        if((! defined $n_start) && (defined $p_start) && (defined $p_score))  { 
+          # no nucleotide-based prediction but there is a protein-based blastx prediction
+          $err_str_H{"b_non"} = "blastx hit from $p_start to $p_stop with score $p_score, but no CM hit";
         }
-        
-        #if(defined $n_start) { 
-        #  printf("HEYAA seq $seq_idx ftr_idx $ftr_idx " . $ftr_info_HAR->{"type"}[$ftr_idx] . " p_start: $n_start p_stop: $n_stop p_strand: $n_strand\n");
-        #}
-        #else { 
-        #  printf("HEYAA seq $seq_idx ftr_idx $ftr_idx no p_start\n");
-        #}
-        
-        # if we have a prediction from the CM, so we should check for xip errors
+        # check for b_nop
         if(defined $n_start) { 
-          # check for b_xnh: lack of prediction failure
           if(! defined $p_start) { 
-            $err_str_H{"b_xnh"} = "no blastx hit";
+            $err_str_H{"b_nop"} = "no blastx hit";
           }
-          else { # $p_start is defined, we can compare CM and blastx predictions
+          else { 
+            # we have both $n_start and $p_start, we can compare CM and blastx predictions
+
             # check for b_cst: strand mismatch failure, differently depending on $p_feature_flag
             if(((  $p_feature_flag) && ($p_strand eq "-")) || 
                ((! $p_feature_flag) && ($n_strand ne $p_strand))) { 
               $err_str_H{"b_cst"} = "strand mismatch between nucleotide-based and blastx-based predictions";
             }
             else { 
-              # determine $start_diff and $stop_diff, differently depending on if hit
+              # we have both $n_start and $p_start and predictions are on the same strand
+              # determine if predictions are 'close enough' in terms of sequence positions
+              # calcuate $start_diff and $stop_diff, differently depending on if hit
               # was to the full sequence or a fetched features (true if $p_feature_flag == 1)
               if($p_feature_flag) { 
                 $start_diff = $p_start - 1; 
@@ -1481,27 +1451,26 @@ sub add_blastx_errors {
                   (($n_strand eq "-") && ($p_start > $n_start)))) { 
                 $err_str_H{"b_p5l"} = "blastx alignment extends outside CM alignment on 5' end (strand:$n_strand CM:$n_start blastx:$p_start2print)";
               }
-              
               # check for 'b_p5s': blastx 5' end too short, not within $aln_tol nucleotides
               if(! exists $err_str_H{"b_p5l"}) { # only add b_p5s if b_p5l does not exist
                 if($start_diff > $aln_tol) { 
                   $err_str_H{"b_p5s"} = "start positions differ by $start_diff > $aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
                 }                
               }
-              
               # check for 'b_p3l': blastx alignment extends outside of nucleotide/CM alignment on 3' end
               if((! $p_feature_flag) && 
                  ((($n_strand eq "+") && ($p_stop  > $n_stop)) || 
                   (($n_strand eq "-") && ($p_stop  < $n_stop)))) { 
                 $err_str_H{"b_p3l"} = "blastx alignment extends outside CM alignment on 3' end (strand:$n_strand CM:$n_stop blastx:$p_stop2print)";
               }
-              
               # check for 'b_p3s': blastx 3' end too short, not within $aln_tol nucleotides
-              # for the stop coordinates, we do this differently if the CM prediction 
+              # for the stop coordinates, we do this differently if the nucleotide prediction 
               # includes the stop codon or not, if it does, we allow 3 more positions different
               my $cur_aln_tol = undef;
               my $cur_stop_str = undef;
-              if((defined $n_has_stop) && ($n_has_stop == 1)) { 
+              my $n_has_stop_codon = ((! $ftr_results_HR->{"n_3trunc"}) && 
+                                      (! exists $err_ftr_instances_AHHR->[$ftr_idx]{"n_stp"}{$seq_name})) ? 1 : 0;
+              if($n_has_stop_codon) { 
                 $cur_aln_tol  = $aln_tol + 3;
                 $cur_stop_str = "valid stop codon";
               }
@@ -1514,33 +1483,26 @@ sub add_blastx_errors {
                   $err_str_H{"b_p3s"} = "stop positions differ by $stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print, $cur_stop_str in CM prediction)";
                 }
               }
-              
               # check for 'p_lin': too long of an insert
               if((defined $p_maxins) && ($p_maxins > $indel_tol)) { 
                 $err_str_H{"p_lin"} = "longest blastx predicted insert of length $p_maxins > $indel_tol";
               }
-              
               # check for 'p_lde': too long of a deletion
               if((defined $p_maxdel) && ($p_maxdel > $indel_tol)) { 
                 $err_str_H{"p_lde"} = "longest blastx predicted delete of length $p_maxdel > $indel_tol";
               }
-              
               # check for 'p_trc': blast predicted truncation
               if(defined $p_trcstop) { 
                 $err_str_H{"p_trc"} = "blastx alignment includes stop codon ($p_trcstop)";
               }
             }
           }
-        } # end of 'if(defined $n_start)'
+        } # end of 'if(defined $n_start)' entered to identify b_* errors
         my $err_flag = 0;
-        my $output_err_str = "";
         foreach my $err_code (sort keys %err_str_H) { 
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, $err_code, $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $err_str_H{$err_code}), $FH_HR);
           $err_flag = 1;
-          if($output_err_str ne "") { $output_err_str .= ","; }
-          $output_err_str .= $err_code;
         }
-        if($output_err_str eq "") { $output_err_str = "-"; }
         # if we added an error, step through all (not just primary) children of this feature (if any) and add p_per
         if(($err_flag) && ($na_children > 0)) { 
           for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
@@ -1550,77 +1512,9 @@ sub add_blastx_errors {
             }
           }
         }
-        
-        if($ftr_idx == 0) { 
-          @{$out_per_seq_AA[$seq_idx]} = ();
-        }
-        # determine if we should output the best blast hit
-        # we only do this if there's also a CM hit OR
-        # we're above score of at least $min_x_score
-        my $p_hit_printable = 0;
-        if((defined $p_start) && 
-           ((defined $n_start) || ($p_score >= $min_x_score))) { 
-          $p_hit_printable = 1;
-        }
-        push(@{$out_per_seq_AA[$seq_idx]}, sprintf("%-*s  %-*s  %6s  %6s  %-*s  %8s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n", 
-                                                   $seq_name_width,    $seq_name, 
-                                                   $ftr_product_width, $ftr_info_HAR->{"out_product"}[$ftr_idx],
-                                                   (defined $n_start)                       ? "yes"       : "no",   # CM prediction?
-                                                   (defined $p_start  && $p_hit_printable)  ? "yes"       : "no",   # blastx prediction? 
-                                                   $query_width,                                   
-                                                   (defined $p_query)                       ? $p_query    : "-",    # query name 
-                                                   (defined $p_query && $p_feature_flag)    ? "feature"   : "full", # hit to feature sequence or full sequence?
-                                                   (defined $n_start)                       ? $n_start    : "-",    # CM-start
-                                                   (defined $n_stop)                        ? $n_stop     : "-",    # CM-stop
-                                                   (defined $p_start  && $p_hit_printable)  ? $p_start    : "-",    # blastx-start
-                                                   (defined $p_stop   && $p_hit_printable)  ? $p_stop     : "-",    # blastx-stop
-                                                   (defined $p_score)                       ? $p_score    : "-",    # blastx-score
-                                                   (defined $start_diff)                    ? $start_diff : "-",    # start-diff
-                                                   (defined $stop_diff)                     ? $stop_diff  : "-",    # stop-diff
-                                                   (defined $p_maxins  && $p_hit_printable) ? $p_maxins   : "-",    # blastx-maxins
-                                                   (defined $p_maxdel  && $p_hit_printable) ? $p_maxdel   : "-",    # blastx-maxdel
-                                                   (defined $p_trcstop && $p_hit_printable) ? $p_trcstop  : "-",    # blastx-maxdel
-                                                   $output_err_str));
-        
-        
-
       } # end of 'for($seq_idx' loop
-    }
+    } # end of 'if(checkIfFeatureIsCds($ftr_info_HAR, $ftr_idx))'
   } # end of 'for($ftr_idx' loop
-
-  printf $out_FH ("#sequence: sequence name\n");
-  printf $out_FH ("#product:  CDS product name\n");
-  printf $out_FH ("#cm?:      is there a CM (nucleotide-based) prediction/hit? above threshold\n");
-  printf $out_FH ("#blast?:   is there a blastx (protein-based) prediction/hit? above threshold\n");
-  printf $out_FH ("#bquery:   name of blastx query name\n");
-  printf $out_FH ("#feature?: 'feature' if blastx query was a fetched feature, from CM prediction\n");
-  printf $out_FH ("#          'full'    if blastx query was a full input sequence\n");
-  printf $out_FH ("#cmstart:  start position of CM (nucleotide-based) prediction\n");
-  printf $out_FH ("#cmstop:   stop  position of CM (nucleotide-based) prediction\n");
-  printf $out_FH ("#bxstart:  start position of blastx top HSP\n");
-  printf $out_FH ("#bxstop:   stop  position of blastx top HSP\n");
-  printf $out_FH ("#bxscore:  raw score of top blastx HSP (if one exists, even if it is below threshold)\n");
-  printf $out_FH ("#startdf:  difference between cmstart and bxstart\n");
-  printf $out_FH ("#stopdf:   difference between cmstop and bxstop\n");
-  printf $out_FH ("#bxmaxin:  maximum insert length in top blastx HSP\n");
-  printf $out_FH ("#bxmaxde:  maximum delete length in top blastx HSP\n");
-  printf $out_FH ("#bxtrc:    position of stop codon in top blastx HSP, if there is one\n");
-  printf $out_FH ("#errors:   list of errors for this sequence, - if none\n");
-  printf $out_FH ("%-*s  %-*s  %6s  %6s  %-*s  %8s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n",
-                  $seq_name_width,    "#sequence", 
-                  $ftr_product_width, "product",
-                  "cm?", "blast?", 
-                  $query_width, "bquery", 
-                  "feature?", "cmstart", "cmstop", "bxstart", "bxstop", "bxscore", "startdf", "stopdf", "bxmaxin", "bxmaxde", "bxtrc", "errors");
-
-         
-
-  # now go back and output per seq
-  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    foreach my $out_line (@{$out_per_seq_AA[$seq_idx]}) { 
-      print $out_FH $out_line;
-    }
-  }
 
   return;
 }    
@@ -1891,6 +1785,18 @@ sub parse_blastx_results {
     }
   }
   close(IN);
+
+  # now go back through and remove any hits that are below the minimum score
+  my $min_x_score = opt_Get("--xlonescore", $opt_HHR); # minimum score for a lone hit (no corresponding CM prediction) to be considered
+  my $nseq = getInfoHashSize($seq_info_HAR, "len", $FH_HR);
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if((exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_score"}) && 
+         ($ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_score"} < $min_x_score)) { 
+        %{$ftr_results_AAHR->[$seq_idx][$ftr_idx]} = (); # delete the hash
+      }
+    }
+  }
 
   return 0;
 }
@@ -2925,6 +2831,27 @@ sub output_tabular {
                       $w_ftr_maxde, "p_ins", $w_ftr_maxin, "p_del", $w_ftr_pscore, "p_sc",
                       $w_ftr_dupidx, "didx", $w_ftr_nmdl, "nma", $w_ftr_nmdl, "nmn", $w_ftr_coords, "coords", 
                       "ftrerr");
+
+  #printf $out_FH ("#sequence: sequence name\n");
+  #printf $out_FH ("#product:  CDS product name\n");
+  #printf $out_FH ("#cm?:      is there a CM (nucleotide-based) prediction/hit? above threshold\n");
+  #printf $out_FH ("#blast?:   is there a blastx (protein-based) prediction/hit? above threshold\n");
+  #printf $out_FH ("#bquery:   name of blastx query name\n");
+  #printf $out_FH ("#feature?: 'feature' if blastx query was a fetched feature, from CM prediction\n");
+  #printf $out_FH ("#          'full'    if blastx query was a full input sequence\n");
+  #printf $out_FH ("#cmstart:  start position of CM (nucleotide-based) prediction\n");
+  #printf $out_FH ("#cmstop:   stop  position of CM (nucleotide-based) prediction\n");
+  #printf $out_FH ("#bxstart:  start position of blastx top HSP\n");
+  #printf $out_FH ("#bxstop:   stop  position of blastx top HSP\n");
+  #printf $out_FH ("#bxscore:  raw score of top blastx HSP (if one exists, even if it is below threshold)\n");
+  #printf $out_FH ("#startdf:  difference between cmstart and bxstart\n");
+  #printf $out_FH ("#stopdf:   difference between cmstop and bxstop\n");
+  #printf $out_FH ("#bxmaxin:  maximum insert length in top blastx HSP\n");
+  #printf $out_FH ("#bxmaxde:  maximum delete length in top blastx HSP\n");
+  #printf $out_FH ("#bxtrc:    position of stop codon in top blastx HSP, if there is one\n");
+  #printf $out_FH ("#errors:   list of errors for this sequence, - if none\n");
+
+
   printf $mdl_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s\n", 
                       $w_mdl_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "seqlen", 
                       $w_ftr_type, "type", $w_ftr_name, "ftrname", $w_ftr_ftridx, "fidx", 
