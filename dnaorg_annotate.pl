@@ -138,7 +138,7 @@ my $g = 0; # option group
 #     option            type       default               group   requires incompat    preamble-output                                   help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                            "display this help",                                  \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{++$g} = "REQUIRED options";
-opt_Add("--infasta",     "string",  undef,                  $g,    "*",   "*",       "fasta file with sequences to anntoate is <s>",    "fasta file with sequences to annotate is <s>",       \%opt_HH, \@opt_order_A);
+opt_Add("--infasta",     "string",  undef,                  $g,    "*",   "*",       "fasta file with sequences to annotate is <s>",    "fasta file with sequences to annotate is <s>",       \%opt_HH, \@opt_order_A);
 opt_Add("--refaccn",     "string",  undef,                  $g,    "*",   "*",       "reference accession to annotate based on is <s>", "reference accession to annotate based on is <s>",    \%opt_HH, \@opt_order_A);
 opt_Add("--dirout",      "string",  undef,                  $g,    "*",   "*",       "output directory to create is <s>",               "output directory to create is <s>",                  \%opt_HH, \@opt_order_A);
 opt_Add("--dirbuild",    "string",  undef,                  $g,    "*",   "*",       "output directory created by dnaorg_build.pl",     "output directory created by dnaorg_build.pl is <s>", \%opt_HH, \@opt_order_A);
@@ -1786,7 +1786,7 @@ sub parse_blastx_results {
   }
   close(IN);
 
-  # now go back through and remove any hits that are below the minimum score
+  # go back through and remove any hits that are below the minimum score
   my $min_x_score = opt_Get("--xlonescore", $opt_HHR); # minimum score for a lone hit (no corresponding CM prediction) to be considered
   my $nseq = getInfoHashSize($seq_info_HAR, "len", $FH_HR);
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
@@ -2761,10 +2761,9 @@ sub output_tabular {
   }
 
   # determine max width of text strings
-  my $w_seq_idx  = numberOfDigits($nseq);
-  my $w_seq_name = maxLengthScalarValueInArray($seq_info_HAR->{"seq_name"}); 
-  my $w_seq_len  = maxLengthScalarValueInArray($seq_info_HAR->{"len"});
-  my $w_seq_err  = 4 * $nerr_seq_possible - 1;
+  my $w_seq_idx   = numberOfDigits($nseq);
+  my $w_seq_name  = maxLengthScalarValueInArray($seq_info_HAR->{"seq_name"}); 
+  my $w_seq_len   = maxLengthScalarValueInArray($seq_info_HAR->{"len"});
 
   my $w_ftr_idx  = $w_seq_idx + 1 + numberOfDigits($nftr+1);
   my $w_ftr_name = maxLengthScalarValueInArray($ftr_info_HAR->{"out_product"});
@@ -2798,7 +2797,6 @@ sub output_tabular {
   if($w_seq_idx    < length("#idx"))    { $w_seq_idx    = length("#idx");    }
   if($w_seq_name   < length("seqname")) { $w_seq_name   = length("seqname"); }
   if($w_seq_len    < length("len"))     { $w_seq_len    = length("len");     }
-  if($w_seq_err    < length("seqerr"))  { $w_seq_len    = length("seqerr");  }
 
   if($w_ftr_idx    < length("#idx"))    { $w_ftr_idx    = length("#idx");    }
   if($w_ftr_name   < length("ftrname")) { $w_ftr_name   = length("ftrname"); }
@@ -2819,8 +2817,9 @@ sub output_tabular {
   if($w_mdl_len    < length("len"))   { $w_mdl_len    = length("len"); }
 
   # header lines
-  printf $seq_tab_FH ("%-*s  %-*s  %-*s  %3s  %3s  %3s  %3s  %-*s  %s\n", 
-                      $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "nfa", "nfn", "nf5", "nf3", $w_seq_err, "seqerr", "ftrerr");
+
+  printf $seq_tab_FH ("%-*s  %-*s  %-*s  %3s  %3s  %3s  %3s  %5s  %s\n", 
+                      $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "nfa", "nfn", "nf5", "nf3", "nferr", "seqerr");
 
   printf $ftr_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %s\n", 
                       $w_ftr_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "seqlen", 
@@ -2865,11 +2864,11 @@ sub output_tabular {
     my $seq_len   = $seq_info_HAR->{"len"}[$seq_idx];
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
     
-    my $seq_err_str = helper_ftable_get_seq_error_code_strings($seq_name, $err_seq_instances_HHR, $err_info_HAR, $FH_HR);
-    my $full_ftr_err_str = "";
-    my $nftr_annot  = 0;
-    my $nftr_5trunc = 0;
-    my $nftr_3trunc = 0;
+    my $seq_err_str     = helper_ftable_get_seq_error_code_strings($seq_name, $err_seq_instances_HHR, $err_info_HAR, $FH_HR);
+    my $seq_nftr_err    = 0;
+    my $seq_nftr_annot  = 0;
+    my $seq_nftr_5trunc = 0;
+    my $seq_nftr_3trunc = 0;
     
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       my $src_idx = ($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") ? 
@@ -2877,8 +2876,8 @@ sub output_tabular {
       my $ftr_results_HR = $ftr_results_AAHR->[$seq_idx][$src_idx]; # for convenience
 
       if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
-        $nftr_annot++;
-        my $ftr_idx2print = ($seq_idx + 1) . "." . $nftr_annot;
+        $seq_nftr_annot++;
+        my $ftr_idx2print = ($seq_idx + 1) . "." . $seq_nftr_annot;
         my $ftr_prefix = $ftr_info_HAR->{"out_tiny"}[$ftr_idx]; 
         my $ftr_product_or_gene = $ftr_info_HAR->{"out_product"}[$ftr_idx];
         if($ftr_product_or_gene eq "") { $ftr_product_or_gene = $ftr_info_HAR->{"out_gene"}[$ftr_idx]; }
@@ -2901,19 +2900,16 @@ sub output_tabular {
         my $ftr_p_score  = (defined $ftr_results_HR->{"p_score"})   ? $ftr_results_HR->{"p_score"}   : "-";
         my $ftr_dupidx   = ($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") ? $ftr_info_HAR->{"source_idx"}[$ftr_idx] : "-";
         if((defined $ftr_results_HR->{"n_5trunc"}) && ($ftr_results_HR->{"n_5trunc"})) { 
-          $nftr_5trunc++; 
+          $seq_nftr_5trunc++; 
         }
         if((defined $ftr_results_HR->{"n_3trunc"}) && ($ftr_results_HR->{"n_3trunc"})) { 
-          $nftr_3trunc++; 
+          $seq_nftr_3trunc++; 
         }
 
         my $ftr_err_str = helper_ftable_get_ftr_error_code_strings($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, undef, $FH_HR);
         if($ftr_err_str ne "") { 
-          if($full_ftr_err_str ne "") { $full_ftr_err_str .= ",";  }
-          $full_ftr_err_str .= $ftr_prefix . "(" . $ftr_err_str . ")"; 
-        } 
-        else { 
-          $ftr_err_str = "-";
+          $seq_nftr_err++; 
+          $seq_nftr_err += $ftr_err_str =~ tr/,//; # plus 1 for each comma
         }
         my $coords_str     = "";
         my $ftr_nmdl_annot = 0;
@@ -2924,7 +2920,7 @@ sub output_tabular {
         for(my $mdl_idx = $ftr_first_mdl; $mdl_idx <= $ftr_final_mdl; $mdl_idx++) { 
           if(exists $mdl_results_AAHR->[$seq_idx][$mdl_idx]->{"start"}) { 
             $ftr_nmdl_annot++;
-            my $mdl_idx2print = ($seq_idx + 1) . "." . $nftr_annot . "." . $ftr_nmdl_annot;
+            my $mdl_idx2print = ($seq_idx + 1) . "." . $seq_nftr_annot . "." . $ftr_nmdl_annot;
             my $mdl_results_HR = $mdl_results_AAHR->[$seq_idx][$mdl_idx]; # for convenience
             my $mdl_start  = $mdl_results_HR->{"start"};
             my $mdl_stop   = $mdl_results_HR->{"stop"};
@@ -2952,6 +2948,7 @@ sub output_tabular {
         }
         my $ftr_nmdl_noannot = $ftr_nmdl - $ftr_nmdl_annot;
         if($ftr_len_by_mdl == 0) { $ftr_len_by_mdl = "-"; }
+        if($ftr_err_str eq "")   { $ftr_err_str = "-"; }
 
         printf $ftr_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %s\n", 
                             $w_ftr_idx, $ftr_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
@@ -2964,11 +2961,10 @@ sub output_tabular {
                             $w_ftr_nmdl, $ftr_nmdl_annot, $w_ftr_nmdl, $ftr_nmdl_noannot, $w_ftr_coords, $coords_str, $ftr_err_str);
       }
     }
-    if($full_ftr_err_str eq "") { $full_ftr_err_str = "-"; }
-    if($seq_err_str      eq "") { $seq_err_str = "-"; }
-    printf $seq_tab_FH ("%-*d  %-*s  %-*d  %3d  %3d  %3d  %3d  %-*s  %s\n", 
-                        $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $nftr_annot, ($nftr_nondup-$nftr_annot), $nftr_5trunc, $nftr_3trunc, 
-                        $w_seq_err, $seq_err_str, $full_ftr_err_str);
+    if($seq_err_str eq "") { $seq_err_str = "-"; }
+    printf $seq_tab_FH ("%-*d  %-*s  %-*d  %3d  %3d  %3d  %3d  %5s  %s\n", 
+                        $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $seq_nftr_annot, ($nftr-$seq_nftr_annot), $seq_nftr_5trunc, $seq_nftr_3trunc, 
+                        $seq_nftr_err, $seq_err_str);
   }
 
   return;
