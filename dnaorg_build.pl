@@ -262,7 +262,7 @@ if($do_matpept) {
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmbuild"}       = $inf_exec_dir . "cmbuild";
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
-$execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
+#$execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
 $execs_H{"makeblastdb"}   = $blast_exec_dir . "makeblastdb";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
@@ -272,76 +272,34 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 #         dnaorg_annotate.pl 
 ###########################################################################
 my $progress_w = 80; # the width of the left hand column in our progress output, hard-coded
-my $start_secs = outputProgressPrior("Outputting information on options used for future use with dnaorg_annotate.pl", $progress_w, $log_FH, *STDOUT);
-output_consopts_file($out_root . ".consopts", \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+my $start_secs;
+#my $start_secs = outputProgressPrior("Outputting information on options used for future use with dnaorg_annotate.pl", $progress_w, $log_FH, *STDOUT);
+#output_consopts_file($out_root . ".consopts", \%opt_HH, \%ofile_info_HH);
+#outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###########################################################################
 # Step 2. Gather and process information on reference genome using Edirect.
 ###########################################################################
 $start_secs = outputProgressPrior("Gathering information on reference using edirect", $progress_w, $log_FH, *STDOUT);
 
-my %cds_tbl_HHA = ();    # CDS data from .cds.tbl file, hash of hashes of arrays, 
-                         # 1D: key: accession
-                         # 2D: key: column name in gene ftable file
-                         # 3D: per-row values for each column
-my %mp_tbl_HHA = ();     # mat_peptide data from .matpept.tbl file, hash of hashes of arrays, 
-                         # 1D: key: accession
-                         # 2D: key: column name in gene ftable file
-                         # 3D: per-row values for each column
-my %xfeat_tbl_HHHA = (); # xfeat (extra feature) data from feature table file, hash of hash of hashes of arrays
-                         # 1D: qualifier name, e.g. 'gene'
+my %feat_tbl_HHHA = ();  # feature data from feature table file, hash of hash of hashes of arrays
+                         # 1D: qualifier name, e.g. 'CDS'
                          # 2D: key: accession
                          # 3D: key: column name in gene ftable file
                          # 4D: per-row values for each column
-my %dfeat_tbl_HHHA = (); # dfeat (duplicate feature) data from feature table file, hash of hash of hashes of arrays
-                         # 1D: qualifier name, e.g. 'gene'
-                         # 2D: key: accession
-                         # 3D: key: column name in gene ftable file
-                         # 4D: per-row values for each column
-my %seq_info_HA = ();    # hash of arrays, avlues are arrays [0..$nseq-1];
-                         # 1st dim keys are "seq_name", "accn_name", "len"
-                         # $seq_info_HA{"accn_name"}[0] is our reference accession
-@{$seq_info_HA{"accn_name"}} = ($ref_accn);
 
-# parse --xfeat option if necessary and initiate hash of hash of arrays for each comma separated value
-my $do_xfeat = 0;
-if(opt_IsUsed("--xfeat", \%opt_HH)) { 
-  $do_xfeat = 1;
-  my $xfeat_str = opt_Get("--xfeat", \%opt_HH);
-  foreach my $xfeat (split(",", $xfeat_str)) { 
-    %{$xfeat_tbl_HHHA{$xfeat}} = ();
-  }
-}
-# parse --dfeat option if necessary
-my $do_dfeat = 0;
-if(opt_IsUsed("--dfeat", \%opt_HH)) { 
-  $do_dfeat = 1;
-  my $dfeat_str = opt_Get("--dfeat", \%opt_HH);
-  foreach my $dfeat (split(",", $dfeat_str)) { 
-    %{$dfeat_tbl_HHHA{$dfeat}} = ();
-    if(exists $xfeat_tbl_HHHA{$dfeat}) {
-      DNAORG_FAIL("ERROR, with --xfeat <s1> and --dfeat <s2>, no qualifier names can be in common between <s1> and <s2>, found $dfeat", 1, $ofile_info_HH{"FH"});
-    }
-  }
-}
+my $other_str = "gene";
+fetch_reference_info_edirect($ref_accn, $other_str, $out_root, \%feat_tbl_HHHA,
+                             \%ofile_info_HH, \%opt_HH, $ofile_info_HH{"FH"}); 
 
-# Call the wrapper function that does the following:
-#  1) creates the edirect .mat_peptide file, if necessary
-#  2) creates the edirect .ftable file
-#  3) creates the length file
-#  4) parses the edirect .mat_peptide file, if necessary
-#  5) parses the edirect .ftable file
-#  6) parses the length file
-wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA,
-                           \%seq_info_HA, \%ofile_info_HH, 
-                           \%opt_HH, $ofile_info_HH{"FH"}); # 1st argument is undef because we are only getting info for $ref_accn
-
-if($do_matpept) {  
-  # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, 0, $seq_info_HA{"len"}[0], $ofile_info_HH{"FH"});
-}
+#
+#if($do_matpept) {  
+#  # validate the CDS:mat_peptide relationships that we read from the $matpept input file
+#  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, 0, $seq_info_HA{"len"}[0], $ofile_info_HH{"FH"});
+#}
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+exit 0;
 
 #########################################################
 # Step 3. Fetch and process the reference genome sequence
@@ -353,25 +311,10 @@ my %mdl_info_HA = ();          # hash of arrays, values are arrays [0..$nmdl-1];
 my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1], 
                                # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
                                # filled in wrapperFetchAllSequencesAndProcessReferenceSequence()
-my $sqfile = undef;            # pointer to the Bio::Easel::SqFile object we'll open in wrapperFetchAllSequencesAndProcessReferenceSequence()
 
-
-# Call the wrapper function that does the following:
-#   1) fetches the sequences listed in @{$seq_info_HAR->{"accn_name"} into a fasta file 
-#      and indexes that fasta file, the reference sequence is $seq_info_HAR->{"accn_name"}[0].
-#   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
-#   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
-#   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $out_root, # yes, $out_root is passed in twice, on purpose
-                                                    undef, undef, undef,  # 4 variables used only if --infasta enabled in dnaorg_annotate.pl (irrelevant here)
-                                                    \%cds_tbl_HHA, 
-                                                    ($do_matpept) ? \%mp_tbl_HHA      : undef, 
-                                                    ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
-                                                    ($do_dfeat)   ? \%dfeat_tbl_HHHA  : undef,
-                                                    ($do_matpept) ? \@cds2pmatpept_AA : undef, 
-                                                    ($do_matpept) ? \@cds2amatpept_AA : undef, 
-                                                    \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA,
-                                                    \%opt_HH, \%ofile_info_HH);
+# convert the input stockholm alignment into a fasta file
+#my $fa_file = $out_root . ".fa";
+#stockholm_to_fasta($in_stk_file, $out_root . ".fa", $ofile_info_HH{"FH"});
 
 # verify our model and feature info hashes are complete, 
 # if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
@@ -429,72 +372,6 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
-
-#################################################################
-# Subroutine: output_consopts_file()
-# Incept:     EPN, Fri May 27 14:20:28 2016
-#
-# Purpose:   Output a simple .consopts file that includes 
-#            information on options that must be kept consistent
-#            between dnaorg_build.pl and dnaorg_annotate.pl.
-#            Currently this is only "--matpept", "--nomatpept",
-#            "--xfeat", and "--dfeat".
-#
-# Arguments:
-#  $consopts_file:     name of the file to create
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:    REF to output file hash
-# 
-# Returns:  void
-# 
-# Dies: If $consopts_file doesn't exist, or we can't parse it.
-#
-#       If an option enabled in dnaorg_build.pl that needs to 
-#       be consistently used in dnaorg_annotate.pl is not, or
-#       vice versa.
-#
-#       If an option enabled in dnaorg_build.pl that takes a file
-#       as input has a different checksum for that file than 
-#       
-#################################################################
-sub output_consopts_file { 
-  my $sub_name = "output_consopts_files";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($consopts_file, $opt_HHR, $ofile_info_HHR) = @_;
-
-  open(OUT, ">", $consopts_file) || fileOpenFailure($consopts_file, $sub_name, $!, "writing", $ofile_info_HHR->{"FH"});
-
-  my $printed_any_options = 0;
-  if(opt_Get("--nomatpept", $opt_HHR)) { 
-    print OUT ("--nomatpept\n");
-    $printed_any_options = 1;
-  }
-  if(opt_IsUsed("--matpept", $opt_HHR)) { 
-    my $matpept_file = opt_Get("--matpept", $opt_HHR);
-    printf OUT ("--matpept %s %s\n", 
-                $matpept_file, 
-                md5ChecksumOfFile($matpept_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}));
-    $printed_any_options = 1;
-  }
-  if(opt_IsUsed("--xfeat", $opt_HHR)) { 
-    printf OUT ("--xfeat %s\n", opt_Get("--xfeat", $opt_HHR));
-    $printed_any_options = 1;
-  }
-  if(opt_IsUsed("--dfeat", $opt_HHR)) { 
-    printf OUT ("--dfeat %s\n", opt_Get("--dfeat", $opt_HHR));
-    $printed_any_options = 1;
-  }
-  
-  if(! $printed_any_options) { 
-    print OUT "none\n";
-  }
-  close(OUT);
-  
-  addClosedFileToOutputInfo($ofile_info_HHR, "consopts", "$consopts_file", 1, "File with list of options that must be kept consistent between dnaorg_build.pl and dnaorg_annotate.pl runs");
-  return;
-}
 
 
 #################################################################
@@ -592,3 +469,892 @@ sub create_blast_protein_db {
 
   return;
 }
+
+#################################################################
+# Subroutine:  fetch_reference_info_edirect()
+# Incept:      EPN, Thu Mar  7 14:17:58 2019 [updated]
+#              EPN, Tue Feb 23 13:00:23 2016
+#
+# Purpose:     Gets sequence information using Edirect and parse that
+#              Edirect output into usable data structures.
+#
+#              Creates the following output files and stores
+#              information on them in %{$ofile_info_HHR}
+#              by calling the addClosedFileToOutputInfo() function:
+#              - $out_root . ".mat_peptide": mature peptide info obtained via edirect
+#              - $out_root . ".ftable":      feature table obtained via edirect
+#                      
+# Arguments: 
+#   $ref_accn:              reference accession, first accession in $listfile (although this is 
+#                           not enforced here, caller enforced it)
+#   $other_str:             string of 'other' features to parse, e.g. "gene,RNA"
+#   $out_root:              string that is the 'root' for naming output files
+#   $feat_tbl_HHHAR:        REF to hash of hash of hash of arrays for other (non-CDS and non-MP) feature info, FILLED HERE
+#   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
+#   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#   $FH_HR:                 REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#
+# Returns:     void
+#
+# Dies:        never
+#     
+################################################################# 
+sub fetch_reference_info_edirect {
+  my $sub_name = "fetch_reference_info_edirect";
+  my $nargs_expected = 7;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ref_accn, $other_str, $out_root, $feat_tbl_HHHAR, $ofile_info_HHR, $opt_HHR, $FH_HR) = @_;
+
+  my $cmd; 
+  my @other_A = ();
+  if((defined $other_str) && ($other_str ne "")) { 
+    @other_A = split(",", $other_str);
+  }  
+
+  # mature peptides
+  my $mp_file = $out_root . ".mat_peptide";
+  $cmd = "esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd mat_peptide INSDFeature_location product > $mp_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  if(-s $mp_file) { 
+    addClosedFileToOutputInfo($ofile_info_HHR, "mp", $mp_file, 0, "Mature peptide information obtained via edirect");
+    edirect_ftable_or_matpept_to_single_feature_table_info($mp_file, 1, "mat_peptide", $feat_tbl_HHHAR->{"mat_peptide"}, $FH_HR); # 1: it is a mat_peptide file
+  }
+  else { 
+    # remove the empty file we just created
+    runCommand("rm $mp_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  }
+
+  # feature table
+  my $ft_file  = $out_root . ".fetched.ftable";
+  $cmd = "esearch -db nuccore -query $ref_accn | efetch -format ft > $ft_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  if(! -s $ft_file) { 
+    DNAORG_FAIL("ERROR in $sub_name, unable to fetch feature table", 1, $FH_HR); 
+  }
+  addClosedFileToOutputInfo($ofile_info_HHR, "ft", $ft_file, 0, "Feature table obtained via edirect");
+
+  # CDS from feature table
+  edirect_ftable_or_matpept_to_single_feature_table_info($ft_file, 0, "CDS", $feat_tbl_HHHAR->{"CDS"}, $FH_HR); # 0: it's not a mat_peptide file
+
+  # other features from feature table
+  foreach my $ofeat (@other_A) { 
+    edirect_ftable_or_matpept_to_single_feature_table_info($ft_file, 0, $ofeat, \%{$feat_tbl_HHHAR->{$ofeat}}, $FH_HR); # 0: it's not a mat_peptide file
+  }    
+
+  return 0;
+}
+
+#################################################################
+# Subroutine: edirect_ftable_or_matpept_to_single_feature_table_info()
+# Incept:     EPN, Fri Feb 12 09:48:00 2016
+# 
+# Purpose:    Given an edirect output feature table file or mature
+#             peptide table file, parse it and store it's relevant
+#             information in a 'single feature table' (%{$tbl_HHAR}).
+#
+#             This is a wrapper subroutine that calls 
+#             parse_edirect_mat_peptide_file() or 
+#             parse_edirect_ftable_file() and then 
+#             get_single_feature_table_info().
+#
+# Arguments:
+#   $edirect_file:  name of edirect output file to parse
+#   $do_matpept:    '1' if edirect file is a mature peptide file, '0' or undef if it is a ftable file
+#   $feature:       the feature we want to store info on in $tbl_HHAR (e.g. "CDS" or "mat_peptide")
+#   $tbl_HHAR:      REF to hash of hash of arrays we'll fill with info on $qual_name:
+#                   1D: key: accession
+#                   2D: key: qualifier (e.g. 'coords')
+#                   3D: values for each qualifier, size will be number of features for this accession
+#                       e.g. size of 5 means this accession has 5 CDS if $feature is CDS
+#                       INITIALIZED AND FILLED HERE
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if we're not able to parse the edirect file
+#################################################################
+sub edirect_ftable_or_matpept_to_single_feature_table_info { 
+  my $sub_name = "edirect_ftable_or_matpept_to_single_feature_table_info";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($edirect_file, $do_matpept, $feature, $tbl_HHAR, $FH_HR) = @_;
+
+  # variables relevant to parsing the edirect ftable and edirect mat_peptide files
+  my %quals_HHA       = ();      # values that will go into a table
+                                 # key 1: feature name, e.g. "CDS"
+                                 # key 2: 'fac' string: <full_accession><fac_seq><coordinates>
+                                 # value: array of 'qnqv' strings: <qualifier_name><qnqv_sep><qualifier_value>
+  my @faccn_A         = ();      # array of all full accessions read
+  my %fac_HHA         = ();      # used to easily determine list of 2D keys ('fac's) in quals_HHA 
+                                 # for a given feature and faccn.
+                                 # key 1: feature name: e.g. "CDS"
+                                 # key 2: 'faccn', full accession
+                                 # value: array of 'fac' strings: <full_accession><fac_seq><coordinates>
+  my %faccn2accn_H    = ();      # key: full accession, value: short accession, used for convenience
+  my %column_HA       = ();      # key: feature, e.g. "CDS"
+                                 # value: array of qualifiers that exist for that feature in at least 1 faccn
+  my $dummy_column    = "DuMmY"; # name of 'dummy' column that we don't actually print, for use with --matpept only
+  my %sep_H           = ();      # hash of 'separation' values we use to concatenate multiple strings into 
+                                 # one, to ease with their storage
+  $sep_H{"qnqv"}      = "!!";    # string that separates 'qualifier name' and 'qualifier_values' 
+  $sep_H{"fac"}       = "::";    # strings separating full accessions, start and stop coords
+  $sep_H{"qval"}      = ";;";    # strings separating qualifier values  
+
+  %{$tbl_HHAR} = ();
+
+  if(defined $do_matpept && $do_matpept) { 
+    parse_edirect_mat_peptide_file($edirect_file, $dummy_column, \%sep_H, \%quals_HHA, \@faccn_A, \%fac_HHA, \%faccn2accn_H, \%column_HA, $FH_HR);
+  }
+  else { # default, a ftable file
+    parse_edirect_ftable_file($edirect_file, undef, \%sep_H, \%quals_HHA, \@faccn_A, \%fac_HHA, \%faccn2accn_H, \%column_HA, $FH_HR);
+  }
+  printf("CHECKING $feature\n");
+  if(exists $quals_HHA{$feature}) { 
+    get_single_feature_table_info($dummy_column, \%sep_H, \%{$quals_HHA{$feature}}, \@faccn_A, \%{$fac_HHA{$feature}}, \%faccn2accn_H, \@{$column_HA{$feature}}, $tbl_HHAR, $FH_HR);
+  }
+  
+  # if $quals_HHA doesn't exist, return 
+  return;
+}
+
+#################################################################
+# Subroutine: parse_edirect_ftable_file()
+# Incept:     EPN, Thu Feb 11 13:47:11 2016
+# 
+# Purpose:   Given a feature table file output from an 'efetch -format
+#            ft' command, parse that file into usable data
+#            structures. 
+# 
+#            Can be called by the wrapper subroutine: 
+#             edirectFtableOrMatPept2SingleFeatureTableInfo().
+#
+#            Caller will commonly call get_single_feature_table_info() after calling this
+#            subroutine.
+#
+#            Similar to (and shares some code with) parse_edirect_mat_peptide_file().
+#
+# Args:
+#   $infile:          name of ftable file
+#   $only_feature:    name of only feature we will parse, 'undef' to parse all features
+#   $sep_HR:          ref to hash of 'separation' values, keys: "qnqv", "fac", and "qval", 
+#                     used to split values that have been concatenated with these 'separation'
+#                     values in between, PRE-FILLED
+#   $quals_HHAR:      ref to 2D hash of arrays with values that could eventually go 
+#                     into a single-feature table, FILLED HERE
+#                     key 1: feature name, e.g. "CDS"
+#                     key 2: 'fac' string: <full_accession><fac_seq><coordinates>
+#                     value: array of 'qnqv' strings: <qualifier_name><qnqv_sep><qualifier_value>
+#   $faccn_AR:        REF to array of full accessions read, FILLED HERE
+#   $fac_HHAR:        REF to 2D hash of arrays that is used to easily determine
+#                     list of 2D keys ('fac's) in quals_HHA for a given feature and faccn
+#                     FILLED HERE
+#                     key 1: feature name: e.g. "CDS"
+#                     key 2: 'faccn', full accession
+#                     value: array of 'fac' strings: <full_accession><fac_seq><coordinates>
+#   $faccn2accn_HR:   REF to hash, key: full accession, value: short accession, 
+#                     used for convenience in output function, FILLED HERE
+#   $column_HAR:      REF to hash of arrays, key: feature, e.g. "CDS"
+#                     value: array of qualifiers that exist for that feature in at least 1 faccn
+#   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  void
+#
+# Dies:     if <$infile> file is in unexpected format
+#################################################################
+sub parse_edirect_ftable_file {
+  my $sub_name = "parse_edirect_ftable_file()";
+
+  my $nargs_expected = 9;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($infile, $only_feature, $sep_HR, $quals_HHAR, $faccn_AR, $fac_HHAR, $faccn2accn_HR, $column_HAR, $FH_HR) = @_;
+
+  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
+
+  my $do_only_feature  = 0;
+  my $cap_only_feature = undef; # capitalized version of $only_feature
+  if(defined $only_feature) { 
+    $do_only_feature = 1;
+    $cap_only_feature = $only_feature;
+    $cap_only_feature =~ tr/a-z/A-Z/;
+  }
+
+  # variables used to make sure input feature table is in 
+  # expected format w.r.t to order of line types
+
+  # define other variables we'll use
+  my $faccn           = undef;   # full accession, e.g. ref|NC_000883.2|
+  my $fac             = undef;   # full accession and coords, accession and each segment coords separated by $fac_sep
+  my $faccn2          = undef;   # another full accession
+  my $accn            = undef;   # full accession with extraneous characters removed: e.g. NC_000883.2
+  my $start           = undef;   # start position
+  my $stop            = undef;   # stop position
+  my $qname           = undef;   # a qualifier name,  e.g. 'organism'
+  my $qval            = undef;   # a qualifier value, e.g. 'Paramecia bursaria Chlorella virus 1'
+  my $feature         = undef;   # a feature name, e.g. "CDS", or "gene"
+  my $cap_feature     = undef;   # a feature name capitalized, necessary so -f option can be case insensitive
+  my $coords          = undef;   # coordinates
+  my $fac_sep  = $sep_HR->{"fac"};
+  my $qnqv_sep = $sep_HR->{"qnqv"};
+  my $qval_sep = $sep_HR->{"qval"};
+  my $line_ctr        = 0;       # count of number of lines read in ftable
+  my $accn_ctr        = 0;       # count of number of accessions read
+  my %column_HH       = ();      # existence 2D hash, used to aid construction of %column_HA
+                                 # key 1: feature, e.g. "CDS"
+                                 # key 2: qualifier
+                                 # value: '1' (always)
+  my $prv_was_accn           = 0; # set to '1' if previous line was an accession line
+  my $prv_was_coords_feature = 0; # set to '1' if previous line was a coordinates line with a feature name
+  my $prv_was_coords_only    = 0; # set to '1' if previous line was a coordinates line without a feature name
+  my $prv_was_quals          = 0; # set to '1' if previous line was a qualifier_name qualifier value line
+
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    chomp $line;
+    if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+    if($line =~ m/\w/) { 
+      # parse each of the 4 line types differently
+      # -------------------------------------------------------
+      if($line =~ /Feature\s+(\S+)$/) { 
+        # ACCESSION LINE
+        # example:
+        #>Feature ref|NC_001359.1|    
+        $faccn = $1;
+        $accn_ctr++;
+        # does line order make sense?
+        if($accn_ctr == 1   ||          # first accession of the file
+           $prv_was_quals ||          # previous line was a quals line (common)
+           $prv_was_coords_feature || # previous line was a coords feature line (rare)
+           $prv_was_coords_only    || # previous line was a coords line without a feature (rare)
+           $prv_was_accn) {           # previous line was an accession line (rare)
+          # line order makes sense, keep going...
+
+          # determine short version of the accession, e.g. NC_001359 in above example
+          if($faccn =~ /[^\|]*\|([^\|]*)\|/) { 
+            $accn = $1;
+            $faccn2accn_HR->{$faccn} = $accn;
+            push(@{$faccn_AR}, $faccn);
+          }
+          else { 
+            DNAORG_FAIL("ERROR in $sub_name, unable to parse Feature line $line", 1, $FH_HR); 
+          }
+          $feature     = undef; 
+          $cap_feature = undef;
+          $fac         = undef;
+
+          # update '$prv_*' values that we use to make sure line order makes sense
+          $prv_was_accn           = 1;
+          $prv_was_coords_feature = 0;
+          $prv_was_coords_only    = 0;
+          $prv_was_quals          = 0;
+          #printf("set prv_was_accn\n");
+        }
+        else { # line order is unexpected
+          DNAORG_FAIL("ERROR in $sub_name, unexpected line order (accession line) at line $line_ctr: $line", 1, $FH_HR);
+        }
+      }
+      # -------------------------------------------------------
+      elsif($line =~ /^(\<?\d+\^?)\s+(\>?\d+)\s+(\S+)$/) { 
+        # COORDINATES LINE WITH A FEATURE NAME
+        # example:
+        #230	985	gene
+        ($start, $stop, $feature) = ($1, $2, $3);
+
+        # does line order make sense?
+        if($prv_was_accn  ||           # previous line was accession line (common)
+           $prv_was_quals ||           # previous line was quals line (common)
+           $prv_was_coords_feature ||  # previous line was coords line with a feature (rare)
+           $prv_was_coords_only)    {  # previous line was coords line without a feature (rarer)
+          # line order makes sense, keep going...
+          $cap_feature = $feature;
+          $cap_feature =~ tr/a-z/A-Z/;
+          $fac = $faccn . $fac_sep . $start . $fac_sep . $stop;
+
+          # update '$prv_*' values that we use to make sure line order makes sense
+          $prv_was_accn           = 0;
+          $prv_was_coords_feature = 1;
+          $prv_was_coords_only    = 0;
+          $prv_was_quals          = 0;
+          #printf("set prv_was_coords_feature\n");
+        }
+        else { # line order is unexpected
+          DNAORG_FAIL("ERROR in $sub_name, unexpected line order (coords_feature) at line $line_ctr: $line", 1, $FH_HR);
+        }
+      }
+      # -------------------------------------------------------
+      elsif($line =~ /^(\<?\d+)\s+(\>?\d+)$/) { 
+        # COORDINATES LINE WITHOUT A FEATURE NAME
+        # example:
+        #1	54
+        ($start, $stop) = ($1, $2);
+
+        # does line order make sense?
+        if($prv_was_coords_feature || # previous line was a coords line with a feature (common)
+           $prv_was_coords_only) {    # previous line was a coords line without a feature (common)
+          # line order makes sense, keep going...
+
+          $fac .= $fac_sep . $start . $fac_sep . $stop;
+          
+          # update '$prv_*' values that we use to make sure line order makes sense
+          $prv_was_accn           = 0;
+          $prv_was_coords_feature = 0;
+          $prv_was_coords_only    = 1;
+          $prv_was_quals          = 0;
+          #printf("set prv_was_coords_only\n");
+        }
+        else { # line order is unexpected
+          DNAORG_FAIL("ERROR in $sub_name, unexpected line order (coords_only line) at line $line_ctr: $line", 1, $FH_HR);
+        }
+      }
+      # -------------------------------------------------------
+      elsif(($line =~ /^\s+\S+\s+.+$/) || 
+            ($line =~ /^\s+\S+$/)) { 
+        # QUALIFIER LINE
+        # examples:
+        #			gene	AR1
+        #			locus_tag	PhyvvsAgp1
+
+        # before parsing it, do two sanity checks
+        if(! defined $fac)     { DNAORG_FAIL("ERROR in $sub_name, coordinates undefined at a qualifier line", 1, $FH_HR); }
+        if(! defined $feature) { DNAORG_FAIL("ERROR didn't read feature line before line: $line", 1, $FH_HR); }
+        # and determine if we even care about this feature
+        if((! $do_only_feature) || ($cap_feature eq $cap_only_feature)) { 
+          # does line order make sense?
+          if($prv_was_coords_feature || 
+             $prv_was_coords_only    ||
+             $prv_was_quals) { 
+            # line order makes sense, keep going...
+            if(! $prv_was_quals) { 
+              # first quals line for this feature
+              # at this point, we know that we have the full coordinates for the feature
+              # so initialize the information
+              if(! exists $fac_HHAR->{$feature}) {
+                %{$fac_HHAR->{$feature}} = (); 
+              }
+              if(! exists $fac_HHAR->{$feature}{$faccn}) { 
+                @{$fac_HHAR->{$feature}{$faccn}} = ();
+              }
+              push(@{$fac_HHAR->{$feature}{$faccn}}, $fac);
+              if(! exists $quals_HHAR->{$feature}) { 
+                %{$quals_HHAR->{$feature}} = ();
+                @{$quals_HHAR->{$feature}{$fac}} = ();
+              }
+            } # end of 'if(! $prv_was_quals)'
+
+            # now parse the line;
+            # examples:
+            #			gene	AR1
+            #			locus_tag	PhyvvsAgp1
+            if($line =~ /^\s+(\S+)\s+(.+)$/) { 
+              ($qname, $qval) = ($1, $2);
+            }
+            elsif($line =~ /^\s+(\S+)$/) { 
+              $qname = $1;
+              $qval = "<no_value>";
+            }
+            else { 
+              DNAORG_FAIL("ERROR in $sub_name, didn't parse quals line on second pass: $line", 1, $FH_HR); 
+            }
+            if($qname =~ m/\Q$qnqv_sep/)   { DNAORG_FAIL("ERROR in $sub_name, qualifier_name $qname has the string $qnqv_sep in it", 1, $FH_HR); }
+            if($qval  =~ m/\Q$qnqv_sep/)   { DNAORG_FAIL("ERROR in $sub_name, qualifier_value $qval has the string $qnqv_sep in it", 1, $FH_HR); }
+            my $qnqv = $qname . $qnqv_sep . $qval; # this is how we store the qualifier name and value, as a concatenated string in quals_HHAR
+            push(@{$quals_HHAR->{$feature}{$fac}}, $qnqv);
+
+            # and update the column data structures which just keep info on names and order of columns
+            if(! exists $column_HH{$feature}) { 
+              %{$column_HH{$feature}} = ();
+              @{$column_HAR->{$feature}} = (); 
+            }
+            if(! exists $column_HH{$feature}{$qname}) { 
+              push(@{$column_HAR->{$feature}}, $qname);
+              $column_HH{$feature}{$qname} = 1;
+            }
+          }
+          else { # unexpected line order
+            DNAORG_FAIL("ERROR in $sub_name, unexpected line order (quals line) at line $line_ctr: $line", 1, $FH_HR);
+          }          
+        } # end of 'if((! $do_only_feature) || ($cap_feature ne $cap_only_feature))'
+        # update '$prv_*' values that we use to make sure line order makes sense
+        $prv_was_accn           = 0;
+        $prv_was_coords_feature = 0;
+        $prv_was_coords_only    = 0;
+        $prv_was_quals          = 1;
+        #printf("set prv_was_quals\n");
+      }
+      # -------------------------------------------------------
+      else { 
+        DNAORG_FAIL("ERROR in $sub_name, unable to parse line $line_ctr: $line", 1, $FH_HR); 
+      }
+      # -------------------------------------------------------
+    }
+  }
+}
+
+#################################################################
+# Subroutine: parse_edirect_mat_peptide_file()
+# Incept:     EPN, Thu Feb 11 14:01:30 2016
+#
+# Purpose:   Given a mature peptide file output from a
+#            'efetch -format gpc | xtract -insd mat_peptide INSDFeature_location product'
+#            command, parse that file into usable data structures.
+#
+#            Can be called by the wrapper subroutine: 
+#            edirectFtableOrMatPept2SingleFeatureTableInfo().
+#
+#            Caller will commonly call get_single_feature_table_info() after calling this
+#            subroutine.
+#
+#            Similar to (and shares some code with) parse_edirect_ftable_file().
+#
+# Args:
+#   $infile:          name of ftable file
+#   $dummy_column:    name for dummy columns that we won't output, can be undef
+#   $sep_HR:          ref to hash of 'separation' values, keys: "qnqv", "fac", and "qval", 
+#                     used to split values that have been concatenated with these 'separation'
+#                     values in between, PRE-FILLED
+#   $quals_HHAR:      ref to 2D hash of arrays with values that could eventually go 
+#                     into a single-feature table, FILLED HERE
+#                     key 1: feature name, e.g. "CDS"
+#                     key 2: 'fac' string: <full_accession><fac_seq><coordinates>
+#                     value: array of 'qnqv' strings: <qualifier_name><qnqv_sep><qualifier_value>    
+#   $faccn_AR:        REF to array of full accessions read, FILLED HERE
+#   $fac_HHAR:        REF to 2D hash of arrays that is used to easily determine
+#                     list of 2D keys ('fac's) in quals_HHA for a given feature and faccn
+#                     FILLED HERE
+#                     key 1: feature name: e.g. "CDS"
+#                     key 2: 'faccn', full accession
+#                     value: array of 'fac' strings: <full_accession><fac_seq><coordinates>
+#   $faccn2accn_HR:   REF to hash, key: full accession, value: short accession, 
+#                     used for convenience in output function, FILLED HERE
+#   $column_HAR:      REF to hash of arrays, key: feature, e.g. "CDS"
+#                     value: array of qualifiers that exist for that feature in at least 1 faccn
+#   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  void
+#
+# Dies:     if <$infile> file is in unexpected format
+#################################################################
+sub parse_edirect_mat_peptide_file {
+  my $sub_name = "parse_edirect_mat_peptide_file()";
+  my $nargs_expected = 9;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($infile, $dummy_column, $sep_HR, $quals_HHAR, $faccn_AR, $fac_HHAR, $faccn2accn_HR, $column_HAR, $FH_HR) = @_;
+
+  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
+
+  # example lines of a .mat_peptide file
+  # NC_009942.1	97..465	anchored capsid protein C	
+  # NC_009942.1	97..411	capsid protein C	
+  # NC_009942.1	466..966	membrane glycoprotein precursor M	
+  # NC_009942.1	join(2470..3552,3552..3680)	nonstructural protein NS1'
+
+  my $faccn     = undef;   # full accession, e.g. ref|NC_000883.2|
+  my $fac       = undef;   # full accession and coords, accession and each segment coords separated by $fac_sep
+  my $coords    = undef;   # coordinates
+  my $faccn2    = undef;   # another full accession
+  my %column_HH = ();      # existence 2D hash, used to aid construction of %column_HA
+                           # key 1: feature, e.g. "CDS"
+                           # key 2: qualifier
+                           # value: '1' (always)
+
+  my $fac_sep  = $sep_HR->{"fac"};
+  my $qnqv_sep = $sep_HR->{"qnqv"};
+  my $qval_sep = $sep_HR->{"qval"};
+
+  my $feature = "mat_peptide";
+  while(my $line = <IN>) { 
+    if($line =~ m/\w/) { 
+# example line:
+# NC_001477.1	95..436	anchored capsid protein C
+      if($line =~ /(\S+)\s+(\S+)\s*(.*)$/) { 
+        my ($acc, $coords, $product) = ($1, $2, $3); 
+        # with .mat_peptide files, the accession is not in the 'full accession' ($faccn, e.g. ref|NC_001477.1|) 
+        # that appears in the .ftable files, but we still want to use similar downstream code to 
+        # handle both the parsed .mat_peptide and .ftable files, so we still fill faccn2accn_HR
+        # for .mat_peptide files, even though the keys and values are identical
+
+        $product =~ s/\s+$//; # remove trailing whitespace
+        $faccn = $acc; # in this case, full accession and accession are the same
+        # we use both $faccn and $acc so that this code matches the code in this subroutine matches
+        # with the code in parse_edirect_ftable_file() for consistency.
+
+        if(! exists $faccn2accn_HR->{$acc}) { 
+          push(@{$faccn_AR}, $acc);
+          $faccn2accn_HR->{$acc} = $acc;
+        }
+
+        # now we have to break down coords just so we can store each segment separately in fac_HHA, 
+        # because the feature table has each segment separated, and we want to process and OUTPUT
+        # both feature tables and mat_peptide information the same way after we parse it here. At
+        # that point we'll put the coordinates together again. 
+        my @starts_A = ();
+        my @stops_A  = ();
+        my $nsegments = 0;
+        startsStopsFromCoords($coords, \@starts_A, \@stops_A, \$nsegments, $FH_HR);
+        
+        # printf("coords:    $coords\n");
+        # printf("nsegments: $nsegments\n");
+        for(my $i = 0; $i < $nsegments; $i++) { 
+          my $start = $starts_A[$i];
+          my $stop  = $stops_A[$i];
+          # printf("starts_A[$i]: $starts_A[$i]\n");
+          # printf("stops_A[$i]:  $stops_A[$i]\n");
+          if($i == 0) { 
+            $fac = $faccn . $fac_sep . $start . $fac_sep . $stop;
+          }
+          else { 
+            $fac .= $fac_sep . $start . $fac_sep . $stop;
+          }
+        }
+
+        if(! exists $fac_HHAR->{"mat_peptide"}) {
+          %{$fac_HHAR->{"mat_peptide"}} = (); 
+        }
+        push(@{$fac_HHAR->{"mat_peptide"}{$acc}}, $fac);
+        
+        # first add the 'dummy' qual
+        # we need to do this so that we can store the coordinate information (in $fac)
+        # for mature peptides that have no additional information besides coordinates
+        # (.mat_peptide files often include only mature peptide coordinates and no
+        # product information ($product below) 
+        my $qname = $dummy_column;
+        my $qval  = "<no_value>";
+        if($qname =~ m/\Q$qnqv_sep/)   { DNAORG_FAIL("ERROR in $sub_name, qualifier_name $qname has the string $qnqv_sep in it", 1, $FH_HR); }
+        if($qval  =~ m/\Q$qnqv_sep/)   { DNAORG_FAIL("ERROR qualifier_value $qval has the string $qnqv_sep in it", 1, $FH_HR); }
+        my $qnqv = $qname . $qnqv_sep . $qval; # this is how we store the qualifier name and value, as a concatenated string in quals_HHAR
+        push(@{$quals_HHAR->{"mat_peptide"}{$fac}}, $qnqv);
+        
+        # and update the column data structures which just keep info on names and order of columns
+        if(! exists $column_HH{"mat_peptide"}) { 
+          %{$column_HH{"mat_peptide"}} = ();
+          @{$column_HAR->{"mat_peptide"}} = (); 
+        }
+        if(! exists $column_HH{"mat_peptide"}{$qname}) { 
+          push(@{$column_HAR->{"mat_peptide"}}, $qname);
+          $column_HH{"mat_peptide"}{$qname} = 1;
+        }
+        
+        if(defined $product && $product ne "") { 
+          # now if the product qualifier has a value, add that too
+          $qname = "product";
+          $qval  = $product;
+          $qnqv = $qname . $qnqv_sep . $qval;
+          push(@{$quals_HHAR->{"mat_peptide"}{$fac}}, $qnqv);
+          
+          if(! exists $column_HH{"mat_peptide"}{$qname}) { 
+            push(@{$column_HAR->{"mat_peptide"}}, $qname);
+            $column_HH{"mat_peptide"}{$qname} = 1;
+          }
+        }
+      }
+    } # end of 'if($line =~ m/\w/)
+  } # end of '$line = <IN>' 
+}
+
+#################################################################
+# Subroutine: get_single_feature_table_info()
+# Incept:     EPN, Fri Feb 12 09:51:48 2016
+#
+# Purpose:  Given data structures collected from
+#           parseEdirecFtableFile() or parseEdirectMatPeptFile(), fill
+#           a hash of hash of arrays (%{$tbl_HHAR}) with the
+#           information for a specific feature ($feature_name,
+#           e.g. 'CDS' or mat_peptide').
+#
+# Arguments:
+#   $feature_name:   name of feature we want information for (e.g. CDS or mat_peptide)
+#   $dummy_column:   name for dummy columns that we won't output, can be undef
+#   $sep_HR:         ref to hash of 'separation' values, keys: "qnqv", "fac", and "qval"
+#                    used to split values that have been concatenated with these 'separation'
+#                    values in between, PRE-FILLED
+#   $quals_HAR:      ref to hash of arrays with values we are printing, PRE-FILLED
+#                    key 1: 'fac' string: <full_accession><fac_seq><coordinates>
+#                    value: array of 'qnqv' strings: <qualifier_name><qnqv_sep><qualifier_value>    
+#   $faccn_AR:       REF to array of full accessions read, PRE-FILLED
+#   $fac_HAR:        REF to hash of arrays that is used to easily determine
+#                    list of keys ('fac's) in quals_HA for a given feature and faccn
+#                    key 1: 'faccn', full accession
+#                    value: array of 'fac' strings: <full_accession><fac_seq><coordinates>
+#                    PRE-FILLED
+#   $faccn2accn_HR:  REF to hash, key: full accession, value: short accession, 
+#                    used for convenience in output function, PRE-FILLED
+#   $column_AR:      REF to array of qualifiers for feature we're printing table for, PRE-FILLED
+#   $tbl_HHAR:       REF to hash of hash of arrays we'll fill with info on $qual_name:
+#                    1D: key: accession
+#                    2D: key: qualifier (e.g. 'coords')
+#                    3D: values for each qualifier, size will be number of features for this accession
+#                    e.g. size of 5 means this accession has 5 CDS if $feature is CDS
+#                    FILLED HERE
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if an passed in data structure is empty or contains invalid information
+#################################################################
+sub get_single_feature_table_info { 
+  my $sub_name = "get_single_feature_table_info()";
+  my $nargs_expected = 9;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($dummy_column, $sep_HR, $quals_HAR, $faccn_AR, $fac_HAR, $faccn2accn_HR, $column_AR, $tbl_HHAR, $FH_HR) = @_;
+
+  my $start           = undef;   # start position
+  my $stop            = undef;   # stop position
+  my $fac             = undef;   # full accession and coords, accession and each segment coords separated by $fac_sep
+  my $faccn           = undef;   # full accession, e.g. ref|NC_000883.2|
+  my $faccn2          = undef;   # another full accession
+  my $coords          = undef;   # coordinates
+  my $qname           = undef;   # a qualifier name,  e.g. 'organism'
+  my $qval            = undef;   # a qualifier value, e.g. 'Paramecia bursaria Chlorella virus 1'
+
+  my $column;
+  my $strand; 
+  my $sort_coord;
+
+  my $fac_sep  = $sep_HR->{"fac"};
+  my $qnqv_sep = $sep_HR->{"qnqv"};
+  my $qval_sep = $sep_HR->{"qval"};
+
+  if(! %{$quals_HAR}) { DNAORG_FAIL("ERROR in $sub_name, quals hash of arrays is not defined", 1, $FH_HR); }
+  if(! %{$fac_HAR})   { DNAORG_FAIL("ERROR in $sub_name, fac hash of arrays is not defined", 1, $FH_HR); }
+  if(! @{$column_AR}) { DNAORG_FAIL("ERROR in $sub_name, column hash of arrays is not defined", 1, $FH_HR); }
+
+  # go through all full accessions in order they were read from feature table
+  foreach $faccn (@{$faccn_AR}) { 
+    if(exists $fac_HAR->{$faccn}) { # if this accession has >= 1 qualifiers for this feature
+      my $accn = $faccn2accn_HR->{$faccn};
+      stripVersion(\$accn);
+      if(%{$tbl_HHAR} && exists $tbl_HHAR->{$accn}) { 
+        DNAORG_FAIL("ERROR in $sub_name, read data twice in $sub_name for accession $accn", 1, $FH_HR);
+      }
+      foreach $fac (@{$fac_HAR->{$faccn}}) { # foreach 'fac', accession + set of coords
+
+        ($faccn2, $coords, $sort_coord, $strand) = helper_breakdown_fac($fac, $fac_sep, $FH_HR);
+        if($faccn ne $faccn2) { DNAORG_FAIL("ERROR in $sub_name, inconsistent fac value: $faccn ne $faccn2", 1, $FH_HR); }
+        
+        if(exists $quals_HAR->{$fac}) { # if there's any qualifiers for this fac
+          # printf("quals_HA feature: fac: $fac exists!\n"); 
+
+          push(@{$tbl_HHAR->{$accn}{"coords"}},         $coords);
+          push(@{$tbl_HHAR->{$accn}{"strand"}},         $strand);
+          push(@{$tbl_HHAR->{$accn}{"min-coord"}},      $sort_coord);
+          
+          # for all columns in the table
+          foreach $column (@{$column_AR}) {
+            if((! defined $dummy_column) || ($column ne $dummy_column)) { 
+              my $save_str = ""; 
+              
+              # for all qualifier names and values 
+              foreach my $qnqv (@{$quals_HAR->{$fac}}) { 
+                ($qname, $qval) = split($qnqv_sep, $qnqv);
+                ### printf("faccn: $faccn qnqv: $qnqv split into $qname $qval\n");
+                  
+                # if this qname matches this column, then it's the appropriate value to save here
+                if($qname eq $column) { 
+                  if($save_str eq "") { # first value in this cell
+                    $save_str = $qval;  
+                  }
+                  else { 
+                    if($qval =~ m/\Q$qval_sep/) { DNAORG_FAIL("ERROR in $sub_name, qualifier_name $qval has the string $qval_sep in it", 1, $FH_HR); }
+                    $save_str .= $qval_sep . $qval; # not first value, concatenate onto previous values
+                  }
+                }
+              }
+              # old behavior:
+              ## if there's no value for this qualifier, put '<empty>'
+              ##if($save_str eq "") { $save_str = "<empty>"; }
+
+              # do not save values that are '-', as far as I can tell these are just empty placeholders,
+              # as an example, see the first CDS in the feature table returned by this query (as of 02/13/18):
+              # esearch -db nuccore -query NC_031324 | efetch -format ft 
+              # It has a qualifier value of '-' for the 'gene' qualifier, which only occurs because the
+              # GenBank flat file does not list a gene name (gene qualifier) for the first gene (all 
+              # other genes have gene qualifiers and so their corresponding CDS features do not have 
+              # 'gene' qualifiers.
+              if($save_str eq "-") { $save_str = ""; } 
+              push(@{$tbl_HHAR->{$accn}{$column}}, $save_str);
+            }
+          } 
+        }
+      }
+    }
+  }
+  
+  return;
+}
+#################################################################
+# Subroutine: helper_breakdown_fac()
+# Incept      EPN, Thu Feb 11 14:14:23 2016
+#
+# Purpose:    Breakdown a 'fac' string into it's parts and 
+#             create a string in NCBI coordinate format from it.
+#             A 'fac' string has accessions and coordinates in it.
+#           
+#             A 'helper' function called by 'getSingleFeatureTableInfo()'.
+#
+# Arguments:
+#   $fac:     full accession and coordinates, concatenated together
+#             can be multiple coordinates e.g. "NC_000001:100:300:350:400"
+#             means two segments: 100..300 and 350..400.
+#   $fac_sep: character in between each token in $fac (":" in above example)
+#   $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:
+#   Four values:
+#   $faccn:       full accession
+#   $ncbi_coords: NCBI format for coordinates
+#   $sort_coord:  minimum coordinate of all segments, possibly useful for ordering multiple features
+#   $strand:      '+' if all segments are on fwd strand
+#                 '-' if all segments are on neg strand
+#                 '?' if all segments are 1 nucleotide (strand is consequently uncertain)
+#                 '!' if >= 1 segment on two or more of following: fwd strand, rev strand, uncertain
+#
+# Dies:       if there's not an odd number of tokens
+#################################################################
+sub helper_breakdown_fac {
+  my $sub_name = "helper_breakdown_fac()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($fac, $fac_sep, $FH_HR) = @_;
+
+  my @elA = split($fac_sep, $fac);
+  my $nel = scalar(@elA);
+  if($nel % 2 == 0) { DNAORG_FAIL("ERROR in $sub_name, unexpectedly there's an even number of tokens: fac: $fac", 1, $FH_HR); }
+
+  my $faccn = $elA[0];
+  my ($istart, $istop) = (1, 2);
+  my $start  = undef;   # start position
+  my $stop   = undef;   # stop position
+  my $is_rev = 0; # true if current segment is on reverse strand
+  my $nfwd   = 0; # number of segments that are on forward strand
+  my $nrev   = 0; # number of segments that are on reverse strand
+  my $nunc   = 0; # number of segments for which strand is uncertain (start == stop)
+  my $some_revcomp  = undef;
+  my @ncbi_coords_A = (); # [0..$nsegments-1] strings to concatenate to make ncbi coords
+  my @is_rev_A      = (); # [0..$nsegments-1] '1' if current segment is on reverse strand
+  my $nsegments     = 0;
+  my $have_carrot   = 0; # set to '1' if $start has a '^' at the end, e.g. 804^ 805
+  my $sort_coord = undef; # start position of first segment
+  my $min_coord  = undef;
+  while($istop <= $nel) { 
+    my ($orig_start, $orig_stop) = ($elA[$istart], $elA[$istop]);
+    $start = $orig_start;
+    $stop  = $orig_stop;
+    if($start =~ s/\^$//) { 
+      $have_carrot = 1;
+    }
+    $start =~ s/^<//;
+    $start =~ s/^>//;
+    $stop  =~ s/^<//;
+    $stop  =~ s/^>//;
+    $min_coord = ($start < $stop) ? $start : $stop;
+    if((! defined $sort_coord) || ($min_coord < $sort_coord)) { $sort_coord = $min_coord; }
+
+    if($have_carrot) { 
+      if(abs($start-$stop) > 1) { DNAORG_FAIL("ERROR found carrot but range is not exactly 1 nt: fac: $fac", 1, $FH_HR); }
+    }
+
+    if($start == $stop) { # special case, we can't tell if we're in reverse complement or not
+      $nunc++;
+      push(@is_rev_A, 0);
+    }
+    elsif($start > $stop) {
+      $nrev++;
+      $is_rev = 1;
+      push(@is_rev_A, 1);
+    }
+    else { # $start < $stop, not reverse complement
+      $nfwd++;
+      push(@is_rev_A, 0);
+    }
+    if($have_carrot) { 
+      push(@ncbi_coords_A, $orig_start . $orig_stop);
+    }
+    else { 
+      if($is_rev) { push(@ncbi_coords_A, $orig_stop .  ".." . $orig_start); }
+      else        { push(@ncbi_coords_A, $orig_start . ".." . $orig_stop); }
+    }
+    $nsegments++;
+    $istart += 2; 
+    $istop  += 2;
+  }
+  if($have_carrot) { 
+    if($nsegments > 1) { DNAORG_FAIL("ERROR found carrot but more than one segment: fac: $fac", 1, $FH_HR); }
+  }
+
+  my $ncbi_coords = "";
+  if($nfwd > 0 && $nrev > 0) { 
+    # special case, we need to put 'complement(' ')' around each rev segment separately
+    # e.g: join(161990..162784,complement(88222..88806),complement(86666..87448))
+    for(my $i = 0; $i < $nsegments; $i++) { 
+      if($i > 0) { $ncbi_coords .= ","; }
+      if($is_rev_A[$i]) { 
+        # first, deal with a non-obvious situation, where in the feature table
+        # '>' and '<' characters indicating incompleteness are inverted relative
+        # to how they are in the actual annotation. 
+        # NC_007030.2 complement(4370..>4576)
+        # is in the feature table as: <4576	4370	CDS
+        $ncbi_coords_A[$i] =~ s/\</\!/;
+        $ncbi_coords_A[$i] =~ s/\>/\</;
+        $ncbi_coords_A[$i] =~ s/\!/\>/;
+        $ncbi_coords .= "complement(" . $ncbi_coords_A[$i] . ")" 
+      }
+      else { 
+        $ncbi_coords .= $ncbi_coords_A[$i]; 
+      }
+    }
+  }
+  else { # normal case, all exons/segments are on the same strand
+    # if we're on the reverse strand, we need to reverse the order of the 
+    # segments, because the order of reverse strand segments in a feature table is 
+    # opposite what it is in Entrez, and our other scripts use Entrez
+    # format, so we enforce that convention here.
+    if($nrev > 0) { 
+      for(my $i = $nsegments-1; $i >= 0; $i--) { 
+        if($i < ($nsegments-1)) { $ncbi_coords .= ","; }
+        $ncbi_coords .= $ncbi_coords_A[$i];
+      }
+    }
+    else { # positive strand
+      for(my $i = 0; $i < $nsegments; $i++) { 
+        if($i > 0) { $ncbi_coords .= ","; }
+        $ncbi_coords .= $ncbi_coords_A[$i];
+      }
+    }
+  }
+  if($nsegments > 1) { # more than one segment
+    $ncbi_coords = "join(" . $ncbi_coords . ")";
+  }
+  # now add complement for cases where are segments/segments are on reverse strand
+  # impt to do this after the join, so we get complement(join()) instead of
+  # join(complement())
+  if($nfwd == 0 && $nrev > 0) { # all segments are on reverse strand
+    # first, deal with a non-obvious situation, where in the feature table
+    # '>' and '<' characters indicating incompleteness are inverted relative
+    # to how they are in the actual annotation. 
+    # NC_007030.2 complement(4370..>4576)
+    # is in the feature table as: <4576	4370	CDS
+    $ncbi_coords =~ s/\</\!/g;
+    $ncbi_coords =~ s/\>/\</g;
+    $ncbi_coords =~ s/\!/\>/g;
+    # now add the 'complement()'
+    $ncbi_coords = "complement(" . $ncbi_coords . ")";
+  }
+
+  # printf("in $sub_name input: $fac, returning $faccn $coords ncbi_coords:$ncbi_coords\n");
+
+  # determine strand
+  my $ret_strand = undef;
+  if   ($nfwd == $nsegments)     { $ret_strand = "+"; }
+  elsif($nrev == $nsegments)     { $ret_strand = "-"; }
+  elsif($nunc  > 0)              { $ret_strand = "?"; }
+  elsif($nfwd  > 0 && $nrev > 0) { $ret_strand = "!"; }
+  else                           { DNAORG_FAIL("ERROR in $sub_name, unable to determine strand for fac: $fac", 1, $FH_HR); }
+
+  return($faccn, $ncbi_coords, $sort_coord, $ret_strand);
+}
+#################################################################
