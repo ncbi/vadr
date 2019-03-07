@@ -1,0 +1,419 @@
+>Feature NC_039477-sample1
+5	5236	gene
+			gene	ORF1
+5	5236	misc_feature
+			note	similar to nonstructural polyprotein; contains premature stop codon
+5	1038	misc_feature
+			note	similar to p48; contains premature stop codon
+1039	2136	misc_feature
+			note	similar to NTPase; contains premature stop codon
+2137	2700	misc_feature
+			note	similar to p22; contains premature stop codon
+2701	3114	misc_feature
+			note	similar to VPg; contains premature stop codon
+3115	3717	misc_feature
+			note	similar to Pro; contains premature stop codon
+3718	5233	misc_feature
+			note	similar to RdRp; contains premature stop codon
+5211	6906	gene
+			gene	ORF2
+5211	6906	misc_feature
+			note	similar to VP1; contains premature stop codon
+6906	7718	gene
+			gene	ORF3
+6906	7718	misc_feature
+			note	similar to VP2; no start codon
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (p48) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5..1038 revised to 5..67 (stop shifted 971 nt)]
+ERROR: mat_peptide Has Stop Codon: (NTPase) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1039..2136 revised to 1039..1077 (stop shifted 1059 nt)]
+ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2137..2700 revised to 2137..2214 (stop shifted 486 nt)]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2701..3114 revised to 2701..2769 (stop shifted 345 nt)]
+ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3115..3717 revised to 3115..3156 (stop shifted 561 nt)]
+ERROR: mat_peptide Has Stop Codon: (RdRp) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3718..5233 revised to 3718..3789 (stop shifted 1444 nt)]
+ERROR: CDS Has Stop Codon: (nonstructural polyprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5..5236 revised to 5..67 (stop shifted 5169 nt)]
+ERROR: CDS Has Stop Codon: (VP1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5211..6906 revised to 5211..5222 (stop shifted 1684 nt)]
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 184 > 5 (strand:+ CM:5211 blastx:5395)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [VP1: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:5222 blastx:6606)]
+ERROR: Insertion of Nucleotides: (VP1) blastx protein validation failure, too large of an insert [VP1: longest blastx predicted insert of length 48 > 27]
+ERROR: Deletion of Nucleotides: (VP1) blastx protein validation failure, too large of a deletion [VP1: longest blastx predicted delete of length 51 > 27]
+ERROR: CDS Has Stop Codon: (VP1) blastx protein validation failure, stop codon in protein alignment [VP1: blastx alignment includes stop codon (5680;5686;5692;6001;6037;6094;6415;6511;6532)]
+ERROR: Mutation at Start: (VP2) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP2: start positions differ by 17 > 5 (strand:+ CM:6906 blastx:6923)]
+ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP2: stop positions differ by 85 > 8 (strand:+ CM:7718 blastx:7633, valid stop codon in CM prediction)]
+ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon in protein alignment [VP2: blastx alignment includes stop codon (7001;7016;7088;7151;7160;7226;7463;7487;7505;7607)]
+>Feature NC_039477-sample2
+5	5241	gene
+			gene	ORF1
+5	5241	misc_feature
+			note	similar to nonstructural polyprotein; length is not a multiple of 3
+			note	similar to nonstructural polyprotein; no start codon
+5	1010	misc_feature
+			note	similar to p48; contains premature stop codon
+1012	2097	misc_feature
+			note	similar to NTPase; contains premature stop codon
+2098	2656	misc_feature
+			note	similar to p22; contains premature stop codon
+2657	3089	misc_feature
+			note	similar to VPg; contains premature stop codon
+3090	3661	misc_feature
+			note	similar to Pro; contains premature stop codon
+3662	5238	misc_feature
+			note	similar to RdRp; contains premature stop codon
+5222	6884	gene
+			gene	ORF2
+5222	6884	misc_feature
+			note	similar to VP1; contains premature stop codon
+6884	7696	gene
+			gene	ORF3
+6884	7696	misc_feature
+			note	similar to VP2; contains premature stop codon
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (p48) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5..1010 revised to 5..67 (stop shifted 943 nt)]
+ERROR: mat_peptide Has Stop Codon: (NTPase) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1012..2097 revised to 1012..1020 (stop shifted 1077 nt)]
+ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2098..2656 revised to 2098..2190 (stop shifted 466 nt)]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2657..3089 revised to 2657..2737 (stop shifted 352 nt)]
+ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3090..3661 revised to 3090..3143 (stop shifted 518 nt)]
+ERROR: mat_peptide Has Stop Codon: (RdRp) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3662..5238 revised to 3662..3754 (stop shifted 1484 nt)]
+ERROR: Unexpected Length: (nonstructural polyprotein) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [5237]
+ERROR: Mutation at Start: (nonstructural polyprotein) expected start codon could not be identified
+ERROR: CDS Has Stop Codon: (VP1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5222..6884 revised to 5222..5233 (stop shifted 1651 nt)]
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 324 > 5 (strand:+ CM:5222 blastx:5546)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [VP1: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:5233 blastx:6145)]
+ERROR: CDS Has Stop Codon: (VP1) blastx protein validation failure, stop codon in protein alignment [VP1: blastx alignment includes stop codon (5744;5777;5789;5807;5822;5855;5924)]
+ERROR: CDS Has Stop Codon: (VP2) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6884..7696 revised to 6884..6955 (stop shifted 741 nt)]
+ERROR: Indefinite Annotation at Start: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP2: start positions differ by 279 > 5 (strand:+ CM:6884 blastx:7163)]
+ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [VP2: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:6955 blastx:7537)]
+ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon in protein alignment [VP2: blastx alignment includes stop codon (7496)]
+>Feature NC_039477-sample3
+5	5250	gene
+			gene	ORF1
+5	5250	misc_feature
+			note	similar to nonstructural polyprotein; length is not a multiple of 3
+			note	similar to nonstructural polyprotein; no start codon
+5	1020	misc_feature
+			note	similar to p48; contains premature stop codon
+1021	2111	misc_feature
+			note	similar to NTPase; contains premature stop codon
+2112	2637	misc_feature
+			note	similar to p22; contains premature stop codon
+2638	3046	misc_feature
+			note	similar to VPg; contains premature stop codon
+3047	3638	misc_feature
+			note	similar to Pro; contains premature stop codon
+3639	5242	misc_feature
+			note	similar to RdRp; contains premature stop codon
+5226	6898	gene
+			gene	ORF2
+5226	6898	misc_feature
+			note	similar to VP1; contains premature stop codon
+6898	7723	gene
+			gene	ORF3
+6898	7723	misc_feature
+			note	similar to VP2; contains premature stop codon
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (p48) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5..1020 revised to 5..76 (stop shifted 944 nt)]
+ERROR: mat_peptide Has Stop Codon: (NTPase) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1021..2111 revised to 1021..1029 (stop shifted 1082 nt)]
+ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2112..2637 revised to 2112..2144 (stop shifted 493 nt)]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2638..3046 revised to 2638..2730 (stop shifted 316 nt)]
+ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3047..3638 revised to 3047..3064 (stop shifted 574 nt)]
+ERROR: mat_peptide Has Stop Codon: (RdRp) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3639..5242 revised to 3639..3653 (stop shifted 1589 nt)]
+ERROR: Unexpected Length: (nonstructural polyprotein) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [5246]
+ERROR: Mutation at Start: (nonstructural polyprotein) expected start codon could not be identified
+ERROR: CDS Has Stop Codon: (VP1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5226..6898 revised to 5226..5240 (stop shifted 1658 nt)]
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 23 > 5 (strand:+ CM:5226 blastx:5249)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [VP1: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:5240 blastx:6892)]
+ERROR: Insertion of Nucleotides: (VP1) blastx protein validation failure, too large of an insert [VP1: longest blastx predicted insert of length 60 > 27]
+ERROR: Deletion of Nucleotides: (VP1) blastx protein validation failure, too large of a deletion [VP1: longest blastx predicted delete of length 33 > 27]
+ERROR: CDS Has Stop Codon: (VP1) blastx protein validation failure, stop codon in protein alignment [VP1: blastx alignment includes stop codon (5477;5486;5585;5768;5816;5924;6095;6185;6230;6356;6398;6668;6713;6767;6782;6875)]
+ERROR: CDS Has Stop Codon: (VP2) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6898..7723 revised to 6898..6993 (stop shifted 730 nt)]
+ERROR: Indefinite Annotation at Start: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP2: start positions differ by 228 > 5 (strand:+ CM:6898 blastx:7126)]
+ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [VP2: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:6993 blastx:7197)]
+>Feature NC_039477-sample4
+5	5174	gene
+			gene	ORF1
+5	5174	misc_feature
+			note	similar to nonstructural polyprotein; length is not a multiple of 3
+			note	similar to nonstructural polyprotein; no start codon
+5	1014	misc_feature
+			note	similar to p48; contains premature stop codon
+1015	2137	misc_feature
+			note	similar to NTPase; contains premature stop codon
+2138	2673	misc_feature
+			note	similar to p22; contains premature stop codon
+2674	3064	misc_feature
+			note	similar to VPg; contains premature stop codon
+3065	3579	misc_feature
+			note	similar to Pro; contains premature stop codon
+3580	5171	misc_feature
+			note	similar to RdRp; contains premature stop codon
+5155	6774	gene
+			gene	ORF2
+5155	6774	misc_feature
+			note	similar to VP1; no start codon
+6774	7594	gene
+			gene	ORF3
+6774	7594	misc_feature
+			note	similar to VP2; length is not a multiple of 3
+			note	similar to VP2; no start codon
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (p48) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5..1014 revised to 5..16 (stop shifted 998 nt)]
+ERROR: mat_peptide Has Stop Codon: (NTPase) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1015..2137 revised to 1015..1035 (stop shifted 1102 nt)]
+ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2138..2673 revised to 2138..2158 (stop shifted 515 nt)]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2674..3064 revised to 2674..2751 (stop shifted 313 nt)]
+ERROR: Indefinite Annotation: (VPg) alignment to reference does not extend to 5' boundary of reference or target [2 nt from 5' end]
+ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3065..3579 revised to 3065..3136 (stop shifted 443 nt)]
+ERROR: mat_peptide Has Stop Codon: (RdRp) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3580..5171 revised to 3580..3627 (stop shifted 1544 nt)]
+ERROR: Unexpected Length: (nonstructural polyprotein) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [5170]
+ERROR: Mutation at Start: (nonstructural polyprotein) expected start codon could not be identified
+ERROR: Mutation at Start: (VP1) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 53 > 5 (strand:+ CM:5155 blastx:5208)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 985 > 5 (strand:+ CM:6774 blastx:5789, no valid stop codon in CM prediction)]
+ERROR: CDS Has Stop Codon: (VP1) blastx protein validation failure, stop codon in protein alignment [VP1: blastx alignment includes stop codon (5220;5379;5418;5544;5550;5673)]
+ERROR: Unexpected Length: (VP2) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [821]
+ERROR: Mutation at Start: (VP2) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP2: start positions differ by 13 > 5 (strand:+ CM:6774 blastx:6787)]
+ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP2: stop positions differ by 511 > 5 (strand:+ CM:7594 blastx:7083, no valid stop codon in CM prediction)]
+ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon in protein alignment [VP2: blastx alignment includes stop codon (6880;6928;6931;6967)]
+>Feature NC_039477-sample5
+5	5414	gene
+			gene	ORF1
+5	5414	misc_feature
+			note	similar to nonstructural polyprotein; length is not a multiple of 3
+			note	similar to nonstructural polyprotein; no start codon
+5	1034	misc_feature
+			note	similar to p48; contains premature stop codon
+1035	2203	misc_feature
+			note	similar to NTPase; contains premature stop codon
+2204	2752	misc_feature
+			note	similar to p22; contains premature stop codon
+2753	3171	misc_feature
+			note	similar to VPg; contains premature stop codon
+3172	3724	misc_feature
+			note	similar to Pro; contains premature stop codon
+3725	5411	misc_feature
+			note	similar to RdRp; contains premature stop codon
+5395	7078	gene
+			gene	ORF2
+5395	7078	misc_feature
+			note	similar to VP1; contains premature stop codon
+7078	7938	gene
+			gene	ORF3
+7078	7938	misc_feature
+			note	similar to VP2; no start codon
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (p48) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5..1034 revised to 5..10 (stop shifted 1024 nt)]
+ERROR: mat_peptide Has Stop Codon: (NTPase) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1035..2203 revised to 1035..1112 (stop shifted 1091 nt)]
+ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2204..2752 revised to 2204..2278 (stop shifted 474 nt)]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2753..3171 revised to 2753..2857 (stop shifted 314 nt)]
+ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3172..3724 revised to 3172..3207 (stop shifted 517 nt)]
+ERROR: mat_peptide Has Stop Codon: (RdRp) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3725..5411 revised to 3725..3841 (stop shifted 1570 nt)]
+ERROR: Unexpected Length: (nonstructural polyprotein) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [5410]
+ERROR: Mutation at Start: (nonstructural polyprotein) expected start codon could not be identified
+ERROR: CDS Has Stop Codon: (VP1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5395..7078 revised to 5395..5466 (stop shifted 1612 nt)]
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 760 > 5 (strand:+ CM:5395 blastx:6155)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [VP1: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:5466 blastx:7069)]
+ERROR: CDS Has Stop Codon: (VP1) blastx protein validation failure, stop codon in protein alignment [VP1: blastx alignment includes stop codon (6344;6494;6641;6662;6734;6836;6842;6845;6926)]
+ERROR: Mutation at Start: (VP2) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP2: start positions differ by 539 > 5 (strand:+ CM:7078 blastx:7617)]
+ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP2: stop positions differ by 166 > 5 (strand:+ CM:7938 blastx:7772, no valid stop codon in CM prediction)]
+ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon in protein alignment [VP2: blastx alignment includes stop codon (7719)]
+>Feature NC_039477-sample6
+4	5115	gene
+			gene	ORF1
+4	5115	misc_feature
+			note	similar to nonstructural polyprotein; contains premature stop codon
+4	995	misc_feature
+			note	similar to p48; contains premature stop codon
+996	2107	misc_feature
+			note	similar to NTPase; contains premature stop codon
+2108	2634	misc_feature
+			note	similar to p22; contains premature stop codon
+2635	3041	misc_feature
+			note	similar to VPg; contains premature stop codon
+3042	3563	misc_feature
+			note	similar to Pro; contains premature stop codon
+3564	5112	misc_feature
+			note	similar to RdRp; contains premature stop codon
+5095	6762	gene
+			gene	ORF2
+5095	6762	misc_feature
+			note	similar to VP1; contains premature stop codon
+6762	7604	gene
+			gene	ORF3
+6762	7604	misc_feature
+			note	similar to VP2; no start codon
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (p48) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4..995 revised to 4..57 (stop shifted 938 nt)]
+ERROR: mat_peptide Has Stop Codon: (NTPase) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 996..2107 revised to 996..1112 (stop shifted 995 nt)]
+ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2108..2634 revised to 2108..2221 (stop shifted 413 nt)]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2635..3041 revised to 2635..2661 (stop shifted 380 nt)]
+ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3042..3563 revised to 3042..3056 (stop shifted 507 nt)]
+ERROR: mat_peptide Has Stop Codon: (RdRp) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3564..5112 revised to 3564..3752 (stop shifted 1360 nt)]
+ERROR: CDS Has Stop Codon: (nonstructural polyprotein) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 4..5115 revised to 4..57 (stop shifted 5058 nt)]
+ERROR: CDS Has Stop Codon: (VP1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5095..6762 revised to 5095..5115 (stop shifted 1647 nt)]
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 10 > 5 (strand:+ CM:5095 blastx:5105)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [VP1: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:5115 blastx:5857)]
+ERROR: CDS Has Stop Codon: (VP1) blastx protein validation failure, stop codon in protein alignment [VP1: blastx alignment includes stop codon (5168;5297;5369;5423;5444;5474;5567)]
+ERROR: Mutation at Start: (VP2) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP2: start positions differ by 6 > 5 (strand:+ CM:6762 blastx:6768)]
+ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP2: stop positions differ by 6 > 5 (strand:+ CM:7604 blastx:7598, no valid stop codon in CM prediction)]
+ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon in protein alignment [VP2: blastx alignment includes stop codon (6870;7023;7152;7302;7371;7416;7500;7515)]
+>Feature NC_039477-sample7
+<1	5205	gene
+			gene	ORF1
+<1	5205	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+<1	1093	mat_peptide
+			product	p48
+1094	2225	misc_feature
+			note	similar to NTPase; contains premature stop codon
+2226	2733	misc_feature
+			note	similar to p22; contains premature stop codon
+2734	3123	misc_feature
+			note	similar to VPg; contains premature stop codon
+3124	3654	misc_feature
+			note	similar to Pro; contains premature stop codon
+3655	5202	misc_feature
+			note	similar to RdRp; contains premature stop codon
+5186	6794	gene
+			gene	ORF2
+5186	6794	misc_feature
+			note	similar to VP1; length is not a multiple of 3
+			note	similar to VP1; no start codon
+6794	7641	gene
+			gene	ORF3
+6794	7641	misc_feature
+			note	similar to VP2; contains premature stop codon
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (NTPase) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1094..2225 revised to 1094..1156 (stop shifted 1069 nt)]
+ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2226..2733 revised to 2226..2255 (stop shifted 478 nt)]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2734..3123 revised to 2734..2757 (stop shifted 366 nt)]
+ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3124..3654 revised to 3124..3141 (stop shifted 513 nt)]
+ERROR: mat_peptide Has Stop Codon: (RdRp) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3655..5202 revised to 3655..3705 (stop shifted 1497 nt)]
+ERROR: Unexpected Length: (VP1) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [1609]
+ERROR: Mutation at Start: (VP1) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 194 > 5 (strand:+ CM:5186 blastx:5380)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 1073 > 5 (strand:+ CM:6794 blastx:5721, no valid stop codon in CM prediction)]
+ERROR: CDS Has Stop Codon: (VP2) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6794..7641 revised to 6794..6913 (stop shifted 728 nt)]
+ERROR: Indefinite Annotation at Start: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP2: start positions differ by 259 > 5 (strand:+ CM:6794 blastx:7053)]
+ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [VP2: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:6913 blastx:7574)]
+ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon in protein alignment [VP2: blastx alignment includes stop codon (7335;7542)]
+>Feature NC_039477-sample8
+1885	2964	gene
+			gene	ORF1
+1885	2964	misc_feature
+			note	similar to nonstructural polyprotein
+6213	6590	gene
+			gene	ORF2
+6213	6590	misc_feature
+			note	similar to VP1
+6804	7238	gene
+			gene	ORF3
+6804	7238	misc_feature
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation sequence too distant from reference to annotate [required matrix size: 55619.58 Mb]
+ERROR: Indefinite Annotation: (nonstructural polyprotein) blastx identifies protein not identified in nucleotide-based search [nonstructural polyprotein: blastx hit from 1885 to 2964 with score 213, but no CM hit]
+ERROR: Indefinite Annotation: (VP1) blastx identifies protein not identified in nucleotide-based search [VP1: blastx hit from 6213 to 6590 with score 173, but no CM hit]
+ERROR: Indefinite Annotation: (VP2) blastx identifies protein not identified in nucleotide-based search [VP2: blastx hit from 6804 to 7238 with score 100, but no CM hit]
+>Feature NC_039477-sample9
+5	5132	gene
+			gene	ORF1
+5	5132	misc_feature
+			note	similar to nonstructural polyprotein; length is not a multiple of 3
+			note	similar to nonstructural polyprotein; no start codon
+5	1039	misc_feature
+			note	similar to p48; contains premature stop codon
+1040	2126	misc_feature
+			note	similar to NTPase; contains premature stop codon
+2127	2650	misc_feature
+			note	similar to p22; contains premature stop codon
+2651	3056	misc_feature
+			note	similar to VPg; contains premature stop codon
+3060	3576	misc_feature
+			note	similar to Pro; contains premature stop codon
+3577	5129	misc_feature
+			note	similar to RdRp; contains premature stop codon
+5114	6774	gene
+			gene	ORF2
+5114	6774	misc_feature
+			note	similar to VP1; contains premature stop codon
+6774	7623	gene
+			gene	ORF3
+6774	7623	misc_feature
+			note	similar to VP2; contains premature stop codon
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (p48) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5..1039 revised to 5..97 (stop shifted 942 nt)]
+ERROR: mat_peptide Has Stop Codon: (NTPase) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1040..2126 revised to 1040..1078 (stop shifted 1048 nt)]
+ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2127..2650 revised to 2127..2243 (stop shifted 407 nt)]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2651..3056 revised to 2651..2737 (stop shifted 319 nt)]
+ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3060..3576 revised to 3060..3164 (stop shifted 412 nt)]
+ERROR: mat_peptide Has Stop Codon: (RdRp) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3577..5129 revised to 3577..3582 (stop shifted 1547 nt)]
+ERROR: Unexpected Length: (nonstructural polyprotein) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [5128]
+ERROR: Mutation at Start: (nonstructural polyprotein) expected start codon could not be identified
+ERROR: CDS Has Stop Codon: (VP1) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5114..6774 revised to 5114..5218 (stop shifted 1556 nt)]
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 904 > 5 (strand:+ CM:5114 blastx:6018)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [VP1: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:5218 blastx:6203)]
+ERROR: Insertion of Nucleotides: (VP1) blastx protein validation failure, too large of an insert [VP1: longest blastx predicted insert of length 33 > 27]
+ERROR: CDS Has Stop Codon: (VP1) blastx protein validation failure, stop codon in protein alignment [VP1: blastx alignment includes stop codon (6033)]
+ERROR: CDS Has Stop Codon: (VP2) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 6774..7623 revised to 6774..6836 (stop shifted 787 nt)]
+ERROR: Indefinite Annotation at Start: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP2: start positions differ by 11 > 5 (strand:+ CM:6774 blastx:6785)]
+ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment extends past nucleotide alignment at 3' end [VP2: blastx alignment extends outside CM alignment on 3' end (strand:+ CM:6836 blastx:7333)]
+ERROR: Insertion of Nucleotides: (VP2) blastx protein validation failure, too large of an insert [VP2: longest blastx predicted insert of length 66 > 27]
+ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon in protein alignment [VP2: blastx alignment includes stop codon (6914;6929;7055;7070;7073;7109;7229;7277;7316)]
+>Feature NC_039477-sample10
+5	5189	gene
+			gene	ORF1
+5	5189	misc_feature
+			note	similar to nonstructural polyprotein; length is not a multiple of 3
+			note	similar to nonstructural polyprotein; no start codon
+5	1087	misc_feature
+			note	similar to p48; contains premature stop codon
+1088	2214	misc_feature
+			note	similar to NTPase; contains premature stop codon
+2215	2758	misc_feature
+			note	similar to p22; contains premature stop codon
+2759	3120	misc_feature
+			note	similar to VPg; contains premature stop codon
+3121	3681	misc_feature
+			note	similar to Pro; contains premature stop codon
+3682	5187	misc_feature
+			note	similar to RdRp; contains premature stop codon
+5171	6885	gene
+			gene	ORF2
+5171	6885	misc_feature
+			note	similar to VP1; length is not a multiple of 3
+			note	similar to VP1; no start codon
+6885	7664	gene
+			gene	ORF3
+6885	7664	misc_feature
+			note	similar to VP2; no start codon
+
+Additional note(s) to submitter:
+ERROR: mat_peptide Has Stop Codon: (p48) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 5..1087 revised to 5..46 (stop shifted 1041 nt)]
+ERROR: mat_peptide Has Stop Codon: (NTPase) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 1088..2214 revised to 1088..1126 (stop shifted 1088 nt)]
+ERROR: mat_peptide Has Stop Codon: (p22) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2215..2758 revised to 2215..2286 (stop shifted 472 nt)]
+ERROR: mat_peptide Has Stop Codon: (VPg) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 2759..3120 revised to 2759..2791 (stop shifted 329 nt)]
+ERROR: mat_peptide Has Stop Codon: (Pro) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3121..3681 revised to 3121..3123 (stop shifted 558 nt)]
+ERROR: mat_peptide Has Stop Codon: (RdRp) contains unexpected stop codon; in-frame stop codon exists 5' of stop position predicted by homology to reference [homology search predicted 3682..5187 revised to 3682..3840 (stop shifted 1347 nt)]
+ERROR: Unexpected Length: (nonstructural polyprotein) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [5185]
+ERROR: Mutation at Start: (nonstructural polyprotein) expected start codon could not be identified
+ERROR: Unexpected Length: (VP1) length is not a multiple of 3; length of nucleotide feature is not a multiple of 3 [1715]
+ERROR: Mutation at Start: (VP1) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP1: start positions differ by 1539 > 5 (strand:+ CM:5171 blastx:6710)]
+ERROR: Indefinite Annotation at Stop: (VP1) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP1: stop positions differ by 17 > 5 (strand:+ CM:6885 blastx:6868, no valid stop codon in CM prediction)]
+ERROR: CDS Has Stop Codon: (VP1) blastx protein validation failure, stop codon in protein alignment [VP1: blastx alignment includes stop codon (6755;6842)]
+ERROR: Mutation at Start: (VP2) expected start codon could not be identified
+ERROR: Indefinite Annotation at Start: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 5' endpoint [VP2: start positions differ by 491 > 5 (strand:+ CM:6885 blastx:7376)]
+ERROR: Indefinite Annotation at Stop: (VP2) blastx protein validation failure, protein alignment does not extend close enough to nucleotide alignment 3' endpoint [VP2: stop positions differ by 10 > 8 (strand:+ CM:7664 blastx:7654, valid stop codon in CM prediction)]
+ERROR: CDS Has Stop Codon: (VP2) blastx protein validation failure, stop codon in protein alignment [VP2: blastx alignment includes stop codon (7499;7598)]

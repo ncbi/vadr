@@ -45,6 +45,8 @@ echo "------------------------------------------------"
 # dnaorg-build-directories, use git here so user can update it with 'git pull'
 echo "Cloning updatable github repo with virus models ... "
 git clone https://github.com/nawrockie/dnaorg-build-directories.git
+gunzip dnaorg-build-directories/flaviviridae-classify-build/flaviviridae-classify-build.dnaorg_classify.hmm.gz
+gunzip dnaorg-build-directories/flaviviridae-classify-build/flaviviridae-classify-build.dnaorg_classify.hmm.h3p.gz
 echo "------------------------------------------------"
 
 ########## BUILD BIO-EASEL ###############

@@ -138,19 +138,19 @@ else {
 }
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
   $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
+  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
 # changed opt_Get to 1 (be verbose)
-runCommand($cmd, 1, undef);
+runCommand($cmd, 1, 0, undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -463,7 +463,7 @@ sub mat_pept_wrapperGetInfoUsingEdirect {
         $cmd = "esearch -db nuccore -query $ref_accn";
        	$cmd .= " | efetch -format gpc | xtract -insd mat_peptide INSDFeature_location product > $mp_file";
         # right now I have second arg ($be_verbose) set to 1, meaning that the name of the cmd will be printed to stdout (change to 0 to not print)
-	runCommand($cmd, 1, $FH_HR);
+	runCommand($cmd, 1, 0, $FH_HR);
 
 	# Checks to make sure edirect does have matpept info
 	if(! -s  $mp_file) {
@@ -480,7 +480,7 @@ sub mat_pept_wrapperGetInfoUsingEdirect {
         $cmd = "esearch -db nuccore -query $ref_accn";
 	$cmd .= " | efetch -format ft > $ft_file";
         # hard-coded one makes the program print out the name of the command as it is run 
-	runCommand($cmd, 1, $FH_HR);
+	runCommand($cmd, 1, 0, $FH_HR);
 	addClosedFileToOutputInfo($ofile_info_HHR, "ft", $ft_file, 1, "Feature table obtained via edirect");
     
 

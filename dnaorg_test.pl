@@ -127,7 +127,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 if(-d $dir_out) { 
   $cmd = "rm -rf $dir_out";
   if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
-    runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); 
+    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); 
   }
   else { # dirout exists but -f not used
     die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; 
@@ -136,7 +136,7 @@ if(-d $dir_out) {
 
 if(! -d $dir_out) {
   $cmd = "mkdir $dir_out";
-  runCommand($cmd, 0, undef);
+  runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
 }
 
 #############################################
@@ -204,14 +204,14 @@ for(my $i = 1; $i <= $ncmd; $i++) {
   else { 
     # -s not used, run command
     $start_secs = outputProgressPrior(sprintf("Running command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
-    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
+    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
     outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
 
   my $nout = scalar(@{$outfile_AR});
   for(my $j = 0; $j < $nout; $j++) { 
     my $diff_file = $out_root . "." . $i . "." . ($j+1) . ".diff";
-    my $pass = diff_two_files($outfile_AR->[$j], $expfile_AR->[$j], $diff_file, $ofile_info_HH{"FH"});
+    my $pass = diff_two_files($outfile_AR->[$j], $expfile_AR->[$j], $diff_file, \%opt_HH, $ofile_info_HH{"FH"});
     if($pass) { $npass++; }
     else      { $nfail++; }
   }
@@ -220,7 +220,7 @@ for(my $i = 1; $i <= $ncmd; $i++) {
     my $nrmdir = (defined $rmdir_AR) ? scalar(@{$rmdir_AR}) : 0;
     for(my $k = 0; $k < $nrmdir; $k++) { 
       outputString($log_FH, 1, sprintf("#\t%-60s ... ", "removing directory $rmdir_AR->[$k]"));
-      runCommand("rm -rf $rmdir_AR->[$k]", opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"}); 
+      runCommand("rm -rf $rmdir_AR->[$k]", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"}); 
       outputString($log_FH, 1, "done\n");
     }
   }
@@ -401,6 +401,7 @@ sub parse_test_file {
 #   $out_file:    name of output file
 #   $exp_file:    name of expected file
 #   $diff_file:   output file for diff command
+#   $opt_HHR:     REF to 2D hash of option values, see top of epn-options.pm for description
 #   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    '1' if $outfile is identical to $expfile as determined by diff
@@ -409,11 +410,11 @@ sub parse_test_file {
 #
 #################################################################
 sub diff_two_files { 
-  my $sub_name = "diff_files";
-  my $nargs_expected = 4;
+  my $sub_name = "diff_two_files";
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_file, $exp_file, $diff_file, $FH_HR) = @_;
+  my ($out_file, $exp_file, $diff_file, $opt_HHR, $FH_HR) = @_;
 
   my $out_file_exists   = (-e $out_file) ? 1 : 0;
   my $exp_file_exists   = (-e $exp_file) ? 1 : 0;
@@ -430,16 +431,13 @@ sub diff_two_files {
   outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-100s ... ", $out_file));
 
   if($out_file_exists) { 
-    my $cmd = "diff -U 0 $out_file $exp_file > $diff_file";
-    # don't use runCommand() because diff 'fails' if files are not identical
-    outputString($FH_HR->{"cmd"}, 0, "$cmd\n");
-    system($cmd);
+    runCommand("diff -U 0 $out_file $exp_file > $diff_file", opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1: don't die if command fails
     if(-s $diff_file) { 
       # copy the two files here:
       my $copy_of_out_file = $diff_file . ".out";
       my $copy_of_exp_file = $diff_file . ".exp";
-      runCommand("cp $out_file $copy_of_out_file", 0, $FH_HR);
-      runCommand("cp $exp_file $copy_of_exp_file", 0, $FH_HR);
+      runCommand("cp $out_file $copy_of_out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+      runCommand("cp $exp_file $copy_of_exp_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
       # analyze the diff file and print out how many lines 
       if($out_file =~ m/\.sqtable/ && $exp_file =~ m/\.sqtable/) { 
         if($out_file_nonempty && $exp_file_nonempty) { 
