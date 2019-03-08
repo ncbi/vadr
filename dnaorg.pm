@@ -61,7 +61,7 @@
 #                  can be printed to file <f> by dnaorg_build.pl or dnaorg_annotate.pl with the
 #                  --ftrinfo <f> command line option.
 #                   
-# - $mdl_info_HAR: similar to ${ftr,seq,err}_info_HAR, except contains information pertaining 
+# - $seg_info_HAR: similar to ${ftr,seq,err}_info_HAR, except contains information pertaining 
 #                  to each model, >= 1 of which will model a single feature (1 model for single
 #                  exon CDS, 2 models for dual exon CDS, etc.). See 
 #                  validateModelInfoHashIsComplete() for a list and explanation of the keys.
@@ -695,249 +695,6 @@ sub getReferenceFeatureInfo {
   return;
 }
 
-#################################################################
-# Subroutine: fetchReferenceFeatureSequences()
-# Incept:     EPN, Thu Feb 11 14:35:31 2016
-#
-# Synopsis: Fetch the reference sequences that models will be built
-#           from and populate data structures with information on
-#           features and models.
-#
-#           As a special case, if --infasta enabled, we don't actually
-#           fetch any of the reference sequences, but we do populate
-#           the data structures with information on the features
-#           and models.
-#
-#           The following values are filled in the %{$mdl_info_HAR}:
-#                "checksum":      checksum of the 'alignment' (single sequence) file the model was built from
-#                "cmname":        name of the model, used in infernal output 
-#                "length":        length, in nucleotides, of the model
-#                "ref_start":     start position of modelled region in the reference genome
-#                "ref_stop":      stop position of modelled region in the reference genome
-#                "ref_strand":    strand of modelled region in the reference genome
-#                "filename_root": 'root' string for output file names related to this model: 
-#                "out_tiny":      output value: very short name for this model (e.g. "CDS#4.2")
-#                "map_ftr":       the feature index (array index in ftr_info_HAR) this model models
-#                "is_final":      '1' if this model is the final model (e.g. final segment/exon) for the feature it models ("map_ftr")
-#                "is_first":      '1' if this model is the first model (e.g. final segment/exon) for the feature it models ("map_ftr")
-#                "map_segment":   the segment index this model models (1.."map_nsegment" value)
-#                "map_nsegment":  the number of segments the feature this model models has 
-#                "out_idx":       output value: feature index and segment index this model (e.g. "4.2")
-#
-#           The following values are filled in the %{$ftr_info_HAR}:
-#                "final_mdl":   index (in arrays of %mdl_info_HA) of final model for this feature
-#                "first_mdl":   index (in arrays of %mdl_info_HA) of first model for this feature
-#                "nmodels":     number of models for this feature (e.g. number of segments) for this feature, 
-#                "out_short":   output value: short name for this feature (e.g. "CDS #4 [1 exon; +]")
-#                "out_tiny":    output value: very short name for this feature (e.g. "CDS#4")
-#
-# Arguments:
-#  $execs_HR:          reference to hash with executables, the key "esl-reformat"
-#                      must be defined and the value must be a valid path to an 
-#                      esl-reformat executable, PRE-FILLED
-#  $sqfile:            Bio::Easel::SqFile object, the sequence file we'll fetch from, already opened by caller
-#  $ref_seq_accn:      sequence accession of reference
-#  $ref_totlen:        length of reference 
-#  $out_root:          root of output file names
-#  $build_root:        root of file names created by dnaorg_build.pl
-#  $mdl_info_HAR:      ref to hash of arrays with information on the models, FILLED HERE
-#  $ftr_info_HAR:      ref to hash of arrays with information on the features, ADDED TO HERE
-#  $stk_file:          name of output file we will write the stockholm single sequence 
-#                      'alignment' to
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:             REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void; fills @{$values_HHAR}
-#
-# Dies:       if $ftr_info_HAR is not valid upon entering
-#################################################################
-sub fetchReferenceFeatureSequences {
-  my $sub_name = "fetchReferenceFeatureSequences()";
-  my $nargs_expected = 11;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($execs_HR, $sqfile, $ref_seq_accn, $ref_totlen, $out_root, $build_root, $mdl_info_HAR, $ftr_info_HAR, $stk_file, $opt_HHR, $FH_HR) = @_;
-
-  # contract check
-
-  # ftr_info_HAR should have array data for keys "ref_coords", "ref_strand"
-  my @reqd_ftr_info_A  = ("ref_coords", "ref_strand", "annot_type");
-  my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
-  my $nftr_with_models = getNumFeaturesAnnotatedByModels($ftr_info_HAR, $FH_HR);
-
-  # determine if we read the sequences from a provided fasta file
-  # if this is true, we won't fetch the reference sequences
-  my $do_infasta   = (opt_Exists("--infasta",   $opt_HHR) && opt_Get("--infasta",   $opt_HHR)) ? 1 : 0;
-
-  my $do_keep     = opt_Get("--keep", $opt_HHR); # should we leave intermediates files on disk, instead of removing them?
-  my $do_circular = 0; # placeholder for possibly circular genomes in the future, always FALSE for now
-  my $esl_reformat = $execs_HR->{"esl-reformat"};
-
-  my $cur_out_root;        # output root plus the name of a current file 
-  my $cur_out_name_root;   # same as $cur_out_root minus the directory path
-  my $out_dir_tail = removeScriptNameFromString(removeDirPath($out_root)); # remove the directory path and any 'script-specific name', e.g. 'dnaorg_build'
-
-  my $cur_build_root;      # build root plus the name of a current file 
-  my $cur_build_name_root; # same as $cur_build_root minus the directory path
-  my $build_dir_tail = removeScriptNameFromString(removeDirPath($build_root)); # remove the directory path and any 'script-specific name', e.g. 'dnaorg_build'
-  my $fetch_input;
-  my $fetch_output;
-  my $nmdl = 0;               # number of HMMs (and alignments used to build those HMMs)
-  my @mdl_A = ();             # [0..$nmdl-1]: array of model names, also name of stockholm alignments used to build those models
-  my %mdllen_H          = (); # key: model name from @mdl_A, value is model length
-  my @ref_nsegments_A   = (); # [0..$c..$ref_nmft-1]: number of segments in CDS or mat_peptide $c+1
-  my $ref_tot_nsegments = 0;  # total number of segments in all CDS or mat_peptides
-  my @indi_ref_name_A   = (); # [0..$nmdl-1]: name of individual stockholm alignments and models
-  my @indi_cksum_stk_A  = (); # [0..$nmdl-1]: checksum's of each named individual stockholm alignment
-
-  my @files2rm_A = ();  # array of file names to remove at end of this function (remains empty if $do_keep)
-
-  my $cksum  = -1;
-  my $mdllen = undef;
-  my $model_name = removeScriptNameFromString(removeDirPath($build_root)); 
-
-  if(! $do_infasta) { 
-    # fetch the sequence and convert it to stockholm
-    my $fa_file = $out_root . ".ref.fa";
-    if($do_circular) { 
-      # placeholder for circulare genomes, in that case, we build a model of *duplicated* full sequence
-      DNAORG_FAIL("ERROR in $sub_name, do_circular is TRUE", 1, $FH_HR);
-      my $fa_string = $sqfile->fetch_seq_to_fasta_string($ref_seq_accn, -1);
-      my @lines_A = split("\n", $fa_string);
-      if(scalar(@lines_A) != 2) { 
-        DNAORG_FAIL("ERROR in $sub_name, error fetching $ref_seq_accn into a fasta string", 1, $FH_HR);
-      }
-      open(FA, ">", $fa_file) || fileOpenFailure($fa_file, $sub_name, $!, "writing", $FH_HR);
-      print FA $lines_A[0] . "\n"; # fasta header line
-      print FA $lines_A[1] . "\n"; # fasta sequence line
-      print FA $lines_A[1] . "\n"; # fasta sequence line again (to duplicate)
-      close(FA);
-    }
-    else { 
-      # ! $do_circular, normal case
-      my @fetch_A = ($ref_seq_accn);
-      $sqfile->fetch_seqs_given_names(\@fetch_A, -1, $fa_file);
-    }
-    my $tmp_stk_file = $stk_file . ".tmp";
-    my $cmd = "$esl_reformat --informat afa stockholm $fa_file > $tmp_stk_file";
-    runCommand($cmd, 0, 0, $FH_HR);
-    if(! $do_keep) { push(@files2rm_A, $tmp_stk_file); }
-    
-    # annotate the stockholm file with a blank SS and with a name
-    my (undef, $cksum) = addNameAndBlankSsToStockholmAlignment($model_name, 1, $tmp_stk_file, $stk_file, $FH_HR); # 1: add blank SS_cons line
-  }
-
-  for(my $i = 0; $i < $nftr; $i++) { 
-    my $type_fname    = $ftr_info_HAR->{"type_fname"}[$i];
-    my $do_model      = ($ftr_info_HAR->{"annot_type"}[$i] eq "model") ? 1 : 0;
-    my $ftr_type      = $ftr_info_HAR->{"type"}[$i];
-    my $ftr_type_idx  = $ftr_info_HAR->{"type_idx"}[$i];
-    $ftr_info_HAR->{"first_mdl"}[$i]  = -1; # remains -1 if $do_model is FALSE
-    $ftr_info_HAR->{"final_mdl"}[$i]  = -1; # remains -1 if $do_model is FALSE
-    $ftr_info_HAR->{"nmodels"}[$i]    = 0;  # remains 0 if $do_model is FALSE
-    $ftr_info_HAR->{"source_idx"}[$i] = -1; # maybe changed later in determineSourcesOfDuplicateFeatures()
-
-    if($do_model) { 
-      # determine start and stop positions of all exons/segments
-      my @starts_A = ();
-      my @stops_A  = ();
-      my $nsegments   = 0;
-      startsStopsStrandsFromCoordsLength($ftr_info_HAR->{"ref_coords"}[$i], $ref_totlen, $do_circular, \@starts_A, \@stops_A, undef, \$nsegments, $FH_HR);
-      $ftr_info_HAR->{"nmodels"}[$i] = $nsegments;
-      my $strand = $ftr_info_HAR->{"ref_strand"}[$i];
-
-      # if we're on the negative strand, reverse the arrays, they'll be in the incorrect order
-      if($strand eq "-") { 
-        @starts_A = reverse @starts_A;
-        @stops_A  = reverse @stops_A;
-      }
-
-      for(my $e = 0; $e < $nsegments; $e++) { 
-        if($nsegments > 1) { 
-          $cur_out_root        = $out_root .       ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
-          $cur_out_name_root   = $out_dir_tail .   ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
-          $cur_build_root      = $build_root .     ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
-          $cur_build_name_root = $build_dir_tail . ".ref." . $type_fname . "." . $ftr_type_idx . ".segment." . ($e+1);
-        }
-        else { 
-          $cur_out_root        = $out_root .       ".ref." . $type_fname . "." . $ftr_type_idx;
-          $cur_out_name_root   = $out_dir_tail .   ".ref." . $type_fname . "." . $ftr_type_idx;
-          $cur_build_root      = $build_root .     ".ref." . $type_fname . "." . $ftr_type_idx;
-          $cur_build_name_root = $build_dir_tail . ".ref." . $type_fname . "." . $ftr_type_idx;
-        }
-    
-        # determine start and stop of the region we are going to fetch
-        my $start = $starts_A[$e];
-        my $stop  = $stops_A[$e];
-        if($strand eq "-") { # swap start and stop
-          my $tmp = $start;
-          $start = $stop;
-          $stop  = $tmp;
-        }
-
-        $mdllen = abs($stop-$start)+1;
-
-        $mdl_info_HAR->{"cmname"}[$nmdl]     = $model_name; # will be the same for all models
-        $mdl_info_HAR->{"checksum"}[$nmdl]   = $cksum;      # will be the same for all models
-        $mdl_info_HAR->{"length"}[$nmdl]     = $mdllen;
-        $mdl_info_HAR->{"ref_start"}[$nmdl]  = $start;
-        $mdl_info_HAR->{"ref_stop"}[$nmdl]   = $stop;
-        $mdl_info_HAR->{"ref_strand"}[$nmdl] = $strand;
-
-        # store information on this model's name for output purposes
-        $mdl_info_HAR->{"filename_root"}[$nmdl] = sprintf("$ftr_type.%s", 
-                                                          ($nsegments == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
-        $mdl_info_HAR->{"out_tiny"}[$nmdl]  = sprintf("%s#%s", 
-                                                      $type_fname,
-                                                      ($nsegments == 1) ? sprintf("%d", $ftr_type_idx) : sprintf("%d.%d", $ftr_type_idx, ($e+1)));
-        
-        $mdl_info_HAR->{"map_ftr"}[$nmdl]       = $i;
-        $mdl_info_HAR->{"is_first"}[$nmdl]      = ($e == 0)           ? 1 : 0;
-        $mdl_info_HAR->{"is_final"}[$nmdl]      = ($e == ($nsegments-1)) ? 1 : 0;
-        $mdl_info_HAR->{"map_segment"}[$nmdl]   = $e;
-        $mdl_info_HAR->{"map_nsegment"}[$nmdl]  = $nsegments;
-        $mdl_info_HAR->{"out_idx"}[$nmdl]       = sprintf("%d.%d", 
-                                                          $mdl_info_HAR->{"map_ftr"}[$nmdl]+1, $mdl_info_HAR->{"map_segment"}[$nmdl]+1);
-
-        if($e == 0) { 
-          $ftr_info_HAR->{"first_mdl"}[$i] = $nmdl;
-        }
-        if($e == ($nsegments-1)) { 
-          $ftr_info_HAR->{"final_mdl"}[$i] = $nmdl;
-        }
-        $nmdl++;
-      }
-    } # end of 'if($do_model)'
-                         
-    # store information on this feature's name for output purposes
-    my $short = "";
-    if($ftr_type eq "mp") { 
-      $short = sprintf("MP #%d", $ftr_type_idx);
-    }
-    elsif($ftr_type eq "cds") { 
-      $short = sprintf("CDS #%d", $ftr_type_idx);
-    }
-    else {
-      $short = sprintf("%s #%d", $ftr_info_HAR->{"type_ftable"}[$i], $ftr_type_idx);
-    }
-    my $tiny  = $short;
-    $tiny =~ s/\s+//g; # remove whitespace
-    if($ftr_info_HAR->{"annot_type"}[$i] eq "model") { 
-      if($ftr_info_HAR->{"nmodels"}[$i] > 1) { $short .= sprintf(" [%d %s; %s]", $ftr_info_HAR->{"nmodels"}[$i], featureTypeIsCds($ftr_info_HAR->{"type"}[$i]) ? "exons" : "segments", $ftr_info_HAR->{"ref_strand"}[$i]); }
-      else                                   { $short .= sprintf(" [single %s; %s]",  featureTypeIsCds($ftr_info_HAR->{"type"}[$i]) ? "exon" : "segment", $ftr_info_HAR->{"ref_strand"}[$i]); }
-    }
-    $ftr_info_HAR->{"out_tiny"}[$i]      = $tiny;
-    $ftr_info_HAR->{"out_short"}[$i]     = $short;
-    $ftr_info_HAR->{"filename_root"}[$i] = $ftr_type . "." . $ftr_type_idx;
-  }
-
-  # clean up
-  foreach my $file2rm (@files2rm_A) { 
-    runCommand("rm $file2rm", 0, 0, $FH_HR);
-  }
-
-  return;
-}
 
 #################################################################
 # Subroutine : determineSourcesOfDuplicateFeatures()
@@ -3390,7 +3147,7 @@ sub dumpInfoHashOfArrays {
 
   if($by_array) { 
     for(my $a_ctr = 0; $a_ctr < $max_nel; $a_ctr++) { 
-      printf $FH ("el %2d\n", ($a_ctr+1)); 
+      printf $FH ("el %2d\n", ($a_ctr)); 
       foreach $key (sort keys %{$info_HAR}) { 
         printf $FH ("\t$key: %s\n", (defined $info_HAR->{$key}[$a_ctr]) ? $info_HAR->{$key}[$a_ctr] : "undef"); 
       }
@@ -3405,7 +3162,7 @@ sub dumpInfoHashOfArrays {
       my $nel = (@{$info_HAR->{$key}}) ? scalar(@{$info_HAR->{$key}}) : 0;
       printf $FH ("key %2d of %2d: $key, $nel elements\n", $key_ctr++, $nkeys);
       for(my $a_ctr = 0; $a_ctr < $nel; $a_ctr++) { 
-        printf $FH ("\tel %2d: %s\n", ($a_ctr+1), (defined $info_HAR->{$key}[$a_ctr]) ? $info_HAR->{$key}[$a_ctr] : "undef"); 
+        printf $FH ("\tel %2d: %s\n", ($a_ctr), (defined $info_HAR->{$key}[$a_ctr]) ? $info_HAR->{$key}[$a_ctr] : "undef"); 
       }
       printf $FH ("\n");
     }
@@ -3474,16 +3231,16 @@ sub dumpArrayOfHashesOfHashes {
 
   my $nel1 = scalar(@{$AHHR});
   for(my $i1 = 0; $i1 < $nel1; $i1++) { 
-    printf $FH ("*A*HH el %2d\n", ($i1+1)); 
+    printf $FH ("*A*HH el %2d\n", ($i1)); 
     my $nel2 = scalar(keys %{$AHHR->[$i1]}); 
     my $i2 = 0;
     foreach my $key2 (sort keys %{$AHHR->[$i1]}) { 
-      printf("\tA*H*H el %2d key: $key2\n", ($i2+1)); 
+      printf("\tA*H*H el %2d key: $key2\n", ($i2)); 
       $i2++;
       my $nel3 = scalar(keys %{$AHHR->[$i1]{$key2}});
       my $i3 = 0;
       foreach my $key3 (sort keys %{$AHHR->[$i1]{$key2}}) { 
-        printf("\tAH*H* el %2d key: $key3 value: %s\n", ($i3+1), $AHHR->[$i1]{$key2}{$key3}); 
+        printf("\tAH*H* el %2d key: $key3 value: %s\n", ($i3), $AHHR->[$i1]{$key2}{$key3}); 
         $i3++;
       }
       printf $FH ("\n");
@@ -3519,11 +3276,11 @@ sub dumpArrayOfHashes {
 
   my $nel1 = scalar(@{$AHR});
   for(my $i1 = 0; $i1 < $nel1; $i1++) { 
-    printf $FH ("*A*H el %2d\n", ($i1+1)); 
+    printf $FH ("*A*H el %2d\n", ($i1)); 
     my $nel2 = scalar(keys %{$AHR->[$i1]}); 
     my $i2 = 0;
     foreach my $key2 (sort keys %{$AHR->[$i1]}) { 
-      printf("\tA*H* el %2d key: $key2 value: %s\n", ($i2+1), $AHR->[$i1]{$key2}); 
+      printf("\tA*H* el %2d key: $key2 value: %s\n", ($i2), $AHR->[$i1]{$key2}); 
       $i2++;
     }
     printf $FH ("\n");
@@ -7502,6 +7259,72 @@ sub checkIfFeatureIsDuplicate {
     return 1; 
   }
   return 0;
+}
+
+#################################################################
+# Subroutine:  getFeature5pMostPosition()
+# Incept:      EPN, Fri Mar  8 12:57:21 2019
+#
+# Purpose:    Return 5'-most position in all segments for a feature.
+#
+# Arguments: 
+#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $ftr_idx:        feature index
+#  $FH_HR:          ref to hash of file handles
+# 
+# Returns:    5'-most position
+#
+# Dies:       if $ftr_info_HAR->{"coords"}[$ftr_idx] is not parseable.
+#
+################################################################# 
+sub getFeature5pMostPosition { 
+  my $sub_name = "getFeature5pMostPosition";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+  
+  if($ftr_info_HAR->{"coords"}[$ftr_idx] =~ /^(\d+)\-\d+/) { 
+    return $1;
+  }
+  else { 
+    DNAORG_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $ftr_info_HAR->{"coords"}[$ftr_idx], 1, $FH_HR); 
+  }
+
+  return; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine:  getFeature3pMostPosition()
+# Incept:      EPN, Fri Mar  8 13:00:31 2019
+#
+# Purpose:    Return 3'-most position in all segments for a feature.
+#
+# Arguments: 
+#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $ftr_idx:        feature index
+#  $FH_HR:          ref to hash of file handles
+# 
+# Returns:    3'-most position
+#
+# Dies:       if $ftr_info_HAR->{"coords"}[$ftr_idx] is not parseable.
+#
+################################################################# 
+sub getFeature3pMostPosition { 
+  my $sub_name = "getFeature3pMostPosition";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+  
+  if($ftr_info_HAR->{"coords"}[$ftr_idx] =~ /\d+\-(\d+)$/) { 
+    return $1;
+  }
+  else { 
+    DNAORG_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $ftr_info_HAR->{"coords"}[$ftr_idx], 1, $FH_HR); 
+  }
+
+  return; # NEVER REACHED
 }
 
 #################################################################
