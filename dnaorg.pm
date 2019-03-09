@@ -3741,8 +3741,7 @@ sub validateOutputFileInfoHashOfHashes {
 # Incept:     EPN, Thu Feb 11 15:06:40 2016
 #
 # Purpose:    Validate that the arrays in a hash of arrays are all the
-#             same size, and return the number of keys (first
-#             dimension) and size of all arrays (second dimension).
+#             same size, and return that size.
 #
 # Arguments:
 #   $HAR:          REF to hash of array to validate
@@ -7387,12 +7386,89 @@ sub populateFeatureInfoHash {
  
   my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
 
+  populateFeatureInfoStrand($ftr_info_HAR, $opt_HHR, $FH_HR);
   populateFeatureInfoSourceIdx($ftr_info_HAR, $opt_HHR, $FH_HR);
   populateFeatureInfoParentIdx($ftr_info_HAR, $opt_HHR, $FH_HR);
   populateFeatureInfo3paFtrIdx($ftr_info_HAR, $opt_HHR, $FH_HR);
 
   return;
 }
+
+#################################################################
+# Subroutine: populateFeatureInfoStrand
+# Incept:     EPN, Fri Mar  8 12:40:00 2019
+# 
+# Purpose:    Fill "strand" values in %{$ftr_info_HAR}
+# 
+# Arguments:
+#   $feat_tbl_HHAR:  REF to feature information, added to here
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub populateFeatureInfoStrand { 
+  my $sub_name = "populateFeatureInfoStrand";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # ftr_info_HAR should already have array data for keys "coords", "type"
+  my @reqd_ftr_info_A = ("coords", "type");
+  my $nftr            = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
+
+  # go through all features and determine strand (set 'strand')
+  # 
+  # $ftr_info_HAR->{"strand"}[$ftr_idx] set to: 
+  # - "+" if all segments have strand "+"
+  # - "-" if all segments have strand "-"
+  # - "!" if some segments have strand "+" and some have strand "-"
+  #
+  # Segment strands are determined in 
+  # startStopStrandArraysFromCommaSeparatedCoordsStr()
+  # and *must* be one of "+" or "-" for all segments.
+  #
+  # dies if we can't determine strand for a feature
+  # because we can't determine strand for one of its segments
+  # (startStopStrandArraysFromCommaSeparatedCoordsStr() dies)
+  #
+  my $ftr_idx;
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my @seg_start_A  = ();
+    my @seg_stop_A   = ();
+    my @seg_strand_A = ();
+    startStopStrandArraysFromCommaSeparatedCoordsStr($ftr_info_HAR->{"coords"}[$ftr_idx], \@seg_start_A, \@seg_stop_A, \@seg_strand_A, $FH_HR);
+    my $nseg = scalar(@seg_start_A);
+    my $npos = 0;
+    my $nneg = 0;
+    for(my $s = 0; $s < $nseg; $s++) { 
+      if   ($seg_strand_A[$s] eq "+") { $npos++; }
+      elsif($seg_strand_A[$s] eq "-") { $nneg++; }
+      else { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, unexpected strand $seg_strand_A[$s] for segment %d in coords string %s", ($s+1), $ftr_info_HAR->{"coords"}[$ftr_idx]), 1, $FH_HR); 
+      }
+    }
+    if(($npos > 0) && ($nneg > 0)) { 
+      $ftr_info_HAR->{"strand"}[$ftr_idx] = "!";
+    }
+    elsif($npos > 0) { 
+      $ftr_info_HAR->{"strand"}[$ftr_idx] = "+";
+    }
+    elsif($nneg > 0) { 
+      $ftr_info_HAR->{"strand"}[$ftr_idx] = "-";
+    }
+    else { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, problem determining strand for feature with coords string %s", $ftr_info_HAR->{"coords"}[$ftr_idx]), 1, $FH_HR); 
+    }
+  }
+
+  return 0;
+}
+
 #################################################################
 # Subroutine: populateFeatureInfoSourceIdx
 # Incept:     EPN, Fri Mar  8 12:31:09 2019
@@ -7417,7 +7493,7 @@ sub populateFeatureInfoSourceIdx {
   my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
   
   # ftr_info_HAR should already have array data for keys "coords", "strand", "type"
-  my @reqd_ftr_info_A = ("coords", "strand", "type");
+  my @reqd_ftr_info_A = ("coords", "type");
   my $nftr            = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
 
   # go through all features and determine duplicates (set 'source_idx')
@@ -7426,7 +7502,6 @@ sub populateFeatureInfoSourceIdx {
   # - $ftr_idx type is gene
   # - $ftr_idx2 type is CDS
   # - $ftr_idx and $ftr_idx2 have identical coords (for all segments)
-  # - $ftr_idx and $ftr_idx2 are either both "+" or "-" strand
   #
   # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
   #
@@ -7438,10 +7513,7 @@ sub populateFeatureInfoSourceIdx {
       if($ftr_idx != $ftr_idx2) {
         if(($ftr_info_HAR->{"type"}[$ftr_idx]  eq "gene") && 
            ($ftr_info_HAR->{"type"}[$ftr_idx2] eq "CDS") && 
-           ($ftr_info_HAR->{"coords"}[$ftr_idx] eq $ftr_info_HAR->{"coords"}[$ftr_idx2]) && 
-           ($ftr_info_HAR->{"strand"}[$ftr_idx] eq $ftr_info_HAR->{"strand"}[$ftr_idx2]) && 
-           (($ftr_info_HAR->{"strand"}[$ftr_idx] eq "+") || 
-            ($ftr_info_HAR->{"strand"}[$ftr_idx] eq "-"))) { 
+           ($ftr_info_HAR->{"coords"}[$ftr_idx] eq $ftr_info_HAR->{"coords"}[$ftr_idx2])) { 
           if($ftr_info_HAR->{"source_idx"}[$ftr_idx] != $ftr_idx) { 
             DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to determine source (two choices) for duplicate feature of type %s and coords %s\n", 
                                 $ftr_info_HAR->{"type"}[$ftr_idx], $ftr_info_HAR->{"coords"}[$ftr_idx]), 1, $FH_HR);
@@ -7598,7 +7670,7 @@ sub populateFeatureInfo3paFtrIdx {
       $ftr_strand = $ftr_info_HAR->{"strand"}[$ftr_idx];
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
         $ftr_5p_pos2 = getFeature5pMostPosition($ftr_info_HAR, $ftr_idx2, $FH_HR);
-        $ftr_strand2 = $ftr_info_HAR->{"strand"}[$ftr_idx2];
+        $ftr_strand2 = getFeatureStrand($ftr_info_HAR, $ftr_idx2, $FH_HR);
         $found_adj = 0;
         if(($ftr_idx != $ftr_idx2) && 
            ($ftr_info_HAR->{"type"}[$ftr_idx2] eq "mat_peptide") &&
@@ -7648,9 +7720,6 @@ sub populateFeatureInfo3paFtrIdx {
 #           The following values are added to %{$ftr_info_HAR}:
 #                "5p_seg_idx":   index (in arrays of %mdl_info_HA) of 5'-most segment for this feature
 #                "3p_seg_idx":   index (in arrays of %mdl_info_HA) of 3'-most segment for this feature
-#           And possibly update "strand" for multi-segment features with 
-#           "?" strand, if they are single nucleotide and all other segments are "+" or "-"
-#
 # Arguments:
 #  $ftr_info_HAR:      ref to hash of arrays with information on the features, ADDED TO HERE
 #  $seg_info_HAR:      ref to hash of arrays with information on the models, FILLED HERE
@@ -7668,7 +7737,7 @@ sub populateSegmentInfoHash {
 
   my ($seg_info_HAR, $ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
 
-  # ftr_info_HAR should already have array data for keys "coords", "strand", "type"
+  # ftr_info_HAR should already have some data
   my @reqd_ftr_info_A  = ("coords", "strand", "type", "source_idx", "parent_idx", "3pa_ftr_idx");
   my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
 
@@ -7684,80 +7753,121 @@ sub populateSegmentInfoHash {
 
     if(! $ftr_is_dup) { 
       # determine start and stop positions of all segments
-      my @coords_A  = split(",", $ftr_info_HAR->{"coords"}[$ftr_idx]);
-      my $cur_nseg = scalar(@coords_A);
+      my @seg_start_A  = (); # array of starts, one per segment
+      my @seg_stop_A   = (); # array of stops, one per segment
+      my @seg_strand_A = (); # array of strands ("+", "-"), one per segment
+      startStopStrandArraysFromCommaSeparatedCoordsStr($ftr_info_HAR->{"coords"}[$ftr_idx], \@seg_start_A, \@seg_stop_A, \@seg_strand_A, $FH_HR);
+      my $cur_nseg = scalar(@seg_start_A);
       for(my $s = 0; $s < $cur_nseg; $s++) { 
-        if($coords_A[$s] =~ /^(\d+)\-(\d+)$/) { 
-          ($seg_start, $seg_stop) = ($1, $2);
-          $seg_strand = "";
-          if   ($seg_start == $seg_stop) { $seg_strand = "?"; } # we will deal with this below
-          elsif($seg_start <  $seg_stop) { $seg_strand = "+"; }
-          else                           { $seg_strand = "-"; }
-          $seg_info_HAR->{"start"}[$nseg]   = $seg_start;
-          $seg_info_HAR->{"stop"}[$nseg]    = $seg_stop;
-          $seg_info_HAR->{"strand"}[$nseg]  = $seg_strand;
-          $seg_info_HAR->{"map_ftr"}[$nseg] = $ftr_idx;
-          if($s == 0) { 
-            $seg_info_HAR->{"is_5p"}[$nseg] = 1;
-            $ftr_info_HAR->{"5p_seg_idx"}[$ftr_idx] = $nseg; 
-          }
-          else { 
-            $seg_info_HAR->{"is_5p"}[$nseg] = 0;
-          }
-          if($s == ($cur_nseg-1)) { 
-            $seg_info_HAR->{"is_3p"}[$nseg] = 1;
-            $ftr_info_HAR->{"3p_seg_idx"}[$ftr_idx] = $nseg;
-          }
-          else { 
-            $seg_info_HAR->{"is_3p"}[$nseg] = 0;
-          }
-          $nseg++;
+        $seg_info_HAR->{"start"}[$nseg]   = $seg_start_A[$s];
+        $seg_info_HAR->{"stop"}[$nseg]    = $seg_stop_A[$s];
+        $seg_info_HAR->{"strand"}[$nseg]  = $seg_strand_A[$s];
+        $seg_info_HAR->{"map_ftr"}[$nseg] = $ftr_idx;
+        if($s == 0) { 
+          $seg_info_HAR->{"is_5p"}[$nseg] = 1;
+          $ftr_info_HAR->{"5p_seg_idx"}[$ftr_idx] = $nseg; 
         }
         else { 
-          DNAORG_FAIL("ERROR in $sub_name, unable to parse coords token $coords_A[$s]", 1, $FH_HR); 
+          $seg_info_HAR->{"is_5p"}[$nseg] = 0;
         }
+        if($s == ($cur_nseg-1)) { 
+          $seg_info_HAR->{"is_3p"}[$nseg] = 1;
+          $ftr_info_HAR->{"3p_seg_idx"}[$ftr_idx] = $nseg;
+        }
+        else { 
+          $seg_info_HAR->{"is_3p"}[$nseg] = 0;
+        }
+        $nseg++;
       }
+    }
+  }
+
+  return;
+}
+
+
+#################################################################
+# Subroutine: startStopStrandArraysFromCommaSeparatedCoordsStr()
+# Incept:     EPN, Sat Mar  9 05:50:10 2019
+#
+# Synopsis: Given a comma separated coords string, parse it, 
+#           validate it, and fill @{$start_AR}, @{$stop_AR} and
+#           @{$strand_AR} based on it.
+# 
+# Arguments:
+#  $coords_str:   coordinate string
+#  $start_AR:     REF to start position array to fill here
+#  $stop_AR:      REF to stop position array to fill here
+#  $strand_AR:    REF to strand array to fill here with "+" or "-"
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       
+#################################################################
+sub startStopStrandArraysFromCommaSeparatedCoordsStr {
+  my $sub_name = "startStopStrandArraysFromCommaSeparatedCoordsStr";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords_str, $start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
+
+  @{$start_AR}  = ();
+  @{$stop_AR}   = ();
+  @{$strand_AR} = ();
+  my ($start, $stop, $strand, $seg_idx, $seg_idx2);
+  my @coords_A  = split(",", $coords_str);
+  my $nseg = scalar(@coords_A);
+  for($seg_idx = 0; $seg_idx < $nseg; $seg_idx++) { 
+    if($coords_A[$seg_idx] =~ /^(\d+)\-(\d+)$/) { 
+      ($start, $stop) = ($1, $2);
+      $strand = "";
+      if   ($start == $stop) { $strand = "?"; } # single nt, we will deal with this below
+      elsif($start <  $stop) { $strand = "+"; }
+      else                   { $strand = "-"; }
+      push(@{$start_AR},  $start);
+      push(@{$stop_AR},   $stop);
+      push(@{$strand_AR}, $strand);
+    }
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, unable to parse coords token $coords_A[$seg_idx]", 1, $FH_HR); 
     }
   }
 
   # go back through and deal with all segments with "?" strands 
-  # we set these to "+" if 1 or more other non-"?" stranded segments for that feature exist and all are "+"
-  # we set these to "-" if 1 or more other non-"?" stranded segments for that feature exist and all are "-"
-  # we die if neither of those two criteria are true
+  # by setting to "+" or "-" (or die) as follows:
+  # - set to "+" if 1 or more other non-"?" strand segments exist and all are "+"
+  # - set to "-" if 1 or more other non-"?" strand segments exist and all are "-"
+  # - die if neither of those two criteria are true
+  # 
   my ($seg_idx_5p, $seg_idx_3p); # 5'-most segment index and 3'-most segment index for a feature
   for($seg_idx = 0; $seg_idx < $nseg; $seg_idx++) { 
-    if($seg_info_HAR->{"strand"}[$seg_idx] eq "?") { 
-      $ftr_idx = $seg_info_HAR->{"map_ftr"}[$seg_idx];
-      $seg_idx_5p = $ftr_info_HAR->{"5p_seg_idx"}[$ftr_idx];
-      $seg_idx_3p = $ftr_info_HAR->{"3p_seg_idx"}[$ftr_idx];
+    if($strand_AR->[$seg_idx] eq "?") { 
       my $npos = 0; # number of other segments for same feature that are on + strand
       my $nneg = 0; # number of other segments for same feature that are on - strand
-      for($seg_idx2 = $seg_idx_5p; $seg_idx2 <= $seg_idx_3p; $seg_idx2++) { 
+      for($seg_idx2 = 0; $seg_idx2 < $nseg; $seg_idx2++) { 
         if($seg_idx ne $seg_idx2) { 
-          if($seg_info_HAR->{"strand"}[$seg_idx2] eq "+") { $npos++; }
-          if($seg_info_HAR->{"strand"}[$seg_idx2] eq "-") { $nneg++; }
+          if($strand_AR->[$seg_idx2] eq "+") { $npos++; }
+          if($strand_AR->[$seg_idx2] eq "-") { $nneg++; }
         }
       }
       if((($npos == 0) && ($nneg == 0)) ||
-           (($npos >  0) && ($nneg  > 0))) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to determine strand of a segment for feature %d with coords string %s\n", 
-                            $ftr_idx, $ftr_info_HAR->{"coords"}[$ftr_idx]), 1, $FH_HR);
+         (($npos >  0) && ($nneg  > 0))) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to determine strand of segment %d of %d for coords string $coords_str\n", 
+                            ($seg_idx+1), $nseg), 1, $FH_HR);
       }
       if($npos > 0) { 
         # all other segments are positive
         # we already know that $nneg == 0 due to check above
-        $seg_info_HAR->{"strand"}[$seg_idx] = "+"; 
-        $ftr_info_HAR->{"strand"}[$ftr_idx] = "+"; 
+        $strand_AR->[$seg_idx] = "+";
       }
       else { 
         # all other segments are negative
         # we already know that $npos == 0 due to check above
-        $seg_info_HAR->{"strand"}[$seg_idx] = "-"; 
-        $ftr_info_HAR->{"strand"}[$ftr_idx] = "-"; 
+        $strand_AR->[$seg_idx] = "-";
       }
     }
   }
-
   return;
 }
 

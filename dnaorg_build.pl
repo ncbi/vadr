@@ -300,15 +300,22 @@ my %seg_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1],
 
 initialize_feature_info_hash_from_ftable_data(\%feat_tbl_HHA, \%ftr_info_HA, $qual_str, $FH_HR);
 
+#############################################################
+# Step 3. Populate feature_info_HA and segment_info_HA hashes
+#############################################################
+
 populateFeatureInfoHash(\%ftr_info_HA, \%opt_HH, $FH_HR);
 populateSegmentInfoHash(\%seg_info_HA, \%ftr_info_HA, \%opt_HH, $FH_HR);
+
+openAndAddFileToOutputInfo(\%ofile_info_HH, "minfo", $out_root . ".minfo", 1, "model info file");
+output_model_info_file($ofile_info_HH{"FH"}{"minfo"}, $ref_accn, \%ftr_info_HA, $FH_HR);
 
 dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, *STDOUT);
 dumpInfoHashOfArrays("Segment information (%seg_info_HA)", 0, \%seg_info_HA, *STDOUT);
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-exit 0;
 
+exit 0;
 #########################################################
 # Step 3. Fetch and process the reference genome sequence
 ##########################################################
@@ -1140,7 +1147,6 @@ sub get_single_feature_table_info {
             # printf("quals_HA feature: fac: $fac exists!\n"); 
             
             push(@{$tbl_HAR->{"coords"}}, $coords);
-            push(@{$tbl_HAR->{"strand"}}, $strand);
             
             # for all columns in the table
             foreach $column (@{$column_AR}) {
@@ -1276,13 +1282,12 @@ sub helper_breakdown_fac {
 # Subroutine: initialize_feature_info_hash_from_ftable_data()
 # Incept:     EPN, Tue Feb 16 14:05:51 2016
 # 
-# Purpose:    Fill "strand", "coords" and other keys in $qual_str
+# Purpose:    Fill "type", "coords" and other keys in $qual_str
 #             arrays in the feature info hash of arrays (%{$ftr_info_HAR})
 #             using $feat_tbl_HHAR:
 #
-#             "strand": strand of this feature in the reference
-#             "coords": coordinates for this feature in the reference
 #             "type":   feature type, e.g. "mat_peptide", "CDS"
+#             "coords": coordinates for this feature in the reference
 #              And whatever else is in the comma separated string $qual_str
 # 
 # Arguments:
@@ -1327,11 +1332,11 @@ sub initialize_feature_info_hash_from_ftable_data {
   # set "strand", "coords", and any other values from input %
   foreach $type (@type_order_A) { 
     if(exists $feat_tbl_HHAR->{$type}) { 
-      foreach $qual ("strand", "coords", @qual_A) { 
-        if($qual eq "strand") { 
+      foreach $qual ("coords", @qual_A) { 
+        if($qual eq "coords") { 
           $ntype = scalar(@{$feat_tbl_HHAR->{$type}{$qual}});
-          if($ntype == 0) { 
-            DNAORG_FAIL("ERROR in $sub_name, for $type no strand values exist", 1, $FH_HR); 
+          if($ntype == 0) {
+            DNAORG_FAIL("ERROR in $sub_name, for $type no coords values exist", 1, $FH_HR); 
           }
         }
         if(exists $feat_tbl_HHAR->{$type}{$qual}) { 
@@ -1343,16 +1348,76 @@ sub initialize_feature_info_hash_from_ftable_data {
           }
         }
       }
-      # finally, the type (e.g. "CDS") and source_idx
-      # we initialize each feature's source_idx to itself
-      # but potentially update this later when we identify duplicates
+      # finally, the type (e.g. "CDS")
       for($i = 0; $i < $ntype; $i++) { 
         push(@{$ftr_info_HAR->{"type"}}, $type);
-        push(@{$ftr_info_HAR->{"source_idx"}}, ($i+$nftr));
       }
-      
       $nftr += $ntype;
     }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: output_model_info_file()
+# Incept:     EPN, Sat Mar  9 05:27:15 2019
+#
+# Synopsis: Output a model info file for model $mdlname based on 
+#           feature information in %{$ftr_info_HAR}.
+#
+#           The following values must be set in %{$ftr_info_HAR}:
+#             "type":   feature type, e.g. "mat_peptide", "CDS"
+#             "coords": coordinates for this feature in the reference
+#
+# Arguments:
+#  $out_FH:       file handle to print to
+#  $name:         model name
+#  $ftr_info_HAR: REF to hash of arrays with information on the features, pre-filed
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $ftr_info_HAR is not valid upon entering
+#################################################################
+sub output_model_info_file { 
+  my $sub_name = "output_model_info_file";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_FH, $name, $ftr_info_HAR, $FH_HR) = @_;
+
+  # ftr_info_HAR should already have array data for keys "coords" and "type"
+  my @reqd_ftr_info_A  = ("type", "coords");
+  my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
+
+  # create order of keys
+  my ($key, $value2print);
+  my @key_order_A  = ("type", "coords");
+  my %key_ignore_H = ();
+  $key_ignore_H{"type"}        = 1; # already added this to @key_order_A, so it goes first
+  $key_ignore_H{"coords"}      = 1; # already added this to @key_order_A, so it goes second
+  $key_ignore_H{"strand"}      = 1; # can be inferred from coords
+  $key_ignore_H{"source_idx"}  = 1; # can be inferred from coords and type
+  $key_ignore_H{"parent_idx"}  = 1; # can be inferred from coords and type
+  $key_ignore_H{"3pa_ftr_idx"} = 1; # can be inferred from coords and type
+  $key_ignore_H{"5p_seg_idx"}  = 1; # can be inferred from coords, when seg_info_HA is created
+  $key_ignore_H{"3p_seg_idx"}  = 1; # can be inferred from coords, when seg_info_HA is created
+
+  foreach $key (sort keys %{$ftr_info_HAR}) { 
+    if(! exists $key_ignore_H{$key}) { 
+      push(@key_order_A, $key);
+    }
+  }
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    printf $out_FH ("%s", $name);
+    foreach $key (@key_order_A) { 
+      $value2print = $ftr_info_HAR->{$key}[$ftr_idx];
+      if($value2print eq "") { $value2print = "-"; }
+      printf $out_FH ("\t%s:%s", $key, $value2print);
+    }
+    print $out_FH "\n";
   }
 
   return;
