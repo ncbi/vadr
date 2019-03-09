@@ -7361,6 +7361,406 @@ sub summarizeModelForFeature {
   return ""; # return "" if $nmdl == 1;
 }
 
+  
+#################################################################
+# Subroutine: populateFeatureInfoHash
+# Incept:     EPN, Sat Mar  9 05:06:23 2019
+# 
+# Purpose:    Fill "source_idx", "parent_idx" and "3pa_ftr_idx" 
+#             values in %{$ftr_info_HA} based on existing info
+#             in %{$ftr_info_HA}.
+# 
+# Arguments:
+#   $feat_tbl_HHAR:  REF to feature information, added to here
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub populateFeatureInfoHash { 
+  my $sub_name = "populateFeatureInfoHash";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
+
+  populateFeatureInfoSourceIdx($ftr_info_HAR, $opt_HHR, $FH_HR);
+  populateFeatureInfoParentIdx($ftr_info_HAR, $opt_HHR, $FH_HR);
+  populateFeatureInfo3paFtrIdx($ftr_info_HAR, $opt_HHR, $FH_HR);
+
+  return;
+}
+#################################################################
+# Subroutine: populateFeatureInfoSourceIdx
+# Incept:     EPN, Fri Mar  8 12:31:09 2019
+# 
+# Purpose:    Fill "source_idx" values in %{$ftr_info_HAR}
+# 
+# Arguments:
+#   $feat_tbl_HHAR:  REF to feature information, added to here
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub populateFeatureInfoSourceIdx { 
+  my $sub_name = "populateFeatureInfoSourceIdx";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # ftr_info_HAR should already have array data for keys "coords", "strand", "type"
+  my @reqd_ftr_info_A = ("coords", "strand", "type");
+  my $nftr            = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
+
+  # go through all features and determine duplicates (set 'source_idx')
+  # 
+  # $ftr_info_HAR->{"source_idx"}[$ftr_idx] set to $ftr_idx2 if
+  # - $ftr_idx type is gene
+  # - $ftr_idx2 type is CDS
+  # - $ftr_idx and $ftr_idx2 have identical coords (for all segments)
+  # - $ftr_idx and $ftr_idx2 are either both "+" or "-" strand
+  #
+  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
+  #
+  # dies if more than one $ftr_idx2 satisfies above
+  my ($ftr_idx, $ftr_idx2); # feature indices
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_info_HAR->{"source_idx"}[$ftr_idx] = $ftr_idx; # initialize
+    for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+      if($ftr_idx != $ftr_idx2) {
+        if(($ftr_info_HAR->{"type"}[$ftr_idx]  eq "gene") && 
+           ($ftr_info_HAR->{"type"}[$ftr_idx2] eq "CDS") && 
+           ($ftr_info_HAR->{"coords"}[$ftr_idx] eq $ftr_info_HAR->{"coords"}[$ftr_idx2]) && 
+           ($ftr_info_HAR->{"strand"}[$ftr_idx] eq $ftr_info_HAR->{"strand"}[$ftr_idx2]) && 
+           (($ftr_info_HAR->{"strand"}[$ftr_idx] eq "+") || 
+            ($ftr_info_HAR->{"strand"}[$ftr_idx] eq "-"))) { 
+          if($ftr_info_HAR->{"source_idx"}[$ftr_idx] != $ftr_idx) { 
+            DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to determine source (two choices) for duplicate feature of type %s and coords %s\n", 
+                                $ftr_info_HAR->{"type"}[$ftr_idx], $ftr_info_HAR->{"coords"}[$ftr_idx]), 1, $FH_HR);
+          }
+          $ftr_info_HAR->{"source_idx"}[$ftr_idx] = $ftr_idx2;
+        }
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: populateFeatureInfoParentIdx
+# Incept:     EPN, Fri Mar  8 12:40:00 2019
+# 
+# Purpose:    Fill "parent_idx" values in %{$ftr_info_HAR}
+# 
+# Arguments:
+#   $feat_tbl_HHAR:  REF to feature information, added to here
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub populateFeatureInfoParentIdx { 
+  my $sub_name = "populateFeatureInfoParentIdx";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # ftr_info_HAR should already have array data for keys "coords", "strand", "type"
+  my @reqd_ftr_info_A = ("coords", "strand", "type");
+  my $nftr            = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
+
+  # go through all features and determine parents (set 'parent_idx')
+  # 
+  # $ftr_info_HAR->{"parent_idx"}[$ftr_idx] set to $ftr_idx2 if:
+  # - $ftr_idx type is mat_peptide
+  # - $ftr_idx2 type is CDS
+  # - start of $ftr_idx2 is 5' of or equal to start of $ftr_idx
+  # - stop  of $ftr_idx2 is 3' of or equal to stop of $ftr_idx
+  # - $ftr_idx and $ftr_idx2 are both "+" or both "-" strands
+  # 
+  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
+  #
+  # dies if more than one $ftr_idx2 satisfies above
+  my ($ftr_idx, $ftr_idx2); # feature indices
+  my $ftr_5p_pos;  # 3'-most position for feature $ftr_idx
+  my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
+  my $ftr_5p_pos2; # 5'-most position for feature $ftr_idx2
+  my $ftr_3p_pos2; # 5'-most position for feature $ftr_idx2
+  my $ftr_strand;  # strand for feature $ftr_idx
+  my $ftr_strand2; # strand for feature $ftr_idx2
+  my $found_parent; # flag for if we found a parent or not
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_info_HAR->{"parent_idx"}[$ftr_idx] = -1; # initialize
+    if($ftr_info_HAR->{"type"}[$ftr_idx] eq "mat_peptide") { 
+      $ftr_5p_pos = getFeature5pMostPosition($ftr_info_HAR, $ftr_idx, $FH_HR);
+      $ftr_3p_pos = getFeature3pMostPosition($ftr_info_HAR, $ftr_idx, $FH_HR);
+      $ftr_strand = $ftr_info_HAR->{"strand"}[$ftr_idx];
+      for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+        $ftr_5p_pos2 = getFeature5pMostPosition($ftr_info_HAR, $ftr_idx2, $FH_HR);
+        $ftr_3p_pos2 = getFeature3pMostPosition($ftr_info_HAR, $ftr_idx2, $FH_HR);
+        $ftr_strand2 = $ftr_info_HAR->{"strand"}[$ftr_idx2];
+        $found_parent = 0;
+        if(($ftr_idx != $ftr_idx2) && 
+           ($ftr_info_HAR->{"type"}[$ftr_idx2] eq "CDS") && 
+           ($ftr_strand eq $ftr_strand2)) { 
+          if(($ftr_strand eq "+") && 
+             ($ftr_5p_pos2 <= $ftr_5p_pos) &&
+             ($ftr_3p_pos2 >= $ftr_3p_pos)) { 
+            $found_parent = 1;
+          }
+          if(($ftr_strand eq "-") && 
+             ($ftr_5p_pos2 >= $ftr_5p_pos) &&
+             ($ftr_3p_pos2 <= $ftr_3p_pos)) { 
+            $found_parent = 1;
+          }
+          if($found_parent) { 
+            if($ftr_info_HAR->{"parent_idx"}[$ftr_idx] != -1) { 
+              printf("ftr_5p_pos:  $ftr_5p_pos\n");
+              printf("ftr_3p_pos:  $ftr_3p_pos\n");
+              printf("ftr_5p_pos2: $ftr_5p_pos2\n");
+              printf("ftr_3p_pos2: $ftr_3p_pos2\n");
+              DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to determine parent of mature peptide with coords %s (multiple CDS cover it with coords %s and %s)\n", 
+                                  $ftr_info_HAR->{"coords"}[$ftr_idx], 
+                                  $ftr_info_HAR->{"coords"}[($ftr_info_HAR->{"parent_idx"}[$ftr_idx])], 
+                                  $ftr_info_HAR->{"coords"}[$ftr_idx2], 
+                          ), 1, $FH_HR);
+            }
+            $ftr_info_HAR->{"parent_idx"}[$ftr_idx] = $ftr_idx2;
+          }
+        }
+      }
+    }
+  }   
+  return 0;
+}
+      
+#################################################################
+# Subroutine: populateFeatureInfo3paFtrIdx
+# Incept:     EPN, Fri Mar  8 12:40:00 2019
+# 
+# Purpose:    Fill "parent_idx" values in %{$ftr_info_HAR}
+# 
+# Arguments:
+#   $feat_tbl_HHAR:  REF to feature information, added to here
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub populateFeatureInfo3paFtrIdx { 
+  my $sub_name = "populateFeatureInfo3paFtrIdx";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
+  
+  # ftr_info_HAR should already have array data for keys "coords", "strand", "type"
+  my @reqd_ftr_info_A = ("coords", "strand", "type");
+  my $nftr            = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
+
+  # go through all features and determine adjacent mat_peptides (set '3pa_ftr_idx')
+  # 
+  # $ftr_info_HAR->{"3pa_ftr_idx"}[$ftr_idx] set to $ftr_idx2 if:
+  # - $ftr_idx type is mat_peptide
+  # - $ftr_idx2 type is mat_peptide
+  # - $ftr_idx starts at 1 position 3' of stop position of $ftr_idx
+  # - $ftr_idx and $ftr_idx2 are both "+" or both "-" strands
+  # 
+  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
+  #
+  # dies if more than one $ftr_idx2 satisfies above
+  my ($ftr_idx, $ftr_idx2); # feature indices
+  my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
+  my $ftr_5p_pos2; # 5'-most position for feature $ftr_idx2
+  my $ftr_strand;  # strand for feature $ftr_idx
+  my $ftr_strand2; # strand for feature $ftr_idx2
+  my $found_adj = 0;
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_info_HAR->{"3pa_ftr_idx"}[$ftr_idx] = -1;
+    if($ftr_info_HAR->{"type"}[$ftr_idx] eq "mat_peptide") { 
+      $ftr_3p_pos = getFeature3pMostPosition($ftr_info_HAR, $ftr_idx, $FH_HR);
+      $ftr_strand = $ftr_info_HAR->{"strand"}[$ftr_idx];
+      for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+        $ftr_5p_pos2 = getFeature5pMostPosition($ftr_info_HAR, $ftr_idx2, $FH_HR);
+        $ftr_strand2 = $ftr_info_HAR->{"strand"}[$ftr_idx2];
+        $found_adj = 0;
+        if(($ftr_idx != $ftr_idx2) && 
+           ($ftr_info_HAR->{"type"}[$ftr_idx2] eq "mat_peptide") &&
+           ($ftr_strand eq $ftr_strand2)) { 
+          if(($ftr_strand eq "+") && (($ftr_3p_pos+1) == ($ftr_5p_pos2))) { 
+            $found_adj = 1;
+          }
+          if(($ftr_strand eq "-") && (($ftr_3p_pos-1) == ($ftr_5p_pos2))) { 
+            $found_adj = 1; 
+          }
+          if($found_adj) { 
+            if($ftr_info_HAR->{"3pa_ftr_idx"}[$ftr_idx] != -1) { 
+              DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to determine 3' mature peptide of mature peptide with coords (multiple mature peptides satisfy criteria)\n", 
+                                  $ftr_info_HAR->{"coords"}[$ftr_idx]), 1, $FH_HR);
+            }
+            $ftr_info_HAR->{"3pa_ftr_idx"}[$ftr_idx] = $ftr_idx2; 
+          }
+        }
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: populateSegmentInfoHash()
+# Incept:     EPN, Fri Mar  8 06:50:43 2019
+#             EPN, Thu Feb 11 14:35:31 2016
+#
+# Synopsis: Fill %{$seg_info_HAR} and finish filling %{$ftr_info_HAR}
+#           based on existing information in %{$ftr_info_HAR}.
+#
+#           The following values are added to %{$seg_info_HAR}:
+#                "start":    start position of segment in the reference genome
+#                "stop":     stop position of segment in the reference genome
+#                "strand":   strand of segment in the reference genome
+#                "map_ftr":  the feature index (array index in ftr_info_HAR) 
+#                            this segment is for
+#                "is_5p":    '1' if this segment is the 5'-most segment for its feature
+#                            (when the segments are joined to make the feature, not 
+#                            necessarily in reference genome)
+#                "is_3p":    '1' if this segment is the 3'-most model for its feature
+#                            (when the segments are joined to make the feature, not 
+#                            necessarily in reference genome)
+#
+#           The following values are added to %{$ftr_info_HAR}:
+#                "5p_seg_idx":   index (in arrays of %mdl_info_HA) of 5'-most segment for this feature
+#                "3p_seg_idx":   index (in arrays of %mdl_info_HA) of 3'-most segment for this feature
+#           And possibly update "strand" for multi-segment features with 
+#           "?" strand, if they are single nucleotide and all other segments are "+" or "-"
+#
+# Arguments:
+#  $ftr_info_HAR:      ref to hash of arrays with information on the features, ADDED TO HERE
+#  $seg_info_HAR:      ref to hash of arrays with information on the models, FILLED HERE
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:             REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void; fills @{$values_HHAR}
+#
+# Dies:       if $ftr_info_HAR is not valid upon entering
+#################################################################
+sub populateSegmentInfoHash {
+  my $sub_name = "populateSegmentInfoHash";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($seg_info_HAR, $ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
+
+  # ftr_info_HAR should already have array data for keys "coords", "strand", "type"
+  my @reqd_ftr_info_A  = ("coords", "strand", "type", "source_idx", "parent_idx", "3pa_ftr_idx");
+  my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
+
+  # initialize new %{$ftr_info_HAR} values
+  my ($ftr_idx, $ftr_idx2, $seg_idx, $seg_idx2); # feature and segment indices
+  my ($seg_start, $seg_stop, $seg_strand); # start, stop and strand for a segment
+  my $nseg = 0;
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_info_HAR->{"5p_seg_idx"}[$ftr_idx] = -1; # remains -1 if $ftr_idxs_dup
+    $ftr_info_HAR->{"3p_seg_idx"}[$ftr_idx] = -2; # remains -2 if $ftr_idxs_dup
+    my $ftr_type   = $ftr_info_HAR->{"type"}[$ftr_idx];
+    my $ftr_is_dup = ($ftr_info_HAR->{"source_idx"}[$ftr_idx] == $ftr_idx) ? 0 : 1;
+
+    if(! $ftr_is_dup) { 
+      # determine start and stop positions of all segments
+      my @coords_A  = split(",", $ftr_info_HAR->{"coords"}[$ftr_idx]);
+      my $cur_nseg = scalar(@coords_A);
+      for(my $s = 0; $s < $cur_nseg; $s++) { 
+        if($coords_A[$s] =~ /^(\d+)\-(\d+)$/) { 
+          ($seg_start, $seg_stop) = ($1, $2);
+          $seg_strand = "";
+          if   ($seg_start == $seg_stop) { $seg_strand = "?"; } # we will deal with this below
+          elsif($seg_start <  $seg_stop) { $seg_strand = "+"; }
+          else                           { $seg_strand = "-"; }
+          $seg_info_HAR->{"start"}[$nseg]   = $seg_start;
+          $seg_info_HAR->{"stop"}[$nseg]    = $seg_stop;
+          $seg_info_HAR->{"strand"}[$nseg]  = $seg_strand;
+          $seg_info_HAR->{"map_ftr"}[$nseg] = $ftr_idx;
+          if($s == 0) { 
+            $seg_info_HAR->{"is_5p"}[$nseg] = 1;
+            $ftr_info_HAR->{"5p_seg_idx"}[$ftr_idx] = $nseg; 
+          }
+          else { 
+            $seg_info_HAR->{"is_5p"}[$nseg] = 0;
+          }
+          if($s == ($cur_nseg-1)) { 
+            $seg_info_HAR->{"is_3p"}[$nseg] = 1;
+            $ftr_info_HAR->{"3p_seg_idx"}[$ftr_idx] = $nseg;
+          }
+          else { 
+            $seg_info_HAR->{"is_3p"}[$nseg] = 0;
+          }
+          $nseg++;
+        }
+        else { 
+          DNAORG_FAIL("ERROR in $sub_name, unable to parse coords token $coords_A[$s]", 1, $FH_HR); 
+        }
+      }
+    }
+  }
+
+  # go back through and deal with all segments with "?" strands 
+  # we set these to "+" if 1 or more other non-"?" stranded segments for that feature exist and all are "+"
+  # we set these to "-" if 1 or more other non-"?" stranded segments for that feature exist and all are "-"
+  # we die if neither of those two criteria are true
+  my ($seg_idx_5p, $seg_idx_3p); # 5'-most segment index and 3'-most segment index for a feature
+  for($seg_idx = 0; $seg_idx < $nseg; $seg_idx++) { 
+    if($seg_info_HAR->{"strand"}[$seg_idx] eq "?") { 
+      $ftr_idx = $seg_info_HAR->{"map_ftr"}[$seg_idx];
+      $seg_idx_5p = $ftr_info_HAR->{"5p_seg_idx"}[$ftr_idx];
+      $seg_idx_3p = $ftr_info_HAR->{"3p_seg_idx"}[$ftr_idx];
+      my $npos = 0; # number of other segments for same feature that are on + strand
+      my $nneg = 0; # number of other segments for same feature that are on - strand
+      for($seg_idx2 = $seg_idx_5p; $seg_idx2 <= $seg_idx_3p; $seg_idx2++) { 
+        if($seg_idx ne $seg_idx2) { 
+          if($seg_info_HAR->{"strand"}[$seg_idx2] eq "+") { $npos++; }
+          if($seg_info_HAR->{"strand"}[$seg_idx2] eq "-") { $nneg++; }
+        }
+      }
+      if((($npos == 0) && ($nneg == 0)) ||
+           (($npos >  0) && ($nneg  > 0))) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to determine strand of a segment for feature %d with coords string %s\n", 
+                            $ftr_idx, $ftr_info_HAR->{"coords"}[$ftr_idx]), 1, $FH_HR);
+      }
+      if($npos > 0) { 
+        # all other segments are positive
+        # we already know that $nneg == 0 due to check above
+        $seg_info_HAR->{"strand"}[$seg_idx] = "+"; 
+        $ftr_info_HAR->{"strand"}[$ftr_idx] = "+"; 
+      }
+      else { 
+        # all other segments are negative
+        # we already know that $npos == 0 due to check above
+        $seg_info_HAR->{"strand"}[$seg_idx] = "-"; 
+        $ftr_info_HAR->{"strand"}[$ftr_idx] = "-"; 
+      }
+    }
+  }
+
+  return;
+}
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;
