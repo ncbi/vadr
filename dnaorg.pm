@@ -64,7 +64,7 @@
 # - $seg_info_HAR: similar to ${ftr,seq,err}_info_HAR, except contains information pertaining 
 #                  to each model, >= 1 of which will model a single feature (1 model for single
 #                  exon CDS, 2 models for dual exon CDS, etc.). See 
-#                  validateModelInfoHashIsComplete() for a list and explanation of the keys.
+#                  validateSegmentInfoHashIsComplete() for a list and explanation of the keys.
 #                  The contents of this data structure can be printed to file <f> by dnaorg_build.pl 
 #                  or dnaorg_annotate.pl with the --mdlinfo <f> command line option.
 #
@@ -158,7 +158,7 @@
 # Subroutines for validating the special data structures:
 #   validateExecutableHash()
 #   validateFeatureInfoHashIsComplete()
-#   validateModelInfoHashIsComplete()
+#   validateSegmentInfoHashIsComplete()
 #   validateSequenceInfoHashIsComplete()
 #   validateErrorInfoHashIsComplete()
 #   validateInfoHashOfArraysIsComplete()
@@ -474,281 +474,6 @@ sub getNumFeaturesAnnotatedByModels {
     if($ftr_info_HAR->{"annot_type"}[$i] eq "model") { $nftr_with_models++; }
   }
   return $nftr_with_models;
-}
-
-#################################################################
-# Subroutine: getReferenceFeatureInfo()
-# Incept:     EPN, Tue Feb 16 14:05:51 2016
-# 
-# Purpose:    Fill "ref_strand", "ref_len", "ref_coords" and "out_product"
-#             arrays in the feature info hash of arrays (%{$ftr_info_HAR})
-#             using $cds_tbl_HHAR and possibly $mp_tbl_HHAR:
-#
-#             "ref_strand":    strand of this feature in the reference
-#             "ref_len":       length (in nt) of this feature in the reference
-#             "ref_coords":    coordinates for this feature in the reference in NCBI format
-#             "out_product":   'product' value or type_ftable value (if xfeat or dfeat) for this feature, in NCBI annotation
-#             "out_gene":      'gene' value or type_ftable value (if xfeat or dfeat) for this feature, in NCBI annotation
-#             "out_exception": 'gene' value or type_ftable value (if xfeat or dfeat) for this feature, in NCBI annotation
-#             "type_fname":    string for naming output files related to this feature, e.g. "mp", "cds", "$xfeat" or "$dfeat"
-#             "type_ftable":   output feature table feature name, e.g. "mat_peptide", "CDS", "$xfeat" or "$dfeat"
-# 
-# Arguments:
-#   $cds_tbl_HHAR:   ref to CDS hash of hash of arrays, PRE-FILLED
-#   $mp_tbl_HHAR:    ref to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
-#   $xfeat_tbl_HHAR: ref to extra feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
-#   $dfeat_tbl_HHAR: ref to extra feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
-#   $ftr_info_HAR:   ref to hash of arrays with feature information, FILLED HERE
-#   $ref_accn:       reference accession
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       Never
-#
-#################################################################
-sub getReferenceFeatureInfo { 
-  my $sub_name = "getReferenceFeatureInfo()";
-  my $nargs_expected = 7;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args"; }
- 
-  my ($cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $ftr_info_HAR, $ref_accn, $FH_HR) = @_;
-
-  # initialize the arrays we are about to fill
-  @{$ftr_info_HAR->{"ref_strand"}}    = ();
-  @{$ftr_info_HAR->{"ref_len"}}       = ();
-  @{$ftr_info_HAR->{"ref_coords"}}    = ();
-  @{$ftr_info_HAR->{"out_product"}}   = ();
-  @{$ftr_info_HAR->{"out_gene"}}      = ();
-  @{$ftr_info_HAR->{"out_exception"}} = ();
-  @{$ftr_info_HAR->{"type_fname"}}    = ();
-  @{$ftr_info_HAR->{"type_ftable"}}   = ();
-
-  my $do_matpept = (defined $mp_tbl_HHAR)     ? 1 : 0;
-  my $do_xfeat   = (defined $xfeat_tbl_HHHAR) ? 1 : 0;
-  my $do_dfeat   = (defined $dfeat_tbl_HHHAR) ? 1 : 0;
-
-  my $ref_mp_strand_str         = ""; 
-  my $ref_cds_strand_str        = "";
-  my $ref_xfeat_strand_cur_str  = "";
-  my $ref_xfeat_strand_full_str = "";
-  my $ref_dfeat_strand_cur_str  = "";
-  my $ref_dfeat_strand_full_str = "";
-  my $i; # ctr;
-  my $nadded_strand;    # number of elements just added to @{$ftr_info_HAR->{"strand"}}
-  my $nadded_product;   # number of elements just added to @{$ftr_info_HAR->{"out_product"}}
-  my $nadded_gene;      # number of elements just added to @{$ftr_info_HAR->{"out_gene"}}
-  my $nadded_exception; # number of elements just added to @{$ftr_info_HAR->{"out_exception"}}
-
-  if($do_matpept) { 
-    (undef, undef, undef, undef, undef, $ref_mp_strand_str) = getStrandStats($mp_tbl_HHAR, $ref_accn, $FH_HR);
-    if($ref_mp_strand_str !~ /^[+-]+$/) { 
-      DNAORG_FAIL("ERROR in $sub_name, at least one MP is not + or - strand (must be single nt MP or mixed strand MP), ref_mp_strand_str: $ref_mp_strand_str", 1, $FH_HR);
-    }
-    getLengthsAndCoords(\%{$mp_tbl_HHAR->{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-    $nadded_product   = getQualifierValues($mp_tbl_HHAR, $ref_accn, "product",   \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-    $nadded_gene      = getQualifierValues($mp_tbl_HHAR, $ref_accn, "gene",      \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
-    $nadded_exception = getQualifierValues($mp_tbl_HHAR, $ref_accn, "exception", \@{$ftr_info_HAR->{"out_exception"}}, $FH_HR);
-    $nadded_strand    = length($ref_mp_strand_str);
-    for($i = 0; $i < $nadded_strand; $i++) { 
-      push(@{$ftr_info_HAR->{"type_fname"}},  "mp"); 
-      push(@{$ftr_info_HAR->{"type_ftable"}}, "mat_peptide"); 
-    }
-    if($nadded_product != $nadded_strand) { 
-      DNAORG_FAIL("ERROR in $sub_name, for mature peptides, did not product info for all mature peptides", 1, $FH_HR);
-    }
-    if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
-      DNAORG_FAIL("ERROR in $sub_name, for mature peptides, added gene info for $nadded_gene mature peptides (should be 0 or $nadded_strand)", 1, $FH_HR);
-    }
-    if(($nadded_exception != 0) && ($nadded_exception != $nadded_strand)) {
-      DNAORG_FAIL("ERROR in $sub_name, for mature peptides, added exception info for $nadded_exception mature peptides (should be 0 or $nadded_strand)", 1, $FH_HR);
-    }
-    if($nadded_gene == 0) { 
-      for($i = 0; $i < $nadded_strand; $i++) { 
-        push(@{$ftr_info_HAR->{"out_gene"}}, "");
-      }
-    }
-    if($nadded_exception == 0) { 
-      for($i = 0; $i < $nadded_strand; $i++) { 
-        push(@{$ftr_info_HAR->{"out_exception"}}, "");
-      }
-    }
-  }
-
-  (undef, undef, undef, undef, undef, $ref_cds_strand_str) = getStrandStats($cds_tbl_HHAR, $ref_accn, $FH_HR);
-  # CDS strand must be all + or -, we can't deal with unknown strands or mixed strands because we need to 
-  # identify starts and stops in CDS 
-  if($ref_cds_strand_str !~ /^[+-]+$/) { 
-    DNAORG_FAIL("ERROR in $sub_name, at least one CDS is not + or - strand (must be single nt CDS or mixed strand CDS), ref_cds_strand_str: $ref_cds_strand_str", 1, $FH_HR);
-  }
-  getLengthsAndCoords(\%{$cds_tbl_HHAR->{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-  $nadded_product   = getQualifierValues($cds_tbl_HHAR, $ref_accn, "product",   \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-  $nadded_gene      = getQualifierValues($cds_tbl_HHAR, $ref_accn, "gene",      \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
-  $nadded_exception = getQualifierValues($cds_tbl_HHAR, $ref_accn, "exception", \@{$ftr_info_HAR->{"out_exception"}}, $FH_HR);
-  $nadded_strand    = length($ref_cds_strand_str);
-  for($i = 0; $i < $nadded_strand; $i++) { 
-    push(@{$ftr_info_HAR->{"type_fname"}},  "cds");
-    push(@{$ftr_info_HAR->{"type_ftable"}}, "CDS");
-  }
-  if($nadded_product != $nadded_strand) { 
-    DNAORG_FAIL("ERROR in $sub_name, for CDS, did not product info for all CDS", 1, $FH_HR);
-  }
-  if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
-    DNAORG_FAIL("ERROR in $sub_name, for CDS, added gene info for $nadded_gene CDS (should be 0 or $nadded_strand)", 1, $FH_HR);
-  }
-  if(($nadded_exception != 0) && ($nadded_exception != $nadded_strand)) {
-    DNAORG_FAIL("ERROR in $sub_name, for CDS, added exception gene info for $nadded_exception CDS (should be 0 or $nadded_strand)", 1, $FH_HR);
-  }
-  if($nadded_gene == 0) { 
-    for($i = 0; $i < $nadded_strand; $i++) { 
-      push(@{$ftr_info_HAR->{"out_gene"}}, "");
-    }
-  }
-  if($nadded_exception == 0) { 
-    for($i = 0; $i < $nadded_strand; $i++) { 
-      push(@{$ftr_info_HAR->{"out_exception"}}, "");
-    }
-  }
-
-  if($do_xfeat) {
-    foreach my $xfeat (sort keys (%{$xfeat_tbl_HHHAR})) { 
-      (undef, undef, undef, undef, undef, $ref_xfeat_strand_cur_str) = getStrandStats(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, $FH_HR);
-      $ref_xfeat_strand_full_str .= $ref_xfeat_strand_cur_str;
-      getLengthsAndCoords(\%{$xfeat_tbl_HHHAR->{$xfeat}{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-      $nadded_product   = getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, "product",   \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-      $nadded_gene      = getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, "gene",      \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
-      $nadded_exception = getQualifierValues(\%{$xfeat_tbl_HHHAR->{$xfeat}}, $ref_accn, "exception", \@{$ftr_info_HAR->{"out_exception"}}, $FH_HR);
-      $nadded_strand    = length($ref_xfeat_strand_cur_str);
-      for($i = 0; $i < $nadded_strand; $i++) { 
-        push(@{$ftr_info_HAR->{"type_fname"}},  $xfeat);
-        push(@{$ftr_info_HAR->{"type_ftable"}}, $xfeat);
-      }
-      if(($nadded_product != 0) && ($nadded_product != $nadded_strand)) {
-        DNAORG_FAIL("ERROR in $sub_name, for $xfeat features, added gene info for $nadded_product features (should be 0 or $nadded_strand)", 1, $FH_HR);
-      }
-      if($nadded_product == 0) { 
-        for($i = 0; $i < $nadded_strand; $i++) { 
-          push(@{$ftr_info_HAR->{"out_product"}}, "");
-        }
-      }
-      if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
-        DNAORG_FAIL("ERROR in $sub_name, for $xfeat features, added gene info for $nadded_gene features (should be 0 or $nadded_strand)", 1, $FH_HR);
-      }
-      if(($nadded_exception != 0) && ($nadded_exception != $nadded_strand)) {
-        DNAORG_FAIL("ERROR in $sub_name, for $xfeat features, added exception info for $nadded_exception features (should be 0 or $nadded_strand)", 1, $FH_HR);
-      }
-      if($nadded_gene == 0) { 
-        for($i = 0; $i < $nadded_strand; $i++) { 
-          push(@{$ftr_info_HAR->{"out_gene"}}, "");
-        }
-      }
-      if($nadded_exception == 0) { 
-        for($i = 0; $i < $nadded_strand; $i++) { 
-          push(@{$ftr_info_HAR->{"out_exception"}}, "");
-        }
-      }
-    }
-  }
-
-  if($do_dfeat) {
-    foreach my $dfeat (sort keys (%{$dfeat_tbl_HHHAR})) { 
-      (undef, undef, undef, undef, undef, $ref_dfeat_strand_cur_str) = getStrandStats(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, $FH_HR);
-      $ref_dfeat_strand_full_str .= $ref_dfeat_strand_cur_str;
-      getLengthsAndCoords(\%{$dfeat_tbl_HHHAR->{$dfeat}{$ref_accn}}, \@{$ftr_info_HAR->{"ref_len"}}, \@{$ftr_info_HAR->{"ref_coords"}}, $FH_HR);
-      $nadded_product   = getQualifierValues(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, "product",   \@{$ftr_info_HAR->{"out_product"}}, $FH_HR);
-      $nadded_gene      = getQualifierValues(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, "gene",      \@{$ftr_info_HAR->{"out_gene"}}, $FH_HR);
-      $nadded_exception = getQualifierValues(\%{$dfeat_tbl_HHHAR->{$dfeat}}, $ref_accn, "exception", \@{$ftr_info_HAR->{"out_exception"}}, $FH_HR);
-      $nadded_strand    = length($ref_dfeat_strand_cur_str);
-      for($i = 0; $i < $nadded_strand; $i++) { 
-        push(@{$ftr_info_HAR->{"type_fname"}},  $dfeat);
-        push(@{$ftr_info_HAR->{"type_ftable"}}, $dfeat);
-      }
-      if(($nadded_product != 0) && ($nadded_product != $nadded_strand)) {
-        DNAORG_FAIL("ERROR in $sub_name, for $dfeat features, added gene info for $nadded_product features (should be 0 or $nadded_strand)", 1, $FH_HR);
-      }
-      if($nadded_product == 0) { 
-        for($i = 0; $i < $nadded_strand; $i++) { 
-          push(@{$ftr_info_HAR->{"out_product"}}, "");
-        }
-      }
-      if(($nadded_gene != 0) && ($nadded_gene != $nadded_strand)) {
-        DNAORG_FAIL("ERROR in $sub_name, for $dfeat features, added gene info for $nadded_gene features (should be 0 or $nadded_strand)", 1, $FH_HR);
-      }
-      if(($nadded_exception != 0) && ($nadded_exception != $nadded_strand)) {
-        DNAORG_FAIL("ERROR in $sub_name, for $dfeat features, added exception info for $nadded_exception features (should be 0 or $nadded_strand)", 1, $FH_HR);
-      }
-      if($nadded_gene == 0) { 
-        for($i = 0; $i < $nadded_strand; $i++) { 
-          push(@{$ftr_info_HAR->{"out_gene"}}, "");
-        }
-      }
-      if($nadded_exception == 0) { 
-        for($i = 0; $i < $nadded_strand; $i++) { 
-          push(@{$ftr_info_HAR->{"out_exception"}}, "");
-        }
-      }
-    }
-  }
-
-  @{$ftr_info_HAR->{"ref_strand"}} = split("", $ref_mp_strand_str . $ref_cds_strand_str . $ref_xfeat_strand_full_str . $ref_dfeat_strand_full_str);
-
-  return;
-}
-
-
-#################################################################
-# Subroutine : determineSourcesOfDuplicateFeatures()
-# Incept:      EPN, Sun Jul 22 19:51:24 2018
-#
-# Purpose:     For any features of type 'duplicate', find the
-#              other features that will be the source of their
-#              annotation boundaries.
-#              
-#              Fills for %{$ftr_info_HAR}:
-#                "source_idx": feature index of the feature that this feature will use
-#                              as the source of its annotation boundaries. It will simply
-#                              copy those boundaries.
-#
-# Arguments: 
-#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
-#   $FH_HR:        REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies: 
-################################################################# 
-sub determineSourcesOfDuplicateFeatures { 
-  my $nargs_expected = 2;
-  my $sub_name = "determineSourcesOfDuplicateFeatures";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $FH_HR) = @_;
-
-  my $nftr = getConsistentSizeOfInfoHashOfArrays($ftr_info_HAR, $FH_HR);
-  my $match_idx = undef;
-  
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"type"}[$ftr_idx]       eq "dfeat" && 
-       $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") { 
-      # find match to set as the source for this feature's boundary annotation
-      $match_idx = undef;
-      for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) {
-        if(($ftr_info_HAR->{"type"}[$ftr_idx2] ne "dfeat") && 
-           ($ftr_info_HAR->{"ref_coords"}[$ftr_idx2] eq $ftr_info_HAR->{"ref_coords"}[$ftr_idx])) {
-          if(defined $match_idx) {
-            DNAORG_FAIL("ERROR in $sub_name, more than one feature has identical coordinates (" . $ftr_info_HAR->{"ref_coords"}[$ftr_idx] . ") to a " . $ftr_info_HAR->{"type_ftable"}{$ftr_idx} . " feature", 1, $FH_HR);
-          }
-          $match_idx = $ftr_idx2;
-        }
-      }
-      if(! defined $match_idx) {
-        DNAORG_FAIL("ERROR in $sub_name, zero other features have the same coordinates as the " . $ftr_info_HAR->{"type_ftable"}{$ftr_idx} . " feature requiring a duplicate, with coordinates " . $ftr_info_HAR->{"ref_coords"}[$ftr_idx], 1, $FH_HR);
-      }
-      $ftr_info_HAR->{"source_idx"}[$ftr_idx] = $match_idx;
-    }
-    # else $ftr_info_HAR->{"source_idx"}[$ftr_idx] will stay as it was initialized (-1)
-  }
-  
-  return;
 }
 
 #################################################################
@@ -3295,7 +3020,7 @@ sub dumpArrayOfHashes {
 # Subroutines for validating the special data structures:
 #   validateExecutableHash()
 #   validateFeatureInfoHashIsComplete()
-#   validateModelInfoHashIsComplete()
+#   validateSegmentInfoHashIsComplete()
 #   validateSequenceInfoHashIsComplete()
 #   validateErrorInfoHashIsComplete()
 #   validateInfoHashOfArraysIsComplete()
@@ -3353,28 +3078,17 @@ sub validateExecutableHash {
 # Purpose:    Validate that a 'feature info' hash is valid and complete.
 #             'Complete' means it has all the expected keys, each of which is an identically sized array.
 #             The expected keys are:
-#                "annot_type":    annotation type:
-#                                 "model":        if this feature's annotation is derived from models (type: 'mp' or 'cds-notmp'
-#                                 "duplicate":    if this feature's annotation is derived by copying data from another (e.g., type: 'gene')
-#                "filename_root": 'root' string for output file names related to this model: 
-#                "final_mdl":     index (in arrays of %mdl_info_HA) of final model for this feature
-#                "first_mdl":     index (in arrays of %mdl_info_HA) of first model for this feature
-#                "nmodels":       number of models for this feature (e.g. number of segments) for this feature, 
-#                "out_product":   output value: name of product for this feature (e.g. "replication-associated protein")
-#                "out_gene":      output value: name of gene for this feature (e.g. "ORF2")
-#                "out_exception": output value: name of exception for this feature (e.g. "RNA editing")
-#                "out_short":     output value: short name for this feature (e.g. "CDS #4 [1 exon; +]")
-#                "out_tiny":      output value: very short name for this feature (e.g. "CDS#4")
-#                "ref_coords":    coordinates for this feature in the reference
-#                "ref_len":       length of this feature in the reference
-#                "ref_strand":    strand for this feature in the reference
-#                "source_idx":    if "annot_type" is "duplicate", the index of the feature that
-#                                 that is the source to copy for this feature's annotation.
-#                "type":          type of feature: e.g. "cds"
-#                "type_fname":    string for naming output files related to this feature, e.g. "mp", "cds", "$xfeat", or "$dfeat"
-#                "type_ftable":   output feature table feature name, e.g. "mat_peptide", "CDS", "$xfeat", or "$dfeat"
-#                "type_idx":      index for the type that this feature is (e.g. 4, if this is the 4th "cds-notmp" feature
-#              
+#                "type"
+#                "coords"
+#                "strand"
+#                "source_idx"
+#                "parent_idx"
+#                "3pa_ftr_idx"
+#                "5p_seg_idx"
+#                "3p_seg_idx"
+#                "product"
+#                "gene"
+#
 #             If @{exceptions_AR} is non-empty, then keys in 
 #             in that array need not be in %{$ftr_info_HAR}.
 #
@@ -3398,66 +3112,57 @@ sub validateFeatureInfoHashIsComplete {
  
   my ($ftr_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("final_mdl", "first_mdl", "annot_type", "nmodels", 
-                         "out_product", "out_gene", "out_exception", 
-                         "out_tiny", "out_short", "out_tiny", "ref_coords",
-                         "ref_len", "ref_strand", "type", "type_idx", 
-                         "parent_ftr", "primary_children_ftr_str", "primary_children_ftr_num", 
-                         "all_children_ftr_str", "all_children_ftr_num", "source_idx");
+  my @expected_keys_A = ("type", "coords", "strand", "source_idx", "parent_idx",
+                         "3pa_ftr_idx", "5p_seg_idx", "3p_seg_idx", "product", "gene");
 
   return validateInfoHashOfArraysIsComplete($ftr_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
 
 #################################################################
-# Subroutine: validateModelInfoHashIsComplete()
+# Subroutine: validateSegmentInfoHashIsComplete()
 # Incept:     EPN, Tue Feb 16 11:00:03 2016
 #
 # Purpose:    Validate that a 'model info' hash is valid and complete.
 #             'Complete' means it has all the expected keys, each of which is an identically sized array.
 #             The expected keys are:
-#                "checksum":      checksum of the 'alignment' (single sequence) file the model was built from
-#                "cmname":        name of the model, used in infernal output 
-#                "filename_root": 'root' string for output file names related to this model: 
-#                "is_final":      '1' if this model is the final model (e.g. final segment) for the feature it models ("map_ftr")
-#                "is_first":      '1' if this model is the first model (e.g. final segment) for the feature it models ("map_ftr")
-#                "length":        length, in nucleotides, of the model
-#                "ref_start":     start position of modelled region in the reference genome
-#                "ref_stop":      stop position of modelled region in the reference genome
-#                "ref_strand":    strand of modelled region in the reference genome
-#                "map_segment":   the segment index this model models (1.."map_nsegment" value)
-#                "map_ftr":       the feature index (array index in ftr_info_HAR) this model models
-#                "map_nsegment":  the number of segments the feature this model models has 
-#                "out_tiny":      output value: very short name for this model (e.g. "CDS#4.2")
-#                "out_idx":       output value: feature index and segment index this model (e.g. "4.2")
+#                "start":    start position of segment in the reference genome
+#                "stop":     stop position of segment in the reference genome
+#                "strand":   strand of segment in the reference genome
+#                "map_ftr":  the feature index (array index in ftr_info_HAR) 
+#                            this segment is for
+#                "is_5p":    '1' if this segment is the 5'-most segment for its feature
+#                            (when the segments are joined to make the feature, not 
+#                            necessarily in reference genome)
+#                "is_3p":    '1' if this segment is the 3'-most model for its feature
+#                            (when the segments are joined to make the feature, not 
+#                            necessarily in reference genome)
 #
 #             If @{exceptions_AR} is non-empty, then keys in 
-#             in that array need not be in %{$mdl_info_HAR}.
+#             in that array need not be in %{$seg_info_HAR}.
 #
 # Arguments:
-#   $mdl_info_HAR:  REF to hash of arrays of model information
+#   $seg_info_HAR:  REF to hash of arrays of model information
 #   $exceptions_AR: REF to array of keys that may be excluded from the hash
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 # 
-# Returns: Number of elements in each and every array of %{$mdl_info_HAR}
+# Returns: Number of elements in each and every array of %{$seg_info_HAR}
 #
 # Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
-#            does not exist in $mdl_info_HAR
-#          - if two arrays in $mdl_info_HAR are of different sizes
+#            does not exist in $seg_info_HAR
+#          - if two arrays in $seg_info_HAR are of different sizes
 #          - if any key listed in @{$exceptions_AR} is not one of the expected keys
 #
 #################################################################
-sub validateModelInfoHashIsComplete { 
-  my $sub_name = "validateModelInfoHashIsComplete()";
+sub validateSegmentInfoHashIsComplete { 
+  my $sub_name = "validateSegmentInfoHashIsComplete()";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($mdl_info_HAR, $exceptions_AR, $FH_HR) = (@_);
+  my ($seg_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("checksum", "cmname", "filename_root", "is_final", "is_first", 
-                         "length", "ref_start", "ref_stop", "ref_strand", "map_segment", 
-                         "map_ftr", "map_nsegment", "out_tiny", "out_idx");
+  my @expected_keys_A = ("start", "stop", "strand", "map_ftr", "is_5p", "is_3p");
 
-  return validateInfoHashOfArraysIsComplete($mdl_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
+  return validateInfoHashOfArraysIsComplete($seg_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
 }
 
 #################################################################
@@ -7037,15 +6742,15 @@ sub blastxDbSeqNameToFtrIdx {
 
   my ($blastx_seqname, $ftr_info_HAR, $FH_HR) = @_;
 
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $nftr = getInfoHashSize($ftr_info_HAR, "type", $FH_HR); # nftr: number of features
 
   my $ret_ftr_idx = undef;
   if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
     my ($accn, $coords) = ($1, $2);
-    # find it in @{$ftr_info_HAR->{"ref_coords"}}
+    # find it in @{$ftr_info_HAR->{"coords"}}
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds")) { 
-        if($ftr_info_HAR->{"ref_coords"}[$ftr_idx] eq $coords) { 
+      if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "CDS")) { 
+        if($ftr_info_HAR->{"coords"}[$ftr_idx] eq $coords) { 
           if(defined $ret_ftr_idx) { # found more than 1 features that match
             DNAORG_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match two features, ftr_idx: $ftr_idx and $ret_ftr_idx", 1, $FH_HR);
           }                  
@@ -7334,9 +7039,9 @@ sub getFeature3pMostPosition {
 #             for features that are covered by multiple model spans.
 #
 # Arguments: 
-#  $mdl_info_HAR: ref to model information hash of arrays, PRE-FILLED
 #  $ftr_info_HAR: ref to feature information hash of arrays, PRE-FILLED
-#  $mdl_idx:      model index
+#  $seg_info_HAR: ref to model information hash of arrays, PRE-FILLED
+#  $seg_idx:      model index
 #
 # Returns:    "" if this is the only model for this feature
 #             string like ", model 1 of 2", if not
@@ -7349,12 +7054,12 @@ sub summarizeModelForFeature {
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_info_HAR, $ftr_info_HAR, $mdl_idx) = @_;
+  my ($ftr_info_HAR, $seg_info_HAR, $seg_idx) = @_;
 
-  my $ftr_idx = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-  my $nmdl = ($ftr_info_HAR->{"final_mdl"} - $ftr_info_HAR->{"first_mdl"}) + 1;
+  my $ftr_idx = $seg_info_HAR->{"map_ftr"}[$seg_idx];
+  my $nmdl = ($ftr_info_HAR->{"3p_seg_idx"} - $ftr_info_HAR->{"5p_seg_idx"}) + 1;
   if($nmdl > 1) { 
-    return sprintf(", model %d of %d", ($mdl_idx - $ftr_info_HAR->{"first_mdl"}[$ftr_idx]) + 1, $nmdl);
+    return sprintf(", segment %d of %d", ($seg_idx - $ftr_info_HAR->{"5p_seg_idx"}[$ftr_idx]) + 1, $nmdl);
   }
 
   return ""; # return "" if $nmdl == 1;
@@ -7718,8 +7423,8 @@ sub populateFeatureInfo3paFtrIdx {
 #                            necessarily in reference genome)
 #
 #           The following values are added to %{$ftr_info_HAR}:
-#                "5p_seg_idx":   index (in arrays of %mdl_info_HA) of 5'-most segment for this feature
-#                "3p_seg_idx":   index (in arrays of %mdl_info_HA) of 3'-most segment for this feature
+#                "5p_seg_idx":   index (in arrays of %seg_info_HA) of 5'-most segment for this feature
+#                "3p_seg_idx":   index (in arrays of %seg_info_HA) of 3'-most segment for this feature
 # Arguments:
 #  $ftr_info_HAR:      ref to hash of arrays with information on the features, ADDED TO HERE
 #  $seg_info_HAR:      ref to hash of arrays with information on the models, FILLED HERE

@@ -8,6 +8,7 @@ use Getopt::Long;
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
+use LWP::Simple; 
 
 require "dnaorg.pm"; 
 require "epn-options.pm";
@@ -90,14 +91,14 @@ opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,
 
 $opt_group_desc_H{"2"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                        2,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--seginfo",    "boolean", 0,                        2,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
 opt_Add("--ftrinfo",    "boolean", 0,                        2,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"3"} = "options for skipping stages and using files from an earlier, identical run, primarily useful for debugging";
 #     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
 opt_Add("--skipedirect",   "boolean", 0,                       3,   undef,      undef,                    "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipfetch",     "boolean", 0,                       3,   undef,      undef,                    "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipbuild",     "boolean", 0,                       3,   undef,      undef,                    "skip the build/calibrate steps",                         "skip the model building/calibrating, requires --mdlinfo and/or --ftrinfo", \%opt_HH, \@opt_order_A);
+opt_Add("--skipbuild",     "boolean", 0,                       3,   undef,      undef,                    "skip the build/calibrate steps",                         "skip the model building/calibrating, requires --seginfo and/or --ftrinfo", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -116,7 +117,7 @@ my $options_okay =
                 'dfeat=s'      => \$GetOptions_H{"--dfeat"},
                 'keep'         => \$GetOptions_H{"--keep"},
 # optional output files
-                'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
+                'seginfo'      => \$GetOptions_H{"--seginfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"},
 # options for skipping stages, using earlier results
                 'skipedirect'  => \$GetOptions_H{"--skipedirect"},
@@ -154,8 +155,8 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
 # do checks that are too sophisticated for epn-options.pm
 if((opt_Get("--skipbuild", \%opt_HH)) && 
-   (! (opt_Get("--mdlinfo", \%opt_HH) || opt_Get("--ftrinfo", \%opt_HH)))) { 
-  die "ERROR, --skipbuild requires one or both of --mdlinfo or --ftrinfo"; 
+   (! (opt_Get("--seginfo", \%opt_HH) || opt_Get("--ftrinfo", \%opt_HH)))) { 
+  die "ERROR, --skipbuild requires one or both of --seginfo or --ftrinfo"; 
 }
 
 my $dir        = opt_Get("--dirout", \%opt_HH);          # this will be undefined unless -d set on cmdline
@@ -227,8 +228,8 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 # to close these first.
 
 # open optional output files
-if(opt_Get("--mdlinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "mdlinfo", $out_root . ".mdlinfo", 1, "Model information (created due to --mdlinfo)");
+if(opt_Get("--seginfo", \%opt_HH)) { 
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "seginfo", $out_root . ".seginfo", 1, "Model information (created due to --seginfo)");
 }
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
   openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
@@ -272,7 +273,7 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 #         make sure options used are consistent between dnaorg_build.pl and 
 #         dnaorg_annotate.pl 
 ###########################################################################
-my $progress_w = 80; # the width of the left hand column in our progress output, hard-coded
+my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
 my $start_secs;
 #my $start_secs = outputProgressPrior("Outputting information on options used for future use with dnaorg_annotate.pl", $progress_w, $log_FH, *STDOUT);
 #output_consopts_file($out_root . ".consopts", \%opt_HH, \%ofile_info_HH);
@@ -292,6 +293,12 @@ my $other_str = "gene";
 fetch_reference_info_edirect($ref_accn, $other_str, $out_root, \%feat_tbl_HHA,
                              \%ofile_info_HH, \%opt_HH, $ofile_info_HH{"FH"}); 
 
+
+#############################################################
+# Step 3. Populate feature_info_HA and segment_info_HA hashes
+#         and output model info file.
+#############################################################
+
 my $qual_str = "product,gene,exception";
 my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1], 
                                # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
@@ -300,52 +307,46 @@ my %seg_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1],
 
 initialize_feature_info_hash_from_ftable_data(\%feat_tbl_HHA, \%ftr_info_HA, $qual_str, $FH_HR);
 
-#############################################################
-# Step 3. Populate feature_info_HA and segment_info_HA hashes
-#############################################################
-
 populateFeatureInfoHash(\%ftr_info_HA, \%opt_HH, $FH_HR);
 populateSegmentInfoHash(\%seg_info_HA, \%ftr_info_HA, \%opt_HH, $FH_HR);
+
+my $nftr = validateFeatureInfoHashIsComplete(\%ftr_info_HA, undef, $ofile_info_HH{"FH"}); # nftr: number of features
+my $nseg = validateSegmentInfoHashIsComplete(\%seg_info_HA, undef, $ofile_info_HH{"FH"}); # nseg: number of total segments
 
 openAndAddFileToOutputInfo(\%ofile_info_HH, "minfo", $out_root . ".minfo", 1, "model info file");
 output_model_info_file($ofile_info_HH{"FH"}{"minfo"}, $ref_accn, \%ftr_info_HA, $FH_HR);
 
-dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, *STDOUT);
-dumpInfoHashOfArrays("Segment information (%seg_info_HA)", 0, \%seg_info_HA, *STDOUT);
-
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-exit 0;
-#########################################################
-# Step 3. Fetch and process the reference genome sequence
-##########################################################
-$start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
-my %mdl_info_HA = ();          # hash of arrays, values are arrays [0..$nmdl-1];
-                               # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
-                               # filled in wrapperFetchAllSequencesAndProcessReferenceSequence()
-
-# convert the input stockholm alignment into a fasta file
-#my $fa_file = $out_root . ".fa";
-#stockholm_to_fasta($in_stk_file, $out_root . ".fa", $ofile_info_HH{"FH"});
-
-# verify our model and feature info hashes are complete, 
-# if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
-my $nftr = validateFeatureInfoHashIsComplete(\%ftr_info_HA, undef, $ofile_info_HH{"FH"}); # nftr: number of features
-my $nmdl = validateModelInfoHashIsComplete  (\%mdl_info_HA, undef, $ofile_info_HH{"FH"}); # nmdl: number of homology models
-
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-#dumpInfoHashOfArrays("ftr_info", 0, \%ftr_info_HA, *STDOUT);
-
-if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
-  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
+if(exists $ofile_info_HH{"FH"}{"seginfo"}) { 
+  dumpInfoHashOfArrays("Segment information (%seg_info_HA)", 0, \%seg_info_HA, $ofile_info_HH{"FH"}{"seginfo"});
 }
 if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
   dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
 
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#########################################################
+# Step 4. Fetch and process the reference genome sequence
+##########################################################
+# verify our model and feature info hashes are complete, 
+# if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
+
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+$start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
+
+my $fa_file  = $out_root . ".fa";
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file");
+my $stk_file = $out_root . ".stk";
+fetch_sequence_to_fasta_file($ofile_info_HH{"FH"}{"fasta"}, $ref_accn, $FH_HR);
+close $ofile_info_HH{"FH"}{"fasta"};
+
+fasta_file_to_stockholm_file($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
+
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 #######################################################################
-# Step 3B. Fetch the CDS protein translations and build BLAST database
+# Step 5. Fetch the CDS protein translations and build BLAST database
 #######################################################################
 $start_secs = outputProgressPrior("Fetching protein translations of CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
 my @prot_fa_file_A = ();
@@ -374,8 +375,8 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
 # Conclude
 ##########
 # output optional output files
-if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
-  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
+if(exists $ofile_info_HH{"FH"}{"seginfo"}) { 
+  dumpInfoHashOfArrays("Segment information (%seg_info_HA)", 0, \%seg_info_HA, $ofile_info_HH{"FH"}{"seginfo"});
 }
 if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
   dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
@@ -427,15 +428,16 @@ sub fetch_proteins_into_fasta_files {
     chomp $line;
     my @el_A = split(/\t/, $line);
     if(scalar(@el_A) != 4) { 
-      DNAORG_FAIL("ERROR in $sub_name, not exactly 4 tab delimited tokens in efetch output file line\n$line\n", 1, $ofile_info_HHR->{"FH"});
+      DNAORG_FAIL("ERROR in $sub_name, not exactly 4 tab delimited tokens in efetch output file line\n$line\n", 1, $FH_HR);
     }
     my ($read_ref_accn, $prot_accn, $location, $translation) = (@el_A);
+    $location =~ s/\.\./\-/g;
     my $new_name = $prot_accn . "/" . $location;
 
     print ALLFA  (">$new_name\n$translation\n");
 
     # determine what feature this corresponds to, and create the individual fasta file for that
-    my $ftr_idx = blastxDbSeqNameToFtrIdx($new_name, $ftr_info_HAR, $ofile_info_HHR->{"FH"}); # this will die if we can't find the feature with $location
+    my $ftr_idx = blastxDbSeqNameToFtrIdx($new_name, $ftr_info_HAR, $FH_HR); # this will die if we can't find the feature with $location
     my $indi_fa_out_file = $out_root . ".f" . $ftr_idx . ".prot.fa";
     open(INDIFA, ">", $indi_fa_out_file) || fileOpenFailure($indi_fa_out_file, $sub_name, $!, "writing", $FH_HR);
     print INDIFA (">$new_name\n$translation\n");
@@ -1422,3 +1424,93 @@ sub output_model_info_file {
 
   return;
 }
+
+#################################################################
+# Subroutine: fetch_sequence_to_fasta_file()
+# Incept:     EPN, Sat Mar  9 09:19:03 2019
+#
+# Synopsis: Fetch a sequence to a fasta file.
+#
+# Arguments:
+#  $out_FH:    output file handle
+#  $accn:      accession to fetch
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if there's a problem fetching the sequence file
+#################################################################
+sub fetch_sequence_to_fasta_file {
+  my $sub_name = "fetch_sequence_to_fasta_file";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_FH, $accn, $FH_HR) = @_;
+
+  my $url = sprintf("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=fasta&retmode=text", $accn);
+  my $fetched_fasta = get($url);
+
+  if(! defined $fetched_fasta) { 
+    DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", 1, $FH_HR); 
+  }
+  elsif($fetched_fasta !~ m/^>/) { 
+    DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (not fasta)", 1, $FH_HR); 
+  }
+  else { 
+    my @fetched_fasta_A = split(/\n/, $fetched_fasta);
+    if($fetched_fasta_A[0] =~ /^>(\S+)\s*/) { 
+      my $fetched_name = $1;
+      my $fetched_accn = $fetched_name;
+      stripVersion(\$fetched_accn);
+      if($fetched_accn ne $accn) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (fetched $fetched_accn instead)", 1, $FH_HR); 
+      }
+      print $out_FH (">" . $fetched_accn . "\n");
+    }
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (not fasta)", 1, $FH_HR); 
+    }
+    for(my $i = 1; $i < scalar(@fetched_fasta_A); $i++) { 
+      my $fetched_line = $fetched_fasta_A[$i];
+      if($fetched_line =~ /^>(\S+)/) { 
+        DNAORG_FAIL("ERROR in $sub_name, fetched more than one sequence (second sequence is $1)", 1, $FH_HR);
+      }
+      print $out_FH ($fetched_line . "\n");
+    }
+  }
+
+  return; 
+}
+
+#################################################################
+# Subroutine: fasta_file_to_stockholm_file()
+# Incept:     EPN, Sat Mar  9 10:24:14 2019
+#
+# Synopsis: Use esl-reformat to convert a fasta file to a stockholm file
+#
+# Arguments:
+#  $esl_reformat: esl-reformat executable file
+#  $fa_file:      fasta file
+#  $stk_file:     stockholm file to create
+#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if there's a problem fetching the sequence file
+#################################################################
+sub fasta_file_to_stockholm_file { 
+  my $sub_name = "fasta_file_to_stockholm_file";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($esl_reformat, $fa_file, $stk_file, $opt_HHR, $FH_HR) = @_;
+
+  my $cmd = $esl_reformat . " --informat afa stockholm $fa_file > $stk_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  return;
+}
+
+
+  
