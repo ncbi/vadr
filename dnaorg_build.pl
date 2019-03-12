@@ -268,31 +268,25 @@ $execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
 $execs_H{"makeblastdb"}   = $blast_exec_dir . "makeblastdb";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
-###########################################################################
-# Step 1. Output the consopts file that dnaorg_annotate.pl will use to 
-#         make sure options used are consistent between dnaorg_build.pl and 
-#         dnaorg_annotate.pl 
-###########################################################################
-my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
-my $start_secs;
-#my $start_secs = outputProgressPrior("Outputting information on options used for future use with dnaorg_annotate.pl", $progress_w, $log_FH, *STDOUT);
-#output_consopts_file($out_root . ".consopts", \%opt_HH, \%ofile_info_HH);
-#outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-###########################################################################
-# Step 2. Gather and process information on reference genome using Edirect.
-###########################################################################
-$start_secs = outputProgressPrior("Gathering information on reference using edirect", $progress_w, $log_FH, *STDOUT);
+###############################################################
+# Step 1. Fetch the gpc format file for the reference accession
+###############################################################
+my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
+my $start_secs = outputProgressPrior("Fetching information using edirect", $progress_w, $log_FH, *STDOUT);
+
+my $gb_file  = $out_root . ".gb";
+edirectFetchToFile($gb_file, $ref_accn, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+addClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, "GenBank format file for $ref_accn");
+
+genbankParse($gb_file, $FH_HR);
 
 my %feat_tbl_HHA = ();  # feature data from feature table file, hash of hash of hashes of arrays
                          # 1D: qualifier name, e.g. 'CDS'
                          # 2D: key: column name in gene ftable file
                          # 3D: per-row values for each column
 
-my $other_str = "gene";
-fetch_reference_info_edirect($ref_accn, $other_str, $out_root, \%feat_tbl_HHA,
-                             \%ofile_info_HH, \%opt_HH, $ofile_info_HH{"FH"}); 
-
+my $feature_str = "CDS,gene";
 
 #############################################################
 # Step 3. Populate feature_info_HA and segment_info_HA hashes
@@ -331,17 +325,16 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # verify our model and feature info hashes are complete, 
 # if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
 $start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
 
 my $fa_file  = $out_root . ".fa";
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $ref_accn");
 my $stk_file = $out_root . ".stk";
 fetch_sequence_to_fasta_file($ofile_info_HH{"FH"}{"fasta"}, $ref_accn, $FH_HR);
 close $ofile_info_HH{"FH"}{"fasta"};
 
 fasta_file_to_stockholm_file($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
+addClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $ref_accn");
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -350,21 +343,21 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #######################################################################
 $start_secs = outputProgressPrior("Fetching protein translations of CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
 my @prot_fa_file_A = ();
-fetch_proteins_into_fasta_files($out_root, $ref_accn, \%ftr_info_HA, \@prot_fa_file_A, \%opt_HH, \%ofile_info_HH);
+#fetch_proteins_into_fasta_files($out_root, $ref_accn, \%ftr_info_HA, \@prot_fa_file_A, \%opt_HH, \%ofile_info_HH);
 
 foreach my $prot_fa_file (@prot_fa_file_A) { 
-  create_blast_protein_db(\%execs_H, $prot_fa_file, \%opt_HH, \%ofile_info_HH);
+#  create_blast_protein_db(\%execs_H, $prot_fa_file, \%opt_HH, \%ofile_info_HH);
 }
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################
-# Step 4. Build the model
+# Step 6. Build the model
 #########################
 if(! opt_Get("--skipbuild", \%opt_HH)) { 
   $start_secs = outputProgressPrior("Building model (this could take a while)", $progress_w, $log_FH, *STDOUT);
 
-  my $cmbuild_cmd  = $execs_H{"cmbuild"} . " --verbose -F $out_root.cm " . $ofile_info_HH{"fullpath"}{"refstk"} . " > $out_root.cmbuild";
-  #runCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+  my $cmbuild_cmd  = $execs_H{"cmbuild"} . " --noss --verbose -F $out_root.cm " . $ofile_info_HH{"fullpath"}{"stk"} . " > $out_root.cmbuild";
+  runCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
 
   outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
@@ -386,6 +379,53 @@ $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
+#################################################################
+# Subroutine: translate_proteins_into_fasta_files()
+# Incept:     EPN, Mon Mar 11 06:30:55 2019
+# 
+# Purpose:    Use esl-translate to create protein translations 
+#             of each of the N CDS for an accession and create 
+#             N+1 FASTA files, one with each single sequence
+#             and one with all sequences.
+#             Fill @{$fa_file_AR} with the sequence file names.
+#
+# Arguments:
+#   $execs_HR:       hash with paths to esl-sfetch and esl-translate executables
+#   $out_root:       string for naming output files
+#   $ref_accn:       reference accession
+#   $ftr_info_HAR:   REF to the feature info, pre-filled
+#   $seg_info_HAR:   REF to the segment info, pre-filled
+#   $fa_file_AR:     REF to array of fasta file names, filled here 
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $ofile_info_HHR: REF to the 2D hash of output file information
+#                    
+# Returns: void
+# Dies:    if a fetched location for a feature does not match to any feature's "ref_coords" 
+#
+#################################################################
+sub translate_into_protein_fasta_files { 
+  my $sub_name = "translate_into_protein_fasta_files";
+  my $nargs_expected = 7;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($execs_HR, $out_root, $ref_accn, $ftr_info_HAR, $seg_info_HAR, $fa_file_AR, $opt_HHR, $ofile_info_HHR) = @_;
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+
+  my $nftr = getSizeOfInfoHashOfArrays(\%ftr_info_HA, "type", $FH_HR);
+
+  my $sfetch_out_file  = $out_root . ".prot.sfetch";
+  my $all_fa_out_file  = $out_root . ".prot.fa";
+
+#  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+#    if(featureTypeIsCds($ftr_info_HAR, $ftr_idx)) { 
+#      push(@fetch_name_A,  $ref_accn);
+#      push(@fetch_coords_A,  $ftr_info_HAR->{"coords"}[$ftr_idx]);
+#      # HERE HERE HERE 
+#    }
+#  }
+
+  return;
+}
 
 #################################################################
 # Subroutine: fetch_proteins_into_fasta_files()
@@ -500,7 +540,7 @@ sub create_blast_protein_db {
 #                      
 # Arguments: 
 #   $ref_accn:              reference accession
-#   $other_str:             string of 'other' features to parse, e.g. "gene,RNA"
+#   $feature_str:           comma separated string of features to parse, e.g. "CDS,gene,RNA"
 #   $out_root:              string that is the 'root' for naming output files
 #   $feat_tbl_HHAR:         REF to hash of hash of arrays for other (non-CDS and non-MP) feature info, FILLED HERE
 #   $ofile_info_HHR:        REF to 2D hash with output info, ADDED TO HERE
@@ -517,12 +557,12 @@ sub fetch_reference_info_edirect {
   my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($ref_accn, $other_str, $out_root, $feat_tbl_HHAR, $ofile_info_HHR, $opt_HHR, $FH_HR) = @_;
+  my ($ref_accn, $feature_str, $out_root, $feat_tbl_HHAR, $ofile_info_HHR, $opt_HHR, $FH_HR) = @_;
 
   my $cmd; 
-  my @other_A = ();
-  if((defined $other_str) && ($other_str ne "")) { 
-    @other_A = split(",", $other_str);
+  my @feature_A = ();
+  if((defined $feature_str) && ($feature_str ne "")) { 
+    @feature_A = split(",", $feature_str);
   }  
 
   # mature peptides
@@ -547,12 +587,9 @@ sub fetch_reference_info_edirect {
   }
   addClosedFileToOutputInfo($ofile_info_HHR, "ft", $ft_file, 0, "Feature table obtained via edirect");
 
-  # CDS from feature table
-  edirect_ftable_or_matpept_to_single_feature_table_info($ref_accn, $ft_file, 0, "CDS", \%{$feat_tbl_HHAR->{"CDS"}}, $FH_HR); # 0: it's not a mat_peptide file
-
-  # other features from feature table
-  foreach my $ofeat (@other_A) { 
-    edirect_ftable_or_matpept_to_single_feature_table_info($ref_accn, $ft_file, 0, $ofeat, \%{$feat_tbl_HHAR->{$ofeat}}, $FH_HR); # 0: it's not a mat_peptide file
+  # features from feature table
+  foreach my $feat (@feature_A) { 
+    edirect_ftable_or_matpept_to_single_feature_table_info($ref_accn, $ft_file, 0, $feat, \%{$feat_tbl_HHAR->{$feat}}, $FH_HR); # 0: it's not a mat_peptide file
   }    
 
   return 0;
@@ -617,7 +654,7 @@ sub edirect_ftable_or_matpept_to_single_feature_table_info {
 
   %{$tbl_HAR} = ();
 
-  if(defined $do_matpept && $do_matpept) { 
+  if((defined $do_matpept) && ($do_matpept)) { 
     parse_edirect_mat_peptide_file($edirect_file, $dummy_column, \%sep_H, \%quals_HHA, \@faccn_A, \%fac_HHA, \%faccn2accn_H, \%column_HA, $FH_HR);
   }
   else { # default, a ftable file
@@ -1288,8 +1325,9 @@ sub helper_breakdown_fac {
 #             arrays in the feature info hash of arrays (%{$ftr_info_HAR})
 #             using $feat_tbl_HHAR:
 #
-#             "type":   feature type, e.g. "mat_peptide", "CDS"
-#             "coords": coordinates for this feature in the reference
+#             "type":    feature type, e.g. "mat_peptide", "CDS"
+#             "coords":  coordinates for this feature in the reference
+#             "strands": strands for these features in the reference
 #              And whatever else is in the comma separated string $qual_str
 # 
 # Arguments:
@@ -1331,7 +1369,7 @@ sub initialize_feature_info_hash_from_ftable_data {
     }
   }
 
-  # set "strand", "coords", and any other values from input %
+  # set "coords", "strands" and any other values from input %
   foreach $type (@type_order_A) { 
     if(exists $feat_tbl_HHAR->{$type}) { 
       foreach $qual ("coords", @qual_A) { 
@@ -1339,6 +1377,12 @@ sub initialize_feature_info_hash_from_ftable_data {
           $ntype = scalar(@{$feat_tbl_HHAR->{$type}{$qual}});
           if($ntype == 0) {
             DNAORG_FAIL("ERROR in $sub_name, for $type no coords values exist", 1, $FH_HR); 
+          }
+          # fill strands
+          foreach my $coords_str (@{$feat_tbl_HHAR->{$type}{$qual}}) { 
+            my @seg_strand_A = ();
+            strand_array_from_fetched_coords_str($coords_str, \@seg_strand_A, $FH_HR);
+            
           }
         }
         if(exists $feat_tbl_HHAR->{$type}{$qual}) { 
@@ -1395,11 +1439,11 @@ sub output_model_info_file {
 
   # create order of keys
   my ($key, $value2print);
-  my @key_order_A  = ("type", "coords");
+  my @key_order_A  = ("type", "coords", "strands");
   my %key_ignore_H = ();
   $key_ignore_H{"type"}        = 1; # already added this to @key_order_A, so it goes first
   $key_ignore_H{"coords"}      = 1; # already added this to @key_order_A, so it goes second
-  $key_ignore_H{"strand"}      = 1; # can be inferred from coords
+  $key_ignore_H{"strands"}     = 1; # already added this to @key_order_A, so it goes third
   $key_ignore_H{"source_idx"}  = 1; # can be inferred from coords and type
   $key_ignore_H{"parent_idx"}  = 1; # can be inferred from coords and type
   $key_ignore_H{"3pa_ftr_idx"} = 1; # can be inferred from coords and type
@@ -1514,3 +1558,226 @@ sub fasta_file_to_stockholm_file {
 
 
   
+#################################################################
+# Subroutine: edirectFetchToFile()
+# Incept:     EPN, Tue Mar 12 12:18:37 2019
+#
+# Synopsis: Fetch information for an accession using edirect.
+#
+# Arguments:
+#  $out_file:  output file to create
+#  $accn:      accession to fetch
+#  $format:    format to fetch (e.g. "gpc", "ft", "fasta")
+#  $nattempts: number of times to retry 
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if there's a problem fetching the data
+#################################################################
+sub edirectFetchToFile { 
+  my $sub_name = "edirectFetchToFile";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_file, $accn, $format, $nattempts, $FH_HR) = @_;
+  if((! defined $nattempts) || ($nattempts < 1)) { $nattempts = 1; }
+
+  my $url = edirectFetchUrl($accn, $format);
+
+  my $n = 0;
+  my $fetched_str = undef;
+  while(($n < $nattempts) && (! defined $fetched_str)) { 
+    $fetched_str = get($url);
+    $n++;
+    sleep(1);
+  }
+  if(! defined $fetched_str) { 
+    DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", 1, $FH_HR); 
+  }
+
+  open(OUT, ">", $out_file) || fileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
+  print OUT $fetched_str;
+  close(OUT);
+
+  return;
+}
+
+#################################################################
+# Subroutine: edirectFetchUrl()
+# Incept:     EPN, Tue Mar 12 12:18:37 2019
+#
+# Synopsis: Return a url for an efetch command
+#
+# Arguments:
+#  $accn:      accession to fetch
+#  $format:    format to fetch (e.g. "gpc", "ft", "fasta")
+#
+# Returns:    void
+#
+# Dies:       never
+#################################################################
+sub edirectFetchUrl { 
+  my $sub_name = "edirectFetchUrl";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($accn, $format) = @_;
+
+  return sprintf("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=%s&retmode=text", $accn, $format);
+}
+
+
+#################################################################
+# Subroutine: genbankParse()
+# Incept:     EPN, Tue Mar 12 14:04:14 2019
+#
+# Synopsis: Parse a GenBank format file.
+#
+# Arguments:
+#  $infile:   GenBank file to parse
+#  $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if we have trouble parsing the file
+#
+# Reference: http://www.insdc.org/files/feature_table.html#3.3.3
+#################################################################
+sub genbankParse { 
+  my $sub_name = "genbankParse";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($infile, $FH_HR) = @_;
+
+  my $line_idx  = 0;     # line index of input file
+  my $accn      = undef; # accession, read from LOCUS line
+  my $tmp_accn  = undef; # accession, read from ACCESSION or VERSION line
+  my $length    = undef; # length, read from LOCUS line
+  my $feature   = undef; # a feature   read from a feature/location line in the FEATURES section
+  my $location  = undef; # a location  read from a feature/location line in the FEATURES section
+  my $qualifier = undef; # a qualifier read from a qualifier/value  line in the FEATURES section
+  my $value     = undef; # a value     read from a qualifier/value  line in the FEATURES section
+  my $locus_ctr = 0;     # number of LOCUS lines read so far
+  my $seq       = "";    # sequence, read from the ORIGIN section
+  my $seqline   = "";    # single line of sequence
+  my $nseq_read = 0;     # number of sequences read
+
+  print("\n");
+  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <IN>) { 
+    chomp $line; 
+    $line_idx++;
+    if($line =~ /^LOCUS\s+(\S+)\s+(\d+)\s+bp/) { 
+      ($accn, $length) = ($1, $2);
+    }
+    elsif($line =~ /^ACCESSION\s+(\S+)$/) { 
+      # verify this matches what we read in the LOCUS line
+      $tmp_accn = $1;
+      if((! defined $accn) || ($tmp_accn ne $accn)) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, accession mismatch for $tmp_accn, line:\n$line\n", 1, $FH_HR);
+      }
+    }
+    elsif($line =~ /^VERSION\s+(\S+)$/) { 
+      # verify this matches what we read in the LOCUS line
+      $version = $1;
+      $tmp_accn = $version;
+      stripVersion(\$tmp_accn);
+      if((! defined $accn) || ($tmp_accn ne $accn)) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, version/accession mismatch for $tmp_accn, line:\n$line\n", 1, $FH_HR);
+      }
+    }
+    elsif($line =~ /^FEATURES\s+Location\/Qualifiers$/) { 
+      # parse the features and then the sequence
+      # FEATURES section
+      # two types of line:
+      # feature/location line
+      #        example:      gene            5..5104
+      #        example:      misc_feature    join(2682..2689,1..2)
+      #        example:      misc_feature    join(161990..162784,complement(88222..88806),complement(86666..87448))
+      # qualifier/value line type A, first line of a new qualifier
+      #        example: /codon_start=1
+      #        example: /gene="ORF1"
+      # qualifier/value line type B, not the first line of a new qualifier, line 2 to N of a qualifier value
+      #        example: QNVIDPWIRNNFVQAPGGEFTVSPRNAPGEILWSAPLGPDLNPYLSHLARMYNGYAGG
+      #        example: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
+      $line = <IN>;
+      $line_idx++;
+      chomp $line;
+      while((defined $line) && ($line !~ m/^ORIGIN/)) { 
+        if($line =~ /^\s+(\S+)\s+(\S+)$/) { 
+          # feature/location line
+          #        example:      gene            5..5104
+          ($feature, $location) = ($1, $2);
+          printf("\tfeature: $feature location: $location\n");
+        }
+        elsif($line =~ /^\s+\/(\S+)\=(.+)$/) { 
+          # qualifier/value line type A
+          #        example: /codon_start=1
+          #        example: /gene="ORF1"
+          if($value ne "") { # we are finished with previous value
+            print("\t\tstoring $value\n");
+          }
+          ($qualifier, $value) = ($1, $2);
+        }
+        else { 
+          # qualifier/value line type B
+          #        example: QNVIDPWIRNNFVQAPGGEFTVSPRNAPGEILWSAPLGPDLNPYLSHLARMYNGYAGG
+          #        example: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
+          $line =~ s/^\s+//; # remove leading whitespace
+          if(! defined $value) { 
+            DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, in FEATURES section read qualifier value line without qualifier first\n", 1, $FH_HR);
+          }
+          $value .= $line; 
+        }
+        $line = <IN>;
+        chomp $line;
+        $line_idx++;
+      }
+      if(! defined $line) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to read ORIGIN line after FEATURES but did not\n", 1, $FH_HR);
+      }
+      # if we get here we just read the ORIGIN line
+      if($value ne "") { 
+        print("\t\tstoring (final) $value\n");
+      }
+      # parse the ORIGIN sequence
+      $line = <IN>;
+      $line_idx++;
+      chomp $line;
+      while((defined $line) && ($line !~ m/^\/\/$/)) { 
+        # sequence lines
+        # examples:
+        # 7501 gtcacgggcg taatgtgaaa agacaaaact gattatcttt ctttttcttt agtgtctttt
+        # 7561 aaaaaaa
+        if($line =~ /^\s+\d+\s+(.+)$/) { 
+          $seqline = $1;
+          $seqline =~ s/\s+//g; # remove spaces
+          $seq .= $seqline;
+        }
+        $line = <IN>;
+        $line_idx++;
+        chomp $line;
+      }
+      if(! defined $line) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to find a // line after ORIGIN but did not\n", 1, $FH_HR);
+      }
+      # if we get here we just read the // line
+      # we are finished with this sequence
+      #$seq_H{$version} = $seq;
+      printf("seq: $seq\n");
+      $seq = "";
+      $length  = undef;
+      $accn    = undef;
+      $version = undef;
+      $nseq_read++;
+    } # end of 'elsif($line =~ /^FEATURES\s+Location\/Qualifiers$/) {' 
+  }
+
+  if($nseq_read == 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, failed to read any sequence data\n", 1, $FH_HR);
+  }
+
+  return;
+}

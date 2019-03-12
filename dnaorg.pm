@@ -91,8 +91,6 @@
 #
 # Subroutines related to the feature and model info hash data
 # structures:
-#   determineFeatureTypes()
-#   getNumFeaturesAnnotatedByModels()
 #   getReferenceFeatureInfo()
 #   fetchReferenceFeatureSequences()
 #
@@ -234,473 +232,107 @@ use Cwd;
 #   featureHasParent()
 #
 
+
 #################################################################
-# Subroutine: determineFeatureTypes()
-# Incept:     EPN, Thu Feb 11 14:50:53 2016
+# Subroutine : featuresGetChildrenArrayOfArray()
+# Incept:      EPN, Sun Mar 10 06:22:49 2019
 #
-# Purpose:    Determine the type of each feature, either
-#             'cds':       CDS, possibly comprised of mature peptides
-#             'mp':        mature peptide
-#             'xfeat'      extra feature annotated by its own model (e.g. gene)
-#             'dfeat'      extra feature annotated as a duplicate of another feature (e.g. gene)
+# Purpose:     Fill @{$AAR} with arrays of children (feature indices)
+#              for each feature in %{$ftr_info_HAR}.
 # 
-#              And populate the %{$ftr_info_HAR} with the following
-#              information (1D keys):
-#              "type"        values are one of: "cds", "mp", "xfeat" or "dfeat"
-#              "type_idx"    values are indices of each feature for its type
-#                            so a '2' means it's the 2nd of its type.
-#              "annot_type": annotation type, either "model" or "duplicate"
-#                            "model": the homology model's prediction annotates 
-#                            these features
-#                            "duplicate": the annotation of this feature is copied from 
-#                            another. Example is a 'gene' that is a copy of a 'CDS'.
-#                            The feature that is the source to copy is stored in the
-#                            "source_idx" key.
-#               "primary_children_ftr_str": for features with children (e.g. cds comprised of
-#                            mature peptides) a string of feature indices that are the primary 
-#                            children of this feature (when the primary children are concatenated 
-#                            they make up the CDS that encodes all the primary children). Each 
-#                            index is separated by a space. Empty for features with annot_type eq 
-#                            "model".
-#               "primary_children_ftr_num": number of primary children (0 for features with
-#                            annot_type eq "model").
-#               "all_children_ftr_str": for features with children (e.g. cds comprised of
-#                            mature peptides) a string of feature indices that are encoded by 
-#                            this CDS includes all primary children plus any secondarily processed
-#                            mature peptides. Each index is separated by a space. Empty 
-#                            for features with annot_type eq "model."
-#               "all_children_ftr_num": number of all children (0 for features with
-#                            annot_type eq "model").
-#               "parent_ftr": index of parent feature for 'mp' types, this is the feature
-#                            index of the feature of which the current feature is a child.
+# Arguments: 
+#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $AAR:            REF to array of arrays of children feature indices, FILLED HERE
+#   $FH_HR:          REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
 #
-# Arguments:
-#   $nmp:              number of mature peptides, may be 0
-#   $ncds:             number of CDS features, may be 0
-#   $nxfeat:           number of extra features, modeled independently
-#   $ndfeat:           number of duplicate features, modeled by other features
-#   $cds2pmatpept_AAR: 1st dim: cds index (-1, off-by-one), 
-#                      2nd dim: value array of primary matpept indices that comprise this CDS, 
-#                      OR undefined if all features are CDS and there are no mature peptides; 
-#                      PRE-FILLED
-#   $cds2amatpept_AAR: 1st dim: cds index (-1, off-by-one), 
-#                      2nd dim: value array of all matpept indices that comprise this CDS, 
-#                      OR undefined if all features are CDS and there are no mature peptides; 
-#                      PRE-FILLED
-#   $ftr_info_HAR:     ref to hash of arrays to add information to
-#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
-#             
-# Returns:    void
-#
-# Dies:       if $ftr_info_HAR is invalid upon entering
-#################################################################
-sub determineFeatureTypes {
-  my $sub_name  = "determineFeatureTypes()";
-  my $nargs_expected = 8;
+################################################################# 
+sub featuresGetChildrenArrayOfArrays { 
+  my $nargs_expected = 3;
+  my $sub_name = "featuresGetChildrenArrayOfArrays";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $AAR, $FH_HR) = @_;
+
+  @{$AAR} = ();
+  my $nftr = getInfoHashSize($ftr_info_HAR, "parent_idx", $FH_HR);
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    featureGetChildrenArray($ftr_info_HAR, $ftr_idx, $nftr, $AAR->[$ftr_idx], $FH_HR);
+  }
   
-  my ($ncds, $nmp, $nxfeat, $ndfeat, $cds2pmatpept_AAR, $cds2amatpept_AAR, $ftr_info_HAR, $FH_HR) = (@_);
-
-  my $c; # counter
-
-  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, undef, $FH_HR);
-
-  # initialize arrays
-  @{$ftr_info_HAR->{"type"}}                     = ();
-  @{$ftr_info_HAR->{"type_idx"}}                 = ();
-  @{$ftr_info_HAR->{"annot_type"}}               = ();
-  @{$ftr_info_HAR->{"primary_children_ftr_str"}} = ();
-  @{$ftr_info_HAR->{"primary_children_ftr_num"}} = ();
-  @{$ftr_info_HAR->{"all_children_ftr_str"}}     = ();
-  @{$ftr_info_HAR->{"all_children_ftr_num"}}     = ();
-  @{$ftr_info_HAR->{"parent_ftr"}}               = ();
-
-  # order: 
-  # Mature peptides
-  # CDS
-  # xfeat
-  # dfeat
-  for($c = 0; $c < $nmp; $c++) { 
-    determineFeatureTypesHelper($ftr_info_HAR, "mp", undef, undef, $FH_HR);
-  }
-  for($c = 0; $c < $ncds; $c++) { 
-    # determine type of CDS
-    if((defined $cds2pmatpept_AAR) && (defined $cds2pmatpept_AAR->[$c])) {
-      # CDS comprised of mature peptides
-      determineFeatureTypesHelper($ftr_info_HAR, "cds", $cds2pmatpept_AAR->[$c], $cds2amatpept_AAR->[$c], $FH_HR);
-    }
-    else { 
-      # CDS NOT comprised of mature peptides
-      determineFeatureTypesHelper($ftr_info_HAR, "cds", undef, undef, $FH_HR);
-    }
-  }
-  for(my $xfeat_idx = 0; $xfeat_idx < $nxfeat; $xfeat_idx++) { 
-    determineFeatureTypesHelper($ftr_info_HAR, "xfeat", undef, undef, $FH_HR);
-  }
-  for(my $dfeat_idx = 0; $dfeat_idx < $ndfeat; $dfeat_idx++) { 
-    determineFeatureTypesHelper($ftr_info_HAR, "dfeat", undef, undef, $FH_HR);
-  }
   return;
 }
 
 #################################################################
-# Subroutine: determineFeatureTypesHelper()
-# Incept:     EPN, Fri Feb 15 11:23:58 2019
+# Subroutine : featureGetChildrenArray()
+# Incept:      EPN, Sun Mar 10 06:26:03 2019
 #
-# Purpose:    Initialize element $c of the feature info hash of arrays
-#             of type $type.
-#
+# Purpose:     Fill @{$AAR} with array of children (feature indices)
+#              for feature $ftr_idx in %{$ftr_info_HAR}.
+# 
 # Arguments: 
-#   $ftr_info_HAR:     ref to hash of arrays with feature info.
-#                      must have at least the "annot_types" array, else we die 
-#   $type:             type of the feature: "cds-notmp", "xfeat", "dfeat", "mp", or "cds-mp"
-#   $pchildren_AR:     array of child indices for this feature OR undefined
-#                      if no primary children (PRE-FILLED)
-#   $achildren_AR:     array of child indices for this feature OR undefined
-#                      if no children (PRE-FILLED)
-#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
+#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:        index we are interested in
+#   $nftr:           number of features in %{$ftr_info_HAR}
+#   $AR:             REF to array children feature indices, FILLED HERE
+#   $FH_HR:          REF to hash of file handles
+# 
+# Returns:     Nothing.
+# 
 #
-# Returns:    void
-#
-# Dies:       if $ftr_info_HAR is not valid upon entering.
-#################################################################
-sub determineFeatureTypesHelper { 
-  my $sub_name  = "determineFeatureTypesHelper()";
+################################################################# 
+sub featureGetChildrenArray { 
   my $nargs_expected = 5;
+  my $sub_name = "featureGetChildrenArray";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $nftr, $AR, $FH_HR) = @_;
+
+  @{$AR} = ();
+
+  for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+    if(($ftr_idx2 != $ftr_idx) && 
+       ($ftr_info_HAR->{"parent_idx"}[$ftr_idx2] == $ftr_idx)) { 
+      push(@{$AR}, $ftr_idx2);
+    }
+  }
   
-  my ($ftr_info_HAR, $type, $pchildren_AR, $achildren_AR, $FH_HR) = (@_);
+  return;
+}
 
-  my @reqd_ftr_info_A = ();
-  # we can't use validateAndGetSizeOfInfoHashOfArrays() because we probably will not have the 
-  # same number of elements for all values, e.g. "type" may be > 0, but "type" may be 0
-  my $nftr_type = scalar(@{$ftr_info_HAR->{"type"}});
+#################################################################
+# Subroutine : featureGetTypeAndTypeIndexString()
+# Incept:      EPN, Sun Mar 10 06:41:53 2019
+#
+# Purpose:     Return a string giving feature type and type index
+#              (e.g. "CDS#2") for feature $ftr_idx.
+# 
+# Arguments: 
+#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:        index we are interested in
+#   $FH_HR:          REF to hash of file handles
+# 
+# Returns:     String
+# 
+#
+################################################################# 
+sub featureGetTypeAndTypeIndexString { 
+  my $nargs_expected = 3;
+  my $sub_name = "featureGetChildrenArray";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
 
-  # determine type index
+  my $nftr = getInfoHashSize($ftr_info_HAR, "parent_idx", $FH_HR);
+  my $type = $ftr_info_HAR->{"type"}[$ftr_idx];
   my $type_idx = 1;
-  my $ftr_idx;
-  for($ftr_idx = 0; $ftr_idx < $nftr_type; $ftr_idx++) { 
-    if($ftr_info_HAR->{"type"}[$ftr_idx] eq $type) { 
-      $type_idx++;
-    }
+  for(my $ftr_idx2 = 0; $ftr_idx2 < $ftr_idx; $ftr_idx2++) { 
+    if($ftr_info_HAR->{"type"}[$ftr_idx2] eq $type) { $type_idx++; }
   }
-  $ftr_idx = $nftr_type; 
-
-  # initialize
-  $ftr_info_HAR->{"type"}[$ftr_idx]                     = $type;
-  $ftr_info_HAR->{"type_idx"}[$ftr_idx]                 = $type_idx;
-  $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] = "";  # possibly created later 
-  $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx] = 0;   # possibly created later
-  $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]     = "";  # possibly created later
-  $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]     = 0;   # possibly created later
-  $ftr_info_HAR->{"parent_ftr"}[$ftr_idx]               = -1;  # changed to a valid value for certain types (e.g. 'mp')
-
-  # set annot_type, children strings and validate $type at the same time:
-  if(($type eq "cds")   ||
-     ($type eq "xfeat") ||
-     ($type eq "mp")) { 
-    $ftr_info_HAR->{"annot_type"}[$ftr_idx]  = "model"; # this feature is annotated by homology models
-  }
-  elsif($type eq "dfeat") { 
-    $ftr_info_HAR->{"annot_type"}[$ftr_idx]  = "duplicate"; # this feature is modeled as a duplicate of another feature
-  }
-  else { 
-    DNAORG_FAIL("ERROR in $sub_name, invalid type: $type.", 1, $FH_HR);
-  }
-
-  my $child_idx;
-  my $z;
-  if(defined $achildren_AR) { 
-    # step through @{$achildren_AR} and create the all_children_ftr_str for this CDS
-    my $na = scalar(@{$achildren_AR});
-    for($z = 0; $z < $na; $z++) { 
-      if($ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx] ne "") { 
-        $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx] .= " ";
-      }
-      $child_idx = $achildren_AR->[$z];
-      $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx] .= $child_idx;
-      $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]++;
-      # set the parent ftr index for this child
-      $ftr_info_HAR->{"parent_ftr"}[$child_idx] = $ftr_idx;
-    }          
-  }
-  if(defined $pchildren_AR) { 
-    # step through @{$pchildren_AR} and create the primary_children_ftr_str for this CDS
-    my $np = scalar(@{$pchildren_AR});
-    for($z = 0; $z < $np; $z++) { 
-      if($ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] ne "") { 
-        $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] .= " ";
-      }
-      $child_idx = $pchildren_AR->[$z];
-      $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx] .= $child_idx;
-      $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx]++;
-      # make sure this child was in the all_children array by checking "parent_ftr"
-      if($ftr_info_HAR->{"parent_ftr"}[$child_idx] == -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, child $child_idx is primary children list but not in all children list", 1, $FH_HR);
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: getNumFeaturesAnnotatedByModels()
-# Incept:     EPN, Thu Feb 11 14:50:53 2016
-#
-# Purpose:    Return number of features for which "annot_type" array values are "model".
-#
-# Arguments: 
-#   $ftr_info_HAR: ref to hash of arrays with feature info.
-#                  must have at least the "annot_types" array, else we die 
-#   $FH_HR:        REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    number of features for which the has_models array values are 1
-#
-# Dies:       if $ftr_info_HAR is not valid upon entering.
-#################################################################
-sub getNumFeaturesAnnotatedByModels { 
-  my $sub_name  = "getNumFeaturesAnnotatedByModels()";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_HAR, $FH_HR) = (@_);
-
-  my @reqd_ftr_info_A = ("annot_type");
-  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
-  
-  my $nftr_with_models = 0;
-  for(my $i = 0; $i < $nftr; $i++) { 
-    if($ftr_info_HAR->{"annot_type"}[$i] eq "model") { $nftr_with_models++; }
-  }
-  return $nftr_with_models;
+  return $type . "#" . $type_idx;
 }
 
-#################################################################
-# Subroutine : featureHasChildren()
-# Incept:      EPN, Sat Feb 16 06:43:26 2019
-#
-# Purpose:     Return '1' if a feature has >= 1 children features.
-#              Return '0' if a feature has    0 children features.
-#              
-# Arguments: 
-#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
-#   $ftr_idx:      index of feature we are interested in
-#   $FH_HR:        REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies: If any of the following are undefined or have 
-#       fewer than $ftr_idx elements.
-#       @{$ftr_info_HAR->{"primary_children_ftr_str"}}
-#       @{$ftr_info_HAR->{"primary_children_ftr_num"}}
-#       @{$ftr_info_HAR->{"all_children_ftr_str"}}
-#       @{$ftr_info_HAR->{"all_children_ftr_num"}}
-# 
-################################################################# 
-sub featureHasChildren { 
-  my $nargs_expected = 3;
-  my $sub_name = "featureHasChildren";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
-
-  foreach my $key ("primary_children_ftr_str", 
-                "primary_children_ftr_num",
-                "all_children_ftr_str",
-                "all_children_ftr_num") { 
-    if(! defined $ftr_info_HAR->{$key}) { 
-      DNAORG_FAIL("ERROR in $sub_name, ftr_info_HAR->{$key} is not defined", 1, $FH_HR);
-    }
-    if(scalar(@{$ftr_info_HAR->{$key}}) < $ftr_idx) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, ftr_idx: $ftr_idx, ftr_info_HAR->{$key} only has %d elements", scalar(@{$ftr_info_HAR->{$key}})), 1, $FH_HR);
-    }
-  }        
-
-  if(featureHasPrimaryChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
-    return 1; 
-  }
-  if(featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
-    return 1; 
-  }
-
-  return 0;
-}
-
-#################################################################
-# Subroutine : featureHasPrimaryChildren()
-# Incept:      EPN, Sat Feb 16 06:51:52 2019
-#
-# Purpose:     Return '1' if a feature has >= 1 primary children features.
-#              Return '0' if a feature has    0 primary children features.
-#              
-# Arguments: 
-#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
-#   $ftr_idx:      index of feature we are interested in
-#   $FH_HR:        REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies: If any of the following are undefined or have 
-#       fewer than $ftr_idx elements.
-#       @{$ftr_info_HAR->{"primary_children_ftr_str"}}
-#       @{$ftr_info_HAR->{"primary_children_ftr_num"}}
-#
-################################################################# 
-sub featureHasPrimaryChildren { 
-  my $nargs_expected = 3;
-  my $sub_name = "featureHasPrimaryChildren";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
-
-  foreach my $key ("primary_children_ftr_str", 
-                   "primary_children_ftr_num") { 
-    if(! defined $ftr_info_HAR->{$key}) { 
-      DNAORG_FAIL("ERROR in $sub_name, ftr_info_HAR->{$key} is not defined", 1, $FH_HR);
-    }
-    if(scalar(@{$ftr_info_HAR->{$key}}) < $ftr_idx) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, ftr_idx: $ftr_idx, ftr_info_HAR->{$key} only has %d elements", scalar(@{$ftr_info_HAR->{$key}})), 1, $FH_HR);
-    }
-  }        
-
-  if($ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx] > 0) { 
-    return 1;
-  }
-
-  return 0;
-}
-
-#################################################################
-# Subroutine : featureHasAllChildren()
-# Incept:      EPN, Sat Feb 16 06:51:52 2019
-#
-# Purpose:     Return '1' if a feature has >= 1 all children features.
-#              Return '0' if a feature has    0 all children features.
-#              
-# Arguments: 
-#   $ftr_info_HAR: REF to hash of arrays with information on the features, ADDED TO HERE
-#   $ftr_idx:      index of feature we are interested in
-#   $FH_HR:        REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies: If any of the following are undefined or have 
-#       fewer than $ftr_idx elements.
-#       @{$ftr_info_HAR->{"all_children_ftr_str"}}
-#       @{$ftr_info_HAR->{"all_children_ftr_num"}}
-#
-################################################################# 
-sub featureHasAllChildren { 
-  my $nargs_expected = 3;
-  my $sub_name = "featureHasAllChildren";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
-
-  foreach my $key ("all_children_ftr_str", 
-                   "all_children_ftr_num") { 
-    if(! defined $ftr_info_HAR->{$key}) { 
-      DNAORG_FAIL("ERROR in $sub_name, ftr_info_HAR->{$key} is not defined", 1, $FH_HR);
-    }
-    if(scalar(@{$ftr_info_HAR->{$key}}) < $ftr_idx) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, ftr_idx: $ftr_idx, ftr_info_HAR->{$key} only has %d elements", scalar(@{$ftr_info_HAR->{$key}})), 1, $FH_HR);
-    }
-  }        
-
-  if($ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx] > 0) { 
-    return 1;
-  }
-
-  return 0;
-}
-
-#################################################################
-# Subroutine : featureGetPrimaryChildren()
-# Incept:      EPN, Sat Feb 16 07:00:13 2019
-#
-# Purpose:     Fill @{$AR} with the space delimited tokens of 
-#              @{$ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]}
-#              and return;
-# 
-# Arguments: 
-#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
-#   $ftr_idx:        index of feature we're interested in
-#   $AR:             REF to array to fill, FILLED HERE
-#   $FH_HR:          REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies: If there are no primary children for feature index $ftr_idx,
-#       If number of primary children in $ftr_info_HAR->{"primary_children_ftr_str"}
-#       disagrees with $ftr_info_HAR->{"primary_children_ftr_num"}.
-#
-################################################################# 
-sub featureGetPrimaryChildren { 
-  my $nargs_expected = 4;
-  my $sub_name = "featureGetPrimaryChildren";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $ftr_idx, $AR, $FH_HR) = @_;
-
-  if(! featureHasPrimaryChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no primary children", 1, $FH_HR);
-  }
-
-  @{$AR} = ();
-  @{$AR} = split(/\s+/, $ftr_info_HAR->{"primary_children_ftr_str"}[$ftr_idx]);
-
-  if(scalar(@{$AR}) == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no primary children (on second pass -- shouldn't happen)", 1, $FH_HR);
-  }
-  if(scalar(@{$AR}) != $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx]) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, feature $ftr_idx has %d children in ftr_info_HAR->{primary_children_ftr_str} but ftr_info_HAR->{primary_children_ftr_num} is %d", 
-                        scalar(@{$AR}), $ftr_info_HAR->{"primary_children_ftr_num"}[$ftr_idx]), 1, $FH_HR); 
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine : featureGetAllChildren()
-# Incept:      EPN, Sat Feb 16 07:00:08 2019
-#
-# Purpose:     Fill @{$AR} with the space delimited tokens of 
-#              @{$ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]}
-#              and return;
-# 
-# Arguments: 
-#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
-#   $ftr_idx:        index of feature we're interested in
-#   $AR:             REF to array to fill, FILLED HERE
-#   $FH_HR:          REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies: If there are no all children for feature index $ftr_idx,
-#       If number of all children in $ftr_info_HAR->{"all_children_ftr_str"}
-#       disagrees with $ftr_info_HAR->{"all_children_ftr_num"}.
-#
-################################################################# 
-sub featureGetAllChildren { 
-  my $nargs_expected = 4;
-  my $sub_name = "featureGetAllChildren";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $ftr_idx, $AR, $FH_HR) = @_;
-
-  if(! featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no all children", 1, $FH_HR);
-  }
-
-  @{$AR} = ();
-  @{$AR} = split(/\s+/, $ftr_info_HAR->{"all_children_ftr_str"}[$ftr_idx]);
-
-  if(scalar(@{$AR}) == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx has no all children (on second pass -- shouldn't happen)", 1, $FH_HR);
-  }
-  if(scalar(@{$AR}) != $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, feature $ftr_idx has %d children in ftr_info_HAR->{all_children_ftr_str} but ftr_info_HAR->{all_children_ftr_num} is %d", 
-                        scalar(@{$AR}), $ftr_info_HAR->{"all_children_ftr_num"}[$ftr_idx]), 1, $FH_HR); 
-  }
-
-  return;
-}
 
 #################################################################
 #################################################################
@@ -1520,25 +1152,6 @@ sub populateFTableNoteOrError {
 }
 
 #################################################################
-#################################################################
-#
-# Massive wrapper subroutines that call other subroutines:
-#   wrapperGetInfoUsingEdirect()
-#   wrapperFetchAllSequencesAndProcessReferenceSequence()
-#
-
-
-#################################################################
-#################################################################
-#
-# Subroutines related to feature tables output from edirect:
-#   edirectFtableOrMatPept2SingleFeatureTableInfo()
-#   getSingleFeatureTableInfo()
-#   helperBreakdownFac()
-#
-
-
-#################################################################
 #
 # Subroutines for parsing different file types:
 #   parseMatPeptSpecFile()
@@ -1550,209 +1163,6 @@ sub populateFTableNoteOrError {
 #   parseConsOptsFile()
 #   parseNonConsOptsFile()
 #
-#################################################################
-# Subroutine:  parseMatPeptSpecFile()
-# Incept:      EPN, Thu Feb 11 13:21:02 2016
-#
-# Purpose:     Parse the input specifications file that defines the
-#              relationship between each CDS and the mature peptides.
-#
-# Arguments:
-#   $infile:           file to parse
-#   $cds2pmatpept_AAR: ref to array of arrays to fill here, CDS: 'primary' mat_peptide relationships
-#   $cds2amatpept_AAR: ref to array of arrays to fill here, CDS: 'all'     mat_peptide relationships
-#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       if problem reading $infile (in unexpected format)
-#
-#################################################################
-sub parseMatPeptSpecFile {
-  my $sub_name = "parseMatPeptSpecFile";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($infile, $cds2pmatpept_AAR, $cds2amatpept_AAR, $FH_HR) = @_;
-  my $ncds_read_primary = 0;  # number of 'primary' CDS lines read
-  my $ncds_read_all     = 0;  # number of 'all' CDS lines read
-  my $cds_idx2store     = 0;  # index of CDS to store
-  my @cds_idx_read_A    = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
-  my $max_cds_idx2store = 0;  # maximum $cds_idx2store seen
-
-  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
-
-  while(my $line = <IN>) { 
-    if($line !~ m/^\#/) { 
-      # example input file:
-      ## This file explains how CDS and mat_peptide annotation for NC_001477
-      ## are related.
-      ##
-      ############beg of file
-      ## Format of lines in this file:
-      ## <CDS-idx> <'primary' OR 'all'> <mat_peptide-1-idx>:<mat_peptide-2-idx>:<mat_peptide-n-idx>
-      ## 'primary' lines: these define the 'primary' peptides in order, the
-      ##                  CDS <CDS-idx> is comprised of the peptides listed
-      ##                  in final token, which are contiguous, start of 
-      ##                  first mat_peptide to stop of final mat_peptide is
-      ##                  one contiguous subsequence.
-      ##
-      ## 'all' lines:     these define all the peptides that are ultimately
-      ##                  derived from CDS <CDS-idx>. It will be a superset
-      ##                  of the primary line for this index but will
-      ##                  additionally include mat_peptides that are
-      ##                  secondarily cleaved from the primary mat_peptides.
-      ##
-      #1 primary 1:3:6:7:8:9:10:11:12:13:14
-      #1 all     1:2:3:4:5:6:7:8:9:10:11:12:13:14
-      ## 
-      ############end of file
-      # NOTE: in the input file CDS and matpept indices are in coordinate space 1..N, but we store them in 0..N-1
-      # 
-      # we need to have one 'primary' and one 'all' line for each  
-      chomp $line;
-      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
-      my @el_A = split(/\s+/, $line);
-      if(scalar(@el_A) != 3) { 
-        DNAORG_FAIL("ERROR in $sub_name, unable to parse matpept input file line: $line\nline should have three tokens separated by whitespace", 1, $FH_HR); 
-      }
-      my ($cds_idx, $primary_or_all, $matpept_str) = ($el_A[0], $el_A[1], $el_A[2]);
-      if($cds_idx !~ m/^\d+$/ || $cds_idx eq "0") { 
-        DNAORG_FAIL("ERROR in $sub_name, parsing $infile, first token should be a positive integer, read $cds_idx on line $line", 1, $FH_HR);
-      }
-      $primary_or_all =~ tr/A-Z/a-z/;
-      if($primary_or_all ne "all" && $primary_or_all ne "primary") { 
-        DNAORG_FAIL("ERROR in $sub_name, parsing $infile, second token of each non-comment line should be 'all' or 'primary', found $primary_or_all in line $line", 1, $FH_HR);
-      }
-      my $cds_idx2store = $cds_idx - 1; # we verified this was a positive integer above
-      if($cds_idx2store < 0) { 
-        DNAORG_FAIL("ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file", 1, $FH_HR); 
-      }
-      $cds_idx_read_A[$cds_idx2store] = 1;
-      if($cds_idx2store > $max_cds_idx2store) { 
-        $max_cds_idx2store = $cds_idx2store; 
-      }
-      if($primary_or_all eq "primary") { 
-        if(defined $cds2pmatpept_AAR->[$cds_idx2store] || exists $cds2pmatpept_AAR->[$cds_idx2store]) {
-          DNAORG_FAIL("ERROR in $sub_name, two primary lines for same CDS idx ($cds_idx) in matpept input file", 1, $FH_HR);
-        }
-        my @matpept_A = split(":", $matpept_str);
-        @{$cds2pmatpept_AAR->[$cds_idx2store]} = ();
-        foreach my $mp (@matpept_A) { 
-          push(@{$cds2pmatpept_AAR->[$cds_idx2store]}, ($mp-1));
-        }
-        $ncds_read_primary++;
-      }
-      elsif($primary_or_all eq "all") { 
-        if(defined $cds2amatpept_AAR->[$cds_idx2store] || exists $cds2amatpept_AAR->[$cds_idx2store]) {
-          DNAORG_FAIL("ERROR in $sub_name, two all lines for same CDS idx ($cds_idx) in matpept input file", 1, $FH_HR);
-        }
-        my @matpept_A = split(":", $matpept_str);
-        @{$cds2amatpept_AAR->[$cds_idx2store]} = ();
-        foreach my $mp (@matpept_A) { 
-          push(@{$cds2amatpept_AAR->[$cds_idx2store]}, ($mp-1));
-        }
-        $ncds_read_all++;
-      }
-    }
-  }
-  close(IN);
-
-  # three sanity checks:
-  # 1: we should have stored all and primary info for any CDS $i for which $cds_idx_read_A[$i-1] is 1, and nothing else
-  for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
-    if($cds_idx_read_A[$i]) { 
-     if((! defined $cds2pmatpept_AAR->[$i]) && (! exists $cds2pmatpept_AAR->[$i])) { 
-       DNAORG_FAIL(sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile", $i+1), 1, $FH_HR);
-     }
-     if((! defined $cds2amatpept_AAR->[$i]) && (! exists $cds2amatpept_AAR->[$i])) { 
-       DNAORG_FAIL(sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1), 1, $FH_HR);
-     }
-    }
-    else { # we didn't read this one
-      if(defined $cds2pmatpept_AAR->[$i] || exists $cds2pmatpept_AAR->[$i]) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1), 1, $FH_HR);
-      }
-      if(defined $cds2amatpept_AAR->[$i] || exists $cds2amatpept_AAR->[$i]) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1), 1, $FH_HR);
-      }
-    }
-  }
-  # 2: we should have at least read at least one of each 'primary' and 'all'
-  if($ncds_read_primary == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, no primary CDS:mat_peptide relationships read in matpept input file $infile", 1, $FH_HR); 
-  }
-  if($ncds_read_all == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, no all CDS:mat_peptide relationships read in matpept input file $infile", 1, $FH_HR); 
-  }
-  # 3: all info should be a superset of primary info
-  for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
-    if($cds_idx_read_A[$i]) { 
-      foreach my $mp (@{$cds2pmatpept_AAR->[$i]}) { 
-        # make sure this primary peptide exists in all
-        my $found_it = 0;
-        foreach my $mp2 (@{$cds2amatpept_AAR->[$i]}) { 
-          if($mp == $mp2) { $found_it = 1; }
-        }
-        if(! $found_it) { 
-          DNAORG_FAIL(sprintf("ERROR in $sub_name, all information is not a superset of primary information: %d is in primary but not all", $mp+1), 1, $FH_HR);
-        }
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  parseLengthFile()
-# Incept:      EPN, Thu Feb 11 13:29:31 2016 
-#
-# Purpose:     Parses a length file and stores the lengths read
-#              into %{$len_HR}. Each line has two tokens separated
-#              by whitespace: <accession> <length>
-#
-# Arguments: 
-#   $lenfile: full path to a length file
-#   $len_HR:  ref to hash of lengths, key is accession
-#   $FH_HR:   REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       if there's problem parsing $lenfile
-#################################################################
-sub parseLengthFile {
-  my $sub_name = "parseLengthFile()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($lenfile, $len_HR, $FH_HR) = @_;
-
-  open(LEN, $lenfile) || fileOpenFailure($lenfile, $sub_name, $!, "reading", $FH_HR);
-
-  while(my $line = <LEN>) { 
-    # example line
-    #HM448898.1	2751
-
-    chomp $line;
-    if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
-    my ($orig_accn, $length) = split(/\s+/, $line);
-    if($length !~ m/^\d+$/) { 
-      DNAORG_FAIL("ERROR in $sub_name, couldn't parse length file line: $line", 1, $FH_HR); 
-    } 
-
-    my $accn = $orig_accn;
-    stripVersion(\$accn);
-    if(exists $len_HR->{$accn}) { 
-      DNAORG_FAIL("ERROR in $sub_name, accession $orig_accn exists more than once in $lenfile (possibly with different versions)", 1, $FH_HR); 
-    } 
-      
-    $len_HR->{$accn} = $length;
-  }
-  close(LEN);
-
-  return;
-}
 
 
 #################################################################
@@ -1925,176 +1335,6 @@ sub parseSpecStartFile {
   return;
 }
 
-#################################################################
-# Subroutine: parseConsOptsFile()
-# Incept:     EPN, Mon Feb 12 12:51:35 2018
-#
-# Purpose:   Parse the special .consopts file created by 
-#            dnaorg_build.pl, which lists options that need
-#            to be consistently used between dnaorg_build.pl and
-#            dnaorg_annotate.pl.
-#
-# Arguments:
-#  $consopts_file:       name of the dnaorg_build consopts file
-#  $consopts_used_HR:    REF to hash of options in the consopts file
-#                        key is option (e.g. --matpept), value is
-#                        option argument, "" for none FILLED HERE 
-#  $consopts_notused_HR: REF to options not used in the consopts file
-#                        that could have been used, key is option,
-#                        value is always 1.
-#  $consmd5_HR:          REF to hash of MD5 values for files in the 
-#                        consopts file, key is option (e.g. --matpept)
-#                        that was used in dnaorg_build.pl, value is
-#                        MD5 checksum value for the file associated 
-#                        with the option, "" if option has no file associated
-#                        with it. 
-#                        FILLED HERE 
-#  $FH_HR:               REF to hash of file handles
-# 
-# Returns:  void
-# 
-# Dies: If $consopts_file doesn't exist, or we can't parse it
-#       because it includes an option that we don't expect
-#       or is in an invalid format.
-#
-#################################################################
-sub parseConsOptsFile { 
-  my $sub_name = "parseConsOptsFile";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($consopts_file, $consopts_used_HR, $consopts_notused_HR, $consmd5_HR, $FH_HR) = @_;
-
-  # read the consopts file
-  if(! -e $consopts_file) { 
-    DNAORG_FAIL("ERROR in $sub_name, consopts file $consopts_file does not exist.\nThis file should have been created by dnaorg_build.pl.\nYou probably need to rerun dnaorg_build.pl if it was run before May 31, 2016.", 1, $FH_HR);
-  }
-  open(IN, $consopts_file) || fileOpenFailure($consopts_file, $sub_name, $!, "reading", $FH_HR);
-  my $line_ct = 0;
-
-  # initialize the hashes
-  %{$consopts_used_HR}    = (); 
-  %{$consopts_notused_HR} = (); 
-  %{$consmd5_HR}          = ();
-
-  while(my $line = <IN>) { 
-    chomp $line;
-    $line_ct++;
-    if(($line eq "none") && ($line_ct == 1)) { 
-      ; # this is fine, none of the options that need to be consistent were set by dnaorg_build.pl
-    }
-    elsif($line =~ /^\-\-nomatpept$/) { 
-      $consopts_used_HR->{"--nomatpept"} = "";
-      $consmd5_HR->{"--nomatpept"}  = "";
-    }
-    elsif($line =~ /^\-\-matpept\s+(\S+)\s+(\S+)$/) { # first string is file name, second is md5 checksum (obtained with 'md5sum' executable)
-      ($consopts_used_HR->{"--matpept"}, $consmd5_HR->{"--matpept"}) = ($1, $2);
-    }
-    elsif($line =~ /^\-\-xfeat\s+(\S+)$/) { # first string is file name, second is argument
-      $consopts_used_HR->{"--xfeat"} = $1;
-      $consmd5_HR->{"--xfeat"}  = "";
-    }
-    elsif($line =~ /^\-\-dfeat\s+(\S+)$/) { # first string is file name, second is argument
-      $consopts_used_HR->{"--dfeat"} = $1;
-      $consmd5_HR->{"--dfeat"}  = "";
-    }
-    else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse line from consopts file $consopts_file:\n$line\n", 1, $FH_HR);
-    }
-  }
-  close(IN);
-
-  # fill %{$consopts_notused_HR}
-  foreach my $opt ("--nomatpept", "--matpept", "--xfeat", "--dfeat") { 
-    if(! exists $consopts_used_HR->{$opt}) { 
-      $consopts_notused_HR->{$opt} = 1;
-    }
-  }
-
-  # if we get here, all options were recognized
-  return;
-}
-
-
-#################################################################
-# Subroutine: parseNonConsOptsFile()
-# Incept:     EPN, Tue Feb 13 05:29:04 2018
-#
-# Purpose:   Read a file that contains command line options 
-#            that are not required to be consistent between
-#            different dnaorg scripts, and die if any 
-#            options that are required to be consistent
-#            are included. Also die if any options included
-#            in the string $auto_opts are included. 
-#            Return a string of verified, compatible options. 
-# 
-#            Format of file is a single line of options.
-#
-# Arguments:
-#  $opts_file:      file with options
-#  $cmdline_opt:    command line option that triggered this 
-#                   subroutine call (e.g. "--Aopts")
-#  $auto_opts_str:  string of options, separated by commas, which will be
-#                   automatically added and so cannot listed in the file
-#  $failure_str:    failure message (e.g. "that option will automatically be set, as required 
-#                   to be consistent with relevant dnaorg_build.pl command used previously")
-#  $FH_HR:          REF to hash of file handles
-# 
-# Returns:  void
-# 
-# Dies: If any of the options in $opts_file are 
-#       those that are required to be consistent between
-#       dnaorg_scripts.pl.
-#       
-#################################################################
-sub parseNonConsOptsFile { 
-  my $sub_name = "parseNonConsOptsFile";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($opts_file, $cmdline_opt, $auto_opts_str, $failure_str, $FH_HR) = @_;
-
-  my $opts_str = "";
-
-  # read the opts file
-  if(! -e $opts_file) { 
-    DNAORG_FAIL("ERROR in $sub_name, options file $opts_file does not exist.", 1, $FH_HR);
-  }
-  open(IN, $opts_file) || fileOpenFailure($opts_file, $sub_name, $!, "reading", $FH_HR);
-  my $line_ct = 0;
-
-  while(my $line = <IN>) { 
-    if($line =~ m/\w/) { 
-      chomp $line;
-      $line_ct++;
-      $opts_str .= $line;
-    }
-  }
-  if($line_ct != 1) { 
-    DNAORG_FAIL("ERROR in $sub_name, file $opts_file is required to have a single line (multiple options separated by spaces), read $line_ct.", 1, $FH_HR);
-  }        
-  close(IN);
-
-  # check for the hard-coded illegal options that must be 
-  # consistent between dnaorg_annotate.pl and dnaorg_build.pl
-  if($opts_str =~ m/\s*\-c/)           { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include -c, $failure_str", 1, $FH_HR); }
-  if($opts_str =~ m/\s*\-\-nomatpept/) { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --nomatpept, $failure_str", 1, $FH_HR); }
-  if($opts_str =~ m/\s*\-\-matpept/)   { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --matpept, $failure_str", 1, $FH_HR); }
-  if($opts_str =~ m/\s*\-\-xfeat/)     { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --xfeat, $failure_str", 1, $FH_HR); }
-  if($opts_str =~ m/\s*\-\-dfeat/)     { DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include --dfeat, $failure_str", 1, $FH_HR); }
-
-  # check for the options that are automatically set or not set, 
-  # these are illegal too
-  foreach my $auto_opt (split(",", $auto_opts_str)) { 
-    my $esc_auto_opt = quotemeta($auto_opt);
-    if($opts_str =~ m/\s*$esc_auto_opt/) { 
-      DNAORG_FAIL("ERROR with $cmdline_opt, command-line options cannot include $auto_opt, it will be automatically set by the program", 1, $FH_HR); 
-    }
-  }
-
-  return $opts_str;
-}
-#################################################################
 #################################################################
 #
 # Subroutines related to parsing NCBI coordinate strings:
@@ -3027,7 +2267,6 @@ sub dumpArrayOfHashes {
 #   validateOutputFileInfoHashOfHashes()
 #   validateAndGetSizeOfInfoHashOfArrays()
 #   getConsistentSizeOfInfoHashOfArrays()
-#   validateFTableErrorExceptions()
 #
 #################################################################
 # Subroutine : validateExecutableHash()
@@ -3080,7 +2319,7 @@ sub validateExecutableHash {
 #             The expected keys are:
 #                "type"
 #                "coords"
-#                "strand"
+#                "strands"
 #                "source_idx"
 #                "parent_idx"
 #                "3pa_ftr_idx"
@@ -3112,7 +2351,7 @@ sub validateFeatureInfoHashIsComplete {
  
   my ($ftr_info_HAR, $exceptions_AR, $FH_HR) = (@_);
   
-  my @expected_keys_A = ("type", "coords", "strand", "source_idx", "parent_idx",
+  my @expected_keys_A = ("type", "coords", "strands", "source_idx", "parent_idx",
                          "3pa_ftr_idx", "5p_seg_idx", "3p_seg_idx", "product", "gene");
 
   return validateInfoHashOfArraysIsComplete($ftr_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
@@ -3547,7 +2786,7 @@ sub getConsistentSizeOfInfoHashOfArrays {
 }
 
 #################################################################
-# Subroutine: getInfoHashSize()
+# Subroutine: getSizeOfInfoHashOfArrays()
 # Incept:     EPN, Tue Mar  5 08:00:34 2019
 #
 # Purpose:    Quickly determine the size of 'info hash' without
@@ -3563,8 +2802,8 @@ sub getConsistentSizeOfInfoHashOfArrays {
 # Dies:    - if $info_HAR is undefined or $info_HAR->{$key} does not exist
 #
 #################################################################
-sub getInfoHashSize { 
-  my $sub_name = "getInfoHashSize()";
+sub getSizeOfInfoHashOfArrays { 
+  my $sub_name = "getSizeOfInfoHashOfArrays()";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -3579,217 +2818,6 @@ sub getInfoHashSize {
 
   return(scalar(@{$info_HAR->{$key}}));
 }
-
-#################################################################
-#
-# Subroutines related to codons:
-#   fetchStopCodon()
-#   fetchStartCodon()
-#   fetchCodon()
-#   validateStopCodon()
-#
-#################################################################
-# Subroutine: fetchStopCodon()
-# Incept:     EPN, Mon Mar 14 13:34:02 2016
-#
-# Synopsis:   Fetch a stop codon given its final position,
-#             and strand.
-#
-# Args:       $sqfile:   Bio::Easel::SqFile object, open sequence
-#                        file containing $seqname;
-#             $seq_name: name of sequence to fetch part of
-#             $stop:     final position of the stop codon
-#             $strand:   strand we want ("+" or "-")
-#             $short_ok: '1' if it's okay to return a codon less than 3 nucleotides
-#                        if the desired codon runs off the end of the sequence
-#             $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-#             
-# Returns:    The stop codon as a string
-# 
-# Dies:       If $stop (or $stop - 2) is negative.
-#################################################################
-sub fetchStopCodon {
-  my $sub_name = "fetchStopCodon";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $seq_name, $stop, $strand, $short_ok, $FH_HR) = @_;
-
-  my $seqlen = $sqfile->fetch_seq_length_given_name($seq_name);
-
-  # printf("\nin $sub_name, $seq_name stop:$stop strand:$strand short_ok: $short_ok\n");
-
-  if($seqlen == -1) { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to fetch sequence $seq_name", 1, $FH_HR);
-  }
-
-  if(($stop < 1) || ($stop > $seqlen)) { 
-    DNAORG_FAIL("ERROR in $sub_name, input stop coordinate ($stop) invalid (length of sequence ($seq_name) is $seqlen", 1, $FH_HR); 
-  }    
-
-  my $stop_codon_posn;
-  if($strand eq "-") { 
-    $stop_codon_posn = $stop + 2;
-    if($stop_codon_posn > $seqlen) { $stop_codon_posn = $seqlen; }
-  }
-  else { 
-    $stop_codon_posn = $stop - 2;
-    if($stop_codon_posn < 1) { $stop_codon_posn = 1; }
-  }
-  # printf("in $sub_name, seq_name $seq_name, stop $stop\n");
-
-  return fetchCodon($sqfile, $seq_name, $stop_codon_posn, $strand, $short_ok, $FH_HR);
-}
-
-#################################################################
-# Subroutine: fetchStartCodon()
-# Incept:     EPN, Tue Mar 15 10:18:34 2016
-#
-# Synopsis:   Fetch a start codon given its first position,
-#             and strand.
-#
-# Args:       $sqfile:   Bio::Easel::SqFile object, open sequence
-#                        file containing $seq_name;
-#             $seq_name: name of sequence to fetch part of
-#             $stop:     final position of the stop codon
-#             $strand:   strand we want ("+" or "-")
-#             $short_ok: '1' if it's okay to return a codon less than 3 nucleotides
-#                        if the desired codon runs off the end of the sequence
-#             $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-#             
-# Returns:    The stop codon as a string
-# 
-# Dies:       If $start is negative.
-#################################################################
-sub fetchStartCodon {
-  my $sub_name = "fetchStartCodon";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args (expected $nargs_exp)"; }
-
-  my ($sqfile, $seq_name, $start, $strand, $short_ok, $FH_HR) = @_;
-
-  my $seqlen = $sqfile->fetch_seq_length_given_name($seq_name);
-
-  # printf("\nin $sub_name, $seq_name start:$start strand:$strand short_ok: $short_ok\n");
-
-  if(($start < 1) || ($start > $seqlen)) { 
-    DNAORG_FAIL("ERROR in $sub_name, input start coordinate ($start) invalid (length of sequence ($seq_name) is $seqlen", 1, $FH_HR); 
-  }    
-
-  return fetchCodon($sqfile, $seq_name, $start, $strand, $short_ok, $FH_HR);
-}
-
-#################################################################
-# Subroutine: fetchCodon()
-# Incept:     EPN, Mon Mar 14 13:37:31 2016
-# 
-# Synopsis:   Fetch a codon given it's first position
-#             and the strand and a Bio::Easel::SqFile object
-#             that is the open sequence file with the desired
-#             sequence.
-#
-# Args:       $sqfile:   Bio::Easel::SqFile object, open sequence
-#                        file containing $seq_name;
-#             $seq_name: name of sequence to fetch part of
-#             $start:    start position of the codon
-#             $strand:   strand we want ("+" or "-")
-#             $short_ok: '1' if it's okay to return a codon less than 3 nucleotides
-#                        if the desired codon runs off the end of the sequence
-#             $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    The codon as a string
-#
-#################################################################
-sub fetchCodon {
-  my $sub_name = "fetchCodon";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $seq_name, $start, $strand, $short_ok, $FH_HR) = @_;
-
-  my $seqlen = $sqfile->fetch_seq_length_given_name($seq_name);
-
-  # printf("\nin $sub_name, $seq_name start:$start strand:$strand short_ok: $short_ok\n");
-
-  if($seqlen == -1) { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to fetch sequence $seq_name", 1, $FH_HR);
-  }
-
-  if(($start < 1) || ($start > $seqlen)) { 
-    DNAORG_FAIL("ERROR in $sub_name, input start coordinate ($start) invalid (length of sequence ($seq_name) is $seqlen", 1, $FH_HR); 
-  }    
-
-  my $codon_start = $start;
-  my $codon_stop  = undef;
-  my $valid_coords = 1; # changed to 0 below if coords are invalid
-
-  if($strand eq "+") { 
-    $codon_stop  = $start + 2; 
-    if($codon_stop > $seqlen) { 
-      if($short_ok) { $codon_stop = $seqlen; }
-      else          { $valid_coords = 0; }
-    }
-  }
-  else { # strand is '-'
-    $codon_stop = $start - 2;
-    if($codon_stop < 1) { 
-      if($short_ok) { $codon_stop = 1; } 
-      else          { $valid_coords = 0; }
-    }
-  }
-  if(! $valid_coords) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to fetch codon with coordinates %d..%d for sequence $seq_name, valid coordinates are %d..%d\n", 
-                        $codon_start, $codon_stop, 1, $seqlen), 1, $FH_HR);
-  }
-
-  my $newname = $seq_name . "/" . $codon_start . "-" . $codon_stop;
-
-  my @fetch_AA = ();
-  # if $seq_name does not exist in $sqfile, the following line
-  # will cause the script to fail, ungracefully
-
-  push(@fetch_AA, [$newname, $codon_start, $codon_stop, $seq_name]);
-
-  my $faseq = $sqfile->fetch_subseqs(\@fetch_AA, -1);
-
-  my ($header, $seq) = split("\n", $faseq);
-
-  return $seq;
-}
-
-#################################################################
-# Subroutine: validateStopCodon()
-# Incept:     EPN, Mon Mar 14 13:47:57 2016
-# 
-# Purpose:    Given a codon, return '1' if it's a valid stop codon,
-#             else return 0.
-#
-# Args:
-#  $codon:  the codon
-#
-# Returns:    The codon as a string
-#
-#################################################################
-sub validateStopCodon {
-  my $sub_name = "validateStopCodon";
-  my $nargs_exp = 1;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($codon) = @_;
-  
-  $codon =~ tr/a-z/A-Z/;
-  $codon =~ tr/U/T/;
-
-  if($codon eq "TAA" || 
-     $codon eq "TGA" || 
-     $codon eq "TAG" || 
-     $codon eq "TAR") { 
-    return 1;
-  }
-
-  return 0;
-}
-
 
 #################################################################
 # Subroutine: validateCapitalizedDnaStopCodon()
@@ -4687,6 +3715,38 @@ sub arrayToNewlineDelimitedString {
 }
 
 #################################################################
+# Subroutine : arrayToString()
+# Incept:      EPN, Tue Mar 12 13:07:03 2019
+#
+# Purpose:     Return a string with all values of an array delimited
+#              by $delim_char;
+#
+# Arguments: 
+#   $AR:         ref to array
+#   $delim_char: character to delimit with
+# 
+# Returns:     string
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub arrayToString { 
+  my $nargs_expected = 2;
+  my $sub_name = "arrayToString";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR, $delim_char) = (@_);
+
+  my $retstr = "";
+  if(@{$AR}) { 
+    $retstr .= $AR->[0];
+    for(my $i = 1; $i < scalar(@{$AR}); $i++) { 
+      $retstr .= $delim_char . $AR->[$i];
+    }
+  }
+  return $retstr;
+}
+
+#################################################################
 # Subroutine : hashKeysToNewlineDelimitedString()
 # Incept:      EPN, Fri Dec 14 09:25:24 2018
 #
@@ -5058,462 +4118,6 @@ sub fetchedNameToListName {
   return $list_name;
 }
 
-#################################################################
-# Subroutine: fetchSequencesUsingEslFetchCds()
-# Incept:     EPN, Thu Feb 11 15:30:07 2016
-# 
-# Purpose:    Fetch sequences by calling the esl_fetch_cds program
-#             with the path $esl_fetch_cds. 
-#
-# Arguments:
-#   $esl_fetch_cds:    path to esl-fetch-cds executable
-#   $out_fetch_file:   name of file to use as input to $esl_fetch_cds, created here
-#   $out_fasta_file:   name of fasta file to create, created here
-#   $seq_info_HAR:     REF to 2D hash with sequence information, ADDED TO HERE
-#                      "seq_name", and "len" arrays filled here
-#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns:    void
-#          
-# Dies: if $esl_fetch_cds executable does not exist
-#       if $esl_fetch_cds command fails
-#################################################################
-sub fetchSequencesUsingEslFetchCds { 
-  my $sub_name = "fetchSequencesUsingEslFetchCds";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($esl_fetch_cds, $fetch_file, $fasta_file, $seq_info_HAR, $FH_HR) = @_;
-
-  # contract check
-  if(! -e $esl_fetch_cds) { 
-    DNAORG_FAIL("ERROR in $sub_name, required executable $esl_fetch_cds does not exist", 1, $FH_HR); 
-  }
-
-  my ($accn_name, $seq_name, $seq_len); # accession name/length (from GenBank) sequence name/length in the sequence file we create
-
-  @{$seq_info_HAR->{"seq_name"}} = (); # initialize
-  my $seq_name_AR = \@{$seq_info_HAR->{"seq_name"}};
-
-  my $fetch_string; # string output to the input file for esl-fetch-cds.pl
-  
-  # create the esl-fetch-cds input file
-  open(OUT, ">", $fetch_file) || fileOpenFailure($fetch_file, $sub_name, $!, "writing", $FH_HR);
-  my $naccn = scalar(@{$seq_info_HAR->{"accn_name"}});
-  for(my $a = 0; $a < $naccn; $a++) { 
-    my $accn_name = $seq_info_HAR->{"accn_name"}[$a];
-    my $seq_len   = $seq_info_HAR->{"len"}[$a];
-
-    $fetch_string = $accn_name . ":1.." . $seq_len . "\n";
-    print OUT $accn_name . ":" . "dnaorg" . "\t" . $fetch_string;
-    $seq_name = $accn_name . ":dnaorg:" . $accn_name . ":1:" . $seq_len . ":+:";
-
-    push(@{$seq_info_HAR->{"seq_name"}}, $seq_name);
-  }
-  close(OUT);
-  
-  # execute $esl_fetch_cds to fetch it
-  my $cmd = "perl $esl_fetch_cds -nocodon $fetch_file > $fasta_file";
-  runCommand($cmd, 0, 0, $FH_HR);
-
-  return;
-}
-
-#################################################################
-# Subroutine: addNameAndBlankSsToStockholmAlignment()
-# Incept:     EPN, Thu Feb 11 15:38:00 2016
-#
-# Synopsis:   Read in a stockholm alignment ($in_file), and 
-#             add a name ($name) to it, then optionally add
-#             a blank SS (#=GC SS_cons) annotation to it
-#             and output a new file ($out_file) that is
-#             identical to it but with the name annotation
-#             and possibly a blank SS.
-#
-# Arguments:
-#   $name:         name to add to alignment
-#   $do_blank_ss:  '1' to add a blank SS, else '0'
-#   $in_file:      input stockholm alignment
-#   $out_file:     output stockholm alignment to create
-#   $FH_HR:        REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    Two values:
-#             alignment length 
-#             checksum of alignment
-#################################################################
-sub addNameAndBlankSsToStockholmAlignment {
-  my $sub_name = "addNameAndBlankSsToStockholmAlignment";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($name, $do_blank_ss, $in_file, $out_file, $FH_HR) = @_;
-
-  if(! -s $in_file) { 
-    DNAORG_FAIL("ERROR in $sub_name, file $in_file does not exist.", 1, $FH_HR); 
-  }
-
-  # open and validate file
-  my $msa = Bio::Easel::MSA->new({
-    fileLocation => $in_file,
-    isDna => 1
-                                 });  
-  $msa->set_name($name);
-  if($do_blank_ss) { 
-    $msa->set_blank_ss_cons;
-  }
-  $msa->write_msa($out_file);
-
-  return ($msa->alen, $msa->checksum);
-}
-
-#################################################################
-# Subroutine: getQualifierValues()
-# Incept:     EPN, Fri Feb 12 05:33:19 2016
-#
-# Purpose:    Retreive values for the qualifier $qualifier 
-#             for accession $accn in the given %tbl_HHAR 
-#             and return the values 
-#             in $values_AR.
-#
-# Arguments:
-#   $tbl_HHAR:  REF to hash of hash of arrays to retrieve from
-#   $accn:      accession we're interested in
-#   $qualifier: qualifier we're interested in (e.g. 'Product')
-#   $values_AR: REF to array to fill with values of $qualifier
-#               ADDED TO HERE
-#   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    number of values added; fills @{$values_AR}
-# 
-# Dies: if $accn doesn't exist in %{$tbl_HHAR}
-#################################################################
-sub getQualifierValues {
-  my $sub_name = "getQualifierValues()";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($tbl_HHAR, $accn, $qualifier, $values_AR, $FH_HR) = @_;
-
-  if(! exists $tbl_HHAR->{$accn}) { DNAORG_FAIL("ERROR in $sub_name, no data for accession: $accn", 1, $FH_HR); }
-
-  if((! defined $tbl_HHAR->{$accn}{$qualifier}) ||  
-     (scalar(@{$tbl_HHAR->{$accn}{$qualifier}}) == 0)) { 
-    return 0; # no annotation for $qualifier, do not update array
-  }
-
-  my $nvalues = scalar(@{$tbl_HHAR->{$accn}{$qualifier}});
-
-  if ($nvalues > 0) { 
-    for(my $i = 0; $i < $nvalues; $i++) { 
-      push(@{$values_AR}, $tbl_HHAR->{$accn}{$qualifier}[$i]);
-    }
-  }
-
-  return $nvalues;
-}
-
-
-#################################################################
-# Subroutine : pressCmDb()
-# Incept:      EPN, Mon Feb 29 14:26:52 2016
-#
-# Purpose:     Run cmpress on a CM database file.
-#
-# Arguments: 
-#   $model_file:            the full path to the concatenated model file to create
-#   $cmpress:               path to cmpress executable
-#   $do_add_to_output_info: '1' to add file info to output info, '0' not to
-#   $do_run:                '1' to actually run the command, 0 to only return it
-#   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
-#   $ofile_info_HHR:        REF to the 2D hash of output file information
-# 
-# Returns:     cmpress command
-# 
-# Dies: If any of the expected individual CM files do not exist.
-#
-################################################################# 
-sub pressCmDb {
-  my $sub_name = "pressCmDb()";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($model_file, $cmpress, $do_add_to_output_info, $do_run, $opt_HHR, $ofile_info_HHR) = @_;
-
-  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  my $cmpress_cmd = "$cmpress -F $model_file > /dev/null"; # output is irrelevant
-  if($do_run) {
-    runCommand($cmpress_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-
-    if($do_add_to_output_info) { 
-      addClosedFileToOutputInfo($ofile_info_HHR, "$model_file.i1m", $model_file.".i1m", 0, "index file for the CM, created by cmpress");
-      addClosedFileToOutputInfo($ofile_info_HHR, "$model_file.i1i", $model_file.".i1i", 0, "index file for the CM, created by cmpress");
-      addClosedFileToOutputInfo($ofile_info_HHR, "$model_file.i1f", $model_file.".i1f", 0, "index file for the CM, created by cmpress");
-      addClosedFileToOutputInfo($ofile_info_HHR, "$model_file.i1p", $model_file.".i1p", 0, "index file for the CM, created by cmpress");
-    }
-  }
-  return $cmpress_cmd;
-}
-
-#################################################################
-# Subroutine : concatenateIndividualCmFiles()
-# Incept:      EPN, Mon Feb 29 10:53:53 2016
-#
-# Purpose:     Concatenate individual CM files created and calibrated
-#              by a previous call to dnaorg_build.pl into one 
-#              CM file.
-#
-# Arguments: 
-#   $combined_model_file:   the full path to the concatenated model file to create
-#   $out_root:              output root the individual CM files share
-#   $nmdl:                  number of models
-#   $do_run:                '1' to actually run the command, 0 to only return it
-#   $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
-#   $ofile_info_HHR:        REF to the 2D hash of output file information
-# 
-# Returns:     the cat command
-# 
-# Dies: If any of the expected individual CM files do not exist.
-#
-################################################################# 
-sub concatenateIndividualCmFiles {
-  my $sub_name = "concatenateIndividualCmFiles()";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($combined_model_file, $out_root, $nmdl, $do_run, $opt_HHR, $ofile_info_HHR) = @_;
-
-  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  # concatenate the files into a CM DB
-  my $cat_cmd = "cat";
-  for(my $i = 0; $i < $nmdl; $i++) { 
-    my $indi_model = $out_root . ".$i.cm"; # dnaorg_build created the CMs
-    if(($do_run) && (! -s ($indi_model))) { 
-      DNAORG_FAIL("ERROR, individual model file $indi_model does not exist.", 1, $FH_HR);
-    }
-    $cat_cmd .= " $indi_model ";
-  }
-  $cat_cmd .= " > $combined_model_file";
-  if($do_run) { 
-    runCommand($cat_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-    addClosedFileToOutputInfo($ofile_info_HHR, "cm", $combined_model_file, 1, "CM file (a concatenation of individual files created by dnaorg_build.pl)");
-  }
-
-  return $cat_cmd;
-}
-
-#################################################################
-# Subroutine: matpeptValidateCdsRelationships()
-# Incept:     EPN, Fri Feb 12 09:15:58 2016
-#
-# Purpose:    Validate the CDS:primary-mat_peptide relationships 
-#             in @{$cds2pmatpept_AAR}, which were probably 
-#             ready from a file in parsed in parseMatPeptSpecFile().
-#             These 'primary' relationships are valid if
-#             the mat_peptides that comprise the CDS
-#             do in fact completely comprise it (when 
-#             concatenated the mat_peptide coordinates completely
-#             cover the CDS coordinates, in order, with no
-#             overlaps). For example a CDS that spans 1..300
-#             is comprised by three mature peptides with 
-#             coordinates 1..150, 151..223, and 224..300.
-#
-# Arguments:
-#   $cds2pmatpept_AAR: REF to array of arrays, 1st dim value is cds_idx, value is array
-#                      of mat_peptide indices that comprise that CDS, PRE-FILLED
-#   $ref_cds_tbl_HAR:  REF to CDS table for reference genome
-#   $ref_mp_tbl_HAR:   REF to mat_peptide table for reference genome
-#   $do_circular:      '1' if we're allowing circular genomes
-#   $ref_totlen:       length of reference genome
-#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void 
-#
-# Dies:       if relationship is not valid
-#
-#################################################################
-sub matpeptValidateCdsRelationships {
-  my $sub_name = "matpeptValidateCdsRelationships()";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($cds2pmatpept_AAR, $ref_cds_tbl_HAR, $ref_mp_tbl_HAR, $do_circular, $ref_totlen, $FH_HR) = @_;
-
-  # get CDS and mat_peptide length and coordinate strings
-  my @ref_cds_len_A    = ();
-  my @ref_cds_coords_A = ();
-  getLengthsAndCoords($ref_cds_tbl_HAR, \@ref_cds_len_A, \@ref_cds_coords_A, $FH_HR);
-
-  my @ref_mp_len_A    = ();
-  my @ref_mp_coords_A = ();
-  getLengthsAndCoords($ref_mp_tbl_HAR, \@ref_mp_len_A, \@ref_mp_coords_A, $FH_HR);
-  
-  # validate cds2pmatpept_AA
-  my $ref_ncds = scalar(@ref_cds_len_A);
-  my $ref_nmp  = scalar(@ref_mp_len_A);
-  my $ncds2check = scalar(@{$cds2pmatpept_AAR});
-  my $prv_stop = undef; # previous mat_peptide's stop position, 
-  for(my $cds_idx = 0; $cds_idx < scalar(@{$cds2pmatpept_AAR}); $cds_idx++) { 
-    if(($cds_idx < 0) || ($cds_idx >= $ref_ncds)) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, cds_idx $cds_idx is out of range", $cds_idx+1), 1, $FH_HR); 
-    }
-    my @cds_starts_A  = ();
-    my @cds_stops_A   = ();
-    my @cds_strands_A = ();
-    my $cds_nsegments = 0;
-    startsStopsStrandsFromCoordsLength($ref_cds_coords_A[$cds_idx], $ref_totlen, $do_circular, \@cds_starts_A, \@cds_stops_A, \@cds_strands_A, \$cds_nsegments, $FH_HR);
-    my $cds_start = $cds_starts_A[0];
-    my $cds_stop  = $cds_stops_A[$cds_nsegments-1];
-    if($cds_nsegments != 1) { 
-      if($cds_nsegments != 2) { 
-        DNAORG_FAIL("ERROR in $sub_name, triple or more segment CDS broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
-      }
-      if($cds_strands_A[0] ne $cds_strands_A[1]) { 
-        DNAORG_FAIL("ERROR in $sub_name, double segment CDS with each segment on different strands to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
-      }
-      # two segment CDS, if any introns exist (any nt is not included between $cds_start..$cds_stop) then we can't handle it
-      # example of a multi-'segment' CDS that we CAN handle is West Nile Virus CDS #2: NC_001563.2 join(97..3540,3540..3671)
-      if($cds_strands_A[0] eq "+") { 
-        if(($cds_starts_A[1] - $cds_stops_A[0] - 1) > 0) { 
-#          DNAORG_FAIL("ERROR in $sub_name, multiple segment CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
-        }
-      }
-      else { # negative strand
-        if(($cds_stops_A[0] - $cds_starts_A[1] - 1) > 0) { 
-#          DNAORG_FAIL("ERROR in $sub_name, multiple segment CDS with an intron broken up to make mat_peptides, code for this does not yet exist.", 1, $FH_HR);
-        }
-      }
-    }
-
-    # look at all mat_peptides that are supposed to comprise this CDS
-    # and make sure that they do
-    my $nmp2check = scalar(@{$cds2pmatpept_AAR->[$cds_idx]});
-    for(my $x = 0; $x < $nmp2check; $x++) { 
-      my $mp_idx = $cds2pmatpept_AAR->[$cds_idx][$x];
-      if($mp_idx < 0 || $mp_idx >= $ref_nmp) { 
-        DNAORG_FAIL("ERROR in $sub_name, mp_idx $mp_idx for cds_idx $cds_idx is out of range", 1, $FH_HR); 
-      }
-      my @mp_starts_A = ();
-      my @mp_stops_A  = ();
-      my $mp_nsegments   = 0;
-      startsStopsStrandsFromCoordsLength($ref_mp_coords_A[$mp_idx], $ref_totlen, $do_circular, \@mp_starts_A, \@mp_stops_A, undef, \$mp_nsegments, $FH_HR);
-      if($x == 0) { # verify start matches with CDS start
-        if($mp_starts_A[0] != $cds_start) { 
-          DNAORG_FAIL("ERROR in $sub_name, for cds_idx $cds_idx start of first mat_peptide doesn't match CDS start ($mp_starts_A[0] != $cds_start)", 1, $FH_HR); 
-        }
-      }
-      if($x > 0) { # check that this mat_peptide is adjacent to previous one
-        if($mp_starts_A[0] != ($prv_stop+1)) { 
-          DNAORG_FAIL(sprintf("ERROR in $sub_name, for mat_peptides %d and %d are not adjacent (%d != %d+1)", $x, $x-1, $mp_starts_A[0], $prv_stop), 1, $FH_HR);
-        }
-      }
-      if($x == ($nmp2check-1)) { # verify stop matches with CDS stop-3
-        if(($mp_stops_A[($mp_nsegments-1)]+3) != $cds_stop) { 
-          DNAORG_FAIL(sprintf("ERROR in $sub_name, for cds_idx $cds_idx stop of final mat_peptide doesn't match CDS stop (%d != %d)", $mp_stops_A[($mp_nsegments-1)], $cds_stop), 1, $FH_HR);
-        }
-      }
-      $prv_stop = $mp_stops_A[($mp_nsegments-1)];
-      # printf("checked mp $mp_idx %d..%d\n", $mp_starts_A[0], $mp_stops_A[($mp_nsegments-1)]);
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: checkForSpanningSequenceSegments()
-# Incept:     EPN, Mon Apr 11 14:36:45 2016
-#
-# Synopsis:   Check if two sequence segments (e.g. exons) are really 
-#             just one that spans the stop/start boundary in a circular 
-#             genome. (More explanatory notes in comments within
-#             code of the subroutine.)
-#
-# Arguments:
-#   $starts_AR:   ref of array of start positions to potentially overwrite (if we find this is really only one segment)
-#   $stops_AR:    ref of array of stop positions to potentially overwrite (if we find this is really only one segment)
-#   $nsegments_R: ref to scalar of number of segments to overwrite (if we find this is really only one segment)
-#   $do_update:   '1' to update $starts_AR, $stops_AR and $nsegments_R if we find two segments that span stop..start
-#   $strand:      strand the segments are on
-#   $totlen:      total length of the sequence
-#           
-# Returns:    '1' if we found two segments that spanned stop..start 
-#             (and if ($do_update) then we also updated @{$starts_AR}, @{$stops_AR} and $$nsegments_R)
-# 
-# Dies:       Never.
-# 
-#################################################################
-sub checkForSpanningSequenceSegments {
-  my $sub_name = "checkForSpanningSequenceSegments()";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($starts_AR, $stops_AR, $nsegments_R, $do_update, $strand, $totlen) = @_;
-
-  my $found_spanning_segments = 0;
-
-  # if $$nsegments_R is not '2', we skip this block and return '0'.
-  # 'spanning' segments can only occur if there are exactly 2 segments that
-  # we are checking. 
-  if($$nsegments_R == 2) { 
-    # if we're in a circular genome, we need to check for a special case, where 
-    # what looks like a 2-segment CDS is really a single segment that spans the stop..start boundary.
-    # [Note that if the stop..start boundary is spanned by an intron (i.e. segment i is before stop,
-    # and i+1 is after start) then we don't need to modify anything, we'll still fetch the proper
-    # sequence even in a duplicated genome].
-    #
-    # Example 1: single segment that spans stop..start boundary on positive strand
-    # join(2309..3182,1..1625) in a seq of length 3182, this should really be a single segment
-    # $starts_A[0] = 2309
-    # $stops_A[0]  = 3182
-    # $starts_A[1] = 1
-    # $stops_A[1]  = 1625
-    # $nsegments = 2;
-    # 
-    # should become:
-    # $starts_A[0] = 2309
-    # $stops_A[0]  = 4807
-    # $nsegments = 1;
-    # 
-    # Example 2: single segment that spans stop..start boundary on negative strand
-    # complement(join(2309..3182,1..1625))   in a seq of length 3182, this should really be a single segment
-    # $starts_A[0] = 3182
-    # $stops_A[0]  = 2309
-    # $starts_A[1] = 1625
-    # $stops_A[1]  = 1
-    # $nsegments = 2;
-    # 
-    # should become:
-    # $starts_A[0] = 4807
-    # $stops_A[0]  = 2309
-    # $nsegments = 1;
-    #
-    # we can easily check and fix these cases:
-    my $tmp_start = undef;
-    my $tmp_stop  = undef;
-    # remember if we get here, we know we only have 2 segments, i.e scalar(@{$starts_AR}) and scalar(@{$stops_AR}) is 2
-    if($strand eq "+" && $stops_AR->[0] == $totlen && $starts_AR->[1] == 1) { 
-      $tmp_start = $starts_AR->[0];
-      $tmp_stop  = $stops_AR->[1] + $totlen;
-    }
-    elsif($strand eq "-" && $starts_AR->[0] == $totlen && $stops_AR->[1] == 1) { 
-      my $tmp_start = $starts_AR->[1] + $totlen;
-      my $tmp_stop  = $stops_AR->[0];
-    }
-    if(defined $tmp_start && defined $tmp_stop) { 
-      @{$starts_AR} = ();
-      @{$stops_AR} = ();
-      $starts_AR->[0] = $tmp_start;
-      $stops_AR->[0]  = $tmp_stop;
-      $$nsegments_R   = 1;
-      $found_spanning_segments = 1;
-    }    
-  }
-  return $found_spanning_segments;
-}
 
 #################################################################
 # Subroutine : getIndexHashForArray()
@@ -6393,63 +4997,18 @@ sub cmalignStoreOverflow {
 }
 
 #################################################################
-# Subroutine: featureInfoKeyToFeatureTableQualifierName()
-# Incept:     EPN, Tue Dec  5 14:22:25 2017
-#
-# Purpose:    Given a key from the ftr_info_HA{"type"} array, 
-#             convert it into a string for a qualifier name
-#             in a feature table.
-#
-#             Input           Return value
-#             'out_product'   "product"
-#             'out_gene'      "gene"
-#             'out_exception' "exception"
-#
-# Arguments:
-#   $in_key:  input key from %ftr_info_HA
-#   $FH_HR:   REF to hash of file handles, including "log" and "cmd"
-#             
-# Returns:    qualifier name as a string for the feature table
-#
-# Dies:       if $in_key is unrecognized
-#################################################################
-sub featureInfoKeyToFeatureTableQualifierName { 
-  my $sub_name  = "featureInfoKeyToFeatureTableQualifierName";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($in_key, $FH_HR) = (@_);
-
-  if($in_key eq "out_product") { 
-    return "product";
-  }
-  elsif($in_key eq "out_gene") { 
-    return "gene";
-  }
-  elsif($in_key eq "out_exception") { 
-    return "exception";
-  }
-  else { 
-    DNAORG_FAIL("ERROR in $sub_name, unrecognized input key string: $in_key.", 1, $FH_HR);
-  }
-
-  return ""; # NEVERREACHED
-}
-
-#################################################################
 # Subroutine: featureTypeIsCds()
 # Incept:     EPN, Tue Feb  6 10:47:58 2018
 #
-# Purpose:    Is a feature type a CDS? 
-#
-#             Input        Return value
-#             'cds'        1
-#             other:       0
+# Purpose:    Is feature $ftr_idx a CDS?
 #
 # Arguments:
-#   $feature_type:  input feature
+#   $ftr_info_HAR:  REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:       feature index we are interested in
 #             
 # Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
 #
 #################################################################
 sub featureTypeIsCds { 
@@ -6457,120 +5016,42 @@ sub featureTypeIsCds {
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($in_feature) = (@_);
+  my ($ftr_info_HAR, $ftr_idx) = (@_);
 
-  if($in_feature eq "cds") { 
-    return 1;
-  }
-  else { 
-    return 0;
-  }
-
-  return ""; # NEVERREACHED
+  return($ftr_info_HAR->{"type"}[$ftr_idx] eq "CDS") ? 1 : 0;
 }
+
 #################################################################
 # Subroutine: featureTypeIsMaturePeptide()
-# Incept:     EPN, Tue Feb  6 11:50:25 2018
+# Incept:     EPN, Sun Mar 10 06:57:01 2019
 #
-# Purpose:    Is a feature type a mature peptide? 
-#
-#             Input        Return value
-#             'mp":        1
-#             other:       0
+# Purpose:    Is feature $ftr_idx a mat_peptide?
 #
 # Arguments:
-#   $feature_type:  input feature
+#   $ftr_info_HAR:  REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:       feature index we are interested in
 #             
 # Returns:    1 or 0
 #
+# Dies:       never; does not validate anything.
+#
 #################################################################
-sub featureTypeIsMaturePeptide() { 
+sub featureTypeIsMaturePeptide { 
   my $sub_name  = "featureTypeIsMaturePeptide";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($in_feature) = (@_);
+  my ($ftr_info_HAR, $ftr_idx) = (@_);
 
-  if($in_feature eq "mp") { 
-    return 1;
-  }
-  else { 
-    return 0;
-  }
-
-  return ""; # NEVERREACHED
-}
-#################################################################
-# Subroutine: featureTypeIsExtraFeature()
-# Incept:     EPN, Tue Feb  6 12:17:29 2018
-#
-# Purpose:    Is a feature type an 'extra feature'?
-#
-#             Input        Return value
-#             'xfeat':     1
-#             other:       0
-#
-# Arguments:
-#   $feature_type:  input feature
-#             
-# Returns:    1 or 0
-#
-#################################################################
-sub featureTypeIsExtraFeature() { 
-  my $sub_name  = "featureTypeIsExtraFeature";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($in_feature) = (@_);
-
-  if($in_feature eq "xfeat") { 
-    return 1;
-  }
-  else { 
-    return 0;
-  }
-
-  return ""; # NEVERREACHED
+  return($ftr_info_HAR->{"type"}[$ftr_idx] eq "mat_peptide") ? 1 : 0;
 }
 
-#################################################################
-# Subroutine: featureTypeIsDuplicateFeature()
-# Incept:     EPN, Sun Jul 22 18:38:57 2018
-#
-# Purpose:    Is a feature type a 'duplicate feature'?
-#
-#             Input        Return value
-#             'dfeat':     1
-#             other:       0
-#
-# Arguments:
-#   $feature_type:  input feature
-#             
-# Returns:    1 or 0
-#
-#################################################################
-sub featureTypeIsDuplicateFeature() { 
-  my $sub_name  = "featureTypeIsDuplicateFeature";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($in_feature) = (@_);
-
-  if($in_feature eq "dfeat") { 
-    return 1;
-  }
-  else { 
-    return 0;
-  }
-
-  return ""; # NEVERREACHED
-}
 
 #################################################################
-# Subroutine: featureNumModels()
+# Subroutine: featureNumSegments()
 # Incept:     EPN, Tue Mar  5 13:05:38 2019
 #
-# Purpose:    Return number of models that pertain to a feature.
+# Purpose:    Return number of segments in feature $ftr_idx.
 #
 # Arguments: 
 #   $ftr_info_HAR:  REF to hash of arrays of feature information
@@ -6581,63 +5062,14 @@ sub featureTypeIsDuplicateFeature() {
 # Dies: Never, nothing is validated
 # 
 #################################################################
-sub featureNumModels { 
-  my $sub_name  = "featureNumModels";
+sub featureNumSegments { 
+  my $sub_name  = "featureNumSegments";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
   my ($ftr_info_HAR, $ftr_idx) = (@_);
 
-  return ($ftr_info_HAR->{"final_mdl"}[$ftr_idx] - $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1);
-}
-
-#################################################################
-# Subroutine: getNumExtraOrDuplicateFeatures()
-# Incept:     EPN, Sun Jul 22 13:10:33 2018
-#
-# Purpose:    Given a reference to a 3D hash of arrays, return
-#             the number of elements in each of the arrays. 
-#             (This will be the same number for all such arrays.)
-#
-# Arguments:
-#   $tbl_HHHAR: 3D hash of arrays
-#   $FH_HR:     ref to hash of file handles, including 'log'
-#             
-# Returns:    Number of elements in all arrays
-#
-# Dies: If not all arrays have the same number of elements.
-#
-#################################################################
-sub getNumExtraOrDuplicateFeatures() { 
-  my $sub_name  = "getNumExtraOrDuplicateFeatures()";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($tbl_HHHAR, $FH_HR) = (@_);
-
-  my $ret_size      = undef;
-  my $ret_size_key1 = undef;
-  my $ret_size_key2 = undef;
-  my $ret_size_key3 = undef;
-  my $size          = undef;
-  foreach my $key1 (sort keys %{$tbl_HHHAR}) { 
-    foreach my $key2 (sort keys %{$tbl_HHHAR->{$key1}}) { 
-      foreach my $key3 (sort keys %{$tbl_HHHAR->{$key1}{$key2}}) {
-        $size = scalar(@{$tbl_HHHAR->{$key1}{$key2}{$key3}});
-        if(! defined $ret_size) {
-          $ret_size = scalar(@{$tbl_HHHAR->{$key1}{$key2}{$key3}});
-          $ret_size_key1 = $key1;
-          $ret_size_key2 = $key2;
-          $ret_size_key3 = $key3;
-        }
-        elsif($size != $ret_size) {
-          DNAORG_FAIL("ERROR in $sub_name, not all arrays have the same number of elements.\ntbl_HHHAR->{$ret_size_key1}{$ret_size_key2}{$ret_size_key3} has $ret_size elements but tbl_HHHAR->{$key1}{$key2}{$key3} has $size elements", 1, $FH_HR);
-        }
-      }
-    }
-  }
-
-  return $ret_size;
+  return ($ftr_info_HAR->{"3p_seg_idx"}[$ftr_idx] - $ftr_info_HAR->{"5p_seg_idx"}[$ftr_idx] + 1);
 }
 
 #################################################################
@@ -6800,173 +5232,62 @@ sub validateBlastDbExists {
   return;
 }
 
-#################################################################
-# Subroutine:  countFeatureType()
-# Incept:      EPN, Sat Feb 23 07:29:49 2019
-#
-# Purpose:    Return number of features of type $type.
-#             Does not check that $type is a valid type.
-#
-# Arguments: 
-#  $ftr_info_HAR:   ref to the feature info hash of arrays 
-#  $type:           feature 'type'
-#
-# Returns:    Number of features of type $type.
-#
-# Dies:       Never (does not validate $ftr_info_HAR or enforce that $type 
-#             is a valid type)
-#
-################################################################# 
-sub countFeatureType { 
-  my $sub_name = "countFeatureType";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_HAR, $type) = @_;
-
-  my $ret_n = 0;
-  foreach my $ftype (@{$ftr_info_HAR->{"type"}}) { 
-    if($ftype eq $type) { $ret_n++; }
-  }
-  return $ret_n;
-}
 
 #################################################################
-# Subroutine:  countFeatureTypeAndStrand()
-# Incept:      EPN, Sat Feb 23 07:32:39 2019
-#
-# Purpose:    Return number of features of type $type
-#             *and* ref_strand $strand.
-#             Does not check that $type is a valid type
-#             or $strand is a valid strand value.
-#
-# Arguments: 
-#  $ftr_info_HAR:   ref to the feature info hash of arrays 
-#  $type:           feature 'type'
-#  $strand:         feature 'ref_strand'
-#  $FH_HR:          ref to hash of file handles
-#
-# Returns:    Number of features of type $type.
-#
-# Dies:       If number of "type" values differs from number of 
-#             "ref_strand" values.
-#
-################################################################# 
-sub countFeatureTypeAndStrand { 
-  my $sub_name = "countFeatureTypeAndStrand";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_HAR, $type, $strand, $FH_HR) = @_;
-
-  my @type_A   = @{$ftr_info_HAR->{"type"}};
-  my @strand_A = @{$ftr_info_HAR->{"ref_strand"}};
-
-  my $ntype   = scalar(@type_A);
-  my $nstrand = scalar(@strand_A);
-  if($ntype != $nstrand) { 
-    DNAORG_FAIL("ERROR in $sub_name, number of types ($ntype) != number of strands ($nstrand)", 1, $FH_HR); 
-  }
-  my $ret_n = 0;
-  for(my $i = 0; $i < $ntype; $i++) { 
-    if(($type_A[$i]   eq $type) &&
-       ($strand_A[$i] eq $strand)) { 
-      $ret_n++;
-    }
-  }
-  return $ret_n;
-}
-
-#################################################################
-# Subroutine:  checkIfFeatureIsCdsOrMp()
+# Subroutine:  featureTypeIsCdsOrMaturePeptide()
 # Incept:      EPN, Mon Feb 25 14:30:34 2019
 #
-# Purpose:    Return '1' if feature is type is 'cds' or 'mp', else return '0'.
+# Purpose:    Is feature $ftr_idx a CDS or mature peptide?
 #
 # Arguments: 
 #  $ftr_info_HAR:   ref to the feature info hash of arrays 
 #  $ftr_idx:        feature index
 #
-# Returns:    '1' if $ftr_info_HAR->{"type"}[$ftr_idx] is "cds" or "mp"
-#             else '0'
+# Returns:    1 or 0
 #
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub checkIfFeatureIsCdsOrMp { 
-  my $sub_name = "checkIfFeatureIsCdsOrMp";
+sub featureTypeIsCdsOrMaturePeptide { 
+  my $sub_name = "featureTypeIsCdsOrMaturePeptide";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($ftr_info_HAR, $ftr_idx) = @_;
 
-  if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") ||
-     ($ftr_info_HAR->{"type"}[$ftr_idx] eq "mp")) { 
-    return 1; 
-  }
-  return 0;
+  return((featureTypeIsCds($ftr_info_HAR, $ftr_idx)) || 
+         (featureTypeIsMaturePeptide($ftr_info_HAR, $ftr_idx)));
 }
 
+
 #################################################################
-# Subroutine:  checkIfFeatureIsCds()
-# Incept:      EPN, Wed Feb 27 10:38:34 2019
+# Subroutine:  featureIsDuplicate()
+# Incept:      EPN, Sun Mar 10 07:04:24 2019
 #
-# Purpose:    Return '1' if feature type is 'cds', else return '0'.
+# Purpose:    Is feature $ftr_idx a duplicate of another feature?
+#             This is true if $ftr_info_HAR->{"source_idx"}[$ftr_idx] != $ftr_idx
 #
 # Arguments: 
 #  $ftr_info_HAR:   ref to the feature info hash of arrays 
 #  $ftr_idx:        feature index
 #
-# Returns:    '1' if $ftr_info_HAR->{"type"}[$ftr_idx] is "cds"
-#             else '0'
-#
-# Dies:       never; does not validate anything.
-#
-################################################################# 
-sub checkIfFeatureIsCds { 
-  my $sub_name = "checkIfFeatureIsCds";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_HAR, $ftr_idx) = @_;
-
-  if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") {
-    return 1; 
-  }
-  return 0;
-}
-
-#################################################################
-# Subroutine:  checkIfFeatureIsDuplicate()
-# Incept:      EPN, Mon Feb 25 14:30:34 2019
-#
-# Purpose:    Return '1' if feature type is 'dfeat', else return '0'.
-#
-# Arguments: 
-#  $ftr_info_HAR:   ref to the feature info hash of arrays 
-#  $ftr_idx:        feature index
-#
-# Returns:    '1' if $ftr_info_HAR->{"type"}[$ftr_idx] is "dfeat"
-#             else '0'
+# Returns:    1 or 0 
 # 
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub checkIfFeatureIsDuplicate { 
-  my $sub_name = "checkIfFeatureIsDuplicate"; 
+sub featureIsDuplicate { 
+  my $sub_name = "featureIsDuplicate";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($ftr_info_HAR, $ftr_idx) = @_;
 
-  if($ftr_info_HAR->{"type"}[$ftr_idx] eq "dfeat") { 
-    return 1; 
-  }
-  return 0;
+  return(($ftr_info_HAR->{"source_idx"}[$ftr_idx] != $ftr_idx) ? 1 : 0);
 }
 
 #################################################################
-# Subroutine:  getFeature5pMostPosition()
+# Subroutine:  featureGet5pMostPosition()
 # Incept:      EPN, Fri Mar  8 12:57:21 2019
 #
 # Purpose:    Return 5'-most position in all segments for a feature.
@@ -6981,8 +5302,8 @@ sub checkIfFeatureIsDuplicate {
 # Dies:       if $ftr_info_HAR->{"coords"}[$ftr_idx] is not parseable.
 #
 ################################################################# 
-sub getFeature5pMostPosition { 
-  my $sub_name = "getFeature5pMostPosition";
+sub featureGet5pMostPosition { 
+  my $sub_name = "featureGet5pMostPosition";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -6999,7 +5320,7 @@ sub getFeature5pMostPosition {
 }
 
 #################################################################
-# Subroutine:  getFeature3pMostPosition()
+# Subroutine:  featureGet3pMostPosition()
 # Incept:      EPN, Fri Mar  8 13:00:31 2019
 #
 # Purpose:    Return 3'-most position in all segments for a feature.
@@ -7014,8 +5335,8 @@ sub getFeature5pMostPosition {
 # Dies:       if $ftr_info_HAR->{"coords"}[$ftr_idx] is not parseable.
 #
 ################################################################# 
-sub getFeature3pMostPosition { 
-  my $sub_name = "getFeature3pMostPosition";
+sub featureGet3pMostPosition { 
+  my $sub_name = "featureGet3pMostPosition";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -7032,7 +5353,7 @@ sub getFeature3pMostPosition {
 }
 
 #################################################################
-# Subroutine:  summarizeModelForFeature()
+# Subroutine:  segmentSummarizeForFeature()
 # Incept:      EPN, Fri Mar  1 12:36:36 2019
 #
 # Purpose:    Return a string indicating what model this is
@@ -7049,8 +5370,8 @@ sub getFeature3pMostPosition {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub summarizeModelForFeature { 
-  my $sub_name = "summarizeModelForFeature";
+sub segmentSummarizeForFeature { 
+  my $sub_name = "segmentSummarizeForFeature";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -7065,7 +5386,6 @@ sub summarizeModelForFeature {
   return ""; # return "" if $nmdl == 1;
 }
 
-  
 #################################################################
 # Subroutine: populateFeatureInfoHash
 # Incept:     EPN, Sat Mar  9 05:06:23 2019
@@ -7091,7 +5411,6 @@ sub populateFeatureInfoHash {
  
   my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
 
-  populateFeatureInfoStrand($ftr_info_HAR, $opt_HHR, $FH_HR);
   populateFeatureInfoSourceIdx($ftr_info_HAR, $opt_HHR, $FH_HR);
   populateFeatureInfoParentIdx($ftr_info_HAR, $opt_HHR, $FH_HR);
   populateFeatureInfo3paFtrIdx($ftr_info_HAR, $opt_HHR, $FH_HR);
@@ -7123,10 +5442,10 @@ sub populateFeatureInfoStrand {
   my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
   
   # ftr_info_HAR should already have array data for keys "coords", "type"
-  my @reqd_ftr_info_A = ("coords", "type");
+  my @reqd_ftr_info_A = ("coords", "type", "strands");
   my $nftr            = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
 
-  # go through all features and determine strand (set 'strand')
+ # go through all features and determine strand (set 'strand')
   # 
   # $ftr_info_HAR->{"strand"}[$ftr_idx] set to: 
   # - "+" if all segments have strand "+"
@@ -7198,7 +5517,7 @@ sub populateFeatureInfoSourceIdx {
   my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
   
   # ftr_info_HAR should already have array data for keys "coords", "strand", "type"
-  my @reqd_ftr_info_A = ("coords", "type");
+  my @reqd_ftr_info_A = ("coords", "type", "strands");
   my $nftr            = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
 
   # go through all features and determine duplicates (set 'source_idx')
@@ -7256,7 +5575,7 @@ sub populateFeatureInfoParentIdx {
   my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
   
   # ftr_info_HAR should already have array data for keys "coords", "strand", "type"
-  my @reqd_ftr_info_A = ("coords", "strand", "type");
+  my @reqd_ftr_info_A = ("coords", "strands", "type");
   my $nftr            = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
 
   # go through all features and determine parents (set 'parent_idx')
@@ -7282,13 +5601,13 @@ sub populateFeatureInfoParentIdx {
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_HAR->{"parent_idx"}[$ftr_idx] = -1; # initialize
     if($ftr_info_HAR->{"type"}[$ftr_idx] eq "mat_peptide") { 
-      $ftr_5p_pos = getFeature5pMostPosition($ftr_info_HAR, $ftr_idx, $FH_HR);
-      $ftr_3p_pos = getFeature3pMostPosition($ftr_info_HAR, $ftr_idx, $FH_HR);
-      $ftr_strand = $ftr_info_HAR->{"strand"}[$ftr_idx];
+      $ftr_5p_pos = featureGet5pMostPosition($ftr_info_HAR, $ftr_idx, $FH_HR);
+      $ftr_3p_pos = featureGet3pMostPosition($ftr_info_HAR, $ftr_idx, $FH_HR);
+      $ftr_strand = featureSummaryStrand($ftr_info_HAR, $ftr_idx, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = getFeature5pMostPosition($ftr_info_HAR, $ftr_idx2, $FH_HR);
-        $ftr_3p_pos2 = getFeature3pMostPosition($ftr_info_HAR, $ftr_idx2, $FH_HR);
-        $ftr_strand2 = $ftr_info_HAR->{"strand"}[$ftr_idx2];
+        $ftr_5p_pos2 = featureGet5pMostPosition($ftr_info_HAR, $ftr_idx2, $FH_HR);
+        $ftr_3p_pos2 = featureGet3pMostPosition($ftr_info_HAR, $ftr_idx2, $FH_HR);
+        $ftr_strand2 = featureSummaryStrand($ftr_info_HAR, $ftr_idx, $FH_HR);
         $found_parent = 0;
         if(($ftr_idx != $ftr_idx2) && 
            ($ftr_info_HAR->{"type"}[$ftr_idx2] eq "CDS") && 
@@ -7347,8 +5666,8 @@ sub populateFeatureInfo3paFtrIdx {
  
   my ($ftr_info_HAR, $opt_HHR, $FH_HR) = @_;
   
-  # ftr_info_HAR should already have array data for keys "coords", "strand", "type"
-  my @reqd_ftr_info_A = ("coords", "strand", "type");
+  # ftr_info_HAR should already have array data for keys "coords", "strands", "type"
+  my @reqd_ftr_info_A = ("coords", "strands", "type");
   my $nftr            = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
 
   # go through all features and determine adjacent mat_peptides (set '3pa_ftr_idx')
@@ -7371,10 +5690,10 @@ sub populateFeatureInfo3paFtrIdx {
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_HAR->{"3pa_ftr_idx"}[$ftr_idx] = -1;
     if($ftr_info_HAR->{"type"}[$ftr_idx] eq "mat_peptide") { 
-      $ftr_3p_pos = getFeature3pMostPosition($ftr_info_HAR, $ftr_idx, $FH_HR);
-      $ftr_strand = $ftr_info_HAR->{"strand"}[$ftr_idx];
+      $ftr_3p_pos = featureGet3pMostPosition($ftr_info_HAR, $ftr_idx, $FH_HR);
+      $ftr_strand = featureSummaryStrand($ftr_info_HAR, $ftr_idx, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = getFeature5pMostPosition($ftr_info_HAR, $ftr_idx2, $FH_HR);
+        $ftr_5p_pos2 = featureGet5pMostPosition($ftr_info_HAR, $ftr_idx2, $FH_HR);
         $ftr_strand2 = getFeatureStrand($ftr_info_HAR, $ftr_idx2, $FH_HR);
         $found_adj = 0;
         if(($ftr_idx != $ftr_idx2) && 
@@ -7461,7 +5780,7 @@ sub populateSegmentInfoHash {
       my @seg_start_A  = (); # array of starts, one per segment
       my @seg_stop_A   = (); # array of stops, one per segment
       my @seg_strand_A = (); # array of strands ("+", "-"), one per segment
-      startStopStrandArraysFromCommaSeparatedCoordsStr($ftr_info_HAR->{"coords"}[$ftr_idx], \@seg_start_A, \@seg_stop_A, \@seg_strand_A, $FH_HR);
+      startStopStrandArraysFromCoordsStr($ftr_info_HAR->{"coords"}[$ftr_idx], \@seg_start_A, \@seg_stop_A, @seg_strand_A, $FH_HR);
       my $cur_nseg = scalar(@seg_start_A);
       for(my $s = 0; $s < $cur_nseg; $s++) { 
         $seg_info_HAR->{"start"}[$nseg]   = $seg_start_A[$s];
@@ -7490,36 +5809,44 @@ sub populateSegmentInfoHash {
   return;
 }
 
-
 #################################################################
-# Subroutine: startStopStrandArraysFromCommaSeparatedCoordsStr()
+# Subroutine: startStopStrandArraysFromCoordsStr()
 # Incept:     EPN, Sat Mar  9 05:50:10 2019
 #
 # Synopsis: Given a comma separated coords string, parse it, 
 #           validate it, and fill @{$start_AR}, @{$stop_AR} and
 #           @{$strand_AR} based on it.
 # 
+#           For segments of 1 nucleotide: 
+#           o set as "+" if there is only 1 segment
+#           o set as "+" if there >=1 additional segment 
+#             of more than 1 nt and all of those are "+"
+#           o set as "-" if there >=1 additional segment 
+#             of more than 1 nt and all of those are "-"
+#           o die if none of the above criteria are met
+#
 # Arguments:
 #  $coords_str:   coordinate string
-#  $start_AR:     REF to start position array to fill here
-#  $stop_AR:      REF to stop position array to fill here
-#  $strand_AR:    REF to strand array to fill here with "+" or "-"
+#  $start_AR:     REF to start position array to fill here, FILLED here, can be undef
+#  $stop_AR:      REF to stop position array to fill here, FILLED here, can be undef
+#  $strand_AR:    REF to strand array to fill here with "+" or "-", FILLED here, can be undef
 #  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
-# Dies:       
+# Dies: If a segment of length 1 exists and none of the 3 criteria listed 
+#       above are met
 #################################################################
-sub startStopStrandArraysFromCommaSeparatedCoordsStr {
+sub startStopStrandArraysFromCoordsStr {
   my $sub_name = "startStopStrandArraysFromCommaSeparatedCoordsStr";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($coords_str, $start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
 
-  @{$start_AR}  = ();
-  @{$stop_AR}   = ();
-  @{$strand_AR} = ();
+  my @start_A  = ();
+  my @stop_A   = ();
+  my @strand_A = ();
   my ($start, $stop, $strand, $seg_idx, $seg_idx2);
   my @coords_A  = split(",", $coords_str);
   my $nseg = scalar(@coords_A);
@@ -7530,9 +5857,9 @@ sub startStopStrandArraysFromCommaSeparatedCoordsStr {
       if   ($start == $stop) { $strand = "?"; } # single nt, we will deal with this below
       elsif($start <  $stop) { $strand = "+"; }
       else                   { $strand = "-"; }
-      push(@{$start_AR},  $start);
-      push(@{$stop_AR},   $stop);
-      push(@{$strand_AR}, $strand);
+      push(@start_A,  $start);
+      push(@stop_A,   $stop);
+      push(@strand_A, $strand); 
     }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unable to parse coords token $coords_A[$seg_idx]", 1, $FH_HR); 
@@ -7547,13 +5874,13 @@ sub startStopStrandArraysFromCommaSeparatedCoordsStr {
   # 
   my ($seg_idx_5p, $seg_idx_3p); # 5'-most segment index and 3'-most segment index for a feature
   for($seg_idx = 0; $seg_idx < $nseg; $seg_idx++) { 
-    if($strand_AR->[$seg_idx] eq "?") { 
+    if($strand_A[$seg_idx] eq "?") { 
       my $npos = 0; # number of other segments for same feature that are on + strand
       my $nneg = 0; # number of other segments for same feature that are on - strand
       for($seg_idx2 = 0; $seg_idx2 < $nseg; $seg_idx2++) { 
         if($seg_idx ne $seg_idx2) { 
-          if($strand_AR->[$seg_idx2] eq "+") { $npos++; }
-          if($strand_AR->[$seg_idx2] eq "-") { $nneg++; }
+          if($strand_A[$seg_idx2] eq "+") { $npos++; }
+          if($strand_A[$seg_idx2] eq "-") { $nneg++; }
         }
       }
       if((($npos == 0) && ($nneg == 0)) ||
@@ -7564,16 +5891,67 @@ sub startStopStrandArraysFromCommaSeparatedCoordsStr {
       if($npos > 0) { 
         # all other segments are positive
         # we already know that $nneg == 0 due to check above
-        $strand_AR->[$seg_idx] = "+";
+        $strand_A[$seg_idx] = "+";
       }
       else { 
         # all other segments are negative
         # we already know that $npos == 0 due to check above
-        $strand_AR->[$seg_idx] = "-";
+        $strand_A[$seg_idx] = "-";
       }
     }
   }
+
+  if(defined $start_AR)  { @{$start_AR}   = @start_A;  }
+  if(defined $stop_AR)   { @{$stop_AR}    = @stop_A;   }
+  if(defined $strand_AR) { @{$strand_AR}  = @strand_A;  }
+
   return;
+}
+
+#################################################################
+# Subroutine: strandStrFromCoordsStr()
+# Incept:     EPN, Mon Mar 11 10:25:03 2019
+#
+# Synopsis: Given a comma separated coords string, parse it, 
+#           and return a strand string from it. 
+#
+#           For segments of 1 nucleotide: 
+#           o set as "+" if there is only 1 segment
+#           o set as "+" if there >=1 additional segment 
+#             of more than 1 nt and all of those are "+"
+#           o set as "-" if there >=1 additional segment 
+#             of more than 1 nt and all of those are "-"
+#           o die if none of the above criteria are met
+#
+#           IMPORTANT: Only use this if we don't already have 
+#           strand information. %{$ftr_info_HAR} already has 
+#           strand information and it may overrule what this 
+#           subroutine will infer for segments of 1 nucleotide. 
+#           
+# Arguments:
+#  $coords_str:   coordinate string
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       
+#################################################################
+sub strandStrFromCoordsStr { 
+  my $sub_name = "strandStrFromCoordsStr";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords_str, $FH_HR) = @_;
+
+  my @strand_A = ();
+  startStopStrandArraysFromCoordsStr($coords_str, undef, undef, \@strand_A, $FH_HR); # 'undef, undef' start and stop array refs
+  
+  my $ret_strand_str = $strand_A[0];
+  for(my $i = 1; $i < scalar(@strand_A); $i++) { 
+    $ret_strand_str .= "," . $strand_A[$i];
+  }
+
+  return $ret_strand_str;
 }
 
 ###########################################################################

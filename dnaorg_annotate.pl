@@ -1238,24 +1238,24 @@ sub parse_cmalign_stk_and_add_alignment_errors {
         if(! $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"5trunc"}) { 
           if($mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startgap"}) { 
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$mdl_idx], "n_gp5", $seq_name, 
-                                "RF position $mdl_start_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), 
+                                "RF position $mdl_start_rfpos" . segmentSummarizeForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), 
                                 $FH_HR);
           } 
           elsif(($mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startpp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$mdl_idx], "n_lp5", $seq_name, 
-                                sprintf("%.2f < %.2f, RF position $mdl_start_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startpp"}, $pp_thresh),
+                                sprintf("%.2f < %.2f, RF position $mdl_start_rfpos" . segmentSummarizeForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"startpp"}, $pp_thresh),
                                 $FH_HR);
           }
         }
         if(! $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"3trunc"}) { 
           if($mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stopgap"}) { 
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$mdl_idx], "n_gp3", $seq_name, 
-                                "RF position $mdl_stop_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), 
+                                "RF position $mdl_stop_rfpos" . segmentSummarizeForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), 
                                 $FH_HR);
           }
           elsif(($mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stoppp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
             error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $mdl_info_HAR->{"map_ftr"}[$mdl_idx], "n_lp3", $seq_name, 
-                                sprintf("%.2f < %.2f, RF position $mdl_stop_rfpos" . summarizeModelForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stoppp"}, $pp_thresh),
+                                sprintf("%.2f < %.2f, RF position $mdl_stop_rfpos" . segmentSummarizeForFeature($mdl_info_HAR, $ftr_info_HAR, $mdl_idx), $mdl_results_AAHR->[$seq_idx][$mdl_idx]{"stoppp"}, $pp_thresh),
                               $FH_HR);
           }
         }
@@ -1343,19 +1343,16 @@ sub add_blastx_errors {
 
   my $aln_tol   = opt_Get("--xalntol",    $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
   my $indel_tol = opt_Get("--xindeltol",  $opt_HHR); # maximum allowed insertion and deletion length in blastx output
+
+  # get children info for all features
+  my @children_AA = ();
+  my $ftr_nchildren = undef;
+  featuresGetChildrenArrayOfArrays($ftr_info_HAR, \@children_AA, $FH_HR);
   
   # foreach type 'cds' feature
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(checkIfFeatureIsCds($ftr_info_HAR, $ftr_idx)) { 
-      my @all_children_idx_A = ();
-      my $na_children = 0;
-      if(featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
-        # get the all children array
-        @all_children_idx_A = (); # feature indices of the primary children of this feature
-        featureGetAllChildren($ftr_info_HAR, $ftr_idx, \@all_children_idx_A, $FH_HR);
-        $na_children = scalar(@all_children_idx_A);
-      }
-      
+    $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
+    if(featureTypeIsCds($ftr_info_HAR, $ftr_idx)) { 
       for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
         $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
         my $ftr_results_HR = \%{$ftr_results_AAHR->[$seq_idx][$ftr_idx]}; # for convenience
@@ -1503,17 +1500,17 @@ sub add_blastx_errors {
           error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, $err_code, $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $err_str_H{$err_code}), $FH_HR);
           $err_flag = 1;
         }
-        # if we added an error, step through all (not just primary) children of this feature (if any) and add p_per
-        if(($err_flag) && ($na_children > 0)) { 
-          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
-            my $child_ftr_idx = $all_children_idx_A[$child_idx];
+        # if we added an error, step through all children of this feature (if any) and add p_per
+        if(($err_flag) && ($ftr_nchildren > 0)) { 
+          for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
+            my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
             if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"b_per"}{$seq_name}) { 
               error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "b_per", $seq_name, "", $FH_HR);
             }
           }
         }
       } # end of 'for($seq_idx' loop
-    } # end of 'if(checkIfFeatureIsCds($ftr_info_HAR, $ftr_idx))'
+    } # end of 'if(featureTypeIsCds($ftr_info_HAR, $ftr_idx))'
   } # end of 'for($ftr_idx' loop
 
   return;
@@ -1567,7 +1564,7 @@ sub run_blastx_and_summarize_output {
   runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(checkIfFeatureIsCds($ftr_info_HAR, $ftr_idx)) { 
+    if(featureTypeIsCds($ftr_info_HAR, $ftr_idx)) { 
       my $ofile_info_key = "pfa." . $ftr_idx;
       if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
       # printf("ftr_idx: $ftr_idx, out_tiny: %s ofile_info_key: $ofile_info_key %s\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $ofile_info_HHR->{"fullpath"}{$ofile_info_key});
@@ -1936,14 +1933,18 @@ sub fetch_features_and_add_cds_and_mp_errors {
   my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
   my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
 
+  # get children info for all features, we'll use this in the loop below
+  my @children_AA = ();
+  featuresGetChildrenArrayOfArrays(\%ftr_info_HA, \@children_AA, $FH_HR);
+
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
     my $seq_len  = $seq_info_HAR->{"len"}[$seq_idx];
 
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if(! checkIfFeatureIsDuplicate($ftr_info_HAR, $ftr_idx)) { 
-        my $ftr_is_cds_or_mp = checkIfFeatureIsCdsOrMp($ftr_info_HAR, $ftr_idx);
-        my $ftr_is_cds       = checkIfFeatureIsCds($ftr_info_HAR, $ftr_idx);
+      if(! featureIsDuplicate($ftr_info_HAR, $ftr_idx)) { 
+        my $ftr_is_cds_or_mp = featureTypeIsCdsOrMaturePeptide($ftr_info_HAR, $ftr_idx);
+        my $ftr_is_cds       = featureTypeIsCds($ftr_info_HAR, $ftr_idx);
         my $ftr_sqstring = "";
         my $ftr_seq_name = undef;
         my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
@@ -1958,15 +1959,7 @@ sub fetch_features_and_add_cds_and_mp_errors {
         my $ftr_ofile_key = "pfa." . $ftr_idx;
         my $ftr_results_HR = $ftr_results_AAHR->[$seq_idx][$ftr_idx]; # for convenience
         my $err_flag = 0; # set to '1' if we set an error for this feature
-
-        my $na_children = 0;
-        my @all_children_idx_A = ();
-        if(featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
-          # get the all children array
-          @all_children_idx_A = (); # feature indices of the primary children of this feature
-          featureGetAllChildren($ftr_info_HAR, $ftr_idx, \@all_children_idx_A, $FH_HR);
-          $na_children = scalar(@all_children_idx_A);
-        }
+        my $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
         
         for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
           my $mdl_results_HR = $mdl_results_AAHR->[$seq_idx][$mdl_idx]; # for convenience
@@ -2118,10 +2111,10 @@ sub fetch_features_and_add_cds_and_mp_errors {
                     } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
                   } # end of 'if($ftr_is_cds) {' 
                 } # end of 'else' entered if feature is a multiple of 3
-                # if we added an error for a CDS, step through all (not just primary) children of this feature (if any) and add p_per
-                if($ftr_is_cds && $err_flag && ($na_children > 0)) { 
-                  for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
-                    my $child_ftr_idx = $all_children_idx_A[$child_idx];
+                # if we added an error for a CDS, step through all children of this feature (if any) and add p_per
+                if($ftr_is_cds && $err_flag && ($ftr_nchildren > 0)) { 
+                  for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
+                    my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
                     error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "b_per", $seq_name, "", $FH_HR);
                   }
                 }
@@ -2136,7 +2129,7 @@ sub fetch_features_and_add_cds_and_mp_errors {
             $ftr_results_HR->{"n_3trunc"} = $ftr_is_3trunc;
           } # end of 'if($ftr_len > 0)'
         } # end of 'for(my $mdl_idx...'
-      } # end of 'if(! checkIfFeatureIsDuplicate($ftr_info_HAR, $ftr_idx)) {' 
+      } # end of 'if(! featureIsDuplicate($ftr_info_HAR, $ftr_idx)) {' 
     } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
   } # end of 'for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {'
   
@@ -3555,37 +3548,26 @@ sub output_parent_child_relationships {
 
   my ($FH, $ftr_info_HAR, $FH_HR) = @_;
 
-  my $nftr = getInfoHashSize($ftr_info_HAR, "primary_children_ftr_str", $FH_HR); # nftr: number of features
+  # get children info for all features, we'll use this in the loop below
+  my @children_AA = ();
+  featuresGetChildrenArrayOfArrays(\%ftr_info_HA, \@children_AA, $FH_HR);
+  my $nftr = scalar(@children_AA);
 
   my $nprinted = 0;
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(featureHasChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
+    if(scalar(@{$children_AA[$ftr_idx]})) { 
       if($nprinted == 0) { 
         print $FH ("#\n");
         print $FH ("# CDS:MATURE_PEPTIDE relationships:\n"); # need to update this if we ever have other parent/child relationships in the future
         print $FH ("#\n");
       }
       
-      # get the array of primary children feature indices for this feature
-      my @children_idx_A = (); # feature indices of the primary children of this feature
-      if(featureHasPrimaryChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
-        featureGetPrimaryChildren($ftr_info_HAR, $ftr_idx, \@children_idx_A, $FH_HR);
-        printf $FH ("# %s is comprised of the following primary features in order:\n#   ", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
-        foreach my $child_ftr_idx (@children_idx_A) { 
-          printf $FH "%s ", $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
-        }
-        print $FH "\n#\n";
+      printf $FH ("# %s is comprised of the following primary features in order:\n#   ", featureGetTypeAndTypeIndexString($ftr_info_HAR, $ftr_idx));
+      foreach my $child_ftr_idx (@{$children_AA[$ftr_idx]}) { 
+        printf $FH "%s ", featureGetTypeAndTypeIndexString($ftr_info_HAR, $child_ftr_idx);
       }
-
-      if(featureHasAllChildren($ftr_info_HAR, $ftr_idx, $FH_HR)) { 
-        featureGetAllChildren($ftr_info_HAR, $ftr_idx, \@children_idx_A, $FH_HR);
-        printf $FH ("# %s encodes all of the following features in order:\n#   ", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
-        foreach my $child_ftr_idx (@children_idx_A) { 
-          printf $FH "%s ", $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
-        }
-        print $FH "\n#\n";
-      }
+      print $FH "\n#\n";
       $nprinted++;
     }
   }
@@ -4323,7 +4305,7 @@ sub strand_from_feature_results {
 
   my ($ftr_info_HAR, $ftr_results_HR, $ftr_idx) = (@_);
 
-  if(checkIfFeatureIsCds($ftr_info_HAR, $ftr_idx)) { 
+  if(featureTypeIsCds($ftr_info_HAR, $ftr_idx)) { 
     if((! defined $ftr_results_HR->{"n_strand"}) || 
        (! defined $ftr_results_HR->{"p_strand"})) { 
       # neither defined
