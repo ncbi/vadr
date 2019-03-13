@@ -254,28 +254,6 @@ $execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
 $execs_H{"makeblastdb"}   = $blast_exec_dir . "makeblastdb";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
-# TEMP
-my @tmp_A = ();
-push(@tmp_A, "1..200"); 
-push(@tmp_A, "<1..200"); 
-push(@tmp_A, "100..200>"); 
-push(@tmp_A, "<1..200>"); 
-push(@tmp_A, "complement(1..200)"); 
-push(@tmp_A, "join(1..200,300..400)"); 
-push(@tmp_A, "complement(join(1..200,300..400))");
-push(@tmp_A, "join(1..200,complement(300..400))");
-push(@tmp_A, "join(complement(300..400),1..200)");
-
-foreach my $tmp (@tmp_A) { 
-  my $tmp2 = featureInfoCoordsFromLocation($tmp, $FH_HR);
-  printf("FINAL $tmp to $tmp2\n");
-  printf("\n");
-}
-
-exit 0;
-# END TEMP
-
-
 ########################
 # Fetch the genbank file
 ########################
@@ -294,6 +272,8 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 my %seq_info_HH  = ();
 my %full_ftr_info_HAH = ();
 my @ftr_info_AH = ();
+
+$start_secs = outputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
 
 genbankParse($gb_file, \%seq_info_HH, \%full_ftr_info_HAH, $FH_HR);
 if(! exists $full_ftr_info_HAH{$ref_accn}) { 
@@ -328,17 +308,13 @@ for($full_ftr_idx = 0; $full_ftr_idx < scalar(@{$full_ftr_info_HAH{$ref_accn}});
     $ftr_idx++;
     %{$ftr_info_AH[$ftr_idx]} = ();
     foreach $key (sort keys %{$full_ftr_info_HAH{$ref_accn}[$ftr_idx]}) { 
-      if(exists $qual_H{$key}) { 
+      if((exists $qual_H{$key}) && (defined $full_ftr_info_HAH{$ref_accn}[$full_ftr_idx]{$key})) { 
         $ftr_info_AH[$ftr_idx]{$key} = $full_ftr_info_HAH{$ref_accn}[$full_ftr_idx]{$key};
       }
     }
   }
 }
-
 %full_ftr_info_HAH = (); # we don't need this any more
-
-dumpArrayOfHashes("ftr_info-1", \@ftr_info_AH, *STDOUT);
-exit 0;
 
 #############################################################
 # Finish populating feature_info_HA and segment_info_HA hashes
@@ -354,12 +330,17 @@ featureInfoImputeParentIdx(\@ftr_info_AH, \%opt_HH, $FH_HR);
 
 segmentInfoPopulate(\@seg_info_AH, \@ftr_info_AH, \%opt_HH, $FH_HR);
 
+dumpArrayOfHashes("Feature information (ftr_info_AH) for $ref_accn", \@ftr_info_AH, *STDOUT);
+dumpArrayOfHashes("Segment information (seg_info_AH) for $ref_accn", \@seg_info_AH, *STDOUT);
+
 exit 0;
- 
-openAndAddFileToOutputInfo(\%ofile_info_HH, "minfo", $out_root . ".minfo", 1, "model info file");
-output_model_info_file($ofile_info_HH{"FH"}{"minfo"}, $ref_accn, \@ftr_info_AH, $FH_HR);
+
+my $minfo_file  = $out_root . ".minfo";
+output_model_info_file($minfo_file, $ref_accn, \@ftr_info_AH, $FH_HR);
+addClosedFileToOutputInfo(\%ofile_info_HH, "minfo", $minfo_file, 1, "GenBank format file for $ref_accn");
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+exit 0;
 
 #########################################################
 # Step 4. Fetch and process the reference genome sequence
@@ -435,7 +416,7 @@ exit 0;
 #   $execs_HR:       hash with paths to esl-sfetch and esl-translate executables
 #   $out_root:       string for naming output files
 #   $ref_accn:       reference accession
-#   $ftr_info_HAR:   REF to the feature info, pre-filled
+#   $ftr_info_AHR:   REF to the feature info, pre-filled
 #   $seg_info_HAR:   REF to the segment info, pre-filled
 #   $fa_file_AR:     REF to array of fasta file names, filled here 
 #   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
@@ -1452,16 +1433,16 @@ sub initialize_feature_info_hash_from_ftable_data {
 # Incept:     EPN, Sat Mar  9 05:27:15 2019
 #
 # Synopsis: Output a model info file for model $mdlname based on 
-#           feature information in %{$ftr_info_HAR}.
+#           feature information in @{$ftr_info_AHR}.
 #
-#           The following values must be set in %{$ftr_info_HAR}:
+#           The following values must be set in @{$ftr_info_AHR}:
 #             "type":   feature type, e.g. "mat_peptide", "CDS"
 #             "coords": coordinates for this feature in the reference
 #
 # Arguments:
-#  $out_FH:       file handle to print to
+#  $out_file:     out file to create
 #  $name:         model name
-#  $ftr_info_HAR: REF to hash of arrays with information on the features, pre-filed
+#  $ftr_info_AHR: REF to array of hashes with information on the features, pre-filed
 #  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
@@ -1473,40 +1454,47 @@ sub output_model_info_file {
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_FH, $name, $ftr_info_HAR, $FH_HR) = @_;
+  my ($out_file, $name, $ftr_info_AHR, $FH_HR) = @_;
 
-  # ftr_info_HAR should already have array data for keys "coords" and "type"
-  my @reqd_ftr_info_A  = ("type", "coords");
-  my $nftr             = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, \@reqd_ftr_info_A, $FH_HR);
+  # ftr_info_AHR should already have array data for keys "coords" and "type"
+  my @reqd_keys_A  = ("type", "coords");
+  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@reqd_keys_A, $FH_HR);
+
 
   # create order of keys
   my ($key, $value2print);
-  my @key_order_A  = ("type", "coords", "strands");
+  my @key_order_A  = ("type", "coords");
   my %key_ignore_H = ();
   $key_ignore_H{"type"}        = 1; # already added this to @key_order_A, so it goes first
   $key_ignore_H{"coords"}      = 1; # already added this to @key_order_A, so it goes second
-  $key_ignore_H{"strands"}     = 1; # already added this to @key_order_A, so it goes third
-  $key_ignore_H{"source_idx"}  = 1; # can be inferred from coords and type
-  $key_ignore_H{"parent_idx"}  = 1; # can be inferred from coords and type
-  $key_ignore_H{"3pa_ftr_idx"} = 1; # can be inferred from coords and type
-  $key_ignore_H{"5p_seg_idx"}  = 1; # can be inferred from coords, when seg_info_HA is created
-  $key_ignore_H{"3p_seg_idx"}  = 1; # can be inferred from coords, when seg_info_HA is created
-
-  foreach $key (sort keys %{$ftr_info_HAR}) { 
-    if(! exists $key_ignore_H{$key}) { 
-      push(@key_order_A, $key);
-    }
-  }
+  $key_ignore_H{"source_idx"}  = 1; # will be inferred from coords and type
+  $key_ignore_H{"parent_idx"}  = 1; # will be inferred from coords and type
+  $key_ignore_H{"3pa_ftr_idx"} = 1; # will be inferred from coords and type
+  $key_ignore_H{"5p_seg_idx"}  = 1; # will be inferred from coords, when seg_info_HA is created
+  $key_ignore_H{"3p_seg_idx"}  = 1; # will be inferred from coords, when seg_info_HA is created
+  $key_ignore_H{"location"}    = 1; # *could* (but won't be) inferred from coords
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    printf $out_FH ("%s", $name);
-    foreach $key (@key_order_A) { 
-      $value2print = $ftr_info_HAR->{$key}[$ftr_idx];
-      if($value2print eq "") { $value2print = "-"; }
-      printf $out_FH ("\t%s:%s", $key, $value2print);
+    foreach $key (sort keys %{$ftr_info_AHR->[$ftr_idx]}) { 
+      if(! exists $key_ignore_H{$key}) { 
+        push(@key_order_A, $key);
+        $key_ignore_H{$key} = 1; 
+      }
     }
-    print $out_FH "\n";
   }
+
+  # open output file
+  open(OUT, ">", $out_file) || fileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    printf OUT ("%s", $name);
+    foreach $key (@key_order_A) { 
+      $value2print = (defined $ftr_info_AHR->[$ftr_idx]{$key}) ? $ftr_info_AHR->[$ftr_idx]{$key} : "";
+      if($value2print eq "") { $value2print = "-"; }
+      printf OUT ("\t%s:%s", $key, $value2print);
+    }
+    print OUT "\n";
+  }
+  close(OUT);
 
   return;
 }

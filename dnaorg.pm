@@ -238,10 +238,10 @@ use Cwd;
 # Incept:      EPN, Sun Mar 10 06:22:49 2019
 #
 # Purpose:     Fill @{$AAR} with arrays of children (feature indices)
-#              for each feature in %{$ftr_info_HAR}.
+#              for each feature in %{$ftr_info_AHR}.
 # 
 # Arguments: 
-#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
 #   $AAR:            REF to array of arrays of children feature indices, FILLED HERE
 #   $FH_HR:          REF to hash of file handles
 # 
@@ -253,13 +253,13 @@ sub featuresGetChildrenArrayOfArrays {
   my $nargs_expected = 3;
   my $sub_name = "featuresGetChildrenArrayOfArrays";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $AAR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $AAR, $FH_HR) = @_;
 
   @{$AAR} = ();
-  my $nftr = getInfoHashSize($ftr_info_HAR, "parent_idx", $FH_HR);
+  my $nftr = scalar(@{$ftr_info_AHR});
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    featureGetChildrenArray($ftr_info_HAR, $ftr_idx, $nftr, $AAR->[$ftr_idx], $FH_HR);
+    featureGetChildrenArray($ftr_info_AHR, $ftr_idx, $nftr, $AAR->[$ftr_idx], $FH_HR);
   }
   
   return;
@@ -270,12 +270,12 @@ sub featuresGetChildrenArrayOfArrays {
 # Incept:      EPN, Sun Mar 10 06:26:03 2019
 #
 # Purpose:     Fill @{$AAR} with array of children (feature indices)
-#              for feature $ftr_idx in %{$ftr_info_HAR}.
+#              for feature $ftr_idx in %{$ftr_info_AHR}.
 # 
 # Arguments: 
-#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
 #   $ftr_idx:        index we are interested in
-#   $nftr:           number of features in %{$ftr_info_HAR}
+#   $nftr:           number of features in %{$ftr_info_AHR}
 #   $AR:             REF to array children feature indices, FILLED HERE
 #   $FH_HR:          REF to hash of file handles
 # 
@@ -287,13 +287,13 @@ sub featureGetChildrenArray {
   my $nargs_expected = 5;
   my $sub_name = "featureGetChildrenArray";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $ftr_idx, $nftr, $AR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $ftr_idx, $nftr, $AR, $FH_HR) = @_;
 
   @{$AR} = ();
 
   for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
     if(($ftr_idx2 != $ftr_idx) && 
-       ($ftr_info_HAR->{"parent_idx"}[$ftr_idx2] == $ftr_idx)) { 
+       ($ftr_info_AHR->[$ftr_idx2]{"parent_idx"} == $ftr_idx)) { 
       push(@{$AR}, $ftr_idx2);
     }
   }
@@ -309,7 +309,7 @@ sub featureGetChildrenArray {
 #              (e.g. "CDS#2") for feature $ftr_idx.
 # 
 # Arguments: 
-#   $ftr_info_HAR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
 #   $ftr_idx:        index we are interested in
 #   $FH_HR:          REF to hash of file handles
 # 
@@ -321,13 +321,13 @@ sub featureGetTypeAndTypeIndexString {
   my $nargs_expected = 3;
   my $sub_name = "featureGetChildrenArray";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+  my ($ftr_info_AHR, $ftr_idx, $FH_HR) = @_;
 
-  my $nftr = getInfoHashSize($ftr_info_HAR, "parent_idx", $FH_HR);
-  my $type = $ftr_info_HAR->{"type"}[$ftr_idx];
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $type = $ftr_info_AHR->[$ftr_idx]{"type"};
   my $type_idx = 1;
   for(my $ftr_idx2 = 0; $ftr_idx2 < $ftr_idx; $ftr_idx2++) { 
-    if($ftr_info_HAR->{"type"}[$ftr_idx2] eq $type) { $type_idx++; }
+    if($ftr_info_AHR->[$ftr_idx2]{"type"} eq $type) { $type_idx++; }
   }
   
   return $type . "#" . $type_idx;
@@ -2344,99 +2344,6 @@ sub validateExecutableHash {
   return;
 }
 
-#################################################################
-# Subroutine: validateFeatureInfoHashIsComplete()
-# Incept:     EPN, Tue Feb 16 10:15:45 2016
-#
-# Purpose:    Validate that a 'feature info' hash is valid and complete.
-#             'Complete' means it has all the expected keys, each of which is an identically sized array.
-#             The expected keys are:
-#                "type"
-#                "coords"
-#                "strands"
-#                "source_idx"
-#                "parent_idx"
-#                "3pa_ftr_idx"
-#                "5p_seg_idx"
-#                "3p_seg_idx"
-#                "product"
-#                "gene"
-#
-#             If @{exceptions_AR} is non-empty, then keys in 
-#             in that array need not be in %{$ftr_info_HAR}.
-#
-# Arguments:
-#   $ftr_info_HAR:  REF to hash of arrays of feature information
-#   $exceptions_AR: REF to array of keys that may be excluded from the hash
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: Number of elements in each and every array of %{$ftr_info_HAR}
-#
-# Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
-#            does not exist in $ftr_info_HAR
-#          - if two arrays in $ftr_info_HAR are of different sizes
-#          - if any key listed in @{$exceptions_AR} is not one of the expected keys
-#
-#################################################################
-sub validateFeatureInfoHashIsComplete { 
-  my $sub_name = "validateFeatureInfoHashIsComplete()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($ftr_info_HAR, $exceptions_AR, $FH_HR) = (@_);
-  
-  my @expected_keys_A = ("type", "coords", "strands", "source_idx", "parent_idx",
-                         "3pa_ftr_idx", "5p_seg_idx", "3p_seg_idx", "product", "gene");
-
-  return validateInfoHashOfArraysIsComplete($ftr_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
-}
-
-#################################################################
-# Subroutine: validateSegmentInfoHashIsComplete()
-# Incept:     EPN, Tue Feb 16 11:00:03 2016
-#
-# Purpose:    Validate that a 'model info' hash is valid and complete.
-#             'Complete' means it has all the expected keys, each of which is an identically sized array.
-#             The expected keys are:
-#                "start":    start position of segment in the reference genome
-#                "stop":     stop position of segment in the reference genome
-#                "strand":   strand of segment in the reference genome
-#                "map_ftr":  the feature index (array index in ftr_info_HAR) 
-#                            this segment is for
-#                "is_5p":    '1' if this segment is the 5'-most segment for its feature
-#                            (when the segments are joined to make the feature, not 
-#                            necessarily in reference genome)
-#                "is_3p":    '1' if this segment is the 3'-most model for its feature
-#                            (when the segments are joined to make the feature, not 
-#                            necessarily in reference genome)
-#
-#             If @{exceptions_AR} is non-empty, then keys in 
-#             in that array need not be in %{$seg_info_HAR}.
-#
-# Arguments:
-#   $seg_info_HAR:  REF to hash of arrays of model information
-#   $exceptions_AR: REF to array of keys that may be excluded from the hash
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: Number of elements in each and every array of %{$seg_info_HAR}
-#
-# Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
-#            does not exist in $seg_info_HAR
-#          - if two arrays in $seg_info_HAR are of different sizes
-#          - if any key listed in @{$exceptions_AR} is not one of the expected keys
-#
-#################################################################
-sub validateSegmentInfoHashIsComplete { 
-  my $sub_name = "validateSegmentInfoHashIsComplete()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($seg_info_HAR, $exceptions_AR, $FH_HR) = (@_);
-  
-  my @expected_keys_A = ("start", "stop", "strand", "map_ftr", "is_5p", "is_3p");
-
-  return validateInfoHashOfArraysIsComplete($seg_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
-}
 
 #################################################################
 # Subroutine: validateSequenceInfoHashIsComplete()
@@ -5037,7 +4944,7 @@ sub cmalignStoreOverflow {
 # Purpose:    Is feature $ftr_idx a CDS?
 #
 # Arguments:
-#   $ftr_info_HAR:  REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_info_AHR:  REF to array of hashes with info on the features, PRE-FILLED
 #   $ftr_idx:       feature index we are interested in
 #             
 # Returns:    1 or 0
@@ -5047,12 +4954,12 @@ sub cmalignStoreOverflow {
 #################################################################
 sub featureTypeIsCds { 
   my $sub_name  = "featureTypeIsCds";
-  my $nargs_expected = 1;
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_HAR, $ftr_idx) = (@_);
+  my ($ftr_info_AHR, $ftr_idx) = (@_);
 
-  return($ftr_info_HAR->{"type"}[$ftr_idx] eq "CDS") ? 1 : 0;
+  return($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") ? 1 : 0;
 }
 
 #################################################################
@@ -5062,7 +4969,7 @@ sub featureTypeIsCds {
 # Purpose:    Is feature $ftr_idx a mat_peptide?
 #
 # Arguments:
-#   $ftr_info_HAR:  REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_info_AHR:  REF to array of hashes with info on the features, PRE-FILLED
 #   $ftr_idx:       feature index we are interested in
 #             
 # Returns:    1 or 0
@@ -5072,12 +4979,12 @@ sub featureTypeIsCds {
 #################################################################
 sub featureTypeIsMaturePeptide { 
   my $sub_name  = "featureTypeIsMaturePeptide";
-  my $nargs_expected = 1;
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_HAR, $ftr_idx) = (@_);
+  my ($ftr_info_AHR, $ftr_idx) = (@_);
 
-  return($ftr_info_HAR->{"type"}[$ftr_idx] eq "mat_peptide") ? 1 : 0;
+  return($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") ? 1 : 0;
 }
 
 
@@ -5088,10 +4995,10 @@ sub featureTypeIsMaturePeptide {
 # Purpose:    Return number of segments in feature $ftr_idx.
 #
 # Arguments: 
-#   $ftr_info_HAR:  REF to hash of arrays of feature information
+#   $ftr_info_AHR:  REF to array of hashes of feature info
 #   $ftr_idx:       feature index we are interested in
 #
-# Returns:    Number of models for $ftr_idx.
+# Returns:    Number of segments for $ftr_idx.
 #
 # Dies: Never, nothing is validated
 # 
@@ -5101,9 +5008,9 @@ sub featureNumSegments {
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_HAR, $ftr_idx) = (@_);
+  my ($ftr_info_AHR, $ftr_idx) = (@_);
 
-  return ($ftr_info_HAR->{"3p_seg_idx"}[$ftr_idx] - $ftr_info_HAR->{"5p_seg_idx"}[$ftr_idx] + 1);
+  return ($ftr_info_AHR->[$ftr_idx]{"3p_seg_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_seg_idx"} + 1);
 }
 
 #################################################################
@@ -5192,7 +5099,7 @@ sub formatTabDelimitedStringForErrorListFile() {
 #
 # Arguments: 
 #  $blastx_seqname: sequence name
-#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $ftr_info_HAR:   ref to the feature info array of hashes 
 #  $FH_HR:          ref to hash of file handles
 #
 # Returns:    <$ftr_idx>
@@ -5274,7 +5181,7 @@ sub validateBlastDbExists {
 # Purpose:    Is feature $ftr_idx a CDS or mature peptide?
 #
 # Arguments: 
-#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
 #  $ftr_idx:        feature index
 #
 # Returns:    1 or 0
@@ -5287,10 +5194,10 @@ sub featureTypeIsCdsOrMaturePeptide {
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($ftr_info_HAR, $ftr_idx) = @_;
+  my ($ftr_info_AHR, $ftr_idx) = @_;
 
-  return((featureTypeIsCds($ftr_info_HAR, $ftr_idx)) || 
-         (featureTypeIsMaturePeptide($ftr_info_HAR, $ftr_idx)));
+  return((featureTypeIsCds($ftr_info_AHR, $ftr_idx)) || 
+         (featureTypeIsMaturePeptide($ftr_info_AHR, $ftr_idx)));
 }
 
 
@@ -5299,10 +5206,10 @@ sub featureTypeIsCdsOrMaturePeptide {
 # Incept:      EPN, Sun Mar 10 07:04:24 2019
 #
 # Purpose:    Is feature $ftr_idx a duplicate of another feature?
-#             This is true if $ftr_info_HAR->{"source_idx"}[$ftr_idx] != $ftr_idx
+#             This is true if $ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx
 #
 # Arguments: 
-#  $ftr_info_HAR:   ref to the feature info hash of arrays 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
 #  $ftr_idx:        feature index
 #
 # Returns:    1 or 0 
@@ -5327,27 +5234,26 @@ sub featureIsDuplicate {
 # Purpose:    Return 5'-most position in all segments for a feature.
 #
 # Arguments: 
-#  $ftr_info_HAR:   ref to the feature info hash of arrays 
-#  $ftr_idx:        feature index
-#  $FH_HR:          ref to hash of file handles
+#  $coords:  coords value from feature info
+#  $FH_HR:   ref to hash of file handles
 # 
-# Returns:    5'-most position
+# Returns:   5'-most position
 #
-# Dies:       if $ftr_info_HAR->{"coords"}[$ftr_idx] is not parseable.
+# Dies:      if $coords is not parseable.
 #
 ################################################################# 
 sub featureGet5pMostPosition { 
   my $sub_name = "featureGet5pMostPosition";
-  my $nargs_exp = 3;
+  my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+  my ($coords, $FH_HR) = @_;
   
-  if($ftr_info_HAR->{"coords"}[$ftr_idx] =~ /^(\d+)\-\d+/) { 
+  if($coords =~ /^(\d+)\.\.\d+/) { 
     return $1;
   }
   else { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $ftr_info_HAR->{"coords"}[$ftr_idx], 1, $FH_HR); 
+    DNAORG_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
@@ -5360,42 +5266,41 @@ sub featureGet5pMostPosition {
 # Purpose:    Return 3'-most position in all segments for a feature.
 #
 # Arguments: 
-#  $ftr_info_HAR:   ref to the feature info hash of arrays 
-#  $ftr_idx:        feature index
-#  $FH_HR:          ref to hash of file handles
+#  $coords:  coords value from feature info
+#  $FH_HR:   ref to hash of file handles
 # 
-# Returns:    3'-most position
+# Returns:   3'-most position
 #
-# Dies:       if $ftr_info_HAR->{"coords"}[$ftr_idx] is not parseable.
+# Dies:      if $coords is not parseable.
 #
 ################################################################# 
 sub featureGet3pMostPosition { 
   my $sub_name = "featureGet3pMostPosition";
-  my $nargs_exp = 3;
+  my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($ftr_info_HAR, $ftr_idx, $FH_HR) = @_;
+  my ($coords, $FH_HR) = @_;
   
-  if($ftr_info_HAR->{"coords"}[$ftr_idx] =~ /\d+\-(\d+)$/) { 
+  if($coords =~ /\d+\.\.(\d+)\:[\+\-]$/) { 
     return $1;
   }
   else { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $ftr_info_HAR->{"coords"}[$ftr_idx], 1, $FH_HR); 
+    DNAORG_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
 }
 
 #################################################################
-# Subroutine:  segmentSummarizeForFeature()
+# Subroutine:  featureInfoSummarizeSegment()
 # Incept:      EPN, Fri Mar  1 12:36:36 2019
 #
 # Purpose:    Return a string indicating what model this is
 #             for features that are covered by multiple model spans.
 #
 # Arguments: 
-#  $ftr_info_HAR: ref to feature information hash of arrays, PRE-FILLED
-#  $seg_info_HAR: ref to model information hash of arrays, PRE-FILLED
+#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
+#  $seg_info_AHR: ref to segment info array of hashes, PRE-FILLED
 #  $seg_idx:      model index
 #
 # Returns:    "" if this is the only model for this feature
@@ -5404,17 +5309,17 @@ sub featureGet3pMostPosition {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub segmentSummarizeForFeature { 
-  my $sub_name = "segmentSummarizeForFeature";
+sub featureInfoSummarizeSegment { 
+  my $sub_name = "featureInfoSummarizeSegment";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($ftr_info_HAR, $seg_info_HAR, $seg_idx) = @_;
+  my ($ftr_info_AHR, $seg_info_AHR, $seg_idx) = @_;
 
-  my $ftr_idx = $seg_info_HAR->{"map_ftr"}[$seg_idx];
-  my $nmdl = ($ftr_info_HAR->{"3p_seg_idx"} - $ftr_info_HAR->{"5p_seg_idx"}) + 1;
+  my $ftr_idx = $seg_info_AHR->[$seg_idx]{"map_ftr"};
+  my $nmdl = ($ftr_info_AHR->[$ftr_idx]{"3p_seg_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_seg_idx"}) + 1;
   if($nmdl > 1) { 
-    return sprintf(", segment %d of %d", ($seg_idx - $ftr_info_HAR->{"5p_seg_idx"}[$ftr_idx]) + 1, $nmdl);
+    return sprintf(", segment %d of %d", ($seg_idx - $ftr_info_AHR->[$ftr_idx]{"5p_seg_idx"}) + 1, $nmdl);
   }
 
   return ""; # return "" if $nmdl == 1;
@@ -5562,13 +5467,13 @@ sub featureInfoImputeParentIdx {
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = -1; # initialize
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
-      $ftr_5p_pos = featureGet5pMostPosition($ftr_info_AHR, $ftr_idx, $FH_HR);
-      $ftr_3p_pos = featureGet3pMostPosition($ftr_info_AHR, $ftr_idx, $FH_HR);
-      $ftr_strand = featureSummaryStrand($ftr_info_AHR, $ftr_idx, $FH_HR);
+      $ftr_5p_pos = featureGet5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_3p_pos = featureGet3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_strand = featureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = featureGet5pMostPosition($ftr_info_AHR, $ftr_idx2, $FH_HR);
-        $ftr_3p_pos2 = featureGet3pMostPosition($ftr_info_AHR, $ftr_idx2, $FH_HR);
-        $ftr_strand2 = featureSummaryStrand($ftr_info_AHR, $ftr_idx, $FH_HR);
+        $ftr_5p_pos2 = featureGet5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_3p_pos2 = featureGet3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_strand2 = featureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
         $found_parent = 0;
         if(($ftr_idx != $ftr_idx2) && 
            ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
@@ -5741,7 +5646,7 @@ sub segmentInfoPopulate {
       my @seg_start_A  = (); # array of starts, one per segment
       my @seg_stop_A   = (); # array of stops, one per segment
       my @seg_strand_A = (); # array of strands ("+", "-"), one per segment
-      startStopStrandArraysFromCoordsStr($ftr_info_AHR->[$ftr_idx]{"coords"}, \@seg_start_A, \@seg_stop_A, @seg_strand_A, $FH_HR);
+      featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@seg_start_A, \@seg_stop_A, \@seg_strand_A, $FH_HR);
       my $cur_nseg = scalar(@seg_start_A);
       for(my $s = 0; $s < $cur_nseg; $s++) { 
         $seg_info_AHR->[$nseg]{"start"}   = $seg_start_A[$s];
@@ -5771,7 +5676,7 @@ sub segmentInfoPopulate {
 }
 
 #################################################################
-# Subroutine: startStopStrandArraysFromCoordsStr()
+# Subroutine: featureStartStopStrandArrays()
 # Incept:     EPN, Sat Mar  9 05:50:10 2019
 #
 # Synopsis: Given a comma separated coords string, parse it, 
@@ -5779,7 +5684,7 @@ sub segmentInfoPopulate {
 #           @{$strand_AR} based on it.
 # 
 # Arguments:
-#  $coords_str:   coordinate string
+#  $coords:       coordinate string
 #  $start_AR:     REF to start position array to fill here, FILLED here, can be undef
 #  $stop_AR:      REF to stop position array to fill here, FILLED here, can be undef
 #  $strand_AR:    REF to strand array to fill here with "+" or "-", FILLED here, can be undef
@@ -5790,21 +5695,21 @@ sub segmentInfoPopulate {
 # Dies: if unable to parse $coords_str
 #
 #################################################################
-sub startStopStrandArraysFromCoordsStr {
-  my $sub_name = "startStopStrandArraysFromCoordsStr";
+sub featureStartStopStrandArrays {
+  my $sub_name = "featureStartStopStrandArrays";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($coords_str, $start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
+  my ($coords, $start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
 
   my @start_A  = ();
   my @stop_A   = ();
   my @strand_A = ();
   my ($start, $stop, $strand, $seg_idx);
-  my @coords_A  = split(",", $coords_str);
+  my @coords_A  = split(",", $coords);
   my $nseg = scalar(@coords_A);
   for($seg_idx = 0; $seg_idx < $nseg; $seg_idx++) { 
-    if($coords_A[$seg_idx] =~ /^(\d+)\-(\d+)\:([+-])$/) { 
+    if($coords_A[$seg_idx] =~ /^(\d+)\.\.(\d+)\:([\+\-])$/) { 
       ($start, $stop, $strand) = ($1, $2, $3);
       push(@start_A,  $start);
       push(@stop_A,   $stop);
@@ -5921,13 +5826,12 @@ sub featureInfoCoordsFromLocation {
     }
   }
   elsif($location =~ /\<?(\d+)\.\.(\d+)\>?/) { 
-    $ret_val = $1 . ".." . $2 . ":" . "+";
+    $ret_val = $1 . ".." . $2 . ":" . "+"; # a recursive call due to the complement() may complement this
   }
   else { 
     DNAORG_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
   }
 
-  printf("in $sub_name, location: $location ret_val: $ret_val\n");
   return $ret_val;
 }
 
@@ -5976,6 +5880,58 @@ sub featureInfoCoordsComplement {
   printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
 
   return $ret_val;
+}
+
+#################################################################
+# Subroutine: featureSummaryStrand
+# Incept:     EPN, Wed Mar 13 15:38:06 2019
+# 
+# Purpose:    Summarize the strandedness of segments for a feature
+#             by parsing the "coords" value.
+# 
+# Arguments:
+#   $coords:   coords string to complement
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    "+" if all segments in $coords are "+"
+#             "-" if all segments in $coords are "-"
+#             "!" if >= 1 segment in $coords is "+"
+#                 and >= 1 segment in $coords is "-"
+#
+# Dies:      if unable to parse $coords
+#
+#################################################################
+sub featureSummaryStrand { 
+  my $sub_name = "featureSummaryStrand";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($coords, $FH_HR) = @_;
+
+  # Examples we can parse: 
+  # $coords                  return value
+  # -----------------------  -----------------
+  # 1-200:+                  200-1:-
+  # 1-200:+,300-400:+        400-300:-,200-1:-
+
+  my @strand_A = ();
+  featureStartStopStrandArrays($coords, undef, undef, \@strand_A, $FH_HR);
+
+  my $npos = 0;
+  my $nneg = 0;
+  foreach my $strand (@strand_A) { 
+    if   ($strand eq "+") { $npos++; }
+    elsif($strand eq "-") { $nneg++; }
+    else { DNAORG_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); }
+  }
+
+  if(($npos >  0) && ($nneg == 0)) { return "+"; }
+  if(($npos == 0) && ($nneg >  0)) { return "-"; }
+  if(($npos == 0) && ($nneg == 0)) { 
+    DNAORG_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); 
+  }
+
+  return; # NEVER REACHED
 }
   
     
