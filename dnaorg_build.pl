@@ -301,13 +301,14 @@ $qual_H{"product"}      = 1;
 $qual_H{"gene"}         = 1;
 $qual_H{"exception"}    = 1;
 
+# copy subset of information from @{%full_ftr_info_HAH{$ref_accn}} to create %ftr_info_AH
 $ftr_idx = -1;
 for($full_ftr_idx = 0; $full_ftr_idx < scalar(@{$full_ftr_info_HAH{$ref_accn}}); $full_ftr_idx++) { 
-  if((defined $full_ftr_info_HAH{$ref_accn}[$full_ftr_idx]{"type"}) && 
-     (exists $ftype_H{$full_ftr_info_HAH{$ref_accn}[$full_ftr_idx]{"type"}})) { 
+  my $full_ftype = $full_ftr_info_HAH{$ref_accn}[$full_ftr_idx]{"type"};
+  if((defined $full_ftype) && (exists $ftype_H{$full_ftype})) { 
     $ftr_idx++;
     %{$ftr_info_AH[$ftr_idx]} = ();
-    foreach $key (sort keys %{$full_ftr_info_HAH{$ref_accn}[$ftr_idx]}) { 
+    foreach $key (sort keys %{$full_ftr_info_HAH{$ref_accn}[$full_ftr_idx]}) { 
       if((exists $qual_H{$key}) && (defined $full_ftr_info_HAH{$ref_accn}[$full_ftr_idx]{$key})) { 
         $ftr_info_AH[$ftr_idx]{$key} = $full_ftr_info_HAH{$ref_accn}[$full_ftr_idx]{$key};
       }
@@ -1921,6 +1922,7 @@ sub genbank_store_qualifier_value {
   $value =~ s/^\"//;
   $value =~ s/\"$//;
 
+  # printf("in $sub_name q: $qualifier v: $value\n");
   if(! defined ($ftr_info_AHR->[$ftr_idx])) { 
     %{$ftr_info_AHR->[$ftr_idx]} = (); 
   }
