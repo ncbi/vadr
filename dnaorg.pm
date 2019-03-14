@@ -5934,6 +5934,40 @@ sub featureSummaryStrand {
   return; # NEVER REACHED
 }
   
+#################################################################
+# Subroutine : sqstringAddNewlines()
+# Incept:      EPN, Thu Mar 14 06:12:11 2019
+#
+# Purpose:     Add newlines to $sqstring after every $linelen
+#              characters and return result.
+#
+# Arguments: 
+#   $sqstring: the sequence string
+#   $linelen:  interval for newlines
+# 
+# Returns:     $sqstring with newlines inserted every $linelen 
+#              characters and at end of string.
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub sqstringAddNewlines { 
+  my $nargs_expected = 2;
+  my $sub_name = "sqstringAddNewlines";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($sqstring, $linelen) = @_;
+
+  my $retstr = "";
+  my $sqpos = 0;
+  my $sqlen = length($sqstring);
+
+  while($sqpos < $sqlen) { 
+    $retstr .= substr($sqstring, $sqpos, $linelen) . "\n";
+    $sqpos += $linelen;
+  }
+
+  return $retstr;
+}
     
 
 ###########################################################################

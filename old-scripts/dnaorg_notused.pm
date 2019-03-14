@@ -464,3 +464,60 @@ sub mapFeaturesToModels {
   }
   return;
 }
+
+#################################################################
+# Subroutine: fetch_sequence_to_fasta_file()
+# Incept:     EPN, Sat Mar  9 09:19:03 2019
+#
+# Synopsis: Fetch a sequence to a fasta file.
+#
+# Arguments:
+#  $out_FH:    output file handle
+#  $accn:      accession to fetch
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if there's a problem fetching the sequence file
+#################################################################
+sub fetch_sequence_to_fasta_file {
+  my $sub_name = "fetch_sequence_to_fasta_file";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_FH, $accn, $FH_HR) = @_;
+
+  my $url = sprintf("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=fasta&retmode=text", $accn);
+  my $fetched_fasta = get($url);
+
+  if(! defined $fetched_fasta) { 
+    DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", 1, $FH_HR); 
+  }
+  elsif($fetched_fasta !~ m/^>/) { 
+    DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (not fasta)", 1, $FH_HR); 
+  }
+  else { 
+    my @fetched_fasta_A = split(/\n/, $fetched_fasta);
+    if($fetched_fasta_A[0] =~ /^>(\S+)\s*/) { 
+      my $fetched_name = $1;
+      my $fetched_accn = $fetched_name;
+      stripVersion(\$fetched_accn);
+      if($fetched_accn ne $accn) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (fetched $fetched_accn instead)", 1, $FH_HR); 
+      }
+      print $out_FH (">" . $fetched_accn . "\n");
+    }
+    else { 
+      DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (not fasta)", 1, $FH_HR); 
+    }
+    for(my $i = 1; $i < scalar(@fetched_fasta_A); $i++) { 
+      my $fetched_line = $fetched_fasta_A[$i];
+      if($fetched_line =~ /^>(\S+)/) { 
+        DNAORG_FAIL("ERROR in $sub_name, fetched more than one sequence (second sequence is $1)", 1, $FH_HR);
+      }
+      print $out_FH ($fetched_line . "\n");
+    }
+  }
+
+  return; 
+}

@@ -331,17 +331,11 @@ featureInfoImputeParentIdx(\@ftr_info_AH, \%opt_HH, $FH_HR);
 
 segmentInfoPopulate(\@seg_info_AH, \@ftr_info_AH, \%opt_HH, $FH_HR);
 
-dumpArrayOfHashes("Feature information (ftr_info_AH) for $ref_accn", \@ftr_info_AH, *STDOUT);
-dumpArrayOfHashes("Segment information (seg_info_AH) for $ref_accn", \@seg_info_AH, *STDOUT);
-
-exit 0;
-
 my $minfo_file  = $out_root . ".minfo";
 output_model_info_file($minfo_file, $ref_accn, \@ftr_info_AH, $FH_HR);
 addClosedFileToOutputInfo(\%ofile_info_HH, "minfo", $minfo_file, 1, "GenBank format file for $ref_accn");
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-exit 0;
 
 #########################################################
 # Step 4. Fetch and process the reference genome sequence
@@ -349,19 +343,22 @@ exit 0;
 # verify our model and feature info hashes are complete, 
 # if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
 
-$start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
+$start_secs = outputProgressPrior("Creating FASTA and STOCHOLM sequence files", $progress_w, $log_FH, *STDOUT);
 
 my $fa_file  = $out_root . ".fa";
 openAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $ref_accn");
-my $stk_file = $out_root . ".stk";
-fetch_sequence_to_fasta_file($ofile_info_HH{"FH"}{"fasta"}, $ref_accn, $FH_HR);
+print_sequence_to_fasta_file($ofile_info_HH{"FH"}{"fasta"}, 
+                             $seq_info_HH{$ref_accn}{"ver"}, 
+                             $seq_info_HH{$ref_accn}{"def"}, 
+                             $seq_info_HH{$ref_accn}{"seq"}, $FH_HR);
 close $ofile_info_HH{"FH"}{"fasta"};
 
-fasta_file_to_stockholm_file($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
+my $stk_file = $out_root . ".stk";
+reformat_fasta_file_to_stockholm_file($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
 addClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $ref_accn");
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
+exit 0;
 #######################################################################
 # Step 5. Fetch the CDS protein translations and build BLAST database
 #######################################################################
@@ -1501,64 +1498,44 @@ sub output_model_info_file {
 }
 
 #################################################################
-# Subroutine: fetch_sequence_to_fasta_file()
-# Incept:     EPN, Sat Mar  9 09:19:03 2019
+# Subroutine: print_sequence_to_fasta_file()
+# Incept:     EPN, Thu Mar 14 06:06:59 2019
 #
-# Synopsis: Fetch a sequence to a fasta file.
+# Synopsis: Print a sequence to a fasta file.
 #
 # Arguments:
 #  $out_FH:    output file handle
-#  $accn:      accession to fetch
+#  $name:      sequence name
+#  $def:       sequence definition, can be undef
+#  $seq:       sequence string
 #  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
-# Dies:       if there's a problem fetching the sequence file
+# Dies:       if $name or $seq is undef
 #################################################################
-sub fetch_sequence_to_fasta_file {
-  my $sub_name = "fetch_sequence_to_fasta_file";
-  my $nargs_expected = 3;
+sub print_sequence_to_fasta_file {
+  my $sub_name = "print_sequence_to_fasta_file";
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_FH, $accn, $FH_HR) = @_;
+  my ($out_FH, $name, $def, $seq, $FH_HR) = @_;
 
-  my $url = sprintf("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=fasta&retmode=text", $accn);
-  my $fetched_fasta = get($url);
+  if(! defined $name) { DNAORG_FAIL("ERROR in $sub_name, name is undefined", 1, $FH_HR); }
+  if(! defined $seq)  { DNAORG_FAIL("ERROR in $sub_name, name is undefined", 1, $FH_HR); }
 
-  if(! defined $fetched_fasta) { 
-    DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", 1, $FH_HR); 
-  }
-  elsif($fetched_fasta !~ m/^>/) { 
-    DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (not fasta)", 1, $FH_HR); 
-  }
-  else { 
-    my @fetched_fasta_A = split(/\n/, $fetched_fasta);
-    if($fetched_fasta_A[0] =~ /^>(\S+)\s*/) { 
-      my $fetched_name = $1;
-      my $fetched_accn = $fetched_name;
-      stripVersion(\$fetched_accn);
-      if($fetched_accn ne $accn) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (fetched $fetched_accn instead)", 1, $FH_HR); 
-      }
-      print $out_FH (">" . $fetched_accn . "\n");
-    }
-    else { 
-      DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (not fasta)", 1, $FH_HR); 
-    }
-    for(my $i = 1; $i < scalar(@fetched_fasta_A); $i++) { 
-      my $fetched_line = $fetched_fasta_A[$i];
-      if($fetched_line =~ /^>(\S+)/) { 
-        DNAORG_FAIL("ERROR in $sub_name, fetched more than one sequence (second sequence is $1)", 1, $FH_HR);
-      }
-      print $out_FH ($fetched_line . "\n");
-    }
-  }
-
-  return; 
+  # capitalize $seq
+  $seq =~ tr/a-z/A-Z/;
+  printf $out_FH (">%s%s\n%s", 
+                  $name, 
+                  (defined $def) ? " " . $def : "",
+                  sqstringAddNewlines($seq, 60));
+  
+  return;
 }
 
 #################################################################
-# Subroutine: fasta_file_to_stockholm_file()
+# Subroutine: reformat_fasta_file_to_stockholm_file()
 # Incept:     EPN, Sat Mar  9 10:24:14 2019
 #
 # Synopsis: Use esl-reformat to convert a fasta file to a stockholm file
@@ -1574,8 +1551,8 @@ sub fetch_sequence_to_fasta_file {
 #
 # Dies:       if there's a problem fetching the sequence file
 #################################################################
-sub fasta_file_to_stockholm_file { 
-  my $sub_name = "fasta_file_to_stockholm_file";
+sub reformat_fasta_file_to_stockholm_file { 
+  my $sub_name = "reformat_fasta_file_to_stockholm_file";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
