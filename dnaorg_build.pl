@@ -91,14 +91,14 @@ opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,
 
 $opt_group_desc_H{"2"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
-opt_Add("--seginfo",    "boolean", 0,                        2,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+opt_Add("--sgminfo",    "boolean", 0,                        2,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
 opt_Add("--ftrinfo",    "boolean", 0,                        2,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{"3"} = "options for skipping stages and using files from an earlier, identical run, primarily useful for debugging";
 #     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
 opt_Add("--skipedirect",   "boolean", 0,                       3,   undef,      undef,                    "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipfetch",     "boolean", 0,                       3,   undef,      undef,                    "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipbuild",     "boolean", 0,                       3,   undef,      undef,                    "skip the build/calibrate steps",                         "skip the model building/calibrating, requires --seginfo and/or --ftrinfo", \%opt_HH, \@opt_order_A);
+opt_Add("--skipbuild",     "boolean", 0,                       3,   undef,      undef,                    "skip the build/calibrate steps",                         "skip the model building/calibrating, requires --sgminfo and/or --ftrinfo", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -117,7 +117,7 @@ my $options_okay =
                 'dfeat=s'      => \$GetOptions_H{"--dfeat"},
                 'keep'         => \$GetOptions_H{"--keep"},
 # optional output files
-                'seginfo'      => \$GetOptions_H{"--seginfo"},
+                'sgminfo'      => \$GetOptions_H{"--sgminfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"},
 # options for skipping stages, using earlier results
                 'skipedirect'  => \$GetOptions_H{"--skipedirect"},
@@ -155,8 +155,8 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
 # do checks that are too sophisticated for epn-options.pm
 if((opt_Get("--skipbuild", \%opt_HH)) && 
-   (! (opt_Get("--seginfo", \%opt_HH) || opt_Get("--ftrinfo", \%opt_HH)))) { 
-  die "ERROR, --skipbuild requires one or both of --seginfo or --ftrinfo"; 
+   (! (opt_Get("--sgminfo", \%opt_HH) || opt_Get("--ftrinfo", \%opt_HH)))) { 
+  die "ERROR, --skipbuild requires one or both of --sgminfo or --ftrinfo"; 
 }
 
 my $dir        = opt_Get("--dirout", \%opt_HH);          # this will be undefined unless -d set on cmdline
@@ -228,8 +228,8 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 # to close these first.
 
 # open optional output files
-if(opt_Get("--seginfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "seginfo", $out_root . ".seginfo", 1, "Model information (created due to --seginfo)");
+if(opt_Get("--sgminfo", \%opt_HH)) { 
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, "Model information (created due to --sgminfo)");
 }
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
   openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
@@ -250,7 +250,7 @@ foreach $cmd (@early_cmd_A) {
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmbuild"}       = $inf_exec_dir . "cmbuild";
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
-#$execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
+$execs_H{"esl-translate"} = $esl_exec_dir . "esl-translate";
 $execs_H{"makeblastdb"}   = $blast_exec_dir . "makeblastdb";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
@@ -322,14 +322,11 @@ for($full_ftr_idx = 0; $full_ftr_idx < scalar(@{$full_ftr_info_HAH{$ref_accn}});
 # and output model info file.
 #############################################################
 
-my @seg_info_AH = ();          # hash of arrays, values are arrays [0..$nftr-1], 
+my @sgm_info_AH = ();          # hash of arrays, values are arrays [0..$nftr-1], 
                                # see dnaorg.pm::validateSegmentInfoHashIsComplete() for list of all keys
 
-featureInfoImputeCoords(\@ftr_info_AH, \%opt_HH, $FH_HR);
-featureInfoImputeSourceIdx(\@ftr_info_AH, \%opt_HH, $FH_HR);
-featureInfoImputeParentIdx(\@ftr_info_AH, \%opt_HH, $FH_HR);
-
-segmentInfoPopulate(\@seg_info_AH, \@ftr_info_AH, \%opt_HH, $FH_HR);
+featureInfoImputeWrapper(\@ftr_info_AH, $FH_HR);
+segmentInfoPopulate(\@sgm_info_AH, \@ftr_info_AH, $FH_HR);
 
 my $minfo_file  = $out_root . ".minfo";
 output_model_info_file($minfo_file, $ref_accn, \@ftr_info_AH, $FH_HR);
@@ -358,18 +355,28 @@ reformat_fasta_file_to_stockholm_file($execs_H{"esl-reformat"}, $fa_file, $stk_f
 addClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $ref_accn");
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-exit 0;
-#######################################################################
-# Step 5. Fetch the CDS protein translations and build BLAST database
-#######################################################################
-$start_secs = outputProgressPrior("Fetching protein translations of CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
-my @prot_fa_file_A = ();
-#fetch_proteins_into_fasta_files($out_root, $ref_accn, \@ftr_info_AH, \@prot_fa_file_A, \%opt_HH, \%ofile_info_HH);
 
-foreach my $prot_fa_file (@prot_fa_file_A) { 
-#  create_blast_protein_db(\%execs_H, $prot_fa_file, \%opt_HH, \%ofile_info_HH);
+###########################
+# Step 5. Translate the CDS
+###########################
+my $ncds = featureInfoCountType(\@ftr_info_AH, "CDS");
+if($ncds > 0) { 
+  $start_secs = outputProgressPrior("Translating CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
+
+  my $cds_fa_file  = $out_root . ".cds.fa";
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $ref_accn");
+  fetch_cds_to_fasta_file($ofile_info_HH{"FH"}{"cdsfasta"}, $fa_file, $seq_info_HH{$ref_accn}{"ver"}, \@ftr_info_AH, $FH_HR);
+  close $ofile_info_HH{"FH"}{"cdsfasta"};
+  
+  my $protein_fa_file  = $out_root . ".protein.fa";
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $ref_accn");
+  translate_cds_to_fasta_file($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
+                              $out_root, $seq_info_HH{$ref_accn}{"ver"}, \@ftr_info_AH, \%opt_HH, $FH_HR);
+  close $ofile_info_HH{"FH"}{"proteinfasta"};
 }
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  #create_blast_protein_db(\%execs_H, $prot_fa_file, \%opt_HH, \%ofile_info_HH);
+#}
+#outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #########################
 # Step 6. Build the model
@@ -392,127 +399,140 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
 if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
   dumpArrayOfHashes("Feature information (@ftr_info_AH) for $ref_accn", $ofile_info_HH{"FH"}{"ftrinfo"});
 }
-if(exists $ofile_info_HH{"FH"}{"seginfo"}) { 
-  dumpArrayOfHashes("Segment information (@seg_info_AH) for $ref_accn", $ofile_info_HH{"FH"}{"seginfo"});
+if(exists $ofile_info_HH{"FH"}{"sgminfo"}) { 
+  dumpArrayOfHashes("Segment information (@sgm_info_AH) for $ref_accn", $ofile_info_HH{"FH"}{"sgminfo"});
 }
 
 $total_seconds += secondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
+
 #################################################################
-# Subroutine: translate_proteins_into_fasta_files()
-# Incept:     EPN, Mon Mar 11 06:30:55 2019
+# Subroutine: fetch_cds_to_fasta_file()
+# Incept:     EPN, Thu Mar 14 12:30:33 2019
 # 
-# Purpose:    Use esl-translate to create protein translations 
-#             of each of the N CDS for an accession and create 
-#             N+1 FASTA files, one with each single sequence
-#             and one with all sequences.
-#             Fill @{$fa_file_AR} with the sequence file names.
-#
-# Arguments:
-#   $execs_HR:       hash with paths to esl-sfetch and esl-translate executables
-#   $out_root:       string for naming output files
-#   $ref_accn:       reference accession
-#   $ftr_info_AHR:   REF to the feature info, pre-filled
-#   $seg_info_HAR:   REF to the segment info, pre-filled
-#   $fa_file_AR:     REF to array of fasta file names, filled here 
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
-#   $ofile_info_HHR: REF to the 2D hash of output file information
-#                    
-# Returns: void
-# Dies:    if a fetched location for a feature does not match to any feature's "ref_coords" 
-#
-#################################################################
-sub translate_into_protein_fasta_files { 
-  my $sub_name = "translate_into_protein_fasta_files";
-  my $nargs_expected = 7;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($execs_HR, $out_root, $ref_accn, $ftr_info_HAR, $seg_info_HAR, $fa_file_AR, $opt_HHR, $ofile_info_HHR) = @_;
-  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-
-  my $nftr = getSizeOfInfoHashOfArrays(\@ftr_info_AH, "type", $FH_HR);
-
-  my $sfetch_out_file  = $out_root . ".prot.sfetch";
-  my $all_fa_out_file  = $out_root . ".prot.fa";
-
-#  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-#    if(featureTypeIsCds($ftr_info_HAR, $ftr_idx)) { 
-#      push(@fetch_name_A,  $ref_accn);
-#      push(@fetch_coords_A,  $ftr_info_HAR->{"coords"}[$ftr_idx]);
-#      # HERE HERE HERE 
-#    }
-#  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: fetch_proteins_into_fasta_files()
-# Incept:     EPN, Wed Oct  3 16:10:26 2018
-# 
-# Purpose:    Fetch the protein translations of CDS for the genome
+# Purpose:    Fetch the protein translations of the CDS for the genome
 #             and create multiple N+1 FASTA files, one with each
 #             single sequence (N) and one with all sequences.
 #             Fill @{$fa_file_AR} with the sequence file names.
 #
 # Arguments:
-#   $out_root:       string for naming output files
-#   $ref_accn:       reference accession
-#   $ftr_info_HAR:   REF to the feature info, pre-filled
-#   $fa_file_AR:     REF to array of fasta file names, filled here 
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
-#   $ofile_info_HHR: REF to the 2D hash of output file information
+#   $out_FH:         output file handle
+#   $fa_file:        fasta file with full length sequence of sequence $seqname
+#   $seq_name:       sequence to fetch CDS from
+#   $ftr_info_AHR:   REF to the feature info, pre-filled
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
 #                    
 # Returns: void
-# Dies:    if a fetched location for a feature does not match to any feature's "ref_coords" 
+#
+# Dies:    if we have trouble fetching a sequence
 #
 #################################################################
-sub fetch_proteins_into_fasta_files { 
-  my $sub_name = "fetch_proteins_into_fasta_files";
-  my $nargs_expected = 6;
+sub fetch_cds_to_fasta_file { 
+  my $sub_name = "fetch_cds_to_fasta_file";
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_root, $ref_accn, $ftr_info_HAR, $fa_file_AR, $opt_HHR, $ofile_info_HHR) = @_;
-  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+  my ($out_FH, $fa_file, $seq_name, $ftr_info_AHR, $FH_HR) = @_;
 
-  my $efetch_out_file  = $out_root . ".prot.efetch";
-  my $all_fa_out_file  = $out_root . ".prot.fa";
-  runCommand("esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd CDS protein_id INSDFeature_location translation > $efetch_out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR); 
-  # NOTE: could get additional information to add to fasta defline, e.g. add 'product' after 'translation' above.
+  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
+  my $nftr = scalar(@{$ftr_info_AHR});
 
-  # parse that file to create the fasta files
-  open(IN,         $efetch_out_file) || fileOpenFailure($efetch_out_file,  $sub_name, $!, "reading", $FH_HR);
-  open(ALLFA, ">", $all_fa_out_file) || fileOpenFailure($all_fa_out_file,  $sub_name, $!, "writing", $FH_HR);
-  while(my $line = <IN>) { 
-    chomp $line;
-    my @el_A = split(/\t/, $line);
-    if(scalar(@el_A) != 4) { 
-      DNAORG_FAIL("ERROR in $sub_name, not exactly 4 tab delimited tokens in efetch output file line\n$line\n", 1, $FH_HR);
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+      my $cds_sqstring = "";
+      my @start_A = ();
+      my @stop_A = ();
+      my @strand_A = ();
+      featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, \@strand_A, $FH_HR);
+      foreach(my $sgm_idx = 0; $sgm_idx < scalar(@start_A); $sgm_idx++) { 
+        $cds_sqstring .= $sqfile->fetch_subseq_to_sqstring($seq_name, $start_A[$sgm_idx], $stop_A[$sgm_idx], -1, ($strand_A[$sgm_idx] eq "-") ? 1 : 0);
+      }
+      print $out_FH(">" . $seq_name . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n" . sqstringAddNewlines($cds_sqstring, 60));
     }
-    my ($read_ref_accn, $prot_accn, $location, $translation) = (@el_A);
-    $location =~ s/\.\./\-/g;
-    my $new_name = $prot_accn . "/" . $location;
+  }
+  return;
+}
 
-    print ALLFA  (">$new_name\n$translation\n");
+#################################################################
+# Subroutine: translate_cds_to_fasta_file()
+# Incept:     EPN, Thu Mar 14 12:30:28 2019
+# 
+# Purpose:    Use esl-translate to translate a fasta file with
+#             CDS sequences pertaining to the CDS features in 
+#             @{$ftr_info_AHR} into fasta protein files.
+#
+# Arguments:
+#   $out_FH:         output file handle
+#   $esl_translate:  path to esl-translate executable
+#   $cds_fa_file:    fasta file with CDS sequences
+#   $out_root:       string that is the 'root' for naming output files
+#   $seq_name:       sequence to fetch CDS from
+#   $ftr_info_AHR:   REF to the feature info, pre-filled
+#   $opt_HHR:        command line options
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#                    
+# Returns: void
+#
+# Dies:    if we have trouble fetching a sequence
+#
+#################################################################
+sub translate_cds_to_fasta_file { 
+  my $sub_name = "fetch_and_translate_proteins_into_fasta_files";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-    # determine what feature this corresponds to, and create the individual fasta file for that
-    my $ftr_idx = blastxDbSeqNameToFtrIdx($new_name, $ftr_info_HAR, $FH_HR); # this will die if we can't find the feature with $location
-    my $indi_fa_out_file = $out_root . ".f" . $ftr_idx . ".prot.fa";
-    open(INDIFA, ">", $indi_fa_out_file) || fileOpenFailure($indi_fa_out_file, $sub_name, $!, "writing", $FH_HR);
-    print INDIFA (">$new_name\n$translation\n");
-    close(INDIFA);
-    addClosedFileToOutputInfo($ofile_info_HHR, "prot-indi-f" . $ftr_idx . "-fa", $indi_fa_out_file, 0, "protein FASTA file with proteins for feature $ftr_idx");
-    push(@{$fa_file_AR}, $indi_fa_out_file);
+  my ($out_FH, $esl_translate, $cds_fa_file, $out_root, $seq_name, $ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+
+  my $tmp1_translate_fa_file = $out_root . ".cds.esl-translate.1.fa";
+  my $tmp2_translate_fa_file = $out_root . ".cds.esl-translate.2.fa";
+  my $translate_cmd = "$esl_translate -M -l 3 --watson $cds_fa_file > $tmp1_translate_fa_file";
+  runCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  # go through output fasta file and rewrite names, so we can fetch 
+  open(IN,       $tmp1_translate_fa_file) || fileOpenFailure($tmp1_translate_fa_file, $sub_name, $!, "reading", $FH_HR);
+  open(OUT, ">", $tmp2_translate_fa_file) || fileOpenFailure($tmp2_translate_fa_file, $sub_name, $!, "writing", $FH_HR);
+  while(my $line = <IN>) { 
+    if($line =~ m/^\>/) { 
+      #>orf58 source=NC_039477.1/5..5104:+ coords=1..5097 length=1699 frame=1  
+      chomp $line;
+      if($line =~ /^\>orf\d+\s+(source\=\S+)\s+(coords\=\S+)\s+length\=\d+\s+frame\=\S+/) { 
+        # rename as 'source=NC_039477.1/5..5104:+,coords=1..5097'
+        print OUT (">" . $1 . "," . $2 . "\n");
+      }
+      else { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing esl-translate output file $tmp1_translate_fa_file, line:\n$line\n", 1, $FH_HR);
+      }
+    }
+    else { 
+      print OUT $line; 
+    }
   }
   close(IN);
-  close(ALLFA);
+  close(OUT);
 
-  addClosedFileToOutputInfo($ofile_info_HHR, "prot-all-fa", $all_fa_out_file, 0, "protein FASTA file with proteins for all features");
-  push(@{$fa_file_AR}, $all_fa_out_file);
+  # $tmp2_translate_fa_file now includes renamed translated sequences from esl-translate
+  # fetch expected translated seqs and print to $out_FH
+  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $tmp2_translate_fa_file }); # the sequence file object
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+      my $fetch_name = "source=" . $seq_name . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . ",coords=1.." . ($ftr_info_AHR->[$ftr_idx]{"length"} - 3); # subtract length of stop codon
+      if(! $sqfile->check_seq_exists($fetch_name)) { 
+        DNAORG_FAIL(sprintf("ERROR in $sub_name, problem translating CDS feature (coords: %s)\n", $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
+      }
+      print $out_FH $sqfile->fetch_seq_to_fasta_string($fetch_name, 60);
+    }
+  }
 
-  addClosedFileToOutputInfo($ofile_info_HHR, "prot-fetch",   $efetch_out_file,  0, "efetch output with protein information");
+  # remove temporary files unless --keep
+  if(! opt_Get("--keep", $opt_HHR)) { 
+    removeFileUsingSystemRm($tmp1_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    removeFileUsingSystemRm($tmp2_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    removeFileUsingSystemRm($tmp2_translate_fa_file . ".ssi", $sub_name, $opt_HHR, $FH_HR);
+  }
 
   return;
 }
@@ -1401,8 +1421,8 @@ sub initialize_feature_info_hash_from_ftable_data {
           }
           # fill strands
           foreach my $coords_str (@{$feat_tbl_HHAR->{$type}{$qual}}) { 
-            my @seg_strand_A = ();
-            strand_array_from_fetched_coords_str($coords_str, \@seg_strand_A, $FH_HR);
+            my @sgm_strand_A = ();
+            strand_array_from_fetched_coords_str($coords_str, \@sgm_strand_A, $FH_HR);
             
           }
         }
@@ -1468,8 +1488,8 @@ sub output_model_info_file {
   $key_ignore_H{"source_idx"}  = 1; # will be inferred from coords and type
   $key_ignore_H{"parent_idx"}  = 1; # will be inferred from coords and type
   $key_ignore_H{"3pa_ftr_idx"} = 1; # will be inferred from coords and type
-  $key_ignore_H{"5p_seg_idx"}  = 1; # will be inferred from coords, when seg_info_HA is created
-  $key_ignore_H{"3p_seg_idx"}  = 1; # will be inferred from coords, when seg_info_HA is created
+  $key_ignore_H{"5p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
+  $key_ignore_H{"3p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
   $key_ignore_H{"location"}    = 1; # *could* (but won't be) inferred from coords
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 

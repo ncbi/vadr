@@ -61,7 +61,7 @@
 #                  can be printed to file <f> by dnaorg_build.pl or dnaorg_annotate.pl with the
 #                  --ftrinfo <f> command line option.
 #                   
-# - $seg_info_HAR: similar to ${ftr,seq,err}_info_HAR, except contains information pertaining 
+# - $sgm_info_HAR: similar to ${ftr,seq,err}_info_HAR, except contains information pertaining 
 #                  to each model, >= 1 of which will model a single feature (1 model for single
 #                  exon CDS, 2 models for dual exon CDS, etc.). See 
 #                  validateSegmentInfoHashIsComplete() for a list and explanation of the keys.
@@ -4937,56 +4937,6 @@ sub cmalignStoreOverflow {
   return;
 }
 
-#################################################################
-# Subroutine: featureTypeIsCds()
-# Incept:     EPN, Tue Feb  6 10:47:58 2018
-#
-# Purpose:    Is feature $ftr_idx a CDS?
-#
-# Arguments:
-#   $ftr_info_AHR:  REF to array of hashes with info on the features, PRE-FILLED
-#   $ftr_idx:       feature index we are interested in
-#             
-# Returns:    1 or 0
-#
-# Dies:       never; does not validate anything.
-#
-#################################################################
-sub featureTypeIsCds { 
-  my $sub_name  = "featureTypeIsCds";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($ftr_info_AHR, $ftr_idx) = (@_);
-
-  return($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") ? 1 : 0;
-}
-
-#################################################################
-# Subroutine: featureTypeIsMaturePeptide()
-# Incept:     EPN, Sun Mar 10 06:57:01 2019
-#
-# Purpose:    Is feature $ftr_idx a mat_peptide?
-#
-# Arguments:
-#   $ftr_info_AHR:  REF to array of hashes with info on the features, PRE-FILLED
-#   $ftr_idx:       feature index we are interested in
-#             
-# Returns:    1 or 0
-#
-# Dies:       never; does not validate anything.
-#
-#################################################################
-sub featureTypeIsMaturePeptide { 
-  my $sub_name  = "featureTypeIsMaturePeptide";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($ftr_info_AHR, $ftr_idx) = (@_);
-
-  return($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") ? 1 : 0;
-}
-
 
 #################################################################
 # Subroutine: featureNumSegments()
@@ -5010,7 +4960,7 @@ sub featureNumSegments {
   
   my ($ftr_info_AHR, $ftr_idx) = (@_);
 
-  return ($ftr_info_AHR->[$ftr_idx]{"3p_seg_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_seg_idx"} + 1);
+  return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
 }
 
 #################################################################
@@ -5300,8 +5250,8 @@ sub featureGet3pMostPosition {
 #
 # Arguments: 
 #  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
-#  $seg_info_AHR: ref to segment info array of hashes, PRE-FILLED
-#  $seg_idx:      model index
+#  $sgm_info_AHR: ref to segment info array of hashes, PRE-FILLED
+#  $sgm_idx:      model index
 #
 # Returns:    "" if this is the only model for this feature
 #             string like ", model 1 of 2", if not
@@ -5314,15 +5264,45 @@ sub featureInfoSummarizeSegment {
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($ftr_info_AHR, $seg_info_AHR, $seg_idx) = @_;
+  my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx) = @_;
 
-  my $ftr_idx = $seg_info_AHR->[$seg_idx]{"map_ftr"};
-  my $nmdl = ($ftr_info_AHR->[$ftr_idx]{"3p_seg_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_seg_idx"}) + 1;
+  my $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
+  my $nmdl = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
   if($nmdl > 1) { 
-    return sprintf(", segment %d of %d", ($seg_idx - $ftr_info_AHR->[$ftr_idx]{"5p_seg_idx"}) + 1, $nmdl);
+    return sprintf(", segment %d of %d", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $nmdl);
   }
 
   return ""; # return "" if $nmdl == 1;
+}
+
+#################################################################
+# Subroutine: featureInfoImputeWrapper
+# Incept:     EPN, Thu Mar 14 12:08:52 2019
+# 
+# Purpose:    Call subroutines to add information to @{$ftr_info_AHR}.
+# 
+# Arguments:
+#   $ftr_info_AHR:   REF to feature information, added to here
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub featureInfoImputeWrapper { 
+  my $sub_name = "featureInfoImputeCoords";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  featureInfoImputeCoords($ftr_info_AHR, $FH_HR);
+  featureInfoImputeLength($ftr_info_AHR, $FH_HR);
+  featureInfoImputeSourceIdx($ftr_info_AHR, $FH_HR);
+  featureInfoImputeParentIdx($ftr_info_AHR, $FH_HR);
+
+  return;
 }
 
 #################################################################
@@ -5333,7 +5313,6 @@ sub featureInfoSummarizeSegment {
 # 
 # Arguments:
 #   $ftr_info_AHR:   REF to feature information, added to here
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
 #   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
@@ -5343,10 +5322,10 @@ sub featureInfoSummarizeSegment {
 #################################################################
 sub featureInfoImputeCoords { 
   my $sub_name = "featureInfoImputeCoords";
-  my $nargs_expected = 3;
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $FH_HR) = @_;
   
   # ftr_info_AHR should already have array data for keys "type", "location"
   my @keys_A = ("type", "location");
@@ -5360,6 +5339,48 @@ sub featureInfoImputeCoords {
 }
 
 #################################################################
+# Subroutine: featureInfoImputeLength
+# Incept:     EPN, Thu Mar 14 12:07:16 2019
+# 
+# Purpose:    Fill "length" values in @{$ftr_info_AHR}
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub featureInfoImputeLength { 
+  my $sub_name = "featureInfoImputeSourceIdx";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, $FH_HR);
+
+  # go through all features and determine length by parsing the 
+  # "coords" value
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $len = 0;
+    my @sgm_start_A  = (); # array of starts, one per segment
+    my @sgm_stop_A   = (); # array of stops, one per segment
+    featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, undef, $FH_HR);
+    for(my $s = 0; $s < scalar(@sgm_start_A); $s++) { 
+      $len += abs($sgm_start_A[$s] - $sgm_stop_A[$s]) + 1;
+    }
+    $ftr_info_AHR->[$ftr_idx]{"length"} = $len;
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: featureInfoImputeSourceIdx
 # Incept:     EPN, Wed Mar 13 13:20:01 2019
 # 
@@ -5367,7 +5388,6 @@ sub featureInfoImputeCoords {
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
-#   $opt_HHR:       REF to 2D hash of option values, see top of epn-options.pm for description
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
@@ -5377,10 +5397,10 @@ sub featureInfoImputeCoords {
 #################################################################
 sub featureInfoImputeSourceIdx { 
   my $sub_name = "featureInfoImputeSourceIdx";
-  my $nargs_expected = 3;
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $FH_HR) = @_;
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
@@ -5425,7 +5445,6 @@ sub featureInfoImputeSourceIdx {
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
-#   $opt_HHR:       REF to 2D hash of option values, see top of epn-options.pm for description
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
@@ -5435,10 +5454,10 @@ sub featureInfoImputeSourceIdx {
 #################################################################
 sub featureInfoImputeParentIdx {
   my $sub_name = "featureInfoImputeParentIdx";
-  my $nargs_expected = 3;
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $FH_HR) = @_;
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
@@ -5517,7 +5536,6 @@ sub featureInfoImputeParentIdx {
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
-#   $opt_HHR:       REF to 2D hash of option values, see top of epn-options.pm for description
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
@@ -5527,10 +5545,10 @@ sub featureInfoImputeParentIdx {
 #################################################################
 sub featureInfoImpute3paFtrIdx {
   my $sub_name = "featureInfoImpute3paFtrIdx";
-  my $nargs_expected = 3;
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $FH_HR) = @_;
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
@@ -5590,10 +5608,10 @@ sub featureInfoImpute3paFtrIdx {
 # Subroutine: segmentInfoPopulate()
 # Incept:     EPN, Wed Mar 13 13:55:56 2019
 #
-# Synopsis: Fill @{$seg_info_AHR} and add to @{$ftr_info_AHR}
+# Synopsis: Fill @{$sgm_info_AHR} and add to @{$ftr_info_AHR}
 #           based on existing information in @{$ftr_info_AHR}.
 #
-#           The following values are added to %{$seg_info_HAR}:
+#           The following values are added to %{$sgm_info_HAR}:
 #                "start":    start position of segment in the reference genome
 #                "stop":     stop position of segment in the reference genome
 #                "strand":   strand of segment in the reference genome
@@ -5607,12 +5625,11 @@ sub featureInfoImpute3paFtrIdx {
 #                            necessarily in reference genome)
 #
 #           The following values are added to %{$ftr_info_AHR}:
-#                "5p_seg_idx":   index (in arrays of %seg_info_HA) of 5'-most segment for this feature
-#                "3p_seg_idx":   index (in arrays of %seg_info_HA) of 3'-most segment for this feature
+#                "5p_sgm_idx":   index (in arrays of %sgm_info_HA) of 5'-most segment for this feature
+#                "3p_sgm_idx":   index (in arrays of %sgm_info_HA) of 3'-most segment for this feature
 # Arguments:
-#  $seg_info_AHR:      ref to array of hashes with information on the segments, FILLED HERE
+#  $sgm_info_AHR:      ref to array of hashes with information on the segments, FILLED HERE
 #  $ftr_info_AHR:      ref to array of hashes with information on the features, ADDED TO HERE
-#  $opt_HHR:           REF to 2D hash of option values
 #  $FH_HR:             REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
@@ -5622,50 +5639,50 @@ sub featureInfoImpute3paFtrIdx {
 #################################################################
 sub segmentInfoPopulate {
   my $sub_name = "segmentInfoPopulate";
-  my $nargs_expected = 4;
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($seg_info_AHR, $ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+  my ($sgm_info_AHR, $ftr_info_AHR, $FH_HR) = @_;
 
   # ftr_info_AHR should already have array data for keys "type", "coords", "source_idx"
   my @keys_A = ("type", "coords", "source_idx");
   my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, $FH_HR);
 
   # initialize new %{$ftr_info_AHR} values
-  my ($ftr_idx, $ftr_idx2, $seg_idx, $seg_idx2); # feature and segment indices
-  my ($seg_start, $seg_stop, $seg_strand); # start, stop and strand for a segment
+  my ($ftr_idx, $ftr_idx2, $sgm_idx, $sgm_idx2); # feature and segment indices
+  my ($sgm_start, $sgm_stop, $sgm_strand); # start, stop and strand for a segment
   my $nseg = 0; 
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"5p_seg_idx"} = -1; # remains -1 if $ftr_idxs_dup
-    $ftr_info_AHR->[$ftr_idx]{"3p_seg_idx"} = -2; # remains -2 if $ftr_idxs_dup
+    $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = -1; # remains -1 if $ftr_idxs_dup
+    $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = -2; # remains -2 if $ftr_idxs_dup
     my $ftr_type   = $ftr_info_AHR->[$ftr_idx]{"type"};
     my $ftr_is_dup = ($ftr_info_AHR->[$ftr_idx]{"source_idx"} == $ftr_idx) ? 0 : 1;
 
     if(! $ftr_is_dup) { 
       # determine start and stop positions of all segments
-      my @seg_start_A  = (); # array of starts, one per segment
-      my @seg_stop_A   = (); # array of stops, one per segment
-      my @seg_strand_A = (); # array of strands ("+", "-"), one per segment
-      featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@seg_start_A, \@seg_stop_A, \@seg_strand_A, $FH_HR);
-      my $cur_nseg = scalar(@seg_start_A);
+      my @sgm_start_A  = (); # array of starts, one per segment
+      my @sgm_stop_A   = (); # array of stops, one per segment
+      my @sgm_strand_A = (); # array of strands ("+", "-"), one per segment
+      featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
+      my $cur_nseg = scalar(@sgm_start_A);
       for(my $s = 0; $s < $cur_nseg; $s++) { 
-        $seg_info_AHR->[$nseg]{"start"}   = $seg_start_A[$s];
-        $seg_info_AHR->[$nseg]{"stop"}    = $seg_stop_A[$s];
-        $seg_info_AHR->[$nseg]{"strand"}  = $seg_strand_A[$s];
-        $seg_info_AHR->[$nseg]{"map_ftr"} = $ftr_idx;
+        $sgm_info_AHR->[$nseg]{"start"}   = $sgm_start_A[$s];
+        $sgm_info_AHR->[$nseg]{"stop"}    = $sgm_stop_A[$s];
+        $sgm_info_AHR->[$nseg]{"strand"}  = $sgm_strand_A[$s];
+        $sgm_info_AHR->[$nseg]{"map_ftr"} = $ftr_idx;
         if($s == 0) { 
-          $seg_info_AHR->[$nseg]{"is_5p"} = 1;
-          $ftr_info_AHR->[$ftr_idx]{"5p_seg_idx"} = $nseg; 
+          $sgm_info_AHR->[$nseg]{"is_5p"} = 1;
+          $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = $nseg; 
         }
         else { 
-          $seg_info_AHR->[$nseg]{"is_5p"} = 0;
+          $sgm_info_AHR->[$nseg]{"is_5p"} = 0;
         }
         if($s == ($cur_nseg-1)) { 
-          $seg_info_AHR->[$nseg]{"is_3p"} = 1;
-          $ftr_info_AHR->[$ftr_idx]{"3p_seg_idx"} = $nseg;
+          $sgm_info_AHR->[$nseg]{"is_3p"} = 1;
+          $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = $nseg;
         }
         else { 
-          $seg_info_AHR->[$nseg]{"is_3p"} = 0;
+          $sgm_info_AHR->[$nseg]{"is_3p"} = 0;
         }
         $nseg++;
       }
@@ -5705,18 +5722,18 @@ sub featureStartStopStrandArrays {
   my @start_A  = ();
   my @stop_A   = ();
   my @strand_A = ();
-  my ($start, $stop, $strand, $seg_idx);
+  my ($start, $stop, $strand, $sgm_idx);
   my @coords_A  = split(",", $coords);
   my $nseg = scalar(@coords_A);
-  for($seg_idx = 0; $seg_idx < $nseg; $seg_idx++) { 
-    if($coords_A[$seg_idx] =~ /^(\d+)\.\.(\d+)\:([\+\-])$/) { 
+  for($sgm_idx = 0; $sgm_idx < $nseg; $sgm_idx++) { 
+    if($coords_A[$sgm_idx] =~ /^(\d+)\.\.(\d+)\:([\+\-])$/) { 
       ($start, $stop, $strand) = ($1, $2, $3);
       push(@start_A,  $start);
       push(@stop_A,   $stop);
       push(@strand_A, $strand); 
     }
     else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse coords token $coords_A[$seg_idx]", 1, $FH_HR); 
+      DNAORG_FAIL("ERROR in $sub_name, unable to parse coords token $coords_A[$sgm_idx]", 1, $FH_HR); 
     }
   }
 
@@ -5969,6 +5986,42 @@ sub sqstringAddNewlines {
   return $retstr;
 }
     
+
+#################################################################
+# Subroutine: featureInfoCountType
+# Incept:     EPN, Thu Mar 14 12:16:26 2019
+# 
+# Purpose:    Count number of elements in @{$ftr_info_AHR} 
+#             have type of $type.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $type:          type we are interested in
+#
+# Returns:    void
+# 
+# Dies:       never, nothing is validated
+#
+#################################################################
+sub featureInfoCountType { 
+  my $sub_name = "featureInfoCountType";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $type) = @_;
+
+  my $ntype = 0;
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if((defined $ftr_info_AHR->[$ftr_idx]{"type"}) && 
+       ($ftr_info_AHR->[$ftr_idx]{"type"} eq $type)) { 
+      $ntype++;
+    }
+  }
+  
+  return $ntype;
+}
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value
