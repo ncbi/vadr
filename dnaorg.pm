@@ -6023,6 +6023,355 @@ sub featureInfoCountType {
   return $ntype;
 }
 
+
+#################################################################
+# Subroutine: edirectFetchToFile()
+# Incept:     EPN, Tue Mar 12 12:18:37 2019
+#
+# Synopsis: Fetch information for an accession using edirect.
+#
+# Arguments:
+#  $out_file:  output file to create
+#  $accn:      accession to fetch
+#  $format:    format to fetch (e.g. "gpc", "ft", "fasta")
+#  $nattempts: number of times to retry 
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if there's a problem fetching the data
+#################################################################
+sub edirectFetchToFile { 
+  my $sub_name = "edirectFetchToFile";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_file, $accn, $format, $nattempts, $FH_HR) = @_;
+  if((! defined $nattempts) || ($nattempts < 1)) { $nattempts = 1; }
+
+  my $url = edirectFetchUrl($accn, $format);
+
+  my $n = 0;
+  my $fetched_str = undef;
+  while(($n < $nattempts) && (! defined $fetched_str)) { 
+    $fetched_str = get($url);
+    $n++;
+    sleep(1);
+  }
+  if(! defined $fetched_str) { 
+    DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", 1, $FH_HR); 
+  }
+
+  open(OUT, ">", $out_file) || fileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
+  print OUT $fetched_str;
+  close(OUT);
+
+  return;
+}
+
+#################################################################
+# Subroutine: edirectFetchUrl()
+# Incept:     EPN, Tue Mar 12 12:18:37 2019
+#
+# Synopsis: Return a url for an efetch command
+#
+# Arguments:
+#  $accn:      accession to fetch
+#  $format:    format to fetch (e.g. "gpc", "ft", "fasta")
+#
+# Returns:    void
+#
+# Dies:       never
+#################################################################
+sub edirectFetchUrl { 
+  my $sub_name = "edirectFetchUrl";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($accn, $format) = @_;
+
+  return sprintf("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=%s&retmode=text", $accn, $format);
+}
+
+#################################################################
+# Subroutine: genbankParse()
+# Incept:     EPN, Tue Mar 12 14:04:14 2019
+#
+# Synopsis: Parse a GenBank format file.
+#
+# Arguments:
+#  $infile:   GenBank file to parse
+#  $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if we have trouble parsing the file
+#
+# Reference: https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html
+#            http://www.insdc.org/documents/feature-table
+#################################################################
+sub genbankParse { 
+  my $sub_name = "genbankParse";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($infile, $seq_info_HHR, $ftr_info_HAHR, $FH_HR) = @_;
+
+  my $line_idx  = 0;     # line index of input file
+  my $acc       = undef; # accession, read from LOCUS line
+  my $tmp_acc   = undef; # accession, read from ACCESSION or VERSION line
+  my $len       = undef; # length, read from LOCUS line
+  my $def       = undef; # seq definition, read from DEFINITION line
+  my $ver       = undef; # sequence version, read from VERSION line
+  my $feature   = undef; # a feature   read from a feature/location line in the FEATURES section
+  my $location  = undef; # a location  read from a feature/location line in the FEATURES section
+  my $qualifier = undef; # a qualifier read from a qualifier/value  line in the FEATURES section
+  my $value     = undef; # a value     read from a qualifier/value  line in the FEATURES section
+  my $seq       = undef; # sequence, read from the ORIGIN section
+  my $seqline   = undef; # single line of sequence
+  my $seq_idx   = 0;     # number of sequences read
+  my $ftr_idx   = -1;    # number of features read for current sequence
+  my $line      = undef; # a line
+
+  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
+
+  $line = <IN>; 
+  while(defined $line) { 
+    chomp $line; $line_idx++;
+    if($line =~ /^LOCUS\s+(\S+)\s+(\d+)/) { 
+      #LOCUS       NC_039477               7567 bp    RNA     linear   VRL 22-FEB-2019
+      if((defined $acc) || (defined $len)) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple LOCUS lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
+      }
+      ($acc, $len) = ($1, $2);
+      # initialize the array of hashes for this accession's features
+      if(defined $ftr_info_HAHR->{$acc}) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, trying to add feature info for accession $acc, but it already exists, line:\n$line\n", 1, $FH_HR);
+      }
+      @{$ftr_info_HAHR->{$acc}} = ();
+      $line = <IN>; 
+    }
+    elsif($line =~ /^DEFINITION\s+(.*)$/) { 
+      #DEFINITION  Norovirus GII isolate strain Hu/GBR/2016/GII.P16-GII.4_Sydney/226,
+      #            complete genome.
+      if(defined $def) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple DEFINITION lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
+      }
+      $def = $1;
+      # read remainder of the definition (>= 0 lines)
+      $line = <IN>; 
+      while((defined $line) && ($line =~ /^\s+(.+)$/)) {
+        chomp $line; $line_idx++;
+        $def .= $1;
+        $line = <IN>; 
+      }
+    }
+    elsif($line =~ /^ACCESSION\s+(\S+)$/) { 
+      # ACCESSION   NC_039477
+      # verify this matches what we read in the LOCUS line
+      $tmp_acc = $1;
+      if((! defined $acc) || ($tmp_acc ne $acc)) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, accession mismatch for $tmp_acc, line:\n$line\n", 1, $FH_HR);
+      }
+      $line = <IN>;
+    }
+    elsif($line =~ /^VERSION\s+(\S+)$/) { 
+      #VERSION     NC_039477.1
+      if(defined $ver) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple VERSION lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
+      }
+      # verify this matches what we read in the LOCUS line
+      $ver = $1;
+      $tmp_acc = $ver;
+      stripVersion(\$tmp_acc);
+      if((! defined $acc) || ($tmp_acc ne $acc)) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, version/accession mismatch for $tmp_acc, line:\n$line\n", 1, $FH_HR);
+      }
+      $line = <IN>;
+    }
+    elsif($line =~ /^FEATURES\s+Location\/Qualifiers$/) { 
+      # parse the features and then the sequence
+      # FEATURES section
+      # two types of line:
+      # feature/location line
+      #        example:      gene            5..5104
+      #        example:      misc_feature    join(2682..2689,1..2)
+      #        example:      misc_feature    join(161990..162784,complement(88222..88806),complement(86666..87448))
+      # qualifier/value line type A, first line of a new qualifier
+      #        example: /codon_start=1
+      #        example: /gene="ORF1"
+      # qualifier/value line type B, not the first line of a new qualifier, line 2 to N of a qualifier value
+      #        example: QNVIDPWIRNNFVQAPGGEFTVSPRNAPGEILWSAPLGPDLNPYLSHLARMYNGYAGG
+      #        example: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
+      if($ftr_idx != -1) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple FEATURES lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
+      }
+      $line = <IN>;
+      while((defined $line) && ($line !~ /^ORIGIN/)) { 
+        chomp $line; $line_idx++;
+        if($line =~ /^\s+\/(\S+)\=(.+)$/) { # first token must start with '/'
+          # qualifier/value line type A, examples:
+          #  /codon_start=1
+          #  /gene="ORF1"
+          #  /translation="MKMASNDATVAVACNNNNDKEKSSGEGLFTNMSSTLKKALGARP
+          my ($save_qualifier, $save_value) = ($1, $2);
+          if(defined $value) { # we are finished with previous value
+            genbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+          }
+          ($qualifier, $value) = ($save_qualifier, $save_value);
+        }
+        elsif($line =~ /^\s+(\S+)\s+(\S+)$/) { 
+          # NOTE: this will pass for a non-first line of a qualifier value that has whitespace in it:
+          # e.g.                      KQP ASRDESQKPPRPPTPELVKRIPPPPPNGEEEEEPVIRYEVKSGISGLPELTTVPQ
+          # But I think those are illegal, if they're not, then we'll set "KQP" as feature below, which is bad
+          if(defined $value) { # we are finished with previous value
+            genbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+            ($qualifier, $value) = (undef, undef);
+          }
+          # feature/location line, examples:
+          #   gene            5..5104
+          ($feature, $location) = ($1, $2);
+          $ftr_idx++;
+          genbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",     $feature,  $FH_HR);
+          genbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "location", $location, $FH_HR);
+        }
+        else { 
+          # qualifier/value line type B
+          #        example: QNVIDPWIRNNFVQAPGGEFTVSPRNAPGEILWSAPLGPDLNPYLSHLARMYNGYAGG
+          #        example: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
+          $line =~ s/^\s+//; # remove leading whitespace
+          if(! defined $value) { 
+            DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, in FEATURES section read qualifier value line without qualifier first, line:\n$line\n", 1, $FH_HR);
+          }
+          $value .= $line; 
+        }
+        $line = <IN>; chomp $line; $line_idx++;
+      }
+      if(! defined $line) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to read ORIGIN line after FEATURES but did not\n", 1, $FH_HR);
+      }
+      # if we get here we just read the ORIGIN line
+      # first store final qualifier/value
+      if(defined $value) { 
+        genbankStoreQualifierValue($ftr_info_HAHR->{$acc}, $ftr_idx, $qualifier, $value, $FH_HR);
+      }
+      # parse the ORIGIN sequence
+      $line = <IN>;
+      # sanity check
+      if(defined $seq) { 
+        DNAORG_FAIL("ERROR in $sub_name, read multiple ORIGIN lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
+      }
+      $seq = "";
+      while((defined $line) && ($line !~ /^\/\/$/)) { 
+        chomp $line; $line_idx++;
+        # sequence lines
+        # examples:
+        # 7501 gtcacgggcg taatgtgaaa agacaaaact gattatcttt ctttttcttt agtgtctttt
+        # 7561 aaaaaaa
+        if($line =~ /^\s+\d+\s+(.+)$/) { 
+          $seqline = $1;
+          $seqline =~ s/\s+//g; # remove spaces
+          $seq .= $seqline;
+        }
+        $line = <IN>;
+      }
+      if(! defined $line) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to find a // line after ORIGIN but did not, line $line_idx\n", 1, $FH_HR);
+      }
+      # if we get here we just read the // line
+      # we are finished with this sequence, store the information
+      if(! defined $acc) { DNAORG_FAIL(        "ERROR in $sub_name, failed to read accession, line: $line_idx\n", 1, $FH_HR); }
+      if(! defined $len) { DNAORG_FAIL(sprintf("ERROR in $sub_name, failed to read length (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
+      if(! defined $ver) { DNAORG_FAIL(sprintf("ERROR in $sub_name, failed to read version (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
+      if(! defined $def) { DNAORG_FAIL(sprintf("ERROR in $sub_name, failed to read definition (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
+      if(! defined $seq) { DNAORG_FAIL(sprintf("ERROR in $sub_name, failed to read sequence (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
+
+      # store sequence info
+      %{$seq_info_HHR->{$acc}} = ();
+      $seq_info_HHR->{$acc}{"len"} = $len;
+      $seq_info_HHR->{$acc}{"ver"} = $ver;
+      $seq_info_HHR->{$acc}{"def"} = $def;
+      $seq_info_HHR->{$acc}{"seq"} = $seq;
+
+      # reset variables
+      $seq = undef;
+      $len = undef;
+      $acc = undef;
+      $ver = undef;
+      $def = undef;
+      $feature   = undef;
+      $location  = undef;
+      $qualifier = undef;
+      $value     = undef;
+
+      $seq_idx++;
+      $ftr_idx = -1;
+      $line = <IN>;
+    } # end of 'elsif($line =~ /^FEATURES\s+Location\/Qualifiers$/) {' 
+    else { 
+      # not a line we will parse, read the next line
+      $line = <IN>;
+    }
+  }
+
+  if($seq_idx == 0) { 
+    DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, failed to read any sequence data\n", 1, $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: genbankStoreQualifierValue()
+# Incept:     EPN, Wed Mar 13 09:42:22 2019
+#
+# Synopsis: Store a genbank qualifier and value.
+#
+# Arguments:
+#  $ftr_info_AHR: REF to the array of hashes to store data in
+#  $ftr_idx:      feature index
+#  $qualifier:    qualifier
+#  $value:        qualifier value
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#
+# Returns:    '1' if $ftr_info_AHR->[$ftr_idx]{$qualifier} created
+#             '0' if $ftr_info_AHR->[$ftr_idx]{$qualifier} exists upon entering function
+#
+# Dies:       If $value includes the string ":GPSEP:, which we use 
+#             to separate multiple qualifier values for the same qualifier.
+#             
+#################################################################
+sub genbankStoreQualifierValue { 
+  my $sub_name = "genbankStoreQualifierValue";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $ftr_idx, $qualifier, $value, $FH_HR) = @_;
+
+  if($value =~ /\:GPSEP\:/) { 
+    DNAORG_FAIL("ERROR in $sub_name, qualifier value $value includes the special string :GPSEP:, this is not allowed", 1, $FH_HR);
+  }
+
+  # remove leading and trailing " in the value, if they exist
+  # GenBank format uses "" as a substitute for " in these strings
+  $value =~ s/^\"//;
+  $value =~ s/\"$//;
+
+  # printf("in $sub_name q: $qualifier v: $value\n");
+  if(! defined ($ftr_info_AHR->[$ftr_idx])) { 
+    %{$ftr_info_AHR->[$ftr_idx]} = (); 
+  }
+  if(! defined $ftr_info_AHR->[$ftr_idx]{$qualifier}) { 
+    $ftr_info_AHR->[$ftr_idx]{$qualifier} = $value;
+  }
+  else { 
+    $ftr_info_AHR->[$ftr_idx]{$qualifier} .= ":GBSEP:" . $value;
+  }
+
+  return;
+}
+
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;
