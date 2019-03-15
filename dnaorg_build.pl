@@ -23,32 +23,18 @@ require "epn-options.pm";
 #   - parse the optional input files, if necessary
 #   - make sure the required executables are executable
 #
-# Step 1. Gather and process information on reference genome using Edirect
-#
-# Step 2. Fetch and process the reference genome sequence
-#
-# Step 3. Build and calibrate models
+# 
 #######################################################################################
 
 # first, determine the paths to all modules, scripts and executables that we'll need
 
 # make sure the DNAORGDIR environment variable is set
-my $dnaorgdir = $ENV{'DNAORGDIR'};
-if(! exists($ENV{'DNAORGDIR'})) { 
-    printf STDERR ("\nERROR, the environment variable DNAORGDIR is not set, please set it to the directory where you installed the dnaorg scripts and their dependencies.\n"); 
-    exit(1); 
-}
-if(! (-d $dnaorgdir)) { 
-    printf STDERR ("\nERROR, the dnaorg directory specified by your environment variable DNAORGDIR does not exist.\n"); 
-    exit(1); 
-}    
- 
-# determine other required paths to executables relative to $dnaorgdir
-my $inf_exec_dir      = $dnaorgdir . "/infernal-dev/src/";
-my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
-my $esl_exec_dir      = $dnaorgdir . "/infernal-dev/easel/miniapps/";
-my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
-my $blast_exec_dir    = "/usr/bin/"; # HARD-CODED FOR NOW
+my $dnaorgdir      = verifyEnvVariableIsValidDir("DNAORGDIR");
+my $dnaorgblastdir = verifyEnvVariableIsValidDir("DNAORGBLASTDIR");
+
+my $inf_exec_dir      = $dnaorgdir . "/infernal-dev/src";
+my $esl_exec_dir      = $dnaorgdir . "/infernal-dev/easel/miniapps";
+my $blast_exec_dir    = $dnaorgblastdir;
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -78,45 +64,55 @@ my %opt_group_desc_H = ();
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 $opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                                 help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                          "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",                  "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                   "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as <s>",            "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                                                help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                                         "display this help",                                   \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
+opt_Add("-m",           "boolean", 0,                        1,    undef, undef,      "first cmdline arg is an input .minfo file, not an accession", "first cmdline arg is an input .minfo file, not an accession", \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"2"} = "optional output files";
+$opt_group_desc_H{"1"} = "options related to alternative modes:";
+#       option          type       default                group  requires incompat        preamble-output                                            help-output    
+opt_Add("--stk",        "string",  undef,                    2,    undef,  undef,         "read stockholm alignment with >= 1 sequences from <s>",   "read stockholm alignment with >= 1 sequences from <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--gb",         "string",  undef,                    2,    undef, "-m",           "read genbank file from <s>, don't fetch it",              "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--onlyurl",    "boolean", 0,                        2,    undef,"--stk,--gb,-m", "output genbank file url for accession and exit",          "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"3"} = "optional output files";
 #       option       type       default                group  requires incompat  preamble-output                          help-output    
-opt_Add("--ftrinfo",    "boolean", 0,                        2,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--sgminfo",    "boolean", 0,                        2,    undef, undef, "output internal segment information",   "create file with internal segment information",   \%opt_HH, \@opt_order_A);
+opt_Add("--ftrinfo",    "boolean", 0,                        3,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--sgminfo",    "boolean", 0,                        3,    undef, undef, "output internal segment information",   "create file with internal segment information",   \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"3"} = "options for controlling cmbuild step";
+$opt_group_desc_H{"4"} = "options for controlling cmbuild step";
 #     option          type       default         group   requires    incompat   preamble-output                                             help-output    
-opt_Add("--cm_n",      "integer", 0,                  3,   undef,     undef,     "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--cm_p7ml",   "boolean", 0,                  3,   undef,     undef,     "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
-opt_Add("--cm_ere",    "real",    0,                  3,   undef,     undef,     "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
-opt_Add("--cm_eset",   "real",    0,                  3,   undef,     "--cm_ere", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
+opt_Add("--cmn",      "integer", 0,                  4,   undef,     undef,     "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--cmp7ml",   "boolean", 0,                  4,   undef,     undef,     "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
+opt_Add("--cmere",    "real",    0,                  4,   undef,     undef,     "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
+opt_Add("--cmeset",   "real",    0,                  4,   undef,     "--cmere", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: dnaorg_build.pl [-options] <reference accession>\n";
-my $synopsis = "dnaorg_build.pl :: build homology model for a reference sequence";
+my $usage    = "Usage: dnaorg_build.pl [-options] <accession (or input .minfo file if -m)> <path to output directory to create>\n";
+my $synopsis = "dnaorg_build.pl :: build homology model for feature annotation";
 
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
-                'dirout=s'     => \$GetOptions_H{"--dirout"},
+                'm'            => \$GetOptions_H{"-m"},
+                'stk=s'        => \$GetOptions_H{"--stk"},
+                'gb=s'         => \$GetOptions_H{"--gb"},
                 'keep'         => \$GetOptions_H{"--keep"},
+# options for alternative modes:
+                'onlyurl'      => \$GetOptions_H{"--onlyurl"},
 # optional output files
                 'sgminfo'      => \$GetOptions_H{"--sgminfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"},
 # options for controlling cmbuild step
-                'cmn=s'        => \$GetOptions_H{"--cm_n"},
-                'cmp7ml'       => \$GetOptions_H{"--cm_p7ml"},
-                'cmere=s'      => \$GetOptions_H{"--cm_ere"},
-                'cmeset=s'     => \$GetOptions_H{"--cm_eset"});
+                'cmn=s'        => \$GetOptions_H{"--cmn"},
+                'cmp7ml'       => \$GetOptions_H{"--cmp7ml"},
+                'cmere=s'      => \$GetOptions_H{"--cmere"},
+                'cmeset=s'     => \$GetOptions_H{"--cmeset"});
 
 my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
@@ -133,13 +129,13 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
 }
 
 # check that number of command line args is correct
-if(scalar(@ARGV) != 1) {   
+if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
   print "\nTo see more help on available options, do dnaorg_build.pl -h\n\n";
   exit(1);
 }
-my ($in_acc) = (@ARGV);
+my ($acc_or_minfo, $dir) = (@ARGV);
 
 # set options in opt_HH
 opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
@@ -147,21 +143,58 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
-my $dir = opt_Get("--dirout", \%opt_HH);          # this will be undefined unless -d set on cmdline
+############################################
+# if --onlyurl used, output the url and exit
+############################################
+if(opt_Get("--onlyurl", \%opt_HH)) { 
+  print eutilsFetchUrl($acc_or_minfo, "gb") . "\n";
+  exit 0;
+}
+
+################################################
+# validate .minfo file exists and parse it if -m
+################################################
+my $in_minfo_file = opt_Get("-m", \%opt_HH) ? $acc_or_minfo : undef;
+my $model_name = undef;
+my @mdl_info_AH  = (); # array of hashes with model info
+my %ftr_info_HAH = (); # array of hashes with feature info 
+if(defined $in_minfo_file) { 
+  if(! -e $in_minfo_file) { 
+    die "ERROR, -m enabled, model info file $in_minfo_file does not exist";
+  }
+  if(! -s $in_minfo_file) { 
+    die "ERROR, -m enabled, model info file $in_minfo_file exists but is empty";
+  }
+  if(-d $in_minfo_file) { 
+    die "ERROR, -m enabled, model info file $in_minfo_file is actually a directory";
+  }
+  # set required keys for models and features
+  my @reqd_mdl_keys_A = ("name");
+  my @reqd_ftr_keys_A = ("type", "coords");
+  modelInfoFileParse($in_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, undef);
+  # ensure we read info only a single model from the input file
+  if(scalar(@mdl_info_AH) == 0) { 
+    die "ERROR did not read info for any models in $in_minfo_file";
+  }
+  if(scalar(@mdl_info_AH) > 1) { 
+    die "ERROR read info for multiple models in $in_minfo_file, it must have info for only 1 model";
+  }
+  if(! defined $mdl_info_AH[0]{"name"}) { 
+    die "ERROR did not read name of model in $in_minfo_file";
+  }
+  $model_name = $mdl_info_AH[0]{"name"};
+}
+else { 
+  $model_name = $acc_or_minfo;
+}
 
 #############################
 # create the output directory
 #############################
 my $cmd;              # a command to run with runCommand()
 my @early_cmd_A = (); # array of commands we run before our log file is opened
-# check if the $dir exists, and that it contains the files we need
-# check if our output dir $symbol exists
-if(! defined $dir) { 
-  $dir = $in_acc;
-}
-else { 
-  if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
-}
+
+if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
   if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
@@ -186,8 +219,8 @@ my $out_root = $dir . "/" . $dir_tail . ".dnaorg_build";
 # output program banner and open output files
 #############################################
 # output preamble
-my @arg_desc_A = ("reference accession");
-my @arg_A      = ($in_acc);
+my @arg_desc_A = ("accession (or .minfo file if -m)", "output directory");
+my @arg_A      = ($acc_or_minfo, $dir);
 outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -222,47 +255,89 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-###################################################
-# make sure the required executables are executable
-###################################################
+#############################################################
+# make sure the required executables exist and are executable
+#############################################################
 my %execs_H = (); # hash with paths to all required executables
-$execs_H{"cmbuild"}       = $inf_exec_dir . "cmbuild";
-$execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
-$execs_H{"esl-translate"} = $esl_exec_dir . "esl-translate";
-$execs_H{"makeblastdb"}   = $blast_exec_dir . "makeblastdb";
+$execs_H{"cmbuild"}       = $inf_exec_dir . "/cmbuild";
+$execs_H{"esl-reformat"}  = $esl_exec_dir . "/esl-reformat";
+$execs_H{"esl-translate"} = $esl_exec_dir . "/esl-translate";
+$execs_H{"makeblastdb"}   = $blast_exec_dir . "/makeblastdb";
 validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
-########################
-# Fetch the genbank file
-########################
+###########################################################
+# Fetch the genbank file (if neither -m nor --gb used)
+###########################################################
 my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
-my $start_secs = outputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
+my $start_secs;
+my $gb_file = undef;
+if(opt_IsUsed("--gb", \%opt_HH)) { 
+  $gb_file = opt_Get("--gb", \%opt_HH);
+}
+elsif(opt_IsUsed("-m", \%opt_HH)) { 
+  $gb_file = undef;
+}
+else { 
+  # neither --gb nor -m used, create gb file by fetching using eutils
+  $gb_file = $out_root . ".gb";
+  $start_secs = outputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
 
-my $gb_file  = $out_root . ".gb";
-edirectFetchToFile($gb_file, $in_acc, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-addClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, "GenBank format file for $in_acc");
+  eutilsFetchToFile($gb_file, $model_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+  addClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, "GenBank format file for $model_name");
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-########################
-# Parse the genbank file
-########################
-my %seq_info_HH  = ();
-my %full_ftr_info_HAH = ();
-my @ftr_info_AH = ();
-
-$start_secs = outputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
-
-genbankParse($gb_file, \%seq_info_HH, \%full_ftr_info_HAH, $FH_HR);
-if(! exists $full_ftr_info_HAH{$in_acc}) { 
-  DNAORG_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $in_acc\n", 1, $FH_HR);
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+#########################################
+# Parse the genbank file (if -m not used)
+#########################################
+my %seq_info_HH  = ();
+if(defined $gb_file) { 
+  $start_secs = outputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
+  genbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
+  if(! exists $ftr_info_HAH{$model_name}) { 
+    DNAORG_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $model_name\n", 1, $FH_HR);
+  }
 
-##############################################################
-# Create @ftr_info_AH by copying from %full_ftr_info_HAH
-#############################################################
+  my $ftr_idx;
+  my $key;
+  my %ftype_H = ();
+  $ftype_H{"CDS"}         = 1;
+  $ftype_H{"gene"}        = 1;
+  $ftype_H{"mat_peptide"} = 1;
+  
+  my %qual_H = ();
+  $qual_H{"type"}         = 1;
+  $qual_H{"location"}     = 1;
+  $qual_H{"product"}      = 1;
+  $qual_H{"gene"}         = 1;
+  $qual_H{"exception"}    = 1;
+
+  # first, remove all array elements with types not in %ftype_H
+  my @ftr_idx_to_remove_A = ();
+  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$model_name}}); $ftr_idx++) { 
+    my $ftype = $ftr_info_HAH{$model_name}[$ftr_idx]{"type"};
+    if((! defined $ftype) || (! exists $ftype_H{$ftype})) { 
+      splice(@{$ftr_info_HAH{$model_name}}, $ftr_idx, 1);
+      $ftr_idx--; # this is about to be incremented
+    }
+  }
+
+  # now go back through and remove any key/value pairs not in %qual_H
+  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$model_name}}); $ftr_idx++) { 
+    foreach $key (sort keys %{$ftr_info_HAH{$model_name}[$ftr_idx]}) { 
+      if((! exists $qual_H{$key}) && (exists $ftr_info_HAH{$model_name}[$ftr_idx]{$key})) { 
+        delete $ftr_info_HAH{$model_name}[$ftr_idx]{$key};
+      }
+    }
+  }
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
+###################################################################################################
+# Finish populating @{$ftr_info_HAH{$model_name} and create @sgm_info_AH and output model info file
+###################################################################################################
+
 $start_secs = outputProgressPrior("Creating model info file", $progress_w, $log_FH, *STDOUT);
 
 # remove any features that are not of the type that we care about
@@ -271,55 +346,30 @@ $start_secs = outputProgressPrior("Creating model info file", $progress_w, $log_
 # TODO, optionally prune to keep certain feature types, or all (?)
 # TODO, optionally prune to keep certain qualifiers, or all (?)
 
-my $full_ftr_idx;
-my $ftr_idx;
-my $key;
-my %ftype_H = ();
-$ftype_H{"CDS"}         = 1;
-$ftype_H{"gene"}        = 1;
-$ftype_H{"mat_peptide"} = 1;
-
-my %qual_H = ();
-$qual_H{"type"}         = 1;
-$qual_H{"location"}     = 1;
-$qual_H{"product"}      = 1;
-$qual_H{"gene"}         = 1;
-$qual_H{"exception"}    = 1;
-
-# copy subset of information from @{%full_ftr_info_HAH{$in_acc}} to create %ftr_info_AH
-$ftr_idx = -1;
-for($full_ftr_idx = 0; $full_ftr_idx < scalar(@{$full_ftr_info_HAH{$in_acc}}); $full_ftr_idx++) { 
-  my $full_ftype = $full_ftr_info_HAH{$in_acc}[$full_ftr_idx]{"type"};
-  if((defined $full_ftype) && (exists $ftype_H{$full_ftype})) { 
-    $ftr_idx++;
-    %{$ftr_info_AH[$ftr_idx]} = ();
-    foreach $key (sort keys %{$full_ftr_info_HAH{$in_acc}[$full_ftr_idx]}) { 
-      if((exists $qual_H{$key}) && (defined $full_ftr_info_HAH{$in_acc}[$full_ftr_idx]{$key})) { 
-        $ftr_info_AH[$ftr_idx]{$key} = $full_ftr_info_HAH{$in_acc}[$full_ftr_idx]{$key};
-      }
-    }
-  }
+# only impute coords if we didn't read them from an minfo file
+if(! defined $in_minfo_file) { 
+  featureInfoImputeCoords(\@{$ftr_info_HAH{$model_name}}, $FH_HR);
 }
-%full_ftr_info_HAH = (); # we don't need this any more
+featureInfoImputeLength(\@{$ftr_info_HAH{$model_name}}, $FH_HR);
+featureInfoImputeSourceIdx(\@{$ftr_info_HAH{$model_name}}, $FH_HR);
+featureInfoImputeParentIdx(\@{$ftr_info_HAH{$model_name}}, $FH_HR);
 
-########################################################
-# Finish populating @ftr_info_AH and create @sgm_info_AH
-########################################################
-my @sgm_info_AH = ();          # hash of arrays, values are arrays [0..$nftr-1], 
-                               # see dnaorg.pm::validateSegmentInfoHashIsComplete() for list of all keys
-featureInfoImputeWrapper(\@ftr_info_AH, $FH_HR);
-segmentInfoPopulate(\@sgm_info_AH, \@ftr_info_AH, $FH_HR);
+my @sgm_info_AH = (); # segment info, inferred from feature info
+segmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$model_name}}, $FH_HR);
 
-########################
-# Output model info file
-########################
 my $minfo_file  = $out_root . ".minfo";
 my $cm_file     = $out_root . ".cm";
-output_model_info_file($minfo_file, $in_acc, $cm_file, \@ftr_info_AH, $FH_HR);
-addClosedFileToOutputInfo(\%ofile_info_HH, "minfo", $minfo_file, 1, "GenBank format file for $in_acc");
+if(scalar(@mdl_info_AH) == 0) { # initialize
+  %{$mdl_info_AH[0]} = ();
+  $mdl_info_AH[0]{"name"} = $model_name;
+}
+$mdl_info_AH[0]{"cmfile"} = $cm_file;
+modelInfoFileWrite($minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+addClosedFileToOutputInfo(\%ofile_info_HH, "minfo", $minfo_file, 1, "GenBank format file for $model_name");
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
+exit 0;
 ######################################
 # Output the fasta and stockholm files
 ######################################
@@ -329,35 +379,35 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 $start_secs = outputProgressPrior("Creating FASTA and STOCHOLM sequence files", $progress_w, $log_FH, *STDOUT);
 
 my $fa_file  = $out_root . ".fa";
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $in_acc");
+openAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $model_name");
 print_sequence_to_fasta_file($ofile_info_HH{"FH"}{"fasta"}, 
-                             $seq_info_HH{$in_acc}{"ver"}, 
-                             $seq_info_HH{$in_acc}{"def"}, 
-                             $seq_info_HH{$in_acc}{"seq"}, $FH_HR);
+                             $seq_info_HH{$model_name}{"ver"}, 
+                             $seq_info_HH{$model_name}{"def"}, 
+                             $seq_info_HH{$model_name}{"seq"}, $FH_HR);
 close $ofile_info_HH{"FH"}{"fasta"};
 
 my $stk_file = $out_root . ".stk";
 reformat_fasta_file_to_stockholm_file($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
-addClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $in_acc");
+addClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $model_name");
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###################
 # Translate the CDS
 ###################
-my $ncds = featureInfoCountType(\@ftr_info_AH, "CDS");
+my $ncds = featureInfoCountType(\@{$ftr_info_HAH{$model_name}}, "CDS");
 if($ncds > 0) { 
   $start_secs = outputProgressPrior("Translating CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
 
   my $cds_fa_file  = $out_root . ".cds.fa";
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $in_acc");
-  fetch_cds_to_fasta_file($ofile_info_HH{"FH"}{"cdsfasta"}, $fa_file, $seq_info_HH{$in_acc}{"ver"}, \@ftr_info_AH, $FH_HR);
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $model_name");
+  fetch_cds_to_fasta_file($ofile_info_HH{"FH"}{"cdsfasta"}, $fa_file, $seq_info_HH{$model_name}{"ver"}, \@{$ftr_info_HAH{$model_name}}, $FH_HR);
   close $ofile_info_HH{"FH"}{"cdsfasta"};
   
   my $protein_fa_file  = $out_root . ".protein.fa";
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $in_acc");
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $model_name");
   translate_cds_to_fasta_file($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
-                              $out_root, $seq_info_HH{$in_acc}{"ver"}, \@ftr_info_AH, \%opt_HH, $FH_HR);
+                              $out_root, $seq_info_HH{$model_name}{"ver"}, \@{$ftr_info_HAH{$model_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
 
   create_blast_protein_db($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
@@ -369,11 +419,11 @@ if($ncds > 0) {
 ##############
 $start_secs = outputProgressPrior("Building model (this could take a while)", $progress_w, $log_FH, *STDOUT);
 
-my $cmbuild_opts = "-n $in_acc --noss --verbose -F";
-if(opt_IsUsed("--cm_n",    \%opt_HH)) { $cmbuild_opts .= " --EgfN " . opt_Get("--cm_n", \%opt_HH); }
-if(opt_IsUsed("--cm_p7ml", \%opt_HH)) { $cmbuild_opts .= " --p7ml"; }
-if(opt_IsUsed("--cm_ere",  \%opt_HH)) { $cmbuild_opts .= " --ere "  . opt_Get("--cm_ere", \%opt_HH); }
-if(opt_IsUsed("--cm_eset", \%opt_HH)) { $cmbuild_opts .= " --eset " . opt_Get("--cm_eset", \%opt_HH); }
+my $cmbuild_opts = "-n $model_name --noss --verbose -F";
+if(opt_IsUsed("--cmn",    \%opt_HH)) { $cmbuild_opts .= " --EgfN " . opt_Get("--cmn", \%opt_HH); }
+if(opt_IsUsed("--cmp7ml", \%opt_HH)) { $cmbuild_opts .= " --p7ml"; }
+if(opt_IsUsed("--cmere",  \%opt_HH)) { $cmbuild_opts .= " --ere "  . opt_Get("--cmere", \%opt_HH); }
+if(opt_IsUsed("--cmeset", \%opt_HH)) { $cmbuild_opts .= " --eset " . opt_Get("--cmeset", \%opt_HH); }
 
 my $cmbuild_file = $out_root . ".cmbuild";
 my $cmbuild_cmd  = $execs_H{"cmbuild"} . " " . $cmbuild_opts . " $cm_file $stk_file > $cmbuild_file";
@@ -389,11 +439,11 @@ addClosedFileToOutputInfo(\%ofile_info_HH, "cmbuild", $cmbuild_file, 1, "cmbuild
 # output optional output files
 if(opt_Get("--sgminfo", \%opt_HH)) { 
   openAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, "Model information (created due to --sgminfo)");
-  dumpArrayOfHashes("Feature information (@ftr_info_AH) for $in_acc", $ofile_info_HH{"FH"}{"ftrinfo"});
+  dumpArrayOfHashes("Feature information (ftr_info_AH) for $model_name", \@{$ftr_info_HAH{$model_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
 if(exists $ofile_info_HH{"FH"}{"sgminfo"}) { 
   openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
-  dumpArrayOfHashes("Segment information (@sgm_info_AH) for $in_acc", $ofile_info_HH{"FH"}{"sgminfo"});
+  dumpArrayOfHashes("Segment information (sgm_info_AH) for $model_name", \@sgm_info_AH, $ofile_info_HH{"FH"}{"sgminfo"});
 }
 
 $total_seconds += secondsSinceEpoch();
@@ -557,7 +607,7 @@ sub create_blast_protein_db {
 }
 
 #################################################################
-# Subroutine: output_model_info_file()
+# Subroutine: modelInfoFileWrite()
 # Incept:     EPN, Sat Mar  9 05:27:15 2019
 #
 # Synopsis: Output a model info file for model $mdlname based on 
@@ -568,62 +618,230 @@ sub create_blast_protein_db {
 #             "coords": coordinates for this feature in the reference
 #
 # Arguments:
-#  $out_file:     out file to create
-#  $model:        model name
-#  $cmfile:       model file name
-#  $ftr_info_AHR: REF to array of hashes with information on the features, pre-filed
-#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#  $out_file:      out file to create
+#  $mdl_info_AHR:  REF to array of hashes with model info, pre-filled
+#  $ftr_info_HAHR: REF to hash of array of hashes with information on the features, pre-filled
+#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
 # Dies:       if $ftr_info_HAR is not valid upon entering
 #################################################################
-sub output_model_info_file { 
-  my $sub_name = "output_model_info_file";
-  my $nargs_expected = 5;
+sub modelInfoFileWrite { 
+  my $sub_name = "modelInfoFileWrite";
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_file, $model, $cmfile, $ftr_info_AHR, $FH_HR) = @_;
+  my ($out_file, $mdl_info_AHR, $ftr_info_HAHR, $FH_HR) = @_;
 
-  # ftr_info_AHR should already have array data for keys "coords" and "type"
-  my @reqd_keys_A  = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@reqd_keys_A, $FH_HR);
+  my $mdl_idx  = undef; # model index
+  my $ftr_idx  = undef; # feature index
+  my $nmdl     = undef; # number of models
+  my $nftr     = undef; # number of features
+  my $mdl_name = undef; # model name
+  my $key      = undef; # a hash key
+  my $value    = undef; # a hash value
 
-  # create order of keys
-  my ($key, $value2print);
-  my @key_order_A  = ("type", "coords");
-  my %key_ignore_H = ();
-  $key_ignore_H{"type"}        = 1; # already added this to @key_order_A, so it goes first
-  $key_ignore_H{"coords"}      = 1; # already added this to @key_order_A, so it goes second
-  $key_ignore_H{"length"}      = 1; # will be inferred from coords
-  $key_ignore_H{"source_idx"}  = 1; # will be inferred from coords and type
-  $key_ignore_H{"parent_idx"}  = 1; # will be inferred from coords and type
-  $key_ignore_H{"3pa_ftr_idx"} = 1; # will be inferred from coords and type
-  $key_ignore_H{"5p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
-  $key_ignore_H{"3p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
-  $key_ignore_H{"location"}    = 1; # *could* (but won't be) inferred from coords
+  my @reqd_mdl_keys_A  = ("name", "cmfile");
+  my @reqd_ftr_keys_A  = ("type", "coords");
+  # validate all info first
+  $nmdl = arrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, mdl_info failed validation; missing required key(s)", $FH_HR);
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+    arrayOfHashesValidate(\@{$ftr_info_HAHR->{$mdl_name}}, \@reqd_ftr_keys_A, "ERROR in $sub_name, ftr_info failed validation; missing required key(s)", $FH_HR);
+  }
 
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    foreach $key (sort keys %{$ftr_info_AHR->[$ftr_idx]}) { 
-      if(! exists $key_ignore_H{$key}) { 
-        push(@key_order_A, $key);
-        $key_ignore_H{$key} = 1; 
+  # output 
+  open(OUT, ">", $out_file) || fileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+    print OUT ("MODEL $mdl_name");
+    foreach $key (sort keys (%{$mdl_info_AHR->[$mdl_idx]})) { 
+      $value = $mdl_info_AHR->[$mdl_idx]{$key};
+      if($key =~ m/\:/) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem writing $out_file, illegal ':' character in model key $key for model $mdl_name", 1, $FH_HR);
+      }
+      if($value =~ m/\"/) { 
+        DNAORG_FAIL("ERROR in $sub_name, problem writing $out_file, illegal '\"' character in model value $value for key $key for model $mdl_name", 1, $FH_HR);
+      }
+      if($key ne "name") { 
+        print OUT (" $key:\"$value\"");
       }
     }
-  }
+    print OUT ("\n");
 
-  open(OUT, ">", $out_file) || fileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
-  printf OUT ("MODEL %s cmfile:%s\n", $model, $cmfile);
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    printf OUT ("FEATURE %s", $model);
-    foreach $key (@key_order_A) { 
-      $value2print = (defined $ftr_info_AHR->[$ftr_idx]{$key}) ? $ftr_info_AHR->[$ftr_idx]{$key} : "";
-      if($value2print eq "") { $value2print = "-"; }
-      printf OUT ("\t%s:%s", $key, $value2print);
+    # define feature keys to ignore
+    my %ftr_key_ignore_H = ();
+    $ftr_key_ignore_H{"type"}        = 1; # this automatically gets added to @key_order_A, so it goes first
+    $ftr_key_ignore_H{"coords"}      = 1; # this automatically gets added to @key_order_A, so it goes second
+    $ftr_key_ignore_H{"length"}      = 1; # will be inferred from coords
+    $ftr_key_ignore_H{"source_idx"}  = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"parent_idx"}  = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"3pa_ftr_idx"} = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"5p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
+    $ftr_key_ignore_H{"3p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
+    $ftr_key_ignore_H{"location"}    = 1; # *could* (but won't be) inferred from coords
+
+    $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
+    # determine order of keys for this feature
+    my @ftr_key_order_A  = ("type", "coords");
+    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      foreach $key (sort keys %{$ftr_info_HAHR->{$mdl_name}[$ftr_idx]}) { 
+        if(! exists $ftr_key_ignore_H{$key}) { 
+          push(@ftr_key_order_A, $key);
+          $ftr_key_ignore_H{$key} = 1; 
+        }
+      }
     }
-    print OUT "\n";
+    
+    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      print OUT ("FEATURE $mdl_name");
+      foreach $key (@ftr_key_order_A) { 
+        if(exists $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key}) { 
+          $value = $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key};
+          if($key =~ m/\:/) { 
+            DNAORG_FAIL("ERROR in $sub_name, problem writing $out_file, illegal ':' character in feature key $key for model $mdl_name", 1, $FH_HR);
+          }
+          if($value =~ m/\"/) { 
+            DNAORG_FAIL("ERROR in $sub_name, problem writing $out_file, illegal '\"' character in feature value $value for key $key for model $mdl_name", 1, $FH_HR);
+          }
+          print OUT (" $key:\"$value\"");
+        }
+      }
+      print OUT ("\n");
+    }
   }
   close(OUT);
+
+  return;
+}
+
+#################################################################
+# Subroutine: modelInfoFileParse()
+# Incept:     EPN, Fri Mar 15 05:15:23 2019
+#
+# Synopsis: Parse a model info file for >= 1 models and collect 
+#           feature information for each model $model in 
+#           @{$ftr_info_HAHR->{$model}}.
+#
+#           The following keys must be defined for all features:
+#             "type":   feature type, e.g. "mat_peptide", "CDS"
+#             "coords": coordinates for this feature in the reference
+#           We verify this at end of subroutine
+# 
+# Arguments:
+#  $in_file:          input .minfo file to parse
+#  $mdl_info_AHR:     REF to array of hashes of model information, filled here
+#  $ftr_info_HAHR:    REF to hash of array of hashes with information 
+#                     on the features per model, filled here
+#  $reqd_mdl_keys_AR: REF to array of required keys read in MODEL lines
+#  $reqd_ftr_keys_AR: REF to array of required keys read in FEATURE lines
+#  $FH_HR:            REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if unable to parse $in_file
+#             if a feature is defined without "type" or "coords" keys
+#################################################################
+sub modelInfoFileParse {
+  my $sub_name = "modelInfoFileParse";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($in_file, $mdl_info_AHR, $ftr_info_HAHR, $reqd_mdl_keys_AR, $reqd_ftr_keys_AR, $FH_HR) = @_;
+  
+  my $format_str = "# DNAORG model info (.minfo) format specifications:\n";
+  $format_str   .= "# Lines prefixed with '#' are ignored.\n";
+  $format_str   .= "# All other lines must begin with either: 'MODEL' or 'FEATURE'\n";
+  $format_str   .= "# followed by one or more whitespace characters and then the model\n";
+  $format_str   .= "# name <modelname> which cannot include whitespace.\n";
+  $format_str   .= "# On each line after <modelname>, both MODEL and FEATURE lines must\n";
+  $format_str   .= "# contain 0 or more <key>:<value> pairs meeting the following criteria.\n";
+  $format_str   .= "# <key> must not include any whitespace or ':' characters\n";
+  $format_str   .= "# <value> must start *and* end with '\"' but include no other '\"'\n";
+  $format_str   .= "# characters (but <value> may include whitespace characters).\n";
+  $format_str   .= "# <key>:<value> pairs must be separated by one or more whitespace characters.\n";
+  $format_str   .= "# <modelname> and the first <key>:<value> pair must be separated by one or\n";
+  $format_str   .= "# more whitespace characters.\n";
+
+  # example lines:
+  #MODEL NC_039477 cmfile:"test/test.dnaorg_build.cm"
+  #FEATURE NC_039477 type:"gene" coords:"5..5104:+" gene:"ORF1"
+  #FEATURE NC_039477 type:"CDS" coords:"5..5104:+" gene:"ORF1" product:"nonstructural polyprotein"
+
+  my $mdl_name   = undef; # name of current model
+  my $ftr_idx    = undef; # index of current feature
+  my $mdl_idx    = -1;    # index of current model
+  my %mdl_read_H = ();    # keeps track of which model names we've seen MODEL lines for, to avoid duplicates
+  open(IN, $in_file) || fileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <IN>) { 
+    if($line !~ /^#/) { 
+      # not a comment line
+      my $orig_line = $line;
+      chomp $line;
+      my $is_model_line = 0; # set to 1 if line we are parsing is a MODEL line, else it's a FEATURE line
+      if($line =~ /^MODEL\s+(\S+)\s*/) { 
+        $mdl_name = $1;
+        if(exists $mdl_read_H{$mdl_name}) { 
+          DNAORG_FAIL("ERROR in $sub_name, problem parsing $in_file: read multiple MODEL lines for $mdl_name, should only be 1; line:\n$orig_line\n", 1, $FH_HR);
+        }
+        $mdl_idx++;
+        %{$mdl_info_AHR->[$mdl_idx]} = ();
+        @{$ftr_info_HAHR->{$mdl_name}} = ();
+        $mdl_info_AHR->[$mdl_idx]{"name"} = $mdl_name;
+        $mdl_read_H{$mdl_name} = 1;
+
+        $is_model_line = 1;
+        $line =~ s/^MODEL\s+(\S+)\s*//; # remove MODEL and model value
+      }
+      elsif($line =~ /^FEATURE\s+(\S+)\s*/) { 
+        $mdl_name = $1;
+        if(! exists $mdl_read_H{$mdl_name}) { 
+          DNAORG_FAIL("ERROR in $sub_name, problem parsing $in_file: read FEATURE line for model $mdl_name before a MODEL line for $mdl_name; line:\n$orig_line\n", 1, $FH_HR);
+        }
+        $ftr_idx = scalar(@{$ftr_info_HAHR->{$mdl_name}});
+        # initialize ftr_info for this model/feature pair
+        %{$ftr_info_HAHR->{$mdl_name}[$ftr_idx]} = (); 
+        $line =~ s/^FEATURE\s+\S+\s*//; # remove FEATURE and model value
+      }
+      else { 
+        DNAORG_FAIL("ERROR in $sub_name, problem parsing $in_file, non-comment line does not start with 'MODEL <modelname>' or 'FEATURE <featurename>', line:\n$orig_line\n", 1, $FH_HR);
+      }
+      # if we get here we have either a MODEL or FEATURE line, parse the rest of it
+      while($line ne "") { 
+        if($line =~ /^([^\:\s]+)\:\"([^\"]+)\"\s*/) { 
+          # key   must not include ':' or whitespace
+          # value must begin and end with '"' but otherwise include on '"' characters
+          my ($key, $value) = ($1, $2);
+          if($is_model_line) { 
+            if(exists $mdl_info_AHR->[$mdl_idx]{$key}) {
+              DNAORG_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", 1, $FH_HR);
+            }
+            $mdl_info_AHR->[$mdl_idx]{$key} = $value;
+          }
+          else { # feature line
+            if(exists $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key}) {
+              DNAORG_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", 1, $FH_HR);
+            }
+            $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} = $value;
+            # printf("\tadded ftr_info_HAR->{$mdl_name}[$ftr_idx]{$key} as $value\n");
+          }
+          $line =~ s/^[^\:\s]+\:\"[^\"]+\"\s*//; # remove this key/value pair
+        }
+        else { 
+          DNAORG_FAIL("ERROR in $sub_name, unable to parse $in_file, failed to parse key:value pairs in line:\n$orig_line\n$format_str\n", 1, $FH_HR);
+        }
+      } 
+    }
+  }
+  close(IN);
+
+  # verify we read what we need
+  arrayOfHashesValidate($mdl_info_AHR, $reqd_mdl_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    arrayOfHashesValidate($ftr_info_HAHR->{$mdl_name}, $reqd_ftr_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
+  }
 
   return;
 }

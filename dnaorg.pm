@@ -5329,7 +5329,7 @@ sub featureInfoImputeCoords {
   
   # ftr_info_AHR should already have array data for keys "type", "location"
   my @keys_A = ("type", "location");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, $FH_HR);
+  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_AHR->[$ftr_idx]{"coords"} = featureInfoCoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
@@ -5362,7 +5362,7 @@ sub featureInfoImputeLength {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, $FH_HR);
+  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine length by parsing the 
   # "coords" value
@@ -5404,7 +5404,7 @@ sub featureInfoImputeSourceIdx {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, $FH_HR);
+  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine duplicates (set 'source_idx')
   # 
@@ -5461,7 +5461,7 @@ sub featureInfoImputeParentIdx {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, $FH_HR);
+  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine parents (set 'parent_idx')
   # 
@@ -5552,7 +5552,7 @@ sub featureInfoImpute3paFtrIdx {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, $FH_HR);
+  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine adjacent mat_peptides (set '3pa_ftr_idx')
   # 
@@ -5646,7 +5646,7 @@ sub segmentInfoPopulate {
 
   # ftr_info_AHR should already have array data for keys "type", "coords", "source_idx"
   my @keys_A = ("type", "coords", "source_idx");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, $FH_HR);
+  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # initialize new %{$ftr_info_AHR} values
   my ($ftr_idx, $ftr_idx2, $sgm_idx, $sgm_idx2); # feature and segment indices
@@ -5753,6 +5753,7 @@ sub featureStartStopStrandArrays {
 # Arguments:
 #   $AHR:      REF to array of hashes to validate
 #   $keys_AR:  REF to array of keys that may be excluded from the hash
+#   $fail_str: extra string to output if we die
 #   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: scalar(@{$AHR});
@@ -5763,22 +5764,56 @@ sub featureStartStopStrandArrays {
 #################################################################
 sub arrayOfHashesValidate {
   my $sub_name = "arrayOfHashesValidate()";
-  my $nargs_expected = 3;
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($AHR, $keys_AR, $FH_HR) = (@_);
+  my ($AHR, $keys_AR, $fail_str, $FH_HR) = (@_);
 
   my $n = scalar(@{$AHR});
 
   for(my $i = 0; $i < $n; $i++) { 
-    foreach my $key (@{$keys_AR}) { 
-      if(! exists $AHR->[$i]{$key}) { 
-        DNAORG_FAIL("ERROR in $sub_name, array element $i does not have key $key\n"); 
-      }
-    }
+    hashValidate($AHR->[$i], $keys_AR, $fail_str, $FH_HR);
   }
 
   return $n;
+}
+
+
+#################################################################
+# Subroutine: hashValidate()
+# Incept:     EPN, Fri Mar 15 09:37:19 2019
+#
+# Purpose:    Validate a hash, by making sure a defined value
+#             exists for each key in @{$keys_AR}.
+# Arguments:
+#   $HR:       REF to the hash
+#   $keys_AR:  REF to array of keys that may be excluded from the hash
+#   $fail_str: extra string to output if we die
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: void
+#
+# Dies:    - if one of the keys in @{$keys_AR} does not exist in the hash
+#            of the array
+#
+#################################################################
+sub hashValidate {
+  my $sub_name = "hashValidate()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($HR, $keys_AR, $fail_str, $FH_HR) = (@_);
+
+  foreach my $key (@{$keys_AR}) { 
+    if(! exists $HR->{$key}) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, required hash key $key does not exist\n%s", (defined $fail_str) ? $fail_str : ""), 1, $FH_HR); 
+    }
+    if(! defined $HR->{$key}) { 
+      DNAORG_FAIL(sprintf("ERROR in $sub_name, required hash key $key exists but its value is undefined\n%s", (defined $fail_str) ? $fail_str : ""), 1, $FH_HR); 
+    }
+  }
+
+  return;
 }
 
 
@@ -6025,7 +6060,7 @@ sub featureInfoCountType {
 
 
 #################################################################
-# Subroutine: edirectFetchToFile()
+# Subroutine: eutilsFetchToFile()
 # Incept:     EPN, Tue Mar 12 12:18:37 2019
 #
 # Synopsis: Fetch information for an accession using edirect.
@@ -6041,15 +6076,15 @@ sub featureInfoCountType {
 #
 # Dies:       if there's a problem fetching the data
 #################################################################
-sub edirectFetchToFile { 
-  my $sub_name = "edirectFetchToFile";
+sub eutilsFetchToFile { 
+  my $sub_name = "eutilsFetchToFile";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($out_file, $accn, $format, $nattempts, $FH_HR) = @_;
   if((! defined $nattempts) || ($nattempts < 1)) { $nattempts = 1; }
 
-  my $url = edirectFetchUrl($accn, $format);
+  my $url = eutilsFetchUrl($accn, $format);
 
   my $n = 0;
   my $fetched_str = undef;
@@ -6070,7 +6105,7 @@ sub edirectFetchToFile {
 }
 
 #################################################################
-# Subroutine: edirectFetchUrl()
+# Subroutine: eutilsFetchUrl()
 # Incept:     EPN, Tue Mar 12 12:18:37 2019
 #
 # Synopsis: Return a url for an efetch command
@@ -6083,8 +6118,8 @@ sub edirectFetchToFile {
 #
 # Dies:       never
 #################################################################
-sub edirectFetchUrl { 
-  my $sub_name = "edirectFetchUrl";
+sub eutilsFetchUrl { 
+  my $sub_name = "eutilsFetchUrl";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -6371,6 +6406,38 @@ sub genbankStoreQualifierValue {
   return;
 }
 
+#################################################################
+# Subroutine : verifyEnvVariableIsValidDir()
+# Incept:      EPN, Wed Oct 25 10:09:28 2017 [ribo.pm]
+#
+# Purpose:     Verify that the environment variable $envvar exists 
+#              and that it is a valid directory. Return directory path.
+#              
+# Arguments: 
+#   $envvar:  environment variable
+#
+# Returns:    directory path $ENV{'$envvar'}
+#
+################################################################# 
+sub verifyEnvVariableIsValidDir { 
+  my $nargs_expected = 1;
+  my $sub_name = "verifyEnvVariableIsValidDir()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($envvar) = $_[0];
+
+  if(! exists($ENV{"$envvar"})) { 
+    die "ERROR, the environment variable $envvar is not set";
+    # it's okay this isn't ofile_FAIL because this is called before ofile_info_HH is set-up
+  }
+  my $envdir = $ENV{"$envvar"};
+  if(! (-d $envdir)) { 
+    die "ERROR, the directory specified by your environment variable $envvar does not exist.\n"; 
+    # it's okay this isn't ofile_FAIL because this is called before ofile_info_HH is set-up
+  }    
+
+  return $envdir;
+}
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value
