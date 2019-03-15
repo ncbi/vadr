@@ -5276,36 +5276,6 @@ sub featureInfoSummarizeSegment {
 }
 
 #################################################################
-# Subroutine: featureInfoImputeWrapper
-# Incept:     EPN, Thu Mar 14 12:08:52 2019
-# 
-# Purpose:    Call subroutines to add information to @{$ftr_info_AHR}.
-# 
-# Arguments:
-#   $ftr_info_AHR:   REF to feature information, added to here
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#
-#################################################################
-sub featureInfoImputeWrapper { 
-  my $sub_name = "featureInfoImputeCoords";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $FH_HR) = @_;
-  
-  featureInfoImputeCoords($ftr_info_AHR, $FH_HR);
-  featureInfoImputeLength($ftr_info_AHR, $FH_HR);
-  featureInfoImputeSourceIdx($ftr_info_AHR, $FH_HR);
-  featureInfoImputeParentIdx($ftr_info_AHR, $FH_HR);
-
-  return;
-}
-
-#################################################################
 # Subroutine: featureInfoImputeCoords
 # Incept:     EPN, Wed Mar 13 13:15:33 2019
 # 
@@ -6437,6 +6407,119 @@ sub verifyEnvVariableIsValidDir {
   }    
 
   return $envdir;
+}
+
+
+#################################################################
+# Subroutine: sqstringCapitalize
+# Incept:     EPN, Fri Mar 15 13:32:36 2019
+# 
+# Purpose:    Capitalize a string in place.
+# 
+# Arguments:
+#   $sqstring_R: REF to sequence string to capitalize
+#
+# Returns:    void
+# 
+# Dies:       never
+#
+#################################################################
+sub sqstringCapitalize {
+  my $sub_name = "sqstringCapitalize";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($sqstring_R) = @_;
+  
+  $$sqstring_R =~ tr/a-z/A-Z/;
+  return;
+}
+
+#################################################################
+# Subroutine: sqstringDnaize
+# Incept:     EPN, Fri Mar 15 13:33:39 2019
+# 
+# Purpose:    Convert a RNA/DNA sqstring to DNA.
+# 
+# Arguments:
+#   $sqstring_R: REF to sequence string to capitalize
+#
+# Returns:    void
+# 
+# Dies:       never
+#
+#################################################################
+sub sqstringDnaize {
+  my $sub_name = "sqstringDnaize";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($sqstring_R) = @_;
+  
+  $$sqstring_R =~ tr/Uu/Tt/;
+  return;
+}
+
+
+#################################################################
+# Subroutine: sqstringDiffSummary
+# Incept:     EPN, Fri Mar 15 13:35:28 2019
+# 
+# Purpose:    Return a string summarizes the differences between
+#             two sqstrings.
+# 
+# Arguments:
+#   $sqstring1: sqstring 1
+#   $sqstring2: sqstring 2
+#
+# Returns:    String with N newlines for N differences.
+#             "" if sqstrings are identical.
+# 
+# Dies:       never
+#
+#################################################################
+sub sqstringDiffSummary {
+  my $sub_name = "sqstringDiffSummary";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($sqstring1, $sqstring2) = @_;
+
+  if(! defined $sqstring1) { 
+    return "sequence 1 is undefined\n"; 
+  }
+  if(! defined $sqstring2) { 
+    return "sequence 2 is undefined\n"; 
+  }
+  sqstringCapitalize(\$sqstring1);
+  sqstringCapitalize(\$sqstring2);
+  sqstringDnaize(\$sqstring1);
+  sqstringDnaize(\$sqstring2);
+  if($sqstring1 eq $sqstring2) { 
+    return "";
+  }
+  my $n1 = length($sqstring1); 
+  my $n2 = length($sqstring2); 
+  if($n1 != $n2) {
+    return "sequence lengths mismatch ($n1 != $n2)\n"; 
+  }
+  my $ret_str = "";
+  my @sqstring1_A = split("", $sqstring1); 
+  my @sqstring2_A = split("", $sqstring2); 
+  my $n = ($n1 > $n2) ? $n1 : $n2;
+  for(my $i = 0; $i < $n; $i++) { 
+    if($i >= $n1) { 
+      $ret_str .= " char " . ($i+1) . " seq1: off-end seq2: " . $sqstring2_A[$i] . "\n";
+    }
+    elsif($i >= $n2) { 
+      $ret_str .= " char " . ($i+1) . " seq1: " . $sqstring1_A[$i] . " seq2: off-end\n";
+    }
+    elsif($sqstring1_A[$i] ne $sqstring2_A[$i]) { 
+      $ret_str .= " char " . ($i+1) . " seq1: " . $sqstring1_A[$i] . " seq2: " . $sqstring2_A[$i] . "\n";
+    }
+  }
+
+  return $ret_str;
 }
 
 ###########################################################################
