@@ -71,7 +71,7 @@ opt_Add("-m",           "boolean", 0,                        1,    undef, undef,
 opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"1"} = "options related to alternative modes:";
+$opt_group_desc_H{"2"} = "options related to alternative modes:";
 #       option          type       default                group  requires incompat        preamble-output                                            help-output    
 opt_Add("--stk",        "string",  undef,                    2,    undef,  undef,         "read stockholm alignment with >= 1 sequences from <s>",   "read stockholm alignment with >= 1 sequences from <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--gb",         "string",  undef,                    2,    undef, "-m",           "read genbank file from <s>, don't fetch it",              "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
@@ -82,9 +82,13 @@ $opt_group_desc_H{"3"} = "optional output files";
 opt_Add("--ftrinfo",    "boolean", 0,                        3,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
 opt_Add("--sgminfo",    "boolean", 0,                        3,    undef, undef, "output internal segment information",   "create file with internal segment information",   \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"4"} = "options for controlling cmbuild step";
+$opt_group_desc_H{"4"} = "options for controlling CDS translation step";
 #     option          type       default         group   requires    incompat   preamble-output                                             help-output    
-opt_Add("--cmn",      "integer", 0,                  4,   undef,     undef,     "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--ttbl",     "integer", 1,                  4,   undef,     undef,     "use NCBI translation table <n> to translate CDS",          "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{"5"} = "options for controlling cmbuild step";
+#     option          type       default         group   requires    incompat   preamble-output                                             help-output    
+opt_Add("--cmn",      "integer", 0,                  5,   undef,     undef,     "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--cmp7ml",   "boolean", 0,                  4,   undef,     undef,     "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
 opt_Add("--cmere",    "real",    0,                  4,   undef,     undef,     "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
 opt_Add("--cmeset",   "real",    0,                  4,   undef,     "--cmere", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
@@ -108,6 +112,8 @@ my $options_okay =
 # optional output files
                 'sgminfo'      => \$GetOptions_H{"--sgminfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"},
+# options for controlling CDS translation step
+                'ttbl=s'       => \$GetOptions_H{"--ttbl"},
 # options for controlling cmbuild step
                 'cmn=s'        => \$GetOptions_H{"--cmn"},
                 'cmp7ml'       => \$GetOptions_H{"--cmp7ml"},
@@ -150,7 +156,6 @@ if(opt_Get("--onlyurl", \%opt_HH)) {
   print eutilsFetchUrl($acc_or_minfo, "gb") . "\n";
   exit 0;
 }
-
 
 #############################
 # create the output directory
@@ -235,6 +240,7 @@ validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 # -m option, makes first cmdline arg the model info file
 my $in_minfo_file = opt_Get("-m", \%opt_HH) ? $acc_or_minfo : undef;
 my $mdl_name = undef;
+my $mdl_len  = undef;
 my @mdl_info_AH  = (); # array of hashes with model info
 my %ftr_info_HAH = (); # array of hashes with feature info 
 if(defined $in_minfo_file) { 
@@ -243,9 +249,7 @@ if(defined $in_minfo_file) {
   if(  -d $in_minfo_file) { DNAORG_FAIL("ERROR, -m enabled, model info file $in_minfo_file is actually a directory", 1, $FH_HR); }
 
   # set required keys for models and features
-  my @reqd_mdl_keys_A = ("name");
-  my @reqd_ftr_keys_A = ("type", "coords");
-  modelInfoFileParse($in_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, undef);
+  modelInfoFileParse($in_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
   # ensure we read info only a single model from the input file
   if(scalar(@mdl_info_AH) == 0) { DNAORG_FAIL("ERROR did not read info for any models in $in_minfo_file", 1, $FH_HR); }
   if(scalar(@mdl_info_AH) > 1)  { DNAORG_FAIL("ERROR read info for multiple models in $in_minfo_file, it must have info for only 1 model", 1, $FH_HR); }
@@ -253,9 +257,11 @@ if(defined $in_minfo_file) {
     DNAORG_FAIL("ERROR did not read name of model in $in_minfo_file", 1, $FH_HR);
   }
   $mdl_name = $mdl_info_AH[0]{"name"};
+  $mdl_len  = $mdl_info_AH[0]{"length"};
 }
 else { 
   $mdl_name = $acc_or_minfo;
+  $mdl_len  = undef; 
 }
 
 ###########################################################
@@ -286,10 +292,11 @@ else {
 #########################################
 my %seq_info_HH  = ();
 my $gb_sqstring = undef;
-if(defined $gb_file) { 
+if(! opt_IsUsed("-m", \%opt_HH)) { 
   $start_secs = outputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
   genbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
   $gb_sqstring = $seq_info_HH{$mdl_name}{"seq"};
+  $mdl_len     = $seq_info_HH{$mdl_name}{"len"};
   if(! defined $gb_sqstring) { 
     DNAORG_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", 1, $FH_HR);
   }
@@ -332,11 +339,54 @@ if(defined $gb_file) {
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
-###################################################################################################
-# Finish populating @{$ftr_info_HAH{$mdl_name} and create @sgm_info_AH and output model info file
-###################################################################################################
+#####################################################################
+# Parse the input stockholm file (if --stk) or create it (if ! --stk)
+#####################################################################
+my $stk_file = $out_root . ".stk";
+my $fa_file  = $out_root . ".fa";
+my $stk_mdl_len = undef; 
+my $in_stk_file = opt_Get("--stk", \%opt_HH);
+if(defined $in_stk_file) { 
+  $start_secs  = outputProgressPrior("Validating input Stockholm file", $progress_w, $log_FH, *STDOUT);
+  $stk_mdl_len = stockholm_validate_input($in_stk_file, $gb_sqstring, \%opt_HH, $FH_HR);
+  if($stk_mdl_len != $mdl_len) { 
+    DNAORG_FAIL(sprintf("ERROR, model length inferred from stockholm alignment ($stk_mdl_len) does not match length read from %s ($mdl_len)", 
+                        (opt_IsUsed("-m", \%opt_HH) ? "model info file" : "GenBank file")), 1, $FH_HR);
+  }
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  
+  $start_secs = outputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
+  runCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  reformat_stockholm_file_to_unaligned_fasta_file($execs_H{"esl-reformat"}, $stk_file, $fa_file, \%opt_HH, $FH_HR);
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+else { 
+  # --stk not used, we create it by first making a fasta file
+  # of the single sequence, then converting it to a stockholm file
+  $start_secs = outputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
+  openAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
+  print_sequence_to_fasta_file($ofile_info_HH{"FH"}{"fasta"}, 
+                               $seq_info_HH{$mdl_name}{"ver"}, 
+                               $seq_info_HH{$mdl_name}{"def"}, 
+                               $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
+  close $ofile_info_HH{"FH"}{"fasta"};
+  my $gb_mdl_len = $seq_info_HH{$mdl_name}{"len"};
+  if((defined $mdl_len) && ($mdl_len != $gb_mdl_len)) { 
+    DNAORG_FAIL("ERROR, model length from GenBank file $gb_file ($stk_mdl_len) does not match what was read from model info file ($mdl_len)", 1, $FH_HR);
+  }
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  
 
-$start_secs = outputProgressPrior("Creating model info file", $progress_w, $log_FH, *STDOUT);
+  $start_secs = outputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
+  reformat_fasta_file_to_stockholm_file($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
+  addClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
+  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
+######################################################################
+# Finish populating @{$ftr_info_HAH{$mdl_name} and create @sgm_info_AH
+######################################################################
+$start_secs = outputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
 
 # remove any features that are not of the type that we care about
 # and from the features we do care about, remove keys we don't care about
@@ -355,55 +405,13 @@ featureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 my @sgm_info_AH = (); # segment info, inferred from feature info
 segmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
-my $minfo_file  = $out_root . ".minfo";
-my $cm_file     = $out_root . ".cm";
+# initialize mdl_info_AH
 if(scalar(@mdl_info_AH) == 0) { # initialize
   %{$mdl_info_AH[0]} = ();
   $mdl_info_AH[0]{"name"} = $mdl_name;
 }
-$mdl_info_AH[0]{"cmfile"} = $cm_file;
-modelInfoFileWrite($minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
-addClosedFileToOutputInfo(\%ofile_info_HH, "minfo", $minfo_file, 1, "GenBank format file for $mdl_name");
 
 outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-###########################################
-# Parse the input stockholm file (if --stk)
-###########################################
-my $stk_file = $out_root . ".stk";
-my $fa_file  = $out_root . ".fa";
-
-my $in_stk_file   = opt_Get("--stk", \%opt_HH);
-my $in_stk_nseq   = 0; # number of seqs in input stockholm alignment 
-my $in_stk_has_rf = 0; # does our input stockholm alignment have RF annotation? 
-my $in_stk_has_ss = 0; # does our input stockholm alignment have SS_cons annotation? 
-if(defined $in_stk_file) { 
-  $start_secs = outputProgressPrior("Validating input Stockholm file", $progress_w, $log_FH, *STDOUT);
-  ($in_stk_nseq, $in_stk_has_rf, $in_stk_has_ss) = stockholm_validate_input($in_stk_file, $gb_sqstring, \%opt_HH, $FH_HR);
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-  $start_secs = outputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
-  runCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  reformat_stockholm_file_to_unaligned_fasta_file($execs_H{"esl-reformat"}, $stk_file, $fa_file, \%opt_HH, $FH_HR);
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
-else { 
-  # --stk not used, we create it by first making a fasta file
-  # of the single sequence, then converting it to a stockholm file
-  $start_secs = outputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
-  print_sequence_to_fasta_file($ofile_info_HH{"FH"}{"fasta"}, 
-                               $seq_info_HH{$mdl_name}{"ver"}, 
-                               $seq_info_HH{$mdl_name}{"def"}, 
-                               $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
-  close $ofile_info_HH{"FH"}{"fasta"};
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-  $start_secs = outputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
-  reformat_fasta_file_to_stockholm_file($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
-  addClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
 
 ###################
 # Translate the CDS
@@ -414,18 +422,39 @@ if($ncds > 0) {
 
   my $cds_fa_file  = $out_root . ".cds.fa";
   openAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
-  fetch_cds_to_fasta_file($ofile_info_HH{"FH"}{"cdsfasta"}, $fa_file, $seq_info_HH{$mdl_name}{"ver"}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  fetch_cds_to_fasta_file($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   close $ofile_info_HH{"FH"}{"cdsfasta"};
   
   my $protein_fa_file  = $out_root . ".protein.fa";
   openAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
   translate_cds_to_fasta_file($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
-                              $out_root, $seq_info_HH{$mdl_name}{"ver"}, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
+                              $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
 
   create_blast_protein_db($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+
+  # add to mdl_info_AH
+  $mdl_info_AH[0]{"blastdb"} = $protein_fa_file;
+  if((opt_IsUsed("--ttbl", \%opt_HH)) && (opt_Get("--ttbl", \%opt_HH) != 1))  { 
+    $mdl_info_AH[0]{"transl_table"} = opt_Get("--ttbl", \%opt_HH);
+  }
+
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
+
+########################
+# Output model info file
+########################
+$start_secs = outputProgressPrior("Creating model info file", $progress_w, $log_FH, *STDOUT);
+
+my $minfo_file  = $out_root . ".minfo";
+my $cm_file     = $out_root . ".cm";
+$mdl_info_AH[0]{"cmfile"} = $cm_file;
+$mdl_info_AH[0]{"length"} = $mdl_len;
+modelInfoFileWrite($minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+addClosedFileToOutputInfo(\%ofile_info_HH, "minfo", $minfo_file, 1, "GenBank format file for $mdl_name");
+
+outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ##############
 # Build the CM
@@ -467,15 +496,18 @@ exit 0;
 # Subroutine: fetch_cds_to_fasta_file()
 # Incept:     EPN, Thu Mar 14 12:30:33 2019
 # 
-# Purpose:    Fetch the protein translations of the CDS for the genome
-#             and create multiple N+1 FASTA files, one with each
-#             single sequence (N) and one with all sequences.
-#             Fill @{$fa_file_AR} with the sequence file names.
+# Purpose:    Given coordinates of all CDS features in %{$ftr_info_AHR}
+#             fetch all the CDS for all sequences in the Stockholm alignment
+#             and create a new output fasta file with just the CDS features.
+#
+#             We don't really need both the stockholm and fasta file 
+#             if there are no gaps in the stockholm alignment (as is the
+#             case if there's a single sequence), but this implementation
+#             works for alignments with gaps too.
 #
 # Arguments:
 #   $out_FH:         output file handle
-#   $fa_file:        fasta file with full length sequence of sequence $seqname
-#   $seq_name:       sequence to fetch CDS from
+#   $stk_file:       stockholm file with aligned full length sequences
 #   $ftr_info_AHR:   REF to the feature info, pre-filled
 #   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
 #                    
@@ -486,25 +518,41 @@ exit 0;
 #################################################################
 sub fetch_cds_to_fasta_file { 
   my $sub_name = "fetch_cds_to_fasta_file";
-  my $nargs_expected = 5;
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_FH, $fa_file, $seq_name, $ftr_info_AHR, $FH_HR) = @_;
+  my ($out_FH, $stk_file, $ftr_info_AHR, $FH_HR) = @_;
 
-  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1});
+  my $msa_has_rf = $msa->has_rf;
+
+  # precompute start, stop, strand, for all features, so we don't have to redo this for each seq
+  my @sgm_start_AA  = ();
+  my @sgm_stop_AA   = ();
+  my @sgm_strand_AA = ();
+  featureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
+
   my $nftr = scalar(@{$ftr_info_AHR});
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
-      my $cds_sqstring = "";
-      my @start_A = ();
-      my @stop_A = ();
-      my @strand_A = ();
-      featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, \@strand_A, $FH_HR);
-      foreach(my $sgm_idx = 0; $sgm_idx < scalar(@start_A); $sgm_idx++) { 
-        $cds_sqstring .= $sqfile->fetch_subseq_to_sqstring($seq_name, $start_A[$sgm_idx], $stop_A[$sgm_idx], -1, ($strand_A[$sgm_idx] eq "-") ? 1 : 0);
+  my $nseq = $msa->nseq;
+  my $ftr_idx = undef; # feature index
+  my $seq_idx = undef; # feature index
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+        my $cds_sqstring = "";
+        foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AA[$ftr_idx]}); $sgm_idx++) { 
+          my $rfstart = $sgm_start_AA[$ftr_idx][$sgm_idx];
+          my $rfstop  = $sgm_stop_AA[$ftr_idx][$sgm_idx];
+          my $astart  = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstart) : $rfstart;
+          my $astop   = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstop)  : $rfstop;
+          my $sgm_sqstring = $msa->get_sqstring_unaligned_and_truncated($seq_idx, $astart, $astop);
+          if($sgm_strand_AA[$ftr_idx][$sgm_idx] eq "-") { 
+            sqstringReverseComplement(\$sgm_sqstring);
+          }
+          $cds_sqstring .= $sgm_sqstring;
+        }
+        print $out_FH(">" . $msa->get_sqname($seq_idx) . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n" . sqstringAddNewlines($cds_sqstring, 60));
       }
-      print $out_FH(">" . $seq_name . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n" . sqstringAddNewlines($cds_sqstring, 60));
     }
   }
   return;
@@ -523,7 +571,6 @@ sub fetch_cds_to_fasta_file {
 #   $esl_translate:  path to esl-translate executable
 #   $cds_fa_file:    fasta file with CDS sequences
 #   $out_root:       string that is the 'root' for naming output files
-#   $seq_name:       sequence to fetch CDS from
 #   $ftr_info_AHR:   REF to the feature info, pre-filled
 #   $opt_HHR:        command line options
 #   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
@@ -534,15 +581,19 @@ sub fetch_cds_to_fasta_file {
 #
 #################################################################
 sub translate_cds_to_fasta_file { 
-  my $sub_name = "fetch_and_translate_proteins_into_fasta_files";
-  my $nargs_expected = 8;
+  my $sub_name = "translate_cds_to_fasta_files";
+  my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_FH, $esl_translate, $cds_fa_file, $out_root, $seq_name, $ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+  my ($out_FH, $esl_translate, $cds_fa_file, $out_root, $ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
 
   my $tmp1_translate_fa_file = $out_root . ".cds.esl-translate.1.fa";
   my $tmp2_translate_fa_file = $out_root . ".cds.esl-translate.2.fa";
-  my $translate_cmd = "$esl_translate -M -l 3 --watson $cds_fa_file > $tmp1_translate_fa_file";
+  my $c_opt = "";
+  if((opt_IsUsed("--ttbl", $opt_HHR)) && (opt_Get("--ttbl", $opt_HHR) != 1)) { 
+    $c_opt = "-c " . opt_Get("--ttbl", $opt_HHR);
+  }
+  my $translate_cmd = "$esl_translate $c_opt -M -l 3 --watson $cds_fa_file > $tmp1_translate_fa_file";
   runCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   # go through output fasta file and rewrite names, so we can fetch 
@@ -569,19 +620,22 @@ sub translate_cds_to_fasta_file {
 
   # $tmp2_translate_fa_file now includes renamed translated sequences from esl-translate
   # fetch expected translated seqs and print to $out_FH
-  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $tmp2_translate_fa_file }); # the sequence file object
-  
+  my $cds_sqfile     = Bio::Easel::SqFile->new({ fileLocation => $cds_fa_file });
+  my $protein_sqfile = Bio::Easel::SqFile->new({ fileLocation => $tmp2_translate_fa_file });
+
   my $nftr = scalar(@{$ftr_info_AHR});
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
-      my $fetch_name = "source=" . $seq_name . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . ",coords=1.." . ($ftr_info_AHR->[$ftr_idx]{"length"} - 3); # subtract length of stop codon
-      if(! $sqfile->check_seq_exists($fetch_name)) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, problem translating CDS feature (coords: %s)\n", $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
+  for(my $seq_idx = 0; $seq_idx < $cds_sqfile->nseq_ssi; $seq_idx++) { 
+    my ($seq_name, $seq_length) = $cds_sqfile->fetch_seq_name_and_length_given_ssi_number($seq_idx);
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+        my $fetch_name = "source=" . $seq_name . ",coords=1.." . ($seq_length - 3); # subtract length of stop codon
+        if(! $protein_sqfile->check_seq_exists($fetch_name)) { 
+          DNAORG_FAIL(sprintf("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\tftr_idx: $ftr_idx\n\tcoords: %s\n\texpected sequence:$fetch_name\n", $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
+        }
+        print $out_FH $protein_sqfile->fetch_seq_to_fasta_string($fetch_name, 60);
       }
-      print $out_FH $sqfile->fetch_seq_to_fasta_string($fetch_name, 60);
     }
   }
-
   # remove temporary files unless --keep
   if(! opt_Get("--keep", $opt_HHR)) { 
     removeFileUsingSystemRm($tmp1_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
@@ -655,13 +709,18 @@ sub modelInfoFileWrite {
   my $key      = undef; # a hash key
   my $value    = undef; # a hash value
 
-  my @reqd_mdl_keys_A  = ("name", "cmfile");
+  my @reqd_mdl_keys_A  = ("name", "cmfile", "length");
   my @reqd_ftr_keys_A  = ("type", "coords");
   # validate all info first
   $nmdl = arrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, mdl_info failed validation; missing required key(s)", $FH_HR);
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
     arrayOfHashesValidate(\@{$ftr_info_HAHR->{$mdl_name}}, \@reqd_ftr_keys_A, "ERROR in $sub_name, ftr_info failed validation; missing required key(s)", $FH_HR);
+  }
+
+  # verify feature coords make sense
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    featureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
   }
 
   # output 
@@ -747,8 +806,6 @@ sub modelInfoFileWrite {
 #  $mdl_info_AHR:     REF to array of hashes of model information, filled here
 #  $ftr_info_HAHR:    REF to hash of array of hashes with information 
 #                     on the features per model, filled here
-#  $reqd_mdl_keys_AR: REF to array of required keys read in MODEL lines
-#  $reqd_ftr_keys_AR: REF to array of required keys read in FEATURE lines
 #  $FH_HR:            REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
@@ -758,10 +815,10 @@ sub modelInfoFileWrite {
 #################################################################
 sub modelInfoFileParse {
   my $sub_name = "modelInfoFileParse";
-  my $nargs_expected = 6;
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($in_file, $mdl_info_AHR, $ftr_info_HAHR, $reqd_mdl_keys_AR, $reqd_ftr_keys_AR, $FH_HR) = @_;
+  my ($in_file, $mdl_info_AHR, $ftr_info_HAHR, $FH_HR) = @_;
   
   my $format_str = "# DNAORG model info (.minfo) format specifications:\n";
   $format_str   .= "# Lines prefixed with '#' are ignored.\n";
@@ -850,12 +907,18 @@ sub modelInfoFileParse {
   close(IN);
 
   # verify we read what we need
-  arrayOfHashesValidate($mdl_info_AHR, $reqd_mdl_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
+  my @reqd_mdl_keys_A = ("name", "length");
+  my @reqd_ftr_keys_A = ("type", "coords");
+  arrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
   my $nmdl = scalar(@{$mdl_info_AHR});
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    arrayOfHashesValidate($ftr_info_HAHR->{$mdl_name}, $reqd_ftr_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
+    arrayOfHashesValidate($ftr_info_HAHR->{$mdl_name}, \@reqd_ftr_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
   }
 
+  # verify feature coords make sense
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    featureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
+  }
   return;
 }
 
@@ -970,10 +1033,10 @@ sub reformat_stockholm_file_to_unaligned_fasta_file {
 #  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
 #  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    3 values:
-#             $nseq:   number of sequences in the alignment
-#             $has_rf: '1' if alignment has RF annotation, else '0'
-#             $has_ss: '1' if alignment has SS_cons annotation, else '0'
+# Returns:    Length of the model that will be built from this alignment.
+#             If RF annotation exists, we will use cmbuild --hand so we return nongap RF length
+#             If RF annotation does not exist, we verify that there is only 1 sequence and no gaps
+#             so we return alignment length
 #
 # Dies:       if there's a problem parsing the file or 
 #             a requirement is not met
@@ -996,12 +1059,8 @@ sub stockholm_validate_input {
   if(! -e $in_stk_file) { DNAORG_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file does not exist", 1, $FH_HR); }
   if(! -s $in_stk_file) { DNAORG_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file exists but is empty", 1, $FH_HR); }
   if(  -d $in_stk_file) { DNAORG_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file is actually a directory", 1, $FH_HR); }
-  my $msa = Bio::Easel::MSA->new({
-    fileLocation => $in_stk_file, 
-    isDna => 1});
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $in_stk_file, isDna => 1});
   my $nseq = $msa->nseq;
-  my $in_stk_has_rf = $msa->has_rf;
-  my $in_stk_has_ss = $msa->has_ss_cons;
   if($nseq > 1) { 
     # multiple sequences in the alignment
     # this only works if -m was used
@@ -1035,6 +1094,14 @@ sub stockholm_validate_input {
     DNAORG_FAIL("ERROR, did not read any sequence data in --stk file $in_stk_file", 1, $FH_HR);
   }
 
-  return ($nseq, $in_stk_has_rf, $in_stk_has_ss);
+  # determine return value
+  my $ret_mdl_len = undef;
+  if($msa->has_rf) { 
+    $ret_mdl_len = $msa->get_rflen;
+  }
+  else { # no RF annotation, we checked above there was a single sequence with zero gaps
+    $ret_mdl_len = $msa->alen;
+  }
+  return $ret_mdl_len;
 }
 

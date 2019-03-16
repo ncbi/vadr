@@ -5663,6 +5663,53 @@ sub segmentInfoPopulate {
 }
 
 #################################################################
+# Subroutine: featureInfoStartStopStrandArrays()
+# Incept:     EPN, Fri Mar 15 15:39:35 2019
+#
+# Synopsis: For all features in a @{$ftr_info_AHR}, validate 
+#           "coords" values and fill @{$start_AAR}, @{$stop_AAR} and
+#           @{$strand_AAR} based on them.
+# 
+# Arguments:
+#  $ftr_AHR:       REF to the feature info array of hashes
+#  $start_AAR:     REF to array of start position array to fill here, FILLED here, can be undef
+#  $stop_AAR:      REF to array of stop position array to fill here, FILLED here, can be undef
+#  $strand_AAR:    REF to array of strand array to fill here with "+" or "-", FILLED here, can be undef
+#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords_str
+#
+#################################################################
+sub featureInfoStartStopStrandArrays {
+  my $sub_name = "featureInfoStartStopStrandArrays";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $start_AAR, $stop_AAR, $strand_AAR, $FH_HR) = @_;
+
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  my @start_AA  = ();
+  my @stop_AA   = ();
+  my @strand_AA = ();
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    @{$start_AA[$ftr_idx]}  = ();
+    @{$stop_AA[$ftr_idx]}   = ();
+    @{$strand_AA[$ftr_idx]} = ();
+    featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@{$start_AA[$ftr_idx]}, \@{$stop_AA[$ftr_idx]}, \@{$strand_AA[$ftr_idx]}, $FH_HR);
+  }
+  if(defined $start_AAR)  { @{$start_AAR}   = @start_AA;   }
+  if(defined $stop_AAR)   { @{$stop_AAR}    = @stop_AA;    }
+  if(defined $strand_AAR) { @{$strand_AAR}  = @strand_AA;  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: featureStartStopStrandArrays()
 # Incept:     EPN, Sat Mar  9 05:50:10 2019
 #
@@ -6026,6 +6073,52 @@ sub featureInfoCountType {
   }
   
   return $ntype;
+}
+
+#################################################################
+# Subroutine: featureInfoValidateCoords
+# Incept:     EPN, Fri Mar 15 14:31:36 2019
+# 
+# Purpose:    Validate that "coords" values are in the proper
+#             format and all less than or equal to $length.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $length:        type we are interested in
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       If a "coords" value is in the incorrect format or
+#             if a position in a "coords" value exceeds $length
+#
+#################################################################
+sub featureInfoValidateCoords { 
+  my $sub_name = "featureInfoValidateCoords";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $length, $FH_HR) = @_;
+
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $fail_str = ""; # added to if any elements are out of range
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my @start_A  = (); # array of starts, one per segment
+    my @stop_A   = (); # array of stops, one per segment
+    # this sub will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
+    featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, undef, $FH_HR); 
+    foreach my $start (@start_A) { if($start > $length) { $fail_str .= "ftr_idx: $ftr_idx, start position $start > $length\n"; } }
+    foreach my $stop  (@stop_A)  { if($stop  > $length) { $fail_str .= "ftr_idx: $ftr_idx, stop  position $stop  > $length\n"; } }
+  }
+
+  if($fail_str ne "") { 
+    DNAORG_FAIL("ERROR in $sub_name, some coordinates exceed model length ($length):\n$fail_str\n", 1, $FH_HR);
+  }
+  
+  return;
 }
 
 
@@ -6439,7 +6532,7 @@ sub sqstringCapitalize {
 # Subroutine: sqstringDnaize
 # Incept:     EPN, Fri Mar 15 13:33:39 2019
 # 
-# Purpose:    Convert a RNA/DNA sqstring to DNA.
+# Purpose:    Convert a RNA/DNA sqstring to DNA in place.
 # 
 # Arguments:
 #   $sqstring_R: REF to sequence string to capitalize
@@ -6457,6 +6550,40 @@ sub sqstringDnaize {
   my ($sqstring_R) = @_;
   
   $$sqstring_R =~ tr/Uu/Tt/;
+  return;
+}
+
+
+#################################################################
+# Subroutine: sqstringReverseComplement
+# Incept:     EPN, Fri Mar 15 15:35:10 2019
+# 
+# Purpose:    Reverse complement a RNA/DNA sqstring in place.
+# 
+# Arguments:
+#   $sqstring_R: REF to reverse complement
+#
+# Returns:    void
+# 
+# Dies:       never
+#
+#################################################################
+sub sqstringReverseComplement {
+  my $sub_name = "sqstringReverseComplement";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($sqstring_R) = @_;
+
+  # DNA-ize it
+  sqstringDnaize($sqstring_R);
+  # reverse it 
+  $$sqstring_R = reverse $$sqstring_R;
+  # complement it
+  $$sqstring_R =~ tr/ACGTRYMKHBVDacgtrymkhbvd/TGCAYRKMDVBHtgcayrkmdvbh/;
+  # see esl_alphabet.c::set_complementarity()
+  # note that S, W, N are omitted as they are their own complements
+
   return;
 }
 
