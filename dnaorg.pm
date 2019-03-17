@@ -6808,10 +6808,14 @@ sub cdsTranslateToFastaFile {
 # Subroutine: modelInfoFileWrite()
 # Incept:     EPN, Sat Mar  9 05:27:15 2019
 #
-# Synopsis: Output a model info file for model $mdlname based on 
-#           feature information in @{$ftr_info_AHR}.
+# Synopsis: Output a model info file for all models in @{$mdl_info_AHR}
+#           and features in %{$ftr_info_HAHR}.
 #
-#           The following values must be set in @{$ftr_info_AHR}:
+#           The following keys must be set in %{$mdl_info_AHR->[*]}:
+#             "name":   name of the model
+#             "length": length of the model
+#
+#           The following keys must be set in %{$ftr_info_HAHR->{*}[*]}:
 #             "type":   feature type, e.g. "mat_peptide", "CDS"
 #             "coords": coordinates for this feature in the reference
 #
@@ -6840,7 +6844,7 @@ sub modelInfoFileWrite {
   my $key      = undef; # a hash key
   my $value    = undef; # a hash value
 
-  my @reqd_mdl_keys_A  = ("name", "cmfile", "length");
+  my @reqd_mdl_keys_A  = ("name", "length");
   my @reqd_ftr_keys_A  = ("type", "coords");
   # validate all info first
   $nmdl = arrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, mdl_info failed validation; missing required key(s)", $FH_HR);

@@ -72,23 +72,44 @@ my $g = 0; # option group
 $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default  group   requires incompat     preamble-output                                                help-output    
 opt_Add("-h",           "boolean", 0,           0,    undef, undef,       undef,                                                         "display this help",                                   \%opt_HH, \@opt_order_A);
+opt_Add("-g",           "string", 0,           $g,    undef, undef,       "define model group for model info file as <s>",               "define model group for model info file as <s>", \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,          $g,    undef, undef,       "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--stk",        "string",  undef,      $g,    undef,  undef,      "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--gb",         "string",  undef,      $g,    undef,  undef,      "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
-opt_Add("--onlyurl",    "boolean", 0,          $g,    undef,"--stk,--gb", "output genbank file url for accession and exit",              "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,          $g,    undef, undef,       "leave intermediate files on disk",                            "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file";
+#     option            type       default  group   requires incompat     preamble-output                                                 help-output    
+opt_Add("--fall",       "boolean", 0,          $g,    undef,  undef,      "store info for all feature types",                             "store info for all feature types", \%opt_HH, \@opt_order_A);
+opt_Add("--fadd",       "string",  undef,      $g,    undef,"--fall",     "also store features types in comma separated string <s>",      "also store feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--fnocds",     "boolean", 0,          $g,    undef,"--fall",     "do not store info for CDS features",                           "do not store info for CDS features", \%opt_HH, \@opt_order_A);
+opt_Add("--fnogene",    "boolean", 0,          $g,    undef,"--fall",     "do not store info for gene features",                          "do not store info for gene features", \%opt_HH, \@opt_order_A);
+opt_Add("--fnomp",      "boolean", 0,          $g,    undef,"--fall",     "do not store info for mat_peptide features",                   "do not store info for mat_peptide features", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file";
+#     option            type       default  group   requires incompat     preamble-output                                                 help-output    
+opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers",                                "store info for all qualifiers", \%opt_HH, \@opt_order_A);
+opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>", "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--qnoproduct", "boolean",  0,        $g,    undef,"--qall",      "do not store info for product qualifier",                      "do not store info for product qualifier", \%opt_HH, \@opt_order_A);
+opt_Add("--qnogene",    "boolean",  0,        $g,    undef,"--qall",      "do not store info for gene qualifier",                         "do not store info for gene qualifier", \%opt_HH, \@opt_order_A);
+opt_Add("--qnoexc",     "boolean",  0,        $g,    undef,"--qall",      "do not store info for exception qualifier",                    "do not store info for exception features", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling CDS translation step";
 #     option          type       default    group   requires    incompat   preamble-output                                             help-output    
-opt_Add("--ttbl",     "integer", 1,            $g,  undef,      undef,     "use NCBI translation table <n> to translate CDS",          "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
+opt_Add("--ttbl",     "integer", 1,            $g,  undef,    "--fnocds",  "use NCBI translation table <n> to translate CDS",          "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmbuild step";
 #     option          type       default    group   requires    incompat   preamble-output                                             help-output    
-opt_Add("--cmn",      "integer", 0,           $g,   undef,      undef,     "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--cmp7ml",   "boolean", 0,           $g,   undef,      undef,     "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
-opt_Add("--cmere",    "real",    0,           $g,   undef,      undef,     "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
-opt_Add("--cmeset",   "real",    0,           $g,   undef,      "--cmere", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
+opt_Add("--cmn",      "integer", 0,           $g,   undef, "--skipbuild",  "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--cmp7ml",   "boolean", 0,           $g,   undef, "--skipbuild",  "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
+opt_Add("--cmere",    "real",    0,           $g,   undef,  "--skipbuild", "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
+opt_Add("--cmeset",   "real",    0,           $g,   undef,  "--skipbuild", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for skipping stages";
+#       option       type       default     group  requires     incompat  preamble-output                                    help-output    
+opt_Add("--skipbuild",  "boolean", 0,         $g,    undef,     undef,    "skip the cmbuild step",                           "skip the cmbuild step", \%opt_HH, \@opt_order_A);
+opt_Add("--onlyurl",    "boolean", 0,         $g,    undef,"--stk,--gb",  "output genbank file url for accession and exit",  "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default     group  requires     incompat  preamble-output                          help-output    
@@ -104,12 +125,24 @@ my $synopsis = "dnaorg_build.pl :: build homology model of a single sequence for
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
+                'g=s'          => \$GetOptions_H{"-g"},
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
                 'gb=s'         => \$GetOptions_H{"--gb"},
-                'onlyurl'      => \$GetOptions_H{"--onlyurl"},
                 'keep'         => \$GetOptions_H{"--keep"},
+# options for controlling what feature types are stored in model info file
+                'fall'         => \$GetOptions_H{"--fall"},
+                'fadd=s'       => \$GetOptions_H{"--fadd"},
+                'fnocds'       => \$GetOptions_H{"--fnocds"},
+                'fnogene'      => \$GetOptions_H{"--fnogene"},
+                'fnomp'        => \$GetOptions_H{"--fnomp"},
+# options for controlling what qualifiers are stored in model info file
+                'qall'         => \$GetOptions_H{"--qall"},
+                'qadd=s'       => \$GetOptions_H{"--qadd"},
+                'qnoproduct'   => \$GetOptions_H{"--qnoproduct"},
+                'qnogene'      => \$GetOptions_H{"--qnogene"},
+                'qnoexc'       => \$GetOptions_H{"--qnoexc"},
 # options for controlling CDS translation step
                 'ttbl=s'       => \$GetOptions_H{"--ttbl"},
 # options for controlling cmbuild step
@@ -117,6 +150,9 @@ my $options_okay =
                 'cmp7ml'       => \$GetOptions_H{"--cmp7ml"},
                 'cmere=s'      => \$GetOptions_H{"--cmere"},
                 'cmeset=s'     => \$GetOptions_H{"--cmeset"},
+# optional for skipping stages
+                'skipbuild'    => \$GetOptions_H{"--skipbuild"},
+                'onlyurl'      => \$GetOptions_H{"--onlyurl"},
 # optional output files
                 'sgminfo'      => \$GetOptions_H{"--sgminfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});
@@ -229,7 +265,9 @@ foreach $cmd (@early_cmd_A) {
 # make sure the required executables exist and are executable
 #############################################################
 my %execs_H = (); # hash with paths to all required executables
-$execs_H{"cmbuild"}       = $inf_exec_dir . "/cmbuild";
+if(! opt_Get("--skipbuild", \%opt_HH)) { 
+  $execs_H{"cmbuild"}       = $inf_exec_dir . "/cmbuild";
+}
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "/esl-reformat";
 $execs_H{"esl-translate"} = $esl_exec_dir . "/esl-translate";
 $execs_H{"makeblastdb"}   = $blast_exec_dir . "/makeblastdb";
@@ -280,34 +318,49 @@ $start_secs = outputProgressPrior("Pruning data read from GenBank file", $progre
 
 my $ftr_idx;
 my $key;
+# determine what types of features we will store based on cmdline options
+# --fall is incompatible with all other --f* options
 my %ftype_H = ();
+if(! opt_Get("--fnocds",  \%opt_HH)) { $ftype_H{"CDS"}         = 1; }
+if(! opt_Get("--fnogene", \%opt_HH)) { $ftype_H{"gene"}        = 1; }
+if(! opt_Get("--fnomp",   \%opt_HH)) { $ftype_H{"mat_peptide"} = 1; }
+if(opt_IsUsed("--fadd", \%opt_HH)) { 
+  my @fadd_A = split(",", opt_Get("--fadd", \%opt_HH));
+  foreach my $f (@fadd_A) { $ftype_H{$f} = 1; }
+}
 
-$ftype_H{"CDS"}         = 1;
-$ftype_H{"gene"}        = 1;
-$ftype_H{"mat_peptide"} = 1;
-
+# determine what qualifiers we will store based on cmdline options
+# --qall is incompatible with all other --q* options
 my %qual_H = ();
 $qual_H{"type"}         = 1;
 $qual_H{"location"}     = 1;
-$qual_H{"product"}      = 1;
-$qual_H{"gene"}         = 1;
-$qual_H{"exception"}    = 1;
+if(! opt_Get("--qnoproduct", \%opt_HH)) { $qual_H{"product"}   = 1; }
+if(! opt_Get("--qnogene",    \%opt_HH)) { $qual_H{"gene"}      = 1; }
+if(! opt_Get("--qnoexc",     \%opt_HH)) { $qual_H{"exception"} = 1; }
+if(opt_IsUsed("--qadd", \%opt_HH)) { 
+  my @qadd_A = split(",", opt_Get("--qadd", \%opt_HH));
+  foreach my $q (@qadd_A) { $qual_H{$q} = 1; }
+}
 
-# first, remove all array elements with types not in %ftype_H
-my @ftr_idx_to_remove_A = ();
-for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
-  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
-  if((! defined $ftype) || (! exists $ftype_H{$ftype})) { 
-    splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
-    $ftr_idx--; # this is about to be incremented
+# remove all array elements with feature types not in %ftype_H, unless --fall used
+if(! opt_Get("--fall", \%opt_HH)) { 
+  my @ftr_idx_to_remove_A = ();
+  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+    my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
+    if((! defined $ftype) || (! exists $ftype_H{$ftype})) { 
+      splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
+      $ftr_idx--; # this is about to be incremented
+    }
   }
 }
 
-# now go back through and remove any key/value pairs not in %qual_H
-for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
-  foreach $key (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) { 
-    if((! exists $qual_H{$key}) && (exists $ftr_info_HAH{$mdl_name}[$ftr_idx]{$key})) { 
-      delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$key};
+# remove any qualifier key/value pairs with keys not in %qual_H, unless --qall used
+if(! opt_Get("--qall", \%opt_HH)) { 
+  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+    foreach $key (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) { 
+      if((! exists $qual_H{$key}) && (exists $ftr_info_HAH{$mdl_name}[$ftr_idx]{$key})) { 
+        delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$key};
+      }
     }
   }
 }
@@ -401,35 +454,38 @@ if($ncds > 0) {
 ##############
 # Build the CM
 ##############
-my $cmbuild_str = undef;
-my $clen_times_cmn = $seq_info_HH{$mdl_name}{"len"} * 200;
-if(opt_IsUsed("--cmn", \%opt_HH)) { 
-  $clen_times_cmn *= (opt_Get("--cmn", \%opt_HH) / 200);
+my $cm_file = undef;
+if(! opt_Get("--skipbuild", \%opt_HH)) { 
+  my $cmbuild_str = undef;
+  my $clen_times_cmn = $seq_info_HH{$mdl_name}{"len"} * 200;
+  if(opt_IsUsed("--cmn", \%opt_HH)) { 
+    $clen_times_cmn *= (opt_Get("--cmn", \%opt_HH) / 200);
+  }
+  if   ($clen_times_cmn > 4000000) { $cmbuild_str = "(may take more than an hour)"; }
+  elsif($clen_times_cmn > 3000000) { $cmbuild_str = "(should take roughly an hour)"; }
+  elsif($clen_times_cmn > 2000000) { $cmbuild_str = "(should take roughly 20-40 minutes)"; }
+  elsif($clen_times_cmn > 1000000) { $cmbuild_str = "(should take roughly 10-30 minutes)"; }
+  elsif($clen_times_cmn >  500000) { $cmbuild_str = "(should take roughly 5-10 minutes)"; }
+  else                             { $cmbuild_str = "(shouldn't take more than a few minutes)"; }
+
+  $start_secs = outputProgressPrior("Building model $cmbuild_str", $progress_w, $log_FH, *STDOUT);
+
+  my $cmbuild_opts = "-n $mdl_name --verbose ";
+  if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
+  if(opt_IsUsed("--cmn",    \%opt_HH)) { $cmbuild_opts .= " --EgfN " . opt_Get("--cmn", \%opt_HH); }
+  if(opt_IsUsed("--cmp7ml", \%opt_HH)) { $cmbuild_opts .= " --p7ml"; }
+  if(opt_IsUsed("--cmere",  \%opt_HH)) { $cmbuild_opts .= " --ere "  . opt_Get("--cmere", \%opt_HH); }
+  if(opt_IsUsed("--cmeset", \%opt_HH)) { $cmbuild_opts .= " --eset " . opt_Get("--cmeset", \%opt_HH); }
+
+  my $cmbuild_file = $out_root . ".cmbuild";
+  $cm_file         = $out_root . ".cm";
+  my $cmbuild_cmd  = $execs_H{"cmbuild"} . " " . $cmbuild_opts . " $cm_file $stk_file > $cmbuild_file";
+  runCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+  outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+
+  addClosedFileToOutputInfo(\%ofile_info_HH, "cm",      $cm_file, 1, "CM file");
+  addClosedFileToOutputInfo(\%ofile_info_HH, "cmbuild", $cmbuild_file, 1, "cmbuild output file");
 }
-if   ($clen_times_cmn > 4000000) { $cmbuild_str = "(may take more than an hour)"; }
-elsif($clen_times_cmn > 3000000) { $cmbuild_str = "(should take roughly an hour)"; }
-elsif($clen_times_cmn > 2000000) { $cmbuild_str = "(should take roughly 20-40 minutes)"; }
-elsif($clen_times_cmn > 1000000) { $cmbuild_str = "(should take roughly 10-30 minutes)"; }
-elsif($clen_times_cmn >  500000) { $cmbuild_str = "(should take roughly 5-10 minutes)"; }
-else                             { $cmbuild_str = "(shouldn't take more than a few minutes)"; }
-
-$start_secs = outputProgressPrior("Building model $cmbuild_str", $progress_w, $log_FH, *STDOUT);
-
-my $cmbuild_opts = "-n $mdl_name --verbose ";
-if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
-if(opt_IsUsed("--cmn",    \%opt_HH)) { $cmbuild_opts .= " --EgfN " . opt_Get("--cmn", \%opt_HH); }
-if(opt_IsUsed("--cmp7ml", \%opt_HH)) { $cmbuild_opts .= " --p7ml"; }
-if(opt_IsUsed("--cmere",  \%opt_HH)) { $cmbuild_opts .= " --ere "  . opt_Get("--cmere", \%opt_HH); }
-if(opt_IsUsed("--cmeset", \%opt_HH)) { $cmbuild_opts .= " --eset " . opt_Get("--cmeset", \%opt_HH); }
-
-my $cmbuild_file = $out_root . ".cmbuild";
-my $cm_file      = $out_root . ".cm";
-my $cmbuild_cmd  = $execs_H{"cmbuild"} . " " . $cmbuild_opts . " $cm_file $stk_file > $cmbuild_file";
-runCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
-outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
-
-addClosedFileToOutputInfo(\%ofile_info_HH, "cm",      $cm_file, 1, "CM file");
-addClosedFileToOutputInfo(\%ofile_info_HH, "cmbuild", $cmbuild_file, 1, "cmbuild output file");
 
 ########################
 # Output model info file
@@ -442,13 +498,18 @@ $start_secs = outputProgressPrior("Creating model info file", $progress_w, $log_
 my @mdl_info_AH = (); 
 %{$mdl_info_AH[0]} = ();
 $mdl_info_AH[0]{"name"}   = $mdl_name;
-$mdl_info_AH[0]{"cmfile"} = $cm_file;
 $mdl_info_AH[0]{"length"} = $seq_info_HH{$mdl_name}{"len"};
+if(defined $cm_file) { 
+  $mdl_info_AH[0]{"cmfile"} = $cm_file;
+}
 if($ncds > 0) { 
   $mdl_info_AH[0]{"blastdb"} = $protein_fa_file;
   if((opt_IsUsed("--ttbl", \%opt_HH)) && (opt_Get("--ttbl", \%opt_HH) != 1))  { 
     $mdl_info_AH[0]{"transl_table"} = opt_Get("--ttbl", \%opt_HH);
   }
+}
+if(opt_IsUsed("-g", \%opt_HH)) { 
+  $mdl_info_AH[0]{"group"} = opt_Get("-g", \%opt_HH); 
 }
 my $minfo_file  = $out_root . ".minfo";
 modelInfoFileWrite($minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
