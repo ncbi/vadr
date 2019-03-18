@@ -79,25 +79,21 @@ opt_Add("--stk",        "string",  undef,      $g,    undef,  undef,      "read 
 opt_Add("--gb",         "string",  undef,      $g,    undef,  undef,      "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,          $g,    undef, undef,       "leave intermediate files on disk",                            "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file";
-#     option            type       default  group   requires incompat     preamble-output                                                 help-output    
-opt_Add("--fall",       "boolean", 0,          $g,    undef,  undef,      "store info for all feature types",                             "store info for all feature types", \%opt_HH, \@opt_order_A);
-opt_Add("--fadd",       "string",  undef,      $g,    undef,"--fall",     "also store features types in comma separated string <s>",      "also store feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--fnocds",     "boolean", 0,          $g,    undef,"--fall",     "do not store info for CDS features",                           "do not store info for CDS features", \%opt_HH, \@opt_order_A);
-opt_Add("--fnogene",    "boolean", 0,          $g,    undef,"--fall",     "do not store info for gene features",                          "do not store info for gene features", \%opt_HH, \@opt_order_A);
-opt_Add("--fnomp",      "boolean", 0,          $g,    undef,"--fall",     "do not store info for mat_peptide features",                   "do not store info for mat_peptide features", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide]";
+#     option            type       default  group   requires incompat     preamble-output                                                      help-output    
+opt_Add("--fall",       "boolean", 0,          $g,    undef,  undef,      "store info for all feature types (except those in --fskip)",        "store info for all feature types (except those in --fskip)", \%opt_HH, \@opt_order_A);
+opt_Add("--fadd",       "string",  undef,      $g,    undef,"--fall",     "also store features types in comma separated string <s>",           "also store feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--fskip",      "string",  undef,      $g,    undef,  undef,      "do not store info for feature types in comma separated string <s>",  "do not store info for feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file";
-#     option            type       default  group   requires incompat     preamble-output                                                 help-output    
-opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers",                                "store info for all qualifiers", \%opt_HH, \@opt_order_A);
-opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>", "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--qnoproduct", "boolean",  0,        $g,    undef,"--qall",      "do not store info for product qualifier",                      "do not store info for product qualifier", \%opt_HH, \@opt_order_A);
-opt_Add("--qnogene",    "boolean",  0,        $g,    undef,"--qall",      "do not store info for gene qualifier",                         "do not store info for gene qualifier", \%opt_HH, \@opt_order_A);
-opt_Add("--qnoexc",     "boolean",  0,        $g,    undef,"--qall",      "do not store info for exception qualifier",                    "do not store info for exception features", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file\n[default set is:product,gene,exception]";
+#     option            type       default  group   requires incompat     preamble-output                                                   help-output    
+opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers (except those in --qskip)",        "store info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
+opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",   "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--qskip",      "string",   undef,    $g,    undef,  undef,       "do not store info for qualifiers in comma separated string <s>", "do not store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling CDS translation step";
 #     option          type       default    group   requires    incompat   preamble-output                                             help-output    
-opt_Add("--ttbl",     "integer", 1,            $g,  undef,    "--fnocds",  "use NCBI translation table <n> to translate CDS",          "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
+opt_Add("--ttbl",     "integer", 1,            $g,  undef,         undef,  "use NCBI translation table <n> to translate CDS",          "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmbuild step";
 #     option          type       default    group   requires    incompat   preamble-output                                             help-output    
@@ -134,15 +130,11 @@ my $options_okay =
 # options for controlling what feature types are stored in model info file
                 'fall'         => \$GetOptions_H{"--fall"},
                 'fadd=s'       => \$GetOptions_H{"--fadd"},
-                'fnocds'       => \$GetOptions_H{"--fnocds"},
-                'fnogene'      => \$GetOptions_H{"--fnogene"},
-                'fnomp'        => \$GetOptions_H{"--fnomp"},
+                'fskip=s'      => \$GetOptions_H{"--fskip"},
 # options for controlling what qualifiers are stored in model info file
                 'qall'         => \$GetOptions_H{"--qall"},
                 'qadd=s'       => \$GetOptions_H{"--qadd"},
-                'qnoproduct'   => \$GetOptions_H{"--qnoproduct"},
-                'qnogene'      => \$GetOptions_H{"--qnogene"},
-                'qnoexc'       => \$GetOptions_H{"--qnoexc"},
+                'qskip=s'      => \$GetOptions_H{"--qskip"},
 # options for controlling CDS translation step
                 'ttbl=s'       => \$GetOptions_H{"--ttbl"},
 # options for controlling cmbuild step
@@ -316,51 +308,56 @@ outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #######################################################
 $start_secs = outputProgressPrior("Pruning data read from GenBank file", $progress_w, $log_FH, *STDOUT);
 
-my $ftr_idx;
-my $key;
 # determine what types of features we will store based on cmdline options
-# --fall is incompatible with all other --f* options
-my %ftype_H = ();
-if(! opt_Get("--fnocds",  \%opt_HH)) { $ftype_H{"CDS"}         = 1; }
-if(! opt_Get("--fnogene", \%opt_HH)) { $ftype_H{"gene"}        = 1; }
-if(! opt_Get("--fnomp",   \%opt_HH)) { $ftype_H{"mat_peptide"} = 1; }
-if(opt_IsUsed("--fadd", \%opt_HH)) { 
-  my @fadd_A = split(",", opt_Get("--fadd", \%opt_HH));
-  foreach my $f (@fadd_A) { $ftype_H{$f} = 1; }
-}
+# --fall is incompatible with --fadd
+my %fdf_H   = (); # default feature types to keep
+my %fadd_H  = (); # feature types to add
+my %fskip_H = (); # feature types to skip
+process_add_and_skip_options("CDS,gene,mat_peptide", "--fadd", "--fskip", \%fdf_H, \%fadd_H, \%fskip_H, \%opt_HH, $FH_HR);
 
 # determine what qualifiers we will store based on cmdline options
-# --qall is incompatible with all other --q* options
-my %qual_H = ();
-$qual_H{"type"}         = 1;
-$qual_H{"location"}     = 1;
-if(! opt_Get("--qnoproduct", \%opt_HH)) { $qual_H{"product"}   = 1; }
-if(! opt_Get("--qnogene",    \%opt_HH)) { $qual_H{"gene"}      = 1; }
-if(! opt_Get("--qnoexc",     \%opt_HH)) { $qual_H{"exception"} = 1; }
-if(opt_IsUsed("--qadd", \%opt_HH)) { 
-  my @qadd_A = split(",", opt_Get("--qadd", \%opt_HH));
-  foreach my $q (@qadd_A) { $qual_H{$q} = 1; }
-}
+# --qall is incompatible with --qadd
+my %qdf_H   = (); # default qualifiers to keep
+my %qadd_H  = (); # qualifiers to add
+my %qskip_H = (); # qualifiers to skip
+process_add_and_skip_options("type,location,product,gene,exception", "--qadd", "--qskip", \%qdf_H, \%qadd_H, \%qskip_H, \%opt_HH, $FH_HR);
 
-# remove all array elements with feature types not in %ftype_H, unless --fall used
-if(! opt_Get("--fall", \%opt_HH)) { 
-  my @ftr_idx_to_remove_A = ();
-  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
-    my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
-    if((! defined $ftype) || (! exists $ftype_H{$ftype})) { 
-      splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
-      $ftr_idx--; # this is about to be incremented
-    }
+# remove all features types we don't want
+my $ftr_idx;
+my @ftr_idx_to_remove_A = ();
+for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
+  # we skip this type and remove it from ftr_info_HAH
+  # if all three of A1, A2, A3 OR B is satisfied
+  # (A1) it's not a default feature type AND
+  # (A2) it's not listed in --fadd AND
+  # (A3) --fall not used
+  # OR 
+  # (B) it is listed in --fskip string 
+  if(((! defined $fdf_H{$ftype})     && # (A1)
+      (! defined $fadd_H{$ftype})    && # (A2)
+      (opt_Get("--fall", \%opt_HH)))    # (A3)
+     || (defined $fskip_H{$ftype})) {   # (B)
+    splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
+    $ftr_idx--; # this is about to be incremented
   }
 }
 
 # remove any qualifier key/value pairs with keys not in %qual_H, unless --qall used
-if(! opt_Get("--qall", \%opt_HH)) { 
-  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
-    foreach $key (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) { 
-      if((! exists $qual_H{$key}) && (exists $ftr_info_HAH{$mdl_name}[$ftr_idx]{$key})) { 
-        delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$key};
-      }
+for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+  foreach my $qual (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) { 
+    # we skip this qualifier and remove it from ftr_info_HAH
+    # if all three of A1, A2, A3 OR B is satisfied
+    # (A1) it's not a default qualifier AND
+    # (A2) it's not listed in --qadd AND
+    # (A3) --qall not used
+    # OR 
+    # (B) it is listed in --qskip string 
+    if(((! defined $qdf_H{$qual})      && # (A1)
+      (! defined $qadd_H{$qual})       && # (A2)
+        (opt_Get("--qall", \%opt_HH)))    # (A3)
+       || (defined $qskip_H{$qual})) {    # (B)
+      delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$qual};
     }
   }
 }
@@ -715,4 +712,46 @@ sub stockholm_validate_single_sequence_input {
 
   return $msa->has_ss;
 }
+
+#################################################################
+# Subroutine: process_add_and_skip_options()
+# Incept:     EPN, Mon Mar 18 06:29:21 2019
+#
+# Synopsis: Process cmdline --{f,q}add and --{f,q}skip options 
+#           for features or qualifiers.
+#
+# Arguments:
+#  $df_string:  comma separated string of default values (e.g. "CDS,gene,mat_peptide")
+#  $add_opt:    name of add option (e.g. "--fadd")
+#  $skip_opt:   name of skip option (e.g. "--fskip")
+#  $df_HR:      ref to hash of default keys, filled here, values will all be '1'
+#  $add_HR:     ref to hash of keys to add, filled here, values will all be '1'
+#  $skip_HR:    ref to hash of keys to skip, filled here, values will all be '1'
+#  $opt_HHR:    ref to hash of cmdline options
+#  $FH_HR:      ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if a key is listed in both the $add_opt and $skip_opt option strings.
+#################################################################
+sub process_add_and_skip_options { 
+  my $sub_name = "process_add_and_skip_options";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($df_string, $add_opt, $skip_opt, $df_HR, $add_HR, $skip_HR, $opt_HHR, $FH_HR) = @_;
+
+  hashFromCommaSeparatedString($df_HR, $df_string);
+  if(opt_IsUsed($add_opt,  $opt_HHR)) { hashFromCommaSeparatedString($add_HR,  opt_Get($add_opt,  $opt_HHR)); }
+  if(opt_IsUsed($skip_opt, $opt_HHR)) { hashFromCommaSeparatedString($skip_HR, opt_Get($skip_opt, $opt_HHR)); }
+  # make sure $add_opt and $skip_opt have no values in common
+  foreach my $key (sort keys (%{$add_HR})) { 
+    if(defined $skip_HR->{$key}) { 
+      DNAORG_FAIL("ERROR in $sub_name, processing $add_opt <s1> and $skip_opt <s2> options, $key exists in both <s1> and <s2>", 1, $FH_HR);
+    }
+  }
+
+  return;
+}
+
 

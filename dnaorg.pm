@@ -7060,6 +7060,38 @@ sub modelInfoFileParse {
   return;
 }
 
+#################################################################
+# Subroutine: hashFromCommaSeparatedString
+# Incept:     EPN, Mon Mar 18 06:52:21 2019
+#
+# Synopsis: Given a hash reference and a comma separated string
+#           fill the hash with keys for each token in the string,
+#           with all values set as 1.
+#
+# Arguments:
+#  $HR:      hash reference
+#  $string:  comma separated string
+#
+# Returns:    void
+#
+# Dies:       never
+#################################################################
+sub hashFromCommaSeparatedString {
+  my $sub_name = "hashFromCommaSeparatedString";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($HR, $string) = @_;
+
+  %{$HR} = ();
+  my @key_A = split(",", $string);
+  foreach my $key (@key_A) { 
+    $HR->{$key} = 1; 
+  }
+
+  return;
+}
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;
