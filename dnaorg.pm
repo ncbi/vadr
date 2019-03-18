@@ -186,10 +186,10 @@
 # Simple utility subroutines:
 #   ofile_FAIL()
 #   fileOpenFailure()
-#   runCommand()
+#   dng_RunCommand()
 #   removeDirPath()
 #   removeScriptNameFromString()
-#   removeFileUsingSystemRm()
+#   dng_RemoveFileUsingSystemRm()
 #   getMonocharacterString()
 #   countLinesInFile()
 #   fileLinesToArray()
@@ -203,7 +203,7 @@
 #
 # Miscellaneous subroutines that don't fall into one of the above
 # categories:
-#   stripVersion()
+#   dng_StripVersion()
 #   fetchedNameToListName()
 #   fetchSequencesUsingEslFetchCds()
 #   addNameAndBlankSsToStockholmAlignment()
@@ -234,7 +234,7 @@ use Cwd;
 
 
 #################################################################
-# Subroutine : featuresGetChildrenArrayOfArray()
+# Subroutine:  dng_FeaturesGetChildrenArrayOfArray()
 # Incept:      EPN, Sun Mar 10 06:22:49 2019
 #
 # Purpose:     Fill @{$AAR} with arrays of children (feature indices)
@@ -249,9 +249,9 @@ use Cwd;
 # 
 #
 ################################################################# 
-sub featuresGetChildrenArrayOfArrays { 
+sub dng_FeaturesGetChildrenArrayOfArrays { 
   my $nargs_expected = 3;
-  my $sub_name = "featuresGetChildrenArrayOfArrays";
+  my $sub_name = "dng_FeaturesGetChildrenArrayOfArrays";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $AAR, $FH_HR) = @_;
 
@@ -259,14 +259,14 @@ sub featuresGetChildrenArrayOfArrays {
   my $nftr = scalar(@{$ftr_info_AHR});
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    featureGetChildrenArray($ftr_info_AHR, $ftr_idx, $nftr, $AAR->[$ftr_idx], $FH_HR);
+    dng_FeatureChildrenArray($ftr_info_AHR, $ftr_idx, $nftr, $AAR->[$ftr_idx], $FH_HR);
   }
   
   return;
 }
 
 #################################################################
-# Subroutine : featureGetChildrenArray()
+# Subroutine:  dng_FeatureChildrenArray()
 # Incept:      EPN, Sun Mar 10 06:26:03 2019
 #
 # Purpose:     Fill @{$AAR} with array of children (feature indices)
@@ -283,9 +283,9 @@ sub featuresGetChildrenArrayOfArrays {
 # 
 #
 ################################################################# 
-sub featureGetChildrenArray { 
+sub dng_FeatureChildrenArray { 
   my $nargs_expected = 5;
-  my $sub_name = "featureGetChildrenArray";
+  my $sub_name = "dng_FeatureChildrenArray";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $ftr_idx, $nftr, $AR, $FH_HR) = @_;
 
@@ -302,7 +302,7 @@ sub featureGetChildrenArray {
 }
 
 #################################################################
-# Subroutine : featureGetTypeAndTypeIndexString()
+# Subroutine:  dng_FeatureTypeAndTypeIndexString()
 # Incept:      EPN, Sun Mar 10 06:41:53 2019
 #
 # Purpose:     Return a string giving feature type and type index
@@ -317,9 +317,9 @@ sub featureGetChildrenArray {
 # 
 #
 ################################################################# 
-sub featureGetTypeAndTypeIndexString { 
+sub dng_FeatureTypeAndTypeIndexString { 
   my $nargs_expected = 3;
-  my $sub_name = "featureGetChildrenArray";
+  my $sub_name = "dng_FeatureChildrenArray";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $ftr_idx, $FH_HR) = @_;
 
@@ -346,7 +346,7 @@ sub featureGetTypeAndTypeIndexString {
 #   populateFTableNoteOrError()
 #
 #################################################################
-# Subroutine: initializeHardCodedErrorInfoHash()
+# Subroutine: dng_InitializeHardCodedErrorInfoHash()
 # Incept:     EPN, Fri Mar  4 12:56:43 2016
 #
 # Purpose:    Set the initial values in an error info hash,
@@ -362,8 +362,8 @@ sub featureGetTypeAndTypeIndexString {
 # Dies:    if $err_info_HAR already has keys upon entering this function
 #
 #################################################################
-sub initializeHardCodedErrorInfoHash { 
-  my $sub_name = "initializeHardCodedErrorInfoHash";
+sub dng_InitializeHardCodedErrorInfoHash { 
+  my $sub_name = "dng_InitializeHardCodedErrorInfoHash";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -531,7 +531,7 @@ sub initializeHardCodedErrorInfoHash {
 }
 
 #################################################################
-# Subroutine: addToErrorInfoHash
+# Subroutine: dng_AddToErrorInfoHash
 # Incept:     EPN, Fri Mar  4 13:09:52 2016
 #
 # Purpose:    Add an element to the error info hash.
@@ -554,8 +554,8 @@ sub initializeHardCodedErrorInfoHash {
 #          if $type ne "feature and ne "sequence"
 #
 #################################################################
-sub addToErrorInfoHash { 
-  my $sub_name = "addToErrorInfoHash";
+sub dng_AddToErrorInfoHash { 
+  my $sub_name = "dng_AddToErrorInfoHash";
   my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -604,7 +604,7 @@ sub addToErrorInfoHash {
 
 
 #################################################################
-# Subroutine: setFTableInvalidatedByErrorInfoHash
+# Subroutine: dng_SetFTableInvalidatedByErrorInfoHash
 # Incept:     EPN, Thu Nov  1 10:10:03 2018
 #
 # Purpose:    Add to the ftbl_invalid_by value for an error code $code1 given
@@ -623,8 +623,8 @@ sub addToErrorInfoHash {
 #          exist in %{$err_info_HAR}.
 #
 #################################################################
-sub setFTableInvalidatedByErrorInfoHash { 
-  my $sub_name = "setFTableInvalidatedByErrorInfoHash";
+sub dng_SetFTableInvalidatedByErrorInfoHash { 
+  my $sub_name = "dng_SetFTableInvalidatedByErrorInfoHash";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -654,7 +654,7 @@ sub setFTableInvalidatedByErrorInfoHash {
 }
 
 #################################################################
-# Subroutine: processFeatureErrorsForFTable()
+# Subroutine: dng_ProcessFeatureErrorsForFTable()
 # Incept:     EPN, Thu Nov  1 12:10:34 2018
 #
 # Purpose:    Given a string of errors that correspond to a specific
@@ -680,8 +680,8 @@ sub setFTableInvalidatedByErrorInfoHash {
 #
 # Dies: Never
 #################################################################
-sub processFeatureErrorsForFTable { 
-  my $sub_name = "processFeatureErrorsForFTable";
+sub dng_ProcessFeatureErrorsForFTable { 
+  my $sub_name = "dng_ProcessFeatureErrorsForFTable";
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -784,7 +784,7 @@ sub processFeatureErrorsForFTable {
 }
 
 #################################################################
-# Subroutine: processSequenceErrorsForFTable()
+# Subroutine: dng_ProcessSequenceErrorsForFTable()
 # Incept:     EPN, Thu Jan 24 12:09:24 2019
 #
 # Purpose:    Given a string of per-sequence errors that correspond
@@ -808,8 +808,8 @@ sub processFeatureErrorsForFTable {
 #
 # Dies: Never
 #################################################################
-sub processSequenceErrorsForFTable { 
-  my $sub_name = "processSequenceErrorsForFTable";
+sub dng_ProcessSequenceErrorsForFTable { 
+  my $sub_name = "dng_ProcessSequenceErrorsForFTable";
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -871,7 +871,7 @@ sub processSequenceErrorsForFTable {
 }
 
 #################################################################
-# Subroutine: populateFTableNoteOrError
+# Subroutine: dng_PopulateFTableNoteOrError
 # Incept:     EPN, Thu Feb  8 14:31:16 2018
 #
 # Purpose:    Create notes and errors for the feature table for a specific
@@ -901,8 +901,8 @@ sub processSequenceErrorsForFTable {
 #          or has invalid information
 #
 #################################################################
-sub populateFTableNoteOrError { 
-  my $sub_name = "populateFTableNoteOrError";
+sub dng_PopulateFTableNoteOrError { 
+  my $sub_name = "dng_PopulateFTableNoteOrError";
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -1004,7 +1004,7 @@ sub populateFTableNoteOrError {
 
 
 #################################################################
-# Subroutine : parseListFile()
+# Subroutine:  dng_ParseListFile()
 # Incept:      EPN, Thu Feb 18 13:05:30 2016
 #
 # Purpose:     Given a file name remove the directory path.
@@ -1029,9 +1029,9 @@ sub populateFTableNoteOrError {
 #              if $do_accn is 1 and >=1 accession occurs more 
 #              than once in $listfile
 ################################################################# 
-sub parseListFile {
+sub dng_ParseListFile {
   my $nargs_expected = 4;
-  my $sub_name = "parseListFile()";
+  my $sub_name = "dng_ParseListFile()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($infile, $do_accn, $line_AR, $FH_HR) = @_;
 
@@ -1051,7 +1051,7 @@ sub parseListFile {
       if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
       if($do_accn) { 
         my $accn = $line;
-        stripVersion(\$accn); # remove version from $accn
+        dng_StripVersion(\$accn); # remove version from $accn
         $accn_ct_H{$accn}++; 
         if($accn_ct_H{$accn} == 1) { 
           push(@accn_order_A, $accn);
@@ -1081,99 +1081,6 @@ sub parseListFile {
 }
 
 #################################################################
-# Subroutine:  parseSpecStartFile()
-# Incept:      EPN, Thu Feb 18 15:45:49 2016
-#
-# Purpose:     Parse the input file that defines non-standard start 
-#              codons for >= 1 CDS.
-#
-# Arguments: 
-#   $infile:        file to parse
-#   $specstart_AAR: ref to array of arrays to fill here, allowed start codons for each CDS
-#                   if array doesn't exist for a CDS, ATG is only allowed start
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd", can be undef
-#
-# Returns:     void, fills @{$specstart_AAR}
-#
-# Dies:        if $infile does not exist or is not readable,
-#              or we have some problem parsing it.
-################################################################# 
-sub parseSpecStartFile { 
-  my $sub_name = "parseSpecStartFile";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($infile, $specstart_AAR, $FH_HR) = @_;
-
-  my $ncds_read      = 0;
-  my $cds_idx2store  = 0;
-  my @cds_idx_read_A = (); # $cds_idx_read_A[$i] = 1 if we read info for CDS $i+1
-  my $max_cds_idx2store = 0;
-
-  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
-
-  while(my $line = <IN>) { 
-    if($line !~ m/^\#/) { 
-      ## example input file:
-      ## This file explains alternative start codons that are expected 
-      ## West Nile lineage 1 CDS #3 (WARF4)
-      ##
-      ## Format of lines in this file:
-      ## <CDS-idx> <alternate start codon 1>:<alternate start codon 2>:<alternate start codon n>
-      #3 GGC
-      #####################
-      # NOTE: in the input file CDS and matpept indices are in the coordinate range 1..N, but we 
-      # store them in the coordinate range 0..N-1
-      chomp $line;
-      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
-      my @el_A = split(/\s+/, $line);
-      if(scalar(@el_A) != 2) { 
-        ofile_FAIL("ERROR in $sub_name, unable to parse specstart input file line: $line", "dnaorg", 1, $FH_HR); 
-      }
-      my ($cds_idx, $codon_str) = ($el_A[0], $el_A[1]);
-      my $cds_idx2store = $cds_idx - 1;
-      if($cds_idx2store < 0) { 
-        ofile_FAIL("ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file in line $line", "dnaorg", 1, $FH_HR); 
-      }
-      $cds_idx_read_A[$cds_idx2store] = 1;
-      if($cds_idx2store > $max_cds_idx2store) { 
-        $max_cds_idx2store = $cds_idx2store; 
-      }
-      my @codon_A = split(":", $codon_str);
-      @{$specstart_AAR->[$cds_idx2store]} = ();
-      foreach my $codon (@codon_A) { 
-        $codon =~ tr/a-z/A-Z/;
-        $codon =~ tr/U/T/;
-        push(@{$specstart_AAR->[$cds_idx2store]}, $codon);
-      }
-      $ncds_read++;
-    }
-  }
-  close(IN);
-
-  # Two sanity checks:
-  # 1: we should have stored all and primary info for any CDS $i for which $cds_idx_read_A[$i-1] is 1, and nothing else
-  for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
-    if($cds_idx_read_A[$i]) { 
-     if((! defined $specstart_AAR->[$i]) && (! exists $specstart_AAR->[$i])) { 
-       ofile_FAIL(sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1), "dnaorg", 1, $FH_HR);
-     }
-    }
-    else { # we didn't read this one
-      if(defined $specstart_AAR->[$i] || exists $specstart_AAR->[$i]) { 
-        ofile_FAIL(sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1), "dnaorg", 1, $FH_HR);
-      }
-    }
-  }
-  # 2: we should have at least read at least one CDS info
-  if($ncds_read == 0) { 
-    ofile_FAIL("ERROR in $sub_name, no CDS start codon specifications read in matpept input file $infile", "dnaorg", 1, $FH_HR); 
-  }
-
-  return;
-}
-
-#################################################################
 #
 # Subroutines related to parsing NCBI coordinate strings:
 #   getStrandStats()
@@ -1183,7 +1090,7 @@ sub parseSpecStartFile {
 #   lengthFromCoords()
 #
 #################################################################
-# Subroutine: getStrandStats()
+# Subroutine: dng_GetStrandStats()
 # Incept:     EPN, Thu Feb 11 15:14:09 2016
 # 
 # Purpose:    Retrieve strand stats from a tbl_HHA.
@@ -1204,8 +1111,8 @@ sub parseSpecStartFile {
 # Dies: if 'strand' doesn't exist as a key in $tbl_HHAR
 #       if we can't parse a strand value
 #################################################################
-sub getStrandStats {
-  my $sub_name = "getStrandStats()";
+sub dng_GetStrandStats {
+  my $sub_name = "dng_GetStrandStats()";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
  
@@ -1235,7 +1142,7 @@ sub getStrandStats {
   return ($nfeatures, $npos, $nneg, $nunc, $nbth, $strand_str);
 }
 #################################################################
-# Subroutine: startsStopsStrandsFromCoordsLength()
+# Subroutine: dng_StartsStopsStrandsFromCoordsLength()
 # Incept:     EPN, Thu Feb 11 14:57:22 2016
 #
 # Purpose:    Determine the starts, stops and strands from a coords string
@@ -1255,8 +1162,8 @@ sub getStrandStats {
 #
 # Dies:       if we see a feature that spans stop..start but $do_circular is 0
 #################################################################
-sub startsStopsStrandsFromCoordsLength { 
-  my $sub_name = "startsStopsStrandsFromCoordsLength()";
+sub dng_StartsStopsStrandsFromCoordsLength { 
+  my $sub_name = "dng_StartsStopsStrandsFromCoordsLength()";
   my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1333,7 +1240,7 @@ sub startsStopsStrandsFromCoordsLength {
   return;
 }
 #################################################################
-# Subroutine: startsStopsFromCoords()
+# Subroutine: dng_StartsStopsFromCoords()
 # Incept:     EPN, Thu Feb 11 14:22:54 2016
 #
 # Purpose:    Extract the starts and stops from a coords string.
@@ -1349,8 +1256,8 @@ sub startsStopsStrandsFromCoordsLength {
 #
 # Dies:         if we can't parse $coords
 #################################################################
-sub startsStopsFromCoords { 
-  my $sub_name = "startsStopsFromCoords()";
+sub dng_StartsStopsFromCoords { 
+  my $sub_name = "dng_StartsStopsFromCoords()";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1401,7 +1308,7 @@ sub startsStopsFromCoords {
 }
 
 #################################################################
-# Subroutine: getLengthsAndCoords()
+# Subroutine: dng_GetLengthsAndCoords()
 # Incept:     EPN, Thu Feb 11 13:32:34 2016
 #
 # Purpose:    For a given accession, retreive lengths and coorindate
@@ -1415,8 +1322,8 @@ sub startsStopsFromCoords {
 # Returns:    void; fills @{$len_AR} and @{$coords_AR}
 #
 #################################################################
-sub getLengthsAndCoords { 
-  my $sub_name = "getLengthsAndCoords()";
+sub dng_GetLengthsAndCoords { 
+  my $sub_name = "dng_GetLengthsAndCoords()";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1435,7 +1342,7 @@ sub getLengthsAndCoords {
 }
 
 #################################################################
-# Subroutine: lengthFromCoords()
+# Subroutine: dng_LengthFromCoords()
 # Incept:     EPN, Thu Feb 11 15:28:20 2016
 #
 # Purpose:    Determine the length of a region from its coords in NCBI format.
@@ -1446,8 +1353,8 @@ sub getLengthsAndCoords {
 #
 # Returns:    length in nucleotides implied by $coords  
 #################################################################
-sub lengthFromCoords { 
-  my $sub_name = "lengthFromCoords()";
+sub dng_LengthFromCoords { 
+  my $sub_name = "dng_LengthFromCoords()";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1475,7 +1382,7 @@ sub lengthFromCoords {
 #   dashCoordsToLength()
 #
 #################################################################
-# Subroutine: dashCoordsStringCommaDelimitedToLength
+# Subroutine: dng_DashCoordsStringCommaDelimitedToLength
 # Incept:     EPN, Fri Mar  4 15:24:25 2016
 #
 # Purpose:    Given a string with >= 1 'dash coordinate' strings
@@ -1495,8 +1402,8 @@ sub lengthFromCoords {
 #          - if any coordinate is negative
 #
 #################################################################
-sub dashCoordsStringCommaDelimitedToLength {
-  my $sub_name = "dashCoordsStringCommaDelimitedToLength()";
+sub dng_DashCoordsStringCommaDelimitedToLength {
+  my $sub_name = "dng_DashCoordsStringCommaDelimitedToLength()";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1513,7 +1420,7 @@ sub dashCoordsStringCommaDelimitedToLength {
 }
 
 #################################################################
-# Subroutine: dashCoordsToLength
+# Subroutine: dng_DashCoordsToLength
 # Incept:     EPN, Fri Mar  4 15:29:07 2016
 #
 # Purpose:    Given a string with 1 'dash coordinate' 
@@ -1533,8 +1440,8 @@ sub dashCoordsStringCommaDelimitedToLength {
 #          - if any coordinate is negative
 #
 #################################################################
-sub dashCoordsToLength { 
-  my $sub_name = "dashCoordsToLength";
+sub dng_DashCoordsToLength { 
+  my $sub_name = "dng_DashCoordsToLength";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1580,7 +1487,7 @@ sub dashCoordsToLength {
 #   dumpArrayOfHashes()
 #
 #################################################################
-# Subroutine: dumpInfoHashOfArrays()
+# Subroutine: dng_DumpInfoHashOfArrays()
 # Incept:     EPN, Thu Feb 11 15:06:31 2016
 #
 # Purpose:    Print an 'info' hash of arrays, probably for 
@@ -1595,8 +1502,8 @@ sub dashCoordsToLength {
 #
 # Returns:    void
 #################################################################
-sub dumpInfoHashOfArrays { 
-  my $sub_name = "dumpInfoHashOfArrays()";
+sub dng_DumpInfoHashOfArrays { 
+  my $sub_name = "dng_DumpInfoHashOfArrays()";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1640,7 +1547,7 @@ sub dumpInfoHashOfArrays {
 }
 
 #################################################################
-# Subroutine: dumpHashOfHashes()
+# Subroutine: dng_DumpHashOfHashes()
 # Incept:     EPN, Thu Dec 20 13:36:00 2018
 #
 # Purpose:    Dump the contents of  hashes of hashes,
@@ -1653,8 +1560,8 @@ sub dumpInfoHashOfArrays {
 # Returns:    void
 # 
 #################################################################
-sub dumpHashOfHashes { 
-  my $sub_name = "dumpHashOfHashes()";
+sub dng_DumpHashOfHashes { 
+  my $sub_name = "dng_DumpHashOfHashes()";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1675,7 +1582,7 @@ sub dumpHashOfHashes {
 }
 
 #################################################################
-# Subroutine: dumpArrayOfHashesOfHashes()
+# Subroutine: dng_DumpArrayOfHashesOfHashes()
 # Incept:     EPN, Fri Mar  4 16:02:28 2016
 #
 # Purpose:    Dump the contents of an array of hashes of hashes,
@@ -1688,8 +1595,8 @@ sub dumpHashOfHashes {
 # Returns:    void
 # 
 #################################################################
-sub dumpArrayOfHashesOfHashes { 
-  my $sub_name = "dumpArrayOfHashesOfHashes()";
+sub dng_DumpArrayOfHashesOfHashes { 
+  my $sub_name = "dng_DumpArrayOfHashesOfHashes()";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1720,7 +1627,7 @@ sub dumpArrayOfHashesOfHashes {
 }
 
 #################################################################
-# Subroutine: dumpArrayOfHashes()
+# Subroutine: dng_DumpArrayOfHashes()
 # Incept:     EPN, Thu Feb  8 11:01:29 2018
 #
 # Purpose:    Dump the contents of an array of hashes,
@@ -1733,8 +1640,8 @@ sub dumpArrayOfHashesOfHashes {
 # Returns:    void
 # 
 #################################################################
-sub dumpArrayOfHashes { 
-  my $sub_name = "dumpArrayOfHashes()";
+sub dng_DumpArrayOfHashes { 
+  my $sub_name = "dng_DumpArrayOfHashes()";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1758,7 +1665,7 @@ sub dumpArrayOfHashes {
 }
 
 #################################################################
-# Subroutine: arrayOfHashesKeepKeys()
+# Subroutine: dng_ArrayOfHashesKeepKeys()
 # Incept:     EPN, Wed Mar 13 11:33:26 2019
 #
 # Purpose:    Delete all key/value pairs from all hashes
@@ -1772,8 +1679,8 @@ sub dumpArrayOfHashes {
 # Dies:       never
 #
 #################################################################
-sub arrayOfHashesKeepKeys { 
-  my $sub_name = "arrayOfHashesKeepKeys";
+sub dng_ArrayOfHashesKeepKeys { 
+  my $sub_name = "dng_ArrayOfHashesKeepKeys";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1806,7 +1713,7 @@ sub arrayOfHashesKeepKeys {
 #   getConsistentSizeOfInfoHashOfArrays()
 #
 #################################################################
-# Subroutine : validateExecutableHash()
+# Subroutine:  dng_ValidateExecutableHash()
 # Incept:      EPN, Sat Feb 13 06:27:51 2016
 #
 # Purpose:     Given a reference to a hash in which the 
@@ -1824,9 +1731,9 @@ sub arrayOfHashesKeepKeys {
 # Dies:        if one or more executables does not exist#
 #
 ################################################################# 
-sub validateExecutableHash { 
+sub dng_ValidateExecutableHash { 
   my $nargs_expected = 2;
-  my $sub_name = "validateExecutableHash()";
+  my $sub_name = "dng_ValidateExecutableHash()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($execs_HR, $FH_HR) = @_;
 
@@ -1849,7 +1756,7 @@ sub validateExecutableHash {
 
 
 #################################################################
-# Subroutine: validateSequenceInfoHashIsComplete()
+# Subroutine: dng_ValidateSequenceInfoHashIsComplete()
 # Incept:     EPN, Tue Mar 15 05:35:22 2016
 #
 # Purpose:    Validate that a 'sequence info' hash is valid and complete.
@@ -1887,8 +1794,8 @@ sub validateExecutableHash {
 #          - if any key listed in @{$exceptions_AR} is not one of the expected keys
 #
 #################################################################
-sub validateSequenceInfoHashIsComplete { 
-  my $sub_name = "validateSequenceInfoHashIsComplete()";
+sub dng_ValidateSequenceInfoHashIsComplete { 
+  my $sub_name = "dng_ValidateSequenceInfoHashIsComplete()";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1919,7 +1826,7 @@ sub validateSequenceInfoHashIsComplete {
 }
 
 #################################################################
-# Subroutine: validateErrorInfoHashIsComplete()
+# Subroutine: dng_ValidateErrorInfoHashIsComplete()
 # Incept:     EPN, Fri Mar  4 12:56:43 2016
 #
 # Purpose:    Validate that a 'error info' hash is valid and complete.
@@ -1954,8 +1861,8 @@ sub validateSequenceInfoHashIsComplete {
 #          - if any key listed in @{$exceptions_AR} is not one of the expected keys
 #
 #################################################################
-sub validateErrorInfoHashIsComplete { 
-  my $sub_name = "validateErrorInfoHashIsComplete()";
+sub dng_ValidateErrorInfoHashIsComplete { 
+  my $sub_name = "dng_ValidateErrorInfoHashIsComplete()";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1970,7 +1877,7 @@ sub validateErrorInfoHashIsComplete {
 }
 
 #################################################################
-# Subroutine: validateInfoHashOfArraysIsComplete()
+# Subroutine: dng_ValidateInfoHashOfArraysIsComplete()
 # Incept:     EPN, Tue Feb 16 11:10:40 2016
 #
 # Purpose:    Validate that a 'info' hash is valid and complete.
@@ -1995,8 +1902,8 @@ sub validateErrorInfoHashIsComplete {
 #          - if any other key other than those listed above exist in ${%info_HAR}
 #          - if any key listed in @{$exceptions_AR} is not one of the expected keys
 #################################################################
-sub validateInfoHashOfArraysIsComplete { 
-  my $sub_name = "validateInfoHashOfArraysIsComplete()";
+sub dng_ValidateInfoHashOfArraysIsComplete { 
+  my $sub_name = "dng_ValidateInfoHashOfArraysIsComplete()";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -2025,7 +1932,7 @@ sub validateInfoHashOfArraysIsComplete {
 }
 
 #################################################################
-# Subroutine: validateOutputFileInfoHashOfHashes()
+# Subroutine: dng_ValidateOutputFileInfoHashOfHashes()
 # Incept:     EPN, Mon Feb 29 09:21:51 2016
 #
 # Purpose:    Validate an 'output file' info hash of hashes.
@@ -2051,8 +1958,8 @@ sub validateInfoHashOfArraysIsComplete {
 #          - if two 2d hashes in $ofile_info_HHR (besides %{$ofile_info_HHR->{"FH"}}) are of different sizes
 #          - if two 2d hashes in $ofile_info_HHR (besides %{$ofile_info_HHR->{"FH"}}) have different set of keys
 #################################################################
-sub validateOutputFileInfoHashOfHashes { 
-  my $sub_name = "validateOutputFileInfoHashOfHashes()";
+sub dng_ValidateOutputFileInfoHashOfHashes { 
+  my $sub_name = "dng_ValidateOutputFileInfoHashOfHashes()";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -2125,7 +2032,7 @@ sub validateOutputFileInfoHashOfHashes {
 }
 
 #################################################################
-# Subroutine: validateAndGetSizeOfInfoHashOfArrays()
+# Subroutine: dng_ValidateAndGetSizeOfInfoHashOfArrays()
 # Incept:     EPN, Thu Feb 11 15:06:40 2016
 #
 # Purpose:    Validate that the arrays in a hash of arrays are all the
@@ -2144,8 +2051,8 @@ sub validateOutputFileInfoHashOfHashes {
 #          OR if $reqd_keys_AR is defined and $HAR->{$key} does not exist for
 #          >= 1 of the keys in $reqd_keys_AR.
 #################################################################
-sub validateAndGetSizeOfInfoHashOfArrays {
-  my $sub_name = "validateAndGetSizeOfInfoHashOfArrays()";
+sub dng_ValidateAndGetSizeOfInfoHashOfArrays {
+  my $sub_name = "dng_ValidateAndGetSizeOfInfoHashOfArrays()";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -2169,7 +2076,7 @@ sub validateAndGetSizeOfInfoHashOfArrays {
 }
 
 #################################################################
-# Subroutine: getConsistentSizeOfInfoHashOfArrays()
+# Subroutine: dng_GetConsistentSizeOfInfoHashOfArrays()
 # Incept:     EPN, Fri Mar  4 08:57:17 2016
 #
 # Purpose:    Return number of hash keys ($nkey) in a 'info hash',
@@ -2189,8 +2096,8 @@ sub validateAndGetSizeOfInfoHashOfArrays {
 #          - if %{$HAR} has no keys
 #          - if any value of $HAR{$key}[] is undef 
 #################################################################
-sub getConsistentSizeOfInfoHashOfArrays { 
-  my $sub_name = "getConsistentSizeOfInfoHashOfArrays()";
+sub dng_GetConsistentSizeOfInfoHashOfArrays { 
+  my $sub_name = "dng_GetConsistentSizeOfInfoHashOfArrays()";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -2230,7 +2137,7 @@ sub getConsistentSizeOfInfoHashOfArrays {
 }
 
 #################################################################
-# Subroutine: getSizeOfInfoHashOfArrays()
+# Subroutine: dng_GetSizeOfInfoHashOfArrays()
 # Incept:     EPN, Tue Mar  5 08:00:34 2019
 #
 # Purpose:    Quickly determine the size of 'info hash' without
@@ -2246,8 +2153,8 @@ sub getConsistentSizeOfInfoHashOfArrays {
 # Dies:    - if $info_HAR is undefined or $info_HAR->{$key} does not exist
 #
 #################################################################
-sub getSizeOfInfoHashOfArrays { 
-  my $sub_name = "getSizeOfInfoHashOfArrays()";
+sub dng_GetSizeOfInfoHashOfArrays { 
+  my $sub_name = "dng_GetSizeOfInfoHashOfArrays()";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -2264,7 +2171,7 @@ sub getSizeOfInfoHashOfArrays {
 }
 
 #################################################################
-# Subroutine: validateCapitalizedDnaStopCodon()
+# Subroutine: dng_ValidateCapitalizedDnaStopCodon()
 # Incept:     EPN, Mon Mar 14 13:47:57 2016
 # 
 # Purpose:    Given an already capitalized DNA codon, return '1' 
@@ -2276,8 +2183,8 @@ sub getSizeOfInfoHashOfArrays {
 # Returns:    The codon as a string
 #
 #################################################################
-sub validateCapitalizedDnaStopCodon {
-  my $sub_name = "validateCapitaliedDnaStopCodon";
+sub dng_ValidateCapitalizedDnaStopCodon {
+  my $sub_name = "dng_ValidateCapitaliedDnaStopCodon";
   my $nargs_exp = 1;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -2295,7 +2202,7 @@ sub validateCapitalizedDnaStopCodon {
 
 
 #################################################################
-# Subroutine: validateCapitalizedDnaStartCodon()
+# Subroutine: dng_ValidateCapitalizedDnaStartCodon()
 # Incept:     EPN, Sat Feb 23 10:01:55 2019
 # 
 # Purpose:    Given an already capitalized DNA codon, return '1' 
@@ -2307,8 +2214,8 @@ sub validateCapitalizedDnaStopCodon {
 # Returns:    The codon as a string
 #
 #################################################################
-sub validateCapitalizedDnaStartCodon {
-  my $sub_name = "validateCapitaliedDnaStartCodon";
+sub dng_ValidateCapitalizedDnaStartCodon {
+  my $sub_name = "dng_ValidateCapitaliedDnaStartCodon";
   my $nargs_exp = 1;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -2319,73 +2226,6 @@ sub validateCapitalizedDnaStartCodon {
   }
 
   return 0;
-}
-
-#################################################################
-#
-# Subroutines related to timings:
-#   secondsSinceEpoch()
-#   formatTimeString()
-#
-#################################################################
-# Subroutine : secondsSinceEpoch()
-# Incept:      EPN, Sat Feb 13 06:17:03 2016
-#
-# Purpose:     Return the seconds and microseconds since the 
-#              Unix epoch (Jan 1, 1970) using 
-#              Time::HiRes::gettimeofday().
-#
-# Arguments:   NONE
-# 
-# Returns:     Number of seconds and microseconds
-#              since the epoch.
-#
-################################################################# 
-sub secondsSinceEpoch { 
-  my $nargs_expected = 0;
-  my $sub_name = "secondsSinceEpoch()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($seconds, $microseconds) = gettimeofday();
-  return ($seconds + ($microseconds / 1000000.));
-}
-
-#####################################################################
-# Subroutine: formatTimeString()
-# Incept:     EPN, Fri Oct 24 13:18:23 2014 [rnavore]
-# 
-# Purpose:    Get a timing in hhhh:mm:ss format.
-# 
-# Arguments:
-# $inseconds: number of seconds
-#
-# Returns:    string that describes time in hhhh:mm:ss format
-# 
-# Dies:       Never.
-#
-####################################################################
-sub formatTimeString { 
-  my $nargs_expected = 1;
-  my $sub_name = "formatTimeString()";
-   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($inseconds) = @_;
-  my ($i, $hours, $minutes, $seconds, $thours, $tminutes, $tseconds, $ndig_hours);
-
-  $hours = int($inseconds / 3600);
-  $inseconds -= ($hours * 3600);
-  $minutes = int($inseconds / 60);
-  $inseconds -= ($minutes * 60);
-  $seconds = $inseconds;
-  $thours   = sprintf("%02d", $hours);
-  $tminutes = sprintf("%02d", $minutes);
-  $ndig_hours = length($hours);
-  if($ndig_hours < 2) { $ndig_hours = 2; }
-
-  $tseconds = sprintf("%05.2f", $seconds);
-  my $ret_str = sprintf("%*s:%2s:%5s", $ndig_hours, $thours, $tminutes, $tseconds);
-  # %*s covers two of the arguments: $ndig_hours specifies width of string, $thours is the string
-  
-  return $ret_str;
 }
 
 #################################################################
@@ -2404,7 +2244,7 @@ sub formatTimeString {
 
 #
 #################################################################
-# Subroutine : findNonNumericValueInArray()
+# Subroutine:  dng_FindNonNumericValueInArray()
 # Incept:      EPN, Tue Feb 16 10:40:57 2016
 #
 # Purpose:     Returns (first) index in @{$AR} that has the 
@@ -2420,9 +2260,9 @@ sub formatTimeString {
 #
 # Dies:        if $value is numeric, or @{$AR} is not defined.
 ################################################################# 
-sub findNonNumericValueInArray { 
+sub dng_FindNonNumericValueInArray { 
   my $nargs_expected = 3;
-  my $sub_name = "findNonNumericValueInArray()";
+  my $sub_name = "dng_FindNonNumericValueInArray()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR, $value, $FH_HR) = @_;
 
@@ -2444,7 +2284,7 @@ sub findNonNumericValueInArray {
 }
 
 #################################################################
-# Subroutine : numNonNumericValueInArray()
+# Subroutine:  dng_NumNonNumericValueInArray()
 # Incept:      EPN, Fri Mar 11 06:34:51 2016
 #
 # Purpose:     Returns number of times nonnumeric value 
@@ -2460,9 +2300,9 @@ sub findNonNumericValueInArray {
 #
 # Dies:        if $value is numeric, or @{$AR} is not defined.
 ################################################################# 
-sub numNonNumericValueInArray { 
+sub dng_NumNonNumericValueInArray { 
   my $nargs_expected = 3;
-  my $sub_name = "numNonNumericValueInArray()";
+  my $sub_name = "dng_NumNonNumericValueInArray()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR, $value, $FH_HR) = @_;
 
@@ -2485,7 +2325,7 @@ sub numNonNumericValueInArray {
 }
 
 #################################################################
-# Subroutine : maxLengthScalarKeyInHash()
+# Subroutine:  dng_MaxLengthScalarKeyInHash()
 # Incept:      EPN, Thu Dec 13 15:52:09 2018
 # 
 # Purpose:     Return the maximum length of a scalar key
@@ -2497,9 +2337,9 @@ sub numNonNumericValueInArray {
 # Returns:     The length of the maximum length scalar key.
 #
 ################################################################# 
-sub maxLengthScalarKeyInHash { 
+sub dng_MaxLengthScalarKeyInHash { 
   my $nargs_expected = 1;
-  my $sub_name = "maxLengthScalarKeyInHash()";
+  my $sub_name = "dng_MaxLengthScalarKeyInHash()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($HR) = $_[0];
 
@@ -2513,7 +2353,7 @@ sub maxLengthScalarKeyInHash {
 }
 
 #################################################################
-# Subroutine : maxLengthScalarValueInHash()
+# Subroutine:  dng_MaxLengthScalarValueInHash()
 # Incept:      EPN, Mon Nov  3 09:09:59 2014 [rnavore]
 # 
 # Purpose:     Return the maximum length of a scalar value
@@ -2525,9 +2365,9 @@ sub maxLengthScalarKeyInHash {
 # Returns:     The length of the maximum length scalar.
 #
 ################################################################# 
-sub maxLengthScalarValueInHash { 
+sub dng_MaxLengthScalarValueInHash { 
   my $nargs_expected = 1;
-  my $sub_name = "maxLengthScalarValueInHash()";
+  my $sub_name = "dng_MaxLengthScalarValueInHash()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($HR) = $_[0];
 
@@ -2541,7 +2381,7 @@ sub maxLengthScalarValueInHash {
 }
 
 #################################################################
-# Subroutine : maxLengthScalarValueInArray()
+# Subroutine:  dng_MaxLengthScalarValueInArray()
 # Incept:      EPN, Thu Mar 17 12:38:53 2016
 # 
 # Purpose:     Return the maximum length of a scalar value
@@ -2553,9 +2393,9 @@ sub maxLengthScalarValueInHash {
 # Returns:     The length of the maximum length scalar.
 #
 ################################################################# 
-sub maxLengthScalarValueInArray { 
+sub dng_MaxLengthScalarValueInArray { 
   my $nargs_expected = 1;
-  my $sub_name = "maxLengthScalarValueInArray()";
+  my $sub_name = "dng_MaxLengthScalarValueInArray()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR) = $_[0];
 
@@ -2569,7 +2409,7 @@ sub maxLengthScalarValueInArray {
 }
 
 #################################################################
-# Subroutine : numberOfDigits()
+# Subroutine:  dng_NumberOfDigits()
 # Incept:      EPN, Tue May  9 11:33:50 2017 [ribovore]
 #              EPN, Fri Nov 13 06:17:25 2009 [ssu-align:ssu.pm:NumberOfDigits()]
 # 
@@ -2581,9 +2421,9 @@ sub maxLengthScalarValueInArray {
 # Returns:     the number of digits before the decimal point
 #
 ################################################################# 
-sub numberOfDigits { 
+sub dng_NumberOfDigits { 
     my $nargs_expected = 1;
-    my $sub_name = "numberOfDigits()";
+    my $sub_name = "dng_NumberOfDigits()";
     if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
     my ($num) = (@_);
@@ -2595,7 +2435,7 @@ sub numberOfDigits {
 }
 
 #################################################################
-# Subroutine: findValueInArray()
+# Subroutine: dng_FindValueInArray()
 # Incept:     EPN, Tue Mar  8 11:26:03 2016
 # Synopsis:   Look for a value in an array and return the index
 #             of it, if found, else return -1. If it exists more than
@@ -2608,8 +2448,8 @@ sub numberOfDigits {
 # Returns:    void
 # 
 #################################################################
-sub findValueInArray { 
-  my $sub_name = "findValueInArray()";
+sub dng_FindValueInArray { 
+  my $sub_name = "dng_FindValueInArray()";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -2635,7 +2475,7 @@ sub findValueInArray {
 }  
 
 #################################################################
-# Subroutine : sumArray()
+# Subroutine:  dng_SumArray()
 # Incept:      EPN, Wed Feb  7 13:53:07 2018
 # 
 # Purpose:     Sum the scalar values in an array
@@ -2646,9 +2486,9 @@ sub findValueInArray {
 # Returns:     Sum of all values in the array
 #
 ################################################################# 
-sub sumArray {
+sub dng_SumArray {
   my $nargs_expected = 1;
-  my $sub_name = "sumArray()";
+  my $sub_name = "dng_SumArray()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR) = $_[0];
 
@@ -2660,7 +2500,7 @@ sub sumArray {
 }
 
 #################################################################
-# Subroutine : sumHashValues()
+# Subroutine:  dng_SumHashValues()
 # Incept:      EPN, Wed Feb  7 13:58:25 2018
 # 
 # Purpose:     Sum the values for all keys in a hash
@@ -2671,9 +2511,9 @@ sub sumArray {
 # Returns:     Sum of all values in the hash
 #
 ################################################################# 
-sub sumHashValues {
+sub dng_SumHashValues {
   my $nargs_expected = 1;
-  my $sub_name = "sumHashValues()";
+  my $sub_name = "dng_SumHashValues()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($HR) = $_[0];
 
@@ -2688,12 +2528,10 @@ sub sumHashValues {
 #################################################################
 #
 # Simple utility subroutines:
-#   ofile_FAIL()
-#   fileOpenFailure()
-#   runCommand()
+#   dng_RunCommand()
 #   removeDirPath()
 #   removeScriptNameFromString()
-#   removeFileUsingSystemRm()
+#   dng_RemoveFileUsingSystemRm()
 #   getMonocharacterString()
 #   countLinesInFile()
 #   validateFileExistsAndIsNonEmpty()
@@ -2701,100 +2539,10 @@ sub sumHashValues {
 #   md5ChecksumOfFile()
 #   nseBreakdown()
 #
-#################################################################
-# Subroutine : ofile_FAIL()
-# Incept:      EPN, Wed Nov 11 06:22:59 2009 (rnavore)
-#
-# Purpose:     Print an error message to STDERR and sum and 
-#              log files in $FH_HR (ref to hash of file handles)
-#              then close those file handles and exit.
-#
-# Arguments: 
-#   $errmsg:       the error message to write
-#   $status:       error status to exit with
-#   $FH_HR:        ref to hash of file handles, including "log" and "cmd"
-# 
-# Returns:     Nothing, this function will exit the program.
-#
-################################################################# 
-sub ofile_FAIL { 
-  my $nargs_expected = 3;
-  my $sub_name = "ofile_FAIL()";
-  if(scalar(@_) != $nargs_expected) { 
-    if(scalar(@_) > 0) { 
-      printf STDERR ("ERROR, ofile_FAIL() entered with %d != %d input arguments.\n(errmsg: $_[0])\n\n", scalar(@_), $nargs_expected); 
-    }
-    else { 
-      printf STDERR ("ERROR, ofile_FAIL() entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); 
-    }
-    exit(1); 
-  }
-  my ($errmsg, $status, $FH_HR) = @_;
-  
-  if($errmsg !~ m/\n$/) { $errmsg .= "\n\n"; }
-  else                  { $errmsg .= "\n"; }
-  if($errmsg !~ m/^\n/) { $errmsg = "\n" . $errmsg; }
-  
-  if(defined $FH_HR) { 
-    my $cmd_FH = $FH_HR->{"cmd"};
-    my $log_FH = $FH_HR->{"log"};
-    if(defined $cmd_FH) { 
-      print $cmd_FH $errmsg;
-      print $cmd_FH "# DNAORG-FAILURE\n";
-    }
-    if(defined $log_FH) {
-      print $log_FH $errmsg;
-      print $log_FH "# DNAORG-FAILURE\n";
-    }
-    # close each file handle
-    foreach my $key (keys %{$FH_HR}) { 
-      if(defined $FH_HR->{$key}) { 
-        close $FH_HR->{$key};
-      }
-    }
-  }
-  
-  printf STDERR $errmsg; 
-  exit($status);
-}
+
 
 #################################################################
-# Subroutine : fileOpenFailure()
-# Incept:      EPN, Wed Nov 11 05:39:56 2009 (rnavore)
-#
-# Purpose:     Called if an open() call fails on a file.
-#              Print an informative error message
-#              to $FH_HR->{"cmd"} and $FH_HR->{"log"}
-#              and to STDERR, then exit with <$status>.
-#
-# Arguments: 
-#   $filename:   file that we couldn't open
-#   $c_sub_name: name of calling subroutine name
-#   $status:     error status
-#   $action:     "reading", "writing", "appending"
-#   $FH_HR:      ref to hash of open file handles to close
-# 
-# Returns:     Nothing, this function will exit the program.
-#
-################################################################# 
-sub fileOpenFailure { 
-  my $nargs_expected = 5;
-  my $sub_name = "fileOpenFailure()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($filename, $c_sub_name, $status, $action, $FH_HR) = @_;
-
-  if(($action eq "reading") && (! (-e $filename))) { 
-    ofile_FAIL(sprintf("ERROR, could not open %s%s for reading. It does not exist.", $filename, (defined $c_sub_name) ? " in subroutine $c_sub_name" : ""), $status, $FH_HR);
-  }
-  else { 
-    ofile_FAIL(sprintf("ERROR, could not open %s%s for %s", $filename, (defined $c_sub_name) ? " in subroutine $c_sub_name" : "", $action), $status, $FH_HR);
-  }
-
-  return; # never reached
-}
-
-#################################################################
-# Subroutine:  runCommand()
+# Subroutine: dng_RunCommand()
 # Incept:      EPN, Thu Feb 11 13:32:34 2016
 #
 # Purpose:     Runs a command using system() and exits in error 
@@ -2812,8 +2560,8 @@ sub fileOpenFailure {
 #
 # Dies:       if $cmd fails and $do_failok is '0'
 #################################################################
-sub runCommand {
-  my $sub_name = "runCommand()";
+sub dng_RunCommand {
+  my $sub_name = "dng_RunCommand()";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2848,7 +2596,7 @@ sub runCommand {
 }
 
 #################################################################
-# Subroutine:  submitJob()
+# Subroutine: dng_SubmitJob()
 # Incept:      EPN, Wed Feb  6 12:35:04 2019
 #
 # Purpose:     Submits a job to sge.
@@ -2864,10 +2612,10 @@ sub runCommand {
 #
 # Returns:    amount of time the command took, in seconds
 #
-# Dies:       if qsub $cmd fails
+# Dies:       if qsub dng_$cmd fails
 #################################################################
-sub submitJob {
-  my $sub_name = "submitJob()";
+sub dng_SubmitJob {
+  my $sub_name = "dng_SubmitJob()";
   my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2876,17 +2624,17 @@ sub submitJob {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   if(($err_file ne "/dev/null") && (-e $err_file)) { 
-    removeFileUsingSystemRm($err_file, $sub_name, $opt_HHR, $ofile_info_HHR); 
+    dng_RemoveFileUsingSystemRm($err_file, $sub_name, $opt_HHR, $ofile_info_HHR); 
   }
-  my $submit_cmd = sprintf("qsub -N $job_name -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $err_file -m n -l h_rt=%d,h_vmem=%dG,mem_free=%dG,reserve_mem=%dG,m_mem_free=%dG " . "\"" . $cmd . "\" > /dev/null\n", $nsecs, $mem_gb, $mem_gb, $mem_gb, $mem_gb);
+  my $submit_cmd = sprintf("qsub dng_-N $job_name -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $err_file -m n -l h_rt=%d,h_vmem=%dG,mem_free=%dG,reserve_mem=%dG,m_mem_free=%dG " . "\"" . $cmd . "\" > /dev/null\n", $nsecs, $mem_gb, $mem_gb, $mem_gb, $mem_gb);
 
-  runCommand($submit_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  dng_RunCommand($submit_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
 }
 
 #################################################################
-# Subroutine : removeDirPath()
+# Subroutine:  dng_RemoveDirPath()
 # Incept:      EPN, Mon Nov  9 14:30:59 2009 [ssu-align]
 #
 # Purpose:     Given a full path of a file remove the directory path.
@@ -2898,8 +2646,8 @@ sub submitJob {
 # Returns:     The string $fullpath with dir path removed.
 #
 ################################################################# 
-sub removeDirPath {
-  my $sub_name = "removeDirPath()";
+sub dng_RemoveDirPath {
+  my $sub_name = "dng_RemoveDirPath()";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2911,7 +2659,7 @@ sub removeDirPath {
 }
 
 #################################################################
-# Subroutine : removeScriptNameFromString()
+# Subroutine:  dng_RemoveScriptNameFromString()
 # Incept:      EPN, Wed Mar  2 14:04:14 2016
 #
 # Purpose:     Remove a 'dnaorg_*' script name from a string and
@@ -2924,8 +2672,8 @@ sub removeDirPath {
 # Returns:     The string $string with any script names removed.
 #
 ################################################################# 
-sub removeScriptNameFromString { 
-  my $sub_name = "removeScriptNameFromString()";
+sub dng_RemoveScriptNameFromString { 
+  my $sub_name = "dng_RemoveScriptNameFromString()";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2943,7 +2691,7 @@ sub removeScriptNameFromString {
 }
 
 #################################################################
-# Subroutine: removeFileUsingSystemRm
+# Subroutine: dng_RemoveFileUsingSystemRm
 # Incept:     EPN, Fri Mar  4 15:57:25 2016
 #
 # Purpose:    Remove a file from the filesystem by using
@@ -2959,8 +2707,8 @@ sub removeScriptNameFromString {
 # Dies:    - if the file does not exist
 #
 #################################################################
-sub removeFileUsingSystemRm { 
-  my $sub_name = "removeFileUsingSystemRm";
+sub dng_RemoveFileUsingSystemRm { 
+  my $sub_name = "dng_RemoveFileUsingSystemRm";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -2971,14 +2719,14 @@ sub removeFileUsingSystemRm {
                 (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
   }
 
-  runCommand("rm $file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  dng_RunCommand("rm $file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
 }
 
 
 #################################################################
-# Subroutine : removeListOfFiles()
+# Subroutine:  dng_RemoveListOfFiles()
 # Incept:      EPN, Fri Oct 19 12:44:05 2018 [ribovore]
 #
 # Purpose:     Remove each file in an array of file
@@ -2996,9 +2744,9 @@ sub removeFileUsingSystemRm {
 # Dies:        If one of the rm -rf commands fails.
 #
 ################################################################# 
-sub removeListOfFiles { 
+sub dng_RemoveListOfFiles { 
   my $nargs_expected = 4;
-  my $sub_name = "removeListOfFiles()";
+  my $sub_name = "dng_RemoveListOfFiles()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($files2remove_AR, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
 
@@ -3013,7 +2761,7 @@ sub removeListOfFiles {
       $file_list .= " " . $files2remove_AR->[$j];
     }
     my $rm_cmd = "rm $file_list"; 
-    runCommand($rm_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+    dng_RunCommand($rm_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
     $i = $up;
   }
   
@@ -3021,7 +2769,7 @@ sub removeListOfFiles {
 }
 
 #################################################################
-# Subroutine: getMonocharacterString()
+# Subroutine: dng_GetMonocharacterString()
 # Incept:     EPN, Thu Mar 10 21:02:35 2016
 #
 # Purpose:    Return a string of length $len of repeated instances
@@ -3037,8 +2785,8 @@ sub removeListOfFiles {
 # Dies:     if $len is not a positive integer
 #
 #################################################################
-sub getMonocharacterString {
-  my $sub_name = "getMonocharacterString";
+sub dng_GetMonocharacterString {
+  my $sub_name = "dng_GetMonocharacterString";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -3060,7 +2808,7 @@ sub getMonocharacterString {
 }
 
 #################################################################
-# Subroutine : countLinesInFile()
+# Subroutine:  dng_CountLinesInFile()
 # Incept:      EPN, Tue Mar  1 09:36:56 2016
 #
 # Purpose:     Count the number of lines in a file
@@ -3075,9 +2823,9 @@ sub getMonocharacterString {
 # Dies:        If $filename does not exist or cannot be opened for reading.
 #
 ################################################################# 
-sub countLinesInFile { 
+sub dng_CountLinesInFile { 
   my $nargs_expected = 2;
-  my $sub_name = "countLinesInFile()";
+  my $sub_name = "dng_CountLinesInFile()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($filename, $FH_HR) = @_;
 
@@ -3092,7 +2840,7 @@ sub countLinesInFile {
 }
 
 #################################################################
-# Subroutine : fileLinesToArray()
+# Subroutine:  dng_FileLinesToArray()
 # Incept:      EPN, Tue Nov 21 10:26:58 2017
 #
 # Purpose:     Store each non-blank line in a file as an element
@@ -3109,9 +2857,9 @@ sub countLinesInFile {
 # Dies:        If $filename does not exist or cannot be opened for reading.
 #
 ################################################################# 
-sub fileLinesToArray { 
+sub dng_FileLinesToArray { 
   my $nargs_expected = 4;
-  my $sub_name = "fileLinesToArray()";
+  my $sub_name = "dng_FileLinesToArray()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($filename, $remove_trailing_whitespace, $AR, $FH_HR) = @_;
 
@@ -3129,7 +2877,7 @@ sub fileLinesToArray {
 }
 
 #################################################################
-# Subroutine : arrayToNewlineDelimitedString()
+# Subroutine:  dng_ArrayToNewlineDelimitedString()
 # Incept:      EPN, Fri Dec 14 09:21:41 2018
 #
 # Purpose:     Return a newline delimited string with all values of an array.
@@ -3142,9 +2890,9 @@ sub fileLinesToArray {
 # Dies:        Never.
 #
 ################################################################# 
-sub arrayToNewlineDelimitedString {
+sub dng_ArrayToNewlineDelimitedString {
   my $nargs_expected = 1;
-  my $sub_name = "arrayToNewlineDelimitedString";
+  my $sub_name = "dng_ArrayToNewlineDelimitedString";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR) = @_;
 
@@ -3159,7 +2907,7 @@ sub arrayToNewlineDelimitedString {
 }
 
 #################################################################
-# Subroutine : arrayToString()
+# Subroutine:  dng_ArrayToString()
 # Incept:      EPN, Tue Mar 12 13:07:03 2019
 #
 # Purpose:     Return a string with all values of an array delimited
@@ -3174,9 +2922,9 @@ sub arrayToNewlineDelimitedString {
 # Dies:        Never.
 #
 ################################################################# 
-sub arrayToString { 
+sub dng_ArrayToString { 
   my $nargs_expected = 2;
-  my $sub_name = "arrayToString";
+  my $sub_name = "dng_ArrayToString";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR, $delim_char) = (@_);
 
@@ -3191,7 +2939,7 @@ sub arrayToString {
 }
 
 #################################################################
-# Subroutine : hashKeysToNewlineDelimitedString()
+# Subroutine:  dng_hashKeysToNewlineDelimitedString()
 # Incept:      EPN, Fri Dec 14 09:25:24 2018
 #
 # Purpose:     Return a newline delimited string with all (sorted) keys in a hash.
@@ -3204,9 +2952,9 @@ sub arrayToString {
 # Dies:        Never.
 #
 ################################################################# 
-sub hashKeysToNewlineDelimitedString {
+sub dng_HashKeysToNewlineDelimitedString {
   my $nargs_expected = 1;
-  my $sub_name = "hashKeysToNewlineDelimitedString";
+  my $sub_name = "dng_HashKeysToNewlineDelimitedString";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($HR) = @_;
 
@@ -3221,7 +2969,7 @@ sub hashKeysToNewlineDelimitedString {
 }
 
 #################################################################
-# Subroutine : hashValuesToNewlineDelimitedString()
+# Subroutine:  dng_hashValuesToNewlineDelimitedString()
 # Incept:      EPN, Fri Dec 14 09:26:16 2018
 #
 # Purpose:     Return a newline delimited string with all values in a hash.
@@ -3234,9 +2982,9 @@ sub hashKeysToNewlineDelimitedString {
 # Dies:        Never.
 #
 ################################################################# 
-sub hashValuesToNewlineDelimitedString {
+sub dng_HashValuesToNewlineDelimitedString {
   my $nargs_expected = 1;
-  my $sub_name = "hashValuesToNewlineDelimitedString";
+  my $sub_name = "dng_HashValuesToNewlineDelimitedString";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($HR) = @_;
 
@@ -3252,7 +3000,7 @@ sub hashValuesToNewlineDelimitedString {
 
 
 #################################################################
-# Subroutine : validateFileExistsAndIsNonEmpty()
+# Subroutine:  dng_validateFileExistsAndIsNonEmpty()
 # Incept:      EPN, Mon Feb 29 16:16:07 2016
 #
 # Purpose:     Check if a file exists and is non-empty.
@@ -3269,9 +3017,9 @@ sub hashValuesToNewlineDelimitedString {
 # Dies:        If $filename does not exist or is empty.
 #
 ################################################################# 
-sub validateFileExistsAndIsNonEmpty { 
+sub dng_ValidateFileExistsAndIsNonEmpty { 
   my $nargs_expected = 3;
-  my $sub_name = "validateFileExistsAndIsNonEmpty()";
+  my $sub_name = "dng_ValidateFileExistsAndIsNonEmpty()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($filename, $caller_sub_name, $FH_HR) = @_;
 
@@ -3286,7 +3034,7 @@ sub validateFileExistsAndIsNonEmpty {
 }
 
 #################################################################
-# Subroutine : concatenateListOfFiles()
+# Subroutine:  dng_concatenateListOfFiles()
 # Incept:      EPN, Sun Apr 24 08:08:15 2016
 #
 # Purpose:     Concatenate a list of files into one file.
@@ -3315,9 +3063,9 @@ sub validateFileExistsAndIsNonEmpty {
 #              a sophisticated enough temporary file naming
 #              strategy to handle that robustly.
 ################################################################# 
-sub concatenateListOfFiles { 
+sub dng_ConcatenateListOfFiles { 
   my $nargs_expected = 5;
-  my $sub_name = "concatenateListOfFiles()";
+  my $sub_name = "dng_ConcatenateListOfFiles()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($file_AR, $outfile, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
 
@@ -3371,7 +3119,7 @@ sub concatenateListOfFiles {
     $cat_cmd .= "> $tmp_outfile";
 
     # execute the command
-    runCommand($cat_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+    dng_RunCommand($cat_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
     # add it to the array of temporary files
     push(@tmp_outfile_A, $tmp_outfile); 
@@ -3387,7 +3135,7 @@ sub concatenateListOfFiles {
     # remove all of the original files, be careful to not remove @tmp_outfile_A
     # because the recursive call will handle that
     foreach my $file_to_remove (@{$file_AR}) { 
-      removeFileUsingSystemRm($file_to_remove, 
+      dng_RemoveFileUsingSystemRm($file_to_remove, 
                               (defined $caller_sub_name) ? $caller_sub_name . ":" . $sub_name : $sub_name, 
                               $opt_HHR, $FH_HR);
     }
@@ -3397,7 +3145,7 @@ sub concatenateListOfFiles {
 }
 
 #################################################################
-# Subroutine : md5ChecksumOfFile()
+# Subroutine:  dng_md5ChecksumOfFile()
 # Incept:      EPN, Fri May 27 14:02:30 2016
 #
 # Purpose:     Use md5sum to get a checksum of a file, return
@@ -3415,9 +3163,9 @@ sub concatenateListOfFiles {
 # Dies:        If the file doesn't exist or the command fails.
 #
 ################################################################# 
-sub md5ChecksumOfFile { 
+sub dng_Md5ChecksumOfFile { 
   my $nargs_expected = 4;
-  my $sub_name = "md5ChecksumOfFile()";
+  my $sub_name = "dng_Md5ChecksumOfFile()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($file, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
 
@@ -3427,7 +3175,7 @@ sub md5ChecksumOfFile {
   }
 
   my $out_file = removeDirPath($file . ".md5sum");
-  runCommand("md5sum $file > $out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  dng_RunCommand("md5sum $file > $out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   open(MD5, $out_file) || fileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
   #194625f7c3e2a5129f9880c7e29f63de  wnv.lin2.matpept.in
@@ -3442,13 +3190,13 @@ sub md5ChecksumOfFile {
   }
   close(MD5);
 
-  removeFileUsingSystemRm($out_file, $caller_sub_name, $opt_HHR, $FH_HR);
+  dng_RemoveFileUsingSystemRm($out_file, $caller_sub_name, $opt_HHR, $FH_HR);
 
   return $md5sum;
 }
 
 #################################################################
-# Subroutine : nseBreakdown()
+# Subroutine:  dng_nseBreakdown()
 # Incept:      EPN, Wed Jan 30 09:50:07 2013 [rfam-family-pipeline:Utils.pm]
 #
 # Purpose  : Checks if $nse is of format "name/start-end" and if so
@@ -3467,9 +3215,9 @@ sub md5ChecksumOfFile {
 # Dies:        Never
 #
 ################################################################# 
-sub nseBreakdown {
+sub dng_NseBreakdown {
   my $nargs_expected = 1;
-  my $sub_name = "nseBreakdown()";
+  my $sub_name = "dng_NseBreakdown()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($sqname) = $_[0];
@@ -3491,7 +3239,7 @@ sub nseBreakdown {
 #
 # Miscellaneous subroutines that don't fall into one of the above
 # categories:
-#   stripVersion()
+#   dng_StripVersion()
 #   fetchedNameToListName()
 #   fetchSequencesUsingEslFetchCds()
 #   addNameAndBlankSsToStockholmAlignment()
@@ -3502,7 +3250,7 @@ sub nseBreakdown {
 #   getIndexHashForArray()
 #
 #################################################################
-# Subroutine: stripVersion()
+# Subroutine: dng_StripVersion()
 # Incept:     EPN, Thu Feb 11 14:25:52 2016
 #
 # Purpose:    Given a ref to an accession.version string, remove the version.
@@ -3514,8 +3262,8 @@ sub nseBreakdown {
 #
 # Dies:       never
 #################################################################
-sub stripVersion {
-  my $sub_name  = "stripVersion()";
+sub dng_StripVersion {
+  my $sub_name  = "dng_StripVersion()";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -3527,7 +3275,7 @@ sub stripVersion {
 }
 
 #################################################################
-# Subroutine: fetchedNameToListName()
+# Subroutine: dng_FetchedNameToListName()
 # Incept:     EPN, Thu Feb 11 14:25:52 2016
 #
 # Purpose:    Convert a fetched sequence name via efetch to the 
@@ -3540,7 +3288,7 @@ sub stripVersion {
 #
 # Dies:       never
 #################################################################
-sub fetchedNameToListName { 
+sub dng_FetchedNameToListName { 
   my $sub_name  = "fetchedNameToListName";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
@@ -3564,7 +3312,7 @@ sub fetchedNameToListName {
 
 
 #################################################################
-# Subroutine : getIndexHashForArray()
+# Subroutine:  dng_getIndexHashForArray()
 # Incept:      EPN, Tue Mar  1 14:11:38 2016
 #
 # Purpose:     Create an 'index hash' %{$index_HR} for an array
@@ -3584,9 +3332,9 @@ sub fetchedNameToListName {
 #              epn-options.pm)
 #
 ################################################################# 
-sub getIndexHashForArray { 
+sub dng_GetIndexHashForArray { 
   my $nargs_expected = 3;
-  my $sub_name = "getIndexHashForArray()";
+  my $sub_name = "dng_GetIndexHashForArray()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR, $index_HR, $FH_HR) = @_;
 
@@ -3612,7 +3360,7 @@ sub getIndexHashForArray {
 }
 
 #################################################################
-# Subroutine : waitForFarmJobsToFinish()
+# Subroutine:  dng_waitForFarmJobsToFinish()
 # Incept:      EPN, Mon Feb 29 16:20:54 2016
 #              EPN, Wed Aug 31 09:07:05 2016 [moved from dnaorg_annotate.pl to dnaorg.pm]
 #
@@ -3657,8 +3405,8 @@ sub getIndexHashForArray {
 # Dies: never.
 #
 ################################################################# 
-sub waitForFarmJobsToFinish { 
-  my $sub_name = "waitForFarmJobsToFinish()";
+sub dng_WaitForFarmJobsToFinish { 
+  my $sub_name = "dng_WaitForFarmJobsToFinish()";
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -3761,7 +3509,7 @@ sub waitForFarmJobsToFinish {
 }
 
 #################################################################
-# Subroutine : splitFastaFile()
+# Subroutine:  dng_splitFastaFile()
 # Incept:      EPN, Tue Mar  1 09:30:10 2016
 #
 # Purpose: Split up a fasta file into <n> smaller files by calling
@@ -3780,8 +3528,8 @@ sub waitForFarmJobsToFinish {
 # Dies:       if esl-ssplit command fails
 #
 ################################################################# 
-sub splitFastaFile { 
-  my $sub_name = "splitFastaFile()";
+sub dng_SplitFastaFile { 
+  my $sub_name = "dng_SplitFastaFile()";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -3798,21 +3546,21 @@ sub splitFastaFile {
   else { 
     $cmd = "$esl_ssplit -v -r -n $fasta_file $nfiles > $outfile";
   }
-  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  dng_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   # parse output to determine exactly how many files were created:
   # $esl_ssplit will have output exactly 1 line per fasta file it created
   my $nfiles_created = countLinesInFile($outfile, $FH_HR);
 
   if(! opt_Get("--keep", $opt_HHR)) { 
-    runCommand("rm $outfile", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+    dng_RunCommand("rm $outfile", opt_Get("-v", $opt_HHR), 0, $FH_HR);
   }
 
   return $nfiles_created;
 }
 
 #################################################################
-# Subroutine:  cmalignOrNhmmscanWrapper()
+# Subroutine: dng_CmalignOrNhmmscanWrapper()
 # Incept:      EPN, Tue Nov 21 15:54:20 2017
 #              EPN, Tue Jan 29 14:30:05 2019 [switched from cmscan to cmalign]
 #
@@ -3865,8 +3613,8 @@ sub splitFastaFile {
 # Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
 #       command fails if we're running locally
 ################################################################# 
-sub cmalignOrNhmmscanWrapper { 
-  my $sub_name = "cmalignOrNhmmscanWrapper";
+sub dng_CmalignOrNhmmscanWrapper { 
+  my $sub_name = "dng_CmalignOrNhmmscanWrapper";
   my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -3919,7 +3667,7 @@ sub cmalignOrNhmmscanWrapper {
   my $r1_i;                 # counter over round 1 runs
   if($targ_nseqfiles == 1) { 
     my $cp_command = "cp " . $seq_file . " " . $seq_file . ".1";
-    runCommand($cp_command, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+    dng_RunCommand($cp_command, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
     $nr1 = 1;
   }
   else { # we are going to split up the fasta file 
@@ -3969,7 +3717,7 @@ sub cmalignOrNhmmscanWrapper {
         # and don't need to rerun cmalign
         cmalignStoreOverflow($r1_seq_file_A[$r1_i], $r1_mxsize_A[$r1_i], $overflow_seq_AR, $overflow_mxsize_AR, $ofile_info_HHR->{"FH"}); 
         if(! opt_Get("--keep", $opt_HHR)) { 
-          runCommand("rm " . $r1_seq_file_A[$r1_i] . ".1", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+          dng_RunCommand("rm " . $r1_seq_file_A[$r1_i] . ".1", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
         }
       }
       else { 
@@ -4027,7 +3775,7 @@ sub cmalignOrNhmmscanWrapper {
 }
 
 #################################################################
-# Subroutine:  cmalignOrNhmmscanWrapperHelper()
+# Subroutine: dng_CmalignOrNhmmscanWrapperHelper()
 # Incept:      EPN, Tue Feb  5 09:15:49 2019
 #
 # Purpose:     Run one or more cmalign or nhmmscan jobs on the farm
@@ -4063,8 +3811,8 @@ sub cmalignOrNhmmscanWrapper {
 # Dies: If an executable doesn't exist, or command fails (and its not a cmalign allowed failure)
 #
 ################################################################# 
-sub cmalignOrNhmmscanWrapperHelper { 
-  my $sub_name = "cmalignOrNhmmscanWrapperHelper";
+sub dng_CmalignOrNhmmscanWrapperHelper { 
+  my $sub_name = "dng_CmalignOrNhmmscanWrapperHelper";
   my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -4163,7 +3911,7 @@ sub cmalignOrNhmmscanWrapperHelper {
 }
 
 #################################################################
-# Subroutine : runCmalign()
+# Subroutine:  dng_runCmalign()
 # Incept:      EPN, Wed Feb  6 12:30:08 2019
 #
 # Purpose:     Run Infernal's cmalign executable using $model_file
@@ -4203,8 +3951,8 @@ sub cmalignOrNhmmscanWrapperHelper {
 #                  job run locally and finished with unallowed failure
 # 
 ################################################################# 
-sub runCmalign { 
-  my $sub_name = "runCmalign()";
+sub dng_RunCmalign { 
+  my $sub_name = "dng_RunCmalign()";
   my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -4242,18 +3990,18 @@ sub runCmalign {
   # final line of this file to determine when the jobs are finished, if it already exists, we'll
   # think the job is finished before it actual is.
   if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
-    if(-e $stdout_file) { removeFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
-    if(-e $ifile_file)  { removeFileUsingSystemRm($ifile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
-    if(-e $tfile_file)  { removeFileUsingSystemRm($tfile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
-    if(-e $stk_file)    { removeFileUsingSystemRm($stk_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
-    if(-e $err_file)    { removeFileUsingSystemRm($err_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
+    if(-e $stdout_file) { dng_RemoveFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
+    if(-e $ifile_file)  { dng_RemoveFileUsingSystemRm($ifile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
+    if(-e $tfile_file)  { dng_RemoveFileUsingSystemRm($tfile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
+    if(-e $stk_file)    { dng_RemoveFileUsingSystemRm($stk_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
+    if(-e $err_file)    { dng_RemoveFileUsingSystemRm($err_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
   }
 
   my $cmd = "$executable $opts $model_file $seq_file > $stdout_file 2>&1";
 
   if($do_local) { 
     if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
-      runCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
+      dng_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
     }
   }
   else { 
@@ -4270,7 +4018,7 @@ sub runCmalign {
   if($do_local) { 
     # command has completed, check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
     $success = cmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
-    if($success == -1) { # indicates job did not finish properly, this shouldn't happen because runCommand() didn't die
+    if($success == -1) { # indicates job did not finish properly, this shouldn't happen because dng_RunCommand() didn't die
       ofile_FAIL("ERROR in $sub_name, cmalign failed in a bad way, see $stdout_file for error output", 1, $ofile_info_HHR->{"FH"});
     }
   }
@@ -4279,7 +4027,7 @@ sub runCmalign {
 }
 
 #################################################################
-# Subroutine : runNhmmscan()
+# Subroutine:  dng_runNhmmscan()
 # Incept:      EPN, Wed Feb  6 12:38:11 2019
 #
 # Purpose:     Run HMMER's nhmmscan executable using $model_file
@@ -4299,8 +4047,8 @@ sub runCmalign {
 # Returns:     void
 # 
 ################################################################# 
-sub runNhmmscan {
-  my $sub_name = "runNhmmscan()";
+sub dng_RunNhmmscan {
+  my $sub_name = "dng_RunNhmmscan()";
   my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -4316,13 +4064,13 @@ sub runNhmmscan {
   if(opt_Get("-v", $opt_HHR)) { $opts .= " --noali"; }
 
   # remove the tblout file or stdout files if they exist
-  if(-e $stdout_file) { removeFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
-  if(-e $tblout_file) { removeFileUsingSystemRm($tblout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
+  if(-e $stdout_file) { dng_RemoveFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
+  if(-e $tblout_file) { dng_RemoveFileUsingSystemRm($tblout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
 
   my $cmd = "$executable $opts $model_file $seq_file > $stdout_file";
 
   if($do_local) { 
-    runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+    dng_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
   }
   else { 
     my $job_name = "J" . removeDirPath($seq_file);
@@ -4334,7 +4082,7 @@ sub runNhmmscan {
 }
 
 #################################################################
-# Subroutine : cmalignCheckStdOutput()
+# Subroutine:  dng_cmalignCheckStdOutput()
 # Incept:      EPN, Wed Feb  6 14:18:59 2019
 #
 # Purpose:     Check cmalign output to see if it indicates that 
@@ -4356,8 +4104,8 @@ sub runNhmmscan {
 # Dies: If $stdout_file does not exist or is empty
 # 
 ################################################################# 
-sub cmalignCheckStdOutput { 
-  my $sub_name = "cmalignCheckStdOutput";
+sub dng_CmalignCheckStdOutput { 
+  my $sub_name = "dng_CmalignCheckStdOutput";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -4399,7 +4147,7 @@ sub cmalignCheckStdOutput {
 }
 
 #################################################################
-# Subroutine : cmalignStoreOverflow()
+# Subroutine:  dng_cmalignStoreOverflow()
 # Incept:      EPN, Wed Feb 13 16:04:53 2019
 #
 # Purpose:     Store information on a sequence that has caused
@@ -4417,8 +4165,8 @@ sub cmalignCheckStdOutput {
 # Dies: if there's some problem opening the sequence file
 #
 ################################################################# 
-sub cmalignStoreOverflow { 
-  my $sub_name = "cmalignStoreOverflow";
+sub dng_CmalignStoreOverflow { 
+  my $sub_name = "dng_CmalignStoreOverflow";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -4442,7 +4190,7 @@ sub cmalignStoreOverflow {
 
 
 #################################################################
-# Subroutine: featureNumSegments()
+# Subroutine: dng_FeatureNumSegments()
 # Incept:     EPN, Tue Mar  5 13:05:38 2019
 #
 # Purpose:    Return number of segments in feature $ftr_idx.
@@ -4456,7 +4204,7 @@ sub cmalignStoreOverflow {
 # Dies: Never, nothing is validated
 # 
 #################################################################
-sub featureNumSegments { 
+sub dng_FeatureNumSegments { 
   my $sub_name  = "featureNumSegments";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
@@ -4467,7 +4215,7 @@ sub featureNumSegments {
 }
 
 #################################################################
-# Subroutine: formatTabDelimitedStringForErrorListFile()
+# Subroutine: dng_FormatTabDelimitedStringForErrorListFile()
 # Incept:     EPN, Wed Dec 12 10:57:59 2018
 #
 # Purpose:    Given a sequence name and a string <error_str> that
@@ -4492,7 +4240,7 @@ sub featureNumSegments {
 # Dies: If $errstr is not in required format
 #
 #################################################################
-sub formatTabDelimitedStringForErrorListFile() {
+sub dng_FormatTabDelimitedStringForErrorListFile() {
   my $sub_name  = "formatTabDelimitedStringForErrorListFile";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
@@ -4540,7 +4288,7 @@ sub formatTabDelimitedStringForErrorListFile() {
 }
 
 #################################################################
-# Subroutine:  blastxDbSeqnameToFtrIdx()
+# Subroutine: dng_BlastxDbSeqnameToFtrIdx()
 # Incept:      EPN, Tue Dec 18 13:27:50 2018
 #
 # Purpose:    Find the feature $ftr_idx that corresponds to the blastx
@@ -4561,8 +4309,8 @@ sub formatTabDelimitedStringForErrorListFile() {
 #             If we find more than 1 features that match to this sequence
 #
 ################################################################# 
-sub blastxDbSeqNameToFtrIdx { 
-  my $sub_name = "blastxDbSeqNameToFtrIdx";
+sub dng_BlastxDbSeqNameToFtrIdx { 
+  my $sub_name = "dng_BlastxDbSeqNameToFtrIdx";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -4596,7 +4344,7 @@ sub blastxDbSeqNameToFtrIdx {
 }
 
 #################################################################
-# Subroutine:  validateBlastDbExists()
+# Subroutine: dng_ValidateBlastDbExists()
 # Incept:      EPN, Tue Dec 18 15:32:50 2018
 #
 # Purpose:    Validate that a blast database exists.
@@ -4610,8 +4358,8 @@ sub blastxDbSeqNameToFtrIdx {
 # Dies:       If any of the required files for a blast db do not exist.
 #
 ################################################################# 
-sub validateBlastDbExists {
-  my $sub_name = "validateBlastDbExists";
+sub dng_ValidateBlastDbExists {
+  my $sub_name = "dng_ValidateBlastDbExists";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -4628,7 +4376,7 @@ sub validateBlastDbExists {
 
 
 #################################################################
-# Subroutine:  featureTypeIsCdsOrMaturePeptide()
+# Subroutine: dng_FeatureTypeIsCdsOrMaturePeptide()
 # Incept:      EPN, Mon Feb 25 14:30:34 2019
 #
 # Purpose:    Is feature $ftr_idx a CDS or mature peptide?
@@ -4642,8 +4390,8 @@ sub validateBlastDbExists {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub featureTypeIsCdsOrMaturePeptide { 
-  my $sub_name = "featureTypeIsCdsOrMaturePeptide";
+sub dng_FeatureTypeIsCdsOrMaturePeptide { 
+  my $sub_name = "dng_FeatureTypeIsCdsOrMaturePeptide";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -4655,7 +4403,7 @@ sub featureTypeIsCdsOrMaturePeptide {
 
 
 #################################################################
-# Subroutine:  featureIsDuplicate()
+# Subroutine: dng_FeatureIsDuplicate()
 # Incept:      EPN, Sun Mar 10 07:04:24 2019
 #
 # Purpose:    Is feature $ftr_idx a duplicate of another feature?
@@ -4670,8 +4418,8 @@ sub featureTypeIsCdsOrMaturePeptide {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub featureIsDuplicate { 
-  my $sub_name = "featureIsDuplicate";
+sub dng_FeatureIsDuplicate { 
+  my $sub_name = "dng_FeatureIsDuplicate";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -4681,7 +4429,7 @@ sub featureIsDuplicate {
 }
 
 #################################################################
-# Subroutine:  featureGet5pMostPosition()
+# Subroutine: dng_Feature5pMostPosition()
 # Incept:      EPN, Fri Mar  8 12:57:21 2019
 #
 # Purpose:    Return 5'-most position in all segments for a feature.
@@ -4695,8 +4443,8 @@ sub featureIsDuplicate {
 # Dies:      if $coords is not parseable.
 #
 ################################################################# 
-sub featureGet5pMostPosition { 
-  my $sub_name = "featureGet5pMostPosition";
+sub dng_Feature5pMostPosition { 
+  my $sub_name = "dng_Feature5pMostPosition";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -4713,7 +4461,7 @@ sub featureGet5pMostPosition {
 }
 
 #################################################################
-# Subroutine:  featureGet3pMostPosition()
+# Subroutine: dng_Feature3pMostPosition()
 # Incept:      EPN, Fri Mar  8 13:00:31 2019
 #
 # Purpose:    Return 3'-most position in all segments for a feature.
@@ -4727,8 +4475,8 @@ sub featureGet5pMostPosition {
 # Dies:      if $coords is not parseable.
 #
 ################################################################# 
-sub featureGet3pMostPosition { 
-  my $sub_name = "featureGet3pMostPosition";
+sub dng_Feature3pMostPosition { 
+  my $sub_name = "dng_Feature3pMostPosition";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -4745,7 +4493,7 @@ sub featureGet3pMostPosition {
 }
 
 #################################################################
-# Subroutine:  featureInfoSummarizeSegment()
+# Subroutine: dng_FeatureInfoSummarizeSegment()
 # Incept:      EPN, Fri Mar  1 12:36:36 2019
 #
 # Purpose:    Return a string indicating what model this is
@@ -4762,8 +4510,8 @@ sub featureGet3pMostPosition {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub featureInfoSummarizeSegment { 
-  my $sub_name = "featureInfoSummarizeSegment";
+sub dng_FeatureInfoSummarizeSegment { 
+  my $sub_name = "dng_FeatureInfoSummarizeSegment";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -4779,7 +4527,7 @@ sub featureInfoSummarizeSegment {
 }
 
 #################################################################
-# Subroutine: featureInfoImputeCoords
+# Subroutine: dng_FeatureInfoImputeCoords
 # Incept:     EPN, Wed Mar 13 13:15:33 2019
 # 
 # Purpose:    Fill "coords" values in %{$ftr_info_HAR}
@@ -4793,8 +4541,8 @@ sub featureInfoSummarizeSegment {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub featureInfoImputeCoords { 
-  my $sub_name = "featureInfoImputeCoords";
+sub dng_FeatureInfoImputeCoords { 
+  my $sub_name = "dng_FeatureInfoImputeCoords";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -4802,17 +4550,17 @@ sub featureInfoImputeCoords {
   
   # ftr_info_AHR should already have array data for keys "type", "location"
   my @keys_A = ("type", "location");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"coords"} = featureCoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
+    $ftr_info_AHR->[$ftr_idx]{"coords"} = dng_FeatureCoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
   }
 
   return;
 }
 
 #################################################################
-# Subroutine: featureInfoImputeLength
+# Subroutine: dng_FeatureInfoImputeLength
 # Incept:     EPN, Thu Mar 14 12:07:16 2019
 # 
 # Purpose:    Fill "length" values in @{$ftr_info_AHR}
@@ -4826,8 +4574,8 @@ sub featureInfoImputeCoords {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub featureInfoImputeLength { 
-  my $sub_name = "featureInfoImputeSourceIdx";
+sub dng_FeatureInfoImputeLength { 
+  my $sub_name = "dng_FeatureInfoImputeSourceIdx";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -4835,7 +4583,7 @@ sub featureInfoImputeLength {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine length by parsing the 
   # "coords" value
@@ -4843,7 +4591,7 @@ sub featureInfoImputeLength {
     my $len = 0;
     my @sgm_start_A  = (); # array of starts, one per segment
     my @sgm_stop_A   = (); # array of stops, one per segment
-    featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, undef, $FH_HR);
+    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, undef, $FH_HR);
     for(my $s = 0; $s < scalar(@sgm_start_A); $s++) { 
       $len += abs($sgm_start_A[$s] - $sgm_stop_A[$s]) + 1;
     }
@@ -4854,7 +4602,7 @@ sub featureInfoImputeLength {
 }
 
 #################################################################
-# Subroutine: featureInfoImputeSourceIdx
+# Subroutine: dng_FeatureInfoImputeSourceIdx
 # Incept:     EPN, Wed Mar 13 13:20:01 2019
 # 
 # Purpose:    Fill "source_idx" values in @{$ftr_info_AHR}
@@ -4868,8 +4616,8 @@ sub featureInfoImputeLength {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub featureInfoImputeSourceIdx { 
-  my $sub_name = "featureInfoImputeSourceIdx";
+sub dng_FeatureInfoImputeSourceIdx { 
+  my $sub_name = "dng_FeatureInfoImputeSourceIdx";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -4877,7 +4625,7 @@ sub featureInfoImputeSourceIdx {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine duplicates (set 'source_idx')
   # 
@@ -4911,7 +4659,7 @@ sub featureInfoImputeSourceIdx {
 }
 
 #################################################################
-# Subroutine: featureInfoImputeParentIdx
+# Subroutine: dng_FeatureInfoImputeParentIdx
 # Incept:     EPN, Wed Mar 13 13:33:33 2019
 # 
 # Purpose:    Fill "parent_idx" values in @{$ftr_info_AHR}
@@ -4925,8 +4673,8 @@ sub featureInfoImputeSourceIdx {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub featureInfoImputeParentIdx {
-  my $sub_name = "featureInfoImputeParentIdx";
+sub dng_FeatureInfoImputeParentIdx {
+  my $sub_name = "dng_FeatureInfoImputeParentIdx";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -4934,7 +4682,7 @@ sub featureInfoImputeParentIdx {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine parents (set 'parent_idx')
   # 
@@ -4959,13 +4707,13 @@ sub featureInfoImputeParentIdx {
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = -1; # initialize
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
-      $ftr_5p_pos = featureGet5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_3p_pos = featureGet3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_strand = featureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_5p_pos = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_strand = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = featureGet5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_3p_pos2 = featureGet3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_strand2 = featureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+        $ftr_5p_pos2 = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_3p_pos2 = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_strand2 = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
         $found_parent = 0;
         if(($ftr_idx != $ftr_idx2) && 
            ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
@@ -5002,7 +4750,7 @@ sub featureInfoImputeParentIdx {
       
 
 #################################################################
-# Subroutine: featureInfoImpute3paFtrIdx
+# Subroutine: dng_FeatureInfoImpute3paFtrIdx
 # Incept:     EPN, Wed Mar 13 13:39:34 2019
 # 
 # Purpose:    Fill "3pa_ftr_idx" values in @{$ftr_info_AHR}
@@ -5016,8 +4764,8 @@ sub featureInfoImputeParentIdx {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub featureInfoImpute3paFtrIdx {
-  my $sub_name = "featureInfoImpute3paFtrIdx";
+sub dng_FeatureInfoImpute3paFtrIdx {
+  my $sub_name = "dng_FeatureInfoImpute3paFtrIdx";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -5025,7 +4773,7 @@ sub featureInfoImpute3paFtrIdx {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine adjacent mat_peptides (set '3pa_ftr_idx')
   # 
@@ -5047,11 +4795,11 @@ sub featureInfoImpute3paFtrIdx {
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = -1;
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
-      $ftr_3p_pos = featureGet3pMostPosition($ftr_info_AHR, $ftr_idx, $FH_HR);
-      $ftr_strand = featureSummaryStrand($ftr_info_AHR, $ftr_idx, $FH_HR);
+      $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR, $ftr_idx, $FH_HR);
+      $ftr_strand = dng_FeatureSummaryStrand($ftr_info_AHR, $ftr_idx, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = featureGet5pMostPosition($ftr_info_AHR, $ftr_idx2, $FH_HR);
-        $ftr_strand2 = getFeatureStrand($ftr_info_AHR, $ftr_idx2, $FH_HR);
+        $ftr_5p_pos2 = dng_Feature5pMostPosition($ftr_info_AHR, $ftr_idx2, $FH_HR);
+        $ftr_strand2 = dng_FeatureSummaryStrand($ftr_info_AHR, $ftr_idx2, $FH_HR);
         $found_adj = 0;
         if(($ftr_idx != $ftr_idx2) && 
            ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "mat_peptide") &&
@@ -5078,7 +4826,7 @@ sub featureInfoImpute3paFtrIdx {
 }
 
 #################################################################
-# Subroutine: segmentInfoPopulate()
+# Subroutine: dng_SegmentInfoPopulate()
 # Incept:     EPN, Wed Mar 13 13:55:56 2019
 #
 # Synopsis: Fill @{$sgm_info_AHR} and add to @{$ftr_info_AHR}
@@ -5110,8 +4858,8 @@ sub featureInfoImpute3paFtrIdx {
 # Dies:       if @{$ftr_info_AHR} is not valid upon entry
 #
 #################################################################
-sub segmentInfoPopulate {
-  my $sub_name = "segmentInfoPopulate";
+sub dng_SegmentInfoPopulate {
+  my $sub_name = "dng_SegmentInfoPopulate";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -5119,7 +4867,7 @@ sub segmentInfoPopulate {
 
   # ftr_info_AHR should already have array data for keys "type", "coords", "source_idx"
   my @keys_A = ("type", "coords", "source_idx");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # initialize new %{$ftr_info_AHR} values
   my ($ftr_idx, $ftr_idx2, $sgm_idx, $sgm_idx2); # feature and segment indices
@@ -5136,7 +4884,7 @@ sub segmentInfoPopulate {
       my @sgm_start_A  = (); # array of starts, one per segment
       my @sgm_stop_A   = (); # array of stops, one per segment
       my @sgm_strand_A = (); # array of strands ("+", "-"), one per segment
-      featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
+      dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
       my $cur_nseg = scalar(@sgm_start_A);
       for(my $s = 0; $s < $cur_nseg; $s++) { 
         $sgm_info_AHR->[$nseg]{"start"}   = $sgm_start_A[$s];
@@ -5166,7 +4914,7 @@ sub segmentInfoPopulate {
 }
 
 #################################################################
-# Subroutine: featureInfoStartStopStrandArrays()
+# Subroutine: dng_FeatureInfoStartStopStrandArrays()
 # Incept:     EPN, Fri Mar 15 15:39:35 2019
 #
 # Synopsis: For all features in a @{$ftr_info_AHR}, validate 
@@ -5185,8 +4933,8 @@ sub segmentInfoPopulate {
 # Dies: if unable to parse $coords_str
 #
 #################################################################
-sub featureInfoStartStopStrandArrays {
-  my $sub_name = "featureInfoStartStopStrandArrays";
+sub dng_FeatureInfoStartStopStrandArrays {
+  my $sub_name = "dng_FeatureInfoStartStopStrandArrays";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -5194,7 +4942,7 @@ sub featureInfoStartStopStrandArrays {
 
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   my @start_AA  = ();
   my @stop_AA   = ();
@@ -5203,7 +4951,7 @@ sub featureInfoStartStopStrandArrays {
     @{$start_AA[$ftr_idx]}  = ();
     @{$stop_AA[$ftr_idx]}   = ();
     @{$strand_AA[$ftr_idx]} = ();
-    featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@{$start_AA[$ftr_idx]}, \@{$stop_AA[$ftr_idx]}, \@{$strand_AA[$ftr_idx]}, $FH_HR);
+    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@{$start_AA[$ftr_idx]}, \@{$stop_AA[$ftr_idx]}, \@{$strand_AA[$ftr_idx]}, $FH_HR);
   }
   if(defined $start_AAR)  { @{$start_AAR}   = @start_AA;   }
   if(defined $stop_AAR)   { @{$stop_AAR}    = @stop_AA;    }
@@ -5213,7 +4961,7 @@ sub featureInfoStartStopStrandArrays {
 }
 
 #################################################################
-# Subroutine: featureStartStopStrandArrays()
+# Subroutine: dng_FeatureStartStopStrandArrays()
 # Incept:     EPN, Sat Mar  9 05:50:10 2019
 #
 # Synopsis: Given a comma separated coords string, parse it, 
@@ -5232,8 +4980,8 @@ sub featureInfoStartStopStrandArrays {
 # Dies: if unable to parse $coords_str
 #
 #################################################################
-sub featureStartStopStrandArrays {
-  my $sub_name = "featureStartStopStrandArrays";
+sub dng_FeatureStartStopStrandArrays {
+  my $sub_name = "dng_FeatureStartStopStrandArrays";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -5265,7 +5013,7 @@ sub featureStartStopStrandArrays {
 }
 
 #################################################################
-# Subroutine: arrayOfHashesValidate()
+# Subroutine: dng_ArrayOfHashesValidate()
 # Incept:     EPN, Wed Mar 13 13:24:38 2019
 #
 # Purpose:    Validate an array of hashes, by making sure it
@@ -5282,8 +5030,8 @@ sub featureStartStopStrandArrays {
 #            of the array
 #
 #################################################################
-sub arrayOfHashesValidate {
-  my $sub_name = "arrayOfHashesValidate()";
+sub dng_ArrayOfHashesValidate {
+  my $sub_name = "dng_ArrayOfHashesValidate()";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -5292,7 +5040,7 @@ sub arrayOfHashesValidate {
   my $n = scalar(@{$AHR});
 
   for(my $i = 0; $i < $n; $i++) { 
-    hashValidate($AHR->[$i], $keys_AR, $fail_str, $FH_HR);
+    dng_HashValidate($AHR->[$i], $keys_AR, $fail_str, $FH_HR);
   }
 
   return $n;
@@ -5300,7 +5048,7 @@ sub arrayOfHashesValidate {
 
 
 #################################################################
-# Subroutine: hashValidate()
+# Subroutine: dng_HashValidate()
 # Incept:     EPN, Fri Mar 15 09:37:19 2019
 #
 # Purpose:    Validate a hash, by making sure a defined value
@@ -5317,8 +5065,8 @@ sub arrayOfHashesValidate {
 #            of the array
 #
 #################################################################
-sub hashValidate {
-  my $sub_name = "hashValidate()";
+sub dng_HashValidate {
+  my $sub_name = "dng_HashValidate()";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -5338,7 +5086,7 @@ sub hashValidate {
 
 
 #################################################################
-# Subroutine: featureCoordsFromLocation
+# Subroutine: dng_FeatureCoordsFromLocation
 # Incept:     EPN, Wed Mar 13 14:17:08 2019
 # 
 # Purpose:    Convert a GenBank file 'location' value to 
@@ -5360,8 +5108,8 @@ sub hashValidate {
 #      and
 #      https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html
 #################################################################
-sub featureCoordsFromLocation { 
-  my $sub_name = "featureCoordsFromLocation";
+sub dng_FeatureCoordsFromLocation { 
+  my $sub_name = "dng_FeatureCoordsFromLocation";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -5383,18 +5131,18 @@ sub featureCoordsFromLocation {
   my $ret_val = "";
   if($location =~ /^join\((.+)\)$/) { 
     my $location_to_join = $1;
-    $ret_val = featureCoordsFromLocation($location_to_join, $FH_HR);
+    $ret_val = dng_FeatureCoordsFromLocation($location_to_join, $FH_HR);
   }
   elsif($location =~ /^complement\((.+)\)$/) { 
     my $location_to_complement = $1;
-    my $coords_to_complement = featureCoordsFromLocation($location_to_complement, $FH_HR);
-    $ret_val = featureCoordsComplement($coords_to_complement, $FH_HR);
+    my $coords_to_complement = dng_FeatureCoordsFromLocation($location_to_complement, $FH_HR);
+    $ret_val = dng_FeatureCoordsComplement($coords_to_complement, $FH_HR);
   }
   elsif($location =~ /\,/) { 
     # not wrapped in join() or complement(), but multiple segments
     foreach my $location_el (split(",", $location)) { 
       if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= featureCoordsFromLocation($location_el, $FH_HR);
+      $ret_val .= dng_FeatureCoordsFromLocation($location_el, $FH_HR);
     }
   }
   elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
@@ -5408,7 +5156,7 @@ sub featureCoordsFromLocation {
 }
 
 #################################################################
-# Subroutine: featureCoordsComplement
+# Subroutine: dng_FeatureCoordsComplement
 # Incept:     EPN, Wed Mar 13 15:00:24 2019
 # 
 # Purpose:    Complement a coords string by complementing all
@@ -5424,8 +5172,8 @@ sub featureCoordsFromLocation {
 #             is already on the negative strand.
 #
 #################################################################
-sub featureCoordsComplement { 
-  my $sub_name = "featureCoordsComplement";
+sub dng_FeatureCoordsComplement { 
+  my $sub_name = "dng_FeatureCoordsComplement";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -5458,7 +5206,7 @@ sub featureCoordsComplement {
 }
 
 #################################################################
-# Subroutine: featureSummaryStrand
+# Subroutine: dng_FeatureSummaryStrand
 # Incept:     EPN, Wed Mar 13 15:38:06 2019
 # 
 # Purpose:    Summarize the strandedness of segments for a feature
@@ -5476,8 +5224,8 @@ sub featureCoordsComplement {
 # Dies:      if unable to parse $coords
 #
 #################################################################
-sub featureSummaryStrand { 
-  my $sub_name = "featureSummaryStrand";
+sub dng_FeatureSummaryStrand { 
+  my $sub_name = "dng_FeatureSummaryStrand";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -5490,7 +5238,7 @@ sub featureSummaryStrand {
   # 1-200:+,300-400:+        400-300:-,200-1:-
 
   my @strand_A = ();
-  featureStartStopStrandArrays($coords, undef, undef, \@strand_A, $FH_HR);
+  dng_FeatureStartStopStrandArrays($coords, undef, undef, \@strand_A, $FH_HR);
 
   my $npos = 0;
   my $nneg = 0;
@@ -5510,7 +5258,7 @@ sub featureSummaryStrand {
 }
   
 #################################################################
-# Subroutine : sqstringAddNewlines()
+# Subroutine:  dng_sqstringAddNewlines()
 # Incept:      EPN, Thu Mar 14 06:12:11 2019
 #
 # Purpose:     Add newlines to $sqstring after every $linelen
@@ -5526,9 +5274,9 @@ sub featureSummaryStrand {
 # Dies:        Never.
 #
 ################################################################# 
-sub sqstringAddNewlines { 
+sub dng_SqstringAddNewlines { 
   my $nargs_expected = 2;
-  my $sub_name = "sqstringAddNewlines";
+  my $sub_name = "dng_SqstringAddNewlines";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($sqstring, $linelen) = @_;
 
@@ -5546,7 +5294,7 @@ sub sqstringAddNewlines {
     
 
 #################################################################
-# Subroutine: featureInfoCountType
+# Subroutine: dng_FeatureInfoCountType
 # Incept:     EPN, Thu Mar 14 12:16:26 2019
 # 
 # Purpose:    Count number of elements in @{$ftr_info_AHR} 
@@ -5561,8 +5309,8 @@ sub sqstringAddNewlines {
 # Dies:       never, nothing is validated
 #
 #################################################################
-sub featureInfoCountType { 
-  my $sub_name = "featureInfoCountType";
+sub dng_FeatureInfoCountType { 
+  my $sub_name = "dng_FeatureInfoCountType";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -5582,7 +5330,7 @@ sub featureInfoCountType {
 }
 
 #################################################################
-# Subroutine: featureInfoValidateCoords
+# Subroutine: dng_FeatureInfoValidateCoords
 # Incept:     EPN, Fri Mar 15 14:31:36 2019
 # 
 # Purpose:    Validate that "coords" values are in the proper
@@ -5599,8 +5347,8 @@ sub featureInfoCountType {
 #             if a position in a "coords" value exceeds $length
 #
 #################################################################
-sub featureInfoValidateCoords { 
-  my $sub_name = "featureInfoValidateCoords";
+sub dng_FeatureInfoValidateCoords { 
+  my $sub_name = "dng_FeatureInfoValidateCoords";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -5608,14 +5356,14 @@ sub featureInfoValidateCoords {
 
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
   my $fail_str = ""; # added to if any elements are out of range
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my @start_A  = (); # array of starts, one per segment
     my @stop_A   = (); # array of stops, one per segment
-    # this sub will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
-    featureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, undef, $FH_HR); 
+    # this sub dng_Will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
+    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, undef, $FH_HR); 
     foreach my $start (@start_A) { if($start > $length) { $fail_str .= "ftr_idx: $ftr_idx, start position $start > $length\n"; } }
     foreach my $stop  (@stop_A)  { if($stop  > $length) { $fail_str .= "ftr_idx: $ftr_idx, stop  position $stop  > $length\n"; } }
   }
@@ -5629,7 +5377,7 @@ sub featureInfoValidateCoords {
 
 
 #################################################################
-# Subroutine: eutilsFetchToFile()
+# Subroutine: dng_EutilsFetchToFile()
 # Incept:     EPN, Tue Mar 12 12:18:37 2019
 #
 # Synopsis: Fetch information for an accession using edirect.
@@ -5645,15 +5393,15 @@ sub featureInfoValidateCoords {
 #
 # Dies:       if there's a problem fetching the data
 #################################################################
-sub eutilsFetchToFile { 
-  my $sub_name = "eutilsFetchToFile";
+sub dng_EutilsFetchToFile { 
+  my $sub_name = "dng_EutilsFetchToFile";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($out_file, $accn, $format, $nattempts, $FH_HR) = @_;
   if((! defined $nattempts) || ($nattempts < 1)) { $nattempts = 1; }
 
-  my $url = eutilsFetchUrl($accn, $format);
+  my $url = dng_EutilsFetchUrl($accn, $format);
 
   my $n = 0;
   my $fetched_str = undef;
@@ -5674,7 +5422,7 @@ sub eutilsFetchToFile {
 }
 
 #################################################################
-# Subroutine: eutilsFetchUrl()
+# Subroutine: dng_EutilsFetchUrl()
 # Incept:     EPN, Tue Mar 12 12:18:37 2019
 #
 # Synopsis: Return a url for an efetch command
@@ -5687,8 +5435,8 @@ sub eutilsFetchToFile {
 #
 # Dies:       never
 #################################################################
-sub eutilsFetchUrl { 
-  my $sub_name = "eutilsFetchUrl";
+sub dng_EutilsFetchUrl { 
+  my $sub_name = "dng_EutilsFetchUrl";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -5698,7 +5446,7 @@ sub eutilsFetchUrl {
 }
 
 #################################################################
-# Subroutine: genbankParse()
+# Subroutine: dng_GenbankParse()
 # Incept:     EPN, Tue Mar 12 14:04:14 2019
 #
 # Synopsis: Parse a GenBank format file.
@@ -5714,8 +5462,8 @@ sub eutilsFetchUrl {
 # Reference: https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html
 #            http://www.insdc.org/documents/feature-table
 #################################################################
-sub genbankParse { 
-  my $sub_name = "genbankParse";
+sub dng_GenbankParse { 
+  my $sub_name = "dng_GenbankParse";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -5787,7 +5535,7 @@ sub genbankParse {
       # verify this matches what we read in the LOCUS line
       $ver = $1;
       $tmp_acc = $ver;
-      stripVersion(\$tmp_acc);
+      dng_StripVersion(\$tmp_acc);
       if((! defined $acc) || ($tmp_acc ne $acc)) { 
         ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, version/accession mismatch for $tmp_acc, line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
@@ -5820,7 +5568,7 @@ sub genbankParse {
           #  /translation="MKMASNDATVAVACNNNNDKEKSSGEGLFTNMSSTLKKALGARP
           my ($save_qualifier, $save_value) = ($1, $2);
           if(defined $value) { # we are finished with previous value
-            genbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+            dng_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
           }
           ($qualifier, $value) = ($save_qualifier, $save_value);
         }
@@ -5829,15 +5577,15 @@ sub genbankParse {
           # e.g.                      KQP ASRDESQKPPRPPTPELVKRIPPPPPNGEEEEEPVIRYEVKSGISGLPELTTVPQ
           # But I think those are illegal, if they're not, then we'll set "KQP" as feature below, which is bad
           if(defined $value) { # we are finished with previous value
-            genbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+            dng_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
             ($qualifier, $value) = (undef, undef);
           }
           # feature/location line, examples:
           #   gene            5..5104
           ($feature, $location) = ($1, $2);
           $ftr_idx++;
-          genbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",     $feature,  $FH_HR);
-          genbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "location", $location, $FH_HR);
+          dng_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",     $feature,  $FH_HR);
+          dng_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "location", $location, $FH_HR);
         }
         else { 
           # qualifier/value line type B
@@ -5857,7 +5605,7 @@ sub genbankParse {
       # if we get here we just read the ORIGIN line
       # first store final qualifier/value
       if(defined $value) { 
-        genbankStoreQualifierValue($ftr_info_HAHR->{$acc}, $ftr_idx, $qualifier, $value, $FH_HR);
+        dng_GenbankStoreQualifierValue($ftr_info_HAHR->{$acc}, $ftr_idx, $qualifier, $value, $FH_HR);
       }
       # parse the ORIGIN sequence
       $line = <IN>;
@@ -5926,7 +5674,7 @@ sub genbankParse {
 }
 
 #################################################################
-# Subroutine: genbankStoreQualifierValue()
+# Subroutine: dng_GenbankStoreQualifierValue()
 # Incept:     EPN, Wed Mar 13 09:42:22 2019
 #
 # Synopsis: Store a genbank qualifier and value.
@@ -5945,8 +5693,8 @@ sub genbankParse {
 #             to separate multiple qualifier values for the same qualifier.
 #             
 #################################################################
-sub genbankStoreQualifierValue { 
-  my $sub_name = "genbankStoreQualifierValue";
+sub dng_GenbankStoreQualifierValue { 
+  my $sub_name = "dng_GenbankStoreQualifierValue";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -5976,7 +5724,7 @@ sub genbankStoreQualifierValue {
 }
 
 #################################################################
-# Subroutine : verifyEnvVariableIsValidDir()
+# Subroutine:  dng_verifyEnvVariableIsValidDir()
 # Incept:      EPN, Wed Oct 25 10:09:28 2017 [ribo.pm]
 #
 # Purpose:     Verify that the environment variable $envvar exists 
@@ -5988,9 +5736,9 @@ sub genbankStoreQualifierValue {
 # Returns:    directory path $ENV{'$envvar'}
 #
 ################################################################# 
-sub verifyEnvVariableIsValidDir { 
+sub dng_VerifyEnvVariableIsValidDir { 
   my $nargs_expected = 1;
-  my $sub_name = "verifyEnvVariableIsValidDir()";
+  my $sub_name = "dng_VerifyEnvVariableIsValidDir()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($envvar) = $_[0];
@@ -6010,7 +5758,7 @@ sub verifyEnvVariableIsValidDir {
 
 
 #################################################################
-# Subroutine: sqstringCapitalize
+# Subroutine: dng_SqstringCapitalize
 # Incept:     EPN, Fri Mar 15 13:32:36 2019
 # 
 # Purpose:    Capitalize a string in place.
@@ -6023,8 +5771,8 @@ sub verifyEnvVariableIsValidDir {
 # Dies:       never
 #
 #################################################################
-sub sqstringCapitalize {
-  my $sub_name = "sqstringCapitalize";
+sub dng_SqstringCapitalize {
+  my $sub_name = "dng_SqstringCapitalize";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -6035,7 +5783,7 @@ sub sqstringCapitalize {
 }
 
 #################################################################
-# Subroutine: sqstringDnaize
+# Subroutine: dng_SqstringDnaize
 # Incept:     EPN, Fri Mar 15 13:33:39 2019
 # 
 # Purpose:    Convert a RNA/DNA sqstring to DNA in place.
@@ -6048,8 +5796,8 @@ sub sqstringCapitalize {
 # Dies:       never
 #
 #################################################################
-sub sqstringDnaize {
-  my $sub_name = "sqstringDnaize";
+sub dng_SqstringDnaize {
+  my $sub_name = "dng_SqstringDnaize";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -6061,7 +5809,7 @@ sub sqstringDnaize {
 
 
 #################################################################
-# Subroutine: sqstringReverseComplement
+# Subroutine: dng_SqstringReverseComplement
 # Incept:     EPN, Fri Mar 15 15:35:10 2019
 # 
 # Purpose:    Reverse complement a RNA/DNA sqstring in place.
@@ -6074,8 +5822,8 @@ sub sqstringDnaize {
 # Dies:       never
 #
 #################################################################
-sub sqstringReverseComplement {
-  my $sub_name = "sqstringReverseComplement";
+sub dng_SqstringReverseComplement {
+  my $sub_name = "dng_SqstringReverseComplement";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -6095,7 +5843,7 @@ sub sqstringReverseComplement {
 
 
 #################################################################
-# Subroutine: sqstringDiffSummary
+# Subroutine: dng_SqstringDiffSummary
 # Incept:     EPN, Fri Mar 15 13:35:28 2019
 # 
 # Purpose:    Return a string summarizes the differences between
@@ -6111,8 +5859,8 @@ sub sqstringReverseComplement {
 # Dies:       never
 #
 #################################################################
-sub sqstringDiffSummary {
-  my $sub_name = "sqstringDiffSummary";
+sub dng_SqstringDiffSummary {
+  my $sub_name = "dng_SqstringDiffSummary";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -6124,10 +5872,10 @@ sub sqstringDiffSummary {
   if(! defined $sqstring2) { 
     return "sequence 2 is undefined\n"; 
   }
-  sqstringCapitalize(\$sqstring1);
-  sqstringCapitalize(\$sqstring2);
-  sqstringDnaize(\$sqstring1);
-  sqstringDnaize(\$sqstring2);
+  dng_SqstringCapitalize(\$sqstring1);
+  dng_SqstringCapitalize(\$sqstring2);
+  dng_SqstringDnaize(\$sqstring1);
+  dng_SqstringDnaize(\$sqstring2);
   if($sqstring1 eq $sqstring2) { 
     return "";
   }
@@ -6156,7 +5904,7 @@ sub sqstringDiffSummary {
 }
 
 #################################################################
-# Subroutine: cdsFetchStockholmToFasta()
+# Subroutine: dng_CdsFetchStockholmToFasta()
 # Incept:     EPN, Thu Mar 14 12:30:33 2019
 # 
 # Purpose:    Given coordinates of all CDS features in %{$ftr_info_AHR}
@@ -6180,8 +5928,8 @@ sub sqstringDiffSummary {
 # Dies:    if we have trouble fetching a sequence
 #
 #################################################################
-sub cdsFetchStockholmToFasta { 
-  my $sub_name = "cdsFetchStockholmToFasta";
+sub dng_CdsFetchStockholmToFasta { 
+  my $sub_name = "dng_CdsFetchStockholmToFasta";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -6194,7 +5942,7 @@ sub cdsFetchStockholmToFasta {
   my @sgm_start_AA  = ();
   my @sgm_stop_AA   = ();
   my @sgm_strand_AA = ();
-  featureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
+  dng_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
 
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nseq = $msa->nseq;
@@ -6215,7 +5963,7 @@ sub cdsFetchStockholmToFasta {
           }
           $cds_sqstring .= $sgm_sqstring;
         }
-        print $out_FH(">" . $msa->get_sqname($seq_idx) . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n" . sqstringAddNewlines($cds_sqstring, 60));
+        print $out_FH(">" . $msa->get_sqname($seq_idx) . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n" . dng_SqstringAddNewlines($cds_sqstring, 60));
       }
     }
   }
@@ -6223,7 +5971,7 @@ sub cdsFetchStockholmToFasta {
 }
 
 #################################################################
-# Subroutine: cdsTranslateToFastaFile()
+# Subroutine: dng_CdsTranslateToFastaFile()
 # Incept:     EPN, Thu Mar 14 12:30:28 2019
 # 
 # Purpose:    Use esl-translate to translate a fasta file with
@@ -6244,8 +5992,8 @@ sub cdsFetchStockholmToFasta {
 # Dies:    if we have trouble fetching a sequence
 #
 #################################################################
-sub cdsTranslateToFastaFile { 
-  my $sub_name = "cdsTranslateToFastaFiles";
+sub dng_CdsTranslateToFastaFile { 
+  my $sub_name = "dng_CdsTranslateToFastaFiles";
   my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -6263,7 +6011,7 @@ sub cdsTranslateToFastaFile {
     $c_opt = "-c " . opt_Get("--ttbl", $opt_HHR);
   }
   my $translate_cmd = "$esl_translate $c_opt -M -l 3 --watson $cds_fa_file > $tmp1_translate_fa_file";
-  runCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  dng_RunCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   # go through output fasta file and rewrite names, so we can fetch 
   open(IN,       $tmp1_translate_fa_file) || fileOpenFailure($tmp1_translate_fa_file, $sub_name, $!, "reading", $FH_HR);
@@ -6307,16 +6055,16 @@ sub cdsTranslateToFastaFile {
   }
   # remove temporary files unless --keep
   if(! opt_Get("--keep", $opt_HHR)) { 
-    removeFileUsingSystemRm($tmp1_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
-    removeFileUsingSystemRm($tmp2_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
-    removeFileUsingSystemRm($tmp2_translate_fa_file . ".ssi", $sub_name, $opt_HHR, $FH_HR);
+    dng_RemoveFileUsingSystemRm($tmp1_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    dng_RemoveFileUsingSystemRm($tmp2_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    dng_RemoveFileUsingSystemRm($tmp2_translate_fa_file . ".ssi", $sub_name, $opt_HHR, $FH_HR);
   }
 
   return;
 }
 
 #################################################################
-# Subroutine: modelInfoFileWrite()
+# Subroutine: dng_ModelInfoFileWrite()
 # Incept:     EPN, Sat Mar  9 05:27:15 2019
 #
 # Synopsis: Output a model info file for all models in @{$mdl_info_AHR}
@@ -6340,8 +6088,8 @@ sub cdsTranslateToFastaFile {
 #
 # Dies:       if $ftr_info_HAR is not valid upon entering
 #################################################################
-sub modelInfoFileWrite { 
-  my $sub_name = "modelInfoFileWrite";
+sub dng_ModelInfoFileWrite { 
+  my $sub_name = "dng_ModelInfoFileWrite";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -6358,15 +6106,15 @@ sub modelInfoFileWrite {
   my @reqd_mdl_keys_A  = ("name", "length");
   my @reqd_ftr_keys_A  = ("type", "coords");
   # validate all info first
-  $nmdl = arrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, mdl_info failed validation; missing required key(s)", $FH_HR);
+  $nmdl = dng_ArrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, mdl_info failed validation; missing required key(s)", $FH_HR);
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
-    arrayOfHashesValidate(\@{$ftr_info_HAHR->{$mdl_name}}, \@reqd_ftr_keys_A, "ERROR in $sub_name, ftr_info failed validation; missing required key(s)", $FH_HR);
+    dng_ArrayOfHashesValidate(\@{$ftr_info_HAHR->{$mdl_name}}, \@reqd_ftr_keys_A, "ERROR in $sub_name, ftr_info failed validation; missing required key(s)", $FH_HR);
   }
 
   # verify feature coords make sense
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    featureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
+    dng_FeatureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
   }
 
   # output 
@@ -6435,7 +6183,7 @@ sub modelInfoFileWrite {
 }
 
 #################################################################
-# Subroutine: modelInfoFileParse()
+# Subroutine: dng_ModelInfoFileParse()
 # Incept:     EPN, Fri Mar 15 05:15:23 2019
 #
 # Synopsis: Parse a model info file for >= 1 models and collect 
@@ -6459,8 +6207,8 @@ sub modelInfoFileWrite {
 # Dies:       if unable to parse $in_file
 #             if a feature is defined without "type" or "coords" keys
 #################################################################
-sub modelInfoFileParse {
-  my $sub_name = "modelInfoFileParse";
+sub dng_ModelInfoFileParse {
+  my $sub_name = "dng_ModelInfoFileParse";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -6555,21 +6303,21 @@ sub modelInfoFileParse {
   # verify we read what we need
   my @reqd_mdl_keys_A = ("name", "length");
   my @reqd_ftr_keys_A = ("type", "coords");
-  arrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
+  dng_ArrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
   my $nmdl = scalar(@{$mdl_info_AHR});
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    arrayOfHashesValidate($ftr_info_HAHR->{$mdl_name}, \@reqd_ftr_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
+    dng_ArrayOfHashesValidate($ftr_info_HAHR->{$mdl_name}, \@reqd_ftr_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
   }
 
   # verify feature coords make sense
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    featureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
+    dng_FeatureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
   }
   return;
 }
 
 #################################################################
-# Subroutine: hashFromCommaSeparatedString
+# Subroutine: dng_HashFromCommaSeparatedString
 # Incept:     EPN, Mon Mar 18 06:52:21 2019
 #
 # Synopsis: Given a hash reference and a comma separated string
@@ -6584,8 +6332,8 @@ sub modelInfoFileParse {
 #
 # Dies:       never
 #################################################################
-sub hashFromCommaSeparatedString {
-  my $sub_name = "hashFromCommaSeparatedString";
+sub dng_HashFromCommaSeparatedString {
+  my $sub_name = "dng_HashFromCommaSeparatedString";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -6601,7 +6349,7 @@ sub hashFromCommaSeparatedString {
 }
 
 #################################################################
-# Subroutine: blastDbProteinCreate
+# Subroutine: dng_BlastDbProteinCreate
 # Incept:     EPN, Mon Mar 18 09:40:28 2019
 # 
 # Purpose:    Create a protein blast database from a fasta file.
@@ -6615,20 +6363,20 @@ sub hashFromCommaSeparatedString {
 # Returns:    void
 #
 #################################################################
-sub blastDbProteinCreate {
-  my $sub_name = "blastDbProteinCreate";
+sub dng_BlastDbProteinCreate {
+  my $sub_name = "dng_BlastDbProteinCreate";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($makeblastdb, $fa_file, $opt_HHR, $FH_HR) = @_;
 
-  runCommand($makeblastdb . " -in $fa_file -dbtype prot > /dev/null", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  dng_RunCommand($makeblastdb . " -in $fa_file -dbtype prot > /dev/null", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
 }
 
 #################################################################
-# Subroutine: fastaWriteSequence()
+# Subroutine: dng_FastaWriteSequence()
 # Incept:     EPN, Thu Mar 14 06:06:59 2019
 #
 # Synopsis: Print a sequence to a fasta file.
@@ -6644,8 +6392,8 @@ sub blastDbProteinCreate {
 #
 # Dies:       if $name or $seq is undef
 #################################################################
-sub fastaWriteSequence {
-  my $sub_name = "fastaWriteSequence";
+sub dng_FastaWriteSequence {
+  my $sub_name = "dng_FastaWriteSequence";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -6655,19 +6403,19 @@ sub fastaWriteSequence {
   if(! defined $seq)  { ofile_FAIL("ERROR in $sub_name, name is undefined", "dnaorg", 1, $FH_HR); }
 
   # capitalize and DNAize $seq
-  sqstringCapitalize(\$seq);
-  sqstringDnaize(\$seq);
+  dng_SqstringCapitalize(\$seq);
+  dng_SqstringDnaize(\$seq);
   printf $out_FH (">%s%s\n%s", 
                   $name, 
                   (defined $def) ? " " . $def : "",
-                  sqstringAddNewlines($seq, 60));
+                  dng_SqstringAddNewlines($seq, 60));
   
   return;
 }
 
 
 #################################################################
-# Subroutine: fastaFileWriteFromStockholmFile()
+# Subroutine: dng_FastaFileWriteFromStockholmFile()
 # Incept:     EPN, Fri Mar 15 12:56:04 2019
 #
 # Synopsis: Use esl-reformat to convert a stockholm file to unaligned fasta
@@ -6683,15 +6431,15 @@ sub fastaWriteSequence {
 #
 # Dies:       if there's a problem fetching the sequence file
 #################################################################
-sub fastaFileWriteFromStockholmFile { 
-  my $sub_name = "fastaFileWriteFromStockholmFile";
+sub dng_FastaFileWriteFromStockholmFile { 
+  my $sub_name = "dng_FastaFileWriteFromStockholmFile";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($esl_reformat, $fa_file, $stk_file, $opt_HHR, $FH_HR) = @_;
 
   my $cmd = $esl_reformat . " --informat stockholm fasta $stk_file > $fa_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  dng_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   # remove a .ssi file if it exists
   my $ssi_file = $fa_file . ".ssi";
@@ -6701,7 +6449,7 @@ sub fastaFileWriteFromStockholmFile {
 }
 
 #################################################################
-# Subroutine: stockholmFileWriteFromFastaFile()
+# Subroutine: dng_StockholmFileWriteFromFastaFile()
 # Incept:     EPN, Sat Mar  9 10:24:14 2019
 #
 # Synopsis: Use esl-reformat to convert a fasta file to a stockholm file
@@ -6717,15 +6465,15 @@ sub fastaFileWriteFromStockholmFile {
 #
 # Dies:       if there's a problem fetching the sequence file
 #################################################################
-sub stockholmFileWriteFromFastaFile { 
-  my $sub_name = "stockholmFileWriteFromFastaFile";
+sub dng_StockholmFileWriteFromFastaFile { 
+  my $sub_name = "dng_StockholmFileWriteFromFastaFile";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($esl_reformat, $fa_file, $stk_file, $opt_HHR, $FH_HR) = @_;
 
   my $cmd = $esl_reformat . " --informat afa stockholm $fa_file > $stk_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  dng_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
 }

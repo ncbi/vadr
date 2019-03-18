@@ -35,8 +35,8 @@ require "epn-ofile.pm";
 # 
 #######################################################################################
 # make sure the DNAORGDIR environment variable is set
-my $env_dnaorgdir      = verifyEnvVariableIsValidDir("DNAORGDIR");
-my $env_dnaorgblastdir = verifyEnvVariableIsValidDir("DNAORGBLASTDIR");
+my $env_dnaorgdir      = dng_VerifyEnvVariableIsValidDir("DNAORGDIR");
+my $env_dnaorgblastdir = dng_VerifyEnvVariableIsValidDir("DNAORGBLASTDIR");
 
 my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
 my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
@@ -150,7 +150,7 @@ my $options_okay =
                 'sgminfo'      => \$GetOptions_H{"--sgminfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});
 
-my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
+my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
 my $version       = "0.45x";
@@ -184,31 +184,31 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 # if --onlyurl used, output the url and exit
 ############################################
 if(opt_Get("--onlyurl", \%opt_HH)) { 
-  print eutilsFetchUrl($mdl_name, "gb") . "\n";
+  print dng_EutilsFetchUrl($mdl_name, "gb") . "\n";
   exit 0;
 }
 
 #############################
 # create the output directory
 #############################
-my $cmd;              # a command to run with runCommand()
+my $cmd;              # a command to run with dng_RunCommand()
 my @early_cmd_A = (); # array of commands we run before our log file is opened
 
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  if(opt_Get("-f", \%opt_HH)) { dng_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
   $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  if(opt_Get("-f", \%opt_HH)) { dng_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
+dng_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -240,8 +240,8 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "cmd": command file with list of all commands executed
 
 # open the log and command files 
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "log", $out_root . ".log", 1, "Output printed to screen");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmd", $out_root . ".cmd", 1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "log",  $out_root . ".log",  1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "list", $out_root . ".list", 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
@@ -268,7 +268,7 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "/esl-reformat";
 $execs_H{"esl-translate"} = $esl_exec_dir . "/esl-translate";
 $execs_H{"makeblastdb"}   = $blast_exec_dir . "/makeblastdb";
-validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
+dng_ValidateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################
 # Fetch the genbank file (if --gb not used)
@@ -284,7 +284,7 @@ else {
   $start_secs = ofile_OutputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
 
   $gb_file = $out_root . ".gb";
-  eutilsFetchToFile($gb_file, $mdl_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+  dng_EutilsFetchToFile($gb_file, $mdl_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -297,7 +297,7 @@ $start_secs = ofile_OutputProgressPrior("Parsing GenBank file", $progress_w, $lo
 
 my %ftr_info_HAH = (); # the feature info 
 my %seq_info_HH  = (); # the sequence info 
-genbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
+dng_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
 if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
   ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", "dnaorg", 1, $FH_HR);
 }
@@ -385,8 +385,8 @@ if(defined $in_stk_file) {
   
   $start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
 
-  runCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  fastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
+  dng_RunCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  dng_fastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -397,17 +397,17 @@ else {
   $start_secs = ofile_OutputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
-  fastaWriteSequence($ofile_info_HH{"FH"}{"fasta"}, 
-                     $seq_info_HH{$mdl_name}{"ver"}, 
-                     $seq_info_HH{$mdl_name}{"def"}, 
-                     $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
+  dng_FastaWriteSequence($ofile_info_HH{"FH"}{"fasta"}, 
+                         $seq_info_HH{$mdl_name}{"ver"}, 
+                         $seq_info_HH{$mdl_name}{"def"}, 
+                         $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
   close $ofile_info_HH{"FH"}{"fasta"};
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   $start_secs = ofile_OutputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
-  stockholmFileWriteFromFastaFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
+  dng_StockholmFileWriteFromFastaFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -418,20 +418,20 @@ else {
 ######################################################################
 $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
 
-featureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-featureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-featureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-featureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
 my @sgm_info_AH = (); # segment info, inferred from feature info
-segmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###################################
 # Translate the CDS, if we have any
 ###################################
-my $ncds = featureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
+my $ncds = dng_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
 my $cds_fa_file = undef;
 my $protein_fa_file = undef;
 if($ncds > 0) { 
@@ -439,16 +439,16 @@ if($ncds > 0) {
 
   $cds_fa_file  = $out_root . ".cds.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
-  cdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   close $ofile_info_HH{"FH"}{"cdsfasta"};
   
   $protein_fa_file = $out_root . ".protein.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
-  cdsTranslateToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
+  dng_CdsTranslateToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
                               $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
 
-  blastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+  dng_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -482,7 +482,7 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   my $cmbuild_file = $out_root . ".cmbuild";
   $cm_file         = $out_root . ".cm";
   my $cmbuild_cmd  = $execs_H{"cmbuild"} . " " . $cmbuild_opts . " $cm_file $stk_file > $cmbuild_file";
-  runCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+  dng_RunCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cm",      $cm_file, 1, "CM file");
@@ -502,10 +502,10 @@ my @mdl_info_AH = ();
 $mdl_info_AH[0]{"name"}   = $mdl_name;
 $mdl_info_AH[0]{"length"} = $seq_info_HH{$mdl_name}{"len"};
 if(defined $cm_file) { 
-  $mdl_info_AH[0]{"cmfile"} = removeDirPath($cm_file);
+  $mdl_info_AH[0]{"cmfile"} = dng_RemoveDirPath($cm_file);
 }
 if($ncds > 0) { 
-  $mdl_info_AH[0]{"blastdb"} = removeDirPath($protein_fa_file);
+  $mdl_info_AH[0]{"blastdb"} = dng_RemoveDirPath($protein_fa_file);
   if((opt_IsUsed("--ttbl", \%opt_HH)) && (opt_Get("--ttbl", \%opt_HH) != 1))  { 
     $mdl_info_AH[0]{"transl_table"} = opt_Get("--ttbl", \%opt_HH);
   }
@@ -513,9 +513,9 @@ if($ncds > 0) {
 if(opt_IsUsed("-g", \%opt_HH)) { 
   $mdl_info_AH[0]{"group"} = opt_Get("-g", \%opt_HH); 
 }
-my $minfo_file  = $out_root . ".minfo";
-modelInfoFileWrite($minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "minfo", $minfo_file, 1, "DNAORG 'model info' format file for $mdl_name");
+my $modelinfo_file  = $out_root . ".modelinfo";
+dng_ModelInfoFileWrite($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "modelinfo", $modelinfo_file, 1, "DNAORG 'model info' format file for $mdl_name");
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -525,14 +525,14 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # output optional output files
 if(opt_Get("--sgminfo", \%opt_HH)) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgminfo", $out_root . ".sgminfo", 1, "Model information (created due to --sgminfo)");
-  dumpArrayOfHashes("Feature information (ftr_info_AH) for $mdl_name", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
+  dng_DumpArrayOfHashes("Feature information (ftr_info_AH) for $mdl_name", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
 if(exists $ofile_info_HH{"FH"}{"sgminfo"}) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
-  dumpArrayOfHashes("Segment information (sgm_info_AH) for $mdl_name", \@sgm_info_AH, $ofile_info_HH{"FH"}{"sgminfo"});
+  dng_DumpArrayOfHashes("Segment information (sgm_info_AH) for $mdl_name", \@sgm_info_AH, $ofile_info_HH{"FH"}{"sgminfo"});
 }
 
-$total_seconds += secondsSinceEpoch();
+$total_seconds += ofile_SecondsSinceEpoch();
 ofile_OutputConclusionAndCloseFiles($total_seconds, $pkgname, $dir, \%ofile_info_HH);
 exit 0;
 
@@ -577,12 +577,12 @@ sub stockholm_validate_single_sequence_input {
     }
     # validate it matches $exp_sqstring
     my $fetched_sqstring = $msa->get_sqstring_unaligned(0);
-    sqstringCapitalize(\$fetched_sqstring);
-    sqstringCapitalize(\$exp_sqstring);
-    sqstringDnaize(\$fetched_sqstring);
-    sqstringDnaize(\$exp_sqstring);
+    dng_SqstringCapitalize(\$fetched_sqstring);
+    dng_SqstringCapitalize(\$exp_sqstring);
+    dng_SqstringDnaize(\$fetched_sqstring);
+    dng_SqstringDnaize(\$exp_sqstring);
     if($fetched_sqstring ne $exp_sqstring) { 
-      my $summary_sqstring_diff_str = sqstringDiffSummary($fetched_sqstring, $exp_sqstring);
+      my $summary_sqstring_diff_str = dng_SqstringDiffSummary($fetched_sqstring, $exp_sqstring);
       ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it does not match sequence read from GenBank file $gb_file:\n$summary_sqstring_diff_str", "dnaorg", 1, $FH_HR); 
     }
   }
@@ -621,9 +621,9 @@ sub process_add_and_skip_options {
 
   my ($df_string, $add_opt, $skip_opt, $df_HR, $add_HR, $skip_HR, $opt_HHR, $FH_HR) = @_;
 
-  hashFromCommaSeparatedString($df_HR, $df_string);
-  if(opt_IsUsed($add_opt,  $opt_HHR)) { hashFromCommaSeparatedString($add_HR,  opt_Get($add_opt,  $opt_HHR)); }
-  if(opt_IsUsed($skip_opt, $opt_HHR)) { hashFromCommaSeparatedString($skip_HR, opt_Get($skip_opt, $opt_HHR)); }
+  dng_HashFromCommaSeparatedString($df_HR, $df_string);
+  if(opt_IsUsed($add_opt,  $opt_HHR)) { dng_HashFromCommaSeparatedString($add_HR,  opt_Get($add_opt,  $opt_HHR)); }
+  if(opt_IsUsed($skip_opt, $opt_HHR)) { dng_HashFromCommaSeparatedString($skip_HR, opt_Get($skip_opt, $opt_HHR)); }
   # make sure $add_opt and $skip_opt have no values in common
   foreach my $key (sort keys (%{$add_HR})) { 
     if(defined $skip_HR->{$key}) { 

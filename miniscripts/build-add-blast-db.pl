@@ -27,8 +27,8 @@ require "epn-ofile.pm";
 # first, determine the paths to all modules, scripts and executables that we'll need
 
 # make sure the DNAORGDIR environment variable is set
-my $env_dnaorgdir      = verifyEnvVariableIsValidDir("DNAORGDIR");
-my $env_dnaorgblastdir = verifyEnvVariableIsValidDir("DNAORGBLASTDIR");
+my $env_dnaorgdir      = dng_VerifyEnvVariableIsValidDir("DNAORGDIR");
+my $env_dnaorgblastdir = dng_VerifyEnvVariableIsValidDir("DNAORGBLASTDIR");
 
 my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
 my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
@@ -81,7 +81,7 @@ my $options_okay =
                 'ttbl=s'       => \$GetOptions_H{"--ttbl"},
                 'keep'         => \$GetOptions_H{"--keep"});
 
-my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
+my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
 my $version       = "0.45x";
@@ -135,7 +135,7 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "log": log file of what's output to stdout
                          #  "cmd": command file with list of all commands executed
 
-# open the log and command files 
+ # open the log and command files 
 #ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "log", $out_root . ".log", 1, "Output printed to screen");
 #ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmd", $out_root . ".cmd", 1, "List of executed commands");
 #ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "list", $out_root . ".list", 1, "List and description of all output files");
@@ -145,10 +145,6 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
-# now we have the log file open, output the banner there too
-ofile_OutputBanner($log_FH, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
-opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
-
 #############################################################
 # make sure the required executables exist and are executable
 #############################################################
@@ -156,7 +152,7 @@ my %execs_H = (); # hash with paths to all required executables
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "/esl-reformat";
 $execs_H{"esl-translate"} = $esl_exec_dir . "/esl-translate";
 $execs_H{"makeblastdb"}   = $blast_exec_dir . "/makeblastdb";
-validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
+dng_ValidateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################
 # Parse the model info file
@@ -165,13 +161,13 @@ my @mdl_info_AH  = (); # array of hashes with model info
 my %ftr_info_HAH = (); # array of hashes with feature info 
 
 my $progress_w = 50;
-my $start_secs = ofile_OutputProgressPrior("Parsing input model info file", $progress_w, $log_FH, *STDOUT);
+my $start_secs = ofile_OutputProgressPrior("Parsing input model info file", $progress_w, undef, *STDOUT);
 
 if(! -e $in_minfo_file) { ofile_FAIL("ERROR, model info file $in_minfo_file does not exist", "dnaorg", 1, $FH_HR); }
 if(! -s $in_minfo_file) { ofile_FAIL("ERROR, model info file $in_minfo_file exists but is empty", "dnaorg", 1, $FH_HR); }
 if(  -d $in_minfo_file) { ofile_FAIL("ERROR, model info file $in_minfo_file is actually a directory", "dnaorg", 1, $FH_HR); }
 
-modelInfoFileParse($in_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+dng_ModelInfoFileParse($in_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 # ensure we read info only a single model from the input file
 if(scalar(@mdl_info_AH) == 0) { ofile_FAIL("ERROR did not read info for any models in $in_minfo_file", "dnaorg", 1, $FH_HR); }
 if(scalar(@mdl_info_AH) > 1)  { ofile_FAIL("ERROR read info for multiple models in $in_minfo_file, it must have info for only 1 model", "dnaorg", 1, $FH_HR); }
@@ -181,64 +177,64 @@ if(! defined $mdl_info_AH[0]{"name"}) {
 my $mdl_name = $mdl_info_AH[0]{"name"};
 my $mdl_len  = $mdl_info_AH[0]{"length"};
 
-my $ncds = featureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
+my $ncds = dng_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
 if($ncds == 0) { 
   ofile_FAIL("ERROR did not read any CDS features in model info file $in_minfo_file", "dnaorg", 1, $FH_HR);
 }
 
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 
 ################################
 # Parse the input stockholm file
 ################################
 my $fa_file  = $out_root . ".fa";
 
-$start_secs  = ofile_OutputProgressPrior("Validating input Stockholm file", $progress_w, $log_FH, *STDOUT);
+$start_secs  = ofile_OutputProgressPrior("Validating input Stockholm file", $progress_w, undef, *STDOUT);
 
 my $stk_mdl_len = stockholm_validate_input($in_stk_file, \%opt_HH, $FH_HR);
 if($stk_mdl_len != $mdl_len) { 
   ofile_FAIL(sprintf("ERROR, model length inferred from stockholm alignment ($stk_mdl_len) does not match length read from %s ($mdl_len)", 
                       (opt_IsUsed("-m", \%opt_HH) ? "model info file" : "GenBank file")), "dnaorg", 1, $FH_HR);
 }
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
   
-$start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
-fastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $in_stk_file, \%opt_HH, $FH_HR);
+$start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, undef, *STDOUT);
+dng_FastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $in_stk_file, \%opt_HH, $FH_HR);
 
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 
 ######################################################################
 # Finish populating @{$ftr_info_HAH{$mdl_name} and create @sgm_info_AH
 ######################################################################
 my @sgm_info_AH = (); # segment info, inferred from feature info
 
-$start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, undef, *STDOUT);
 
-featureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-featureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-featureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
-segmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 
 ###################
 # Translate the CDS
 ###################
-$start_secs = ofile_OutputProgressPrior("Translating CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Translating CDS and building BLAST DB", $progress_w, undef, *STDOUT);
 
 my $cds_fa_file  = $out_root . ".cds.fa";
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
-cdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $in_stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $in_stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 close $ofile_info_HH{"FH"}{"cdsfasta"};
 
 my $protein_fa_file  = $out_root . ".protein.fa";
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
-cdsTranslateToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
+dng_CdsTranslateToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
                         $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
 close $ofile_info_HH{"FH"}{"proteinfasta"};
 
-blastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+dng_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
 
 # add to mdl_info_AH
 $mdl_info_AH[0]{"blastdb"} = $protein_fa_file;
@@ -246,29 +242,29 @@ if((opt_IsUsed("--ttbl", \%opt_HH)) && (opt_Get("--ttbl", \%opt_HH) != 1))  {
   $mdl_info_AH[0]{"transl_table"} = opt_Get("--ttbl", \%opt_HH);
 }
 
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 
 ########################
 # Output model info file
 ########################
-$start_secs = ofile_OutputProgressPrior("Creating model info file", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Creating model info file", $progress_w, undef, *STDOUT);
 
-my $out_minfo_file   = $out_root . ".minfo";
+my $out_minfo_file   = $out_root . ".modelinfo";
 if($in_minfo_file eq $out_minfo_file) { 
   my $old_minfo_file = $in_minfo_file . ".old";
-  runCommand("cp $in_minfo_file " . $in_minfo_file . ".old", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  dng_RunCommand("cp $in_minfo_file " . $in_minfo_file . ".old", opt_Get("-v", \%opt_HH), 0, $FH_HR);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "oldminfo", $old_minfo_file, 1, "Copy of input model info file");
 }  
-modelInfoFileWrite($out_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+dng_ModelInfoFileWrite($out_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "outminfo", $out_minfo_file, 1, "Output model info file with blastdb added");
 
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 
 ##########
 # Conclude
 ##########
 
-$total_seconds += secondsSinceEpoch();
+$total_seconds += ofile_SecondsSinceEpoch();
 ofile_OutputConclusionAndCloseFiles($total_seconds, $pkgname, "", \%ofile_info_HH);
 exit 0;
 
