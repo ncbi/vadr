@@ -33,8 +33,8 @@
 #
 # - $FH_HR: a reference to a hash of file handles. Important keys are "log" and "cmd",
 #           the log and command files we are outputting to. This data structure is passed
-#           into nearly all functions because it is also passed into DNAORG_FAIL() which 
-#           can be called from nearly all functions. DNAORG_FAIL() outputs an error message
+#           into nearly all functions because it is also passed into ofile_FAIL() which 
+#           can be called from nearly all functions. ofile_FAIL() outputs an error message
 #           both the summary and log files before exiting, and appends a # DNAORG-FAILURE
 #           to those files before closing them and exiting. This is done so the user
 #           has a record of the reason the execution of the program failed, and it is also
@@ -184,7 +184,7 @@
 #   numberOfDigits()
 # 
 # Simple utility subroutines:
-#   DNAORG_FAIL()
+#   ofile_FAIL()
 #   fileOpenFailure()
 #   runCommand()
 #   removeDirPath()
@@ -370,7 +370,7 @@ sub initializeHardCodedErrorInfoHash {
   my ($err_info_HAR, $FH_HR) = (@_);
 
   if(scalar (keys(%{$err_info_HAR})) > 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, error info hash of arrays already has at least one key", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, error info hash of arrays already has at least one key", "dnaorg", 1, $FH_HR);
   }
 
   # add each error code, this function will die if we try to add the same code twice, or if something is wrong 
@@ -565,12 +565,12 @@ sub addToErrorInfoHash {
 
   # make sure $pertype is valid
   if(($pertype ne "feature") && ($pertype ne "sequence")) { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\".", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\".", "dnaorg", 1, $FH_HR); 
   }
   
   # make sure $ftbl_err is valid
   if((! defined $ftbl_err) || $ftbl_err eq "") { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to add code $code but ftbl_err is undefined or empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but ftbl_err is undefined or empty", "dnaorg", 1, $FH_HR);
   }
   
   # check if $code already exists
@@ -579,7 +579,7 @@ sub addToErrorInfoHash {
     for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
       my $other_code = $err_info_HAR->{"code"}[$err_idx]; 
       if($code eq $other_code) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, trying to add code $code, but it already exists as element %d in the error info hash", $err_idx+1), 1, $FH_HR);
+        ofile_FAIL(sprintf("ERROR in $sub_name, trying to add code $code, but it already exists as element %d in the error info hash", $err_idx+1), "dnaorg", 1, $FH_HR);
       }
     }
   }
@@ -632,7 +632,7 @@ sub setFTableInvalidatedByErrorInfoHash {
 
   my $idx1 = findNonNumericValueInArray($err_info_HAR->{"code"}, $code1, $FH_HR);
   if($idx1 == -1) { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to add ftbl_invalid_by for code $code1, but it does not exist in the error info hash", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to add ftbl_invalid_by for code $code1, but it does not exist in the error info hash", "dnaorg", 1, $FH_HR);
   }
 
   # verify the codes in $code2str
@@ -640,10 +640,10 @@ sub setFTableInvalidatedByErrorInfoHash {
   foreach my $code2 (@code2_A) { 
     my $idx2 = findNonNumericValueInArray($err_info_HAR->{"code"}, $code2, $FH_HR);
     if($idx2 == -1) { 
-      DNAORG_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between codes $code1 and $code2, but $code2 does not exist in the error info hash", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between codes $code1 and $code2, but $code2 does not exist in the error info hash", "dnaorg", 1, $FH_HR);
     }
     if($idx1 == $idx2) { 
-      DNAORG_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between a code and itself: $code1 and $code2", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between a code and itself: $code1 and $code2", "dnaorg", 1, $FH_HR);
     }
   }
 
@@ -701,7 +701,7 @@ sub processFeatureErrorsForFTable {
   foreach $err_code (split(",", $err_code_str)) { 
     $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
     if($err_idx == -1) { 
-      DNAORG_FAIL("ERROR in $sub_name, input error of $err_code in string $err_code_str is invalid", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, input error of $err_code in string $err_code_str is invalid", "dnaorg", 1, $FH_HR);
     }
     $input_err_code_H{$err_code} = 1; 
     push(@err_idx_A, $err_idx);
@@ -833,7 +833,7 @@ sub processSequenceErrorsForFTable {
   foreach $err_code (split(",", $err_code_str)) { 
     $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR);
     if($err_idx == -1) { 
-      DNAORG_FAIL("ERROR in $sub_name, input error of $err_code in string $err_code_str is invalid", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, input error of $err_code in string $err_code_str is invalid", "dnaorg", 1, $FH_HR);
     }
     $input_err_code_H{$err_code} = 1; 
     push(@err_idx_A, $err_idx);
@@ -909,32 +909,32 @@ sub populateFTableNoteOrError {
   my ($ekey, $err_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $err_seq_instances_HHR, $FH_HR) = (@_);
 
   if(! exists $err_info_HAR->{$ekey}) { 
-    DNAORG_FAIL("ERROR in $sub_name, $ekey value is undefined in error info hash", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, $ekey value is undefined in error info hash", "dnaorg", 1, $FH_HR);
   }
   # check that combination of $ftr_idx and $err_ftr_instances_AHHR and $err_seq_instances_HHR is valid
   if($ftr_idx != -1 && (! defined $err_ftr_instances_AHHR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, ftr_idx is not -1 but err_ftr_instances_AHHR is not defined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, ftr_idx is not -1 but err_ftr_instances_AHHR is not defined", "dnaorg", 1, $FH_HR);
   }
   if($ftr_idx == -1 && (defined $err_ftr_instances_AHHR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, ftr_idx is -1 but err_ftr_instances_AHHR is defined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, ftr_idx is -1 but err_ftr_instances_AHHR is defined", "dnaorg", 1, $FH_HR);
   }
   if($ftr_idx != -1 && (! defined $ftr_info_HAR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, ftr_idx is not -1 but ftr_info_HAR is not defined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, ftr_idx is not -1 but ftr_info_HAR is not defined", "dnaorg", 1, $FH_HR);
   }
   if($ftr_idx == -1 && (defined $ftr_info_HAR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, ftr_idx is -1 but ftr_info_HAR is defined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, ftr_idx is -1 but ftr_info_HAR is defined", "dnaorg", 1, $FH_HR);
   }
   if($ftr_idx == -1 && (! defined $err_seq_instances_HHR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, ftr_idx is -1 but err_seq_instances_AHHR is not defined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, ftr_idx is -1 but err_seq_instances_AHHR is not defined", "dnaorg", 1, $FH_HR);
   }
   if($ftr_idx != -1 && (defined $err_seq_instances_HHR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, ftr_idx is not -1 but err_ftr_instances_AHHR is defined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, ftr_idx is not -1 but err_ftr_instances_AHHR is defined", "dnaorg", 1, $FH_HR);
   }
 
   my $msg = $err_info_HAR->{$ekey}[$err_idx];
 
   if(! defined $msg) { 
-    DNAORG_FAIL("ERROR in $sub_name, error $err_idx is invalid in error info hash", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, error $err_idx is invalid in error info hash", "dnaorg", 1, $FH_HR);
   }
 
   if($msg eq "") { 
@@ -961,7 +961,7 @@ sub populateFTableNoteOrError {
       $ret_msg =~ s/!DESC!/$desc_str/g;
     }
     else { 
-      DNAORG_FAIL("ERROR in $sub_name, trying to return $ekey message for $err_code and sequence $seq_name feature $ftr_idx, but no error instance exists", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, trying to return $ekey message for $err_code and sequence $seq_name feature $ftr_idx, but no error instance exists", "dnaorg", 1, $FH_HR);
     }
   }
   # replace !FEATURE_TYPE! with 
@@ -1040,7 +1040,7 @@ sub parseListFile {
   my @accn_order_A = (); # the accessions read in the input file, in order
 
   if(-d $infile) { 
-    DNAORG_FAIL("ERROR in $sub_name, trying to read list file $infile, but a directory of the same name exists.", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to read list file $infile, but a directory of the same name exists.", "dnaorg", 1, $FH_HR);
   }
 
   open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
@@ -1071,7 +1071,7 @@ sub parseListFile {
       }
     }
     if($errmsg ne "") { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, the following accessions occur on multiple lines, possibly with different versions:\n%s", $errmsg), 1, $FH_HR);
+      ofile_FAIL(sprintf("ERROR in $sub_name, the following accessions occur on multiple lines, possibly with different versions:\n%s", $errmsg), "dnaorg", 1, $FH_HR);
     }
   }
     
@@ -1128,12 +1128,12 @@ sub parseSpecStartFile {
       if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) != 2) { 
-        DNAORG_FAIL("ERROR in $sub_name, unable to parse specstart input file line: $line", 1, $FH_HR); 
+        ofile_FAIL("ERROR in $sub_name, unable to parse specstart input file line: $line", "dnaorg", 1, $FH_HR); 
       }
       my ($cds_idx, $codon_str) = ($el_A[0], $el_A[1]);
       my $cds_idx2store = $cds_idx - 1;
       if($cds_idx2store < 0) { 
-        DNAORG_FAIL("ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file in line $line", 1, $FH_HR); 
+        ofile_FAIL("ERROR in $sub_name, read CDS idx that is 0 or less ($cds_idx) in matpept input file in line $line", "dnaorg", 1, $FH_HR); 
       }
       $cds_idx_read_A[$cds_idx2store] = 1;
       if($cds_idx2store > $max_cds_idx2store) { 
@@ -1156,18 +1156,18 @@ sub parseSpecStartFile {
   for(my $i = 0; $i <= $max_cds_idx2store; $i++) { 
     if($cds_idx_read_A[$i]) { 
      if((! defined $specstart_AAR->[$i]) && (! exists $specstart_AAR->[$i])) { 
-       DNAORG_FAIL(sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1), 1, $FH_HR);
+       ofile_FAIL(sprintf("ERROR in $sub_name, did not properly read info for cds %d in $infile\n", $i+1), "dnaorg", 1, $FH_HR);
      }
     }
     else { # we didn't read this one
       if(defined $specstart_AAR->[$i] || exists $specstart_AAR->[$i]) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1), 1, $FH_HR);
+        ofile_FAIL(sprintf("ERROR in $sub_name, improperly read non-existent info for cds %d in $infile\n", $i+1), "dnaorg", 1, $FH_HR);
       }
     }
   }
   # 2: we should have at least read at least one CDS info
   if($ncds_read == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, no CDS start codon specifications read in matpept input file $infile", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, no CDS start codon specifications read in matpept input file $infile", "dnaorg", 1, $FH_HR); 
   }
 
   return;
@@ -1218,7 +1218,7 @@ sub getStrandStats {
   my $nunc = 0;  # number of genes with >= 1 segments that are uncertain (usually 0)
   my $strand_str = "";
 
-  if(! exists $tbl_HHAR->{$accn}{"strand"}) { DNAORG_FAIL("ERROR in $sub_name, didn't read strand information for accn: $accn", 1, $FH_HR); }
+  if(! exists $tbl_HHAR->{$accn}{"strand"}) { ofile_FAIL("ERROR in $sub_name, didn't read strand information for accn: $accn", "dnaorg", 1, $FH_HR); }
 
   $nfeatures = scalar(@{$tbl_HHAR->{$accn}{"coords"}});
   if ($nfeatures > 0) { 
@@ -1227,7 +1227,7 @@ sub getStrandStats {
       elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "-") { $nneg++; }
       elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "!") { $nbth++; }
       elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "?") { $nunc++; }
-      else { DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to parse strand (%s) for feature %d for $accn\n", $tbl_HHAR->{$accn}{"strand"}[$i], $i+1), 1, $FH_HR); }
+      else { ofile_FAIL(sprintf("ERROR in $sub_name, unable to parse strand (%s) for feature %d for $accn\n", $tbl_HHAR->{$accn}{"strand"}[$i], $i+1), "dnaorg", 1, $FH_HR); }
       $strand_str .= $tbl_HHAR->{$accn}{"strand"}[$i];
     }
   }
@@ -1292,9 +1292,9 @@ sub startsStopsStrandsFromCoordsLength {
     # rare case: remove 'complement(' ')' that still exists:
     $cur_strand = $strand;
     if($el =~ m/^complement\(/) { 
-      DNAORG_FAIL("ERROR in $sub_name: found internal complement in coords string $coords, we assume all segments are on same strand...", 1, $FH_HR); 
+      ofile_FAIL("ERROR in $sub_name: found internal complement in coords string $coords, we assume all segments are on same strand...", "dnaorg", 1, $FH_HR); 
       $el =~ s/^complement\(//;
-      if($cur_strand eq "-") { DNAORG_FAIL("ERROR in $sub_name, found nested 'complement' annotations in coord string: $coords", 1, $FH_HR); }
+      if($cur_strand eq "-") { ofile_FAIL("ERROR in $sub_name, found nested 'complement' annotations in coord string: $coords", "dnaorg", 1, $FH_HR); }
       $cur_strand = "-";
     }
     $el =~ s/\)$//;
@@ -1313,7 +1313,7 @@ sub startsStopsStrandsFromCoordsLength {
       $$nsegments_R++;
     }
     else { 
-      DNAORG_FAIL("ERROR unable to parse $orig_coords in $sub_name", 1, $FH_HR); 
+      ofile_FAIL("ERROR unable to parse $orig_coords in $sub_name", "dnaorg", 1, $FH_HR); 
     }
   }
 
@@ -1322,7 +1322,7 @@ sub startsStopsStrandsFromCoordsLength {
   my $have_spanning_segment = checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nsegments_R, 0, $strand, $totlen); # 1 says: do correct the spanning segment
   if($have_spanning_segment) { 
     if(! $do_circular) { 
-      DNAORG_FAIL("ERROR in $sub_name, found segment that spanned stop..start boundary, but we're not allowing circular genomes...", 1, $FH_HR); 
+      ofile_FAIL("ERROR in $sub_name, found segment that spanned stop..start boundary, but we're not allowing circular genomes...", "dnaorg", 1, $FH_HR); 
     }
     else { 
       # fix it
@@ -1393,7 +1393,7 @@ sub startsStopsFromCoords {
       $$nsegments_R++;
     }
     else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse coordinates $orig_coords", 1, $FH_HR); 
+      ofile_FAIL("ERROR in $sub_name, unable to parse coordinates $orig_coords", "dnaorg", 1, $FH_HR); 
     }
   }
 
@@ -1546,16 +1546,16 @@ sub dashCoordsToLength {
   # $start or $stop is a negative position (we do not allow negative positions
   # in this function)
   if($start_stop =~ m/^\-+\d+\-\-\d+$/) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, %sstart and stop positions are negative in coords string $start_stop", 
-                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
+    ofile_FAIL(sprintf("ERROR in $sub_name, %sstart and stop positions are negative in coords string $start_stop", 
+                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
   }
   elsif($start_stop =~ m/^\-\d+\-\d+$/) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, %sstart position is negative in coords string $start_stop", 
-                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
+    ofile_FAIL(sprintf("ERROR in $sub_name, %sstart position is negative in coords string $start_stop", 
+                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
   }
   elsif($start_stop =~ m/^\d+\-\-\d+$/) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, %sstop position is negative in coords string $start_stop", 
-                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
+    ofile_FAIL(sprintf("ERROR in $sub_name, %sstop position is negative in coords string $start_stop", 
+                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
   }
 
   # if we get here, $start_stop is either valid, or invalid for a reason other
@@ -1566,7 +1566,7 @@ sub dashCoordsToLength {
   }
   else { 
     # $start_stop is not valid, for some reason other than just having a negative position
-    DNAORG_FAIL("ERROR in $sub_name, called by $caller_sub_name, unable to parse start-stop string: $start_stop", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, called by $caller_sub_name, unable to parse start-stop string: $start_stop", "dnaorg", 1, $FH_HR); 
   }
 
   return $len;
@@ -1841,7 +1841,7 @@ sub validateExecutableHash {
   }
   
   if(defined $fail_str) { 
-    DNAORG_FAIL("ERROR in $sub_name(),\n$fail_str", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name(),\n$fail_str", "dnaorg", 1, $FH_HR);
   }
 
   return;
@@ -1906,10 +1906,10 @@ sub validateSequenceInfoHashIsComplete {
     my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
     my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
     if(exists $name_H{$seq_name}) { 
-      DNAORG_FAIL("ERROR in $sub_name, sequence name $seq_name exists twice", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, sequence name $seq_name exists twice", "dnaorg", 1, $FH_HR);
     }
     if(exists $accn_H{$accn_name}) { 
-      DNAORG_FAIL("ERROR in $sub_name, accession $accn_name exists twice", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, accession $accn_name exists twice", "dnaorg", 1, $FH_HR);
     }
     $name_H{$seq_name} = 1;
     $accn_H{$accn_name} = 1;
@@ -2006,7 +2006,7 @@ sub validateInfoHashOfArraysIsComplete {
   if(defined $exceptions_AR) { 
     foreach my $key (@{$exceptions_AR}) { 
       if(findNonNumericValueInArray($expected_keys_AR, $key, $FH_HR) == -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, excepted value $key is not an expected key in the feature info hash", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, excepted value $key is not an expected key in the feature info hash", "dnaorg", 1, $FH_HR);
       }
     }
   }
@@ -2058,7 +2058,7 @@ sub validateOutputFileInfoHashOfHashes {
  
   my ($ofile_info_HHR) = (@_);
   
-  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  # we can only pass $FH_HR to ofile_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   my @same_keys1d_A = ("order", "fullpath", "nodirpath", "mainout", "desc"); # all of these 2nd dim hashes should have same set of keys
@@ -2076,31 +2076,31 @@ sub validateOutputFileInfoHashOfHashes {
       }
     }
     if($found_it == 0) { 
-      DNAORG_FAIL("ERROR in $sub_name, unexpected 1d key $key1d exists.", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, unexpected 1d key $key1d exists.", "dnaorg", 1, $FH_HR);
     }     
   } 
   
   # make sure all 2nd dim keys for all 1st dim keys are the same as the 2nd dim keys for 1st dim key "order"
   if(! defined $ofile_info_HHR->{"order"}) { 
-    DNAORG_FAIL("ERROR in $sub_name, expected 1d key order does not exist.", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, expected 1d key order does not exist.", "dnaorg", 1, $FH_HR);
   }
   foreach my $key1d (@same_keys1d_A) { 
     if($key1d ne "order") { # skip "order"
       if(! defined $ofile_info_HHR->{$key1d}) { 
-        DNAORG_FAIL("ERROR in $sub_name, expected 1d key $key1d does not exist.", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, expected 1d key $key1d does not exist.", "dnaorg", 1, $FH_HR);
       }
       # we make sure the set of 2d keys in $ofile_info_HHR->{"order"} and $ofile_info_HHR->{$key1d} are 
       # identical in 2 steps:
       # 1) make sure all 2d keys from $ofile_info_HHR->{"order"} are also in $ofile_info_HHR->{"order"}
       foreach $key2d (keys %{$ofile_info_HHR->{"order"}}) { 
         if(! defined $ofile_info_HHR->{$key1d}{$key2d}) { 
-          DNAORG_FAIL("ERROR in $sub_name, 2nd dim key $key2d exists for ofile_info_HHR->{order} but not for ofile_info_HHR->{$key1d}", 1, $FH_HR); 
+          ofile_FAIL("ERROR in $sub_name, 2nd dim key $key2d exists for ofile_info_HHR->{order} but not for ofile_info_HHR->{$key1d}", "dnaorg", 1, $FH_HR); 
         }
       }
       # 2) make sure all the 2d keys in $ofile_info_HHR->{$key1d} are also in $ofile_info_HHR->{"order"}
       foreach $key2d (keys %{$ofile_info_HHR->{$key1d}}) { 
         if(! defined $ofile_info_HHR->{"order"}{$key2d}) { 
-          DNAORG_FAIL("ERROR in $sub_name, 2nd dim key $key2d exists for ofile_info_HHR->{order} but not for ofile_info_HHR->{$key1d}", 1, $FH_HR); 
+          ofile_FAIL("ERROR in $sub_name, 2nd dim key $key2d exists for ofile_info_HHR->{order} but not for ofile_info_HHR->{$key1d}", "dnaorg", 1, $FH_HR); 
         }
       }
     }
@@ -2117,7 +2117,7 @@ sub validateOutputFileInfoHashOfHashes {
   }
   for ($i = 1; $i <= $nkey2d; $i++) { 
     if($check_A[$i] != 1) { 
-      DNAORG_FAIL("ERROR in $sub_name, invalid values for ofile_info_HH{order}, $nkey2d 2nd dim keys, but value $i does not exist", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, invalid values for ofile_info_HH{order}, $nkey2d 2nd dim keys, but value $i does not exist", "dnaorg", 1, $FH_HR);
     }
   }
 
@@ -2155,7 +2155,7 @@ sub validateAndGetSizeOfInfoHashOfArrays {
   if(defined $reqd_keys_AR && @{$reqd_keys_AR}) { 
     foreach my $reqd_key (@{$reqd_keys_AR}) { 
       if(! exists $HAR->{$reqd_key}) { 
-        DNAORG_FAIL("ERROR in $sub_name, required key $reqd_key does not exist in the hash of arrays", 1, $FH_HR); 
+        ofile_FAIL("ERROR in $sub_name, required key $reqd_key does not exist in the hash of arrays", "dnaorg", 1, $FH_HR); 
       }
     }
   }
@@ -2197,7 +2197,7 @@ sub getConsistentSizeOfInfoHashOfArrays {
   my ($HAR, $FH_HR) = (@_);
   
   if((! %{$HAR}) || (scalar(keys %{$HAR}) == 0)) { 
-    DNAORG_FAIL("ERROR in $sub_name, hash of arrays does not exist or has no keys", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, hash of arrays does not exist or has no keys", "dnaorg", 1, $FH_HR);
   }
 
   # get size and check consistency: each array should be the same size
@@ -2215,13 +2215,13 @@ sub getConsistentSizeOfInfoHashOfArrays {
     }
     else { 
       if($nel != scalar(@{$HAR->{$key}})) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, expected number of elements in array for key $key is $nel (from key $nel_key) but %d exist for key $key!\nElement values from key $nel_key are: %s", scalar(@{$HAR->{$key}}), $nel_key_values), 1, $FH_HR);
+        ofile_FAIL(sprintf("ERROR in $sub_name, expected number of elements in array for key $key is $nel (from key $nel_key) but %d exist for key $key!\nElement values from key $nel_key are: %s", scalar(@{$HAR->{$key}}), $nel_key_values), "dnaorg", 1, $FH_HR);
       }
     }
     # check that all values are defined
     for(my $i = 0; $i < $nel; $i++) { 
       if(! defined $HAR->{$key}[$i]) { 
-        DNAORG_FAIL("ERROR in $sub_name, undefined value: key: $key index: $i", 1, $FH_HR); 
+        ofile_FAIL("ERROR in $sub_name, undefined value: key: $key index: $i", "dnaorg", 1, $FH_HR); 
       }        
     }
   }
@@ -2254,10 +2254,10 @@ sub getSizeOfInfoHashOfArrays {
   my ($info_HAR, $key, $FH_HR) = (@_);
   
   if(! defined $info_HAR) { 
-    DNAORG_FAIL("ERROR in $sub_name, input info_HAR undefined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, input info_HAR undefined", "dnaorg", 1, $FH_HR);
   }
   if(! exists $info_HAR->{$key}) { 
-    DNAORG_FAIL("ERROR in $sub_name, key $key does not exist in info_HAR hash", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, key $key does not exist in info_HAR hash", "dnaorg", 1, $FH_HR);
   }
 
   return(scalar(@{$info_HAR->{$key}}));
@@ -2427,11 +2427,11 @@ sub findNonNumericValueInArray {
   my ($AR, $value, $FH_HR) = @_;
 
   if(verify_real($value)) { 
-    DNAORG_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", "dnaorg", 1, $FH_HR);
   }
 
   if(! defined $AR) { 
-    DNAORG_FAIL("ERROR in $sub_name, array reference is not defined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, array reference is not defined", "dnaorg", 1, $FH_HR);
   }
 
   for(my $i = 0; $i < scalar(@{$AR}); $i++) {
@@ -2467,11 +2467,11 @@ sub numNonNumericValueInArray {
   my ($AR, $value, $FH_HR) = @_;
 
   if(verify_real($value)) { 
-    DNAORG_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", "dnaorg", 1, $FH_HR);
   }
 
   if(! defined $AR) { 
-    DNAORG_FAIL("ERROR in $sub_name, array reference is not defined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, array reference is not defined", "dnaorg", 1, $FH_HR);
   }
 
   my $ct = 0;
@@ -2688,7 +2688,7 @@ sub sumHashValues {
 #################################################################
 #
 # Simple utility subroutines:
-#   DNAORG_FAIL()
+#   ofile_FAIL()
 #   fileOpenFailure()
 #   runCommand()
 #   removeDirPath()
@@ -2702,7 +2702,7 @@ sub sumHashValues {
 #   nseBreakdown()
 #
 #################################################################
-# Subroutine : DNAORG_FAIL()
+# Subroutine : ofile_FAIL()
 # Incept:      EPN, Wed Nov 11 06:22:59 2009 (rnavore)
 #
 # Purpose:     Print an error message to STDERR and sum and 
@@ -2717,15 +2717,15 @@ sub sumHashValues {
 # Returns:     Nothing, this function will exit the program.
 #
 ################################################################# 
-sub DNAORG_FAIL { 
+sub ofile_FAIL { 
   my $nargs_expected = 3;
-  my $sub_name = "DNAORG_FAIL()";
+  my $sub_name = "ofile_FAIL()";
   if(scalar(@_) != $nargs_expected) { 
     if(scalar(@_) > 0) { 
-      printf STDERR ("ERROR, DNAORG_FAIL() entered with %d != %d input arguments.\n(errmsg: $_[0])\n\n", scalar(@_), $nargs_expected); 
+      printf STDERR ("ERROR, ofile_FAIL() entered with %d != %d input arguments.\n(errmsg: $_[0])\n\n", scalar(@_), $nargs_expected); 
     }
     else { 
-      printf STDERR ("ERROR, DNAORG_FAIL() entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); 
+      printf STDERR ("ERROR, ofile_FAIL() entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); 
     }
     exit(1); 
   }
@@ -2784,10 +2784,10 @@ sub fileOpenFailure {
   my ($filename, $c_sub_name, $status, $action, $FH_HR) = @_;
 
   if(($action eq "reading") && (! (-e $filename))) { 
-    DNAORG_FAIL(sprintf("ERROR, could not open %s%s for reading. It does not exist.", $filename, (defined $c_sub_name) ? " in subroutine $c_sub_name" : ""), $status, $FH_HR);
+    ofile_FAIL(sprintf("ERROR, could not open %s%s for reading. It does not exist.", $filename, (defined $c_sub_name) ? " in subroutine $c_sub_name" : ""), $status, $FH_HR);
   }
   else { 
-    DNAORG_FAIL(sprintf("ERROR, could not open %s%s for %s", $filename, (defined $c_sub_name) ? " in subroutine $c_sub_name" : "", $action), $status, $FH_HR);
+    ofile_FAIL(sprintf("ERROR, could not open %s%s for %s", $filename, (defined $c_sub_name) ? " in subroutine $c_sub_name" : "", $action), $status, $FH_HR);
   }
 
   return; # never reached
@@ -2841,7 +2841,7 @@ sub runCommand {
   my $stop_time = ($seconds + ($microseconds / 1000000.));
 
   if(($? != 0) && (! $do_failok)) { 
-    DNAORG_FAIL("ERROR in $sub_name, the following command failed:\n$cmd\n", $?, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, the following command failed:\n$cmd\n", $?, $FH_HR); 
   }
 
   return ($stop_time - $start_time);
@@ -2967,8 +2967,8 @@ sub removeFileUsingSystemRm {
   my ($file, $caller_sub_name, $opt_HHR, $FH_HR) = (@_);
   
   if(! -e $file) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, %s trying to remove file $file but it does not exist", 
-                (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
+    ofile_FAIL(sprintf("ERROR in $sub_name, %s trying to remove file $file but it does not exist", 
+                (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
   }
 
   runCommand("rm $file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -3045,10 +3045,10 @@ sub getMonocharacterString {
   my ($len, $char, $FH_HR) = @_;
 
   if(! verify_integer($len)) { 
-    DNAORG_FAIL("ERROR in $sub_name, passed in length ($len) is not a non-negative integer", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is not a non-negative integer", "dnaorg", 1, $FH_HR);
   }
   if($len < 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, passed in length ($len) is a negative integer", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is a negative integer", "dnaorg", 1, $FH_HR);
   }
     
   my $ret_str = "";
@@ -3257,7 +3257,7 @@ sub hashValuesToNewlineDelimitedString {
 #
 # Purpose:     Check if a file exists and is non-empty.
 #              If it does not exist or it is empty,
-#              die via DNAORG_FAIL().
+#              die via ofile_FAIL().
 #
 # Arguments: 
 #   $filename:         file that we are checking on
@@ -3276,10 +3276,10 @@ sub validateFileExistsAndIsNonEmpty {
   my ($filename, $caller_sub_name, $FH_HR) = @_;
 
   if(! -e $filename) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, %sfile $filename does not exist.", (defined $caller_sub_name ? "called by $caller_sub_name," : "")), 1, $FH_HR);
+    ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename does not exist.", (defined $caller_sub_name ? "called by $caller_sub_name," : "")), "dnaorg", 1, $FH_HR);
   }
   elsif(! -s $filename) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, %sfile $filename exists but is empty.", (defined $caller_sub_name ? "called by $caller_sub_name," : "")), 1, $FH_HR);
+    ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename exists but is empty.", (defined $caller_sub_name ? "called by $caller_sub_name," : "")), "dnaorg", 1, $FH_HR);
   }
   
   return;
@@ -3322,8 +3322,8 @@ sub concatenateListOfFiles {
   my ($file_AR, $outfile, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
 
   if(findNonNumericValueInArray($file_AR, $outfile, $FH_HR) != -1) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name%s, output file name $outfile exists in list of files to concatenate", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), 1, $FH_HR);
+    ofile_FAIL(sprintf("ERROR in $sub_name%s, output file name $outfile exists in list of files to concatenate", 
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
   }
 
   # first, convert @{$file_AR} array into a 2D array of file names, each of which has 
@@ -3332,7 +3332,7 @@ sub concatenateListOfFiles {
   my $nfiles = scalar(@{$file_AR});
 
   if($nfiles > ($max_nfiles * $max_nfiles)) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name%s, trying to concatenate %d files, our limit is %d", 
+    ofile_FAIL(sprintf("ERROR in $sub_name%s, trying to concatenate %d files, our limit is %d", 
                         (defined $caller_sub_name) ? " called by $caller_sub_name" : "", $nfiles, $max_nfiles * $max_nfiles), 
                 1, $FH_HR);
   }
@@ -3422,8 +3422,8 @@ sub md5ChecksumOfFile {
   my ($file, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
 
   if(! -s $file) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name%s, file to get md5 checksum of ($file) does no exist or is empty", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), 1, $FH_HR);
+    ofile_FAIL(sprintf("ERROR in $sub_name%s, file to get md5 checksum of ($file) does no exist or is empty", 
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
   }
 
   my $out_file = removeDirPath($file . ".md5sum");
@@ -3437,8 +3437,8 @@ sub md5ChecksumOfFile {
     $md5sum = $1;
   }
   else { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name%s, unable to parse md5sum output: $md5sum", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), 1, $FH_HR);
+    ofile_FAIL(sprintf("ERROR in $sub_name%s, unable to parse md5sum output: $md5sum", 
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
   }
   close(MD5);
 
@@ -3600,10 +3600,10 @@ sub getIndexHashForArray {
     # testable using 'eq' due to precision issues with storing
     # numbers. 
     if(verify_real($el)) { 
-      DNAORG_FAIL("ERROR in $sub_name(), value $el is numeric"); 
+      ofile_FAIL("ERROR in $sub_name(), value $el is numeric"); 
     }
     if(exists $index_HR->{$el}) { 
-      DNAORG_FAIL("ERROR in $sub_name(), the value $el appears twice in the array"); 
+      ofile_FAIL("ERROR in $sub_name(), the value $el appears twice in the array"); 
     }
     $index_HR->{$el} = $i;
   }
@@ -3668,7 +3668,7 @@ sub waitForFarmJobsToFinish {
 
   my $njobs = scalar(@{$outfile_AR});
   if($njobs != scalar(@{$errfile_AR})) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, number of elements in outfile array ($njobs) differ from number of jobs in errfile array (%d)", scalar(@{$errfile_AR})), 1, $FH_HR);
+    ofile_FAIL(sprintf("ERROR in $sub_name, number of elements in outfile array ($njobs) differ from number of jobs in errfile array (%d)", scalar(@{$errfile_AR})), "dnaorg", 1, $FH_HR);
   }
   my @is_finished_A  = ();  # $is_finished_A[$i] is 1 if job $i is finished (either successfully or having failed), else 0
   my @is_failed_A    = ();  # $is_failed_A[$i] is 1 if job $i has finished and failed (all failed jobs are considered 
@@ -3753,7 +3753,7 @@ sub waitForFarmJobsToFinish {
         $errmsg .= "\t$outfile_AR->[$i]\t$errfile_AR->[$i]\n";
       }
     }
-    DNAORG_FAIL($errmsg, 1, $FH_HR);
+    ofile_FAIL($errmsg, "dnaorg", 1, $FH_HR);
   }
 
   # if we get here we have no failures
@@ -3787,7 +3787,7 @@ sub splitFastaFile {
 
   my ($esl_ssplit, $fasta_file, $nfiles, $opt_HHR, $ofile_info_HHR) = @_;
 
-  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
+  # we can only pass $FH_HR to ofile_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   my $outfile = $fasta_file . ".esl-ssplit";
@@ -3958,7 +3958,7 @@ sub cmalignOrNhmmscanWrapper {
     else { 
       # run did not finish successfully
       if(! $do_cmalign) { 
-        DNAORG_FAIL("ERROR in $sub_name a nhmmscan job failed.", 1, $ofile_info_HHR->{"FH"});
+        ofile_FAIL("ERROR in $sub_name a nhmmscan job failed.", 1, $ofile_info_HHR->{"FH"});
       }
       # if we get here, we know that $do_cmalign is 1
       # split this sequence file up into multiple files with only 1 sequence each, 
@@ -4153,7 +4153,7 @@ sub cmalignOrNhmmscanWrapperHelper {
                                                    ($do_cmalign) ? "" : "[ok]", # value is irrelevant for cmalign
                                                    opt_Get("--wait", $opt_HHR), opt_Get("--errcheck", $opt_HHR), $ofile_info_HHR->{"FH"});
       if($njobs_finished != $nseq_files) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
+        ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
       }
       outputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by outputProgressComplete()
     }
@@ -4218,7 +4218,7 @@ sub runCmalign {
   my $do_local = opt_Get("--local", $opt_HHR) ? 1 : 0;
 
   if($stdout_file eq "/dev/null") { 
-    DNAORG_FAIL("ERROR in $sub_name, stdout_file is /dev/null", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, stdout_file is /dev/null", "dnaorg", 1, $FH_HR);
   }
 
   validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
@@ -4271,7 +4271,7 @@ sub runCmalign {
     # command has completed, check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
     $success = cmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
     if($success == -1) { # indicates job did not finish properly, this shouldn't happen because runCommand() didn't die
-      DNAORG_FAIL("ERROR in $sub_name, cmalign failed in a bad way, see $stdout_file for error output", 1, $ofile_info_HHR->{"FH"});
+      ofile_FAIL("ERROR in $sub_name, cmalign failed in a bad way, see $stdout_file for error output", 1, $ofile_info_HHR->{"FH"});
     }
   }
   
@@ -4367,10 +4367,10 @@ sub cmalignCheckStdOutput {
   }
 
   if(! -e $stdout_file) { 
-    DNAORG_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", "dnaorg", 1, $FH_HR);
   }
   if(! -s $stdout_file) { 
-    DNAORG_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", "dnaorg", 1, $FH_HR);
   }
 
   # if we get here, the file exists and is non-empty
@@ -4433,7 +4433,7 @@ sub cmalignStoreOverflow {
     push(@{$overflow_mxsize_AR}, $mxsize);
   }
   else { 
-    DNAORG_FAIL("ERROR in $sub_name failed to parse sequence name from matrix overflow sequence:\n$r2_seqstring", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name failed to parse sequence name from matrix overflow sequence:\n$r2_seqstring", "dnaorg", 1, $FH_HR);
   }
   $sqfile = undef;
 
@@ -4530,7 +4530,7 @@ sub formatTabDelimitedStringForErrorListFile() {
     $feature_name = "*sequence*";
   }
   else { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to parse input error string: $errstr", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unable to parse input error string: $errstr", "dnaorg", 1, $FH_HR);
   }
 
   if($error_desc eq "") { 
@@ -4578,18 +4578,18 @@ sub blastxDbSeqNameToFtrIdx {
       if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "CDS")) { 
         if($ftr_info_HAR->{"coords"}[$ftr_idx] eq $coords) { 
           if(defined $ret_ftr_idx) { # found more than 1 features that match
-            DNAORG_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match two features, ftr_idx: $ftr_idx and $ret_ftr_idx", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match two features, ftr_idx: $ftr_idx and $ret_ftr_idx", "dnaorg", 1, $FH_HR);
           }                  
           $ret_ftr_idx = $ftr_idx;
         }
       }
     }
     if(! defined $ret_ftr_idx) { # did not find match
-      DNAORG_FAIL("ERROR in $sub_name, did not find matching feature for blastx db sequence $blastx_seqname", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, did not find matching feature for blastx db sequence $blastx_seqname", "dnaorg", 1, $FH_HR);
     }
   }
   else { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to parse blastx db sequence name $blastx_seqname", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, unable to parse blastx db sequence name $blastx_seqname", "dnaorg", 1, $FH_HR); 
   }
 
   return $ret_ftr_idx;
@@ -4619,7 +4619,7 @@ sub validateBlastDbExists {
 
   foreach my $sfx (".phr", ".pin", ".psq") { 
     if(! -s $blastdb_name . $sfx) { 
-      DNAORG_FAIL("ERROR in $sub_name, required blast DB file " . $blastdb_name . $sfx . " does not exist or is empty", 1, $FH_HR); 
+      ofile_FAIL("ERROR in $sub_name, required blast DB file " . $blastdb_name . $sfx . " does not exist or is empty", "dnaorg", 1, $FH_HR); 
     }
   }
 
@@ -4706,7 +4706,7 @@ sub featureGet5pMostPosition {
     return $1;
   }
   else { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, "dnaorg", 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
@@ -4738,7 +4738,7 @@ sub featureGet3pMostPosition {
     return $1;
   }
   else { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, "dnaorg", 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
@@ -4898,8 +4898,8 @@ sub featureInfoImputeSourceIdx {
            ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
            ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
           if($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) { 
-            DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to determine source (two choices) for duplicate feature of type %s and coords %s\n", 
-                                $ftr_info_AHR->[$ftr_idx]{"type"}, $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
+            ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine source (two choices) for duplicate feature of type %s and coords %s\n", 
+                                $ftr_info_AHR->[$ftr_idx]{"type"}, $ftr_info_AHR->[$ftr_idx]{"coords"}), "dnaorg", 1, $FH_HR);
           }
           $ftr_info_AHR->[$ftr_idx]{"source_idx"} = $ftr_idx2;
         }
@@ -4986,10 +4986,10 @@ sub featureInfoImputeParentIdx {
               printf("ftr_3p_pos:  $ftr_3p_pos\n");
               printf("ftr_5p_pos2: $ftr_5p_pos2\n");
               printf("ftr_3p_pos2: $ftr_3p_pos2\n");
-              DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to determine parent of mature peptide with coords %s (multiple CDS cover it with coords %s and %s)\n", 
+              ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine parent of mature peptide with coords %s (multiple CDS cover it with coords %s and %s)\n", 
                                   $ftr_info_AHR->[$ftr_idx]{"coords"},
                                   $ftr_info_AHR->[($ftr_info_AHR->[$ftr_idx]{"parent_idx"})]{"coords"}, 
-                                  $ftr_info_AHR->[$ftr_idx2]{"coords"}), 1, $FH_HR);
+                                  $ftr_info_AHR->[$ftr_idx2]{"coords"}), "dnaorg", 1, $FH_HR);
             }
             $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = $ftr_idx2;
           }
@@ -5064,8 +5064,8 @@ sub featureInfoImpute3paFtrIdx {
           }
           if($found_adj) { 
             if($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1) { 
-              DNAORG_FAIL(sprintf("ERROR in $sub_name, unable to determine 3' mature peptide of mature peptide with coords (multiple mature peptides satisfy criteria)\n", 
-                                  $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
+              ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine 3' mature peptide of mature peptide with coords (multiple mature peptides satisfy criteria)\n", 
+                                  $ftr_info_AHR->[$ftr_idx]{"coords"}), "dnaorg", 1, $FH_HR);
             }
             $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = $ftr_idx2; 
           }
@@ -5253,7 +5253,7 @@ sub featureStartStopStrandArrays {
       push(@strand_A, $strand); 
     }
     else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse coords token $coords_A[$sgm_idx]", 1, $FH_HR); 
+      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords_A[$sgm_idx]", "dnaorg", 1, $FH_HR); 
     }
   }
 
@@ -5326,10 +5326,10 @@ sub hashValidate {
 
   foreach my $key (@{$keys_AR}) { 
     if(! exists $HR->{$key}) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, required hash key $key does not exist\n%s", (defined $fail_str) ? $fail_str : ""), 1, $FH_HR); 
+      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key does not exist\n%s", (defined $fail_str) ? $fail_str : ""), "dnaorg", 1, $FH_HR); 
     }
     if(! defined $HR->{$key}) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, required hash key $key exists but its value is undefined\n%s", (defined $fail_str) ? $fail_str : ""), 1, $FH_HR); 
+      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key exists but its value is undefined\n%s", (defined $fail_str) ? $fail_str : ""), "dnaorg", 1, $FH_HR); 
     }
   }
 
@@ -5401,7 +5401,7 @@ sub featureCoordsFromLocation {
     $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
   }
   else { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", "dnaorg", 1, $FH_HR);
   }
 
   return $ret_val;
@@ -5448,7 +5448,7 @@ sub featureCoordsComplement {
       $ret_val .= $stop_carrot . $stop . ".." . $start_carrot . $start . ":-";
     }
     else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse coords token $coords", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords", "dnaorg", 1, $FH_HR);
     }
   }
 
@@ -5497,13 +5497,13 @@ sub featureSummaryStrand {
   foreach my $strand (@strand_A) { 
     if   ($strand eq "+") { $npos++; }
     elsif($strand eq "-") { $nneg++; }
-    else { DNAORG_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); }
+    else { ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", "dnaorg", 1, $FH_HR); }
   }
 
   if(($npos >  0) && ($nneg == 0)) { return "+"; }
   if(($npos == 0) && ($nneg >  0)) { return "-"; }
   if(($npos == 0) && ($nneg == 0)) { 
-    DNAORG_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", "dnaorg", 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
@@ -5621,7 +5621,7 @@ sub featureInfoValidateCoords {
   }
 
   if($fail_str ne "") { 
-    DNAORG_FAIL("ERROR in $sub_name, some coordinates exceed model length ($length):\n$fail_str\n", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, some coordinates exceed model length ($length):\n$fail_str\n", "dnaorg", 1, $FH_HR);
   }
   
   return;
@@ -5663,7 +5663,7 @@ sub eutilsFetchToFile {
     sleep(1);
   }
   if(! defined $fetched_str) { 
-    DNAORG_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", "dnaorg", 1, $FH_HR); 
   }
 
   open(OUT, ">", $out_file) || fileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
@@ -5745,12 +5745,12 @@ sub genbankParse {
     if($line =~ /^LOCUS\s+(\S+)\s+(\d+)/) { 
       #LOCUS       NC_039477               7567 bp    RNA     linear   VRL 22-FEB-2019
       if((defined $acc) || (defined $len)) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple LOCUS lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple LOCUS lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
       ($acc, $len) = ($1, $2);
       # initialize the array of hashes for this accession's features
       if(defined $ftr_info_HAHR->{$acc}) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, trying to add feature info for accession $acc, but it already exists, line:\n$line\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, trying to add feature info for accession $acc, but it already exists, line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
       @{$ftr_info_HAHR->{$acc}} = ();
       $line = <IN>; 
@@ -5759,7 +5759,7 @@ sub genbankParse {
       #DEFINITION  Norovirus GII isolate strain Hu/GBR/2016/GII.P16-GII.4_Sydney/226,
       #            complete genome.
       if(defined $def) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple DEFINITION lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple DEFINITION lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
       $def = $1;
       # read remainder of the definition (>= 0 lines)
@@ -5775,21 +5775,21 @@ sub genbankParse {
       # verify this matches what we read in the LOCUS line
       $tmp_acc = $1;
       if((! defined $acc) || ($tmp_acc ne $acc)) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, accession mismatch for $tmp_acc, line:\n$line\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, accession mismatch for $tmp_acc, line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
       $line = <IN>;
     }
     elsif($line =~ /^VERSION\s+(\S+)$/) { 
       #VERSION     NC_039477.1
       if(defined $ver) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple VERSION lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple VERSION lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
       # verify this matches what we read in the LOCUS line
       $ver = $1;
       $tmp_acc = $ver;
       stripVersion(\$tmp_acc);
       if((! defined $acc) || ($tmp_acc ne $acc)) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, version/accession mismatch for $tmp_acc, line:\n$line\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, version/accession mismatch for $tmp_acc, line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
       $line = <IN>;
     }
@@ -5808,7 +5808,7 @@ sub genbankParse {
       #        example: QNVIDPWIRNNFVQAPGGEFTVSPRNAPGEILWSAPLGPDLNPYLSHLARMYNGYAGG
       #        example: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
       if($ftr_idx != -1) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple FEATURES lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple FEATURES lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
       $line = <IN>;
       while((defined $line) && ($line !~ /^ORIGIN/)) { 
@@ -5845,14 +5845,14 @@ sub genbankParse {
           #        example: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
           $line =~ s/^\s+//; # remove leading whitespace
           if(! defined $value) { 
-            DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, in FEATURES section read qualifier value line without qualifier first, line:\n$line\n", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, in FEATURES section read qualifier value line without qualifier first, line:\n$line\n", "dnaorg", 1, $FH_HR);
           }
           $value .= $line; 
         }
         $line = <IN>; chomp $line; $line_idx++;
       }
       if(! defined $line) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to read ORIGIN line after FEATURES but did not\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to read ORIGIN line after FEATURES but did not\n", "dnaorg", 1, $FH_HR);
       }
       # if we get here we just read the ORIGIN line
       # first store final qualifier/value
@@ -5863,7 +5863,7 @@ sub genbankParse {
       $line = <IN>;
       # sanity check
       if(defined $seq) { 
-        DNAORG_FAIL("ERROR in $sub_name, read multiple ORIGIN lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, read multiple ORIGIN lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
       $seq = "";
       while((defined $line) && ($line !~ /^\/\/$/)) { 
@@ -5880,15 +5880,15 @@ sub genbankParse {
         $line = <IN>;
       }
       if(! defined $line) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to find a // line after ORIGIN but did not, line $line_idx\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to find a // line after ORIGIN but did not, line $line_idx\n", "dnaorg", 1, $FH_HR);
       }
       # if we get here we just read the // line
       # we are finished with this sequence, store the information
-      if(! defined $acc) { DNAORG_FAIL(        "ERROR in $sub_name, failed to read accession, line: $line_idx\n", 1, $FH_HR); }
-      if(! defined $len) { DNAORG_FAIL(sprintf("ERROR in $sub_name, failed to read length (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
-      if(! defined $ver) { DNAORG_FAIL(sprintf("ERROR in $sub_name, failed to read version (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
-      if(! defined $def) { DNAORG_FAIL(sprintf("ERROR in $sub_name, failed to read definition (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
-      if(! defined $seq) { DNAORG_FAIL(sprintf("ERROR in $sub_name, failed to read sequence (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
+      if(! defined $acc) { ofile_FAIL(        "ERROR in $sub_name, failed to read accession, line: $line_idx\n", "dnaorg", 1, $FH_HR); }
+      if(! defined $len) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read length (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
+      if(! defined $ver) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read version (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
+      if(! defined $def) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read definition (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
+      if(! defined $seq) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read sequence (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
 
       # store sequence info
       %{$seq_info_HHR->{$acc}} = ();
@@ -5919,7 +5919,7 @@ sub genbankParse {
   }
 
   if($seq_idx == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, failed to read any sequence data\n", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, failed to read any sequence data\n", "dnaorg", 1, $FH_HR);
   }
 
   return;
@@ -5953,7 +5953,7 @@ sub genbankStoreQualifierValue {
   my ($ftr_info_AHR, $ftr_idx, $qualifier, $value, $FH_HR) = @_;
 
   if($value =~ /\:GPSEP\:/) { 
-    DNAORG_FAIL("ERROR in $sub_name, qualifier value $value includes the special string :GPSEP:, this is not allowed", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, qualifier value $value includes the special string :GPSEP:, this is not allowed", "dnaorg", 1, $FH_HR);
   }
 
   # remove leading and trailing " in the value, if they exist
@@ -6277,7 +6277,7 @@ sub cdsTranslateToFastaFile {
         print OUT (">" . $1 . "," . $2 . "\n");
       }
       else { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing esl-translate output file $tmp1_translate_fa_file, line:\n$line\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing esl-translate output file $tmp1_translate_fa_file, line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
     }
     else { 
@@ -6299,7 +6299,7 @@ sub cdsTranslateToFastaFile {
       if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
         my $fetch_name = "source=" . $seq_name . ",coords=1.." . ($seq_length - 3); # subtract length of stop codon
         if(! $protein_sqfile->check_seq_exists($fetch_name)) { 
-          DNAORG_FAIL(sprintf("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\tftr_idx: $ftr_idx\n\tcoords: %s\n\texpected sequence:$fetch_name\n", $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
+          ofile_FAIL(sprintf("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\tftr_idx: $ftr_idx\n\tcoords: %s\n\texpected sequence:$fetch_name\n", $ftr_info_AHR->[$ftr_idx]{"coords"}), "dnaorg", 1, $FH_HR);
         }
         print $out_FH $protein_sqfile->fetch_seq_to_fasta_string($fetch_name, 60);
       }
@@ -6377,10 +6377,10 @@ sub modelInfoFileWrite {
     foreach $key (sort keys (%{$mdl_info_AHR->[$mdl_idx]})) { 
       $value = $mdl_info_AHR->[$mdl_idx]{$key};
       if($key =~ m/\:/) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem writing $out_file, illegal ':' character in model key $key for model $mdl_name", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal ':' character in model key $key for model $mdl_name", "dnaorg", 1, $FH_HR);
       }
       if($value =~ m/\"/) { 
-        DNAORG_FAIL("ERROR in $sub_name, problem writing $out_file, illegal '\"' character in model value $value for key $key for model $mdl_name", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal '\"' character in model value $value for key $key for model $mdl_name", "dnaorg", 1, $FH_HR);
       }
       if($key ne "name") { 
         print OUT (" $key:\"$value\"");
@@ -6418,10 +6418,10 @@ sub modelInfoFileWrite {
         if(exists $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key}) { 
           $value = $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key};
           if($key =~ m/\:/) { 
-            DNAORG_FAIL("ERROR in $sub_name, problem writing $out_file, illegal ':' character in feature key $key for model $mdl_name", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal ':' character in feature key $key for model $mdl_name", "dnaorg", 1, $FH_HR);
           }
           if($value =~ m/\"/) { 
-            DNAORG_FAIL("ERROR in $sub_name, problem writing $out_file, illegal '\"' character in feature value $value for key $key for model $mdl_name", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal '\"' character in feature value $value for key $key for model $mdl_name", "dnaorg", 1, $FH_HR);
           }
           print OUT (" $key:\"$value\"");
         }
@@ -6499,7 +6499,7 @@ sub modelInfoFileParse {
       if($line =~ /^MODEL\s+(\S+)\s*/) { 
         $mdl_name = $1;
         if(exists $mdl_read_H{$mdl_name}) { 
-          DNAORG_FAIL("ERROR in $sub_name, problem parsing $in_file: read multiple MODEL lines for $mdl_name, should only be 1; line:\n$orig_line\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read multiple MODEL lines for $mdl_name, should only be 1; line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
         }
         $mdl_idx++;
         %{$mdl_info_AHR->[$mdl_idx]} = ();
@@ -6513,7 +6513,7 @@ sub modelInfoFileParse {
       elsif($line =~ /^FEATURE\s+(\S+)\s*/) { 
         $mdl_name = $1;
         if(! exists $mdl_read_H{$mdl_name}) { 
-          DNAORG_FAIL("ERROR in $sub_name, problem parsing $in_file: read FEATURE line for model $mdl_name before a MODEL line for $mdl_name; line:\n$orig_line\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read FEATURE line for model $mdl_name before a MODEL line for $mdl_name; line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
         }
         $ftr_idx = scalar(@{$ftr_info_HAHR->{$mdl_name}});
         # initialize ftr_info for this model/feature pair
@@ -6521,7 +6521,7 @@ sub modelInfoFileParse {
         $line =~ s/^FEATURE\s+\S+\s*//; # remove FEATURE and model value
       }
       else { 
-        DNAORG_FAIL("ERROR in $sub_name, problem parsing $in_file, non-comment line does not start with 'MODEL <modelname>' or 'FEATURE <featurename>', line:\n$orig_line\n", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, non-comment line does not start with 'MODEL <modelname>' or 'FEATURE <featurename>', line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
       }
       # if we get here we have either a MODEL or FEATURE line, parse the rest of it
       while($line ne "") { 
@@ -6531,13 +6531,13 @@ sub modelInfoFileParse {
           my ($key, $value) = ($1, $2);
           if($is_model_line) { 
             if(exists $mdl_info_AHR->[$mdl_idx]{$key}) {
-              DNAORG_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", 1, $FH_HR);
+              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
             }
             $mdl_info_AHR->[$mdl_idx]{$key} = $value;
           }
           else { # feature line
             if(exists $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key}) {
-              DNAORG_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", 1, $FH_HR);
+              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
             }
             $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} = $value;
             # printf("\tadded ftr_info_HAR->{$mdl_name}[$ftr_idx]{$key} as $value\n");
@@ -6545,7 +6545,7 @@ sub modelInfoFileParse {
           $line =~ s/^[^\:\s]+\:\"[^\"]+\"\s*//; # remove this key/value pair
         }
         else { 
-          DNAORG_FAIL("ERROR in $sub_name, unable to parse $in_file, failed to parse key:value pairs in line:\n$orig_line\n$format_str\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, unable to parse $in_file, failed to parse key:value pairs in line:\n$orig_line\n$format_str\n", "dnaorg", 1, $FH_HR);
         }
       } 
     }
@@ -6651,8 +6651,8 @@ sub fastaWriteSequence {
 
   my ($out_FH, $name, $def, $seq, $FH_HR) = @_;
 
-  if(! defined $name) { DNAORG_FAIL("ERROR in $sub_name, name is undefined", 1, $FH_HR); }
-  if(! defined $seq)  { DNAORG_FAIL("ERROR in $sub_name, name is undefined", 1, $FH_HR); }
+  if(! defined $name) { ofile_FAIL("ERROR in $sub_name, name is undefined", "dnaorg", 1, $FH_HR); }
+  if(! defined $seq)  { ofile_FAIL("ERROR in $sub_name, name is undefined", "dnaorg", 1, $FH_HR); }
 
   # capitalize and DNAize $seq
   sqstringCapitalize(\$seq);

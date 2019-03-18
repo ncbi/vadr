@@ -299,10 +299,10 @@ my %ftr_info_HAH = (); # the feature info
 my %seq_info_HH  = (); # the sequence info 
 genbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
 if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
-  DNAORG_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", 1, $FH_HR);
+  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", "dnaorg", 1, $FH_HR);
 }
 if(! exists $ftr_info_HAH{$mdl_name}) { 
-  DNAORG_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
+  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", "dnaorg", 1, $FH_HR);
 }
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -565,15 +565,15 @@ sub stockholm_validate_single_sequence_input {
 
   my ($in_stk_file, $exp_sqstring, $opt_HHR, $FH_HR) = @_;
 
-  if(! -e $in_stk_file) { DNAORG_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file does not exist", 1, $FH_HR); }
-  if(! -s $in_stk_file) { DNAORG_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file exists but is empty", 1, $FH_HR); }
-  if(  -d $in_stk_file) { DNAORG_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file is actually a directory", 1, $FH_HR); }
+  if(! -e $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file does not exist", "dnaorg", 1, $FH_HR); }
+  if(! -s $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file exists but is empty", "dnaorg", 1, $FH_HR); }
+  if(  -d $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file is actually a directory", "dnaorg", 1, $FH_HR); }
   my $msa = Bio::Easel::MSA->new({ fileLocation => $in_stk_file, isDna => 1});
   my $nseq = $msa->nseq;
   if($nseq == 1) { 
     # single sequence, make sure there are no gaps
     if($msa->any_allgap_columns) { 
-      DNAORG_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it has gaps, this is not allowed for single sequence 'alignments' (remove gaps with 'esl-reformat --mingap')", 1, $FH_HR);
+      ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it has gaps, this is not allowed for single sequence 'alignments' (remove gaps with 'esl-reformat --mingap')", "dnaorg", 1, $FH_HR);
     }
     # validate it matches $exp_sqstring
     my $fetched_sqstring = $msa->get_sqstring_unaligned(0);
@@ -583,11 +583,11 @@ sub stockholm_validate_single_sequence_input {
     sqstringDnaize(\$exp_sqstring);
     if($fetched_sqstring ne $exp_sqstring) { 
       my $summary_sqstring_diff_str = sqstringDiffSummary($fetched_sqstring, $exp_sqstring);
-      DNAORG_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it does not match sequence read from GenBank file $gb_file:\n$summary_sqstring_diff_str", 1, $FH_HR); 
+      ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it does not match sequence read from GenBank file $gb_file:\n$summary_sqstring_diff_str", "dnaorg", 1, $FH_HR); 
     }
   }
   else { # nseq != 1
-    DNAORG_FAIL("ERROR, did not read exactly 1 sequence in --stk file $in_stk_file.\nTo use DNAORG with models built from alignments of multiple sequences,\nyou will have to build the CM with cmbuild and create the model info file manually.\n", 1, $FH_HR);
+    ofile_FAIL("ERROR, did not read exactly 1 sequence in --stk file $in_stk_file.\nTo use DNAORG with models built from alignments of multiple sequences,\nyou will have to build the CM with cmbuild and create the model info file manually.\n", "dnaorg", 1, $FH_HR);
   }
 
   return $msa->has_ss;
@@ -627,7 +627,7 @@ sub process_add_and_skip_options {
   # make sure $add_opt and $skip_opt have no values in common
   foreach my $key (sort keys (%{$add_HR})) { 
     if(defined $skip_HR->{$key}) { 
-      DNAORG_FAIL("ERROR in $sub_name, processing $add_opt <s1> and $skip_opt <s2> options, $key exists in both <s1> and <s2>", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, processing $add_opt <s1> and $skip_opt <s2> options, $key exists in both <s1> and <s2>", "dnaorg", 1, $FH_HR);
     }
   }
 
