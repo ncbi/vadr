@@ -12,6 +12,7 @@ use Bio::Easel::SqFile;
 
 require "dnaorg.pm"; 
 require "epn-options.pm";
+require "epn-ofile.pm";
 
 #######################################################################################
 # What this script does: 
@@ -85,28 +86,15 @@ require "epn-options.pm";
 #   features for which they weren't already added
 #
 #######################################################################################
+# make sure DNAORGDIR and DNAORGBLASTDIR environment variable is set
+my $env_dnaorgdir      = dng_VerifyEnvVariableIsValidDir("DNAORGDIR");
+my $env_dnaorgblastdir = dng_VerifyEnvVariableIsValidDir("DNAORGBLASTDIR");
 
-# first, determine the paths to all modules, scripts and executables that we'll need
-# make sure the DNAORGDIR environment variable is set
-my $dnaorgdir = $ENV{'DNAORGDIR'};
-if(! exists($ENV{'DNAORGDIR'})) { 
-    printf STDERR ("\nERROR, the environment variable DNAORGDIR is not set, please set it to the directory where you installed the dnaorg scripts and their dependencies.\n"); 
-    exit(1); 
-}
-if(! (-d $dnaorgdir)) { 
-    printf STDERR ("\nERROR, the dnaorg directory specified by your environment variable DNAORGDIR does not exist.\n"); 
-    exit(1); 
-}    
+my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
+my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
+my $esl_ssplit        = $env_dnaorgdir . "/Bio-Easel/scripts/esl-ssplit.pl";
+my $blast_exec_dir    = $env_dnaorgblastdir;
  
-# determine other required paths to executables relative to $dnaorgdir
-my $inf_exec_dir      = $dnaorgdir . "/infernal-dev/src/";
-my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
-my $esl_exec_dir      = $dnaorgdir . "/infernal-dev/easel/miniapps/";
-my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
-my $esl_epn_translate = $dnaorgdir . "/esl-epn-translate/esl-epn-translate.pl";
-my $esl_ssplit        = $dnaorgdir . "/Bio-Easel/scripts/esl-ssplit.pl";
-my $blast_exec_dir    = "/usr/bin/"; # HARD-CODED FOR NOW
-
 #########################################################
 # Command line and option processing using epn-options.pm
 #
@@ -137,21 +125,14 @@ my $g = 0; # option group
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 #     option            type       default               group   requires incompat    preamble-output                                   help-output    
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                            "display this help",                                  \%opt_HH, \@opt_order_A);
-$opt_group_desc_H{++$g} = "REQUIRED options";
-opt_Add("--infasta",     "string",  undef,                  $g,    "*",   "*",       "fasta file with sequences to annotate is <s>",    "fasta file with sequences to annotate is <s>",       \%opt_HH, \@opt_order_A);
-opt_Add("--refaccn",     "string",  undef,                  $g,    "*",   "*",       "reference accession to annotate based on is <s>", "reference accession to annotate based on is <s>",    \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",      "string",  undef,                  $g,    "*",   "*",       "output directory to create is <s>",               "output directory to create is <s>",                  \%opt_HH, \@opt_order_A);
-opt_Add("--dirbuild",    "string",  undef,                  $g,    "*",   "*",       "output directory created by dnaorg_build.pl",     "output directory created by dnaorg_build.pl is <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "basic options";
-opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "forcing directory overwrite",                                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--matpept",    "string",  undef,                   $g,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("--nomatpept",  "boolean", 0,                       $g,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
-opt_Add("--xfeat",      "string",  undef,                   $g,    undef, undef,      "use models of additional qualifiers",                         "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
-opt_Add("--dfeat",      "string",  undef,                   $g,    undef, undef,      "annotate additional qualifiers as duplicates", "annotate qualifiers in <s> from duplicates (e.g. gene from CDS)",  \%opt_HH, \@opt_order_A);  
-opt_Add("--specstart",  "string",  undef,                   $g,    undef, undef,      "using pre-specified alternate start codons",                  "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "forcing directory overwrite",                    "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                     "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("-s",           "integer", 181,                     $g,    undef,  undef,     "seed for random number generator is <n>",        "seed for random number generator is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("-i",           "string",  undef,                    1,    undef, undef,      "use model info file <s> instead of default",     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-n",           "integer", 0,                        1,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning nucleotide-based annotation errors:";
 #        option               type   default                group  requires incompat   preamble-output                                                             help-output    
@@ -163,10 +144,6 @@ opt_Add("--xalntol",     "integer",  5,                      $g,     undef, unde
 opt_Add("--xindeltol",   "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for modifying which errors are reported";
-#       option               type   default                group  requires incompat preamble-output                                     help-output    
-opt_Add("--classerrors","string",  0,                      $g,    undef,   undef,   "read per-sequence classification errors from <s>", "read per-sequence classification errors from <s>", \%opt_HH, \@opt_order_A);
-
 $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
 opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
@@ -176,51 +153,38 @@ opt_Add("--nosub",      "boolean", 0,                       $g,    undef, undef,
 opt_Add("--noglocal",   "boolean", 0,                       $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
-#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--local",      "boolean", 0,                       $g,    undef, undef,      "run cmscan locally instead of on farm",                       "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
-opt_Add("--errcheck",   "boolean", 0,                       $g,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 50,                      $g,    undef,"--local",   "number of KB of sequence for each cmscan farm job",           "set target number of KB of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--maxnjobs",   "integer", 2500,                    $g,    undef,"--local",   "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 500,                     $g,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",                   "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+#     option            type       default                group   requires incompat    preamble-output                                                help-output    
+opt_Add("-p",           "boolean", 0,                       $g,    undef,  undef,      "parallelize cmsearch/cmalign on a compute farm",              "parallelize cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("-q",           "string",  undef,                   $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 100,                     $g,     "-p",  undef,      "number of KB of seq for each cmsearch farm job is <n>",       "number of KB of sequence for each cmsearch farm job is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 500,                     $g,     "-p",  undef,      "allow <n> minutes for cmsearch jobs on farm",                 "allow <n> wall-clock minutes for cmsearch jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--errcheck",   "boolean", 0,                       $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
+opt_Add("--maxnjobs",   "integer", 2500,                    $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
-#       option       type       default                  group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                       $g,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+#       option       type       default                  group  requires incompat  preamble-output                         help-output    
 opt_Add("--ftrinfo",    "boolean", 0,                       $g,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--sgminfo",    "boolean", 0,                       $g,    undef, undef, "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
 opt_Add("--seqinfo",    "boolean", 0,                       $g,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
 opt_Add("--errinfo",    "boolean", 0,                       $g,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
 #     option               type       default            group   requires    incompat                    preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",         "skip the cmalign step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: dnaorg_annotate.pl\n";
-$usage      .= "\t--infasta  <sequence fasta file to annotate>              (REQUIRED option)\n";
-$usage      .= "\t--refaccn  <reference accession to annotate with>         (REQUIRED option)\n";
-$usage      .= "\t--dirbuild <path to directory created by dnaorg_build.pl> (REQUIRED option)\n";
-$usage      .= "\t--dirout   <path to output directory to create>           (REQUIRED option)\n";
-$usage      .= "\t[additional options]\n";
+my $usage    = "Usage: dnaorg_annotate.pl [-options] <fasta file to annotate> <output directory to create>\n";
 $usage      .= "\n";
-my $synopsis = "dnaorg_annotate.pl :: annotate sequences based on a reference annotation";
+my $synopsis = "dnaorg_annotate.pl :: classify and annotate sequences using a CM library";
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
-# REQUIRED options
-                'infasta=s'    => \$GetOptions_H{"--infasta"},
-                'refaccn=s'    => \$GetOptions_H{"--refaccn"},
-                'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
-                'dirout=s'     => \$GetOptions_H{"--dirout"},
 # basic options
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
-                'matpept=s'    => \$GetOptions_H{"--matpept"},
-                'nomatpept'    => \$GetOptions_H{"--nomatpept"},
-                'xfeat=s'      => \$GetOptions_H{"--xfeat"},
-                'dfeat=s'      => \$GetOptions_H{"--dfeat"},
-                'specstart=s'  => \$GetOptions_H{"--specstart"},
+                's'            => \$GetOptions_H{"-s"}, 
+                'i=s'          => \$GetOptions_H{"-i"}, 
+                'n=s'          => \$GetOptions_H{"-n"}, 
                 'keep'         => \$GetOptions_H{"--keep"},
 # options for tuning nucleotide-based annotation errors
                 'ppmin=s'      => \$GetOptions_H{"--ppmin"},
@@ -228,8 +192,6 @@ my $options_okay =
                 'xalntol=s'    => \$GetOptions_H{"--xalntol"},
                 'xindeltol=s'  => \$GetOptions_H{"--xindeltol"},
                 'xlonescore=s' => \$GetOptions_H{"--xlonescore"},
-# options for modifying which errors are reported
-                'classerrors=s' => \$GetOptions_H{"--classerrors"},
 # options for changing search sensitivity modes
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
                 'tau=s'        => \$GetOptions_H{"--tau"},
@@ -237,26 +199,28 @@ my $options_okay =
                 'nosub'        => \$GetOptions_H{"--nosub"},
                 'noglocal'     => \$GetOptions_H{"--noglocal"},
 # options related to parallelization
-                'local'        => \$GetOptions_H{"--local"}, 
-                'errcheck'     => \$GetOptions_H{"--errcheck"},  
+                'p'            => \$GetOptions_H{"-p"},
+                'q=s'          => \$GetOptions_H{"-q"},
                 'nkb=s'        => \$GetOptions_H{"--nkb"}, 
-                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
                 'wait=s'       => \$GetOptions_H{"--wait"},
+                'errcheck'     => \$GetOptions_H{"--errcheck"},
+                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"},
 # optional output files
-                'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"}, 
+                'sgminfo'      => \$GetOptions_H{"--sgminfo"},
                 'seqinfo'      => \$GetOptions_H{"--seqinfo"}, 
                 'errinfo'      => \$GetOptions_H{"--errinfo"},
 # options for skipping stages, using earlier results
-                'skipedirect'   => \$GetOptions_H{"--skipedirect"},
-                'skipfetch'     => \$GetOptions_H{"--skipfetch"},
                 'skipalign'     => \$GetOptions_H{"--skipalign"});
 
-my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
-my $executable    = $0;
-my $date          = scalar localtime();
-my $version       = "0.45x";
-my $releasedate   = "Mar 2019";
+my $total_seconds     = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
+my $executable        = $0;
+my $date              = scalar localtime();
+my $version           = "0.45x";
+my $model_version_str = "1p0"; 
+my $qsub_version_str  = "1p0"; 
+my $releasedate       = "Mar 2019";
+my $pkgname           = "dnaorg";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -265,19 +229,21 @@ $| = 1;
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+  ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, undef);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
 }
 
 # check that number of command line args is correct
-if(scalar(@ARGV) != 0) {   
+if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
   print "\nTo see more help on available options, do dnaorg_annotate.pl -h\n\n";
   exit(1);
 }
+
+my ($fa_file, $dir) = (@ARGV);
 
 # set options in opt_HH
 opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
@@ -285,92 +251,32 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
-my $dir_build         = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
-my $dir_out           = opt_Get("--dirout",   \%opt_HH);  # this will be undefined unless --dirout set on cmdline
-my $do_matpept        = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --matpept set on cmdline 
-my $orig_infasta_file = opt_Get("--infasta", \%opt_HH);
-if(! -e $orig_infasta_file) { 
-  DNAORG_FAIL("ERROR, fasta file $orig_infasta_file specified with --infasta does not exist", 1, undef);
-}
-if(! -s $orig_infasta_file) { 
-  DNAORG_FAIL("ERROR, fasta file $orig_infasta_file specified with --infasta exists but is empty", 1, undef);
-}
-my $do_infasta = 1;
-
-$dir_out =~ s/\/$//; # remove final '/' if there is one
-$dir_build =~ s/\/$//; # remove final '/' if there is one
-
-if($dir_out eq $dir_build) { 
-  DNAORG_FAIL("ERROR, with --dirout <s1> and --dirbuild <s2>, <s1> and <s2> must be different directories", 1, undef);
-}
-# make sure build directory exists
-if(! -d $dir_build) {
-  DNAORG_FAIL("ERROR, directory $dir_build (specified with --dirbuild) does not exist.\nDid you run \"dnaorg_build.pl --dirout $dir_build\" yet? If not, you need to do that first.", 1, undef);
-}
-
-###############
-# Preliminaries
-###############
+#############################
+# create the output directory
+#############################
 my $cmd;               # a command to run with runCommand()
 my @early_cmd_A = ();  # array of commands we run before our log file is opened
-my %seq_info_HA = ();  # hash of arrays, values are arrays with index range [0..$nseq-1];
-                       # 1st dim keys are "seq_name", "accn_name", "len"
-                       # $seq_info_HA{"accn_name"}[0] is our reference accession
-@{$seq_info_HA{"accn_name"}} = ();
 
-my %infasta_ref_seq_info_HA = ();  # hash of arrays, for reference sequence information. 
-                                   # only used if --infasta used. Actually only stores information
-                                   # on 1 sequence, so could be just a hash, but it is a hash of 
-                                   # single element arrays so that it is the same type of data
-                                   # structure as %seq_info_HA so we can pass it into 
-                                   # functions (namely wrapperGetInfoUsingEdirect) in place
-                                   # of %seq_info_HA.
-                                   # 1st dim keys are "seq_name", "accn_name", "len"
-                                   # $infasta_ref_seq_info_HA{"accn_name"}[0] is our reference accession
-
-my $nseq = 0;
-my $ref_accn = opt_Get("--refaccn", \%opt_HH);
-stripVersion(\$ref_accn);
-if($dir_out eq $ref_accn) { 
-  DNAORG_FAIL("ERROR, with --dirout <s1> and --refaccn <s2>, <s1> and <s2> must be different", 1, undef);
+if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
+if(-d $dir) { 
+  $cmd = "rm -rf $dir";
+  if(opt_Get("-f", \%opt_HH)) { dng_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
+}
+if(-e $dir) { 
+  $cmd = "rm $dir";
+  if(opt_Get("-f", \%opt_HH)) { dng_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
-# remove dirout if -f used
-# check if one of the skip options was used (begin with --skip) 
-# if so, try to use it. Else tell user to either rerun with -f
-# or delete it.
-if(-d $dir_out) { 
-  $cmd = "rm -rf $dir_out";
-  if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
-    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); 
-  }
-  else { # dirout exists but -f not used
-    if(! ((opt_IsUsed("--skipedirect",   \%opt_HH)) || 
-          (opt_IsUsed("--skipfetch",     \%opt_HH)) || 
-          (opt_IsUsed("--skipalign",     \%opt_HH)))) { 
-      die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; 
-    }
-    # if a --skip option is used, we just press on
-  }
-}
-elsif(-e $dir_out) { 
-  $cmd = "rm $dir_out";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR a file named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
-}
+# create the dir
+$cmd = "mkdir $dir";
+dng_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
+push(@early_cmd_A, $cmd);
 
-# if $dir_out does not exist, create it
-if(! -d $dir_out) {
-  $cmd = "mkdir $dir_out";
-  runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd);
-}
-
-my $dir_out_tail   = $dir_out;
-my $dir_build_tail = $dir_build;
-$dir_out_tail   =~ s/^.+\///; # remove all but last dir
-$dir_build_tail =~ s/^.+\///; # remove all but last dir
-my $out_root   = $dir_out .   "/" . $dir_out_tail   . ".dnaorg_annotate";
-my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_build";
+my $dir_tail = $dir;
+$dir_tail =~ s/^.+\///; # remove all but last dir
+my $out_root = $dir . "/" . $dir_tail . ".dnaorg_build";
 
 #############################################
 # output program banner and open output files
@@ -378,8 +284,10 @@ my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_build";
 # output preamble
 my @arg_desc_A = ();
 my @arg_A      = ();
-
-outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+my %extra_H    = ();
+$extra_H{"\$DNAORGDIR"}       = $env_dnaorgdir;
+$extra_H{"\$DNAORGBLASTDIR"}  = $env_dnaorgblastdir;
+ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
@@ -396,30 +304,17 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "list": file with list of all output files created
 
 # open the log and command files 
-openAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, "Output printed to screen");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "log",  $out_root . ".log",  1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "list", $out_root . ".list", 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
+my $FH_HR  = $ofile_info_HH{"FH"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
-# open optional output files
-if(opt_Get("--mdlinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "mdlinfo", $out_root . ".mdlinfo", 1, "Model information (created due to --mdlinfo)");
-}
-if(opt_Get("--ftrinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
-}
-if(opt_Get("--seqinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "seqinfo", $out_root . ".seqinfo", 1, "Sequence information (created due to --seqinfo)");
-}
-if(opt_Get("--errinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "errinfo", $out_root . ".errinfo", 1, "Error information (created due to --errinfo)");
-}
-
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+ofile_OutputBanner($log_FH, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
@@ -427,206 +322,98 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-##############################################
-# parse the optional input files, if necessary
-##############################################
-# --matpept <f>
-my @cds2pmatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of primary matpept indices that comprise this CDS
-my @cds2amatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of all     matpept indices that comprise this CDS
-if($do_matpept) { 
-  parseMatPeptSpecFile(opt_Get("--matpept", \%opt_HH), \@cds2pmatpept_AA, \@cds2amatpept_AA, $ofile_info_HH{"FH"});
+# make sure the sequence, modelinfo, and qsubinfo files exist
+dng_ValidateFileExistsAndIsNonEmpty($fa_file, "input fasta sequence file", undef, 1, $ofile_info_HH{"FH"}); # '1' says: die if it doesn't exist or is empty
+
+my $df_model_dir = "/panfs/pan1/infernal/notebook/19_0307_virus_dnaorg_classify_annotate_merge/norovirus-testing-20190318/models";
+my $df_modelinfo_file = $df_model_dir . "/" . "dnaorg." . $model_version_str . ".modelinfo";
+my $modelinfo_file = undef;
+if(! opt_IsUsed("-i", \%opt_HH)) { $modelinfo_file = $df_modelinfo_file; }
+else                             { $modelinfo_file = opt_Get("-i", \%opt_HH); }
+if(! opt_IsUsed("-i", \%opt_HH)) {
+  dng_ValidateFileExistsAndIsNonEmpty($modelinfo_file, "default model info file", undef, 1, $ofile_info_HH{"FH"}); # '1' says: die if it doesn't exist or is empty
 }
-# --specstart <f>
-my @specstart_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of allowed start codons for this CDS
-if(opt_IsOn("--specstart", \%opt_HH)) { 
-  parseSpecStartFile(opt_Get("--specstart", \%opt_HH), \@specstart_AA, $ofile_info_HH{"FH"});
+else { # -i used on the command line
+  dng_ValidateFileExistsAndIsNonEmpty($modelinfo_file, "model info file specified with -i", undef, 1, $ofile_info_HH{"FH"}); # '1' says: die if it doesn't exist or is empty
 }
 
-# --classerrors <f>
-my $do_class_errors = (opt_IsUsed("--classerrors", \%opt_HH)) ? 1 : 0;
-my $class_errors_file      = undef;
-my %class_errors_per_seq_H = ();
-if($do_class_errors) { 
-  $class_errors_file = opt_Get("--classerrors", \%opt_HH);
-  if(! -s $class_errors_file) { 
-    die "ERROR file $class_errors_file specified with --classerrors does not exist or is empty"; 
+my $qsubinfo_file    = undef;
+my $df_qsubinfo_file = $df_model_dir . "/" . "dnaorg." . $qsub_version_str . ".qsubinfo";
+if(! opt_IsUsed("-q", \%opt_HH)) { $qsubinfo_file = $df_qsubinfo_file; }
+else                             { $qsubinfo_file = opt_Get("-q", \%opt_HH); }
+
+if(opt_IsUsed("-p", \%opt_HH)) { 
+  # check for existence of qsub info file
+  if(! opt_IsUsed("-q", \%opt_HH)) {
+    dng_ValidateFileExistsAndIsNonEmpty($qsubinfo_file, "default qsub info file", undef, 1, $ofile_info_HH{"FH"}); # '1' says: die if it doesn't exist or is empty
   }
-  parse_class_errors_list_file($class_errors_file, \%class_errors_per_seq_H, $ofile_info_HH{"FH"});
+  else { # -q used on the command line
+    dng_ValidateFileExistsAndIsNonEmpty($qsubinfo_file, "qsub info file specified with -q", undef, 1, $ofile_info_HH{"FH"}); # 1 says: die if it doesn't exist or is empty
+  }
 }
+# we check for the existence of model files after we parse the model info file
 
 ###################################################
 # make sure the required executables are executable
 ###################################################
 my %execs_H = (); # hash with paths to all required executables
-$execs_H{"cmalign"}           = $inf_exec_dir   . "cmalign";
-$execs_H{"esl-reformat"}      = $esl_exec_dir   . "esl-reformat";
+$execs_H{"cmalign"}           = $inf_exec_dir   . "/cmalign";
+$execs_H{"esl-reformat"}      = $esl_exec_dir   . "/esl-reformat";
 $execs_H{"esl-ssplit"}        = $esl_ssplit;
-$execs_H{"blastx"}            = $blast_exec_dir . "blastx";
-$execs_H{"parse_blastx"}      = $dnaorgdir . "/dnaorg_scripts/parse_blastx.pl";
-validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
+$execs_H{"blastx"}            = $blast_exec_dir . "/blastx";
+$execs_H{"parse_blastx"}      = $env_dnaorgdir  . "/dnaorg_scripts/parse_blastx.pl";
+dng_ValidateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
-###########################################################################
-# Step 0. Preliminaries:
-#         - Read the dnaorg_build.pl consopts file and make sure that it
-#           agrees with the options set here.
-#         - Initialize error-related data structures.
-#            
-###########################################################################
-my $progress_w = 85; # the width of the left hand column in our progress output, hard-coded
-my $start_secs = outputProgressPrior("Verifying options are consistent with options used for dnaorg_build.pl", $progress_w, $log_FH, *STDOUT);
-validate_options_are_consistent_with_dnaorg_build($build_root . ".consopts", \%opt_HH, $ofile_info_HH{"FH"});
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
+
+# read model info file
+my @mdl_info_AH  = (); # array of hashes with model info
+my %ftr_info_HAH = (); # hash of array of hashes with feature info 
+my %sgm_info_HAH = (); # hash of array of hashes with segment info 
+
+dng_ValidateFileExistsAndIsNonEmpty($modelinfo_file, "model info file", undef, 1, $FH_HR);
+dng_ModelInfoFileParse($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+
+# validate %mdl_info_AH
+my @mdl_reqd_keys_A = ("name", "cmfile", "length");
+my $nmdl = dng_ArrayOfHashesValidate(\@mdl_info_AH, \@mdl_reqd_keys_A, "ERROR reading model info from $modelinfo_file", $FH_HR);
+
+my @ftr_reqd_keys_A = ("type", "coords");
+for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  dng_ArrayOfHashesValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $modelinfo_file", $FH_HR);
+  dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  printf("$mdl_name clean\n");
+}
+
+exit 0;
 
 # initialize error related data structures
 my %err_info_HA = (); 
 initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
 
-###########################################################################
-# Step 1. Gather and process information on reference genome using Edirect.
-###########################################################################
-my $progress_str = undef;
-if(opt_Get("--skipedirect", \%opt_HH)) { 
-  $progress_str = sprintf("Processing information on %d sequences fetched earlier using edirect", $nseq);
-}
-elsif(opt_Get("--infasta", \%opt_HH)) { 
-  $progress_str = "Processing input fasta file";
-}
-$start_secs = outputProgressPrior($progress_str, $progress_w, $log_FH, *STDOUT);
 
-my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
-                        # 1D: key: accession
-                        # 2D: key: column name in gene ftable file
-                        # 3D: per-row values for each column
-my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashes of arrays, 
-                        # 1D: key: accession
-                        # 2D: key: column name in gene ftable file
-                        # 3D: per-row values for each column
-my %xfeat_tbl_HHHA = (); # xfeat (eXtra feature) data from feature table file, hash of hash of hashes of arrays
-                         # 1D: qualifier name, e.g. 'gene'
-                         # 2D: key: accession
-                         # 3D: key: column name in gene ftable file
-                         # 4D: per-row values for each column
-my %dfeat_tbl_HHHA = (); # dfeat (Duplicate feature) data from feature table file, hash of hash of hashes of arrays
-                         # 1D: qualifier name, e.g. 'gene'
-                         # 2D: key: accession
-                         # 3D: key: column name in gene ftable file
-                         # 4D: per-row values for each column
-
-# parse --xfeat option if necessary and initiate hash of hash of arrays for each comma separated value
-my $do_xfeat = 0;
-if(opt_IsUsed("--xfeat", \%opt_HH)) { 
-  $do_xfeat = 1;
-  my $xfeat_str = opt_Get("--xfeat", \%opt_HH);
-  foreach my $xfeat (split(",", $xfeat_str)) { 
-    %{$xfeat_tbl_HHHA{$xfeat}} = ();
-  }
-}
-# parse --dfeat option if necessary
-my $do_dfeat = 0;
-if(opt_IsUsed("--dfeat", \%opt_HH)) { 
-  $do_dfeat = 1;
-  my $dfeat_str = opt_Get("--dfeat", \%opt_HH);
-  foreach my $dfeat (split(",", $dfeat_str)) { 
-    %{$dfeat_tbl_HHHA{$dfeat}} = ();
-    if(exists $xfeat_tbl_HHHA{$dfeat}) {
-      DNAORG_FAIL("ERROR, with --xfeat <s1> and --dfeat <s2>, no qualifier names can be in common between <s1> and <s2>, found $dfeat", 1, $ofile_info_HH{"FH"});
-    }
-  }
-}
-
-# Call the wrapper function that does the following:
-#  1) creates the edirect .mat_peptide file, if necessary
-#  2) creates the edirect .ftable file
-#  3) creates the length file
-#  4) parses the edirect .mat_peptide file, if necessary
-#  5) parses the edirect .ftable file
-#  6) parses the length file
-# make a copy of the fasta file in the current directory
-my $infasta_file = $out_root . ".in.fa";
-
-runCommand("cp $orig_infasta_file $infasta_file", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});;
-# note that we pass in a reference to %ref_seq_info_HA to wrapperGetInfoUsingEdirect()
-# and *not* a reference to %seq_info_HA. We will use %infasta_ref_seq_info_HA to 
-# store information on the reference sequence only.
-wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
-                           \%opt_HH, $ofile_info_HH{"FH"}); 
-$nseq = process_input_fasta_file($infasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
-
-if($do_matpept) {  
-  # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, 0, $seq_info_HA{"len"}[0], $ofile_info_HH{"FH"});
-}
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-#########################################################
-# Step 2. Fetch and process the reference genome sequence
-#########################################################
-my $step_desc = opt_Get("--skipfetch", \%opt_HH) ? "Processing the reference genome from previously fetched sequence file" : "Fetching all sequences and processing the reference genome";
-$start_secs = outputProgressPrior($step_desc, $progress_w, $log_FH, *STDOUT);
-my %mdl_info_HA = ();  # hash of arrays, values are arrays [0..$nmdl-1];
-                       # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
-                       # filled in wrapperFetchAndProcessReferenceSequence()
-my %ftr_info_HA = ();  # hash of arrays, values are arrays [0..$nftr-1], 
-                       # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
-                       # filled in wrapperFetchAndProcessReferenceSequence()
-my $sqfile = undef;    # pointer to the Bio::Easel::SqFile object we'll open in wrapperFetchAllSequencesAndProcessReferenceSequence()
-
-# Call the wrapper function that does the following:
-#   1) fetches the sequences listed in @{$seq_info_HAR->{"accn_name"} into a fasta file 
-#      and indexes that fasta file, the reference sequence is $seq_info_HAR->{"accn_name"}[0].
-#   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
-#   3) determines type of each reference sequence feature
-#   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $build_root, 
-                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"accn_name"}[0] : undef,
-                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"len"}[0]       : undef,
-                                                    ($do_infasta) ? $infasta_file                            : undef,
-                                                    \%cds_tbl_HHA,
-                                                    ($do_matpept) ? \%mp_tbl_HHA      : undef, 
-                                                    ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
-                                                    ($do_dfeat)   ? \%dfeat_tbl_HHHA  : undef,
-                                                    ($do_matpept) ? \@cds2pmatpept_AA : undef, 
-                                                    ($do_matpept) ? \@cds2amatpept_AA : undef, 
-                                                    \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, 
-                                                    \%opt_HH, \%ofile_info_HH);
-
-# verify our model, feature, and sequence info hashes are complete, 
-# if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
-my $nftr = validateFeatureInfoHashIsComplete  (\%ftr_info_HA, undef, $ofile_info_HH{"FH"}); # nftr: number of features
-my $nmdl = validateModelInfoHashIsComplete    (\%mdl_info_HA, undef, $ofile_info_HH{"FH"}); # nmdl: number of homology models
-if($nseq != validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"})) { 
-  DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $orig_infasta_file (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), 1, $ofile_info_HH{"FH"});
-}    
-# also verify that we have all the blastx db files that we need
-validateBlastDbExists($build_root . ".prot.fa", undef);
-for(my $tmp_f = 0; $tmp_f < $nftr; $tmp_f++) { 
-  if($ftr_info_HA{"type"}[$tmp_f] eq "cds") { 
-    validateBlastDbExists(($build_root . ".f" . $tmp_f . ".prot.fa"), $ofile_info_HH{"FH"});
-  }
-}
-
-# now that we have the ftr_info_HA filled, we can initialize the error data structures
-my @err_ftr_instances_AHH = ();
-my %err_seq_instances_HH = ();
-error_instances_initialize_AHH(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
-
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-###################################################################
-# Step 3. Verify we have the model file that we need to run cmalign
-##################################################################
-my $model_file = $build_root . ".cm";
-if(! -s $model_file) { 
-  DNAORG_FAIL("ERROR CM file $model_file should exist but it does not. Did you (successfully) run dnaorg_build.pl?", 1, $ofile_info_HH{"FH"});
-}
-for(my $i = 0; $i < $nmdl; $i++) { 
-  # set mdl_info_HAR->{"cmfile"}[$i]
-  $mdl_info_HA{"cmfile"}[$i] = $model_file;
-}
 
 #########################
 # Step 4. Align sequences
 #########################
+#### TEMP ####
+my %seq_info_HA = ();
+my %mdl_info_HA = ();
+my %err_seq_instances_HH = ();
+my @err_ftr_instances_AHH = ();
+my $nseq = 0;
+my %ftr_info_HA;
+my $build_root = undef;
+my $sqfile = undef;
+my $do_class_errors = undef;
+my %class_errors_per_seq_H = ();
+my $dir_out = undef;
+#### TEMP ####
+
 my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
 validateFileExistsAndIsNonEmpty($seq_file, "dnaorg_annotate.pl:main", $ofile_info_HH{"FH"});
 my $tot_len_nt = sumArray(\@{$seq_info_HA{"len"}});
@@ -652,7 +439,7 @@ if($n_div_errors > 0) {
 ##################################
 # Step 5. Parse cmalign alignments
 ##################################
-$start_secs = outputProgressPrior("Parsing cmalign results", $progress_w, $log_FH, *STDOUT);
+my $start_secs = ofile_OutputProgressPrior("Parsing cmalign results", $progress_w, $log_FH, *STDOUT);
 
 my @mdl_results_AAH = ();  # 1st dim: array, 0..$nseq-1, one per sequence
                            # 2nd dim: array, 0..$nmdl-1, one per model
@@ -675,7 +462,7 @@ if($nseq > $n_div_errors) { # at least 1 sequence was aligned
     }
   }
 }
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###########################################################################
 # Step 6. Fetch features and detect most nucleotide-annotation based errors
@@ -697,10 +484,10 @@ fetch_features_and_add_cds_and_mp_errors($sqfile, \%mdl_info_HA, \%ftr_info_HA, 
 # Step 7. Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
 ################################################################################################
 
-$start_secs = outputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
 my $seq_nodesc_file = $ofile_info_HH{"fullpath"}{"fastanodesc"};
 run_blastx_and_summarize_output(\%execs_H, $out_root, $seq_nodesc_file, $build_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the blastx related information
 parse_blastx_results($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr_info_HA, \%seq_info_HA, \%seq_name_index_H, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
@@ -719,49 +506,49 @@ add_b_zft_errors(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA,
 # Step 9. Output annotations and errors
 #########################################
 # open files for writing
-openAndAddFileToOutputInfo(\%ofile_info_HH, "seq_tab",      $out_root . ".seq.tab", 1, "per-sequence tabular file");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "ftr_tab",      $out_root . ".ftr.tab", 1, "per-feature tabular file");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "mdl_tab",      $out_root . ".mdl.tab", 1, "per-model-segment tabular file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "seq_tab",      $out_root . ".seq.tab", 1, "per-sequence tabular file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ftr_tab",      $out_root . ".ftr.tab", 1, "per-feature tabular file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "mdl_tab",      $out_root . ".mdl.tab", 1, "per-model-segment tabular file");
 
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",         $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",         $out_root . ".all.errors",        1, "List of errors, one line per error");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",         $out_root . ".errors.summary",    1, "Summary of all errors");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",      $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".ap.seqlist",        1, "list of passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".af.seqlist",        1, "list of failing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errors_list",    $out_root . ".errlist",           1, "list of errors in the sequence tables");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "pererr",         $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "allerr",         $out_root . ".all.errors",        1, "List of errors, one line per error");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "errsum",         $out_root . ".errors.summary",    1, "Summary of all errors");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "pass_ftbl",      $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fail_ftbl",      $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "long_ftbl",      $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "pass_list",      $out_root . ".ap.seqlist",        1, "list of passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fail_list",      $out_root . ".af.seqlist",        1, "list of failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "errors_list",    $out_root . ".errlist",           1, "list of errors in the sequence tables");
 if(opt_IsUsed("--classerrors", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_co_list",   $out_root . ".af-co.seqlist",   1, "list of failing sequences that would have passed if not for a classification error");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fail_co_list",   $out_root . ".af-co.seqlist",   1, "list of failing sequences that would have passed if not for a classification error");
 }
 
 ########################
 # tabular output files #
 ########################
-$start_secs = outputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
 output_tabular(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###############
 # error files #
 ###############
-$start_secs = outputProgressPrior("Generating error code output", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Generating error code output", $progress_w, $log_FH, *STDOUT);
 
 output_errors_header(\%ftr_info_HA, \%ofile_info_HH);
 output_errors_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ######################
 # feature table file #
 ######################
-$start_secs = outputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 
 my $npass = output_feature_table(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###########################################
 # brief summary of annotations and errors #
@@ -789,7 +576,7 @@ if(exists $ofile_info_HH{"FH"}{"errinfo"}) {
 # Conclude #
 ############
 
-$total_seconds += secondsSinceEpoch();
+$total_seconds += ofile_SecondsSinceEpoch();
 outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 
 ###############
@@ -913,18 +700,18 @@ sub parse_cmalign_ifile {
       elsif(scalar(@el_A) >= 4) { 
         my $nel = scalar(@el_A); 
         if((($nel - 4) % 3) != 0) { # check number of elements makes sense
-          DNAORG_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", "dnaorg", 1, $FH_HR);
         }          
         my ($seqname, $seq_len, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
         if(! exists $seq_name_index_HR->{$seqname}) { 
-          DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $ifile_file on line $line_ctr", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $ifile_file on line $line_ctr", "dnaorg", 1, $FH_HR);
         }
         my $seqidx = $seq_name_index_HR->{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
         if(! exists $seq_info_HAR->{"len"}[$seqidx]) { 
-          DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
+          ofile_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), "dnaorg", 1, $FH_HR);
         }
         if($seq_len != $seq_info_HAR->{"len"}[$seqidx]) { 
-          DNAORG_FAIL(sprintf("ERROR in $sub_name, conflicting length information for sequence $seqname in ifile, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
+          ofile_FAIL(sprintf("ERROR in $sub_name, conflicting length information for sequence $seqname in ifile, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), "dnaorg", 1, $FH_HR);
         }          
 
         # create the insert string
@@ -1001,7 +788,7 @@ sub parse_cmalign_stk_and_add_alignment_errors {
   my $rf_str = $msa->get_rf;
   my @rf_A = split("", $rf_str);
   if(scalar(@rf_A) != $alen) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, unexpected alignment length mismatch $alen != %d\n", scalar(@rf_A)), 1, $FH_HR);
+    ofile_FAIL(sprintf("ERROR in $sub_name, unexpected alignment length mismatch $alen != %d\n", scalar(@rf_A)), "dnaorg", 1, $FH_HR);
   }
   my $rfpos = 0; # nongap RF (model) position [1..$rflen]
   my $apos  = 0; # alignment position [1..$alen]
@@ -1020,11 +807,11 @@ sub parse_cmalign_stk_and_add_alignment_errors {
   for(my $i = 0; $i < $nseq; $i++) { 
     my $seq_name = $msa->get_sqname($i);
     if(! exists $seq_name_index_HR->{$seq_name}) { 
-      DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seq_name from alignment in $stk_file", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, do not have information for sequence $seq_name from alignment in $stk_file", "dnaorg", 1, $FH_HR);
     }
     my $seq_idx = $seq_name_index_HR->{$seq_name}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
     if(! exists $seq_info_HAR->{"len"}[$seq_idx]) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seq_name, accession %s", $seq_info_HAR->{"accn_name"}[$seq_idx]), 1, $FH_HR);
+      ofile_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seq_name, accession %s", $seq_info_HAR->{"accn_name"}[$seq_idx]), "dnaorg", 1, $FH_HR);
     }
     my $seq_len = $seq_info_HAR->{"len"}[$seq_idx]; # sequence length
 
@@ -1049,7 +836,7 @@ sub parse_cmalign_stk_and_add_alignment_errors {
           #printf("rf2ipos_A[%5d]: %5d rf2ilen_A[%5d]: %5d\n", $i_rfpos, $i_uapos, $i_rfpos, $i_len);
         }
         else { 
-          DNAORG_FAIL("ERROR in $sub_name, failed to parse insert information read from ifile for $seq_name:\n" . $seq_info_HAR->{"ifile_ins"}[$seq_idx], 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, failed to parse insert information read from ifile for $seq_name:\n" . $seq_info_HAR->{"ifile_ins"}[$seq_idx], "dnaorg", 1, $FH_HR);
         }
       }
     }    
@@ -1091,10 +878,10 @@ sub parse_cmalign_stk_and_add_alignment_errors {
     my $sqstring_aligned = $msa->get_sqstring_aligned($i);
     my $ppstring_aligned = $msa->get_ppstring_aligned($i);
     if(length($sqstring_aligned) != $alen) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, fetched aligned seqstring of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($sqstring_aligned), $alen), 1, $FH_HR);
+      ofile_FAIL(sprintf("ERROR in $sub_name, fetched aligned seqstring of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($sqstring_aligned), $alen), "dnaorg", 1, $FH_HR);
     }
     if(length($ppstring_aligned) != $alen) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, fetched aligned posterior probability string of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($ppstring_aligned), $alen), 1, $FH_HR);
+      ofile_FAIL(sprintf("ERROR in $sub_name, fetched aligned posterior probability string of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($ppstring_aligned), $alen), "dnaorg", 1, $FH_HR);
     }
     my @sq_A = split("", $sqstring_aligned);
     my @pp_A = split("", $ppstring_aligned);
@@ -1122,7 +909,7 @@ sub parse_cmalign_stk_and_add_alignment_errors {
 #      printf("rfpos: %5d  apos: %5d  min_rfpos: %5d  min_uapos: %5d\n", $rfpos, $apos, $min_rfpos, $min_uapos);
     }
     if($min_uapos != 1) { 
-      DNAORG_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 1 (min_uapos should be 1 but it is $min_uapos)", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 1 (min_uapos should be 1 but it is $min_uapos)", "dnaorg", 1, $FH_HR);
     }      
 
     # second pass, from left to right to fill $max_**pos_before arrays:
@@ -1149,7 +936,7 @@ sub parse_cmalign_stk_and_add_alignment_errors {
  #     }
     }
     if($max_uapos != $seq_len) { 
-      DNAORG_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 2 (max_uapos should be $seq_len but it is $max_uapos)", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 2 (max_uapos should be $seq_len but it is $max_uapos)", "dnaorg", 1, $FH_HR);
     }      
     
     # Debugging print block
@@ -1587,13 +1374,13 @@ sub run_blastx_and_summarize_output {
       }
     }
   }
-  addClosedFileToOutputInfo($ofile_info_HHR, "blastx-out", $blastx_out_file, 0, "blastx output");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "blastx-out", $blastx_out_file, 0, "blastx output");
 
   # now summarize its output
   my $blastx_summary_file = $out_root . ".blastx.summary.txt";
   my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
   runCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-  addClosedFileToOutputInfo($ofile_info_HHR, "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
 
   return;
 }
@@ -1648,7 +1435,7 @@ sub parse_blastx_results {
     if($line ne "END_MATCH") { 
       my @el_A = split(/\t/, $line);
       if(scalar(@el_A) != 2) { 
-        DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, did not read exactly 2 tab-delimited tokens in line $line", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, did not read exactly 2 tab-delimited tokens in line $line", "dnaorg", 1, $FH_HR);
       }
       my ($key, $value) = (@el_A);
       if($key eq "QACC") { 
@@ -1662,7 +1449,7 @@ sub parse_blastx_results {
       }
       elsif($key eq "HACC") { 
         if(! defined $query) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HACC line before QACC line\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HACC line before QACC line\n", "dnaorg", 1, $FH_HR);
         }
         $target = $value;
         # determine what feature it is
@@ -1674,7 +1461,7 @@ sub parse_blastx_results {
       }
       elsif($key eq "HSP") { 
         if((! defined $query) || (! defined $ftr_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines\n", "dnaorg", 1, $FH_HR);
         }
         # printf("HEYA BLASTX HSP $key $value\n");
         if($value =~ /^(\d+)$/) { 
@@ -1682,7 +1469,7 @@ sub parse_blastx_results {
           #printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
         }
         else { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", "dnaorg", 1, $FH_HR);
         }
       }
       elsif($key eq "QRANGE") { 
@@ -1690,7 +1477,7 @@ sub parse_blastx_results {
           ;
         }
         elsif((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read QRANGE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read QRANGE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         elsif($top_score_flag) { 
           if($value =~ /^(\d+)..(\d+)$/) { 
@@ -1705,13 +1492,13 @@ sub parse_blastx_results {
             #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_strand} to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_strand"} . "\n");
           }
           else { 
-            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", "dnaorg", 1, $FH_HR);
           }
         }
       }
       elsif($key eq "MAXIN") { 
         if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXIN line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXIN line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         if($top_score_flag) { 
           if($value =~ /^(\d+)$/) { 
@@ -1720,13 +1507,13 @@ sub parse_blastx_results {
             #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_maxins} to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_maxins"} . "\n");
           }
           else { 
-            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", "dnaorg", 1, $FH_HR);
           }
         }
       }
       elsif($key eq "MAXDE") { 
         if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXDE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXDE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         if($top_score_flag) {
           if($value =~ /^(\d+)$/) { 
@@ -1735,13 +1522,13 @@ sub parse_blastx_results {
             #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_maxdel} to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_maxdel"} . "\n");
           }
           else { 
-            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXDE line $line", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXDE line $line", "dnaorg", 1, $FH_HR);
           }
         }
       }
       elsif($key eq "FRAME") { 
         if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         if($top_score_flag) { 
           if($value =~ /^[\+\-]([123])$/) { 
@@ -1750,13 +1537,13 @@ sub parse_blastx_results {
             #printf("HEYA BLASTX set ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_frame} to " . $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_frame"} . "\n");
           }
           else { 
-            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", "dnaorg", 1, $FH_HR);
           }
         }
       }
       elsif($key eq "STOP") { 
         if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read STOP line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read STOP line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         if($top_score_flag) { 
           $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_trcstop"} = $value;
@@ -1765,7 +1552,7 @@ sub parse_blastx_results {
       }
       elsif($key eq "SCORE") { 
         if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         # is this sequence compatible and the highest scoring hit for this feature for this sequence? 
         if((! exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_score"}) || # first hit, so must be highest
@@ -1842,10 +1629,10 @@ sub helper_blastx_breakdown_query {
 
   # contract check
   if((! defined $exp_seqname) && (! defined $seq_HR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, contract failure: both <exp_seqname> and <seq_HR> are undefined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, contract failure: both <exp_seqname> and <seq_HR> are undefined", "dnaorg", 1, $FH_HR);
   }
   if((defined $exp_seqname) && (defined $seq_HR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, contract failure: both <exp_seqname> and <seq_HR> are defined", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, contract failure: both <exp_seqname> and <seq_HR> are defined", "dnaorg", 1, $FH_HR);
   }
 
   if((defined $exp_seqname) && ($in_query eq $exp_seqname)) {   
@@ -1861,10 +1648,10 @@ sub helper_blastx_breakdown_query {
     if($in_query =~ /^(\S+)\/([\d\,\-]+$)/) { 
       ($ret_seqname, $ret_coords_str) = ($1, $2);
       if((defined $exp_seqname) && ($ret_seqname ne $exp_seqname)) { 
-        DNAORG_FAIL("ERROR in $sub_name, unexpected sequence name $ret_seqname != $exp_seqname, derived from $in_query", 1, $FH_HR); 
+        ofile_FAIL("ERROR in $sub_name, unexpected sequence name $ret_seqname != $exp_seqname, derived from $in_query", "dnaorg", 1, $FH_HR); 
       }
       if((! defined $exp_seqname) && (! exists $seq_HR->{$ret_seqname})) { 
-        DNAORG_FAIL("ERROR in $sub_name, unable to find input sequence with name $in_query or $ret_seqname", 1, $FH_HR); 
+        ofile_FAIL("ERROR in $sub_name, unable to find input sequence with name $in_query or $ret_seqname", "dnaorg", 1, $FH_HR); 
       }
 
       # if we get here $ret_seqname is a valid sequence
@@ -1874,12 +1661,12 @@ sub helper_blastx_breakdown_query {
           $ret_len += abs($1 - $2) + 1;
         }
         else { 
-          DNAORG_FAIL("ERROR in $sub_name, unable to parse coords string $ret_coords_str (element $range) in blastx query sequence $in_query", 1, $FH_HR); 
+          ofile_FAIL("ERROR in $sub_name, unable to parse coords string $ret_coords_str (element $range) in blastx query sequence $in_query", "dnaorg", 1, $FH_HR); 
         }
       }
     }
     else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse blastx query sequence name $in_query", 1, $FH_HR); 
+      ofile_FAIL("ERROR in $sub_name, unable to parse blastx query sequence name $in_query", "dnaorg", 1, $FH_HR); 
     }
   }
   return ($ret_seqname, $ret_coords_str, $ret_len);
@@ -1982,14 +1769,14 @@ sub fetch_features_and_add_cds_and_mp_errors {
                 if(($strand ne "+") && ($strand ne "-")) { 
                   # this 'shouldn't happen' for a CDS or mature peptide, getReferenceFeatureInfo should have 
                   # enforced this earlier and failed if it was violated
-                  DNAORG_FAIL("ERROR, in $sub_name, strand not + or - for feature $ftr_idx", 1, undef);
+                  ofile_FAIL("ERROR, in $sub_name, strand not + or - for feature $ftr_idx", 1, undef);
                 }
                 $ftr_strand = $strand; 
               }
               elsif($ftr_strand ne $strand) { 
                 # this 'shouldn't happen' for a CDS or mature peptide, getReferenceFeatureInfo should have 
                 # enforced this earlier and failed if it was violated
-                DNAORG_FAIL("ERROR, in $sub_name, different models have different strands for feature $ftr_idx", 1, undef);
+                ofile_FAIL("ERROR, in $sub_name, different models have different strands for feature $ftr_idx", 1, undef);
               }
             }
             
@@ -2099,7 +1886,7 @@ sub fetch_features_and_add_cds_and_mp_errors {
                         # there is an early stop (trc) in $ftr_sqstring
                         if($ftr_nxt_stp_A[1] > $ftr_len) { 
                           # this shouldn't happen, it means there's a bug in sqstring_find_stops()
-                          DNAORG_FAIL("ERROR, in $sub_name, error identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                          ofile_FAIL("ERROR, in $sub_name, error identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
                         }
                         $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
                         
@@ -2301,7 +2088,7 @@ sub error_instances_add {
   
   my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
   if($err_idx == -1) { 
-    DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized error code $err_code", "dnaorg", 1, $FH_HR);
   }
   # printf("in $sub_name err_code: $err_code err_idx: $err_idx\n");
   
@@ -2310,11 +2097,11 @@ sub error_instances_add {
 
   if($pertype eq "feature") { 
     if(! defined $err_ftr_instances_AHHR) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-feature error, but err_ftr_instances_AHHR is undefined", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name error code $err_code is a per-feature error, but err_ftr_instances_AHHR is undefined", "dnaorg", 1, $FH_HR);
     }
     # this error shouldn't already exist
     if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      ofile_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), "dnaorg", 1, $FH_HR);
     }
     # set the value
     $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} = $value;
@@ -2322,21 +2109,21 @@ sub error_instances_add {
 
   elsif($pertype eq "sequence") { 
     if(! defined $err_seq_instances_HHR) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but err_seq_instances_HHR is undefined", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but err_seq_instances_HHR is undefined", "dnaorg", 1, $FH_HR);
     }
     if($ftr_idx != -1) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but passed in ftr_idx is not -1, but $ftr_idx", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but passed in ftr_idx is not -1, but $ftr_idx", "dnaorg", 1, $FH_HR);
     }
     # this error shouldn't already exist
     if(exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
+      ofile_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), "dnaorg", 1, $FH_HR);
     }
 
     # set the value
     $err_seq_instances_HHR->{$err_code}{$seq_name} = $value; 
   }
   else { 
-    DNAORG_FAIL("ERROR in $sub_name, unexpected pertype of $pertype for error $err_code", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unexpected pertype of $pertype for error $err_code", "dnaorg", 1, $FH_HR);
   }
 
   return;
@@ -2375,7 +2162,7 @@ sub parse_class_errors_list_file {
       #MG763368.1	Unexpected Classification	*sequence*	NC 001959,NC 029647 was specified, but NC 039476 is predicted
       if(scalar(@el_A) != 4) { 
         foreach my $tok (@el_A) { printf("tok: $tok\n"); }
-        DNAORG_FAIL("ERROR in $sub_name, did not find exactly 2 tokens in line $line", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, did not find exactly 2 tokens in line $line", "dnaorg", 1, $FH_HR);
       }
       my $seq = $el_A[0];
       $errors_seq_HR->{$seq} .= $line . "\n";
@@ -2426,11 +2213,11 @@ sub error_list_output_to_ftable_errors {
   foreach my $errlistline (@errliststr_A) { 
     my @el_A = split(/\t/, $errlistline); 
     if(scalar(@el_A) != 4) { 
-      DNAORG_FAIL("ERROR in $sub_name, did not read exactly 4 tab-delimited tokens in line: $errlistline", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, did not read exactly 4 tab-delimited tokens in line: $errlistline", "dnaorg", 1, $FH_HR);
     }
     my ($seqname, $error_name, $feature_name, $error_desc) = (@el_A);
     if($in_seqname ne $seqname) { 
-      DNAORG_FAIL("ERROR in $sub_name, read unexpected sequence name $seqname != $in_seqname in line: $errlistline", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, read unexpected sequence name $seqname != $in_seqname in line: $errlistline", "dnaorg", 1, $FH_HR);
     }
     $retstr .= sprintf("ERROR: $error_name: %s$error_desc\n", ($feature_name eq "*sequence*") ? "" : "($feature_name) ");
   }
@@ -3066,7 +2853,7 @@ sub output_feature_table {
       my $do_ignore       = 1; 
       if($is_duplicate) { 
         if($ftr_info_HAR->{"source_idx"}[$ftr_idx] == -1) { 
-          DNAORG_FAIL("ERROR in $sub_name, feature index $ftr_idx has annot_type of duplicate, but has source_idx of -1", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, feature index $ftr_idx has annot_type of duplicate, but has source_idx of -1", "dnaorg", 1, $FH_HR);
         }
         my $src_idx = $ftr_info_HAR->{"source_idx"}[$ftr_idx];
         if(exists $fidx2idx_H{$src_idx}) { 
@@ -3209,7 +2996,7 @@ sub output_feature_table {
 
     # sanity check, if we have no notes, errors and didn't skip anything, we should also have set codon_start for all features
     if($cur_noutftr > 0 && $cur_nnote == 0 && $cur_nerror == 0 && ($missing_codon_start_flag)) { 
-      DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
+      ofile_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
     }
               
     if($do_pass) { 
@@ -3244,7 +3031,7 @@ sub output_feature_table {
             print $errors_FH ($accn_name . "\t" . $1 . "\t" . $2 . "\t" . $3 . "\n");
           }
           else {
-            DNAORG_FAIL("ERROR in $sub_name, unable to split error_line for output: $error_line", 1, $ofile_info_HHR->{"FH"});
+            ofile_FAIL("ERROR in $sub_name, unable to split error_line for output: $error_line", 1, $ofile_info_HHR->{"FH"});
           }
         }
         if($has_class_errors) { 
@@ -3746,7 +3533,7 @@ sub helper_ftable_get_coords_prot_only_prediction {
   # NOTE: for 'b_non' errors, the x_start and x_stop are always set at the feature level
   if((! exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_start"}) ||
      (! exists $ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_stop"})) { 
-    DNAORG_FAIL("ERROR in $sub_name, ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_start|x_stop} does not exists", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, ftr_results_AAHR->[$seq_idx][$ftr_idx]{x_start|x_stop} does not exists", "dnaorg", 1, $FH_HR);
   }
 
   my @start_A = ($ftr_results_AAHR->[$seq_idx][$ftr_idx]{"p_start"});
@@ -3789,10 +3576,10 @@ sub helper_ftable_start_stop_arrays_to_coords {
   my $ncoord = scalar(@{$start_AR});
   my $min_coord = undef;
   if($ncoord == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, start_A array is empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, start_A array is empty", "dnaorg", 1, $FH_HR);
   }
   if($ncoord != scalar(@{$stop_AR})) { # sanity check
-    DNAORG_FAIL("ERROR in $sub_name, start_A array and stop_A arrays are different sizes", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, start_A array and stop_A arrays are different sizes", "dnaorg", 1, $FH_HR);
   }
   for(my $c = 0; $c < $ncoord; $c++) { 
     my $is_first = ($c == 0)           ? 1 : 0;
@@ -3838,7 +3625,7 @@ sub helper_ftable_coords_to_out_str {
   my $ret_out_str = "";
 
   if($coords_str eq "") { 
-    DNAORG_FAIL("ERROR in $sub_name, coords_str is empty - shouldn't happen", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, coords_str is empty - shouldn't happen", "dnaorg", 1, $FH_HR);
   }
   my @coords_A = split("\n", $coords_str);
 
@@ -3994,7 +3781,7 @@ sub process_input_fasta_file {
       my ($accn, $seq) = ($1, $2);
       my $len = length($seq);
       if($accn =~ m/dnaorg/) { 
-        DNAORG_FAIL("ERROR in $sub_name, sequence $accn read from $infasta_file includes the string \"dnaorg\", this is not allowed", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, sequence $accn read from $infasta_file includes the string \"dnaorg\", this is not allowed", "dnaorg", 1, $FH_HR);
       }
       push(@{$seq_info_HAR->{"accn_name"}}, $accn);
       push(@{$seq_info_HAR->{"len"}}, $len);
@@ -4008,7 +3795,7 @@ sub process_input_fasta_file {
       }
     }
     else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse fasta sequence string $next_fasta_str", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, unable to parse fasta sequence string $next_fasta_str", "dnaorg", 1, $FH_HR);
     }
   }
 
@@ -4023,7 +3810,7 @@ sub process_input_fasta_file {
         delete $accn_exists_H{$accn};
       }
     }
-    DNAORG_FAIL($errmsg, 1, $FH_HR);
+    ofile_FAIL($errmsg, "dnaorg", 1, $FH_HR);
   }
 
   return $nseq;
@@ -4078,7 +3865,7 @@ sub validate_options_are_consistent_with_dnaorg_build {
   my $optarg;
   foreach $opt (sort keys (%consopts_used_H)) { 
     if(! opt_IsUsed($opt, $opt_HHR)) { 
-      DNAORG_FAIL("ERROR, the $opt option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
+      ofile_FAIL("ERROR, the $opt option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", "dnaorg", 1, $FH_HR);
     }
     # option was used in both dnaorg_build.pl and dnaorg_annotate.pl, 
     # if it has a consmd5 value, check those are the same (in those 
@@ -4087,11 +3874,11 @@ sub validate_options_are_consistent_with_dnaorg_build {
     if($consmd5_H{$opt} ne "") { 
       my $optfile = opt_Get($opt, $opt_HHR);
       if(! -s $optfile) { 
-        DNAORG_FAIL("ERROR, the file $optfile specified with the $opt option does not exist.", 1, $FH_HR);
+        ofile_FAIL("ERROR, the file $optfile specified with the $opt option does not exist.", "dnaorg", 1, $FH_HR);
       }          
       $optfile_md5 = md5ChecksumOfFile($optfile, $sub_name, $opt_HHR, $FH_HR);
       if($consmd5_H{$opt} ne $optfile_md5) { 
-        DNAORG_FAIL("ERROR, the file $optfile specified with the $opt option does not appear to be identical to the file used\nwith dnaorg_build.pl. The md5 checksums of the two files differ: dnaorg_build.pl: " . $consmd5_H{$opt} . " dnaorg_annotate.pl: " . $optfile_md5, 1, $FH_HR);
+        ofile_FAIL("ERROR, the file $optfile specified with the $opt option does not appear to be identical to the file used\nwith dnaorg_build.pl. The md5 checksums of the two files differ: dnaorg_build.pl: " . $consmd5_H{$opt} . " dnaorg_annotate.pl: " . $optfile_md5, "dnaorg", 1, $FH_HR);
       }
     }
     else { 
@@ -4099,7 +3886,7 @@ sub validate_options_are_consistent_with_dnaorg_build {
       if($consopts_used_H{$opt} ne "") { 
         $optarg = opt_Get($opt, $opt_HHR);
         if($consopts_used_H{$opt} ne $optarg) { 
-          DNAORG_FAIL("ERROR, the option argument string $optarg specified with the $opt option does not appear to be identical to the argument string used\nwith the $opt option when dnaorg_build.pl was run, which was " . $consopts_used_H{$opt}, 1, $FH_HR);
+          ofile_FAIL("ERROR, the option argument string $optarg specified with the $opt option does not appear to be identical to the argument string used\nwith the $opt option when dnaorg_build.pl was run, which was " . $consopts_used_H{$opt}, "dnaorg", 1, $FH_HR);
         }
       }
     }
@@ -4110,7 +3897,7 @@ sub validate_options_are_consistent_with_dnaorg_build {
 
   foreach $opt (sort keys (%consopts_notused_H)) { 
     if(opt_IsUsed($opt, $opt_HHR)) { 
-      DNAORG_FAIL("ERROR, the $opt option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with -c.", 1, $FH_HR);
+      ofile_FAIL("ERROR, the $opt option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with -c.", "dnaorg", 1, $FH_HR);
     }
   }    
 
@@ -4152,7 +3939,7 @@ sub convert_pp_char_to_pp_avg {
   if($ppchar eq "1") { return 0.10; }
   if($ppchar eq "0") { return 0.25; }
 
-  DNAORG_FAIL("ERROR in $sub_name, invalid PP char: $ppchar", 1, $FH_HR); 
+  ofile_FAIL("ERROR in $sub_name, invalid PP char: $ppchar", "dnaorg", 1, $FH_HR); 
 
   return 0.; # NEVER REACHED
 }

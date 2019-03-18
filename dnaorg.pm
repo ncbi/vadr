@@ -172,7 +172,7 @@
 #   validateStopCodon()
 #
 # Subroutines related to timings:
-#   secondsSinceEpoch()
+#   ofile_SecondsSinceEpoch()
 #   formatTimeString()
 #
 # Simple utility subroutines for hashes and arrays:
@@ -3000,37 +3000,61 @@ sub dng_HashValuesToNewlineDelimitedString {
 
 
 #################################################################
-# Subroutine:  dng_validateFileExistsAndIsNonEmpty()
-# Incept:      EPN, Mon Feb 29 16:16:07 2016
+# Subroutine : dng_ValidateFileExistsAndIsNonEmpty()
+# Incept:      EPN, Thu May  4 09:30:32 2017
 #
-# Purpose:     Check if a file exists and is non-empty.
-#              If it does not exist or it is empty,
-#              die via ofile_FAIL().
+# Purpose:     Check if a file exists and is non-empty. 
 #
 # Arguments: 
 #   $filename:         file that we are checking on
+#   $filedesc:         description of file
 #   $calling_sub_name: name of calling subroutine (can be undef)
-#   $FH_HR:            ref to hash of file handles
+#   $do_die:           '1' if we should die if it does not exist.  
+#   $FH_HR:            ref to hash of file handles, can be undef
 # 
-# Returns:     Nothing.
-# 
-# Dies:        If $filename does not exist or is empty.
+# Returns:     Return '1' if it does and is non empty
+#              Return '0' if it does not exist (and ! $do_die)
+#              Return '-1' if it exists but is empty (and ! $do_die)
+#              Return '-2' if it exists as a directory (and ! $do_die)
 #
+# Dies:        If file does not exist or is empty and $do_die is 1.
+# 
 ################################################################# 
 sub dng_ValidateFileExistsAndIsNonEmpty { 
-  my $nargs_expected = 3;
+  my $nargs_expected = 5;
   my $sub_name = "dng_ValidateFileExistsAndIsNonEmpty()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($filename, $caller_sub_name, $FH_HR) = @_;
+  my ($filename, $filedesc, $calling_sub_name, $do_die, $FH_HR) = @_;
 
-  if(! -e $filename) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename does not exist.", (defined $caller_sub_name ? "called by $caller_sub_name," : "")), "dnaorg", 1, $FH_HR);
+  if(-d $filename) {
+    if($do_die) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s exists but is a directory.", 
+                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
+                         (defined $filedesc         ? " ($filedesc)" : "")),
+                 "RIBO", 1, $FH_HR); 
+    }
+    return -2;
+  }
+  elsif(! -e $filename) { 
+    if($do_die) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s does not exist.", 
+                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
+                         (defined $filedesc         ? " ($filedesc)" : "")),
+                 "RIBO", 1, $FH_HR); 
+    }
+    return 0;
   }
   elsif(! -s $filename) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename exists but is empty.", (defined $caller_sub_name ? "called by $caller_sub_name," : "")), "dnaorg", 1, $FH_HR);
+    if($do_die) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s exists but is empty.", 
+                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
+                         (defined $filedesc         ? " ($filedesc)" : "")),
+                 "RIBO", 1, $FH_HR); 
+    }
+    return -1;
   }
   
-  return;
+  return 1;
 }
 
 #################################################################
@@ -6306,11 +6330,13 @@ sub dng_ModelInfoFileParse {
   dng_ArrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
   my $nmdl = scalar(@{$mdl_info_AHR});
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
     dng_ArrayOfHashesValidate($ftr_info_HAHR->{$mdl_name}, \@reqd_ftr_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
   }
 
   # verify feature coords make sense
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
     dng_FeatureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
   }
   return;
@@ -6477,6 +6503,8 @@ sub dng_StockholmFileWriteFromFastaFile {
 
   return;
 }
+
+
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value

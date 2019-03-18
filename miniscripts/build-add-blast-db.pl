@@ -158,15 +158,12 @@ dng_ValidateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 # Parse the model info file
 ###########################
 my @mdl_info_AH  = (); # array of hashes with model info
-my %ftr_info_HAH = (); # array of hashes with feature info 
+my %ftr_info_HAH = (); # hash of array of hashes with feature info 
 
 my $progress_w = 50;
 my $start_secs = ofile_OutputProgressPrior("Parsing input model info file", $progress_w, undef, *STDOUT);
 
-if(! -e $in_minfo_file) { ofile_FAIL("ERROR, model info file $in_minfo_file does not exist", "dnaorg", 1, $FH_HR); }
-if(! -s $in_minfo_file) { ofile_FAIL("ERROR, model info file $in_minfo_file exists but is empty", "dnaorg", 1, $FH_HR); }
-if(  -d $in_minfo_file) { ofile_FAIL("ERROR, model info file $in_minfo_file is actually a directory", "dnaorg", 1, $FH_HR); }
-
+dng_ValidateFileExistsAndIsNonEmpty($in_minfo_file, "model info file", undef, 1, $FH_HR);
 dng_ModelInfoFileParse($in_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 # ensure we read info only a single model from the input file
 if(scalar(@mdl_info_AH) == 0) { ofile_FAIL("ERROR did not read info for any models in $in_minfo_file", "dnaorg", 1, $FH_HR); }
