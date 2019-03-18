@@ -500,10 +500,10 @@ my @mdl_info_AH = ();
 $mdl_info_AH[0]{"name"}   = $mdl_name;
 $mdl_info_AH[0]{"length"} = $seq_info_HH{$mdl_name}{"len"};
 if(defined $cm_file) { 
-  $mdl_info_AH[0]{"cmfile"} = $cm_file;
+  $mdl_info_AH[0]{"cmfile"} = removeDirPath($cm_file);
 }
 if($ncds > 0) { 
-  $mdl_info_AH[0]{"blastdb"} = $protein_fa_file;
+  $mdl_info_AH[0]{"blastdb"} = removeDirPath($protein_fa_file);
   if((opt_IsUsed("--ttbl", \%opt_HH)) && (opt_Get("--ttbl", \%opt_HH) != 1))  { 
     $mdl_info_AH[0]{"transl_table"} = opt_Get("--ttbl", \%opt_HH);
   }

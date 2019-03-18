@@ -5302,7 +5302,7 @@ sub featureInfoImputeCoords {
   my $nftr = arrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"coords"} = featureInfoCoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
+    $ftr_info_AHR->[$ftr_idx]{"coords"} = featureCoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
   }
 
   return;
@@ -5743,7 +5743,7 @@ sub featureStartStopStrandArrays {
   my @coords_A  = split(",", $coords);
   my $nseg = scalar(@coords_A);
   for($sgm_idx = 0; $sgm_idx < $nseg; $sgm_idx++) { 
-    if($coords_A[$sgm_idx] =~ /^(\d+)\.\.(\d+)\:([\+\-])$/) { 
+    if($coords_A[$sgm_idx] =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-])$/) { 
       ($start, $stop, $strand) = ($1, $2, $3);
       push(@start_A,  $start);
       push(@stop_A,   $stop);
@@ -5835,7 +5835,7 @@ sub hashValidate {
 
 
 #################################################################
-# Subroutine: featureInfoCoordsFromLocation
+# Subroutine: featureCoordsFromLocation
 # Incept:     EPN, Wed Mar 13 14:17:08 2019
 # 
 # Purpose:    Convert a GenBank file 'location' value to 
@@ -5857,8 +5857,8 @@ sub hashValidate {
 #      and
 #      https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html
 #################################################################
-sub featureInfoCoordsFromLocation { 
-  my $sub_name = "featureInfoCoordsFromLocation";
+sub featureCoordsFromLocation { 
+  my $sub_name = "featureCoordsFromLocation";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -5880,22 +5880,22 @@ sub featureInfoCoordsFromLocation {
   my $ret_val = "";
   if($location =~ /^join\((.+)\)$/) { 
     my $location_to_join = $1;
-    $ret_val = featureInfoCoordsFromLocation($location_to_join, $FH_HR);
+    $ret_val = featureCoordsFromLocation($location_to_join, $FH_HR);
   }
   elsif($location =~ /^complement\((.+)\)$/) { 
     my $location_to_complement = $1;
-    my $coords_to_complement = featureInfoCoordsFromLocation($location_to_complement, $FH_HR);
-    $ret_val = featureInfoCoordsComplement($coords_to_complement, $FH_HR);
+    my $coords_to_complement = featureCoordsFromLocation($location_to_complement, $FH_HR);
+    $ret_val = featureCoordsComplement($coords_to_complement, $FH_HR);
   }
   elsif($location =~ /\,/) { 
     # not wrapped in join() or complement(), but multiple segments
     foreach my $location_el (split(",", $location)) { 
       if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= featureInfoCoordsFromLocation($location_el, $FH_HR);
+      $ret_val .= featureCoordsFromLocation($location_el, $FH_HR);
     }
   }
-  elsif($location =~ /\<?(\d+)\.\.(\d+)\>?/) { 
-    $ret_val = $1 . ".." . $2 . ":" . "+"; # a recursive call due to the complement() may complement this
+  elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
+    $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
   }
   else { 
     DNAORG_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
@@ -5905,7 +5905,7 @@ sub featureInfoCoordsFromLocation {
 }
 
 #################################################################
-# Subroutine: featureInfoCoordsComplement
+# Subroutine: featureCoordsComplement
 # Incept:     EPN, Wed Mar 13 15:00:24 2019
 # 
 # Purpose:    Complement a coords string by complementing all
@@ -5921,8 +5921,8 @@ sub featureInfoCoordsFromLocation {
 #             is already on the negative strand.
 #
 #################################################################
-sub featureInfoCoordsComplement { 
-  my $sub_name = "featureInfoCoordsComplement";
+sub featureCoordsComplement { 
+  my $sub_name = "featureCoordsComplement";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -5937,9 +5937,12 @@ sub featureInfoCoordsComplement {
   my $ret_val = "";
   my @el_A = split(",", $coords);
   for(my $i = scalar(@el_A)-1; $i >= 0; $i--) { 
-    if($el_A[$i] =~ /(\d+)\.\.(\d+)\:\+/) { 
+    if($el_A[$i] =~ /^(\<?)(\d+)\.\.(\>?)(\d+)\:\+/) { 
+      my ($start_carrot, $start, $stop_carrot, $stop) = ($1, $2, $3, $4);
+      if($start_carrot eq "<") { $start_carrot = ">"; }
+      if($stop_carrot  eq ">") { $stop_carrot  = "<"; }
       if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= $2 . ".." . $1. ":-";
+      $ret_val .= $stop_carrot . $stop . ".." . $start_carrot . $start . ":-";
     }
     else { 
       DNAORG_FAIL("ERROR in $sub_name, unable to parse coords token $coords", 1, $FH_HR);
