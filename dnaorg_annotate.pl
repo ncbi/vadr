@@ -130,6 +130,7 @@ $opt_group_desc_H{++$g} = "basic options";
 opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "forcing directory overwrite",                    "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                     "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("-s",           "integer", 181,                     $g,    undef,  undef,     "seed for random number generator is <n>",        "seed for random number generator is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("-m",           "string",  undef,                    1,    undef, undef,      "use CM file <s> instead of default",             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-i",           "string",  undef,                    1,    undef, undef,      "use model info file <s> instead of default",     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-n",           "integer", 0,                        1,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
@@ -183,6 +184,7 @@ my $options_okay =
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
                 's'            => \$GetOptions_H{"-s"}, 
+                'm=s'          => \$GetOptions_H{"-m"}, 
                 'i=s'          => \$GetOptions_H{"-i"}, 
                 'n=s'          => \$GetOptions_H{"-n"}, 
                 'keep'         => \$GetOptions_H{"--keep"},
@@ -322,10 +324,22 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-# make sure the sequence, modelinfo, and qsubinfo files exist
+# make sure the sequence, CM, modelinfo, and qsubinfo files exist
 dng_ValidateFileExistsAndIsNonEmpty($fa_file, "input fasta sequence file", undef, 1, $ofile_info_HH{"FH"}); # '1' says: die if it doesn't exist or is empty
 
 my $df_model_dir = "/panfs/pan1/infernal/notebook/19_0307_virus_dnaorg_classify_annotate_merge/norovirus-testing-20190318/models";
+
+my $df_cm_file        = $df_model_dir . "/" . "dnaorg." . $model_version_str . ".cm";
+my $cm_file        = undef;
+if(! opt_IsUsed("-m", \%opt_HH)) { $cm_file = $df_cm_file; }
+else                             { $cm_file = opt_Get("-m", \%opt_HH); }
+if(! opt_IsUsed("-m", \%opt_HH)) {
+  dng_ValidateFileExistsAndIsNonEmpty($cm_file, "default CM file", undef, 1, $ofile_info_HH{"FH"}); # '1' says: die if it doesn't exist or is empty
+}
+else { # -m used on the command line
+  dng_ValidateFileExistsAndIsNonEmpty($cm_file, "CM file specified with -i", undef, 1, $ofile_info_HH{"FH"}); # '1' says: die if it doesn't exist or is empty
+}
+
 my $df_modelinfo_file = $df_model_dir . "/" . "dnaorg." . $model_version_str . ".modelinfo";
 my $modelinfo_file = undef;
 if(! opt_IsUsed("-i", \%opt_HH)) { $modelinfo_file = $df_modelinfo_file; }
@@ -358,6 +372,7 @@ if(opt_IsUsed("-p", \%opt_HH)) {
 ###################################################
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmalign"}           = $inf_exec_dir   . "/cmalign";
+$execs_H{"cmsearch"}          = $inf_exec_dir   . "/cmsearch";
 $execs_H{"esl-reformat"}      = $esl_exec_dir   . "/esl-reformat";
 $execs_H{"esl-ssplit"}        = $esl_ssplit;
 $execs_H{"blastx"}            = $blast_exec_dir . "/blastx";
@@ -366,7 +381,9 @@ dng_ValidateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
 
-# read model info file
+###########################
+# Parse the model info file
+###########################
 my @mdl_info_AH  = (); # array of hashes with model info
 my %ftr_info_HAH = (); # hash of array of hashes with feature info 
 my %sgm_info_HAH = (); # hash of array of hashes with segment info 
@@ -386,16 +403,19 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   dng_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   dng_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  printf("$mdl_name clean\n");
 }
+
+my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
+my $tot_len_nt = $sqfile->nres_ssi;
+
+dng_CmsearchWrapper(\%execs_H, $out_root, $fa_file, $tot_len_nt, $progress_w, 
+                    $cm_file, \%opt_HH, \%ofile_info_HH);
 
 exit 0;
 
 # initialize error related data structures
 my %err_info_HA = (); 
-initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
-
-
+dng_InitializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
 
 #########################
 # Step 4. Align sequences
@@ -408,7 +428,6 @@ my @err_ftr_instances_AHH = ();
 my $nseq = 0;
 my %ftr_info_HA;
 my $build_root = undef;
-my $sqfile = undef;
 my $do_class_errors = undef;
 my %class_errors_per_seq_H = ();
 my $dir_out = undef;
@@ -416,7 +435,6 @@ my $dir_out = undef;
 
 my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
 validateFileExistsAndIsNonEmpty($seq_file, "dnaorg_annotate.pl:main", $ofile_info_HH{"FH"});
-my $tot_len_nt = sumArray(\@{$seq_info_HA{"len"}});
 my $mdl_file = $mdl_info_HA{"cmfile"}[0];
 $mdl_file =~ s/\.\d+\.cm$/.cm/; 
 
@@ -427,8 +445,8 @@ my @overflow_seq_A    = (); # array of sequences that fail cmalign b/c required 
 my @overflow_mxsize_A = (); # array of required matrix sizes for each sequence in @overflow_seq_A
 my $cmalign_stdout_file = $out_root . ".cmalign.stdout";
 my $cmalign_ifile_file  = $out_root . ".cmalign.ifile";
-cmalignOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
-                         $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+dng_CmalignOrCmsearchWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $progress_w, 
+                             $mdl_file, \@stk_file_A, \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
 
 # add n_div errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
 my $n_div_errors = scalar(@overflow_seq_A);
