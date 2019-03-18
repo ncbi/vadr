@@ -381,7 +381,7 @@ if(defined $in_stk_file) {
   $start_secs = outputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
 
   runCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  reformat_stockholm_file_to_unaligned_fasta_file($execs_H{"esl-reformat"}, $stk_file, $fa_file, \%opt_HH, $FH_HR);
+  fastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
 
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -392,17 +392,17 @@ else {
   $start_secs = outputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
 
   openAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
-  print_sequence_to_fasta_file($ofile_info_HH{"FH"}{"fasta"}, 
-                               $seq_info_HH{$mdl_name}{"ver"}, 
-                               $seq_info_HH{$mdl_name}{"def"}, 
-                               $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
+  fastaWriteSequence($ofile_info_HH{"FH"}{"fasta"}, 
+                     $seq_info_HH{$mdl_name}{"ver"}, 
+                     $seq_info_HH{$mdl_name}{"def"}, 
+                     $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
   close $ofile_info_HH{"FH"}{"fasta"};
 
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   $start_secs = outputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
-  reformat_fasta_file_to_stockholm_file($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
+  stockholmFileWriteFromFastaFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
   addClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
 
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -443,7 +443,7 @@ if($ncds > 0) {
                               $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
 
-  create_blast_protein_db($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+  blastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
 
   outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -534,131 +534,6 @@ exit 0;
 ###############
 # SUBROUTINES #
 ###############
-
-#################################################################
-# Subroutine: create_blast_protein_db
-# Incept:     EPN, Wed Oct  3 16:31:38 2018
-# 
-# Purpose:    Create a protein blast database from a fasta file.
-#
-# Arguments:
-#   $makeblastdb:    path to 'makeblastdb' executable
-#   $fa_file:        FASTA file of protein sequences to make blast db from
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
-#                    
-# Returns:    void
-#
-#################################################################
-sub create_blast_protein_db {
-  my $sub_name = "create_blast_protein_db";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($makeblastdb, $fa_file, $opt_HHR, $FH_HR) = @_;
-
-  runCommand($makeblastdb . " -in $fa_file -dbtype prot > /dev/null", opt_Get("-v", $opt_HHR), 0, $FH_HR);
-
-  return;
-}
-
-#################################################################
-# Subroutine: print_sequence_to_fasta_file()
-# Incept:     EPN, Thu Mar 14 06:06:59 2019
-#
-# Synopsis: Print a sequence to a fasta file.
-#
-# Arguments:
-#  $out_FH:    output file handle
-#  $name:      sequence name
-#  $def:       sequence definition, can be undef
-#  $seq:       sequence string
-#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       if $name or $seq is undef
-#################################################################
-sub print_sequence_to_fasta_file {
-  my $sub_name = "print_sequence_to_fasta_file";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($out_FH, $name, $def, $seq, $FH_HR) = @_;
-
-  if(! defined $name) { DNAORG_FAIL("ERROR in $sub_name, name is undefined", 1, $FH_HR); }
-  if(! defined $seq)  { DNAORG_FAIL("ERROR in $sub_name, name is undefined", 1, $FH_HR); }
-
-  # capitalize and DNAize $seq
-  sqstringCapitalize(\$seq);
-  sqstringDnaize(\$seq);
-  printf $out_FH (">%s%s\n%s", 
-                  $name, 
-                  (defined $def) ? " " . $def : "",
-                  sqstringAddNewlines($seq, 60));
-  
-  return;
-}
-
-#################################################################
-# Subroutine: reformat_fasta_file_to_stockholm_file()
-# Incept:     EPN, Sat Mar  9 10:24:14 2019
-#
-# Synopsis: Use esl-reformat to convert a fasta file to a stockholm file
-#
-# Arguments:
-#  $esl_reformat: esl-reformat executable file
-#  $fa_file:      fasta file
-#  $stk_file:     stockholm file to create
-#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
-#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       if there's a problem fetching the sequence file
-#################################################################
-sub reformat_fasta_file_to_stockholm_file { 
-  my $sub_name = "reformat_fasta_file_to_stockholm_file";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($esl_reformat, $fa_file, $stk_file, $opt_HHR, $FH_HR) = @_;
-
-  my $cmd = $esl_reformat . " --informat afa stockholm $fa_file > $stk_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-
-  return;
-}
-
-#################################################################
-# Subroutine: reformat_stockholm_file_to_unaligned_fasta_file()
-# Incept:     EPN, Fri Mar 15 12:56:04 2019
-#
-# Synopsis: Use esl-reformat to convert a stockholm file to unaligned fasta
-#
-# Arguments:
-#  $esl_reformat: esl-reformat executable file
-#  $stk_file:     stockholm file
-#  $fa_file:      fasta file to create
-#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
-#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       if there's a problem fetching the sequence file
-#################################################################
-sub reformat_stockholm_file_to_unaligned_fasta_file { 
-  my $sub_name = "reformat_stockholm_file_to_unaligned_fasta_file";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($esl_reformat, $stk_file, $fa_file, $opt_HHR, $FH_HR) = @_;
-
-  my $cmd = $esl_reformat . " --informat stockholm fasta $stk_file > $fa_file";
-  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-
-  return;
-}
 
 #################################################################
 # Subroutine: stockholm_validate_single_sequence_input()

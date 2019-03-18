@@ -6748,8 +6748,13 @@ sub cdsTranslateToFastaFile {
 
   my ($out_FH, $esl_translate, $cds_fa_file, $out_root, $ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
 
-  my $tmp1_translate_fa_file = $out_root . ".cds.esl-translate.1.fa";
-  my $tmp2_translate_fa_file = $out_root . ".cds.esl-translate.2.fa";
+  my $tmp1_translate_fa_file  = $out_root . ".cds.esl-translate.1.fa";
+  my $tmp2_translate_fa_file  = $out_root . ".cds.esl-translate.2.fa";
+  my $tmp1_translate_ssi_file = $out_root . ".cds.esl-translate.1.fa.ssi";
+  my $tmp2_translate_ssi_file = $out_root . ".cds.esl-translate.2.fa.ssi";
+  if(-e $tmp1_translate_ssi_file) { unlink $tmp1_translate_ssi_file; }
+  if(-e $tmp2_translate_ssi_file) { unlink $tmp2_translate_ssi_file; }
+
   my $c_opt = "";
   if((opt_IsUsed("--ttbl", $opt_HHR)) && (opt_Get("--ttbl", $opt_HHR) != 1)) { 
     $c_opt = "-c " . opt_Get("--ttbl", $opt_HHR);
@@ -7088,6 +7093,136 @@ sub hashFromCommaSeparatedString {
   foreach my $key (@key_A) { 
     $HR->{$key} = 1; 
   }
+
+  return;
+}
+
+#################################################################
+# Subroutine: blastDbProteinCreate
+# Incept:     EPN, Mon Mar 18 09:40:28 2019
+# 
+# Purpose:    Create a protein blast database from a fasta file.
+#
+# Arguments:
+#   $makeblastdb:    path to 'makeblastdb' executable
+#   $fa_file:        FASTA file of protein sequences to make blast db from
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#                    
+# Returns:    void
+#
+#################################################################
+sub blastDbProteinCreate {
+  my $sub_name = "blastDbProteinCreate";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($makeblastdb, $fa_file, $opt_HHR, $FH_HR) = @_;
+
+  runCommand($makeblastdb . " -in $fa_file -dbtype prot > /dev/null", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine: fastaWriteSequence()
+# Incept:     EPN, Thu Mar 14 06:06:59 2019
+#
+# Synopsis: Print a sequence to a fasta file.
+#
+# Arguments:
+#  $out_FH:    output file handle
+#  $name:      sequence name
+#  $def:       sequence definition, can be undef
+#  $seq:       sequence string
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $name or $seq is undef
+#################################################################
+sub fastaWriteSequence {
+  my $sub_name = "fastaWriteSequence";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_FH, $name, $def, $seq, $FH_HR) = @_;
+
+  if(! defined $name) { DNAORG_FAIL("ERROR in $sub_name, name is undefined", 1, $FH_HR); }
+  if(! defined $seq)  { DNAORG_FAIL("ERROR in $sub_name, name is undefined", 1, $FH_HR); }
+
+  # capitalize and DNAize $seq
+  sqstringCapitalize(\$seq);
+  sqstringDnaize(\$seq);
+  printf $out_FH (">%s%s\n%s", 
+                  $name, 
+                  (defined $def) ? " " . $def : "",
+                  sqstringAddNewlines($seq, 60));
+  
+  return;
+}
+
+
+#################################################################
+# Subroutine: fastaFileWriteFromStockholmFile()
+# Incept:     EPN, Fri Mar 15 12:56:04 2019
+#
+# Synopsis: Use esl-reformat to convert a stockholm file to unaligned fasta
+#
+# Arguments:
+#  $esl_reformat: esl-reformat executable file
+#  $fa_file:      fasta file to create
+#  $stk_file:     stockholm file
+#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if there's a problem fetching the sequence file
+#################################################################
+sub fastaFileWriteFromStockholmFile { 
+  my $sub_name = "fastaFileWriteFromStockholmFile";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($esl_reformat, $fa_file, $stk_file, $opt_HHR, $FH_HR) = @_;
+
+  my $cmd = $esl_reformat . " --informat stockholm fasta $stk_file > $fa_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  # remove a .ssi file if it exists
+  my $ssi_file = $fa_file . ".ssi";
+  if(-e $ssi_file) { unlink $ssi_file; }
+
+  return;
+}
+
+#################################################################
+# Subroutine: stockholmFileWriteFastaFile()
+# Incept:     EPN, Sat Mar  9 10:24:14 2019
+#
+# Synopsis: Use esl-reformat to convert a fasta file to a stockholm file
+#
+# Arguments:
+#  $esl_reformat: esl-reformat executable file
+#  $fa_file:      fasta file
+#  $stk_file:     stockholm file to create
+#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if there's a problem fetching the sequence file
+#################################################################
+sub stockholmFileWriteFastaFile { 
+  my $sub_name = "stockholmFileWriteFastaFile";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($esl_reformat, $fa_file, $stk_file, $opt_HHR, $FH_HR) = @_;
+
+  my $cmd = $esl_reformat . " --informat afa stockholm $fa_file > $stk_file";
+  runCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
 }
