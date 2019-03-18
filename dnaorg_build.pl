@@ -12,6 +12,7 @@ use LWP::Simple;
 
 require "dnaorg.pm"; 
 require "epn-options.pm";
+require "epn-ofile.pm";
 
 #######################################################################################
 # What this script does: 
@@ -34,12 +35,12 @@ require "epn-options.pm";
 # 
 #######################################################################################
 # make sure the DNAORGDIR environment variable is set
-my $dnaorgdir      = verifyEnvVariableIsValidDir("DNAORGDIR");
-my $dnaorgblastdir = verifyEnvVariableIsValidDir("DNAORGBLASTDIR");
+my $env_dnaorgdir      = verifyEnvVariableIsValidDir("DNAORGDIR");
+my $env_dnaorgblastdir = verifyEnvVariableIsValidDir("DNAORGBLASTDIR");
 
-my $inf_exec_dir      = $dnaorgdir . "/infernal-dev/src";
-my $esl_exec_dir      = $dnaorgdir . "/infernal-dev/easel/miniapps";
-my $blast_exec_dir    = $dnaorgblastdir;
+my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
+my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
+my $blast_exec_dir    = $env_dnaorgblastdir;
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -154,10 +155,11 @@ my $executable    = $0;
 my $date          = scalar localtime();
 my $version       = "0.45x";
 my $releasedate   = "Feb 2019";
+my $pkgname       = "dnaorg";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+  ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, undef);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
@@ -219,7 +221,10 @@ my $out_root = $dir . "/" . $dir_tail . ".dnaorg_build";
 # output preamble
 my @arg_desc_A = ("accession/model name", "output directory");
 my @arg_A      = ($mdl_name, $dir);
-outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+my %extra_H    = ();
+$extra_H{"\$DNAORGDIR"}       = $env_dnaorgdir;
+$extra_H{"\$DNAORGBLASTDIR"}  = $env_dnaorgblastdir;
+ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
@@ -235,9 +240,9 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "cmd": command file with list of all commands executed
 
 # open the log and command files 
-openAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", 1, "Output printed to screen");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", 1, "List of executed commands");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "log", $out_root . ".log", 1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmd", $out_root . ".cmd", 1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "list", $out_root . ".list", 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 my $FH_HR  = $ofile_info_HH{"FH"};
@@ -245,7 +250,7 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 # to close these first.
 
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+ofile_OutputBanner($log_FH, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
@@ -276,19 +281,19 @@ if(opt_IsUsed("--gb", \%opt_HH)) {
 }
 else { 
   # --gb not used, create gb file by fetching using eutils
-  $start_secs = outputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
 
   $gb_file = $out_root . ".gb";
   eutilsFetchToFile($gb_file, $mdl_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-  addClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
 
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
 ########################
 # Parse the genbank file
 ########################
-$start_secs = outputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
 
 my %ftr_info_HAH = (); # the feature info 
 my %seq_info_HH  = (); # the sequence info 
@@ -300,13 +305,13 @@ if(! exists $ftr_info_HAH{$mdl_name}) {
   DNAORG_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
 }
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #######################################################
 # Prune data read from %ftr_info_HAH, only keeping what
 # we want to output to the eventual model info file
 #######################################################
-$start_secs = outputProgressPrior("Pruning data read from GenBank file", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Pruning data read from GenBank file", $progress_w, $log_FH, *STDOUT);
 
 # determine what types of features we will store based on cmdline options
 # --fall is incompatible with --fadd
@@ -362,7 +367,7 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
   }
 }
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #####################################################################
 # Parse the input stockholm file (if --stk) or create it (if ! --stk)
@@ -372,46 +377,46 @@ my $fa_file  = $out_root . ".fa";
 my $stk_has_ss = undef;
 my $in_stk_file = opt_Get("--stk", \%opt_HH);
 if(defined $in_stk_file) { 
-  $start_secs = outputProgressPrior("Validating input Stockholm file", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Validating input Stockholm file", $progress_w, $log_FH, *STDOUT);
 
   $stk_has_ss = stockholm_validate_single_sequence_input($in_stk_file, $seq_info_HH{$mdl_name}{"seq"}, \%opt_HH, $FH_HR);
 
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   
-  $start_secs = outputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
 
   runCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
   fastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
 
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 else { 
   # --stk not used, we create it by first making a fasta file of the model
   # model sequence read from the gb file, then converting that fasta file 
   # to a stockholm file
-  $start_secs = outputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
   fastaWriteSequence($ofile_info_HH{"FH"}{"fasta"}, 
                      $seq_info_HH{$mdl_name}{"ver"}, 
                      $seq_info_HH{$mdl_name}{"def"}, 
                      $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
   close $ofile_info_HH{"FH"}{"fasta"};
 
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-  $start_secs = outputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
   stockholmFileWriteFromFastaFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
-  addClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
 
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
 ######################################################################
 # Finish populating @{$ftr_info_HAH{$mdl_name} and create @sgm_info_AH
 ######################################################################
-$start_secs = outputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
 
 featureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 featureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -421,7 +426,7 @@ featureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 my @sgm_info_AH = (); # segment info, inferred from feature info
 segmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###################################
 # Translate the CDS, if we have any
@@ -430,22 +435,22 @@ my $ncds = featureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
 my $cds_fa_file = undef;
 my $protein_fa_file = undef;
 if($ncds > 0) { 
-  $start_secs = outputProgressPrior("Translating CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Translating CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
 
   $cds_fa_file  = $out_root . ".cds.fa";
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
   cdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   close $ofile_info_HH{"FH"}{"cdsfasta"};
   
   $protein_fa_file = $out_root . ".protein.fa";
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
   cdsTranslateToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
                               $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
 
   blastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
 
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
 ##############
@@ -465,7 +470,7 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   elsif($clen_times_cmn >  500000) { $cmbuild_str = "(should take roughly 5-10 minutes)"; }
   else                             { $cmbuild_str = "(shouldn't take more than a few minutes)"; }
 
-  $start_secs = outputProgressPrior("Building model $cmbuild_str", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Building model $cmbuild_str", $progress_w, $log_FH, *STDOUT);
 
   my $cmbuild_opts = "-n $mdl_name --verbose ";
   if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
@@ -478,16 +483,16 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   $cm_file         = $out_root . ".cm";
   my $cmbuild_cmd  = $execs_H{"cmbuild"} . " " . $cmbuild_opts . " $cm_file $stk_file > $cmbuild_file";
   runCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
-  outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+  ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
-  addClosedFileToOutputInfo(\%ofile_info_HH, "cm",      $cm_file, 1, "CM file");
-  addClosedFileToOutputInfo(\%ofile_info_HH, "cmbuild", $cmbuild_file, 1, "cmbuild output file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cm",      $cm_file, 1, "CM file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmbuild", $cmbuild_file, 1, "cmbuild output file");
 }
 
 ########################
 # Output model info file
 ########################
-$start_secs = outputProgressPrior("Creating model info file", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Creating model info file", $progress_w, $log_FH, *STDOUT);
 
 # create @mdl_info_AH, and add info for our lone model
 # modelInfoFileWrite() can output data for multiple models at once, 
@@ -510,25 +515,25 @@ if(opt_IsUsed("-g", \%opt_HH)) {
 }
 my $minfo_file  = $out_root . ".minfo";
 modelInfoFileWrite($minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
-addClosedFileToOutputInfo(\%ofile_info_HH, "minfo", $minfo_file, 1, "DNAORG 'model info' format file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "minfo", $minfo_file, 1, "DNAORG 'model info' format file for $mdl_name");
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ##########
 # Conclude
 ##########
 # output optional output files
 if(opt_Get("--sgminfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, "Model information (created due to --sgminfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgminfo", $out_root . ".sgminfo", 1, "Model information (created due to --sgminfo)");
   dumpArrayOfHashes("Feature information (ftr_info_AH) for $mdl_name", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
 if(exists $ofile_info_HH{"FH"}{"sgminfo"}) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
   dumpArrayOfHashes("Segment information (sgm_info_AH) for $mdl_name", \@sgm_info_AH, $ofile_info_HH{"FH"}{"sgminfo"});
 }
 
 $total_seconds += secondsSinceEpoch();
-outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
+ofile_OutputConclusionAndCloseFiles($total_seconds, $pkgname, $dir, \%ofile_info_HH);
 exit 0;
 
 ###############
