@@ -103,9 +103,9 @@ opt_Add("--cmere",    "real",    0,           $g,   undef,  "--skipbuild", "set 
 opt_Add("--cmeset",   "real",    0,           $g,   undef,  "--skipbuild", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
-#       option       type       default     group  requires     incompat  preamble-output                                    help-output    
-opt_Add("--skipbuild",  "boolean", 0,         $g,    undef,     undef,    "skip the cmbuild step",                           "skip the cmbuild step", \%opt_HH, \@opt_order_A);
-opt_Add("--onlyurl",    "boolean", 0,         $g,    undef,"--stk,--gb",  "output genbank file url for accession and exit",  "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
+#       option             type       default     group requires   incompat  preamble-output                                    help-output    
+opt_Add("--skipbuild",     "boolean", 0,         $g,    undef,     undef,    "skip the cmbuild step",                           "skip the cmbuild step", \%opt_HH, \@opt_order_A);
+opt_Add("--onlyurl",       "boolean", 0,         $g,    undef,"--stk,--gb",  "output genbank file url for accession and exit",  "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default     group  requires     incompat  preamble-output                          help-output    
@@ -336,7 +336,7 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
   # (B) it is listed in --fskip string 
   if(((! defined $fdf_H{$ftype})     && # (A1)
       (! defined $fadd_H{$ftype})    && # (A2)
-      (opt_Get("--fall", \%opt_HH)))    # (A3)
+      (! opt_Get("--fall", \%opt_HH)))  # (A3)
      || (defined $fskip_H{$ftype})) {   # (B)
     splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
     $ftr_idx--; # this is about to be incremented
@@ -353,10 +353,10 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
     # (A3) --qall not used
     # OR 
     # (B) it is listed in --qskip string 
-    if(((! defined $qdf_H{$qual})      && # (A1)
-      (! defined $qadd_H{$qual})       && # (A2)
-        (opt_Get("--qall", \%opt_HH)))    # (A3)
-       || (defined $qskip_H{$qual})) {    # (B)
+    if(((! defined $qdf_H{$qual})        && # (A1)
+        (! defined $qadd_H{$qual})       && # (A2)
+        (! opt_Get("--qall", \%opt_HH)))    # (A3)
+       || (defined $qskip_H{$qual})) {      # (B)
       delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$qual};
     }
   }
