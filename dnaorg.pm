@@ -2628,7 +2628,7 @@ sub dng_RunCommand {
   my $stop_time = ($seconds + ($microseconds / 1000000.));
 
   if(($? != 0) && (! $do_failok)) { 
-    ofile_FAIL("ERROR in $sub_name, the following command failed:\n$cmd\n", $?, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, the following command failed:\n$cmd\n", "dnaorg", $?, $FH_HR); 
   }
 
   return ($stop_time - $start_time);
@@ -3640,7 +3640,8 @@ sub dng_SplitFastaFile {
 #  $seq_file:              name of sequence file with all sequences to run against
 #  $tot_len_nt:            total length of all nucleotides in $seq_file
 #  $progress_w:            width for outputProgressPrior output
-#  $mdl_filename:          name of model file to use
+#  $mdl_file:              name of model file to use
+#  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information
 #
@@ -3652,11 +3653,11 @@ sub dng_SplitFastaFile {
 ################################################################# 
 sub dng_CmsearchWrapper { 
   my $sub_name = "dng_CmsearchWrapper";
-  my $nargs_expected = 9;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($execs_HR, $round, $out_root, $seq_file, $tot_len_nt, $progress_w,
-      $mdl_filename, $opt_HHR, $ofile_info_HHR) = @_;
+      $mdl_file, $mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nfasta_created = 0; # number of fasta files created by esl-ssplit
   my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
@@ -3697,7 +3698,7 @@ sub dng_CmsearchWrapper {
     $seq_file_A[0] = $seq_file;
   }
     
-  dng_CmalignOrCmsearchWrapperHelper($execs_HR->{"cmsearch"}, $out_root . ".r" . $round, $progress_w, $mdl_filename,
+  dng_CmalignOrCmsearchWrapperHelper($execs_HR, $out_root . ".r" . $round, $progress_w, $mdl_file, $mdl_name, 
                                      \@seq_file_A, \%out_file_HA, undef, undef, $opt_HHR, $ofile_info_HHR); 
   
   # concatenate all the tblout and possibly .err files into one 
@@ -3705,8 +3706,8 @@ sub dng_CmsearchWrapper {
     my $concat_file = $out_root . ".r" . $round . ".cmsearch." . $out_key;
     dng_ConcatenateListOfFiles($out_file_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
     # dng_ConcatenateListOfFiles() removes individual files unless --keep enabled
-    my $out_root_key = dng_RemoveDirPath($out_root);
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "r" . $round . ".concat." . $out_key, $concat_file, 0, "round $round search $out_key file");
+    my $out_root_key = sprintf("r%s.concat.%s$out_key", $round, (defined $mdl_name) ? $mdl_name . "." : "");
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $out_root_key, $concat_file, 0, "round $round search $out_key file");
   }
 
   # remove sequence files if we created any
@@ -3748,7 +3749,8 @@ sub dng_CmsearchWrapper {
 #  $seq_file:              name of sequence file with all sequences to run against
 #  $tot_len_nt:            total length of all nucleotides in $seq_file
 #  $progress_w:            width for outputProgressPrior output
-#  $mdl_filename:          name of model file to use
+#  $mdl_file:              name of model file to use
+#  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $stk_file_AR:           ref to array of stockholm files created here, FILLED HERE
 #  $overflow_seq_AR:       ref to array of sequences that failed due to matrix overflows, FILLED HERE
 #  $overflow_mxsize_AR:    ref to array of required matrix sizes for each sequence that failed due to matrix overflows, FILLED HERE
@@ -3763,11 +3765,12 @@ sub dng_CmsearchWrapper {
 ################################################################# 
 sub dng_CmalignWrapper { 
   my $sub_name = "dng_CmalignWrapper";
-  my $nargs_expected = 11;
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($execs_HR, $out_root, $seq_file, $tot_len_nt, $progress_w,
-      $mdl_filename, $stk_file_AR, $overflow_seq_AR, $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
+      $mdl_file, $mdl_name, $stk_file_AR, $overflow_seq_AR, 
+      $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nfasta_created = 0; # number of fasta files created by esl-ssplit
   my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
@@ -3809,9 +3812,9 @@ sub dng_CmalignWrapper {
     $r1_seq_file_A[$r1_i] = $seq_file . "." . ($r1_i+1);
   }
   
-  dng_CmalignOrCmsearchWrapperHelper($execs_HR->{"cmalign"}, $out_root, $progress_w, 
+  dng_CmalignOrCmsearchWrapperHelper($execs_HR, $out_root, $progress_w, 
                                      \@r1_seq_file_A, \%r1_out_file_HA, \@r1_success_A, \@r1_mxsize_A,
-                                     $mdl_filename, $opt_HHR, $ofile_info_HHR); 
+                                     $mdl_file, $mdl_name, $opt_HHR, $ofile_info_HHR); 
   
   my $nr2            = 0;  # number of round 2 runs (sequence files)
   my %r2_out_file_HA = (); # hash of arrays ([0..$nr2-1]) of output files for cmalign/nhmmscan round 2 runs
@@ -3855,11 +3858,11 @@ sub dng_CmalignWrapper {
 
   # do all round 2 runs
   if($nr2 > 0) { 
-    dng_cmalignWrapperHelper($execs_HR->{"cmalign"}, 
-                             $out_root . ".r2",
-                             -1 * $progress_w,          # passing in $progress_w < 0 is our flag that we are 'rerunning'
-                             \@r2_seq_file_A, \%r2_out_file_HA, \@r2_success_A, \@r2_mxsize_A, 
-                             $mdl_filename, $opt_HHR, $ofile_info_HHR);
+    dng_CmalignOrCmsearchWrapperHelper($execs_HR,
+                                       $out_root . ".r2",
+                                       -1 * $progress_w,          # passing in $progress_w < 0 is our flag that we are 'rerunning'
+                                       \@r2_seq_file_A, \%r2_out_file_HA, \@r2_success_A, \@r2_mxsize_A, 
+                                       $mdl_file, $mdl_name, $opt_HHR, $ofile_info_HHR);
     # go through all round 2 runs: 
     # if it finished successfully record its output files to concatenate later
     # if it did not finish successfully, record the name of the sequence and mxsize required
@@ -3909,10 +3912,11 @@ sub dng_CmalignWrapper {
 #              see those sub's "Purpose" for more details.
 #
 # Arguments: 
-#  $executable:            either "cmsearch" or "cmalign"
+#  $execs_HR:              ref to hash with paths to cmalign, cmsearch and cmfetch
 #  $out_root:              string for naming output files
 #  $progress_w:            width for outputProgressPrior output, -1 * $progress_w if we are calling this to rerun cmalign again
-#  $mdl_filename:          name of model file to use
+#  $mdl_file:              name of model file to use
+#  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file_AR:           ref to array of sequence file names for each cmalign/nhmmscan call, PRE-FILLED
 #  $out_file_HAR:          ref to hash of arrays of output file names, FILLED HERE 
 #  $success_AR:            ref to array of success values, can be undef if $executable is "cmsearch"
@@ -3931,16 +3935,12 @@ sub dng_CmalignWrapper {
 ################################################################# 
 sub dng_CmalignOrCmsearchWrapperHelper { 
   my $sub_name = "dng_CmalignOrCmsearchWrapperHelper";
-  my $nargs_expected = 10;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($executable, $out_root, $progress_w, $mdl_filename, $seq_file_AR, $out_file_HAR, $success_AR, $mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $out_root, $progress_w, $mdl_file, $mdl_name, $seq_file_AR, $out_file_HAR, $success_AR, $mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
-  if(($executable !~ m/cmalign$/) && ($executable !~ m/cmsearch$/)) { 
-    ofile_FAIL("ERROR, in $sub_name, executable ($executable) doesn't seem to be cmalign or cmsearch", "dnaorg", 1, $ofile_info_HHR->{"FH"});
-  }
-
-  my $do_cmalign     = ($executable =~ m/cmalign/) ? 1 : 0;
+  my $do_cmalign     = (defined $mxsize_AR) ? 1 : 0;
   my $do_parallel    = opt_Get("-p", $opt_HHR) ? 1 : 0;
   my $program_choice = ($do_cmalign) ? "cmalign" : "cmsearch";
   my $nfasta_created = 0;     # number of fasta files created by esl-ssplit
@@ -3988,14 +3988,14 @@ sub dng_CmalignOrCmsearchWrapperHelper {
       $out_file_HAR->{$key}[$s] = $out_root . ".s" . $s . "." . $key;
     }
     if($do_cmalign) { 
-      $success_AR->[$s] = dng_RunCmalign($executable, $mdl_filename, $seq_file_AR->[$s], 
+      $success_AR->[$s] = dng_RunCmalign($execs_HR, $mdl_file, $mdl_name, $seq_file_AR->[$s], 
                                          $out_file_HAR->{"stdout"}[$s], $out_file_HAR->{"ifile"}[$s], $out_file_HAR->{"tfile"}[$s], 
                                          $out_file_HAR->{"stk"}[$s], $out_file_HAR->{"err"}[$s],
                                          (defined $mxsize_AR) ? \$mxsize_AR->[$s] : undef, 
                                          $opt_HHR, $ofile_info_HHR);   
     }
     else { 
-      dng_RunCmsearch($executable, $mdl_filename, $seq_file_AR->[$s], 
+      dng_RunCmsearch($execs_HR, $mdl_file, $mdl_name, $seq_file_AR->[$s], 
                       $out_file_HAR->{"stdout"}[$s], $out_file_HAR->{"tblout"}[$s], $out_file_HAR->{"err"}[$s],
                       $opt_HHR, $ofile_info_HHR);   
       # we don't bother with @{$success_AR->[$s]} for cmsearch, if dng_runCmsearch() returns the run was successful
@@ -4038,7 +4038,7 @@ sub dng_CmalignOrCmsearchWrapperHelper {
 # Subroutine:  dng_RunCmalign()
 # Incept:      EPN, Wed Feb  6 12:30:08 2019
 #
-# Purpose:     Run Infernal's cmalign executable using $model_file
+# Purpose:     Run Infernal's cmalign executable using $mdl_file
 #              as the model file on sequence file $seq_file, either
 #              locally or on the farm.
 #              
@@ -4052,8 +4052,9 @@ sub dng_CmalignOrCmsearchWrapperHelper {
 #              Use --mxsize, --maxtau or --tau.
 #              
 # Arguments: 
-#  $executable:       path to the cmscan or nhmmscan executable file
-#  $model_file:       path to the CM file
+#  $execs_HR:         ref to hash with paths to cmalign and cmfetch
+#  $mdl_file:         path to the CM file
+#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:         path to the sequence file
 #  $stdout_file:      path to the stdout file to create
 #  $ifile_file:       path to the cmalign --ifile file to create
@@ -4077,10 +4078,10 @@ sub dng_CmalignOrCmsearchWrapperHelper {
 ################################################################# 
 sub dng_RunCmalign { 
   my $sub_name = "dng_RunCmalign()";
-  my $nargs_expected = 11;
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($executable, $model_file, $seq_file, $stdout_file, $ifile_file, $tfile_file, $stk_file, $err_file, $ret_mxsize_R, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $stdout_file, $ifile_file, $tfile_file, $stk_file, $err_file, $ret_mxsize_R, $opt_HHR, $ofile_info_HHR) = @_;
 
   if(defined $ret_mxsize_R) { 
     $$ret_mxsize_R = 0; # overwritten below if nec
@@ -4093,8 +4094,8 @@ sub dng_RunCmalign {
     ofile_FAIL("ERROR in $sub_name, stdout_file is /dev/null", "dnaorg", 1, $FH_HR);
   }
 
-  dng_ValidateFileExistsAndIsNonEmpty($model_file, "CM file", $sub_name, 1, $FH_HR); 
-  dng_ValidateFileExistsAndIsNonEmpty($seq_file,   "sequence file", $sub_name, 1, $FH_HR);
+  dng_ValidateFileExistsAndIsNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
+  dng_ValidateFileExistsAndIsNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
   # determine cmalign options based on command line options
   my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file --tfile $tfile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
@@ -4121,7 +4122,13 @@ sub dng_RunCmalign {
     if(-e $err_file)    { dng_RemoveFileUsingSystemRm($err_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
   }
 
-  my $cmd = "$executable $opts $model_file $seq_file > $stdout_file 2>&1";
+  my $cmd = undef;
+  if(defined $mdl_name) { 
+    $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmalign"} . " $opts - $seq_file > $stdout_file 2>&1";
+  }
+  else { 
+    $cmd = $execs_HR->{"cmalign"} . " $opts $mdl_file $seq_file > $stdout_file 2>&1";
+  }
 
   my $success = 1;
   if($do_parallel) { 
@@ -4151,13 +4158,14 @@ sub dng_RunCmalign {
 # Subroutine:  dng_RunCmsearch()
 # Incept:      EPN, Wed Feb  6 12:38:11 2019
 #
-# Purpose:     Run Infernal's cmsearch executable using $model_file
+# Purpose:     Run Infernal's cmsearch executable using $mdl_file
 #              as the model file on sequence file $seq_file, either
 #              locally or on the farm.
 #
 # Arguments: 
-#  $executable:       path to the cmscan or cmsearch executable file
-#  $model_file:       path to the CM file
+#  $execs_HR:         ref to hash with paths to cmsearch and cmfetch
+#  $mdl_file:         path to the CM file
+#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:         path to the sequence file
 #  $stdout_file:      path to the stdout file to create, can be "/dev/null"
 #  $tblout_file:      path to the cmsearch --tblout file to create
@@ -4170,15 +4178,15 @@ sub dng_RunCmalign {
 ################################################################# 
 sub dng_RunCmsearch {
   my $sub_name = "dng_RunCmsearch()";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($executable, $model_file, $seq_file, $stdout_file, $tblout_file, $err_file, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $stdout_file, $tblout_file, $err_file, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR       = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
 
-  dng_ValidateFileExistsAndIsNonEmpty($model_file, "CM file", $sub_name, 1, $FH_HR); 
+  dng_ValidateFileExistsAndIsNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
   dng_ValidateFileExistsAndIsNonEmpty($seq_file,   "sequence file", $sub_name, 1, $FH_HR);
 
   my $opts = " --trmF3 --noali --hmmonly --cpu 0 --tblout $tblout_file";
@@ -4187,8 +4195,13 @@ sub dng_RunCmsearch {
   if(-e $stdout_file) { dng_RemoveFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
   if(-e $tblout_file) { dng_RemoveFileUsingSystemRm($tblout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
 
-  my $cmd = "$executable $opts $model_file $seq_file > $stdout_file";
-
+  my $cmd = undef;
+  if(defined $mdl_name) { 
+    $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmsearch"} . " $opts - $seq_file > $stdout_file";
+  }
+  else { 
+    $cmd = $execs_HR->{"cmsearch"} . " $opts $mdl_file $seq_file > $stdout_file";
+  }
   if($do_parallel) { 
     my $job_name = "J" . dng_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;

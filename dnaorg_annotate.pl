@@ -13,6 +13,8 @@ use Bio::Easel::SqFile;
 require "dnaorg.pm"; 
 require "epn-options.pm";
 require "epn-ofile.pm";
+require "epn-seq.pm";
+require "epn-utils.pm";
 
 #######################################################################################
 # What this script does: 
@@ -383,8 +385,9 @@ if(opt_IsUsed("-p", \%opt_HH)) {
 ###################################################
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmalign"}           = $inf_exec_dir   . "/cmalign";
+$execs_H{"cmfetch"}           = $inf_exec_dir   . "/cmfetch";
 $execs_H{"cmsearch"}          = $inf_exec_dir   . "/cmsearch";
-$execs_H{"esl-reformat"}      = $esl_exec_dir   . "/esl-reformat";
+$execs_H{"esl-seqstat"}       = $esl_exec_dir   . "/esl-seqstat";
 $execs_H{"esl-ssplit"}        = $esl_ssplit;
 $execs_H{"blastx"}            = $blast_exec_dir . "/blastx";
 $execs_H{"parse_blastx"}      = $env_dnaorgdir  . "/dnaorg_scripts/parse_blastx.pl";
@@ -411,7 +414,7 @@ my $mdl_idx;
 my $exp_group = opt_Get("--ecall", \%opt_HH);
 if(opt_IsUsed("--ecall", \%opt_HH)) { 
   if(dng_ArrayOfHashesCountKeyValue(\@mdl_info_AH, "group", $exp_group) == 0) { 
-    ofile_FAIL("ERROR with --ecall $exp_group, did not read any models with group defined as $exp_group in model info file $modelinfo_file", 1, $FH_HR);
+    ofile_FAIL("ERROR with --ecall $exp_group, did not read any models with group defined as $exp_group in model info file $modelinfo_file", "dnaorg", 1, $FH_HR);
   }
 }
   
@@ -433,11 +436,12 @@ my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequen
 my $tot_len_nt = $sqfile->nres_ssi;
 
 dng_CmsearchWrapper(\%execs_H, 1, $out_root, $fa_file, $tot_len_nt, $progress_w, 
-                    $cm_file, \%opt_HH, \%ofile_info_HH);
+                    $cm_file, undef, \%opt_HH, \%ofile_info_HH);
 
 # sort by score
 my $r1_tblout_key       = "r1.concat.tblout";
 my $r1_tblout_file      = $ofile_info_HH{"fullpath"}{$r1_tblout_key};
+dng_ValidateFileExistsAndIsNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, $ofile_info_HH{"FH"}); # '1' says: die if it doesn't exist or is empty
 my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
 my $r1_sort_tblout_key  = "sort.r1.concat.tblout";
 
@@ -462,7 +466,7 @@ while(my $line = <IN>) {
   chomp $line;
   my @el_A = split(/\s+/, $line);
   if(scalar(@el_A) != 9) { 
-    ofile_FAIL("ERROR parsing $r1_sort_tblout_key, unexpected number of space-delimited tokens on line $line", 1, $FH_HR); 
+    ofile_FAIL("ERROR parsing $r1_sort_tblout_key, unexpected number of space-delimited tokens on line $line", "dnaorg", 1, $FH_HR); 
   }
   my ($seq, $model, $score, $start, $end, $strand, $bounds, $overlap, $seqlen) = (@el_A);
   if(! exists $seq_results_HAH{$seq}) { 
@@ -483,7 +487,8 @@ while(my $line = <IN>) {
     }
   }
   if($idx != -1) { 
-    $HR = $seq_results_HAH{$seq}[$idx];
+    # results to this model for this sequence already exist, we'll add to them
+    $HR = \%{$seq_results_HAH{$seq}[$idx]};
   }
   else { 
     # $idx == -1
@@ -529,10 +534,48 @@ while(my $line = <IN>) {
     $HR->{"nhit"}++;
   }
 }
-
 dng_DumpHashOfArraysOfHashes("seq_results", \%seq_results_HAH, *STDOUT);
 
+# foreach model M and all sequences S(M) that score best to model S
+# fetch them into a sequence file and re-search them this time without --trmF3
+
+# first create the sequence file
+my $seqstat_file = $out_root . ".seqstat";
+my @seq_order_A = ();
+my %seq_info_HA = ();
+seq_ProcessSequenceFile($execs_H{"esl-seqstat"}, $fa_file, $seqstat_file, \@seq_order_A, \%seq_info_HA, \%opt_HH, \%ofile_info_HH);
+
+my $nseq = scalar(@seq_order_A);
+my $mdl_name;
+my %mdl_seq_HA = ();
+my %mdl_seqlen_H = ();
+for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+  my $seq_name = $seq_order_A[$seq_idx];
+  $mdl_name = $seq_results_HAH{$seq_name}[0]{"model"};
+  if(defined $mdl_name) { 
+    if(! defined $mdl_seq_HA{$mdl_name}) { 
+      @{$mdl_seq_HA{$mdl_name}} = ();
+      $mdl_seqlen_H{$mdl_name} = 0;
+    }
+    push(@{$mdl_seq_HA{$mdl_name}}, $seq_name);
+    $mdl_seqlen_H{$mdl_name} += $seq_info_HA{"length"}[$seq_idx];
+  }
+}
+     
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(defined $mdl_seq_HA{$mdl_name}) { 
+    my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
+    $sqfile->fetch_seqs_given_names(\@{$mdl_seq_HA{$mdl_name}}, 60, $mdl_fa_file);
+    # now run cmsearch against this file
+    dng_CmsearchWrapper(\%execs_H, 2, $out_root . "." . $mdl_name, $mdl_fa_file, $mdl_seqlen_H{$mdl_name}, $progress_w, 
+                        $cm_file, $mdl_name, \%opt_HH, \%ofile_info_HH);
+  }
+}
+
 exit 0;
+
+
 
 # initialize error related data structures
 my %err_info_HA = (); 
@@ -542,11 +585,9 @@ dng_InitializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
 # Step 4. Align sequences
 #########################
 #### TEMP ####
-my %seq_info_HA = ();
 my %mdl_info_HA = ();
 my %err_seq_instances_HH = ();
 my @err_ftr_instances_AHH = ();
-my $nseq = 0;
 my %ftr_info_HA;
 my $build_root = undef;
 my $do_class_errors = undef;
@@ -586,7 +627,7 @@ my @mdl_results_AAH = ();  # 1st dim: array, 0..$nseq-1, one per sequence
 initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
 
 # make an 'order hash' for the sequence names,
-my %seq_name_index_H = (); # seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
+my %seq_name_index_H = (); # seq_name_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_HAR->{"name"}}} array
 getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
 
 if($nseq > $n_div_errors) { # at least 1 sequence was aligned
@@ -1908,14 +1949,14 @@ sub fetch_features_and_add_cds_and_mp_errors {
                 if(($strand ne "+") && ($strand ne "-")) { 
                   # this 'shouldn't happen' for a CDS or mature peptide, getReferenceFeatureInfo should have 
                   # enforced this earlier and failed if it was violated
-                  ofile_FAIL("ERROR, in $sub_name, strand not + or - for feature $ftr_idx", 1, undef);
+                  ofile_FAIL("ERROR, in $sub_name, strand not + or - for feature $ftr_idx", "dnaorg", 1, undef);
                 }
                 $ftr_strand = $strand; 
               }
               elsif($ftr_strand ne $strand) { 
                 # this 'shouldn't happen' for a CDS or mature peptide, getReferenceFeatureInfo should have 
                 # enforced this earlier and failed if it was violated
-                ofile_FAIL("ERROR, in $sub_name, different models have different strands for feature $ftr_idx", 1, undef);
+                ofile_FAIL("ERROR, in $sub_name, different models have different strands for feature $ftr_idx", "dnaorg", 1, undef);
               }
             }
             
@@ -2025,7 +2066,7 @@ sub fetch_features_and_add_cds_and_mp_errors {
                         # there is an early stop (trc) in $ftr_sqstring
                         if($ftr_nxt_stp_A[1] > $ftr_len) { 
                           # this shouldn't happen, it means there's a bug in sqstring_find_stops()
-                          ofile_FAIL("ERROR, in $sub_name, error identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                          ofile_FAIL("ERROR, in $sub_name, error identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", "dnaorg", 1, undef);
                         }
                         $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
                         
@@ -3135,7 +3176,7 @@ sub output_feature_table {
 
     # sanity check, if we have no notes, errors and didn't skip anything, we should also have set codon_start for all features
     if($cur_noutftr > 0 && $cur_nnote == 0 && $cur_nerror == 0 && ($missing_codon_start_flag)) { 
-      ofile_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
+      ofile_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", "dnaorg", 1, $ofile_info_HHR->{"FH"});
     }
               
     if($do_pass) { 
@@ -3170,7 +3211,7 @@ sub output_feature_table {
             print $errors_FH ($accn_name . "\t" . $1 . "\t" . $2 . "\t" . $3 . "\n");
           }
           else {
-            ofile_FAIL("ERROR in $sub_name, unable to split error_line for output: $error_line", 1, $ofile_info_HHR->{"FH"});
+            ofile_FAIL("ERROR in $sub_name, unable to split error_line for output: $error_line", "dnaorg", 1, $ofile_info_HHR->{"FH"});
           }
         }
         if($has_class_errors) { 
@@ -4257,3 +4298,4 @@ sub strand_from_feature_results {
     return (defined $ftr_results_HR->{"n_strand"}) ? $ftr_results_HR->{"n_strand"} : "?";
   }
 }
+
