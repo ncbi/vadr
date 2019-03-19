@@ -1664,6 +1664,45 @@ sub dng_DumpArrayOfHashes {
   return;
 }
 
+
+#################################################################
+# Subroutine: dng_DumpHashOfArraysOfHashes()
+# Incept:     EPN, Tue Mar 19 12:30:24 2019
+#
+# Purpose:    Dump the contents of a hash of arrays of hashes,
+#             probably for debugging purposes.
+#
+# Args:       $name2print:  name of array of hashes of hashes
+#             $HAHR:        ref of the hash of array of hashes
+#             $FH:          file handle to print (often *STDOUT)
+#
+# Returns:    void
+# 
+#################################################################
+sub dng_DumpHashOfArraysOfHashes { 
+  my $sub_name = "dng_DumpHashOfArraysOfHashes()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($name2print, $HAHR, $FH) = @_;
+
+  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
+
+  foreach my $key1 (sort keys %{$HAHR}) { 
+    printf $FH ("*H*AH key $key1\n");
+    my $nel2 = scalar(@{$HAHR->{$key1}});
+    for (my $i2 = 0; $i2 < $nel2; $i2++) { 
+      printf("\tH*A*H key: $key1 el: $i2:\n", $i2);
+      foreach my $key3 (sort keys %{$HAHR->{$key1}[$i2]}) { 
+        printf $FH ("\t\tHA*H* key: $key1 el: $i2 key: $key3 value: %s\n", $HAHR->{$key1}[$i2]{$key3});
+      }
+    }
+    printf $FH ("\n");
+  }
+
+  return;
+}
+
 #################################################################
 # Subroutine: dng_ArrayOfHashesKeepKeys()
 # Incept:     EPN, Wed Mar 13 11:33:26 2019
@@ -3596,6 +3635,7 @@ sub dng_SplitFastaFile {
 # Arguments: 
 #  $execs_HR:              ref to executables with "esl-ssplit" and "cmsearch"
 #                          defined as keys
+#  $round:                 round index (1 or 2)
 #  $out_root:              string for naming output files
 #  $seq_file:              name of sequence file with all sequences to run against
 #  $tot_len_nt:            total length of all nucleotides in $seq_file
@@ -3612,10 +3652,10 @@ sub dng_SplitFastaFile {
 ################################################################# 
 sub dng_CmsearchWrapper { 
   my $sub_name = "dng_CmsearchWrapper";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $out_root, $seq_file, $tot_len_nt, $progress_w,
+  my ($execs_HR, $round, $out_root, $seq_file, $tot_len_nt, $progress_w,
       $mdl_filename, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nfasta_created = 0; # number of fasta files created by esl-ssplit
@@ -3657,15 +3697,16 @@ sub dng_CmsearchWrapper {
     $seq_file_A[0] = $seq_file;
   }
     
-  dng_CmalignOrCmsearchWrapperHelper($execs_HR->{"cmsearch"}, $out_root, $progress_w, $mdl_filename,
+  dng_CmalignOrCmsearchWrapperHelper($execs_HR->{"cmsearch"}, $out_root . ".r" . $round, $progress_w, $mdl_filename,
                                      \@seq_file_A, \%out_file_HA, undef, undef, $opt_HHR, $ofile_info_HHR); 
   
   # concatenate all the tblout and possibly .err files into one 
   foreach $out_key (@concat_keys_A) { 
-    my $concat_file = $out_root . ".cmsearch." . $out_key;
+    my $concat_file = $out_root . ".r" . $round . ".cmsearch." . $out_key;
     dng_ConcatenateListOfFiles($out_file_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
     # dng_ConcatenateListOfFiles() removes individual files unless --keep enabled
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "concat." . $out_key, $concat_file, 0, "concatenated $out_key file");
+    my $out_root_key = dng_RemoveDirPath($out_root);
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "r" . $round . ".concat." . $out_key, $concat_file, 0, "round $round search $out_key file");
   }
 
   # remove sequence files if we created any
@@ -6593,6 +6634,41 @@ sub dng_SplitNumSeqFiles {
   if($ret_nseqfiles == 0) { $ret_nseqfiles = 1; }
 
   return $ret_nseqfiles;
+}
+
+
+
+#################################################################
+# Subroutine: dng_ArrayOfHashesCountKeyValue()
+# Incept:     EPN, Tue Mar 19 11:37:32 2019
+#
+# Synopsis: Return the number of elements in @{AHR} that 
+#           have a key $key in %{$AHR->[]} with value $value.
+#
+# Arguments:
+#  $AHR:      ref to array of hashes
+#  $key:      hash key
+#  $value:    hash value
+#
+# Returns:    Number of array elements for which $AHR->[]{$key} eq $value
+#
+#################################################################
+sub dng_ArrayOfHashesCountKeyValue {
+  my $sub_name = "dng_ArrayOfHashesCountKeyValue";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($AHR, $key, $value) = @_;
+
+  my $ret_n = 0;
+  for(my $i = 0; $i < scalar(@{$AHR}); $i++) { 
+    if((defined $AHR->[$i]{$key}) && 
+       ($AHR->[$i]{$key} eq $value)) { 
+      $ret_n++;
+    }
+  }
+
+  return $ret_n;
 }
 
 

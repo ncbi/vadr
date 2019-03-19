@@ -145,6 +145,13 @@ opt_Add("--xalntol",     "integer",  5,                      $g,     undef, unde
 opt_Add("--xindeltol",   "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options related to expected classification";
+#        option               type   default                group  requires incompat    preamble-output                                                                help-output    
+opt_Add("--ecall",         "string",  undef,                   8,     undef, undef,     "set expected classification of all seqs to group <s>",            "set expected classification of all seqs to group <s>",     \%opt_HH, \@opt_order_A);
+#opt_Add("--eceach",        "string",  undef,                   8,     undef,--ecall",  "read expected classification for each sequence from file <s>",    "read expected classification for each sequence from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--ecthresh",        "real",  "0.3",                   8,     undef, undef,     "expected classification must be within <x> bits/nt of top match", "expected classification must be within <x> bits/nt of top match", \%opt_HH, \@opt_order_A);
+opt_Add("--ectoponly",    "boolean",  0,                       8,     undef, undef,     "top match must be expected classification",                       "top match must be expected classification", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
 opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
@@ -194,6 +201,10 @@ my $options_okay =
                 'xalntol=s'    => \$GetOptions_H{"--xalntol"},
                 'xindeltol=s'  => \$GetOptions_H{"--xindeltol"},
                 'xlonescore=s' => \$GetOptions_H{"--xlonescore"},
+# options related to expected classification
+                'ecall=s'      => \$GetOptions_H{"--ecall"},
+                'ecthresh=s'   => \$GetOptions_H{"--ecthresh"},
+                'ectoponly'    => \$GetOptions_H{"--ectoponly"},
 # options for changing search sensitivity modes
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
                 'tau=s'        => \$GetOptions_H{"--tau"},
@@ -394,10 +405,23 @@ dng_ModelInfoFileParse($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 # validate %mdl_info_AH
 my @mdl_reqd_keys_A = ("name", "cmfile", "length");
 my $nmdl = dng_ArrayOfHashesValidate(\@mdl_info_AH, \@mdl_reqd_keys_A, "ERROR reading model info from $modelinfo_file", $FH_HR);
+my $mdl_idx;
 
+# if --ecall used, make sure at least one model has that group
+my $exp_group = opt_Get("--ecall", \%opt_HH);
+if(opt_IsUsed("--ecall", \%opt_HH)) { 
+  if(dng_ArrayOfHashesCountKeyValue(\@mdl_info_AH, "group", $exp_group) == 0) { 
+    ofile_FAIL("ERROR with --ecall $exp_group, did not read any models with group defined as $exp_group in model info file $modelinfo_file", 1, $FH_HR);
+  }
+}
+  
 my @ftr_reqd_keys_A = ("type", "coords");
+my %mdl_grp_H = ();
 for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  my $mdl_grp  = $mdl_info_AH[$mdl_idx]{"group"};
+  $mdl_grp_H{$mdl_name} = $mdl_grp;
+
   dng_ArrayOfHashesValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $modelinfo_file", $FH_HR);
   dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -408,8 +432,105 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
 my $tot_len_nt = $sqfile->nres_ssi;
 
-dng_CmsearchWrapper(\%execs_H, $out_root, $fa_file, $tot_len_nt, $progress_w, 
+dng_CmsearchWrapper(\%execs_H, 1, $out_root, $fa_file, $tot_len_nt, $progress_w, 
                     $cm_file, \%opt_HH, \%ofile_info_HH);
+
+# sort by score
+my $r1_tblout_key       = "r1.concat.tblout";
+my $r1_tblout_file      = $ofile_info_HH{"fullpath"}{$r1_tblout_key};
+my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
+my $r1_sort_tblout_key  = "sort.r1.concat.tblout";
+
+my $sort_cmd = "grep -v ^\# $r1_tblout_file | sort -k 1,1 -k 3,3rn > $r1_sort_tblout_file"; 
+dng_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "dnaorg", $r1_sort_tblout_key, $r1_sort_tblout_file, 0, "sorted round 1 search tblout file");
+
+# parse the sorted tblout file
+my %seq_results_HAH = (); # key 1: sequence name, 
+                         # key 2: 
+                         # "mdl1": top scoring model
+                         # "scr1": score to mdl1
+                         # "mdl2": second best scoring model
+# key 1 sequence name
+# array [0,1,2] 0: model with top hit, 1: model with best hit not to model [0], 2: model with 
+# key 3: model, sumsc, sumlen, nhit, strand, evalue?
+open(IN, $r1_sort_tblout_file) || ofile_FileOpenFailure($r1_sort_tblout_file, "dnaorg", undef, 1, "reading", $FH_HR);
+while(my $line = <IN>) { 
+  ##sequence                    modelname  score  start    end strand bounds ovp      seqlen
+  ##--------------------------- --------- ------ ------ ------ ------ ------ --- -----------
+  #gi|307574518|dbj|AB525810.1| NC_001959   85.5      1    338      +     []  ?          338
+  chomp $line;
+  my @el_A = split(/\s+/, $line);
+  if(scalar(@el_A) != 9) { 
+    ofile_FAIL("ERROR parsing $r1_sort_tblout_key, unexpected number of space-delimited tokens on line $line", 1, $FH_HR); 
+  }
+  my ($seq, $model, $score, $start, $end, $strand, $bounds, $overlap, $seqlen) = (@el_A);
+  if(! exists $seq_results_HAH{$seq}) { 
+    @{$seq_results_HAH{$seq}} = ();
+  }
+  my $n = scalar(@{$seq_results_HAH{$seq}}); 
+  my $idx = -1;
+  my $HR = undef;
+  print("TBLOUT line: $line\n");
+  
+  if($n > 0) { 
+    for(my $i = 0; $i < $n; $i++) { 
+      if(($seq_results_HAH{$seq}[$i]{"model"}  eq $model) && 
+         ($seq_results_HAH{$seq}[$i]{"strand"} eq $strand)) { 
+        $idx = $i;
+        $i = $n; # breaks for loop
+      }
+    }
+  }
+  if($idx != -1) { 
+    $HR = $seq_results_HAH{$seq}[$idx];
+  }
+  else { 
+    # $idx == -1
+    # none of stored results for this sequence are to $model
+    # should we create a new result? 
+    if($n == 0) { 
+      # top scoring hit: store it in element 0
+      $HR = \%{$seq_results_HAH{$seq}[0]};
+      %{$HR} = ();
+      print("\tstoring as top result\n");
+    }
+    elsif($n == 1) { 
+      # top scoring hit not to model 0: store it in element 1
+      $HR = \%{$seq_results_HAH{$seq}[1]};
+      %{$HR} = ();
+      print("\tstoring as second result\n");
+    }
+    else { 
+      # not the top two models, only way we store it is if
+      # all of the following are true
+      # - $exp_group is defined
+      # - $model belongs to group $exp_group
+      # - neither model 0 nor model 1 belong to $exp_group
+      if((defined $exp_group) && 
+         ($mdl_grp_H{$model} eq $exp_group) && 
+         ($mdl_grp_H{$seq_results_HAH{$seq}[0]{"model"}} ne $exp_group) && 
+         ($mdl_grp_H{$seq_results_HAH{$seq}[1]{"model"}} ne $exp_group)) { 
+        $HR = \%{$seq_results_HAH{$seq}[2]};
+        %{$HR} = ();
+        print("\tstoring as group result\n");
+      }
+    }
+  }
+  # now if $HR is defined, we know we should store the hit
+  if(defined $HR) { # store the hit
+    if(! defined $HR->{"sumsc"})  { $HR->{"sumsc"}  = 0.; }
+    if(! defined $HR->{"sumlen"}) { $HR->{"sumlen"} = 0;  }
+    if(! defined $HR->{"nhit"})   { $HR->{"nhit"} = 0;    }
+    $HR->{"model"}   = $model;
+    $HR->{"sumsc"}  += $score;
+    $HR->{"sumlen"} += abs($end - $start) + 1;
+    $HR->{"strand"}  = $strand;
+    $HR->{"nhit"}++;
+  }
+}
+
+dng_DumpHashOfArraysOfHashes("seq_results", \%seq_results_HAH, *STDOUT);
 
 exit 0;
 
