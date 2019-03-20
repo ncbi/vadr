@@ -186,7 +186,7 @@
 # Simple utility subroutines:
 #   ofile_FAIL()
 #   fileOpenFailure()
-#   dng_RunCommand()
+#   utl_RunCommand()
 #   removeDirPath()
 #   removeScriptNameFromString()
 #   dng_RemoveFileUsingSystemRm()
@@ -2282,45 +2282,6 @@ sub dng_ValidateCapitalizedDnaStartCodon {
 #   sumHashValues()
 
 #
-#################################################################
-# Subroutine:  dng_FindNonNumericValueInArray()
-# Incept:      EPN, Tue Feb 16 10:40:57 2016
-#
-# Purpose:     Returns (first) index in @{$AR} that has the 
-#              nonnumeric value $value. Returns -1 
-#              if it does not exist.
-#
-# Arguments: 
-#   $AR:       REF to array 
-#   $value:    the value we're checking exists in @{$AR}
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns:     index ($i) '1' if $value exists in @{$AR}, '-1' if not
-#
-# Dies:        if $value is numeric, or @{$AR} is not defined.
-################################################################# 
-sub dng_FindNonNumericValueInArray { 
-  my $nargs_expected = 3;
-  my $sub_name = "dng_FindNonNumericValueInArray()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($AR, $value, $FH_HR) = @_;
-
-  if(verify_real($value)) { 
-    ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", "dnaorg", 1, $FH_HR);
-  }
-
-  if(! defined $AR) { 
-    ofile_FAIL("ERROR in $sub_name, array reference is not defined", "dnaorg", 1, $FH_HR);
-  }
-
-  for(my $i = 0; $i < scalar(@{$AR}); $i++) {
-    if($AR->[$i] eq $value) { 
-      return $i; 
-    }
-  }
-
-  return -1; # did not find it
-}
 
 #################################################################
 # Subroutine:  dng_NumNonNumericValueInArray()
@@ -2567,10 +2528,10 @@ sub dng_SumHashValues {
 #################################################################
 #
 # Simple utility subroutines:
-#   dng_RunCommand()
+#   utl_RunCommand()
 #   removeDirPath()
 #   removeScriptNameFromString()
-#   dng_RemoveFileUsingSystemRm()
+#   utl_FileRemoveUsingSystemRm()
 #   getMonocharacterString()
 #   countLinesInFile()
 #   validateFileExistsAndIsNonEmpty()
@@ -2578,62 +2539,6 @@ sub dng_SumHashValues {
 #   md5ChecksumOfFile()
 #   nseBreakdown()
 #
-
-
-#################################################################
-# Subroutine: dng_RunCommand()
-# Incept:      EPN, Thu Feb 11 13:32:34 2016
-#
-# Purpose:     Runs a command using system() and exits in error 
-#              if the command fails. If $be_verbose, outputs
-#              the command to stdout. If $FH_HR->{"cmd"} is
-#              defined, outputs command to that file handle.
-#
-# Arguments:
-#   $cmd:         command to run, with a "system" command;
-#   $be_verbose:  '1' to output command to stdout before we run it, '0' not to
-#   $do_failok:   '1' to NOT exit if command fails, '0' to exit if command fails
-#   $FH_HR:       REF to hash of file handles, including "cmd"
-#
-# Returns:    amount of time the command took, in seconds
-#
-# Dies:       if $cmd fails and $do_failok is '0'
-#################################################################
-sub dng_RunCommand {
-  my $sub_name = "dng_RunCommand()";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($cmd, $be_verbose, $do_failok, $FH_HR) = @_;
-  
-  my $cmd_FH = undef;
-  if(defined $FH_HR && defined $FH_HR->{"cmd"}) { 
-    $cmd_FH = $FH_HR->{"cmd"};
-  }
-
-  if($be_verbose) { 
-    print ("Running cmd: $cmd\n"); 
-  }
-
-  if(defined $cmd_FH) { 
-    print $cmd_FH ("$cmd\n");
-  }
-
-  my ($seconds, $microseconds) = gettimeofday();
-  my $start_time = ($seconds + ($microseconds / 1000000.));
-
-  system($cmd);
-
-  ($seconds, $microseconds) = gettimeofday();
-  my $stop_time = ($seconds + ($microseconds / 1000000.));
-
-  if(($? != 0) && (! $do_failok)) { 
-    ofile_FAIL("ERROR in $sub_name, the following command failed:\n$cmd\n", "dnaorg", $?, $FH_HR); 
-  }
-
-  return ($stop_time - $start_time);
-}
-
 #################################################################
 # Subroutine: dng_SubmitJob()
 # Incept:      EPN, Wed Feb  6 12:35:04 2019
@@ -2663,39 +2568,15 @@ sub dng_SubmitJob {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   if(($err_file ne "/dev/null") && (-e $err_file)) { 
-    dng_RemoveFileUsingSystemRm($err_file, $sub_name, $opt_HHR, $ofile_info_HHR); 
+    utl_FileRemoveUsingSystemRm($err_file, $sub_name, $opt_HHR, $ofile_info_HHR); 
   }
   my $submit_cmd = sprintf("qsub -N $job_name -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $err_file -m n -l h_rt=%d,h_vmem=%dG,mem_free=%dG,reserve_mem=%dG,m_mem_free=%dG " . "\"" . $cmd . "\" > /dev/null\n", $nsecs, $mem_gb, $mem_gb, $mem_gb, $mem_gb);
 
-  dng_RunCommand($submit_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  utl_RunCommand($submit_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
 }
 
-#################################################################
-# Subroutine:  dng_RemoveDirPath()
-# Incept:      EPN, Mon Nov  9 14:30:59 2009 [ssu-align]
-#
-# Purpose:     Given a full path of a file remove the directory path.
-#              For example: "foodir/foodir2/foo.stk" becomes "foo.stk".
-#
-# Arguments: 
-#   $fullpath: name of original file
-# 
-# Returns:     The string $fullpath with dir path removed.
-#
-################################################################# 
-sub dng_RemoveDirPath {
-  my $sub_name = "dng_RemoveDirPath()";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my $fullpath = $_[0];
-
-  $fullpath =~ s/^.+\///;
-
-  return $fullpath;
-}
 
 #################################################################
 # Subroutine:  dng_RemoveScriptNameFromString()
@@ -2728,41 +2609,6 @@ sub dng_RemoveScriptNameFromString {
 
   return $string;
 }
-
-#################################################################
-# Subroutine: dng_RemoveFileUsingSystemRm
-# Incept:     EPN, Fri Mar  4 15:57:25 2016
-#
-# Purpose:    Remove a file from the filesystem by using
-#             the system rm command.
-# Arguments:
-#   $file:            file to remove
-#   $caller_sub_name: name of caller, can be undef
-#   $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
-#   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: void
-#
-# Dies:    - if the file does not exist
-#
-#################################################################
-sub dng_RemoveFileUsingSystemRm { 
-  my $sub_name = "dng_RemoveFileUsingSystemRm";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($file, $caller_sub_name, $opt_HHR, $FH_HR) = (@_);
-  
-  if(! -e $file) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, %s trying to remove file $file but it does not exist", 
-                (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
-  }
-
-  dng_RunCommand("rm $file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
-
-  return;
-}
-
 
 #################################################################
 # Subroutine:  dng_RemoveListOfFiles()
@@ -2800,7 +2646,7 @@ sub dng_RemoveListOfFiles {
       $file_list .= " " . $files2remove_AR->[$j];
     }
     my $rm_cmd = "rm $file_list"; 
-    dng_RunCommand($rm_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+    utl_RunCommand($rm_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
     $i = $up;
   }
   
@@ -3096,116 +2942,6 @@ sub dng_ValidateFileExistsAndIsNonEmpty {
   return 1;
 }
 
-#################################################################
-# Subroutine:  dng_concatenateListOfFiles()
-# Incept:      EPN, Sun Apr 24 08:08:15 2016
-#
-# Purpose:     Concatenate a list of files into one file.
-#              If the list has more than 500 files, split
-#              up job into concatenating 500 at a time.
-# 
-#              We remove all files that we concatenate unless
-#              --keep option is on in %{$opt_HHR}.
-#
-# Arguments: 
-#   $file_AR:          REF to array of all files to concatenate
-#   $outfile:          name of output file to create by concatenating
-#                      all files in @{$file_AR}.
-#   $caller_sub_name:  name of calling subroutine (can be undef)
-#   $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-#   $FH_HR:            ref to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies:        If one of the cat commands fails.
-#              If $outfile is in @{$file_AR}
-#              If @{$file_AR} contains more than 800*800 files
-#              (640K) if so, we may need to call this function
-#              recursively twice (that is, recursive call will
-#              also call itself recursively) and we don't have 
-#              a sophisticated enough temporary file naming
-#              strategy to handle that robustly.
-################################################################# 
-sub dng_ConcatenateListOfFiles { 
-  my $nargs_expected = 5;
-  my $sub_name = "dng_ConcatenateListOfFiles()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($file_AR, $outfile, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
-
-  if(dng_FindNonNumericValueInArray($file_AR, $outfile, $FH_HR) != -1) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name%s, output file name $outfile exists in list of files to concatenate", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
-  }
-
-  # first, convert @{$file_AR} array into a 2D array of file names, each of which has 
-  # a max of 800 elements, we'll concatenate each of these lists separately
-  my $max_nfiles = 800;
-  my $nfiles = scalar(@{$file_AR});
-
-  if($nfiles > ($max_nfiles * $max_nfiles)) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name%s, trying to concatenate %d files, our limit is %d", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : "", $nfiles, $max_nfiles * $max_nfiles), 
-                1, $FH_HR);
-  }
-    
-  my ($idx1, $idx2); # indices in @{$file_AR}, and of secondary files
-  my @file_AA = ();
-  $idx2 = -1; # get's incremented to 0 in first loop iteration
-  for($idx1 = 0; $idx1 < $nfiles; $idx1++) { 
-    if(($idx1 % $max_nfiles) == 0) { 
-      $idx2++; 
-      @{$file_AA[$idx2]} = (); # initialize
-    }
-    push(@{$file_AA[$idx2]}, $file_AR->[$idx1]);
-  }
-  
-  my $nconcat = scalar(@file_AA);
-  my @tmp_outfile_A = (); # fill this with names of temporary files we create
-  my $tmp_outfile; # name of an output file we'll create
-  for($idx2 = 0; $idx2 < $nconcat; $idx2++) { 
-    if($nconcat == 1) { # special case, we don't need to create any temporary files
-      $tmp_outfile = $outfile;
-    }
-    else { 
-      $tmp_outfile = $outfile . ".tmp" . ($idx2+1); 
-      # make sure this file does not exist in @{$file_AA[$idx2]} to avoid klobbering
-      # if it does, continue to append .tmp($idx2+1) until it doesn't
-      while(dng_FindNonNumericValueInArray($file_AA[$idx2], $tmp_outfile, $FH_HR) != -1) { 
-        $tmp_outfile .= ".tmp" . ($idx2+1); 
-      }
-    }
-    # create the concatenate command
-    my $cat_cmd = "cat ";
-    foreach my $tmp_file (@{$file_AA[$idx2]}) {
-      $cat_cmd .= $tmp_file . " ";
-    }
-    $cat_cmd .= "> $tmp_outfile";
-
-    # execute the command
-    dng_RunCommand($cat_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-
-    # add it to the array of temporary files
-    push(@tmp_outfile_A, $tmp_outfile); 
-  }
-
-  if(scalar(@tmp_outfile_A) > 1) { 
-    # we created more than one temporary output file, concatenate them
-    # by calling this function again
-    dng_ConcatenateListOfFiles(\@tmp_outfile_A, $outfile, (defined $caller_sub_name) ? $caller_sub_name . ":" . $sub_name : $sub_name, $opt_HHR, $FH_HR);
-  }
-
-  if(! opt_Get("--keep", $opt_HHR)) { 
-    # remove all of the original files, be careful to not remove @tmp_outfile_A
-    # because the recursive call will handle that
-    foreach my $file_to_remove (@{$file_AR}) { 
-      dng_RemoveFileUsingSystemRm($file_to_remove, 
-                              (defined $caller_sub_name) ? $caller_sub_name . ":" . $sub_name : $sub_name, 
-                              $opt_HHR, $FH_HR);
-    }
-  }
-
-  return;
-}
 
 #################################################################
 # Subroutine:  dng_md5ChecksumOfFile()
@@ -3238,7 +2974,7 @@ sub dng_Md5ChecksumOfFile {
   }
 
   my $out_file = removeDirPath($file . ".md5sum");
-  dng_RunCommand("md5sum $file > $out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  utl_RunCommand("md5sum $file > $out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   open(MD5, $out_file) || fileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
   #194625f7c3e2a5129f9880c7e29f63de  wnv.lin2.matpept.in
@@ -3253,7 +2989,7 @@ sub dng_Md5ChecksumOfFile {
   }
   close(MD5);
 
-  dng_RemoveFileUsingSystemRm($out_file, $caller_sub_name, $opt_HHR, $FH_HR);
+  utl_FileRemoveUsingSystemRm($out_file, $caller_sub_name, $opt_HHR, $FH_HR);
 
   return $md5sum;
 }
@@ -3448,21 +3184,18 @@ sub dng_GetIndexHashForArray {
 # Arguments: 
 #  $do_cmalign:      '1' if we're running cmalign, which requires special care because we
 #                    handle two cases: finish successfully or die with a specific error
-#  $outfile_AR:      ref to array of output files that will be created by jobs we are waiting for
-#  $errfile_AR:      ref to array of err files that will be created by jobs we are waiting for if 
-#                    any stderr output is created
+#  $out_file_AHR:    ref to array of hashes of output files that will be created by jobs we are waiting for
 #  $success_AR:      ref to array of success values, FILLED HERE, can be undef if ! $do_cmalign
 #                    these will always all be '1' unless $do_cmalign
 #                    if($do_cmalign) some may be '0'
-#  $mxsize_AR:       ref to array of required matrix sizessuccess values, CAN BE UNDEF
+#  $mxsize_AR:       ref to array of required matrix sizes, CAN BE UNDEF
 #                    $mxsize_AR->[$j] set to value readh from cmalign output, if $success_AR->[$j] == 0
 #                    else set to '0'
 #  $finished_str:    string that indicates a job is finished e.g. "[ok]"
-#  $nmin:            number of minutes to wait
-#  $do_errcheck:     '1' to consider output to an error file a 'failure' of a job, '0' not to.
+#  $opt_HHR:         REF to options hash
 #  $FH_HR:           REF to hash of file handles
 #
-# Returns:     Number of jobs (<= scalar(@{$outfile_AR})) that have
+# Returns:     Number of jobs (<= scalar(@outfile_A)) that have
 #              finished.
 # 
 # Dies: never.
@@ -3473,13 +3206,32 @@ sub dng_WaitForFarmJobsToFinish {
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($do_cmalign, $outfile_AR, $errfile_AR, $success_AR, $mxsize_AR, $finished_str, $nmin, $do_errcheck, $FH_HR) = @_;
+  my ($do_cmalign, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
 
   my $log_FH = $FH_HR->{"log"};
+  my $nmin = opt_Get("--wait", $opt_HHR);
+  my $do_errcheck = opt_Get("--errcheck", $opt_HHR);
 
-  my $njobs = scalar(@{$outfile_AR});
-  if($njobs != scalar(@{$errfile_AR})) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, number of elements in outfile array ($njobs) differ from number of jobs in errfile array (%d)", scalar(@{$errfile_AR})), "dnaorg", 1, $FH_HR);
+  # contract check
+  if(($do_cmalign) && (! exists $out_file_AHR->[0]{"stdout"})) { 
+    ofile_FAIL("ERROR in $sub_name, cmalign mode, no stdout files in out_file_AHR", "dnaorg", 1, $FH_HR);
+  }
+  if((! $do_cmalign) && (! exists $out_file_AHR->[0]{"tblout"})) { 
+    ofile_FAIL("ERROR in $sub_name, cmsearch mode, no stdout files in out_file_AHR", "dnaorg", 1, $FH_HR);
+  }
+  if(! exists $out_file_AHR->[0]{"err"}) { 
+    ofile_FAIL("ERROR in $sub_name, no err files in out_file_AHR", "dnaorg", 1, $FH_HR);
+  }
+
+  my $outkey = ($do_cmalign) ? "stdout" : "tblout";
+  my @outfile_A = ();
+  my @errfile_A = ();
+  utl_ArrayOfHashesToArray($out_file_AHR, \@outfile_A, $outkey);
+  utl_ArrayOfHashesToArray($out_file_AHR, \@errfile_A, "err");
+
+  my $njobs = scalar(@outfile_A);
+  if($njobs != scalar(@errfile_A)) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, number of elements in outfile array ($njobs) differ from number of jobs in errfile array (%d)", scalar(@errfile_A)), "dnaorg", 1, $FH_HR);
   }
   my @is_finished_A  = ();  # $is_finished_A[$i] is 1 if job $i is finished (either successfully or having failed), else 0
   my @is_failed_A    = ();  # $is_failed_A[$i] is 1 if job $i has finished and failed (all failed jobs are considered 
@@ -3513,11 +3265,11 @@ sub dng_WaitForFarmJobsToFinish {
 
     for(my $i = 0; $i < $njobs; $i++) { 
       if(! $is_finished_A[$i]) { 
-        if(-s $outfile_AR->[$i]) { 
+        if(-s $outfile_A[$i]) { 
           if($do_cmalign) { 
-            my $success = cmalignCheckStdOutput($outfile_AR->[$i], 
-                                                (defined $mxsize_AR) ? \$mxsize_AR->[$i] : undef,
-                                                $FH_HR);
+            my $success = dng_cmalignCheckStdOutput($outfile_A[$i], 
+                                                    (defined $mxsize_AR) ? \$mxsize_AR->[$i] : undef,
+                                                    $FH_HR);
             if($success == 0 || $success == 1) { 
               if(defined $success_AR) { $success_AR->[$i] = $success; }
               $is_finished_A[$i] = 1;
@@ -3525,7 +3277,7 @@ sub dng_WaitForFarmJobsToFinish {
             }
           }
           else { 
-            my $final_line = `tail -n 1 $outfile_AR->[$i]`;
+            my $final_line = `tail -n 1 $outfile_A[$i]`;
             chomp $final_line;
             if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
             if($final_line =~ m/\Q$finished_str\E/) { 
@@ -3535,7 +3287,7 @@ sub dng_WaitForFarmJobsToFinish {
             }
           }
         }
-        if(($do_errcheck) && (-s $errfile_AR->[$i])) { # errfile exists and is non-empty, this is a failure, even if we saw $finished_str above
+        if(($do_errcheck) && (-s $errfile_A[$i])) { # errfile exists and is non-empty, this is a failure, even if we saw $finished_str above
           if(! $is_finished_A[$i]) { 
             $nfinished++;
           }
@@ -3561,7 +3313,7 @@ sub dng_WaitForFarmJobsToFinish {
     $errmsg .= "Specifically the jobs that were supposed to create the following output and err files:\n";
     for(my $i = 0; $i < $njobs; $i++) { 
       if($is_failed_A[$i]) { 
-        $errmsg .= "\t$outfile_AR->[$i]\t$errfile_AR->[$i]\n";
+        $errmsg .= "\t$outfile_A[$i]\t$errfile_A[$i]\n";
       }
     }
     ofile_FAIL($errmsg, "dnaorg", 1, $FH_HR);
@@ -3572,7 +3324,7 @@ sub dng_WaitForFarmJobsToFinish {
 }
 
 #################################################################
-# Subroutine:  dng_splitFastaFile()
+# Subroutine:  dng_SplitFastaFile()
 # Incept:      EPN, Tue Mar  1 09:30:10 2016
 #
 # Purpose: Split up a fasta file into <n> smaller files by calling
@@ -3609,14 +3361,14 @@ sub dng_SplitFastaFile {
   else { 
     $cmd = "$esl_ssplit -v -r -n $fasta_file $nfiles > $outfile";
   }
-  dng_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   # parse output to determine exactly how many files were created:
   # $esl_ssplit will have output exactly 1 line per fasta file it created
   my $nfiles_created = dng_CountLinesInFile($outfile, $FH_HR);
 
   if(! opt_Get("--keep", $opt_HHR)) { 
-    dng_RunCommand("rm $outfile", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+    utl_RunCommand("rm $outfile", opt_Get("-v", $opt_HHR), 0, $FH_HR);
   }
 
   return $nfiles_created;
@@ -3718,187 +3470,6 @@ sub dng_CmsearchWrapper {
   return;
 }
 
-#################################################################
-# Subroutine:  dng_CmalignWrapper()
-# Incept:      EPN, Mon Mar 18 14:20:56 2019
-#
-# Purpose:     Run one or more cmalign jobs on the farm
-#              or locally, after possibly splitting up the input
-#              sequence file with dng_SplitFastaFile and 
-#              then calling dng_CmalignOrCmsearchWrapperHelper(). 
-#
-#              We may have to do two rounds of sequence file splitting
-#              and job running/submission because there is an error
-#              case in cmalign that we want to be able to detect. That
-#              error case is when the sequence requires too much
-#              memory to align. In order to catch those error cases we
-#              need to run each offending sequence individually, so
-#              our strategy for cmalign is:
-#
-#              Split full fasta file up using default method and run
-#              >= 1 cmalign jobs. If any of those runs R fail, then 
-#              split up run R's sequence file into >= 1 files with
-#              exactly 1 sequence in them. One or more of those should
-#              fail and that reveals which specific sequences are
-#              causing the memory overflow.
-# 
-# Arguments: 
-#  $execs_HR:              ref to executables with "esl-ssplit" and "cmalign"
-#                          defined as keys
-#  $out_root:              string for naming output files
-#  $seq_file:              name of sequence file with all sequences to run against
-#  $tot_len_nt:            total length of all nucleotides in $seq_file
-#  $progress_w:            width for outputProgressPrior output
-#  $mdl_file:              name of model file to use
-#  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
-#  $stk_file_AR:           ref to array of stockholm files created here, FILLED HERE
-#  $overflow_seq_AR:       ref to array of sequences that failed due to matrix overflows, FILLED HERE
-#  $overflow_mxsize_AR:    ref to array of required matrix sizes for each sequence that failed due to matrix overflows, FILLED HERE
-#  $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:        REF to 2D hash of output file information
-#
-# Returns:     void, updates $$nfa_created_R with number of
-#              fasta files created.
-# 
-# Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
-#       command fails if we're running locally
-################################################################# 
-sub dng_CmalignWrapper { 
-  my $sub_name = "dng_CmalignWrapper";
-  my $nargs_expected = 12;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($execs_HR, $out_root, $seq_file, $tot_len_nt, $progress_w,
-      $mdl_file, $mdl_name, $stk_file_AR, $overflow_seq_AR, 
-      $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $nfasta_created = 0; # number of fasta files created by esl-ssplit
-  my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
-  my $start_secs; # timing start
-  my $do_parallel = opt_Get("-p", $opt_HHR);
-  @{$overflow_seq_AR} = (); # we will fill this with names of sequences that fail cmalign because
-                            # the matrix required to align them is too big
-
-  # set up output file names
-  my @concat_keys_A = (); # %r{1,2}_out_file_HAR keys we are going to concatenate files for
-  my %concat_HA = ();     # hash of arrays of all files to concatenate together
-  my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err"
-  @concat_keys_A = ("stdout", "ifile", "tfile"); 
-  if($do_parallel) { push(@concat_keys_A, "err"); }
-  foreach my $out_key (@concat_keys_A) { 
-    @{$concat_HA{$out_key}} = ();
-  }    
-
-  my $nr1 = 0; # number of runs in round 1 (one per sequence file we create)
-  my %r1_out_file_HA = (); # hash of arrays ([0..$nr1-1]) of output files for cmalign round 1 runs
-  my @r1_success_A   = (); # [0..$nr1-1]: '1' if this run finishes successfully, '0' if not
-  my @r1_mxsize_A    = (); # [0..$nr1-1]: if $r1_success_A[$r1_i] is '0', required size for dp mx, else '0'
-  my @r1_seq_file_A  = (); # [0..$nr1-1]: name of sequence file for this run
-  my $r1_i;                 # counter over round 1 runs
-
-  # we need to split up the sequence file, and submit a separate set of cmalign jobs for each
-  my $targ_nseqfiles = dng_SplitNumSeqFiles($tot_len_nt, $opt_HHR);
-  if($targ_nseqfiles > 1) { # we are going to split up the fasta file 
-    $nr1 = dng_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
-    # dng_SplitFastaFile will return the actual number of fasta files created, 
-    # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
-  }
-  else { # not going to split up the sequence file
-    my $cp_command = "cp " . $seq_file . " " . $seq_file . ".1";
-    dng_RunCommand($cp_command, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-    $nr1 = 1;
-  }
-  for($r1_i = 0; $r1_i < $nr1; $r1_i++) { # update sequence file names
-    $r1_seq_file_A[$r1_i] = $seq_file . "." . ($r1_i+1);
-  }
-  
-  dng_CmalignOrCmsearchWrapperHelper($execs_HR, $out_root, $progress_w, 
-                                     \@r1_seq_file_A, \%r1_out_file_HA, \@r1_success_A, \@r1_mxsize_A,
-                                     $mdl_file, $mdl_name, $opt_HHR, $ofile_info_HHR); 
-  
-  my $nr2            = 0;  # number of round 2 runs (sequence files)
-  my %r2_out_file_HA = (); # hash of arrays ([0..$nr2-1]) of output files for cmalign/nhmmscan round 2 runs
-  my @r2_success_A   = (); # [0..$nr2-1]: '1' if this run finishes successfully, '0' if not
-  my @r2_mxsize_A    = (); # [0..$nr2-1]: if $r2_success_A[$r2_i] is '0', required size for dp mx, else '0'
-  my @r2_seq_file_A  = (); # [0..$nr2-1]: name of sequence file for this run
-  my $r2_i;                # counter over round 2 runs
-
-  # go through each run:
-  # if it finished successfully record its output files to concatenate later
-  # if it did not finish successfully rerun all of its sequences (if $do_cmalign)
-  for($r1_i = 0; $r1_i < $nr1; $r1_i++) { 
-    if($r1_success_A[$r1_i]) { 
-      # run finished successfully
-      foreach $out_key (@concat_keys_A) { 
-        push(@{$concat_HA{$out_key}}, $r1_out_file_HA{$out_key}[$r1_i]);
-      }
-      push(@{$stk_file_AR}, $r1_out_file_HA{"stk"}[$r1_i]);
-    }
-    else { 
-      # run did not finish successfully
-      # split this sequence file up into multiple files with only 1 sequence each, 
-      my $cur_nr2 = splitFastaFile($execs_HR->{"esl-ssplit"}, $r1_seq_file_A[$r1_i], -1, $opt_HHR, $ofile_info_HHR);
-      if($cur_nr2 == 1) { 
-        # special case, r1 sequence file had only 1 sequence, so we know the culprit
-        # and don't need to rerun cmalign
-        cmalignStoreOverflow($r1_seq_file_A[$r1_i], $r1_mxsize_A[$r1_i], $overflow_seq_AR, $overflow_mxsize_AR, $ofile_info_HHR->{"FH"}); 
-        if(! opt_Get("--keep", $opt_HHR)) { 
-          dng_RunCommand("rm " . $r1_seq_file_A[$r1_i] . ".1", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-        }
-      }
-      else { 
-        # r1 sequence file had > 1 sequence, we need to run each sequence independently through cmalign
-        for($r2_i = 0; $r2_i < $cur_nr2; $r2_i++) { 
-          push(@r2_seq_file_A, $r1_seq_file_A[$r1_i] . "." . ($r2_i+1));
-        }
-        $nr2 += $cur_nr2;
-      }
-    }
-  }
-
-  # do all round 2 runs
-  if($nr2 > 0) { 
-    dng_CmalignOrCmsearchWrapperHelper($execs_HR,
-                                       $out_root . ".r2",
-                                       -1 * $progress_w,          # passing in $progress_w < 0 is our flag that we are 'rerunning'
-                                       \@r2_seq_file_A, \%r2_out_file_HA, \@r2_success_A, \@r2_mxsize_A, 
-                                       $mdl_file, $mdl_name, $opt_HHR, $ofile_info_HHR);
-    # go through all round 2 runs: 
-    # if it finished successfully record its output files to concatenate later
-    # if it did not finish successfully, record the name of the sequence and mxsize required
-    for($r2_i = 0; $r2_i < $nr2; $r2_i++) { 
-      if($r2_success_A[$r2_i]) { 
-        # run finished successfully
-        foreach my $out_key (@concat_keys_A) { 
-          push(@{$concat_HA{$out_key}}, $r2_out_file_HA{$out_key}[$r2_i]);
-        }
-        push(@{$stk_file_AR}, $r2_out_file_HA{"stk"}[$r2_i]);
-      }
-      else { 
-        # run did not finish successfully
-        cmalignStoreOverflow($r2_seq_file_A[$r2_i], $r2_mxsize_A[$r2_i], $overflow_seq_AR, $overflow_mxsize_AR, $ofile_info_HHR->{"FH"}); 
-      }
-    }
-    # remove sequence files if --keep not used
-    if(! opt_Get("--keep", $opt_HHR)) { 
-      dng_RemoveListOfFiles(\@r2_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-    }
-  }
-    
-  # concatenate all the stdout/ifile files into one 
-  foreach $out_key (@concat_keys_A) { 
-    my $concat_file = $out_root . ".cmalign." . $out_key;
-    dng_ConcatenateListOfFiles($concat_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-    # dng_ConcatenateListOfFiles() removes individual files unless --keep enabled
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "concat." . $out_key, $concat_file, 0, "concatenated $out_key file");
-  }
-  # remove sequence files 
-  if(! opt_Get("--keep", $opt_HHR)) { 
-    dng_RemoveListOfFiles(\@r1_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-  }
-
-  return;
-}
 
 #################################################################
 # Subroutine:  dng_CmalignOrCmsearchWrapperHelper()
@@ -3914,7 +3485,10 @@ sub dng_CmalignWrapper {
 # Arguments: 
 #  $execs_HR:              ref to hash with paths to cmalign, cmsearch and cmfetch
 #  $out_root:              string for naming output files
-#  $progress_w:            width for outputProgressPrior output, -1 * $progress_w if we are calling this to rerun cmalign again
+#  $progress_w:            width for outputProgressPrior output
+#                          also serves as flag for what 'round' (1 or 2) we are in
+#                          $progress_w will be > 0 for round 1 and < 0 for round 2
+#                          in round 2 $progress_w is actually -1 * $progress_w
 #  $mdl_file:              name of model file to use
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file_AR:           ref to array of sequence file names for each cmalign/nhmmscan call, PRE-FILLED
@@ -3947,6 +3521,8 @@ sub dng_CmalignOrCmsearchWrapperHelper {
   my $log_FH         = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $nseq_files     = scalar(@{$seq_file_AR});
 
+  # determine description of the runs we are about to do, 
+  # depends on $do_parallel, $round, and ($progress_w < 0), and 
   my $desc = "";
   if($do_parallel) { 
     if($progress_w < 0) { # flag for 'rerunning'
@@ -4034,291 +3610,9 @@ sub dng_CmalignOrCmsearchWrapperHelper {
   return;
 }
 
-#################################################################
-# Subroutine:  dng_RunCmalign()
-# Incept:      EPN, Wed Feb  6 12:30:08 2019
-#
-# Purpose:     Run Infernal's cmalign executable using $mdl_file
-#              as the model file on sequence file $seq_file, either
-#              locally or on the farm.
-#              
-#              If job does not finish successfully, we need to 
-#              parse the stderr output (which we redirect to stdout)
-#              and see if it failed because of a specific type of
-#              error, because the required DP matrix exceeded the
-#              size limit. That error looks like this:
-#        
-#              Error: HMM banded truncated alignment mxes need 60.75 Mb > 2.00 Mb limit.
-#              Use --mxsize, --maxtau or --tau.
-#              
-# Arguments: 
-#  $execs_HR:         ref to hash with paths to cmalign and cmfetch
-#  $mdl_file:         path to the CM file
-#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
-#  $seq_file:         path to the sequence file
-#  $stdout_file:      path to the stdout file to create
-#  $ifile_file:       path to the cmalign --ifile file to create
-#  $tfile_file:       path to the cmalign --tfile file to create
-#  $stk_file:         path to the cmalign stockholm alignment output file to create
-#  $err_file:         path to the error output file (only used if -p used)
-#  $ret_mxsize_R:     REF to required matrix size, only filled if return value is '0'
-#  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:   REF to 2D hash of output file information
-# 
-# Returns:     '1' upon success, which occurs if
-#                  job run on farm and submission went ok
-#                  job run locally and finished without error
-#              '0' upon allowed failure, which occurs if
-#                  job run locally and fails because of too big a required matrix
-#
-# Dies: upon unallowed failure, which occurs if
-#                  job run on farm and submission failed
-#                  job run locally and finished with unallowed failure
-# 
-################################################################# 
-sub dng_RunCmalign { 
-  my $sub_name = "dng_RunCmalign()";
-  my $nargs_expected = 12;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $stdout_file, $ifile_file, $tfile_file, $stk_file, $err_file, $ret_mxsize_R, $opt_HHR, $ofile_info_HHR) = @_;
 
-  if(defined $ret_mxsize_R) { 
-    $$ret_mxsize_R = 0; # overwritten below if nec
-  }
 
-  my $FH_HR       = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-  my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
-
-  if($stdout_file eq "/dev/null") { 
-    ofile_FAIL("ERROR in $sub_name, stdout_file is /dev/null", "dnaorg", 1, $FH_HR);
-  }
-
-  dng_ValidateFileExistsAndIsNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
-  dng_ValidateFileExistsAndIsNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
-
-  # determine cmalign options based on command line options
-  my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file --tfile $tfile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
-  # add --sub and --notrunc unless --nosub used
-  if(! opt_Get("--nosub", $opt_HHR)) { 
-    $opts .= " --sub --notrunc"; 
-  }
-  # add -g unless --noglocal used
-  if(! opt_Get("--noglocal", $opt_HHR)) { 
-    $opts .= " -g"; 
-  }
-  if(! opt_Get("--nofixedtau", $opt_HHR)) { 
-    $opts .= " --fixedtau"; 
-  }
-  
-  # remove the tblout file or ifile file if it exists, this is important because we'll use the existence and
-  # final line of this file to determine when the jobs are finished, if it already exists, we'll
-  # think the job is finished before it actual is.
-  if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
-    if(-e $stdout_file) { dng_RemoveFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
-    if(-e $ifile_file)  { dng_RemoveFileUsingSystemRm($ifile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
-    if(-e $tfile_file)  { dng_RemoveFileUsingSystemRm($tfile_file,  $sub_name, $opt_HHR, $ofile_info_HHR); }
-    if(-e $stk_file)    { dng_RemoveFileUsingSystemRm($stk_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
-    if(-e $err_file)    { dng_RemoveFileUsingSystemRm($err_file,    $sub_name, $opt_HHR, $ofile_info_HHR); }
-  }
-
-  my $cmd = undef;
-  if(defined $mdl_name) { 
-    $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmalign"} . " $opts - $seq_file > $stdout_file 2>&1";
-  }
-  else { 
-    $cmd = $execs_HR->{"cmalign"} . " $opts $mdl_file $seq_file > $stdout_file 2>&1";
-  }
-
-  my $success = 1;
-  if($do_parallel) { 
-    my $job_name = "J" . removeDirPath($seq_file);
-    my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
-    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 2; # multiply --mxsize Gb by 2 to be safe
-    if($mem_gb < 8.) { $mem_gb = 8.; } # set minimum of 8 Gb
-    if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
-      dng_SubmitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
-    }
-  }
-  else { 
-    if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
-      dng_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
-    }
-    # command has completed, check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
-    $success = dng_CmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
-    if($success == -1) { # indicates job did not finish properly, this shouldn't happen because dng_RunCommand() didn't die
-      ofile_FAIL("ERROR in $sub_name, cmalign failed in a bad way, see $stdout_file for error output", 1, $ofile_info_HHR->{"FH"});
-    }
-  }
-  
-  return $success; 
-}
-
-#################################################################
-# Subroutine:  dng_RunCmsearch()
-# Incept:      EPN, Wed Feb  6 12:38:11 2019
-#
-# Purpose:     Run Infernal's cmsearch executable using $mdl_file
-#              as the model file on sequence file $seq_file, either
-#              locally or on the farm.
-#
-# Arguments: 
-#  $execs_HR:         ref to hash with paths to cmsearch and cmfetch
-#  $mdl_file:         path to the CM file
-#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
-#  $seq_file:         path to the sequence file
-#  $stdout_file:      path to the stdout file to create, can be "/dev/null"
-#  $tblout_file:      path to the cmsearch --tblout file to create
-#  $err_file:         path to the error output file (only used if --local not used)
-#  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:   REF to 2D hash of output file information
-# 
-# Returns:     void
-# 
-################################################################# 
-sub dng_RunCmsearch {
-  my $sub_name = "dng_RunCmsearch()";
-  my $nargs_expected = 9;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $stdout_file, $tblout_file, $err_file, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR       = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-  my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
-
-  dng_ValidateFileExistsAndIsNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
-  dng_ValidateFileExistsAndIsNonEmpty($seq_file,   "sequence file", $sub_name, 1, $FH_HR);
-
-  my $opts = " --trmF3 --noali --hmmonly --cpu 0 --tblout $tblout_file";
-
-  # remove the tblout file or stdout files if they exist
-  if(-e $stdout_file) { dng_RemoveFileUsingSystemRm($stdout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
-  if(-e $tblout_file) { dng_RemoveFileUsingSystemRm($tblout_file, $sub_name, $opt_HHR, $ofile_info_HHR); }
-
-  my $cmd = undef;
-  if(defined $mdl_name) { 
-    $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmsearch"} . " $opts - $seq_file > $stdout_file";
-  }
-  else { 
-    $cmd = $execs_HR->{"cmsearch"} . " $opts $mdl_file $seq_file > $stdout_file";
-  }
-  if($do_parallel) { 
-    my $job_name = "J" . dng_RemoveDirPath($seq_file);
-    my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
-    my $mem_gb = 8.; # hardcoded for cmsearch
-    dng_SubmitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
-  }
-  else { 
-    dng_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-  }
-  return; 
-}
-
-#################################################################
-# Subroutine:  dng_cmalignCheckStdOutput()
-# Incept:      EPN, Wed Feb  6 14:18:59 2019
-#
-# Purpose:     Check cmalign output to see if it indicates that 
-#              a cmalign run finished successfully, in error, or 
-#              has not yet finished.
-#              
-# Arguments: 
-#  $stdout_file:      path to the stdout file we will check
-#  $ret_mxsize_R:     REF to required matrix size, only filled meaningfully if return value is '0'
-#  $FH_HR:            REF to hash of file handles
-# 
-# Returns:     '1' if $stdout_file indicates cmalign job finished successfully
-#              '0' if $stdout_file indicates cmalign job finished in error but in
-#                  a way that is allowed, fills $$ret_mxsize_R
-#             '-1' if $stdout_file indicates cmalign job is not yet finished
-#                  or failed in some way we aren't looking for
-#
-# Dies: If $stdout_file does not exist or is empty
-# 
-################################################################# 
-sub dng_CmalignCheckStdOutput { 
-  my $sub_name = "dng_CmalignCheckStdOutput";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($stdout_file, $ret_mxsize_R, $FH_HR) = @_;
-  if(defined $ret_mxsize_R) { 
-    $$ret_mxsize_R = 0; # overwritten below if nec
-  }
-
-  if(! -e $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", "dnaorg", 1, $FH_HR);
-  }
-  if(! -s $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", "dnaorg", 1, $FH_HR);
-  }
-
-  # if we get here, the file exists and is non-empty
-  my $final_line = `tail -n 1 $stdout_file`;
-  chomp $final_line;
-  if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-  if($final_line =~ m/\Q# CPU time/) { 
-    return 1; 
-  }
-  else { 
-    # job did NOT finish successfully, check for mx overflow error
-    my $error_line = `grep ^Error $stdout_file | tail -n 1`;
-    if($error_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-    if($error_line =~ /Error: HMM banded truncated alignment mxes need (\d+\.\d+)/) { 
-      if(defined $ret_mxsize_R) { 
-        $$ret_mxsize_R = $1;
-      }
-      return 0;
-    }
-    else { 
-      return -1;
-    }
-  }
-    
-  return -1; # NEVER REACHED
-}
-
-#################################################################
-# Subroutine:  dng_cmalignStoreOverflow()
-# Incept:      EPN, Wed Feb 13 16:04:53 2019
-#
-# Purpose:     Store information on a sequence that has caused
-#              a DP matrix memory overflow. 
-#              
-# Arguments: 
-#  $seq_file:           the sequence file with the single sequence that failed in it
-#  $mxsize:             matrix size to add to @{$overflow_mxsize_AR}
-#  $overflow_seq_AR:    ref to array of sequences that failed due to matrix overflows, to add to
-#  $overflow_mxsize_AR: ref to array of required matrix sizes for each sequence that failed due to matrix overflows, to add to
-#  $FH_HR:              ref to file handle hash
-# 
-# Returns:     void
-#
-# Dies: if there's some problem opening the sequence file
-#
-################################################################# 
-sub dng_CmalignStoreOverflow { 
-  my $sub_name = "dng_CmalignStoreOverflow";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($seq_file, $mxsize, $overflow_seq_AR, $overflow_mxsize_AR, $FH_HR) = @_;
-
-  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $seq_file }); # the sequence file object
-
-  my $r2_seqstring = $sqfile->fetch_consecutive_seqs(1, "", -1); 
-  if($r2_seqstring =~ /^\>(\S+)/) { 
-    my $overflow_seq = $1;
-    push(@{$overflow_seq_AR},    $overflow_seq);
-    push(@{$overflow_mxsize_AR}, $mxsize);
-  }
-  else { 
-    ofile_FAIL("ERROR in $sub_name failed to parse sequence name from matrix overflow sequence:\n$r2_seqstring", "dnaorg", 1, $FH_HR);
-  }
-  $sqfile = undef;
-
-  return;
-}
 
 
 #################################################################
@@ -6143,7 +5437,7 @@ sub dng_CdsTranslateToFastaFile {
     $c_opt = "-c " . opt_Get("--ttbl", $opt_HHR);
   }
   my $translate_cmd = "$esl_translate $c_opt -M -l 3 --watson $cds_fa_file > $tmp1_translate_fa_file";
-  dng_RunCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  utl_RunCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   # go through output fasta file and rewrite names, so we can fetch 
   open(IN,       $tmp1_translate_fa_file) || fileOpenFailure($tmp1_translate_fa_file, $sub_name, $!, "reading", $FH_HR);
@@ -6187,9 +5481,9 @@ sub dng_CdsTranslateToFastaFile {
   }
   # remove temporary files unless --keep
   if(! opt_Get("--keep", $opt_HHR)) { 
-    dng_RemoveFileUsingSystemRm($tmp1_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
-    dng_RemoveFileUsingSystemRm($tmp2_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
-    dng_RemoveFileUsingSystemRm($tmp2_translate_fa_file . ".ssi", $sub_name, $opt_HHR, $FH_HR);
+    utl_FileRemoveUsingSystemRm($tmp1_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    utl_FileRemoveUsingSystemRm($tmp2_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    utl_FileRemoveUsingSystemRm($tmp2_translate_fa_file . ".ssi", $sub_name, $opt_HHR, $FH_HR);
   }
 
   return;
@@ -6504,7 +5798,7 @@ sub dng_BlastDbProteinCreate {
 
   my ($makeblastdb, $fa_file, $opt_HHR, $FH_HR) = @_;
 
-  dng_RunCommand($makeblastdb . " -in $fa_file -dbtype prot > /dev/null", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  utl_RunCommand($makeblastdb . " -in $fa_file -dbtype prot > /dev/null", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
 }
@@ -6573,7 +5867,7 @@ sub dng_FastaFileWriteFromStockholmFile {
   my ($esl_reformat, $fa_file, $stk_file, $opt_HHR, $FH_HR) = @_;
 
   my $cmd = $esl_reformat . " --informat stockholm fasta $stk_file > $fa_file";
-  dng_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   # remove a .ssi file if it exists
   my $ssi_file = $fa_file . ".ssi";
@@ -6607,7 +5901,7 @@ sub dng_StockholmFileWriteFromFastaFile {
   my ($esl_reformat, $fa_file, $stk_file, $opt_HHR, $FH_HR) = @_;
 
   my $cmd = $esl_reformat . " --informat afa stockholm $fa_file > $stk_file";
-  dng_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
 }
@@ -6684,6 +5978,69 @@ sub dng_ArrayOfHashesCountKeyValue {
   return $ret_n;
 }
 
+#################################################################
+# Subroutine:  dng_CmalignCheckStdOutput()
+# Incept:      EPN, Wed Feb  6 14:18:59 2019
+#
+# Purpose:     Check cmalign output to see if it indicates that 
+#              a cmalign run finished successfully, in error, or 
+#              has not yet finished.
+#              
+# Arguments: 
+#  $stdout_file:      path to the stdout file we will check
+#  $ret_mxsize_R:     REF to required matrix size, only filled meaningfully if return value is '0'
+#  $FH_HR:            REF to hash of file handles
+# 
+# Returns:     '1' if $stdout_file indicates cmalign job finished successfully
+#              '0' if $stdout_file indicates cmalign job finished in error but in
+#                  a way that is allowed, fills $$ret_mxsize_R
+#             '-1' if $stdout_file indicates cmalign job is not yet finished
+#                  or failed in some way we aren't looking for
+#
+# Dies: If $stdout_file does not exist or is empty
+# 
+################################################################# 
+sub dng_CmalignCheckStdOutput { 
+  my $sub_name = "dng_CmalignCheckStdOutput";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($stdout_file, $ret_mxsize_R, $FH_HR) = @_;
+  if(defined $ret_mxsize_R) { 
+    $$ret_mxsize_R = 0; # overwritten below if nec
+  }
+
+  if(! -e $stdout_file) { 
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", "dnaorg", 1, $FH_HR);
+  }
+  if(! -s $stdout_file) { 
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", "dnaorg", 1, $FH_HR);
+  }
+
+  # if we get here, the file exists and is non-empty
+  my $final_line = `tail -n 1 $stdout_file`;
+  chomp $final_line;
+  if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
+  if($final_line =~ m/\Q# CPU time/) { 
+    return 1; 
+  }
+  else { 
+    # job did NOT finish successfully, check for mx overflow error
+    my $error_line = `grep ^Error $stdout_file | tail -n 1`;
+    if($error_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
+    if($error_line =~ /Error: HMM banded truncated alignment mxes need (\d+\.\d+)/) { 
+      if(defined $ret_mxsize_R) { 
+        $$ret_mxsize_R = $1;
+      }
+      return 0;
+    }
+    else { 
+      return -1;
+    }
+  }
+    
+  return -1; # NEVER REACHED
+}
 
 
 ###########################################################################
