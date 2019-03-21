@@ -313,6 +313,46 @@ sub utl_RemoveDirPath {
   return $fullpath;
 }
 
+
+#################################################################
+# Subroutine:  utl_HHFromAH()
+# Incept:      EPN, Thu Mar 21 06:18:38 2019
+#
+# Purpose:     Create a 2D hash %{$HHR} from an array of hashes
+#              @{$AHR} using $AHR->[]{$key} as the 1D key in
+#              %{$HHR}.
+#              
+# Arguments: 
+#   $HHR:      ref to 2D hash to create
+#   $AHR:      ref to array of hashes to copy from
+#   $key:      key to use as 1st dim value
+#   $FH_HR:    ref to hash of file handles, including "log" and "cmd"
+# 
+# Returns:     void
+# 
+# Dies:        If not all elements of @{$AHR} have @{$AHR->[]{$key}}
+#              defined. If more than one elements of @{$AHR} have same
+#              value for @{$AHR->[]{$key}}.
+#
+################################################################# 
+sub utl_HHFromAH {
+  my $sub_name = "utl_HHFromAH()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($HHR, $AHR, $key, $caller_sub_name, $FH_HR);
+
+  %{$HHR} = ();
+  my $n = scalar(@{$AHR});
+  for(my $i = 0; $i < $n; $i++) { 
+    if(! defined $AHR->[$i]{$key}) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, %s trying to remove file $file but it does not exist", 
+                         (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
+      
+
+  return $fullpath;
+}
+
 ####################################################################
 # the next line is critical, a perl module must return a true value
 return 1;
