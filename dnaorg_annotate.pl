@@ -137,6 +137,13 @@ opt_Add("-i",           "string",  undef,                   $g,    undef, undef,
 opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options related to expected classification";
+#        option               type   default                group  requires incompat    preamble-output                                                     help-output    
+opt_Add("--group",         "string",  undef,                  $g,     undef, undef,     "set expected classification of all seqs to group <s>",             "set expected classification of all seqs to group <s>",            \%opt_HH, \@opt_order_A);
+opt_Add("--subgroup",      "string",  undef,                  $g, "--group", undef,     "set expected classification of all seqs to subgroup <s>",          "set expected classification of all seqs to subgroup <s>",         \%opt_HH, \@opt_order_A);
+opt_Add("--cthresh",         "real",  "0.3",                  $g,     undef, undef,     "expected classification must be within <x> bits/nt of top match",  "expected classification must be within <x> bits/nt of top match", \%opt_HH, \@opt_order_A);
+opt_Add("--ctoponly",     "boolean",  0,                      $g,     undef, undef,     "top match must be expected classification",                        "top match must be expected classification",                       \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "options for tuning classification alerts";
 #     option                type         default            group   requires incompat     preamble-output                                                   help-output    
 opt_Add("--lowcovthresh",   "real",    0.9,                  $g,   undef,   undef,        "fractional coverage threshold for 'low coverage' is <x>",        "fractional coverage threshold for 'low coverage' alert is <x>",       \%opt_HH, \@opt_order_A);
@@ -155,13 +162,6 @@ $opt_group_desc_H{++$g} = "options for tuning protein validation with blastx";
 opt_Add("--xalntol",     "integer",  5,                      $g,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xindeltol",   "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options related to expected classification";
-#        option               type   default                group  requires incompat    preamble-output                                                                help-output    
-opt_Add("--ecall",         "string",  undef,                  $g,     undef, undef,     "set expected classification of all seqs to group <s>",            "set expected classification of all seqs to group <s>",     \%opt_HH, \@opt_order_A);
-#opt_Add("--eceach",        "string",  undef,                  $g,     undef,--ecall",  "read expected classification for each sequence from file <s>",    "read expected classification for each sequence from file <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--ecthresh",        "real",  "0.3",                  $g,     undef, undef,     "expected classification must be within <x> bits/nt of top match", "expected classification must be within <x> bits/nt of top match", \%opt_HH, \@opt_order_A);
-opt_Add("--ectoponly",    "boolean",  0,                      $g,     undef, undef,     "top match must be expected classification",                       "top match must be expected classification", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
@@ -206,6 +206,11 @@ my $options_okay =
                 'i=s'          => \$GetOptions_H{"-i"}, 
                 'n=s'          => \$GetOptions_H{"-n"}, 
                 'keep'         => \$GetOptions_H{"--keep"},
+# options related to expected classification
+                'group=s'     => \$GetOptions_H{"--group"},
+                'subgroup=s'  => \$GetOptions_H{"--subgroup"},
+                'cthresh=s'   => \$GetOptions_H{"--ecthresh"},
+                'ctoponly'    => \$GetOptions_H{"--ectoponly"},
 # options for tuning classification alerts
                 "lowcovthresh=s"   => \$GetOptions_H{"--lowcovthresh"},
                 "lowscthresh=s"    => \$GetOptions_H{"--lowscthresh"},
@@ -219,10 +224,6 @@ my $options_okay =
                 'xalntol=s'    => \$GetOptions_H{"--xalntol"},
                 'xindeltol=s'  => \$GetOptions_H{"--xindeltol"},
                 'xlonescore=s' => \$GetOptions_H{"--xlonescore"},
-# options related to expected classification
-                'ecall=s'      => \$GetOptions_H{"--ecall"},
-                'ecthresh=s'   => \$GetOptions_H{"--ecthresh"},
-                'ectoponly'    => \$GetOptions_H{"--ectoponly"},
 # options for changing search sensitivity modes
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
                 'tau=s'        => \$GetOptions_H{"--tau"},
@@ -450,21 +451,27 @@ my $mdl_idx;
 my %mdl_name_info_HH = ();
 utl_HashOfHashesFromArrayOfHashes(\%mdl_name_info_HH, \@mdl_info_AH, "name", $FH_HR);
 
-# if --ecall used, make sure at least one model has that group
-my $exp_group = opt_Get("--ecall", \%opt_HH);
-if(opt_IsUsed("--ecall", \%opt_HH)) { 
+# if --group or --subgroup used, make sure at least one model has that group/subgroup
+my $exp_group    = opt_Get("--group", \%opt_HH);
+my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
+if(opt_IsUsed("--group", \%opt_HH)) { 
   if(dng_ArrayOfHashesCountKeyValue(\@mdl_info_AH, "group", $exp_group) == 0) { 
-    ofile_FAIL("ERROR with --ecall $exp_group, did not read any models with group defined as $exp_group in model info file $modelinfo_file", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR with --group $exp_group, did not read any models with group defined as $exp_group in model info file $modelinfo_file", "dnaorg", 1, $FH_HR);
+  }
+}
+if(optIsUsed("--subgroup", \%opt_HH)) { 
+  if(! defined $exp_group) {
+    # opt_ValidateSet() will have enforced --subgroup requires --group, but we check again 
+    ofile_FAIL("ERROR with --subgroup, the --group option must also be used", "dnaorg", 1, $FH_HR);
+  }
+  if(dng_ArrayOfHashesCountKeyValue(\@mdl_info_AH, "subgroup", $exp_group) == 0) { 
+    ofile_FAIL("ERROR with --group $exp_group and --subgroup $exp_subgroup,\ndid not read any models with group defined as $exp_group and subgroup defined as $exp_subgroup in model info file $modelinfo_file", "dnaorg", 1, $FH_HR);
   }
 }
   
 my @ftr_reqd_keys_A = ("type", "coords");
-my %mdl_grp_H = ();
 for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  my $mdl_grp  = $mdl_info_AH[$mdl_idx]{"group"};
-  $mdl_grp_H{$mdl_name} = $mdl_grp;
-
   dng_ArrayOfHashesValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $modelinfo_file", $FH_HR);
   dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -502,7 +509,7 @@ my %cls_results_HHH = (); # key 1: sequence name,
                           # key 2: ("r1.1","r1.2","r1.g","r2")
                           # key 3: ("model", "coords", "bstrand", "score", "bias")
 cmsearch_parse_sorted_tblout($r1_sort_tblout_file, 1, # 1: round 1
-                             \%cls_results_HHH, \%mdl_grp_H, $exp_group, $FH_HR);
+                             \%cls_results_HHH, $FH_HR);
 
 #############################################
 # Coverage determination: second round search
@@ -4929,8 +4936,8 @@ sub cmsearch_run {
 #  $tblout_file:   name of sorted tblout file to parse
 #  $round:         round, '1' or '2'
 #  $results_HHHR:  ref to results 3D hash
-#  $mdl_grp_HR:    ref to hash of model groups (can be undef)
-#  $exp_group:     expected group of all sequences (can be undef)
+#  $mdl_info_AHR:  ref to model info array of hashes
+#  $opt_HHR:       ref to options 2D hash
 #  $FH_HR:         ref to file handle hash
 # 
 # Returns: void
@@ -4943,10 +4950,23 @@ sub cmsearch_parse_sorted_tblout {
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($tblout_file, $round, $results_HHHR, $mdl_grp_HR, $exp_group, $FH_HR) = @_;
+  my ($tblout_file, $round, $results_HHHR, $mdl_info_AHR, $opt_HHR, $FH_HR) = @_;
 
   if((! defined $round) || (($round != 1) && ($round != 2))) { 
     ofile_FAIL("ERROR in $sub_name, round is not 1 or 2", 1, $FH_HR);
+  }
+
+  # determine if we have an expected group and subgroup
+  # (--subgroup requires --group)
+  my $exp_group    = opt_Get("--group", \%opt_HH);
+  my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
+  my %mdl_group_H    = ();
+  my %mdl_subgroup_H = ();
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+    $mdl_group_H{$mdl_name}    = $mdl_info_AH[$mdl_idx]{"group"}
+    $mdl_subgroup_H{$mdl_name} = $mdl_info_AH[$mdl_idx]{"subgroup"}
   }
   
   my $seq;    # sequence name
@@ -4983,8 +5003,42 @@ sub cmsearch_parse_sorted_tblout {
           ofile_FAIL("ERROR parsing $tblout_file for round 1, unexpected number of space-delimited tokens on line $line", "dnaorg", 1, $FH_HR); 
         }
         ($seq, $model, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
-        # determine what hash in the 3rd dim of %results_HHHR->{$seq} we add this hits info to
-        $HR = cmsearch_parse_sorted_tblout_r1_helper($results_HHHR, $mdl_grp_HR, $exp_group, $seq, $model, $FH_HR);
+        if(! defined $results_HHHR->{$seq}) { 
+          %{$results_HHHR->{$seq}} = ();
+        }
+        # determine if we are going to store this hit, and to what 2D keys 
+        # (the following code only works because we know we are sorted by score)
+        $is_1  = 0; # should we store this in $results_HHHR->{$seq}{"r1.1"} ? 
+        $is_2  = 0; # should we store this in $results_HHHR->{$seq}{"r1.2"} ? 
+        $is_g  = 0; # should we store this in $results_HHHR->{$seq}{"r1.g"} ? 
+        $is_sg = 0; # should we store this in $results_HHHR->{$seq}{"r1.sg"} ? 
+
+        if((! defined $results_HHHR->{$seq}{"r1.1"}) || # first (top) hit for this sequence 
+           ($results_HHHR->{$seq}{"r1.1"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+          $is_1 = 1; 
+        }
+        elsif((! defined $results_HHHR->{$seq}{"r1.2"}) || # first hit not to top model for this sequence
+              ($results_HHHR->{$seq}{"r1.2"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+          $is_2 = 1; 
+        }
+        # determine if we are going to store this hit as best in 'group' and/or 'subgroup'
+        # to the expected group and/or expected subgroup
+        if((defined $exp_group) && ($mdl_group_H{$model} eq $exp_group)) { 
+          if((! defined $results_HHHR->{$seq}{"r1.g"}) || # first (top) hit for this sequence to this group
+             ($results_HHHR->{$seq}{"r1.g"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+            $is_g = 1; 
+          }
+          if((defined $exp_subgroup) && ($mdl_subgroup_H{$model} eq $exp_subgroup)) { 
+            if((! defined $results_HHHR->{$seq}{"r1.sg"}) || # first (top) hit for this sequence to this subgroup
+               ($results_HHHR->{$seq}{"r1.sg"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+              $is_sg = 1; 
+            }
+          }
+        }
+        if($is_1)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.1"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR);
+        if($is_2)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.2"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR);
+        if($is_g)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.g"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR);
+        if($is_sg) { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.sg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR);
       }
       else { # round 2
         ##target name                 accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
@@ -4994,31 +5048,16 @@ sub cmsearch_parse_sorted_tblout {
           ofile_FAIL("ERROR parsing $tblout_file for round 2, unexpected number of space-delimited tokens on line $line", "dnaorg", 1, $FH_HR); 
         }
         ($seq, $model, $m_from, $m_to, $s_from, $s_to, $strand, $bias, $score) = ($el_A[0], $el_A[2], $el_A[5], $el_A[6], $el_A[7], $el_A[8], $el_A[9], $el_A[13], $el_A[14]);
-        # determine what hash in the 3rd dim of %results_HHHR->{$seq} we add this hits info to
-        $HR = cmsearch_parse_sorted_tblout_r2_helper($results_HHHR, $seq, $model, $FH_HR);
+        # determine if we are going to store this hit
+        if((! defined $results_HHHR->{$seq}{"r2"}) || # first (top) hit for this sequence 
+           ($results_HHHR->{$seq}{"r2"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r2"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR);          
+        }
+        elsif((defined $results_HHHR->{$seq}{"r2"}) &&
+              ($results_HHHR->{$seq}{"r2"}{"model"} ne $model)) { 
+          ofile_FAIL("ERROR in $sub_name, seq $seq has hits to multiple models in round 2 search", 1, $FH_HR);
+        }
       }
-    }
-    # now if $HR is defined, we know we should store the hit
-    if(defined $HR) { # store the hit
-      my $coords_tok = $s_from . ".." . $s_to . ":" . $strand;
-      if(scalar(keys(%{$HR})) == 0) { # initialize
-        $HR->{"model"}    = $model; # all hits stored in this hash will be to $model
-        $HR->{"bstrand"}  = $strand; # strand of 'best hit' (first hit)
-        $HR->{"s_coords"} = "";
-        $HR->{"score"}    = "";
-        if(defined $m_from) { $HR->{"m_coords"} = ""; }
-        if(defined $bias)   { $HR->{"bias"}     = ""; }
-      }
-      else { 
-        $HR->{"s_coords"} .= ",";
-        $HR->{"score"}    .= ",";
-        if(defined $m_from) { $HR->{"m_coords"} .= ","; }
-        if(defined $bias)   { $HR->{"bias"}     .= ","; }
-      }
-      $HR->{"s_coords"} .= $s_from . ".." . $s_to . ":" . $strand;
-      $HR->{"score"}    .= sprintf("%.1f", $score);
-      if(defined $m_from) { $HR->{"m_coords"} .= $m_from . ".." . $m_to . ":+"; }
-      if(defined $bias)   { $HR->{"bias"}     .= sprintf("%.1f", $bias); }
     }
   }
 
@@ -5026,142 +5065,59 @@ sub cmsearch_parse_sorted_tblout {
 }
 
 #################################################################
-# Subroutine:  cmsearch_parse_sorted_tblout_r1_helper()
-# Incept:      EPN, Wed Mar 20 14:17:23 2019
+# Subroutine:  cmsearch_store_hit()
+# Incept:      EPN, Thu Mar 21 14:55:25 2019
 #
-# Purpose:     Return a reference to the hash in the 2nd dim of 
-#              %{$HHR} that we should update for a hit to model
-#              $model when parsing a round 1 cmsearch tblout file.
+# Purpose:     Store information on a hit in %{$HR}. 
+#              Initialize %{$HR} if this is the first hit.
 #
 # Arguments: 
-#  $results_HHHR:  ref to 3D results hash
-#  $mdl_grp_HR:    ref to hash of model groups (can be undef)
-#  $exp_group:     expected group of all sequences (can be undef)
-#  $seq:           sequence name 
+#  $HR:            hash to store hit info in
 #  $model:         model name
+#  $score:         score of hit
+#  $strand:        strand of hit
+#  $bias:          bias score
+#  $s_from:        start position on sequence
+#  $s_to:          end position on sequence
+#  $m_from:        start position on model
+#  $m_to:          end position on model
 #  $FH_HR:         ref to file handle hash
 # 
 # Returns: void
 # 
-# Dies: if there's a problem parsing the tblout file
+# Dies: if not the first hit, but $HR->{"model"} ne $model
 #      
 ################################################################# 
-sub cmsearch_parse_sorted_tblout_r1_helper {
-  my $sub_name = "cmsearch_parse_sorted_tblout_r1_helper()";
-  my $nargs_expected = 6;
+sub cmsearch_store_hit { 
+  my $sub_name = "cmsearch_store_hit()";
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($results_HHHR, $mdl_grp_HR, $exp_group, $seq, $model, $FH_HR) = @_;
+  my ($HR, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR) = @_;
 
-  my $ret_HR = undef;
-
-  if(! defined $results_HHHR->{$seq}) { 
-    %{$results_HHHR->{$seq}} = ();
-  }
-
-  # determine if we already have a hit to this model
-  my $key = undef;
-  foreach my $key2 ("r1.1", "r1.2", "r1.g") { 
-    if((! defined $key) && 
-       (defined $results_HHHR->{$seq}{$key2}) && 
-       (defined $results_HHHR->{$seq}{$key2}{"model"}) && 
-       ($results_HHHR->{$seq}{$key2}{"model"} eq $model)) { 
-      $key = $key2;
-    }
-  }
-
-  if(defined $key) { 
-    # results to this model for this sequence already exist, we'll add to them
-    $ret_HR = \%{$results_HHHR->{$seq}{$key}};
-    printf("\tadding to existing seq/model pair ($seq/$model)\n");
+  if(scalar(keys(%{$HR})) == 0) { # initialize
+    $HR->{"model"}    = $model; # all hits stored in this hash will be to $model
+    $HR->{"bstrand"}  = $strand; # strand of 'best hit' (first hit)
+    $HR->{"s_coords"} = "";
+    $HR->{"score"}    = "";
+    if(defined $m_from) { $HR->{"m_coords"} = ""; }
+    if(defined $bias)   { $HR->{"bias"}     = ""; }
   }
   else { 
-    # $key is undefined
-    # none of stored results for this sequence are to $model
-    # should we create a new result? 
-    if(! defined $results_HHHR->{$seq}{"r1.1"}) { 
-      # top scoring hit: store it in element 0
-      $ret_HR = \%{$results_HHHR->{$seq}{"r1.1"}};
-      %{$ret_HR} = ();
-      printf("\tnew top hit to seq/model pair ($seq/$model)\n");
+    if($HR->{"model"} ne $model) { 
+      ofile_FAIL("ERROR in $sub_name, trying to add additional hit to a different model", 1, $FH_HR);
     }
-    elsif(! defined $results_HHHR->{$seq}{"r1.2"}) { 
-      # top scoring hit to model other than model 0: store it in element r1.2
-      $ret_HR = \%{$results_HHHR->{$seq}{"r1.2"}};
-      %{$ret_HR} = ();
-      printf("\tnew 2nd hit to seq/model pair ($seq/$model)\n");
-    }
-    else { 
-      # not the top two models, only way we store it is if
-      # all of the following are true
-      # - $exp_group is defined
-      # - $model belongs to group $exp_group
-      # - neither model 0 nor model 1 belong to $exp_group
-      if((defined $exp_group) && 
-         ((defined $mdl_grp_H{$model}) && 
-          ($mdl_grp_H{$model} eq $exp_group)) && 
-         ((! defined $mdl_grp_H{$results_HHHR->{$seq}{"r1.1"}{"model"}}) ||
-          ($mdl_grp_H{$results_HHHR->{$seq}{"r1.1"}{"model"}} ne $exp_group)) && 
-         ((! defined $mdl_grp_H{$results_HHHR->{$seq}{"r1.2"}{"model"}}) ||
-          ($mdl_grp_H{$results_HHHR->{$seq}{"r1.2"}{"model"}} ne $exp_group))) { 
-        $ret_HR = \%{$results_HHHR->{$seq}{"r1.g"}};
-        %{$ret_HR} = ();
-        printf("\tnew grp hit to seq/model pair ($seq/$model)\n");
-      }
-    }
+    $HR->{"s_coords"} .= ",";
+    $HR->{"score"}    .= ",";
+    if(defined $m_from) { $HR->{"m_coords"} .= ","; }
+    if(defined $bias)   { $HR->{"bias"}     .= ","; }
   }
+  $HR->{"s_coords"} .= $s_from . ".." . $s_to . ":" . $strand;
+  $HR->{"score"}    .= sprintf("%.1f", $score);
+  if(defined $m_from) { $HR->{"m_coords"} .= $m_from . ".." . $m_to . ":+"; }
+  if(defined $bias)   { $HR->{"bias"}     .= sprintf("%.1f", $bias); }
 
-  if(! defined $ret_HR) { print("\treturning undef for ret_HR\n"); }
-  return $ret_HR;
-}
-
-#################################################################
-# Subroutine:  cmsearch_parse_sorted_tblout_r2_helper()
-# Incept:      EPN, Wed Mar 20 14:27:12 2019
-#
-# Purpose:     Return a reference to the hash in the 2nd dim of 
-#              %{$HHR} that we should update for a hit to model
-#              $model when parsing a round 2 cmsearch tblout file.
-#
-# Arguments: 
-#  $results_HHHR:  ref to 3D results hash
-#  $seq:           sequence name 
-#  $model:         model name
-#  $FH_HR:         ref to file handle hash
-# 
-# Returns: void
-# 
-# Dies: if there's a problem parsing the tblout file
-#      
-################################################################# 
-sub cmsearch_parse_sorted_tblout_r2_helper {
-  my $sub_name = "cmsearch_parse_sorted_tblout_r2_helper()";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($results_HHHR, $seq, $model, $FH_HR) = @_;
-
-  my $ret_HR = undef;
-
-  if(! defined $results_HHHR->{$seq}) { 
-    %{$results_HHHR->{$seq}} = ();
-  }
-  # determine if we already have a hit to this model 
-  if((defined $results_HHHR->{$seq}{"r2"}) && 
-     (defined $results_HHHR->{$seq}{"r2"}{"model"}) && 
-     ($results_HHHR->{$seq}{"r2"}{"model"} eq $model)) { 
-    # results to this model for this sequence already exist, we'll add to them
-    $ret_HR = \%{$results_HHHR->{$seq}{"r2"}};
-  }
-  elsif(defined $results_HHHR->{$seq}{"r2"}) { 
-    ofile_FAIL("ERROR in $sub_name, seq $seq has hits to multiple models", 1, $FH_HR);
-  }
-  else { 
-    $ret_HR = \%{$results_HHHR->{$seq}{"r2"}};
-    %{$ret_HR} = ();
-  }
-
-  return $ret_HR;
+  return;
 }
 
 #################################################################
@@ -5193,6 +5149,9 @@ sub add_classification_alerts {
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $nseq = scalar(@{$seq_info_HAR->{"name"}});
 
+  my $exp_group    = opt_Get("--group", \%opt_HH);
+  my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
+
   # get thresholds
   my $small_value        = 0.00000001; # for handling precision issues
   my $lowcovthresh_opt   = opt_Get("--lowcovthresh",   $opt_HHR) - $small_value;
@@ -5200,14 +5159,21 @@ sub add_classification_alerts {
   my $lowscthresh_opt    = opt_Get("--lowscthresh",    $opt_HHR) - $small_value;
   my $vlowdiffthresh_opt = opt_Get("--vlowdiffthresh", $opt_HHR) - $small_value;
   my $lowdiffthresh_opt  = opt_Get("--lowdiffthresh",  $opt_HHR) - $small_value;
-  my $biasfract_opt      = opt_Get("--biasfract",      $opt_HHR);
-  my $ecthresh_opt       = opt_Get("--ecthresh",       $opt_HHR) - $small_value;
-  if(opt_IsUsed("--ectoponly", $opt_HHR)) { 
-    $ecthresh_opt = $small_value;
+  my $biasfract_opt      = opt_Get("--biasfract",      $opt_HHR) + $small_value;
+  my $cthresh_opt        = opt_Get("--cthresh",        $opt_HHR) + $small_value;
+  my $ctoponly_opt_used  = 0;
+  if(opt_IsUsed("--ctoponly", $opt_HHR)) { 
+    $cthresh_opt = $small_value;
+    $ctoponly_opt_used = 1;
   }
 
+  my $lowcovthresh_opt2print   = sprintf("%.3f", opt_Get("--lowcovthresh",  $opt_HHR));
   my $lowdiffthresh_opt2print  = sprintf("%.3f", opt_Get("--lowdiffthresh",  $opt_HHR));
   my $vlowdiffthresh_opt2print = sprintf("%.3f", opt_Get("--vlowdiffthresh", $opt_HHR));
+  my $lowscthresh_opt2print    = sprintf("%.3f", opt_Get("--lowscthresh",  $opt_HHR));
+  my $vlowscthresh_opt2print   = sprintf("%.3f", opt_Get("--vlowscthresh", $opt_HHR));
+  my $biasthresh_opt2print     = sprintf("%.3f", opt_Get("--biasthresh", $opt_HHR));
+  my $cthresh_opt2print        = sprintf("%.3f", opt_Get("--cthresh", $opt_HHR));
 
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_info_HAR->{"name"}[$seq_idx];
@@ -5285,45 +5251,53 @@ sub add_classification_alerts {
         }
       }
       # unexpected group (c_ugr) 
-      # this is a complicated one, we throw this if
-      # - group(r1.1) is not exp_group and
-      #   group(r1.2) is not exp_group and 
-      #   no hits in r1.g (no hits to group)
+      # $exp_group must be defined 
+      # - no hits in r1.g (no hits to group)
       # OR 
-      # - group(r1.1) is not exp_group and
-      #   group(r1.2) is not exp_group and 
-      #   scpernt diff between r1.g and r1.1 exceeds ecthresh_opt
-      # OR 
-      # - group(r1.1) is not exp_group and
-      #   group(r1.2) is exp_group and 
-      #   scpernt diff between r1.2 and r1.1 exceeds ecthresh_opt
-      # 
+      # - hit(s) in r1.g but scpernt diff between
+      #   r1.g and r1.1 exceeds cthresh_opt
       #
       # unexpected subgroup (c_usg) 
-      # this is a complicated one, we throw this if
-      # - subgroup(r1.1) is not exp_subgroup and
-      #   subgroup(r1.2) is not exp_subgroup and 
-      #   no hits in r1.g (no hits to group, so no hits to subgroup (r1.sg) either)
+      # - no hits in r1.sg (no hits to subgroup)
       # OR 
-      # - subgroup(r1.1) is not exp_subgroup and
-      #   subgroup(r1.2) is not exp_subgroup and 
-      #   subgroup(r1.g) is not exp_subgroup and 
-      #   no hits in r1.sg (no hits to subgroup)
+      # - hit(s) in r1.sg but scpernt diff between
+      #   r1.sg and r1.1 exceeds cthresh_opt
+      my $ugr_flag = 0;
+      if(defined $exp_group) { 
+        if(! defined $scpnt_H{"r1.g"}) { 
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HAR, -1, "c_ugr", $seq_name, "no hits to expected group $exp_group", $FH_HR);
+          $ugr_flag = 1;
+        }
+        else { 
+          my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.g"};
+          my $diff2print = sprintf("%.3f", $diff);
+          if($diff > $cthresh_opt) { 
+            my $alt_str = ($ctoponly_opt_used) ? "not best model" : "$diff2print > $cthresh_opt2print";
+            alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HAR, -1, "c_ugr", $seq_name, $alt_str, $FH_HR);
+            $ugr_flag = 1;
+          }
+        }
+      }
+
+      # unexpected subgroup (c_usg) 
+      # - c_ugr not already detected
+      # - no hits in r1.sg (no hits to subgroup)
       # OR 
-      # - subgroup(r1.1) is not exp_subgroup and
-      #   subgroup(r1.2) is not exp_subgroup and 
-      #   subgroup(r1.g) is not exp_subgroup and 
-      #   scpernt diff between r1.sg and r1.1 exceeds ecthresh_opt
-      # OR 
-      # - subgroup(r1.1) is not exp_subgroup and
-      #   subgroup(r1.2) is not exp_subgroup and 
-      #   subgroup(r1.g) is exp_subgroup but
-      #   scpernt diff between r1.g and r1.1 exceeds ecthresh_opt
-      # OR
-      # - subgroup(r1.1) is not exp_subgroup and
-      #   subgroup(r1.2) is exp_subgroup but
-      #   scpernt diff between r1.2 and r1.1 exceeds ecthresh_opt
-      # HERE HERE HERE 
+      # - hit(s) in r1.sg but scpernt diff between
+      #   r1.sg and r1.1 exceeds cthresh_opt
+      if((! $ugr_flag) && (defined $exp_subgroup)) { 
+        if(! defined $scpnt_H{"r1.sg"}) { 
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HAR, -1, "c_usg", $seq_name, "no hits to expected subgroup $exp_subgroup", $FH_HR);
+        }
+        else { 
+          my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.sg"};
+          my $diff2print = sprintf("%.3f", $diff);
+          if($diff > $cthresh_opt) { 
+            my $alt_str = ($ctoponly_opt_used) ? "not best model" : "$diff2print > $cthresh_opt2print";
+            alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HAR, -1, "c_usg", $seq_name, $alt_str, $FH_HR);
+          }
+        }
+      }
 
       # classification alerts that depend on round 2 results
       # minus strand (c_mst)
@@ -5350,15 +5324,12 @@ sub add_classification_alerts {
       }
       # high bias (c_hbi) 
       if(defined $bias_H{"r2"}) { 
-        my $bias_fract       = $bias_H{"r2"} / ($score_H{"r2"} + $bias_H{"r2"});
+        my $bias_fract = $bias_H{"r2"} / ($score_H{"r2"} + $bias_H{"r2"});
         # $score_H{"r2"} has already had bias subtracted from it so we need to add it back in before we compare with biasfract
         if($bias_fract > $biasfract_opt) { 
           alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HAR, -1, "c_hbi", $seq_name, $bias_fract2print . "<" $biasfract_opt2print, $FH_HR);
         }
       }
-    }
-    if($seq_nftr == 0) { 
-      alert_instances_add(undef, $err_seq_instances_HHR, $alt_info_HAR, -1, "b_zft", $seq_name, "-", $FH_HR);
     }
   }
 
