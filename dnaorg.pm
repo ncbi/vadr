@@ -349,17 +349,17 @@ sub dng_FeatureTypeAndTypeIndexString {
 # Subroutine: dng_AlertInfoInitialize()
 # Incept:     EPN, Fri Mar  4 12:56:43 2016
 #
-# Purpose:    Set the initial values in an alert info hash,
+# Purpose:    Set the initial values in an alert info hash or hashes,
 #             using the hardcoded information in this
 #             function.
 #
 # Arguments:
-#   $alt_info_HAR:  REF to hash of arrays of alert information, FILLED HERE
+#   $alt_info_HHR:  REF to hash of arrays of alert information, FILLED HERE
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: void
 #
-# Dies:    if $alt_info_HAR already has keys upon entering this function
+# Dies:    if $alt_info_HHR already has keys upon entering this function
 #
 #################################################################
 sub dng_AlertInfoInitialize { 
@@ -367,9 +367,9 @@ sub dng_AlertInfoInitialize {
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($alt_info_HAR, $FH_HR) = (@_);
+  my ($alt_info_HHR, $FH_HR) = (@_);
 
-  if(scalar (keys(%{$alt_info_HAR})) > 0) { 
+  if(scalar (keys(%{$alt_info_HHR})) > 0) { 
     ofile_FAIL("ERROR in $sub_name, alert info hash of arrays already has at least one key", "dnaorg", 1, $FH_HR);
   }
 
@@ -377,231 +377,231 @@ sub dng_AlertInfoInitialize {
   # with how we try to add it (args to dng_AlertInfoAdd don't pass the contract check)
 
   # classification errors
-  dng_AlertInfoAdd($alt_info_HAR, "c_noa", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_noa", "sequence",
                    "no significant similarity detected", # description
                    1, 1, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "No Annotation: (*sequence*) no significant similarity detected", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "c_usg", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_usg", "sequence",
                    "unexpected classification", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "Unexpected Classification: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "c_ugr", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_ugr", "sequence",
                    "unexpected taxonomy", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "Unexpected Taxonomy: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "c_lcv", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_lcv", "sequence",
                    "low coverage", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "Low Coverage: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "c_lod", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_lod", "sequence",
                    "low difference", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "Low Difference: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "c_vld", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_vld", "sequence",
                    "very low difference", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "Very Low Difference: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "c_los", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_los", "sequence",
                    "low score", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "Low Score: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "c_vls", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_vls", "sequence",
                    "very low score", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "Very Low Score: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "c_hbi", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_hbi", "sequence",
                    "high bias", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "Biased Sequence: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "c_mst", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_mst", "sequence",
                    "minus strand", # description
                    1, 1, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "Minus Strand: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_nst", "feature",  
+  dng_AlertInfoAdd($alt_info_HHR, "n_nst", "feature",  
                    "no in-frame stop codon exists 3' of predicted valid start codon", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Mutation at End: (!out_product,out_gene!) expected stop codon could not be identified; !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_nm3", "feature",  
+  dng_AlertInfoAdd($alt_info_HHR, "n_nm3", "feature",  
                    "length of nucleotide feature is not a multiple of 3", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!; length is not a multiple of 3", # feature table note
                    "Unexpected Length: (!out_product,out_gene!) length is not a multiple of 3; !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_stp", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "n_stp", "feature",
                    "predicted CDS stop by homology is invalid; there may be a valid stop in a different location due to truncation (trc) or extension (ext) (TAG|TAA|TGA)", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Mutation at End: (!out_product,out_gene!) expected stop codon could not be identified on !out_product,out_gene!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_trc", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "n_trc", "feature",
                    "in-frame stop codon exists 5' of stop position predicted by homology to reference", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!; contains premature stop codon", # feature table note
                    "CDS has Stop Codon: (!out_product,out_gene!) contains unexpected stop codon; !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_ext", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "n_ext", "feature",
                    "first in-frame stop codon exists 3' of stop position predicted by homology to reference", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Mutation at End: (!out_product,out_gene!) expected stop codon could not be identified; !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "b_per", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "b_per", "feature",
                    "mat_peptide may not be translated because its CDS has a problem", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note
                    "Peptide Translation Problem: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_str", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "n_str", "feature",
                    "predicted CDS start position is not beginning of start codon", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!; no start codon", # feature table note
                    "Mutation at Start: (!out_product,out_gene!) expected start codon could not be identified", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_gp5", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "n_gp5", "feature",
                    "alignment to reference is a gap at 5' boundary", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation at Start: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_gp3", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "n_gp3", "feature",
                    "alignment to reference is a gap at 3' boundary", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation at End: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_lp5", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "n_lp5", "feature",
                    "alignment to reference has low confidence at 5' boundary", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation at Start: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_lp3", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "n_lp3", "feature",
                    "alignment to reference has low confidence at 3' boundary", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation at End: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "b_non", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "b_non", "feature",
                    "protein-based search identifies CDS not identified in nucleotide-based search", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "b_nop", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "b_nop", "feature",
                    "nucleotide-based search identifies CDS not identified in protein-based search", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "b_cst", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "b_cst", "feature",
                    "strand mismatch between protein and nucleotide predictions", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "b_p5l", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "b_p5l", "feature",
                    "protein alignment extends past nucleotide alignment at 5' end", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation at Start: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "b_p5s", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "b_p5s", "feature",
                    "protein alignment does not extend close enough to nucleotide alignment 5' endpoint", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation at Start: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "b_p3l", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "b_p3l", "feature",
                    "protein alignment extends past nucleotide alignment at 3' end", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation at End: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "b_p3s", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "b_p3s", "feature",
                    "protein alignment does not extend close enough to nucleotide alignment 3' endpoint", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Indefinite Annotation at End: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "p_lin", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "p_lin", "feature",
                    "too large of an insertion in protein alignment", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Insertion of Nucleotides: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "p_lde", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "p_lde", "feature",
                    "too large of a deletion in protein alignment", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "Deletion of Nucleotides: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "p_trc", "feature",
+  dng_AlertInfoAdd($alt_info_HHR, "p_trc", "feature",
                    "stop codon in protein alignment", # description
                    1, 0, # causes_failure, prevents_annot
                    "similar to !out_product,out_gene!", # feature table note
                    "CDS has Stop Codon: (!out_product,out_gene!) !DESC!", # feature table alert
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HAR, "b_zft", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "b_zft", "sequence",
                    "zero features annotated", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "No Features Annotated: (*sequence*) zero annotated features", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HAR, "n_div", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "n_div", "sequence",
                    "sequence too distant from reference to annotate", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
@@ -612,13 +612,13 @@ sub dng_AlertInfoInitialize {
   # 3rd argument invalidates the 2nd argument error code, but not vice versa
 
   # trc, ext and nst are preferred to stp
-  dng_AlertInfoSetFTableInvalidatedBy($alt_info_HAR, "n_stp", "n_trc,n_ext,n_nst", $FH_HR); 
+  dng_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "n_stp", "n_trc,n_ext,n_nst", $FH_HR); 
 
   # n_div is preferred to zft
-  dng_AlertInfoSetFTableInvalidatedBy($alt_info_HAR, "b_zft", "n_div", $FH_HR);
+  dng_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "b_zft", "n_div", $FH_HR);
 
   # validate the alert info hash
-  dng_AlertInfoValidate($alt_info_HAR, undef, $FH_HR); 
+  #dng_AlertInfoValidate($alt_info_HHR, undef, $FH_HR); 
 
   return;
 }
@@ -631,7 +631,7 @@ sub dng_AlertInfoInitialize {
 #             Die if the same error code already exists.
 #
 # Arguments:
-#   $alt_info_HAR:    REF to array of hashes of error information, FILLED HERE
+#   $alt_info_HHR:    REF to array of hashes of error information, FILLED HERE
 #   $code:            the code of the element we are adding
 #   $pertype:         the 'per-type' of the element we are adding, "sequence" or "feature"
 #   $desc:            the error description/message of the element we are adding
@@ -645,8 +645,9 @@ sub dng_AlertInfoInitialize {
 # 
 # Returns: void
 #
-# Dies:    if $alt_info_HAR->{"$code"} already exists
+# Dies:    if $alt_info_HHR->{"$code"} already exists
 #          if $type ne "feature and ne "sequence"
+#          if $type ne "sequence" and $prevents_annot == 1 (not allowed)
 #
 ######################p###########################################
 sub dng_AlertInfoAdd { 
@@ -654,7 +655,7 @@ sub dng_AlertInfoAdd {
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($alt_info_HAR, $code, $pertype, $desc, $causes_failure, $prevents_annot, $fails, $ftbl_note, $ftbl_alert, $FH_HR) = (@_);
+  my ($alt_info_HHR, $code, $pertype, $desc, $causes_failure, $prevents_annot, $fails, $ftbl_note, $ftbl_alert, $FH_HR) = (@_);
 
   # make sure $pertype is valid
   if(($pertype ne "feature") && ($pertype ne "sequence")) { 
@@ -675,36 +676,33 @@ sub dng_AlertInfoAdd {
   if((! defined $prevents_annot) || (($prevents_annot != 0) && ($prevents_annot != 1))) { 
     ofile_FAIL("ERROR in $sub_name, trying to add code $code but prevents_annot is undefined or not 0 or 1", "dnaorg", 1, $FH_HR);
   }
-  
-  # check if $code already exists
-  if(exists $alt_info_HAR->{"code"}) { 
-    my $nerr = scalar(@{$alt_info_HAR->{"code"}});
-    for(my $alt_idx = 0; $alt_idx < $nerr; $alt_idx++) { 
-      my $other_code = $alt_info_HAR->{"code"}[$alt_idx]; 
-      if($code eq $other_code) { 
-        ofile_FAIL(sprintf("ERROR in $sub_name, trying to add code $code, but it already exists as element %d in the error info hash", $alt_idx+1), "dnaorg", 1, $FH_HR);
-      }
-    }
+
+  # make sure $prevents_annot is only 1 if $pertype is "sequence"
+  if(($prevents_annot == 1) && ($pertype ne "sequence")) { 
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but prevents_annot is 1 and pertype is feature", "dnaorg", 1, $FH_HR);
   }
   
-# initialize, if necessary
-  if(! exists $alt_info_HAR->{"code"})            { @{$alt_info_HAR->{"code"}}            = (); }
-  if(! exists $alt_info_HAR->{"pertype"})         { @{$alt_info_HAR->{"pertype"}}         = (); }
-  if(! exists $alt_info_HAR->{"desc"})            { @{$alt_info_HAR->{"desc"}}            = (); }
-  if(! exists $alt_info_HAR->{"causes_failure"})  { @{$alt_info_HAR->{"causes_failure"}}  = (); }
-  if(! exists $alt_info_HAR->{"prevents_annot"})  { @{$alt_info_HAR->{"prevents_annot"}}  = (); }
-  if(! exists $alt_info_HAR->{"ftbl_invalid_by"}) { @{$alt_info_HAR->{"ftbl_invalid_by"}} = (); }
-  if(! exists $alt_info_HAR->{"ftbl_note"})       { @{$alt_info_HAR->{"ftbl_note"}}       = (); }
-  if(! exists $alt_info_HAR->{"ftbl_alert"})      { @{$alt_info_HAR->{"ftbl_alert"}}      = (); }
+  # check if $code already exists
+  if(defined $alt_info_HHR->{$code}) { 
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code, but it already exists in the error info hash", "dnaorg", 1, $FH_HR);
+  }
   
-  push(@{$alt_info_HAR->{"code"}},             $code); 
-  push(@{$alt_info_HAR->{"pertype"}},          $pertype); 
-  push(@{$alt_info_HAR->{"desc"}},             $desc); 
-  push(@{$alt_info_HAR->{"causes_failure"}},   $causes_failure);
-  push(@{$alt_info_HAR->{"prevents_annot"}},   $prevents_annot);
-  push(@{$alt_info_HAR->{"ftbl_invalid_by"}},  ""); # initialized to no invalid_by's, possibly added to later with setFTableInvalidatedByErrorInfoHash()
-  push(@{$alt_info_HAR->{"ftbl_note"}},        $ftbl_note);
-  push(@{$alt_info_HAR->{"ftbl_alert"}},       $ftbl_alert);
+  # initialize, if necessary
+  %{$alt_info_HHR->{$code}{"pertype"}}         = ();
+  %{$alt_info_HHR->{$code}{"desc"}}            = ();
+  %{$alt_info_HHR->{$code}{"causes_failure"}}  = ();
+  %{$alt_info_HHR->{$code}{"prevents_annot"}}  = ();
+  %{$alt_info_HHR->{$code}{"ftbl_invalid_by"}} = ();
+  %{$alt_info_HHR->{$code}{"ftbl_note"}}       = ();
+  %{$alt_info_HHR->{$code}{"ftbl_alert"}}      = ();
+
+  $alt_info_HHR->{$code}{"pertype"}         = $pertype;
+  $alt_info_HHR->{$code}{"desc"}            = $desc;
+  $alt_info_HHR->{$code}{"causes_failure"}  = $causes_failure;
+  $alt_info_HHR->{$code}{"prevents_annot"}  = $prevents_annot;
+  $alt_info_HHR->{$code}{"ftbl_invalid_by"} = ""; # initialized to no invalid_by's, possibly added to later with setFTableInvalidatedByErrorInfoHash()
+  $alt_info_HHR->{$code}{"ftbl_note"}       = $ftbl_note;
+  $alt_info_HHR->{$code}{"ftbl_alert"}      = $ftbl_alert;
 
   return;
 }
@@ -719,7 +717,7 @@ sub dng_AlertInfoAdd {
 #             are uni-directional.
 #
 # Arguments:
-#   $alt_info_HAR:  REF to hash of arrays of error information, FILLED HERE
+#   $alt_info_HHR:  REF to hash of hashes of error information, FILLED HERE
 #   $code1:         the code of the element we are adding ftbl_invalid_by values for
 #   $code2str:      the codes $code1 is invalidated by, separated by commas
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
@@ -727,7 +725,7 @@ sub dng_AlertInfoAdd {
 # Returns: void
 #
 # Dies:    if one of the error codes in $code1 or $code2str do not
-#          exist in %{$alt_info_HAR}.
+#          exist in %{$alt_info_HHR}.
 #
 #################################################################
 sub dng_AlertInfoSetFTableInvalidatedBy {
@@ -735,27 +733,21 @@ sub dng_AlertInfoSetFTableInvalidatedBy {
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($alt_info_HAR, $code1, $code2str, $FH_HR) = (@_);
-
-  my $idx1 = utl_ArrayFindNonNumericValue($alt_info_HAR->{"code"}, $code1, $FH_HR);
-  if($idx1 == -1) { 
-    ofile_FAIL("ERROR in $sub_name, trying to add ftbl_invalid_by for code $code1, but it does not exist in the error info hash", "dnaorg", 1, $FH_HR);
-  }
+  my ($alt_info_HHR, $code1, $code2str, $FH_HR) = (@_);
 
   # verify the codes in $code2str
   my @code2_A = split(',', $code2str);
   foreach my $code2 (@code2_A) { 
-    my $idx2 = utl_ArrayFindNonNumericValue($alt_info_HAR->{"code"}, $code2, $FH_HR);
-    if($idx2 == -1) { 
+    if(! defined $alt_info_HHR->{$code2}) { 
       ofile_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between codes $code1 and $code2, but $code2 does not exist in the error info hash", "dnaorg", 1, $FH_HR);
     }
-    if($idx1 == $idx2) { 
+    if($code1 eq $code2) { 
       ofile_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between a code and itself: $code1 and $code2", "dnaorg", 1, $FH_HR);
     }
   }
 
   # set the value
-  $alt_info_HAR->{"ftbl_invalid_by"}[$idx1] = $code2str;
+  $alt_info_HHR->{$code1}{"ftbl_invalid_by"} = $code2str;
 
   return;
 }
@@ -765,19 +757,17 @@ sub dng_AlertInfoSetFTableInvalidatedBy {
 # Incept:     EPN, Thu Nov  1 12:10:34 2018
 #
 # Purpose:    Given a string of errors that correspond to a specific
-#             sequence and feature, use the %{$alt_info_HAR} and
+#             sequence and feature, use the %{$alt_info_HHR} and
 #             process that string to determine what (if any) notes,
 #             and errors should be added to the feature table
-#             for this seq/feature pair, also determine if the stop
-#             coordinate should be the predicted stop instead of a
-#             possibly corrected one.  
+#             for this seq/feature pair.
 #
 # Arguments:
 #   $alt_code_str:           string of errors, comma separated, can be ""
 #   $seq_name:               name of sequence
 #   $ftr_idx:                feature index
 #   $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#   $alt_info_HAR:           REF to hash of arrays with information on the errors, PRE-FILLED
+#   $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
 #   $alt_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
 #   $ret_note_AR:            REF to array of notes, possibly CREATED (not added to) here
 #   $ret_alert_AR:           REF to array of errors, possibly added to here (not created)
@@ -792,7 +782,7 @@ sub dng_ProcessFeatureAlertsForFTable {
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($alt_code_str, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HAR, $alt_ftr_instances_AHHR, $ret_note_AR, $ret_alert_AR, $FH_HR) = (@_);
+  my ($alt_code_str, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HHR, $alt_ftr_instances_AHHR, $ret_note_AR, $ret_alert_AR, $FH_HR) = (@_);
 
   if($alt_code_str eq "") { 
     return 0; 
@@ -800,50 +790,45 @@ sub dng_ProcessFeatureAlertsForFTable {
 
   # printf("HEYA in $sub_name $seq_name $ftr_idx, $alt_code_str\n");
 
-  # create a hash of all errors in the input $alt_str, and also verify they are all valid errors
-  my %input_err_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
-  my @alt_idx_A = ();
+  # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
+  my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
   my $alt_code; 
   my $alt_idx; 
   foreach $alt_code (split(",", $alt_code_str)) { 
-    $alt_idx = utl_ArrayFindNonNumericValue($alt_info_HAR->{"code"}, $alt_code, $FH_HR);
-    if($alt_idx == -1) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
       ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", "dnaorg", 1, $FH_HR);
     }
-    $input_err_code_H{$alt_code} = 1; 
-    push(@alt_idx_A, $alt_idx);
+    $input_alt_code_H{$alt_code} = 1; 
   }
 
   my @tmp_note_A = (); # holds all notes
-  my $nerr  = scalar(@alt_idx_A);
   my $valid = 0;
-  for(my $e = 0; $e < $nerr; $e++) { 
-    $alt_idx = $alt_idx_A[$e];
+  foreach $alt_code (sort keys (%input_alt_code_H)) { 
     $valid = 1; # may be set to '0' below
-    if($alt_info_HAR->{"ftbl_invalid_by"}[$alt_idx] ne "") { 
-      # printf("\t\tinvalid_by is " . $alt_info_HAR->{"ftbl_invalid_by"}[$alt_idx] . "\n");
-      my @invalid_by_err_code_A = split(",", $alt_info_HAR->{"ftbl_invalid_by"}[$alt_idx]);
-      foreach my $alt_code2 (@invalid_by_err_code_A) {
-        if(exists $input_err_code_H{$alt_code2}) { 
-          $valid = 0; # $alt_idx is invalidated by $alt_code2, which is also present in $alt_str
+    if($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "") { 
+      # printf("\t\tinvalid_by is " . $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} . "\n");
+      my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"});
+      foreach my $alt_code2 (@invalid_by_alt_code_A) {
+        if(exists $input_alt_code_H{$alt_code2}) { 
+          $valid = 0; # $alt_code is invalidated by $alt_code2, which is also present in $alt_code_str
           # printf("\t\t\tinvalidated by $alt_code2\n");
         }
       }
     }
     if($valid) { 
-      # valid error that will impact output of feature table
-      # add notes and errors
-      my $note_str = populateFTableNoteOrAlert("ftbl_note", $alt_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HAR, $alt_ftr_instances_AHHR, undef, $FH_HR);
+      # valid alerts that will impact output of feature table
+      # add notes and alerts
+      my $note_str = populateFTableNoteOrAlert("ftbl_note", $alt_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HHR, $alt_ftr_instances_AHHR, undef, $FH_HR);
       if($note_str ne "") { 
         push(@tmp_note_A, $note_str); # we will prune this array and populate @{$ret_note_AR} before returning
       }
       
-      my $error_str = populateFTableNoteOrAlert("ftbl_alert", $alt_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HAR, $alt_ftr_instances_AHHR, undef, $FH_HR);
-      if($error_str ne "") { 
-        # only add the error, if an identical error does not already exist in @{$ret_alert_AR}
-        my $idx = utl_ArrayFindNonNumericValue($ret_alert_AR, $error_str, $FH_HR);
+      my $alert_str = populateFTableNoteOrAlert("ftbl_alert", $alt_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HHR, $alt_ftr_instances_AHHR, undef, $FH_HR);
+      if($alert_str ne "") { 
+        # only add the alert, if an identical error does not already exist in @{$ret_alert_AR}
+        my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
         if($idx == -1) { 
-          push(@{$ret_alert_AR}, $error_str); 
+          push(@{$ret_alert_AR}, $alert_str); 
         }
       }
     }
@@ -894,21 +879,21 @@ sub dng_ProcessFeatureAlertsForFTable {
 # Subroutine: dng_ProcessSequenceAlertsForFTable()
 # Incept:     EPN, Thu Jan 24 12:09:24 2019
 #
-# Purpose:    Given a string of per-sequence errors that correspond
-#             to a specific sequence, use the %{$alt_info_HAR} and
+# Purpose:    Given a string of per-sequence alerts that correspond
+#             to a specific sequence, use the %{$alt_info_HHR} and
 #             process that string to determine what (if any) 
-#             errors should be added to the feature table
+#             alerts should be added to the feature table
 #             for this sequence. Note that we do not add any 'notes'
 #             as we possibly could in processFeatureAlertsForFTable() 
 #             because we are dealing with the full sequence and not
 #             a feature for a sequence.
 #
 # Arguments:
-#   $alt_code_str:           string of errors, comma separated, can be ""
+#   $alt_code_str:           string of alerts, comma separated, can be ""
 #   $seq_name:               name of sequence
-#   $alt_info_HAR:           REF to hash of arrays with information on the errors, PRE-FILLED
-#   $alt_seq_instances_HHR:  REF to 2D hashes with per-sequence errors, PRE-FILLED
-#   $ret_alert_AR:           REF to array of errors, possibly added to here (not created)
+#   $alt_info_HHR:           REF to hash of hashes with information on the alerts, PRE-FILLED
+#   $alt_seq_instances_HHR:  REF to 2D hashes with per-sequence alerts, PRE-FILLED
+#   $ret_alert_AR:           REF to array of alerts, possibly added to here (not created)
 #   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: void
@@ -920,7 +905,7 @@ sub dng_ProcessSequenceAlertsForFTable {
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($alt_code_str, $seq_name, $alt_info_HAR, $alt_seq_instances_HHR, $ret_alert_AR, $FH_HR) = (@_);
+  my ($alt_code_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $ret_alert_AR, $FH_HR) = (@_);
 
   if($alt_code_str eq "") { 
     return 0; 
@@ -932,43 +917,38 @@ sub dng_ProcessSequenceAlertsForFTable {
   # processFeatureAlertsForFtable(), possibly a chance for additional
   # subroutines
 
-  # create a hash of all errors in the input $alt_str, and also verify they are all valid errors
-  my %input_err_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
-  my @alt_idx_A = ();
+  # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
+  my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
   my $alt_code; 
   my $alt_idx; 
   foreach $alt_code (split(",", $alt_code_str)) { 
-    $alt_idx = utl_ArrayFindNonNumericValue($alt_info_HAR->{"code"}, $alt_code, $FH_HR);
-    if($alt_idx == -1) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
       ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", "dnaorg", 1, $FH_HR);
     }
-    $input_err_code_H{$alt_code} = 1; 
-    push(@alt_idx_A, $alt_idx);
+    $input_alt_code_H{$alt_code} = 1; 
   }
 
-  my $nerr  = scalar(@alt_idx_A);
   my $valid = 0;
-  for(my $e = 0; $e < $nerr; $e++) { 
-    $alt_idx = $alt_idx_A[$e];
+  foreach $alt_code (sort keys (%input_alt_code_H)) { 
     $valid = 1; # may be set to '0' below
-    if($alt_info_HAR->{"ftbl_invalid_by"}[$alt_idx] ne "") { 
-      # printf("\t\tinvalid_by is " . $alt_info_HAR->{"ftbl_invalid_by"}[$alt_idx] . "\n");
-      my @invalid_by_err_code_A = split(",", $alt_info_HAR->{"ftbl_invalid_by"}[$alt_idx]);
-      foreach my $alt_code2 (@invalid_by_err_code_A) {
-        if(exists $input_err_code_H{$alt_code2}) { 
+    if($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "") { 
+      # printf("\t\tinvalid_by is " . $alt_info_HHR->{"ftbl_invalid_by"}[$alt_idx] . "\n");
+      my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{"ftbl_invalid_by"}[$alt_idx]);
+      foreach my $alt_code2 (@invalid_by_alt_code_A) {
+        if(exists $input_alt_code_H{$alt_code2}) { 
           $valid = 0; # $alt_idx is invalidated by $alt_code2, which is also present in $alt_str
           # printf("\t\t\tinvalidated by $alt_code2\n");
         }
       }
     }
     if($valid) { 
-      # add errors
-      my $error_str = populateFTableNoteOrAlert("ftbl_alert", $alt_idx, $seq_name, -1, undef, $alt_info_HAR, undef, $alt_seq_instances_HHR, $FH_HR);
-      if($error_str ne "") { 
-        # only add the error, if an identical error does not already exist in @{$ret_alert_AR}
-        my $idx = utl_ArrayFindNonNumericValue($ret_alert_AR, $error_str, $FH_HR);
+      # add alerts
+      my $alert_str = populateFTableNoteOrAlert("ftbl_alert", $alt_idx, $seq_name, -1, undef, $alt_info_HHR, undef, $alt_seq_instances_HHR, $FH_HR);
+      if($alert_str ne "") { 
+        # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
+        my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
         if($idx == -1) { 
-          push(@{$ret_alert_AR}, $error_str); 
+          push(@{$ret_alert_AR}, $alert_str); 
         }
       }
     }
@@ -981,22 +961,22 @@ sub dng_ProcessSequenceAlertsForFTable {
 # Subroutine: dng_PopulateFTableNoteOrAlert
 # Incept:     EPN, Thu Feb  8 14:31:16 2018
 #
-# Purpose:    Create notes and errors for the feature table for a specific
-#             error, feature, and sequence trio.
+# Purpose:    Create notes and alerts for the feature table for a specific
+#             alert, feature, and sequence trio.
 #
 # Arguments:
 #   $ekey:                   either "ftbl_note" or "ftbl_alert"
-#   $alt_idx:                index of current error in %{$alt_info_HAR} arrays
+#   $alt_idx:                index of current alert in %{$alt_info_HHR} arrays
 #   $seq_name:               name of sequence
-#   $ftr_idx:                feature index, -1 if this is a per-sequence error
+#   $ftr_idx:                feature index, -1 if this is a per-sequence alert
 #   $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
 #                            must be undefined if $ftr_idx == -1
 #                            must be defined   if $ftr_idx != -1
-#   $alt_info_HAR:           REF to hash of arrays with information on the errors, PRE-FILLED
-#   $alt_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
+#   $alt_info_HHR:           REF to hash of arrays with information on the alerts, PRE-FILLED
+#   $alt_ftr_instances_AHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
 #                            must be undefined if $ftr_idx == -1
 #                            must be defined   if $ftr_idx != -1
-#   $alt_seq_instances_HHR:  REF to array of 2D hashes with per-feature errors, PRE-FILLED
+#   $alt_seq_instances_HHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
 #                            must be undefined if $ftr_idx != -1
 #                            must be defined   if $ftr_idx == -1
 #   $FH_HR:                  REF to hash of file handles, including "log" 
@@ -1004,7 +984,7 @@ sub dng_ProcessSequenceAlertsForFTable {
 # 
 # Returns: string with the feature table note for the current sequence/feature combo
 #
-# Dies:    If alt_info_HAR doesn't have information we need
+# Dies:    If alt_info_HHR doesn't have information we need
 #          or has invalid information
 #
 #################################################################
@@ -1013,9 +993,9 @@ sub dng_PopulateFTableNoteOrAlert {
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ekey, $alt_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HAR, $alt_ftr_instances_AHHR, $alt_seq_instances_HHR, $FH_HR) = (@_);
+  my ($ekey, $alt_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HHR, $alt_ftr_instances_AHHR, $alt_seq_instances_HHR, $FH_HR) = (@_);
 
-  if(! exists $alt_info_HAR->{$ekey}) { 
+  if(! exists $alt_info_HHR->{$ekey}) { 
     ofile_FAIL("ERROR in $sub_name, $ekey value is undefined in error info hash", "dnaorg", 1, $FH_HR);
   }
   # check that combination of $ftr_idx and $alt_ftr_instances_AHHR and $alt_seq_instances_HHR is valid
@@ -1038,7 +1018,7 @@ sub dng_PopulateFTableNoteOrAlert {
     ofile_FAIL("ERROR in $sub_name, ftr_idx is not -1 but err_ftr_instances_AHHR is defined", "dnaorg", 1, $FH_HR);
   }
 
-  my $msg = $alt_info_HAR->{$ekey}[$alt_idx];
+  my $msg = $alt_info_HHR->{$ekey}[$alt_idx];
 
   if(! defined $msg) { 
     ofile_FAIL("ERROR in $sub_name, error $alt_idx is invalid in error info hash", "dnaorg", 1, $FH_HR);
@@ -1048,7 +1028,7 @@ sub dng_PopulateFTableNoteOrAlert {
     return "";
   }
 
-  my $alt_code = $alt_info_HAR->{"code"}[$alt_idx];
+  my $alt_code = $alt_info_HHR->{"code"}[$alt_idx];
 
   my $orig_msg = $msg;
   my $ret_msg  = $msg;
@@ -1057,13 +1037,13 @@ sub dng_PopulateFTableNoteOrAlert {
   if($ret_msg =~ /!DESC!/) { 
     if(($ftr_idx != -1) && (exists $alt_ftr_instances_AHHR->[$ftr_idx]{$alt_code}{$seq_name})) { 
       my $desc_str = sprintf("%s%s", 
-                             $alt_info_HAR->{"desc"}[$alt_idx], 
+                             $alt_info_HHR->{"desc"}[$alt_idx], 
                              ($alt_ftr_instances_AHHR->[$ftr_idx]{$alt_code}{$seq_name} eq "") ? "" : " [" . $alt_ftr_instances_AHHR->[$ftr_idx]{$alt_code}{$seq_name} . "]"); 
       $ret_msg =~ s/!DESC!/$desc_str/g;
     }
     elsif(($ftr_idx == -1) && (exists $alt_seq_instances_HHR->{$alt_code}{$seq_name})) { 
       my $desc_str = sprintf("%s%s", 
-                             $alt_info_HAR->{"desc"}[$alt_idx], 
+                             $alt_info_HHR->{"desc"}[$alt_idx], 
                              ($alt_seq_instances_HHR->{$alt_code}{$seq_name} eq "") ? "" : " [" . $alt_seq_instances_HHR->{$alt_code}{$seq_name} . "]"); 
       $ret_msg =~ s/!DESC!/$desc_str/g;
     }
@@ -2010,57 +1990,6 @@ sub dng_ValidateSequenceInfoHashIsComplete {
 }
 
 #################################################################
-# Subroutine: dng_AlertInfoValidate()
-# Incept:     EPN, Fri Mar  4 12:56:43 2016
-#
-# Purpose:    Validate that a 'error info' hash is valid and complete.
-#             'Complete' means it has all the expected keys, each of which is an identically sized array.
-#             The expected keys are:
-#                "code":            the error code, e.g. "b5e"
-#                "pertype":         type of this error, either "feature" (error occurs for a single feature) or "sequence"
-#                                   (error occurs for an entire sequence)
-#                "desc":            the description/message for this error, e.g. ""unable to identify homologous feature"
-#             Information relevant  to feature table output:
-#                "ftbl_invalid_by": string that lists all error code indices (separated by commas) the current error code is invalidated by
-#                                   for feature table output (if any of those errors are also present, this error becomes invalid and does
-#                                   not impact feature table output)
-#                "ftbl_note":       note message for feature table
-#                "ftbl_alert"       alert message for feature table
-#                
-#               
-#             If @{exceptions_AR} is non-empty, then keys in 
-#             in that array need not be in %{$alt_info_HAR}.
-#
-# Arguments:
-#   $alt_info_HAR:  REF to hash of arrays of error information
-#   $exceptions_AR: REF to array of keys that may be excluded from the hash
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: Number of elements in each and every array of %{$alt_info_HAR}
-#
-# Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
-#            does not exist in $alt_info_HAR
-#          - if two arrays in $alt_info_HAR are of different sizes
-#          - if any other key other than those listed above exist in ${%alt_info_HAR}
-#          - if any key listed in @{$exceptions_AR} is not one of the expected keys
-#
-#################################################################
-sub dng_AlertInfoValidate { 
-  my $sub_name = "dng_AlertInfoValidate()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($alt_info_HAR, $exceptions_AR, $FH_HR) = (@_);
-  
-  my @expected_keys_A = ("code", "pertype", "desc", "causes_failure", "prevents_annot", "ftbl_invalid_by", "ftbl_note", "ftbl_alert");
-
-  # we do not do any more extensive checking because the function that adds elements to the error info hash
-  # (dng_AlertInfoAdd()) does a lot of checking to validate the data before it is added
-
-  return dng_ValidateInfoHashOfArraysIsComplete($alt_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
-}
-
-#################################################################
 # Subroutine: dng_ValidateInfoHashOfArraysIsComplete()
 # Incept:     EPN, Tue Feb 16 11:10:40 2016
 #
@@ -2096,7 +2025,7 @@ sub dng_ValidateInfoHashOfArraysIsComplete {
   # make sure our exceptions are actually in the expected array
   if(defined $exceptions_AR) { 
     foreach my $key (@{$exceptions_AR}) { 
-      if(utl_ArrayFindNonNumericValue($expected_keys_AR, $key, $FH_HR) == -1) { 
+      if(utl_AFindNonNumericValue($expected_keys_AR, $key, $FH_HR) == -1) { 
         ofile_FAIL("ERROR in $sub_name, excepted value $key is not an expected key in the feature info hash", "dnaorg", 1, $FH_HR);
       }
     }
@@ -2105,7 +2034,7 @@ sub dng_ValidateInfoHashOfArraysIsComplete {
   # make the list of keys we'll require, this is all expected keys minus any exceptions in @{$exceptions_AR}
   my @reqd_keys_A = ();
   foreach my $key (@{$expected_keys_AR}) { 
-    if((! defined $exceptions_AR) || (utl_ArrayFindNonNumericValue($key, $exceptions_AR, $FH_HR) == -1)) { 
+    if((! defined $exceptions_AR) || (utl_AFindNonNumericValue($key, $exceptions_AR, $FH_HR) == -1)) { 
       push(@reqd_keys_A, $key);
     }
   }
@@ -2416,7 +2345,7 @@ sub dng_ValidateCapitalizedDnaStartCodon {
 #################################################################
 #
 # Simple utility subroutines for hashes and arrays:
-#   utl_ArrayFindNonNumericValue()
+#   utl_AFindNonNumericValue()
 #   numNonNumericValueInArray()
 #   maxLengthScalarKeyInHash()
 #   maxLengthScalarValueInHash()

@@ -139,7 +139,7 @@ sub utl_ConcatenateListOfFiles {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($file_AR, $outfile, $caller_sub_name, $opt_HHR, $FH_HR) = (@_);
 
-  if(utl_ArrayFindNonNumericValue($file_AR, $outfile, $FH_HR) != -1) { 
+  if(utl_AFindNonNumericValue($file_AR, $outfile, $FH_HR) != -1) { 
     ofile_FAIL(sprintf("ERROR in $sub_name%s, output file name $outfile exists in list of files to concatenate", 
                         (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
   }
@@ -177,7 +177,7 @@ sub utl_ConcatenateListOfFiles {
       $tmp_outfile = $outfile . ".tmp" . ($idx2+1); 
       # make sure this file does not exist in @{$file_AA[$idx2]} to avoid klobbering
       # if it does, continue to append .tmp($idx2+1) until it doesn't
-      while(utl_ArrayFindNonNumericValue($file_AA[$idx2], $tmp_outfile, $FH_HR) != -1) { 
+      while(utl_AFindNonNumericValue($file_AA[$idx2], $tmp_outfile, $FH_HR) != -1) { 
         $tmp_outfile .= ".tmp" . ($idx2+1); 
       }
     }
@@ -215,7 +215,7 @@ sub utl_ConcatenateListOfFiles {
 }
 
 #################################################################
-# Subroutine:  utl_ArrayFindNonNumericValue()
+# Subroutine:  utl_AFindNonNumericValue()
 # Incept:      EPN, Tue Feb 16 10:40:57 2016 [dnaorg.pm]
 #
 # Purpose:     Returns (first) index in @{$AR} that has the 
@@ -231,9 +231,9 @@ sub utl_ConcatenateListOfFiles {
 #
 # Dies:        if $value is numeric, or @{$AR} is not defined.
 ################################################################# 
-sub utl_ArrayFindNonNumericValue { 
+sub utl_AFindNonNumericValue { 
   my $nargs_expected = 3;
-  my $sub_name = "utl_ArrayFindNonNumericValue()";
+  my $sub_name = "utl_AFindNonNumericValue()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($AR, $value, $FH_HR) = (@_);
