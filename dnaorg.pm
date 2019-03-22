@@ -4121,7 +4121,7 @@ sub dng_FeatureInfoImputeCoords {
   
   # ftr_info_AHR should already have array data for keys "type", "location"
   my @keys_A = ("type", "location");
-  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_AHR->[$ftr_idx]{"coords"} = dng_FeatureCoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
@@ -4154,7 +4154,7 @@ sub dng_FeatureInfoImputeLength {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine length by parsing the 
   # "coords" value
@@ -4196,7 +4196,7 @@ sub dng_FeatureInfoImputeSourceIdx {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine duplicates (set 'source_idx')
   # 
@@ -4253,7 +4253,7 @@ sub dng_FeatureInfoImputeParentIdx {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine parents (set 'parent_idx')
   # 
@@ -4344,7 +4344,7 @@ sub dng_FeatureInfoImpute3paFtrIdx {
   
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # go through all features and determine adjacent mat_peptides (set '3pa_ftr_idx')
   # 
@@ -4438,7 +4438,7 @@ sub dng_SegmentInfoPopulate {
 
   # ftr_info_AHR should already have array data for keys "type", "coords", "source_idx"
   my @keys_A = ("type", "coords", "source_idx");
-  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # initialize new %{$ftr_info_AHR} values
   my ($ftr_idx, $ftr_idx2, $sgm_idx, $sgm_idx2); # feature and segment indices
@@ -4513,7 +4513,7 @@ sub dng_FeatureInfoStartStopStrandArrays {
 
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   my @start_AA  = ();
   my @stop_AA   = ();
@@ -4548,7 +4548,7 @@ sub dng_FeatureInfoStartStopStrandArrays {
 #
 # Returns:    void
 #
-# Dies: if unable to parse $coords_str
+# Dies: if unable to parse $coords
 #
 #################################################################
 sub dng_FeatureStartStopStrandArrays {
@@ -4557,6 +4557,9 @@ sub dng_FeatureStartStopStrandArrays {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($coords, $start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+  }
 
   my @start_A  = ();
   my @stop_A   = ();
@@ -4583,77 +4586,7 @@ sub dng_FeatureStartStopStrandArrays {
   return;
 }
 
-#################################################################
-# Subroutine: dng_ArrayOfHashesValidate()
-# Incept:     EPN, Wed Mar 13 13:24:38 2019
-#
-# Purpose:    Validate an array of hashes, by making sure it
-#             includes a key/value for all keys in @{$keys_AR}.
-# Arguments:
-#   $AHR:      REF to array of hashes to validate
-#   $keys_AR:  REF to array of keys that may be excluded from the hash
-#   $fail_str: extra string to output if we die
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: scalar(@{$AHR});
-#
-# Dies:    - if one of the keys in @{$keys_AR} does not exist in all hashes
-#            of the array
-#
-#################################################################
-sub dng_ArrayOfHashesValidate {
-  my $sub_name = "dng_ArrayOfHashesValidate()";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($AHR, $keys_AR, $fail_str, $FH_HR) = (@_);
 
-  my $n = scalar(@{$AHR});
-
-  for(my $i = 0; $i < $n; $i++) { 
-    dng_HashValidate($AHR->[$i], $keys_AR, $fail_str, $FH_HR);
-  }
-
-  return $n;
-}
-
-
-#################################################################
-# Subroutine: dng_HashValidate()
-# Incept:     EPN, Fri Mar 15 09:37:19 2019
-#
-# Purpose:    Validate a hash, by making sure a defined value
-#             exists for each key in @{$keys_AR}.
-# Arguments:
-#   $HR:       REF to the hash
-#   $keys_AR:  REF to array of keys that may be excluded from the hash
-#   $fail_str: extra string to output if we die
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: void
-#
-# Dies:    - if one of the keys in @{$keys_AR} does not exist in the hash
-#            of the array
-#
-#################################################################
-sub dng_HashValidate {
-  my $sub_name = "dng_HashValidate()";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($HR, $keys_AR, $fail_str, $FH_HR) = (@_);
-
-  foreach my $key (@{$keys_AR}) { 
-    if(! exists $HR->{$key}) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key does not exist\n%s", (defined $fail_str) ? $fail_str : ""), "dnaorg", 1, $FH_HR); 
-    }
-    if(! defined $HR->{$key}) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key exists but its value is undefined\n%s", (defined $fail_str) ? $fail_str : ""), "dnaorg", 1, $FH_HR); 
-    }
-  }
-
-  return;
-}
 
 
 #################################################################
@@ -4927,7 +4860,7 @@ sub dng_FeatureInfoValidateCoords {
 
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = dng_ArrayOfHashesValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
   my $fail_str = ""; # added to if any elements are out of range
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -5677,10 +5610,10 @@ sub dng_ModelInfoFileWrite {
   my @reqd_mdl_keys_A  = ("name", "length");
   my @reqd_ftr_keys_A  = ("type", "coords");
   # validate all info first
-  $nmdl = dng_ArrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, mdl_info failed validation; missing required key(s)", $FH_HR);
+  $nmdl = utl_AHValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, mdl_info failed validation; missing required key(s)", $FH_HR);
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
-    dng_ArrayOfHashesValidate(\@{$ftr_info_HAHR->{$mdl_name}}, \@reqd_ftr_keys_A, "ERROR in $sub_name, ftr_info failed validation; missing required key(s)", $FH_HR);
+    utl_AHValidate(\@{$ftr_info_HAHR->{$mdl_name}}, \@reqd_ftr_keys_A, "ERROR in $sub_name, ftr_info failed validation; missing required key(s)", $FH_HR);
   }
 
   # verify feature coords make sense
@@ -5874,11 +5807,11 @@ sub dng_ModelInfoFileParse {
   # verify we read what we need
   my @reqd_mdl_keys_A = ("name", "length");
   my @reqd_ftr_keys_A = ("type", "coords");
-  dng_ArrayOfHashesValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
+  utl_AHValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
   my $nmdl = scalar(@{$mdl_info_AHR});
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
-    dng_ArrayOfHashesValidate($ftr_info_HAHR->{$mdl_name}, \@reqd_ftr_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
+    utl_AHValidate($ftr_info_HAHR->{$mdl_name}, \@reqd_ftr_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
   }
 
   # verify feature coords make sense
@@ -6090,38 +6023,6 @@ sub dng_SplitNumSeqFiles {
 
 
 
-#################################################################
-# Subroutine: dng_ArrayOfHashesCountKeyValue()
-# Incept:     EPN, Tue Mar 19 11:37:32 2019
-#
-# Synopsis: Return the number of elements in @{AHR} that 
-#           have a key $key in %{$AHR->[]} with value $value.
-#
-# Arguments:
-#  $AHR:      ref to array of hashes
-#  $key:      hash key
-#  $value:    hash value
-#
-# Returns:    Number of array elements for which $AHR->[]{$key} eq $value
-#
-#################################################################
-sub dng_ArrayOfHashesCountKeyValue {
-  my $sub_name = "dng_ArrayOfHashesCountKeyValue";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($AHR, $key, $value) = @_;
-
-  my $ret_n = 0;
-  for(my $i = 0; $i < scalar(@{$AHR}); $i++) { 
-    if((defined $AHR->[$i]{$key}) && 
-       ($AHR->[$i]{$key} eq $value)) { 
-      $ret_n++;
-    }
-  }
-
-  return $ret_n;
-}
 
 #################################################################
 # Subroutine:  dng_CmalignCheckStdOutput()

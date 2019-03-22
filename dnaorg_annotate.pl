@@ -5022,29 +5022,22 @@ sub cmsearch_parse_sorted_tblout {
         }
         # determine if we are going to store this hit as best in 'group' and/or 'subgroup'
         # to the expected group and/or expected subgroup
-        # we only store in r1.g  if we aren't already storing it in r1.1 or r1.2
-        # we only store in r1.sg if we aren't already storing it in r1.1 or r1.2 or r1.g
-        # (so as to be more memory efficient)
-        if((! $is_1) && (! $is_2)) { 
-          if((defined $exp_group) && ($mdl_group_H{$model} eq $exp_group)) { 
-            if((! defined $results_HHHR->{$seq}{"r1.g"}) || # first (top) hit for this sequence to this group
-               ($results_HHHR->{$seq}{"r1.g"}{"model"} eq $model)) { # additional hit for this sequence/model pair
-              $is_g = 1; 
-            }
-            if(! $is_g) { 
-              if((defined $exp_subgroup) && ($mdl_subgroup_H{$model} eq $exp_subgroup)) { 
-                if((! defined $results_HHHR->{$seq}{"r1.sg"}) || # first (top) hit for this sequence to this subgroup
-                   ($results_HHHR->{$seq}{"r1.sg"}{"model"} eq $model)) { # additional hit for this sequence/model pair
-                  $is_sg = 1; 
-                }
-              }
+        if((defined $exp_group) && ($mdl_group_H{$model} eq $exp_group)) { 
+          if((! defined $results_HHHR->{$seq}{"r1.g"}) || # first (top) hit for this sequence to this group
+             ($results_HHHR->{$seq}{"r1.g"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+            $is_g = 1; 
+          }
+          if((defined $exp_subgroup) && ($mdl_subgroup_H{$model} eq $exp_subgroup)) { 
+            if((! defined $results_HHHR->{$seq}{"r1.sg"}) || # first (top) hit for this sequence to this subgroup
+               ($results_HHHR->{$seq}{"r1.sg"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+              $is_sg = 1; 
             }
           }
         }
-        if($is_1)     { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.1"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
-        elsif($is_2)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.2"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
-        elsif($is_g)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.g"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
-        elsif($is_sg) { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.sg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
+        if($is_1)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.1"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
+        if($is_2)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.2"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
+        if($is_g)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.g"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
+        if($is_sg) { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.sg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
       }
       else { # round 2
         ##target name                 accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
@@ -5219,7 +5212,6 @@ sub add_classification_alerts {
       # gather the information we need to detect alerts for this sequence
       # convert coords values into start, stop and strand arrays
       # hash of hit info, hash key is one of "r1.1", "r1.2", "r1.g", "r1.sg", "r2"
-      my @rkey_A = ("r1.1", "r1.2", "r1.g", "r1.sg", "r2");
       my %start_HA   = (); # sequence start positions for each hit for this sequence/model pair
       my %stop_HA    = (); # sequence stop  positions for each hit for this sequence/model pair
       my %strand_HA  = (); # sequence strands for each hit for this sequence/model pair
@@ -5228,87 +5220,48 @@ sub add_classification_alerts {
       my %scpnt_H    = (); # score per nt 
       my %length_H   = (); # total length of all hits
       my %bstrand_H  = (); # strand of highest-scoring hit
-      my %group_H    = (); # group model belongs to, only filled if --group used
-      my %subgroup_H = (); # subgroup model belongs to, only filled if --subgroup used
-      # fill hit info hashes for each key in @rkeY_An
-      foreach my $rkey (@rkey_A) { 
-        my $results_HR = undef;
-        if(defined $cls_results_HHHR->{$seq_name}{$rkey}) { 
-          $results_HR = \%{$cls_results_HHHR->{$seq_name}{$rkey}};
+      foreach my $rkey (keys (%{$cls_results_HHHR->{$seq_name}})) { 
+        my $results_HR = \%{$cls_results_HHHR->{$seq_name}{$rkey}}; # for convenience
+        @{$start_HA{$rkey}}  = ();
+        @{$stop_HA{$rkey}}   = ();
+        @{$strand_HA{$rkey}} = ();
+        dng_FeatureStartStopStrandArrays($results_HR->{"s_coords"},
+                                         \@{$start_HA{$rkey}},
+                                         \@{$stop_HA{$rkey}},
+                                         \@{$strand_HA{$rkey}}, $FH_HR);
+
+        my $nseg = scalar(@{$start_HA{$rkey}});
+        my @score_A = split(",", $results_HR->{"score"});
+        if(scalar(@score_A) != $nseg) { 
+          ofile_FAIL("ERROR in $sub_name, problem checking alerts for seq $seq_name, round $rkey, segment count differs for s_coords and score", 1, $FH_HR);
         }
-        elsif((defined $exp_group) && ($rkey eq "r1.g")) { 
-          # special handling of "r1.g"
-          # if "r1.g" not defined in $cls_results_HHHR->{$seq_name}{$rkey}
-          # check if either r1.1 or r1.2 hits are to a model in $exp_group
-          foreach my $rkey2 (@rkey_A) { 
-            if((! defined $results_HR) && 
-               (defined $group_H{$rkey2}) && # only possibly true for "r1.1", "r1.2"
-               ($group_H{$rkey2} eq $exp_group)) {  
-              $results_HR = \%{$cls_results_HHHR->{$seq_name}{$rkey2}};
-            }
-          }
-        }
-        elsif((defined $exp_group) && ($rkey eq "r1.sg")) { 
-          # special handling of "r1.sg"
-          # if "r1.sg" not defined in $cls_results_HHHR->{$seq_name}{$rkey}
-          # check if either r1.1 or r1.2 or r1.g hits are to a model in $exp_subgroup
-          foreach my $rkey2 (@rkey_A) { 
-            if((! defined $results_HR) && 
-               (defined $subgroup_H{$rkey2}) && # only possibly true for "r1.1", "r1.2", "r1.g"
-               ($subgroup_H{$rkey2} eq $exp_subgroup)) {  
-              $results_HR = \%{$cls_results_HHHR->{$seq_name}{$rkey2}};
-            }
+        my @bias_A = ();
+        if($rkey eq "r2") { 
+          @bias_A = split(",", $results_HR->{"bias"});
+          if(scalar(@bias_A) != $nseg) { 
+            ofile_FAIL("ERROR in $sub_name, problem checking alerts for seq $seq_name, round $rkey, segment count differs for s_coords and bias", "dnaorg", 1, $FH_HR);
           }
         }
-        # if the result existed for this seq/pair/round-key, store the data
-        if(defined $results_HR) { 
-          @{$start_HA{$rkey}}  = ();
-          @{$stop_HA{$rkey}}   = ();
-          @{$strand_HA{$rkey}} = ();
-          dng_FeatureStartStopStrandArrays($results_HR->{"s_coords"}, 
-                                           \@{$start_HA{$rkey}},
-                                           \@{$stop_HA{$rkey}},
-                                           \@{$strand_HA{$rkey}}, $FH_HR);
-          
-          my $nseg = scalar(@{$start_HA{$rkey}});
-          my @score_A = split(",", $results_HR->{"score"});
-          if(scalar(@score_A) != $nseg) { 
-            ofile_FAIL("ERROR in $sub_name, problem checking alerts for seq $seq_name, round $rkey, segment count differs for s_coords and score", "dnaorg", 1, $FH_HR);
-          }
-          my @bias_A = ();
-          if($rkey eq "r2") { 
-            @bias_A = split(",", $results_HR->{"bias"});
-            if(scalar(@bias_A) != $nseg) { 
-              ofile_FAIL("ERROR in $sub_name, problem checking alerts for seq $seq_name, round $rkey, segment count differs for s_coords and bias", "dnaorg", 1, $FH_HR);
+
+        my $bstrand = $strand_HA{$rkey}[0];
+        my $length = abs($start_HA{$rkey}[0] - $stop_HA{$rkey}[0]) + 1;
+        my $score  = $score_A[0];
+        my $bias   = ($rkey eq "r2") ? $bias_A[0] : undef;
+        for(my $i = 1; $i < $nseg; $i++) { 
+          if($strand_HA{$rkey}[$i] eq $bstrand) { 
+            $length += abs($start_HA{$rkey}[$i] - $stop_HA{$rkey}[$i]) + 1;
+            $score  += $score_A[$i];
+            if(defined $bias) { 
+              $bias   += $bias_A[$i];
             }
           }
-          
-          my $bstrand  = $strand_HA{$rkey}[0];
-          my $length   = abs($start_HA{$rkey}[0] - $stop_HA{$rkey}[0]) + 1;
-          my $score    = $score_A[0];
-          my $bias     = ($rkey eq "r2") ? $bias_A[0] : undef;
-          for(my $i = 1; $i < $nseg; $i++) { 
-            if($strand_HA{$rkey}[$i] eq $bstrand) { 
-              $length += abs($start_HA{$rkey}[$i] - $stop_HA{$rkey}[$i]) + 1;
-              $score  += $score_A[$i];
-              if(defined $bias) { 
-                $bias += $bias_A[$i];
-              }
-            }
-          }
-          $score_H{$rkey}   = $score;
-          $bias_H{$rkey}    = (defined $bias) ? $bias : 0.;
-          $scpnt_H{$rkey}   = $score / $length;
-          $length_H{$rkey}  = $length;
-          $bstrand_H{$rkey} = $bstrand;
-          if(defined $exp_group) { 
-            $group_H{$rkey} = $mdl_group_H{$results_HR->{"model"}};
-            if(defined $exp_subgroup) { 
-              $subgroup_H{$rkey} = $mdl_subgroup_H{$results_HR->{"model"}};
-            }
-          }
-        } # end of 'if(defined $results_HR)'
-      } # end of foreach $rkey ("r1.1", "r1.2", "r1.g", "r1.sg", "r2")
+        }
+        $score_H{$rkey}   = $score;
+        $bias_H{$rkey}    = (defined $bias) ? $bias : 0.;
+        $scpnt_H{$rkey}   = $score / $length;
+        $length_H{$rkey}  = $length;
+        $bstrand_H{$rkey} = $bstrand;
+      } # end of foreach $rkey
 
       # classification alerts that depend on round 1 results
       # low difference (c_lod) and very low difference (c_vld)
