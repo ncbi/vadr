@@ -41,7 +41,7 @@ sub utl_RunCommand {
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($cmd, $be_verbose, $do_failok, $FH_HR) = @_;
+  my ($cmd, $be_verbose, $do_failok, $FH_HR) = (@_);
   
   my $cmd_FH = undef;
   if(defined $FH_HR && defined $FH_HR->{"cmd"}) { 
@@ -137,7 +137,7 @@ sub utl_ConcatenateListOfFiles {
   my $nargs_expected = 5;
   my $sub_name = "utl_ConcatenateListOfFiles()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($file_AR, $outfile, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
+  my ($file_AR, $outfile, $caller_sub_name, $opt_HHR, $FH_HR) = (@_);
 
   if(utl_ArrayFindNonNumericValue($file_AR, $outfile, $FH_HR) != -1) { 
     ofile_FAIL(sprintf("ERROR in $sub_name%s, output file name $outfile exists in list of files to concatenate", 
@@ -235,7 +235,8 @@ sub utl_ArrayFindNonNumericValue {
   my $nargs_expected = 3;
   my $sub_name = "utl_ArrayFindNonNumericValue()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($AR, $value, $FH_HR) = @_;
+
+  my ($AR, $value, $FH_HR) = (@_);
 
   if(verify_real($value)) { 
     ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", undef, 1, $FH_HR);
@@ -313,25 +314,30 @@ sub utl_RemoveDirPath {
   return $fullpath;
 }
 
-
 #################################################################
 # Subroutine:  utl_HHFromAH()
-# Incept:      EPN, Thu Mar 21 06:18:38 2019
+# Incept:      EPN, Fri Mar 22 09:43:34 2019
 #
 # Purpose:     Create a 2D hash %{$HHR} from an array of hashes
-#              @{$AHR} using $AHR->[]{$key} as the 1D key in
-#              %{$HHR}.
+#              @{$AHR}.
+#              First dim keys in %{$HHR} will be values from 
+#              $AHR->[]{$AH_key_for_HH_key}.
+#              Second dim keys in %{$HHR} will be all other keys from
+#              $AHR->[]{}.
 #              
 # Arguments: 
-#   $HHR:      ref to 2D hash to create
-#   $AHR:      ref to array of hashes to copy from
-#   $key:      key to use as 1st dim value
-#   $FH_HR:    ref to hash of file handles, including "log" and "cmd"
+#   $HHR:               ref to 2D hash to create
+#   $AHR:               ref to array of hashes to copy from
+#   $AH_key_for_HH_key: key in @{$AHR} to get to use value from to use
+#                       as key in 1st dim of %{$HHR}
+#   $call_str:          string describing caller, to output if we die
+#   $FH_HR:             ref to hash of file handles, including "log" and "cmd"
 # 
 # Returns:     void
 # 
-# Dies:        If not all elements of @{$AHR} have @{$AHR->[]{$key}}
-#              defined. If more than one elements of @{$AHR} have same
+# Dies:        If not all elements of @{$AHR} have 
+#              $AHR->[]{$AH_key_for_HH_key} defined. 
+#              If more than one elements of @{$AHR} have same
 #              value for @{$AHR->[]{$key}}.
 #
 ################################################################# 
@@ -340,17 +346,350 @@ sub utl_HHFromAH {
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($HHR, $AHR, $key, $caller_sub_name, $FH_HR);
+  my ($HHR, $AHR, $AH_key_for_HH_key, $call_str, $FH_HR) = (@_);
 
   %{$HHR} = ();
   my $n = scalar(@{$AHR});
+  my $AH_value_for_HH_key = undef;
   for(my $i = 0; $i < $n; $i++) { 
-    if(! defined $AHR->[$i]{$key}) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, %s trying to remove file $file but it does not exist", 
-                         (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
-      
+    if(! defined $AHR->[$i]{$AH_key_for_HH_key}) {
+      ofile_FAIL("ERROR in $sub_name,%selement $i does not have key $AH_key_for_HH_key", 
+                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+    }
+    $AH_value_for_HH_key = $AHR->[$i]{$AH_key_for_HH_key};
+    if(defined $HHR->{$AH_value_for_HH_key}) { 
+      ofile_FAIL("ERROR in $sub_name,%stwo elements have same value for $AH_key_for_HH_key key ($AH_value_for_HH_key)", 
+                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+    }
+    %{$HHR->{$AH_value_for_HH_key}} = ();
+    foreach my $AH_key2_for_HH_key (keys (%{$AHR->[$i]})) { 
+      if($AH_key2_for_HH_key ne $AH_key_for_HH_key) { 
+        $HHR->{$AH_value_for_HH_key}{$AH_key2_for_HH_key} = $AHR->[$i]{$AH_key2_for_HH_key};
+      }
+    }
+  }
 
-  return $fullpath;
+  return;
+}
+
+#################################################################
+# Subroutine:  utl_HHFromAHAddIdx()
+# Incept:      EPN, Thu Mar 21 06:35:28 2019
+#
+# Purpose:     Create a 2D hash %{$HHR} from an array of hashes
+#              @{$AHR} by calling utL_HHFromAH() 
+#              (see that sub's Purpose for more details)
+#              
+#              And then add $HHR->{$key}{"idx"}, that gives index <i> of 
+#              @{$AHR} for which $AHR->[<i>]{$AH_key_for_HH_key} == $key.
+#              
+# Arguments: 
+#   $HHR:               ref to 2D hash to create
+#   $AHR:               ref to array of hashes to copy from
+#   $AH_key_for_HH_key: key in @{$AHR} to get to use value from to use
+#                       as key in 1st dim of %{$HHR}
+#   $call_str:          string describing caller, to output if we die
+#   $FH_HR:             ref to hash of file handles, including "log" and "cmd"
+# 
+# Returns:     void
+# 
+# Dies:        If not all elements of @{$AHR} have 
+#              $AHR->[]{$AH_key_for_HH_key} defined. 
+#              If more than one elements of @{$AHR} have same
+#              value for @{$AHR->[]{$key}}.
+#              If $AHR->[]{"idx"} is defined for any element.
+#              If $AH_key_for_HH_key is "idx";
+#
+################################################################# 
+sub utl_HHFromAHAddIdx {
+  my $sub_name = "utl_HHFromAHAddIdx()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($HHR, $AHR, $AH_key_for_HH_key, $call_str, $FH_HR) = (@_);
+
+  # make sure "idx" is not the $AH_key_for_HH_key
+  if($AH_key_for_HH_key eq "idx") { 
+    ofile_FAIL("ERROR in $sub_name,%skey to choose is \"idx\"", 
+               (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+  }
+  # make sure "idx" 2D key does not exist for any element
+  my $n = scalar(@{$AHR});
+  for(my $i = 0; $i < $n; $i++) { 
+    if(defined $AHR->[$i]{"idx"}) {
+      ofile_FAIL("ERROR in $sub_name,%selement $i already has key \"idx\" upon entry", 
+                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+    }
+  }
+
+  # do most of the work with utl_HHFromAH
+  utl_HHFromAH($HHR, $AHR, $AH_key_for_HH_key, $call_str, $FH_HR);
+
+  # add idx 
+  my $AH_value_for_HH_key = undef;
+  for(my $i = 0; $i < $n; $i++) { 
+    $AH_value_for_HH_key = $AHR->[$i]{$AH_key_for_HH_key};
+    $HHR->{$AH_value_for_HH_key}{"idx"} = $i;
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  utl_HFromAH()
+# Incept:      EPN, Fri Mar 22 06:20:18 2019
+#
+# Purpose:     Create a 1D hash %{$HR} using key/value pairs
+#              from @{$AHR}. 
+#              Keys in %{$HR} will be values from 
+#              $AHR->[]{$AH_key_for_H_key}.
+#              Values in %{$HR} will be values from 
+#              $AHR->[]{$AH_key_for_H_value}.
+#              
+# Arguments: 
+#   $HR:                  ref to 1D hash to create
+#   $AHR:                 ref to array of hashes to copy from
+#   $AH_key_for_H_key:    key in @{$AHR} to get value from to use as key in %{$HR}
+#   $AH_key_for_H_value:  key in @{$AHR} to get value from to use as value in %{$HR}
+#   $call_str:            string describing caller, to output if we die
+#   $FH_HR:               ref to hash of file handles, including "log" and "cmd"
+# 
+# Returns:     void
+# 
+# Dies:        If not all elements of @{$AHR} have 
+#              $AHR->[]{$AH_key_for_H_key}}
+#              If not all elements of @{$AHR} have 
+#              $AHR->[]{$AH_key_for_H_value}}
+#              If more than one elements of @{$AHR} have same
+#              value for @{$AHR->[]{$AH_key_for_H_key}}.
+#
+################################################################# 
+sub utl_HFromAH {
+  my $sub_name = "utl_HFromAH()";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($HR, $AHR, $AH_key_for_H_key, $AH_key_for_H_value, $call_str, $FH_HR) = (@_);
+
+  printf("in $sub_name, call_str: $call_str\n");
+
+  %{$HR} = ();
+  my $n = scalar(@{$AHR});
+  my $AH_value_for_H_key = undef;
+  for(my $i = 0; $i < $n; $i++) { 
+    if(! defined $AHR->[$i]{$AH_key_for_H_key}) { 
+      ofile_FAIL("ERROR in $sub_name,%selement $i does not have key $AH_key_for_H_key", 
+                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+    }
+    if(! defined $AHR->[$i]{$AH_key_for_H_value}) { 
+      ofile_FAIL("ERROR in $sub_name,%selement $i does not have key $AH_key_for_H_value", 
+                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+    }
+    my $H_key   = $AHR->[$i]{$AH_key_for_H_key};
+    my $H_value = $AHR->[$i]{$AH_key_for_H_value};
+    if(defined $HR->{$H_key}) { 
+      ofile_FAIL("ERROR in $sub_name,%stwo elements have same value for key $AH_key_for_H_key ($H_key)", 
+                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+    }
+    $HR->{$H_key} = $H_value;
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  utl_IdxHFromA()
+# Incept:      EPN, Fri Mar 22 10:01:38 2019
+#
+# Purpose:     Create a 1D 'index' hash %{$idx_HR} such that
+#              $idx_HR->{$key} == $i if
+#              $AR->[$i] == $key
+#              from @{$AHR}. 
+#              
+# Arguments: 
+#   $idx_HR:              ref to 1D hash to create
+#   $AR:                  ref to array
+#   $call_str:            string describing caller, to output if we die
+#   $FH_HR:               ref to hash of file handles, including "log" and "cmd"
+# 
+# Returns:     void
+# 
+# Dies:        Two elements of @{$AR} are identical:
+#              (if AR->[$i] == AR->[$j] and $i != $j for any $i, $j)
+#
+################################################################# 
+sub utl_IdxHFromA {
+  my $sub_name = "utl_IdxHFromA()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($HR, $AR, $call_str, $FH_HR) = (@_);
+
+  %{$HR} = ();
+  my $n = scalar(@{$AR});
+  for(my $i = 0; $i < $n; $i++) { 
+    my $key = $AR->[$i];
+    if(defined $HR->{$key}) { 
+      ofile_FAIL("ERROR in $sub_name,%stwo elements in array have same value ($key)",
+                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+    }
+    $HR->{$key} = $i;
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  utl_IdxHFromAH()
+# Incept:      EPN, Fri Mar 22 10:01:38 2019
+#
+# Purpose:     Create a 1D 'index' hash %{$idx_HR} from @{$AHR} 
+#              such that
+#              $idx_HR->{$key} == $i if
+#              $AHR->[$i]{$AH_key} == $key
+#              
+# Arguments: 
+#   $idx_HR:              ref to 1D hash to create
+#   $AHR:                 ref to hash of arrays
+#   $AH_key:              ref to key in %{$AHR->[$i]}
+#   $call_str:            string describing caller, to output if we die
+#   $FH_HR:               ref to hash of file handles, including "log" and "cmd"
+# 
+# Returns:     void
+# 
+# Dies:        Two values we are trying to add as keys to %{$idx_HR} are identical
+#              (if AHR->[$i]{$AH_key} == AHR->[$j]{$AH_key} and $i != $j for any $i, $j)
+#              If AHR->[$i]{$AH_key} is undefined for any $i
+################################################################# 
+sub utl_IdxHFromAH {
+  my $sub_name = "utl_IdxHFromAH()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($HR, $AHR, $AH_key, $call_str, $FH_HR) = (@_);
+
+  %{$HR} = ();
+  my $n = scalar(@{$AHR});
+  for(my $i = 0; $i < $n; $i++) { 
+    if(! defined $AHR->[$i]{$AH_key}) { 
+      ofile_FAIL("ERROR in $sub_name,%shash that is array element $i does not have key $AH_key",
+                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+    }
+    my $H_key = $AHR->[$i]{$AH_key};
+    if(defined $HR->{$H_key}) { 
+      ofile_FAIL("ERROR in $sub_name,%stwo elements of source array of hashes we are trying to use as keys in destination hash have same value ($H_key)",
+                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+    }
+    $HR->{$H_key} = $i;
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: utl_AHCountKeyValue()
+# Incept:     EPN, Tue Mar 19 11:37:32 2019
+#
+# Synopsis: Return the number of elements in @{AHR} that 
+#           have a key $key in %{$AHR->[]} with value $value.
+#
+# Arguments:
+#  $AHR:      ref to array of hashes
+#  $key:      hash key
+#  $value:    hash value
+#
+# Returns:    Number of array elements for which $AHR->[]{$key} eq $value
+#
+#################################################################
+sub utl_AHCountKeyValue {
+  my $sub_name = "utl_AHCountKeyValue";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($AHR, $key, $value) = (@_);
+
+  my $ret_n = 0;
+  for(my $i = 0; $i < scalar(@{$AHR}); $i++) { 
+    # printf("in $sub_name: AHR->[$i]{$key} $AHR->[$i]{$key}\n");
+    if((defined $AHR->[$i]{$key}) && 
+       ($AHR->[$i]{$key} eq $value)) { 
+      $ret_n++;
+    }
+  }
+
+  # printf("in $sub_name: returning $ret_n\n");
+  return $ret_n;
+}
+
+#################################################################
+# Subroutine: utl_AHValidate()
+# Incept:     EPN, Wed Mar 13 13:24:38 2019
+#
+# Purpose:    Validate an array of hashes, by making sure it
+#             includes a key/value for all keys in @{$keys_AR}.
+# Arguments:
+#   $AHR:      REF to array of hashes to validate
+#   $keys_AR:  REF to array of keys that may be excluded from the hash
+#   $fail_str: extra string to output if we die
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: scalar(@{$AHR});
+#
+# Dies:    - if one of the keys in @{$keys_AR} does not exist in all hashes
+#            of the array
+#
+#################################################################
+sub utl_AHValidate {
+  my $sub_name = "utl_AHValidate()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($AHR, $keys_AR, $fail_str, $FH_HR) = (@_);
+
+  my $n = scalar(@{$AHR});
+
+  for(my $i = 0; $i < $n; $i++) { 
+    utl_HValidate($AHR->[$i], $keys_AR, $fail_str, $FH_HR);
+  }
+
+  return $n;
+}
+
+#################################################################
+# Subroutine: utl_HValidate()
+# Incept:     EPN, Fri Mar 15 09:37:19 2019
+#
+# Purpose:    Validate a hash, by making sure a defined value
+#             exists for each key in @{$keys_AR}.
+# Arguments:
+#   $HR:       REF to the hash
+#   $keys_AR:  REF to array of keys that may be excluded from the hash
+#   $fail_str: extra string to output if we die
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: void
+#
+# Dies:    - if one of the keys in @{$keys_AR} does not exist in the hash
+#            of the array
+#
+#################################################################
+sub utl_HValidate {
+  my $sub_name = "utl_HValidate()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($HR, $keys_AR, $fail_str, $FH_HR) = (@_);
+
+  foreach my $key (@{$keys_AR}) { 
+    if(! exists $HR->{$key}) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key does not exist\n%s", (defined $fail_str) ? $fail_str : ""), "dnaorg", 1, $FH_HR); 
+    }
+    if(! defined $HR->{$key}) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key exists but its value is undefined\n%s", (defined $fail_str) ? $fail_str : ""), "dnaorg", 1, $FH_HR); 
+    }
+  }
+
+  return;
 }
 
 ####################################################################
