@@ -5531,15 +5531,12 @@ sub dng_CdsTranslateToFastaFile {
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $seq_idx = 0; $seq_idx < $cds_sqfile->nseq_ssi; $seq_idx++) { 
     my ($seq_name, $seq_length) = $cds_sqfile->fetch_seq_name_and_length_given_ssi_number($seq_idx);
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
-        my $fetch_name = "source=" . $seq_name . ",coords=1.." . ($seq_length - 3); # subtract length of stop codon
-        if(! $protein_sqfile->check_seq_exists($fetch_name)) { 
-          ofile_FAIL(sprintf("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\tftr_idx: $ftr_idx\n\tcoords: %s\n\texpected sequence:$fetch_name\n", $ftr_info_AHR->[$ftr_idx]{"coords"}), "dnaorg", 1, $FH_HR);
-        }
-        print $out_FH $protein_sqfile->fetch_seq_to_fasta_string($fetch_name, 60);
-      }
+    my $fetch_name = "source=" . $seq_name . ",coords=1.." . ($seq_length - 3); # subtract length of stop codon
+    if(! $protein_sqfile->check_seq_exists($fetch_name)) { 
+      ofile_FAIL("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\texpected sequence:$fetch_name\n", "dnaorg", 1, $FH_HR);
     }
+    print $out_FH ">" . $seq_name . "\n";
+    print $out_FH dng_SqstringAddNewlines($protein_sqfile->fetch_seq_to_sqstring($fetch_name), 60);
   }
   # remove temporary files unless --keep
   if(! opt_Get("--keep", $opt_HHR)) { 

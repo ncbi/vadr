@@ -13,6 +13,7 @@ use LWP::Simple;
 require "dnaorg.pm"; 
 require "epn-options.pm";
 require "epn-ofile.pm";
+require "epn-utils.pm";
 
 #######################################################################################
 # What this script does: 
@@ -34,7 +35,7 @@ require "epn-ofile.pm";
 # - Writes optional output files
 # 
 #######################################################################################
-# make sure the DNAORGDIR environment variable is set
+# make sure DNAORGDIR and DNAORGBLASTDIR environment variable is set
 my $env_dnaorgdir      = dng_VerifyEnvVariableIsValidDir("DNAORGDIR");
 my $env_dnaorgblastdir = dng_VerifyEnvVariableIsValidDir("DNAORGBLASTDIR");
 
@@ -191,24 +192,24 @@ if(opt_Get("--onlyurl", \%opt_HH)) {
 #############################
 # create the output directory
 #############################
-my $cmd;              # a command to run with dng_RunCommand()
+my $cmd;              # a command to run with utl_RunCommand()
 my @early_cmd_A = (); # array of commands we run before our log file is opened
 
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
-  if(opt_Get("-f", \%opt_HH)) { dng_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
   $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { dng_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-dng_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
+utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
@@ -385,7 +386,7 @@ if(defined $in_stk_file) {
   
   $start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
 
-  dng_RunCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  utl_RunCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
   dng_fastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -482,7 +483,7 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   my $cmbuild_file = $out_root . ".cmbuild";
   $cm_file         = $out_root . ".cm";
   my $cmbuild_cmd  = $execs_H{"cmbuild"} . " " . $cmbuild_opts . " $cm_file $stk_file > $cmbuild_file";
-  dng_RunCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+  utl_RunCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cm",      $cm_file, 1, "CM file");
@@ -502,10 +503,10 @@ my @mdl_info_AH = ();
 $mdl_info_AH[0]{"name"}   = $mdl_name;
 $mdl_info_AH[0]{"length"} = $seq_info_HH{$mdl_name}{"len"};
 if(defined $cm_file) { 
-  $mdl_info_AH[0]{"cmfile"} = dng_RemoveDirPath($cm_file);
+  $mdl_info_AH[0]{"cmfile"} = utl_RemoveDirPath($cm_file);
 }
 if($ncds > 0) { 
-  $mdl_info_AH[0]{"blastdb"} = dng_RemoveDirPath($protein_fa_file);
+  $mdl_info_AH[0]{"blastdb"} = utl_RemoveDirPath($protein_fa_file);
   if((opt_IsUsed("--ttbl", \%opt_HH)) && (opt_Get("--ttbl", \%opt_HH) != 1))  { 
     $mdl_info_AH[0]{"transl_table"} = opt_Get("--ttbl", \%opt_HH);
   }

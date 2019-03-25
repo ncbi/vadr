@@ -134,6 +134,7 @@ opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,
 opt_Add("-s",           "integer", 181,                     $g,    undef,  undef,     "seed for random number generator is <n>",        "seed for random number generator is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("-m",           "string",  undef,                   $g,    undef, undef,      "use CM file <s> instead of default",             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-i",           "string",  undef,                   $g,    undef, undef,      "use model info file <s> instead of default",     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-b",           "string",  undef,                   $g,    undef, undef,      "BLAST dbs are in dir <s>, instead of default",   "specify BLAST dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
@@ -204,6 +205,7 @@ my $options_okay =
                 's'            => \$GetOptions_H{"-s"}, 
                 'm=s'          => \$GetOptions_H{"-m"}, 
                 'i=s'          => \$GetOptions_H{"-i"}, 
+                'b=s'          => \$GetOptions_H{"-b"}, 
                 'n=s'          => \$GetOptions_H{"-n"}, 
                 'keep'         => \$GetOptions_H{"--keep"},
 # options related to expected classification
@@ -302,7 +304,7 @@ if(opt_IsUsed("--lowdiffthresh",\%opt_HH) || opt_IsUsed("--vlowdiffthresh",\%opt
 #############################
 # create the output directory
 #############################
-my $cmd;               # a command to run with runCommand()
+my $cmd;               # a command to run with utl_RunCommand()
 my @early_cmd_A = ();  # array of commands we run before our log file is opened
 
 if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
@@ -370,13 +372,16 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-# make sure the sequence, CM, modelinfo, and qsubinfo files exist
+my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
+my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
+
+# make sure the sequence, CM, modelinfo, qsubinfo files exist
 dng_ValidateFileExistsAndIsNonEmpty($fa_file, "input fasta sequence file", undef, 1, $ofile_info_HH{"FH"}); # '1' says: die if it doesn't exist or is empty
 
 my $df_model_dir = "/panfs/pan1/infernal/notebook/19_0307_virus_dnaorg_classify_annotate_merge/norovirus-testing-20190318/models";
 
-my $df_cm_file        = $df_model_dir . "/" . "dnaorg." . $model_version_str . ".cm";
-my $cm_file        = undef;
+my $df_cm_file   = $df_model_dir . "/" . "dnaorg." . $model_version_str . ".cm";
+my $cm_file      = undef;
 if(! opt_IsUsed("-m", \%opt_HH)) { $cm_file = $df_cm_file; }
 else                             { $cm_file = opt_Get("-m", \%opt_HH); }
 if(! opt_IsUsed("-m", \%opt_HH)) {
@@ -411,7 +416,15 @@ if(opt_IsUsed("-p", \%opt_HH)) {
     dng_ValidateFileExistsAndIsNonEmpty($qsubinfo_file, "qsub info file specified with -q", undef, 1, $ofile_info_HH{"FH"}); # 1 says: die if it doesn't exist or is empty
   }
 }
-# we check for the existence of model files after we parse the model info file
+# make sure the blastdb directory exists
+my $blastdb_dir = (opt_IsUsed("-b", \%opt_HH)) ? opt_Get("-b", \%opt_HH) : $df_model_dir;
+$blastdb_dir =~ s/\/$//; # remove trailing '/'
+if(! -d $blastdb_dir) { 
+  ofile_FAIL(sprintf("ERROR, %sblast DB directory $blastdb_dir%s does not exist", 
+                     opt_IsUsed("-b", \%opt_HH) ? "" : "default", 
+                     opt_IsUsed("-b", \%opt_HH) ? "specified with -b" : ""), "dnaorg", 1, $FH_HR);
+}
+# we check for existence of blast DB files after we parse the model info file
 
 ###################################################
 # make sure the required executables are executable
@@ -430,7 +443,6 @@ dng_ValidateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 my %alt_info_HH = (); 
 dng_AlertInfoInitialize(\%alt_info_HH, $ofile_info_HH{"FH"});
 
-my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
 
 ###########################
 # Parse the model info file
@@ -464,7 +476,7 @@ if(opt_IsUsed("--subgroup", \%opt_HH)) {
     ofile_FAIL("ERROR with --group $exp_group and --subgroup $exp_subgroup,\ndid not read any models with group defined as $exp_group and subgroup defined as $exp_subgroup in model info file:\n$modelinfo_file", "dnaorg", 1, $FH_HR);
   }
 }
-  
+
 my @ftr_reqd_keys_A = ("type", "coords");
 for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -475,6 +487,24 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   dng_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
+# if there are any CDS features, validate that the BLAST db files we need exist
+for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  my $ncds = dng_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
+  if($ncds > 0) { 
+    if(! defined $mdl_info_AH[$mdl_idx]{"blastdb"}) { 
+      ofile_FAIL("ERROR, model $mdl_name has $ncds CDS features, but \"blastdb\" is not defined in model info file:\n$modelinfo_file\n", "dnaorg", 1, $FH_HR);
+    }
+    my $blastdb = $blastdb_dir . "/" . $mdl_info_AH[$mdl_idx]{"blastdb"};
+    foreach my $sfx ("", ".phr", ".pin", ".psq") { 
+      if(! -s ($blastdb . $sfx)) { 
+        ofile_FAIL("ERROR, required blastdb file $blastdb.$sfx for model $mdl_name does not exist in directory $blastdb_dir.\nUse -b to specify a different directory.\n", "dnaorg", 1, $FH_HR);
+      }
+    }
+    $mdl_info_AH[$mdl_idx]{"blastdbpath"} = $blastdb;
+  }
+}
+
 ##################################
 # Validate the input sequence file
 ##################################
@@ -483,6 +513,8 @@ my @seq_name_A = ();
 my %seq_len_H = ();
 my $tot_len_nt = seq_ProcessSequenceFile($execs_H{"esl-seqstat"}, $fa_file, $seqstat_file, \@seq_name_A, \%seq_len_H, \%opt_HH, \%ofile_info_HH);
 my $nseq = scalar(@seq_name_A);
+
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ####################################
 # Classification: first round search
@@ -563,7 +595,7 @@ cmsearch_parse_sorted_tblout($r2_sort_tblout_file, 2, # 2: round 2
                              \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
 
 
-dng_DumpHashOfHashesOfHashes("cls_results", \%cls_results_HHH, *STDOUT);
+#dng_DumpHashOfHashesOfHashes("cls_results", \%cls_results_HHH, *STDOUT);
 
 ############################
 # Add classification alerts
@@ -583,6 +615,7 @@ add_classification_alerts(\%alt_seq_instances_HH, \%seq_len_H, \@mdl_info_AH, \%
 # re-initialize %mdl_seq_HA and %mdl_seqlen_H
 %mdl_seq_HA = ();
 %mdl_seqlen_H = ();
+
 for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
   $seq_name = $seq_name_A[$seq_idx];
   $mdl_name = (defined $cls_results_HHH{$seq_name}{"r2"}{"model"}) ? $cls_results_HHH{$seq_name}{"r2"}{"model"} : undef;
@@ -622,9 +655,9 @@ my %ftr_results_HHAH = ();  # 1st dim: hash, keys are model names
 
 # create the sequence files and run cmalign
 printf("nmdl: $nmdl\n");
-my $start_secs;
 my %alt_ftr_instances_HAH = (); # hash of arrays of hashes
                                 # key1: sequence name, array elements correspond to feature indices, key3: alert code, value: alert message
+my %mdl_n_div_H = (); # key is model name, value is number of n_div alerts thrown for that model
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   printf("align loop mdl_name $mdl_name\n");
@@ -632,27 +665,41 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     printf("fetching\n");
     my $mdl_nseq = scalar(@{$mdl_seq_HA{$mdl_name}});
     my $mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
-    my $cmalign_stdout_file = $out_root . "." . $mdl_name . ".align.stdout";
-    my $cmalign_ifile_file  = $out_root . "." . $mdl_name . ".align.ifile";
-    my %seq_inserts_HH = ();
-
     $sqfile->fetch_seqs_given_names(\@{$mdl_seq_HA{$mdl_name}}, 60, $mdl_fa_file);
 
     # now run cmalign for this file
     cmalign_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $out_root, $mdl_seqlen_H{$mdl_name}, $progress_w, \@stk_file_A, 
                     \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
     # add n_div errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
-    my $n_div_alerts = scalar(@overflow_seq_A);
-    if($n_div_alerts > 0) { 
+    $mdl_n_div_H{$mdl_name} = scalar(@overflow_seq_A);
+    if($mdl_n_div_H{$mdl_name} > 0) { 
       add_n_div_alerts(\@overflow_seq_A, \@overflow_mxsize_A, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
     }
+  }
+}
 
-    if($mdl_nseq > $n_div_alerts) { # at least 1 sequence was aligned
-      parse_cmalign_ifile($cmalign_ifile_file, \%seq_inserts_HH, $ofile_info_HH{"FH"});
-    }
-    # parse the cmalign alignments
+##################################
+# Step 5. Parse cmalign alignments
+##################################
+$start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $log_FH, *STDOUT);
+
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  printf("align loop mdl_name $mdl_name\n");
+  if(defined $mdl_seq_HA{$mdl_name}) { 
+    my $mdl_nseq = scalar(@{$mdl_seq_HA{$mdl_name}});
     %{$sgm_results_HHAH{$mdl_name}} = ();
     %{$ftr_results_HHAH{$mdl_name}} = ();
+    my %seq_inserts_HH = ();
+    my $cmalign_stdout_file = $out_root . "." . $mdl_name . ".align.stdout";
+    my $cmalign_ifile_file  = $out_root . "." . $mdl_name . ".align.ifile";
+
+    # parse the cmalign --ifile file
+    if($mdl_nseq > $mdl_n_div_H{$mdl_name}) { # at least 1 sequence was aligned
+      parse_cmalign_ifile($cmalign_ifile_file, \%seq_inserts_HH, $ofile_info_HH{"FH"});
+    }
+
+    # parse the cmalign alignments
     for(my $a = 0; $a < scalar(@stk_file_A); $a++) { 
       if(-s $stk_file_A[$a]) { # skip empty alignments, which will exist for any r1 run that fails
         parse_cmalign_stk_and_add_alignment_alerts($stk_file_A[$a], \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
@@ -667,11 +714,12 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                              \%opt_HH, \%ofile_info_HH);
   }
 }
-exit 0;
-##################################
-# Step 5. Parse cmalign alignments
-##################################
-$start_secs = ofile_OutputProgressPrior("Parsing cmalign results", $progress_w, $log_FH, *STDOUT);
+
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+################################################################################################
+# Step 7. Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
+################################################################################################
 
 #TEMP
 my @mdl_results_AAH;
@@ -684,48 +732,35 @@ my %mdl_info_HA;
 my %ftr_info_HA;
 my %seq_info_HA;
 my %seq_name_index_H;
+my @ftr_results_AAH;
 # TEMP
 
-
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-###########################################################################
-# Step 6. Fetch features and detect most nucleotide-annotation based errors
-###########################################################################
-my @ftr_results_AAH = (); # per-feature blastx results
-                          # 1st dim: array, 0..$ftr_idx..$nftr-1, one per feature
-                          # 2nd dim: array, 0..$nseq-1, one per sequence
-                          # 3rd dim: hash, per feature results 
-
-initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-
-if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
-  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
-}
-
-fetch_features_and_add_cds_and_mp_alerts($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%alt_info_HH, \@mdl_results_AAH, \@ftr_results_AAH, \@err_ftr_instances_AHH, \%opt_HH, \%ofile_info_HH);
-    
-################################################################################################
-# Step 7. Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
-################################################################################################
-
 $start_secs = ofile_OutputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
-my $seq_nodesc_file = $ofile_info_HH{"fullpath"}{"fastanodesc"};
-run_blastx_and_summarize_output(\%execs_H, $out_root, $seq_nodesc_file, $build_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
+
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  printf("blast loop mdl_name $mdl_name\n");
+  if(defined $mdl_seq_HA{$mdl_name}) { 
+    my $mdl_fa_file        = $out_root . "." . $mdl_name . ".a.fa";
+    my $mdl_nodesc_fa_file = $out_root . "." . $mdl_name . ".a.nodesc.fa";
+    seq_FastaRemoveDescriptions($mdl_fa_file, $mdl_nodesc_fa_file, \%ofile_info_HH);
+    run_blastx_and_summarize_output(\%execs_H, $mdl_nodesc_fa_file, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+  }
+}
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # calculate the blastx related information
-parse_blastx_results($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr_info_HA, \%seq_info_HA, \%seq_name_index_H, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
+###parse_blastx_results($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr_info_HA, \%seq_info_HA, \%seq_name_index_H, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
 
-add_blastx_alerts(\%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, 
-                  \@err_ftr_instances_AHH, \%alt_info_HH, \%opt_HH, $ofile_info_HH{"FH"});
+###add_blastx_alerts(\%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, 
+###                  \@err_ftr_instances_AHH, \%alt_info_HH, \%opt_HH, $ofile_info_HH{"FH"});
 
 #####################################################################
 # Step 8. Add b_zft errors for sequences with zero annotated features
 #####################################################################
 # add per-sequence 'b_zft' errors (zero annotated features)
-add_b_zft_alerts(\@err_ftr_instances_AHH, \%alt_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%alt_info_HH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
+###add_b_zft_alerts(\@err_ftr_instances_AHH, \%alt_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%alt_info_HH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
 
 #########################################
 # Step 9. Output annotations and errors
@@ -1515,14 +1550,12 @@ sub add_blastx_alerts {
 #             blastx queries against the appropriate target blast DBs.
 #
 # Arguments: 
-#  $execs_HR:          REF to a hash with "hmmbuild" and "hmmalign"
+#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
 #                      executable paths
+#  query_file:         full sequence fasta file to use as blastx query
 #  $out_root:          output root for the file names
-#  $query_file:        query fasta file (input fasta file to script, same fasta file cmscan searches against)
-#  $build_root:        path to build dir
-#  $ftr_info_HAR:      REF to hash of arrays with information on the features
-#  $compatibility_AHR: REF to array of hashes, 0..$f..$nftr-1, key: query sequence name in $blastx_query_file that 
-#                      is 'compatible' with feature $f; that query sequence is an allowed hit for feature $f, FILLED HERE
+#  $mdl_info_HR:       REF to hash of model info
+#  $ftr_info_AHR:      REF to array of hashes with information on the features
 #  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -1536,55 +1569,53 @@ sub run_blastx_and_summarize_output {
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($execs_HR, $out_root, $query_file, $build_root, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $query_file, $out_root, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
 
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-  my $ncds = 0; 
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds") { 
-      $ncds++;
-    }
-  }
-
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $ncds = dng_FeatureInfoCountType($ftr_info_AHR, "CDS"); 
+  my $mdl_name = $mdl_info_HR->{"name"};
+  
   # run blastx once on the full sequence file
-  my $cur_db_file = $build_root . ".prot.fa";
-  my $blastx_out_file = $out_root . ".blastx.out";
+  my $blastdb_file = $mdl_info_HR->{"blastdbpath"};
+  if(! defined $blastdb_file) { 
+    ofile_FAIL("ERROR, in $sub_name, path to BLAST DB is unknown for model $mdl_name", "dnaorg", 1, $FH_HR);
+  }
+  my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
 #  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -num_descriptions $ncds -num_alignments $ncds -out $blastx_out_file";
-  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -out $blastx_out_file";
-  runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $blastdb_file -seg no -out $blastx_out_file";
+  utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(featureTypeIsCds($ftr_info_HAR, $ftr_idx)) { 
-      my $ofile_info_key = "pfa." . $ftr_idx;
+    if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      my $ofile_info_key = $mdl_name . ".pfa." . $ftr_idx;
       if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
-      # printf("ftr_idx: $ftr_idx, out_tiny: %s ofile_info_key: $ofile_info_key %s\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $ofile_info_HHR->{"fullpath"}{$ofile_info_key});
-        my $cur_query_file      = $ofile_info_HH{"fullpath"}{$ofile_info_key};
-        my $cur_db_file         = $build_root . ".f" . $ftr_idx . ".prot.fa";
-        my $cur_blastx_out_file = $out_root . ".f" . $ftr_idx . ".blastx.out";
+        # printf("ftr_idx: $ftr_idx, ofile_info_key: $ofile_info_key %s\n", $ofile_info_HHR->{"fullpath"}{$ofile_info_key});
+        my $ftr_query_file      = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+        # my $ftr_blastdb_file    = $build_root . ".f" . $ftr_idx . ".prot.fa";
+        my $ftr_blastx_out_file = $out_root . ".f" . $ftr_idx . ".blastx.out";
         
         # run blast for this feature
         #$blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -num_descriptions 1 -num_alignments 1 -out $cur_blastx_out_file";
-        $blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -out $cur_blastx_out_file";
-        runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+        $blastx_cmd = $execs_HR->{"blastx"} . " -query $ftr_query_file -db $blastdb_file -seg no -out $ftr_blastx_out_file";
+        utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
         
         # concatenate the blastx output for this feature to the growing blastx output for all blastx runs
-        my $concat_cmd = "cat $cur_blastx_out_file >> $blastx_out_file";
-        runCommand($concat_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+        my $concat_cmd = "cat $ftr_blastx_out_file >> $blastx_out_file";
+        utl_RunCommand($concat_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
         #if(! opt_Get("--keep", $opt_HHR)) { 
         if(0) { 
-          removeFileUsingSystemRm($cur_blastx_out_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}); 
+          removeFileUsingSystemRm($ftr_blastx_out_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}); 
         }
       }
     }
   }
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "blastx-out", $blastx_out_file, 0, "blastx output");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $mdl_name . ".blastx-out", $blastx_out_file, 0, "blastx output for model $mdl_name");
 
   # now summarize its output
-  my $blastx_summary_file = $out_root . ".blastx.summary.txt";
-  my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
-  runCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
+  #my $blastx_summary_file = $out_root . ".blastx.summary.txt";
+  #my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
+  #utl_RunCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+  #ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
 
   return;
 }
@@ -3834,7 +3865,7 @@ sub process_input_fasta_file {
 
   my $ssi_file = $infasta_file . ".ssi";
   if(-e $ssi_file) { 
-    runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+    utl_RunCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
   }
   my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infasta_file }); # the sequence file object
   my $nseq = $sqfile->nseq_ssi;
@@ -4357,7 +4388,7 @@ sub cmalign_wrapper {
     ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $out_root_key, $concat_file, 0, sprintf("align $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
   }
   # remove sequence files 
-  if(! opt_Get("--keep", $opt_HHR)) { 
+  if(($r1_do_split) && (! opt_Get("--keep", $opt_HHR))) { 
     dng_RemoveListOfFiles(\@r1_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
   }
 
@@ -4407,7 +4438,6 @@ sub cmalign_wrapper_helper {
   my $log_FH         = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $do_parallel    = opt_Get("-p", $opt_HHR) ? 1 : 0;
   my $nseq_files     = scalar(@{$seq_file_AR});
-  my $nfasta_created = 0;     # number of fasta files created by esl-ssplit
 
   # determine description of the runs we are about to do, 
   # depends on $do_parallel, $round, and ($progress_w < 0), and 

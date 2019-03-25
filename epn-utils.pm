@@ -65,7 +65,7 @@ sub utl_RunCommand {
   my $stop_time = ($seconds + ($microseconds / 1000000.));
 
   if(($? != 0) && (! $do_failok)) { 
-    ofile_FAIL("ERROR in $sub_name, the following command failed:\n$cmd\n", $?, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, the following command failed:\n$cmd\n", undef, $?, $FH_HR); 
   }
 
   return ($stop_time - $start_time);

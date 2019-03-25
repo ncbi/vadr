@@ -148,6 +148,51 @@ sub seq_ParseSeqstatAFile {
   return $tot_length;
 }
 
+#################################################################
+# Subroutine : seq_FastaRemoveDescriptions()
+# Incept:      EPN, Mon Mar 25 11:30:16 2019
+#
+# Purpose:     Given an FASTA file, create a new one that is
+#              identical but with sequence descriptions removed.
+#              DOES NOT VALIDATE INPUT FILE IS IN PROPER FASTA FORMAT.
+#              
+# Arguments: 
+#   $in_file:        input FASTA file
+#   $out_file:       output FASTA file, with sequence descriptions removed
+#   $ofile_info_HHR: ref to the ofile info 2D hash, can be undef
+# 
+# Returns:     void
+#
+# Dies:        If unable to open $in_file for reading or $out_file
+#              for writing.
+#
+################################################################# 
+sub seq_FastaRemoveDescriptions {
+  my $nargs_expected = 3;
+  my $sub_name = "seq_FastaRemoveDescriptions()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($in_file, $out_file, $ofile_info_HHR) = (@_);
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef; # for convenience
+
+  open(IN,       $in_file)  || ofile_FileOpenFailure($in_file,  undef, $sub_name, $!, "reading", $FH_HR);
+  open(OUT, ">", $out_file) || ofile_FileOpenFailure($out_file, undef, $sub_name, $!, "writing", $FH_HR);
+
+  while(my $line = <IN>) { 
+    chomp $line;
+    if($line =~ /^>(\S+)/) { 
+      print OUT ">" . $1 . "\n";
+    }
+    else { 
+      print OUT $line . "\n";
+    }
+  }
+  close(IN);
+  close(OUT);
+
+  return;
+}
+
 ####################################################################
 # the next line is critical, a perl module must return a true value
 return 1;
