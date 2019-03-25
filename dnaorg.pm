@@ -234,7 +234,7 @@ use Cwd;
 
 
 #################################################################
-# Subroutine:  dng_FeaturesGetChildrenArrayOfArray()
+# Subroutine:  dng_FeatureChildrenArrayOfArray()
 # Incept:      EPN, Sun Mar 10 06:22:49 2019
 #
 # Purpose:     Fill @{$AAR} with arrays of children (feature indices)
@@ -249,9 +249,9 @@ use Cwd;
 # 
 #
 ################################################################# 
-sub dng_FeaturesGetChildrenArrayOfArrays { 
+sub dng_FeatureChildrenArrayOfArrays { 
   my $nargs_expected = 3;
-  my $sub_name = "dng_FeaturesGetChildrenArrayOfArrays";
+  my $sub_name = "dng_FeatureChildrenArrayOfArrays";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $AAR, $FH_HR) = @_;
 
@@ -259,7 +259,7 @@ sub dng_FeaturesGetChildrenArrayOfArrays {
   my $nftr = scalar(@{$ftr_info_AHR});
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    dng_FeatureChildrenArray($ftr_info_AHR, $ftr_idx, $nftr, $AAR->[$ftr_idx], $FH_HR);
+    dng_FeatureChildrenArray($ftr_info_AHR, $ftr_idx, $nftr, \@{$AAR->[$ftr_idx]}, $FH_HR);
   }
   
   return;
@@ -311,17 +311,17 @@ sub dng_FeatureChildrenArray {
 # Arguments: 
 #   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
 #   $ftr_idx:        index we are interested in
-#   $FH_HR:          REF to hash of file handles
+#   $sep_char:       character to separate type and index in return string
+#                    e.g. "#" or "."
 # 
 # Returns:     String
-# 
 #
 ################################################################# 
 sub dng_FeatureTypeAndTypeIndexString { 
   my $nargs_expected = 3;
   my $sub_name = "dng_FeatureChildrenArray";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_AHR, $ftr_idx, $FH_HR) = @_;
+  my ($ftr_info_AHR, $ftr_idx, $sep_char) = @_;
 
   my $nftr = scalar(@{$ftr_info_AHR});
   my $type = $ftr_info_AHR->[$ftr_idx]{"type"};
@@ -330,7 +330,7 @@ sub dng_FeatureTypeAndTypeIndexString {
     if($ftr_info_AHR->[$ftr_idx2]{"type"} eq $type) { $type_idx++; }
   }
   
-  return $type . "#" . $type_idx;
+  return $type . $sep_char . $type_idx;
 }
 
 
@@ -398,7 +398,7 @@ sub dng_AlertInfoInitialize {
                    "Unexpected Taxonomy: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_lcv", "sequence",
+  dng_AlertInfoAdd($alt_info_HHR, "c_loc", "sequence",
                    "low coverage", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
@@ -766,7 +766,7 @@ sub dng_AlertInfoSetFTableInvalidatedBy {
 #   $alt_code_str:           string of errors, comma separated, can be ""
 #   $seq_name:               name of sequence
 #   $ftr_idx:                feature index
-#   $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_info_AHR:           REF to array of hashes with information on the features, PRE-FILLED
 #   $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
 #   $alt_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
 #   $ret_note_AR:            REF to array of notes, possibly CREATED (not added to) here
@@ -782,7 +782,7 @@ sub dng_ProcessFeatureAlertsForFTable {
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($alt_code_str, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HHR, $alt_ftr_instances_AHHR, $ret_note_AR, $ret_alert_AR, $FH_HR) = (@_);
+  my ($alt_code_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_AHHR, $ret_note_AR, $ret_alert_AR, $FH_HR) = (@_);
 
   if($alt_code_str eq "") { 
     return 0; 
@@ -818,12 +818,12 @@ sub dng_ProcessFeatureAlertsForFTable {
     if($valid) { 
       # valid alerts that will impact output of feature table
       # add notes and alerts
-      my $note_str = populateFTableNoteOrAlert("ftbl_note", $alt_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HHR, $alt_ftr_instances_AHHR, undef, $FH_HR);
+      my $note_str = dng_populateFTableNoteOrAlert("ftbl_note", $alt_idx, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_AHHR, undef, $FH_HR);
       if($note_str ne "") { 
         push(@tmp_note_A, $note_str); # we will prune this array and populate @{$ret_note_AR} before returning
       }
       
-      my $alert_str = populateFTableNoteOrAlert("ftbl_alert", $alt_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HHR, $alt_ftr_instances_AHHR, undef, $FH_HR);
+      my $alert_str = dng_populateFTableNoteOrAlert("ftbl_alert", $alt_idx, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_AHHR, undef, $FH_HR);
       if($alert_str ne "") { 
         # only add the alert, if an identical error does not already exist in @{$ret_alert_AR}
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
@@ -943,7 +943,7 @@ sub dng_ProcessSequenceAlertsForFTable {
     }
     if($valid) { 
       # add alerts
-      my $alert_str = populateFTableNoteOrAlert("ftbl_alert", $alt_idx, $seq_name, -1, undef, $alt_info_HHR, undef, $alt_seq_instances_HHR, $FH_HR);
+      my $alert_str = dng_populateFTableNoteOrAlert("ftbl_alert", $alt_idx, $seq_name, -1, undef, $alt_info_HHR, undef, $alt_seq_instances_HHR, $FH_HR);
       if($alert_str ne "") { 
         # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
@@ -969,7 +969,7 @@ sub dng_ProcessSequenceAlertsForFTable {
 #   $alt_idx:                index of current alert in %{$alt_info_HHR} arrays
 #   $seq_name:               name of sequence
 #   $ftr_idx:                feature index, -1 if this is a per-sequence alert
-#   $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
 #                            must be undefined if $ftr_idx == -1
 #                            must be defined   if $ftr_idx != -1
 #   $alt_info_HHR:           REF to hash of arrays with information on the alerts, PRE-FILLED
@@ -993,7 +993,7 @@ sub dng_PopulateFTableNoteOrAlert {
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ekey, $alt_idx, $seq_name, $ftr_idx, $ftr_info_HAR, $alt_info_HHR, $alt_ftr_instances_AHHR, $alt_seq_instances_HHR, $FH_HR) = (@_);
+  my ($ekey, $alt_idx, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_AHHR, $alt_seq_instances_HHR, $FH_HR) = (@_);
 
   if(! exists $alt_info_HHR->{$ekey}) { 
     ofile_FAIL("ERROR in $sub_name, $ekey value is undefined in error info hash", "dnaorg", 1, $FH_HR);
@@ -1005,11 +1005,11 @@ sub dng_PopulateFTableNoteOrAlert {
   if($ftr_idx == -1 && (defined $alt_ftr_instances_AHHR)) { 
     ofile_FAIL("ERROR in $sub_name, ftr_idx is -1 but err_ftr_instances_AHHR is defined", "dnaorg", 1, $FH_HR);
   }
-  if($ftr_idx != -1 && (! defined $ftr_info_HAR)) { 
-    ofile_FAIL("ERROR in $sub_name, ftr_idx is not -1 but ftr_info_HAR is not defined", "dnaorg", 1, $FH_HR);
+  if($ftr_idx != -1 && (! defined $ftr_info_AHR)) { 
+    ofile_FAIL("ERROR in $sub_name, ftr_idx is not -1 but ftr_info_AHR is not defined", "dnaorg", 1, $FH_HR);
   }
-  if($ftr_idx == -1 && (defined $ftr_info_HAR)) { 
-    ofile_FAIL("ERROR in $sub_name, ftr_idx is -1 but ftr_info_HAR is defined", "dnaorg", 1, $FH_HR);
+  if($ftr_idx == -1 && (defined $ftr_info_AHR)) { 
+    ofile_FAIL("ERROR in $sub_name, ftr_idx is -1 but ftr_info_AHR is defined", "dnaorg", 1, $FH_HR);
   }
   if($ftr_idx == -1 && (! defined $alt_seq_instances_HHR)) { 
     ofile_FAIL("ERROR in $sub_name, ftr_idx is -1 but err_seq_instances_AHHR is not defined", "dnaorg", 1, $FH_HR);
@@ -1053,11 +1053,11 @@ sub dng_PopulateFTableNoteOrAlert {
   }
   # replace !FEATURE_TYPE! with 
   if(($ftr_idx != -1) && ($ret_msg =~ /!FEATURE_TYPE!/)) { 
-    my $feature_type_str = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
+    my $feature_type_str = $ftr_info_AHR->[$ftr_idx]{"type"}[$ftr_idx];
     $ret_msg =~ s/!FEATURE_TYPE!/$feature_type_str/g;
   }
   # check if there is an internal !$key_str! string, where $key_str is either $key or $key_1,$key_2,...,$key_n for some number n,
-  # which is replaced by the value: $ftr_info_HAR->{$key}[$ftr_idx]); for the first $key with a valid value
+  # which is replaced by the value: $ftr_info_AHR->[$ftr_idx]{$key}); for the first $key with a valid value
   if(($ftr_idx != -1) && ($ret_msg =~ /\!([^\!]*)\!/)) {
     my $key_str = $1; 
     my @value_A = split(",", $key_str); 
@@ -1065,8 +1065,8 @@ sub dng_PopulateFTableNoteOrAlert {
     my $value = "?";
     for(my $v = 0; $v < $nvalue; $v++) { 
       my $key = $value_A[$v];
-      if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-        $value = $ftr_info_HAR->{$key}[$ftr_idx];
+      if((exists $ftr_info_AHR->[$ftr_idx]{$key}) && ($ftr_info_AHR->[$ftr_idx]{$key} ne "")) { 
+        $value = $ftr_info_AHR->[$ftr_idx]{$key};
         $v = $nvalue; # breaks loop
       }
     }
@@ -3796,7 +3796,7 @@ sub dng_FormatTabDelimitedStringForAlertListFile() {
 #
 #             <protein-accession>/<coords-str>
 #
-#             Where <coords-str> is identical to $ftr_info_HAR->{"ref_coords"}[$ftr_idx].
+#             Where <coords-str> is identical to $ftr_info_AHR->{"ref_coords"}[$ftr_idx].
 #
 # Arguments: 
 #  $blastx_seqname: sequence name
@@ -3897,8 +3897,61 @@ sub dng_FeatureTypeIsCdsOrMaturePeptide {
 
   my ($ftr_info_AHR, $ftr_idx) = @_;
 
-  return((featureTypeIsCds($ftr_info_AHR, $ftr_idx)) || 
-         (featureTypeIsMaturePeptide($ftr_info_AHR, $ftr_idx)));
+  return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
+          ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide")) ? 1 : 0;
+}
+
+
+
+#################################################################
+# Subroutine: dng_FeatureTypeIsCds()
+# Incept:     EPN, Mon Mar 25 11:07:05 2019
+#
+# Purpose:    Is feature $ftr_idx a CDS?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub dng_FeatureTypeIsCds { 
+  my $sub_name = "dng_FeatureTypeIsCds";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") ? 1 : 0;
+}
+
+
+#################################################################
+# Subroutine: dng_FeatureTypeIsMaturePeptide()
+# Incept:     
+#
+# Purpose:    Is feature $ftr_idx a mature peptide?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub dng_FeatureTypeIsMaturePeptide { 
+  my $sub_name = "dng_FeatureTypeIsMaturePeptide";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") ? 1 : 0;
 }
 
 
@@ -3923,9 +3976,9 @@ sub dng_FeatureIsDuplicate {
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($ftr_info_HAR, $ftr_idx) = @_;
+  my ($ftr_info_AHR, $ftr_idx) = @_;
 
-  return(($ftr_info_HAR->{"source_idx"}[$ftr_idx] != $ftr_idx) ? 1 : 0);
+  return(($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) ? 1 : 0);
 }
 
 #################################################################
@@ -3993,7 +4046,7 @@ sub dng_Feature3pMostPosition {
 }
 
 #################################################################
-# Subroutine: dng_FeatureInfoSummarizeSegment()
+# Subroutine: dng_FeatureSummarizeSegment()
 # Incept:      EPN, Fri Mar  1 12:36:36 2019
 #
 # Purpose:    Return a string indicating what model this is
@@ -4010,8 +4063,8 @@ sub dng_Feature3pMostPosition {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub dng_FeatureInfoSummarizeSegment { 
-  my $sub_name = "dng_FeatureInfoSummarizeSegment";
+sub dng_FeatureSummarizeSegment { 
+  my $sub_name = "dng_FeatureSummarizeSegment";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -4030,7 +4083,7 @@ sub dng_FeatureInfoSummarizeSegment {
 # Subroutine: dng_FeatureInfoImputeCoords
 # Incept:     EPN, Wed Mar 13 13:15:33 2019
 # 
-# Purpose:    Fill "coords" values in %{$ftr_info_HAR}
+# Purpose:    Fill "coords" values in %{$ftr_info_AHR}
 # 
 # Arguments:
 #   $ftr_info_AHR:   REF to feature information, added to here
@@ -4422,7 +4475,7 @@ sub dng_SegmentInfoPopulate {
 #           @{$strand_AAR} based on them.
 # 
 # Arguments:
-#  $ftr_AHR:       REF to the feature info array of hashes
+#  $ftr_info_AHR:  REF to the feature info array of hashes
 #  $start_AAR:     REF to array of start position array to fill here, FILLED here, can be undef
 #  $stop_AAR:      REF to array of stop position array to fill here, FILLED here, can be undef
 #  $strand_AAR:    REF to array of strand array to fill here with "+" or "-", FILLED here, can be undef
@@ -4691,7 +4744,7 @@ sub dng_FeatureSummaryStrand {
 }
   
 #################################################################
-# Subroutine:  dng_sqstringAddNewlines()
+# Subroutine:  dng_SqstringAddNewlines()
 # Incept:      EPN, Thu Mar 14 06:12:11 2019
 #
 # Purpose:     Add newlines to $sqstring after every $linelen
@@ -4761,6 +4814,8 @@ sub dng_FeatureInfoCountType {
   
   return $ntype;
 }
+
+
 
 #################################################################
 # Subroutine: dng_FeatureInfoValidateCoords
@@ -5519,7 +5574,7 @@ sub dng_CdsTranslateToFastaFile {
 #
 # Returns:    void
 #
-# Dies:       if $ftr_info_HAR is not valid upon entering
+# Dies:       if $ftr_info_HAHR is not valid upon entering
 #################################################################
 sub dng_ModelInfoFileWrite { 
   my $sub_name = "dng_ModelInfoFileWrite";
@@ -5721,7 +5776,7 @@ sub dng_ModelInfoFileParse {
               ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
             }
             $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} = $value;
-            # printf("\tadded ftr_info_HAR->{$mdl_name}[$ftr_idx]{$key} as $value\n");
+            # printf("\tadded ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} as $value\n");
           }
           $line =~ s/^[^\:\s]+\:\"[^\"]+\"\s*//; # remove this key/value pair
         }

@@ -26,16 +26,15 @@ require "epn-options.pm";
 #
 # Purpose:     Use esl-seqstat to get the lengths of all sequences in a
 #              FASTA or Stockholm formatted sequence file and fill
-#              @{$seq_order_AR} and @{$seq_info_HAR->{"name"}} and 
-#              @{$seq_info_HAR->{"length"}}.
+#              @{$seq_order_AR} and %{$seq_len_HR}.
 #
 #              
 # Arguments: 
 #   $seqstat_exec:   path to esl-seqstat executable
 #   $seq_file:       sequence file to process
 #   $seqstat_file:   path to esl-seqstat output to create
-#   $seq_order_AR:   ref to array of sequences in order to fill here
-#   $seq_info_HAR:   ref to hash of hashes to fill here
+#   $seq_name_AR:    ref to array of sequence names in order to fill here
+#   $seq_len_HR:     ref to hash of sequence names
 #   $opt_HHR:        reference to 2D hash of cmdline options
 #   $ofile_info_HHR: ref to the ofile info 2D hash
 # 
@@ -50,7 +49,7 @@ sub seq_ProcessSequenceFile {
   my $nargs_expected = 7;
   my $sub_name = "seq_ProcessSequenceFile()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($seqstat_exec, $seq_file, $seqstat_file, $seq_order_AR, $seq_info_HAR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($seqstat_exec, $seq_file, $seqstat_file, $seq_name_AR, $seq_len_HR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -59,7 +58,7 @@ sub seq_ProcessSequenceFile {
     ofile_AddClosedFileToOutputInfo($ofile_info_HHR, undef, "seqstat", $seqstat_file, 0, "esl-seqstat -a output for $seq_file");
   }
 
-  return seq_ParseSeqstatAFile($seqstat_file, $seq_order_AR, $seq_info_HAR, $FH_HR);
+  return seq_ParseSeqstatAFile($seqstat_file, $seq_name_AR, $seq_len_HR, $FH_HR);
 }
 
 #################################################################
@@ -70,8 +69,8 @@ sub seq_ProcessSequenceFile {
 #              
 # Arguments: 
 #   $seqstat_file:  file to parse
-#   $seq_order_AR:  REF to array of sequences in order to fill here
-#   $seq_info_HAR   REF to seq info hash of hashes to fill here
+#   $seq_name_AR:   REF to array of sequences in order to fill here
+#   $seq_len_HR     REF to hash of sequence names to fill here
 #   $FH_HR:         REF to hash of file handles, including "cmd"
 #
 # Returns:     Total number of nucleotides read (summed length of all sequences). 
@@ -86,7 +85,7 @@ sub seq_ParseSeqstatAFile {
   my $sub_name = "ribo_ParseSeqstatFile";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($seqstat_file, $seq_order_AR, $seq_info_HAR, $FH_HR) = @_;
+  my ($seqstat_file, $seq_name_AR, $seq_len_HR, $FH_HR) = @_;
 
   open(IN, $seqstat_file) || ofile_FileOpenFailure($seqstat_file, undef, $sub_name, $!, "reading", $FH_HR);
 
@@ -97,8 +96,8 @@ sub seq_ParseSeqstatAFile {
   my %seq_exists_H = ();    # key is name of a read sequence, value is always '1'
   my %seq_dups_H = ();      # key is a sequence name that exists more than once in seq file, value is number of occurences
   my $at_least_one_dup = 0; # set to 1 if we find any duplicate sequence names
-  @{$seq_order_AR} = ();
-  %{$seq_info_HAR} = ();
+  @{$seq_name_AR} = ();
+  %{$seq_len_HR} = ();
 
   # parse the seqstat -a output 
   # sequences must have non-empty names (else esl-seqstat call would have failed)
@@ -125,9 +124,8 @@ sub seq_ParseSeqstatAFile {
         $seq_exists_H{$seq_name} = 1; 
       }
 
-      push(@{$seq_order_AR}, $seq_name);
-      $seq_info_HAR->{"name"}[$nread] =   $seq_name;
-      $seq_info_HAR->{"length"}[$nread] = $length;
+      push(@{$seq_name_AR}, $seq_name);
+      $seq_len_HR->{$seq_name} = $length;
       $tot_length += $length;
       $nread++;
     }
