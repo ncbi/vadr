@@ -741,10 +741,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   printf("blast loop mdl_name $mdl_name\n");
   if(defined $mdl_seq_HA{$mdl_name}) { 
-    my $mdl_fa_file        = $out_root . "." . $mdl_name . ".a.fa";
-    my $mdl_nodesc_fa_file = $out_root . "." . $mdl_name . ".a.nodesc.fa";
-    seq_FastaRemoveDescriptions($mdl_fa_file, $mdl_nodesc_fa_file, \%ofile_info_HH);
-    run_blastx_and_summarize_output(\%execs_H, $mdl_nodesc_fa_file, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+    run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
   }
 }
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -1552,10 +1549,9 @@ sub add_blastx_alerts {
 # Arguments: 
 #  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
 #                      executable paths
-#  query_file:         full sequence fasta file to use as blastx query
 #  $out_root:          output root for the file names
 #  $mdl_info_HR:       REF to hash of model info
-#  $ftr_info_AHR:      REF to array of hashes with information on the features
+#  $ftr_info_HAR:      REF to hash of arrays with information on the features, PRE-FILLED
 #  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -1566,57 +1562,49 @@ sub add_blastx_alerts {
 ################################################################# 
 sub run_blastx_and_summarize_output {
   my $sub_name = "run_blastx_and_summarize_output";
-  my $nargs_exp = 7;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($execs_HR, $query_file, $out_root, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $nftr = scalar(@{$ftr_info_AHR});
-  my $ncds = dng_FeatureInfoCountType($ftr_info_AHR, "CDS"); 
-  my $mdl_name = $mdl_info_HR->{"name"};
+  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
   
-  # run blastx once on the full sequence file
-  my $blastdb_file = $mdl_info_HR->{"blastdbpath"};
-  if(! defined $blastdb_file) { 
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $mdl_name = $mdl_info_HR->{"name"};
+  my $blastx_db_file = $mdl_info_HR->{"blastdbpath"};
+  if(! defined $blastx_db_file) { 
     ofile_FAIL("ERROR, in $sub_name, path to BLAST DB is unknown for model $mdl_name", "dnaorg", 1, $FH_HR);
   }
-  my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
-#  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -num_descriptions $ncds -num_alignments $ncds -out $blastx_out_file";
-  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $blastdb_file -seg no -out $blastx_out_file";
-  utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
+  my $mdl_fa_file     = $out_root . "." . $mdl_name . ".a.fa";
+
+  # make a query fasta file for blastx, consisting of full length
+  # sequences (with sequence descriptions removed because they can
+  # affect the output and mess up our parsing if they are too long)
+  # AND all the predicted CDS sequences
+  my $blastx_query_file = $out_root . "." . $mdl_name . ".a.blastx.fa";
+  seq_FastaRemoveDescriptions($mdl_fa_file, $blastx_query_file, $ofile_info_HHR);
+  # now add the predicted CDS sequences
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
       my $ofile_info_key = $mdl_name . ".pfa." . $ftr_idx;
       if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
-        # printf("ftr_idx: $ftr_idx, ofile_info_key: $ofile_info_key %s\n", $ofile_info_HHR->{"fullpath"}{$ofile_info_key});
-        my $ftr_query_file      = $ofile_info_HH{"fullpath"}{$ofile_info_key};
-        # my $ftr_blastdb_file    = $build_root . ".f" . $ftr_idx . ".prot.fa";
-        my $ftr_blastx_out_file = $out_root . ".f" . $ftr_idx . ".blastx.out";
-        
-        # run blast for this feature
-        #$blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -num_descriptions 1 -num_alignments 1 -out $cur_blastx_out_file";
-        $blastx_cmd = $execs_HR->{"blastx"} . " -query $ftr_query_file -db $blastdb_file -seg no -out $ftr_blastx_out_file";
-        utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-        
-        # concatenate the blastx output for this feature to the growing blastx output for all blastx runs
-        my $concat_cmd = "cat $ftr_blastx_out_file >> $blastx_out_file";
-        utl_RunCommand($concat_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-        #if(! opt_Get("--keep", $opt_HHR)) { 
-        if(0) { 
-          removeFileUsingSystemRm($ftr_blastx_out_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}); 
-        }
+        utl_RunCommand("cat " . $ofile_info_HH{"fullpath"}{$ofile_info_key} . " >> $blastx_query_file", opt_Get("-v", \%opt_HH), 0, $ofile_info_HHR->{"FH"});
       }
     }
   }
+
+  # run blastx 
+  my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
+  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $blastx_query_file -db $blastx_db_file -seg no -out $blastx_out_file";
+  utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $mdl_name . ".blastx-out", $blastx_out_file, 0, "blastx output for model $mdl_name");
 
   # now summarize its output
-  #my $blastx_summary_file = $out_root . ".blastx.summary.txt";
-  #my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
-  #utl_RunCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-  #ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
+  my $blastx_summary_file = $out_root . ".blastx.summary.txt";
+  my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
+  utl_RunCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
 
+  exit 0;
   return;
 }
 
@@ -2031,7 +2019,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               else { 
                 $ftr_seq_name .= ",";
               }
-              $ftr_seq_name .= $start . "-" . $stop;
+              $ftr_seq_name .= $start . ".." . $stop . ":" . $strand;
               
               if($ftr_is_cds_or_mp) { 
                 # update ftr2org_pos_A, if nec
