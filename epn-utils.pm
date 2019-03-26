@@ -692,6 +692,160 @@ sub utl_HValidate {
   return;
 }
 
+#################################################################
+# Subroutine:  utl_MaxLengthScalarKeyInHash()
+# Incept:      EPN, Thu Dec 13 15:52:09 2018
+# 
+# Purpose:     Return the maximum length of a scalar key
+#              in a hash.
+#
+# Arguments: 
+#   $HR: reference to the hash
+# 
+# Returns:     The length of the maximum length scalar key.
+#
+################################################################# 
+sub utl_MaxLengthScalarKeyInHash { 
+  my $nargs_expected = 1;
+  my $sub_name = "utl_MaxLengthScalarKeyInHash()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($HR) = $_[0];
+
+  my $max = 0;
+  my $len = 0;
+  foreach my $key (keys (%{$HR})) { 
+    $len = length($key);
+    if($len > $max) { $max = $len; }
+  }
+  return $max;
+}
+
+#################################################################
+# Subroutine:  utl_MaxLengthScalarValueInHash()
+# Incept:      EPN, Mon Nov  3 09:09:59 2014 [rnavore]
+# 
+# Purpose:     Return the maximum length of a scalar value
+#              in a hash.
+#
+# Arguments: 
+#   $HR: reference to the hash
+# 
+# Returns:     The length of the maximum length scalar.
+#
+################################################################# 
+sub utl_MaxLengthScalarValueInHash { 
+  my $nargs_expected = 1;
+  my $sub_name = "utl_MaxLengthScalarValueInHash()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($HR) = $_[0];
+
+  my $max = 0;
+  my $len = 0;
+  foreach my $key (keys (%{$HR})) { 
+    $len = length($HR->{$key});
+    if($len > $max) { $max = $len; }
+  }
+  return $max;
+}
+
+#################################################################
+# Subroutine:  utl_MaxLengthScalarValueInArray()
+# Incept:      EPN, Thu Mar 17 12:38:53 2016
+# 
+# Purpose:     Return the maximum length of a scalar value
+#              in an array.
+#
+# Arguments: 
+#   $AR: reference to the array
+# 
+# Returns:     The length of the maximum length scalar.
+#
+################################################################# 
+sub utl_MaxLengthScalarValueInArray { 
+  my $nargs_expected = 1;
+  my $sub_name = "utl_MaxLengthScalarValueInArray()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR) = $_[0];
+
+  my $max = 0;
+  my $len = 0;
+  foreach my $el (@{$AR}) { 
+    $len = length($el);
+    if($len > $max) { $max = $len; }
+  }
+  return $max;
+}
+
+#################################################################
+# Subroutine:  utl_NumberOfDigits()
+# Incept:      EPN, Tue May  9 11:33:50 2017 [ribovore]
+#              EPN, Fri Nov 13 06:17:25 2009 [ssu-align:ssu.pm:NumberOfDigits()]
+# 
+# Purpose:     Return the number of digits in a number before
+#              the decimal point. (ex: 1234.56 would return 4).
+# Arguments:
+# $num:        the number
+# 
+# Returns:     the number of digits before the decimal point
+#
+################################################################# 
+sub utl_NumberOfDigits { 
+    my $nargs_expected = 1;
+    my $sub_name = "utl_NumberOfDigits()";
+    if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+    my ($num) = (@_);
+
+    my $ndig = 1; 
+    while($num >= 10) { $ndig++; $num /= 10.; }
+
+    return $ndig;
+}
+
+#################################################################
+# Subroutine:  utl_Max()
+# Incept:      EPN, Tue Mar 26 11:52:54 2019
+# 
+# Purpose:     Returns the maximum of $x and $y.
+# Arguments:
+# $x:          first number
+# $y:          second number
+# 
+# Returns:     maximum of $x and $y
+#
+################################################################# 
+sub utl_Max { 
+    my $nargs_expected = 2;
+    my $sub_name = "utl_Max()";
+    if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+    my ($x, $y) = (@_);
+
+    return ($x > $y) ? $x : $y;
+}
+
+#################################################################
+# Subroutine:  utl_Min()
+# Incept:      EPN, Tue Mar 26 11:54:09 2019
+# 
+# Purpose:     Returns the minimum of $x and $y.
+# Arguments:
+# $x:          first number
+# $y:          second number
+# 
+# Returns:     minimum of $x and $y
+#
+################################################################# 
+sub utl_Min { 
+    my $nargs_expected = 2;
+    my $sub_name = "utl_Min()";
+    if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+    my ($x, $y) = (@_);
+
+    return ($x < $y) ? $x : $y;
+}
+
 ####################################################################
 # the next line is critical, a perl module must return a true value
 return 1;

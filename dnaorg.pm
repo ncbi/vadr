@@ -234,7 +234,7 @@ use Cwd;
 
 
 #################################################################
-# Subroutine:  dng_FeatureChildrenArrayOfArray()
+# Subroutine:  dng_FeatureInfoChildrenArrayOfArrays()
 # Incept:      EPN, Sun Mar 10 06:22:49 2019
 #
 # Purpose:     Fill @{$AAR} with arrays of children (feature indices)
@@ -249,9 +249,9 @@ use Cwd;
 # 
 #
 ################################################################# 
-sub dng_FeatureChildrenArrayOfArrays { 
+sub dng_FeatureInfoChildrenArrayOfArrays { 
   my $nargs_expected = 3;
-  my $sub_name = "dng_FeatureChildrenArrayOfArrays";
+  my $sub_name = "dng_FeatureInfoChildrenArrayOfArrays";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $AAR, $FH_HR) = @_;
 
@@ -603,7 +603,7 @@ sub dng_AlertInfoInitialize {
 
   dng_AlertInfoAdd($alt_info_HHR, "n_div", "sequence",
                    "sequence too distant from reference to annotate", # description
-                   1, 0, # causes_failure, prevents_annot
+                   1, 1, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
                    "Unexpected Divergence: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation !DESC!", # feature table err
                    $FH_HR); 
@@ -3789,7 +3789,7 @@ sub dng_FormatTabDelimitedStringForAlertListFile() {
 
 #################################################################
 # Subroutine: dng_BlastxDbSeqnameToFtrIdx()
-# Incept:      EPN, Tue Dec 18 13:27:50 2018
+# Incept:     EPN, Tue Dec 18 13:27:50 2018
 #
 # Purpose:    Find the feature $ftr_idx that corresponds to the blastx
 #             db sequence that was named with the convention:
@@ -3800,7 +3800,7 @@ sub dng_FormatTabDelimitedStringForAlertListFile() {
 #
 # Arguments: 
 #  $blastx_seqname: sequence name
-#  $ftr_info_HAR:   ref to the feature info array of hashes 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
 #  $FH_HR:          ref to hash of file handles
 #
 # Returns:    <$ftr_idx>
@@ -3814,17 +3814,17 @@ sub dng_BlastxDbSeqNameToFtrIdx {
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($blastx_seqname, $ftr_info_HAR, $FH_HR) = @_;
+  my ($blastx_seqname, $ftr_info_AHR, $FH_HR) = @_;
 
-  my $nftr = getInfoHashSize($ftr_info_HAR, "type", $FH_HR); # nftr: number of features
+  my $nftr = scalar(@{$ftr_info_AHR});
 
   my $ret_ftr_idx = undef;
   if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
     my ($accn, $coords) = ($1, $2);
-    # find it in @{$ftr_info_HAR->{"coords"}}
+    # find it in @{$ftr_info_AHR->{"coords"}}
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "CDS")) { 
-        if($ftr_info_HAR->{"coords"}[$ftr_idx] eq $coords) { 
+      if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS")) { 
+        if($ftr_info_AHR->[$ftr_idx]{"coords"} eq $coords) { 
           if(defined $ret_ftr_idx) { # found more than 1 features that match
             ofile_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match two features, ftr_idx: $ftr_idx and $ret_ftr_idx", "dnaorg", 1, $FH_HR);
           }                  
@@ -3877,7 +3877,7 @@ sub dng_ValidateBlastDbExists {
 
 #################################################################
 # Subroutine: dng_FeatureTypeIsCdsOrMaturePeptide()
-# Incept:      EPN, Mon Feb 25 14:30:34 2019
+# Incept:     EPN, Mon Feb 25 14:30:34 2019
 #
 # Purpose:    Is feature $ftr_idx a CDS or mature peptide?
 #
@@ -4548,17 +4548,13 @@ sub dng_FeatureStartStopStrandArrays {
   my @strand_A = ();
   my ($start, $stop, $strand, $sgm_idx);
   my @coords_A  = split(",", $coords);
-  my $nseg = scalar(@coords_A);
-  for($sgm_idx = 0; $sgm_idx < $nseg; $sgm_idx++) { 
-    if($coords_A[$sgm_idx] =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-])$/) { 
-      ($start, $stop, $strand) = ($1, $2, $3);
-      push(@start_A,  $start);
-      push(@stop_A,   $stop);
-      push(@strand_A, $strand); 
-    }
-    else { 
-      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords_A[$sgm_idx]", "dnaorg", 1, $FH_HR); 
-    }
+  my $nsgm = scalar(@coords_A);
+  for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
+    ($start, $stop, $strand) = dng_CoordsTokenParse($coords_A[$sgm_idx], $FH_HR);
+    # dng_CoordsTokenParse() will fail if unable to parse $coords_A[$sgm_idx]
+    push(@start_A,  $start);
+    push(@stop_A,   $stop);
+    push(@strand_A, $strand); 
   }
 
   if(defined $start_AR)  { @{$start_AR}   = @start_A;  }
@@ -4568,8 +4564,84 @@ sub dng_FeatureStartStopStrandArrays {
   return;
 }
 
+#################################################################
+# Subroutine: dng_CoordsLength()
+# Incept:     EPN, Tue Mar 26 05:56:08 2019
+#
+# Synopsis: Given a comma separated coords string, parse it, 
+#           validate it, and return its length.
+# 
+# Arguments:
+#  $coords:       coordinate string
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub dng_CoordsLength {
+  my $sub_name = "dng_CoordsLength";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
+  my ($coords, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+  }
 
+  # if there's no comma, we should have a single span
+  if($coords !~ m/\,/) { 
+    my ($start, $stop, undef) = dng_CoordsTokenParse($coords, $FH_HR);
+    return abs($start - $stop) + 1;
+  }
+  # else, split it up and sum length of all
+  my @coords_A  = split(",", $coords);
+  my ($start, $stop);
+  my $ret_len = 0;
+  foreach my $coords_tok (@coords_A) { 
+    ($start, $stop, undef) = dng_CoordsTokenParse($coords_tok, $FH_HR);
+    $ret_len += abs($start - $stop) + 1;
+  }
+
+  return $ret_len;
+}
+
+#################################################################
+# Subroutine: dng_CoordsTokenParse()
+# Incept:     EPN, Tue Mar 26 06:15:09 2019
+#
+# Synopsis: Given a single coords token, validate it, 
+#           and return its start, stop, strand values.
+# 
+# Arguments:
+#  $coords_tok:   coordinate token
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    3 values:
+#             $start:  start position
+#             $stop:   stop position
+#             $strand: strand
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub dng_CoordsTokenParse {
+  my $sub_name = "dng_CoordsTokenLength";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords_tok, $FH_HR) = @_;
+  if(! defined $coords_tok) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+  }
+  if($coords_tok =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-])$/) { 
+    return ($1, $2, $3);
+  }
+  ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords_tok", "dnaorg", 1, $FH_HR); 
+
+  return; # NEVER REACHED
+}
 
 #################################################################
 # Subroutine: dng_FeatureCoordsFromLocation
