@@ -1567,260 +1567,7 @@ sub dng_DashCoordsToLength {
 #   dumpArrayOfHashesOfHashes()
 #   dumpArrayOfHashes()
 #
-#################################################################
-# Subroutine: dng_DumpInfoHashOfArrays()
-# Incept:     EPN, Thu Feb 11 15:06:31 2016
-#
-# Purpose:    Print an 'info' hash of arrays, probably for 
-#             debugging purposes.
-#
-# Args:       $name2print:  name of hash of arrays
-#             $by_array:    determines order of output, 
-#                           '1' to print all keys for each array element, 
-#                           '0' to print all array values for each key
-#             $info_HAR:    ref of the hash of arrays to print
-#             $FH:          file handle to print (often *STDOUT)
-#
-# Returns:    void
-#################################################################
-sub dng_DumpInfoHashOfArrays { 
-  my $sub_name = "dng_DumpInfoHashOfArrays()";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($name2print, $by_array, $info_HAR, $FH) = @_;
 
-  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
-
-  # determine max number of array elements over all keys
-  my $max_nel = 0;
-  my $key;
-  foreach $key (keys %{$info_HAR}) { 
-    if(scalar(@{$info_HAR->{$key}}) > $max_nel) { 
-      $max_nel = scalar(@{$info_HAR->{$key}});
-    }
-  }
-
-  if($by_array) { 
-    for(my $a_ctr = 0; $a_ctr < $max_nel; $a_ctr++) { 
-      printf $FH ("el %2d\n", ($a_ctr)); 
-      foreach $key (sort keys %{$info_HAR}) { 
-        printf $FH ("\t$key: %s\n", (defined $info_HAR->{$key}[$a_ctr]) ? $info_HAR->{$key}[$a_ctr] : "undef"); 
-      }
-      printf $FH ("\n");
-    }
-  }
-  else { # printing all array values for each key
-    my $key_ctr = 1;
-    my $nkeys = scalar(keys %{$info_HAR});
-    
-    foreach $key (sort keys %{$info_HAR}) { 
-      my $nel = (@{$info_HAR->{$key}}) ? scalar(@{$info_HAR->{$key}}) : 0;
-      printf $FH ("key %2d of %2d: $key, $nel elements\n", $key_ctr++, $nkeys);
-      for(my $a_ctr = 0; $a_ctr < $nel; $a_ctr++) { 
-        printf $FH ("\tel %2d: %s\n", ($a_ctr), (defined $info_HAR->{$key}[$a_ctr]) ? $info_HAR->{$key}[$a_ctr] : "undef"); 
-      }
-      printf $FH ("\n");
-    }
-  }
-  
-  return;
-}
-
-#################################################################
-# Subroutine: dng_DumpHashOfHashes()
-# Incept:     EPN, Thu Dec 20 13:36:00 2018
-#
-# Purpose:    Dump the contents of  hashes of hashes,
-#             probably for debugging purposes.
-#
-# Args:       $name2print:  name of array of hashes of hashes
-#             $HHR:         ref of the hash of hashes
-#             $FH:          file handle to print (often *STDOUT)
-#
-# Returns:    void
-# 
-#################################################################
-sub dng_DumpHashOfHashes { 
-  my $sub_name = "dng_DumpHashOfHashes()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($name2print, $HHR, $FH) = @_;
-
-  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
-  
-  foreach my $key1 (sort keys %{$HHR}) { 
-    printf("*H*H key: $key1\n");
-    my $nel = scalar(keys %{$HHR->{$key1}});
-    foreach my $key2 (sort keys %{$HHR->{$key1}}) { 
-      printf("\tH*H* key: $key2 value: %s\n", $HHR->{$key1}{$key2}); 
-    }
-    printf $FH ("\n");
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_DumpArrayOfHashesOfHashes()
-# Incept:     EPN, Fri Mar  4 16:02:28 2016
-#
-# Purpose:    Dump the contents of an array of hashes of hashes,
-#             probably for debugging purposes.
-#
-# Args:       $name2print:  name of array of hashes of hashes
-#             $AHHR:        ref of the array of hashes of hashes
-#             $FH:          file handle to print (often *STDOUT)
-#
-# Returns:    void
-# 
-#################################################################
-sub dng_DumpArrayOfHashesOfHashes { 
-  my $sub_name = "dng_DumpArrayOfHashesOfHashes()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($name2print, $AHHR, $FH) = @_;
-
-  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
-
-  my $nel1 = scalar(@{$AHHR});
-  for(my $i1 = 0; $i1 < $nel1; $i1++) { 
-    printf $FH ("*A*HH el %2d\n", ($i1)); 
-    my $nel2 = scalar(keys %{$AHHR->[$i1]}); 
-    my $i2 = 0;
-    foreach my $key2 (sort keys %{$AHHR->[$i1]}) { 
-      printf("\tA*H*H el %2d key: $key2\n", ($i2)); 
-      $i2++;
-      my $nel3 = scalar(keys %{$AHHR->[$i1]{$key2}});
-      my $i3 = 0;
-      foreach my $key3 (sort keys %{$AHHR->[$i1]{$key2}}) { 
-        printf("\tAH*H* el %2d key: $key3 value: %s\n", ($i3), $AHHR->[$i1]{$key2}{$key3}); 
-        $i3++;
-      }
-      printf $FH ("\n");
-    }
-    printf $FH ("\n");
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_DumpArrayOfHashes()
-# Incept:     EPN, Thu Feb  8 11:01:29 2018
-#
-# Purpose:    Dump the contents of an array of hashes,
-#             probably for debugging purposes.
-#
-# Args:       $name2print:  name of array of hashes of hashes
-#             $AHR:         ref of the array of hashes
-#             $FH:          file handle to print (often *STDOUT)
-#
-# Returns:    void
-# 
-#################################################################
-sub dng_DumpArrayOfHashes { 
-  my $sub_name = "dng_DumpArrayOfHashes()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($name2print, $AHR, $FH) = @_;
-
-  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
-
-  my $nel1 = scalar(@{$AHR});
-  for(my $i1 = 0; $i1 < $nel1; $i1++) { 
-    printf $FH ("*A*H el %2d\n", ($i1)); 
-    my $nel2 = scalar(keys %{$AHR->[$i1]}); 
-    my $i2 = 0;
-    foreach my $key2 (sort keys %{$AHR->[$i1]}) { 
-      printf("\tA*H* el %2d key: $key2 value: %s\n", ($i2), $AHR->[$i1]{$key2}); 
-      $i2++;
-    }
-    printf $FH ("\n");
-  }
-
-  return;
-}
-
-
-#################################################################
-# Subroutine: dng_DumpHashOfArraysOfHashes()
-# Incept:     EPN, Tue Mar 19 12:30:24 2019
-#
-# Purpose:    Dump the contents of a hash of arrays of hashes,
-#             probably for debugging purposes.
-#
-# Args:       $name2print:  name of array of hashes of hashes
-#             $HAHR:        ref of the hash of array of hashes
-#             $FH:          file handle to print (often *STDOUT)
-#
-# Returns:    void
-# 
-#################################################################
-sub dng_DumpHashOfArraysOfHashes { 
-  my $sub_name = "dng_DumpHashOfArraysOfHashes()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($name2print, $HAHR, $FH) = @_;
-
-  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
-
-  foreach my $key1 (sort keys %{$HAHR}) { 
-    printf $FH ("*H*AH key $key1\n");
-    my $nel2 = scalar(@{$HAHR->{$key1}});
-    for (my $i2 = 0; $i2 < $nel2; $i2++) { 
-      printf("\tH*A*H key: $key1 el: $i2:\n", $i2);
-      foreach my $key3 (sort keys %{$HAHR->{$key1}[$i2]}) { 
-        printf $FH ("\t\tHA*H* key: $key1 el: $i2 key: $key3 value: %s\n", $HAHR->{$key1}[$i2]{$key3});
-      }
-    }
-    printf $FH ("\n");
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_DumpHashOfHashesOfHashes()
-# Incept:     EPN, Wed Mar 20 14:44:54 2019
-#
-# Purpose:    Dump the contents of a hash of hashes of hashes,
-#             probably for debugging purposes.
-#
-# Args:       $name2print:  name of hash of hashes of hashes
-#             $HHHR:        ref of the hash of hashes of hashes
-#             $FH:          file handle to print (often *STDOUT)
-#
-# Returns:    void
-# 
-#################################################################
-sub dng_DumpHashOfHashesOfHashes { 
-  my $sub_name = "dng_DumpHashOfHashesOfHashes()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($name2print, $HHHR, $FH) = @_;
-
-  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
-
-  foreach my $key1 (sort keys %{$HHHR}) { 
-    printf $FH ("*H*HH key1: $key1\n");
-    foreach my $key2 (sort keys %{$HHHR->{$key1}}) { 
-      printf $FH ("\tH*H*H key2: $key1 key2: $key2\n");
-      foreach my $key3 (sort keys %{$HHHR->{$key1}{$key2}}) { 
-        printf $FH ("\t\tHH*H* key: $key1 key2: $key2 key3: $key3 value: %s\n", $HHHR->{$key1}{$key2}{$key3});
-      }
-      printf $FH ("\n");
-    }
-    printf $FH ("\n");
-  }
-
-  return;
-}
 
 #################################################################
 # Subroutine: dng_ArrayOfHashesKeepKeys()
@@ -2862,6 +2609,7 @@ sub dng_HashValuesToNewlineDelimitedString {
 #              Return '-2' if it exists as a directory (and ! $do_die)
 #
 # Dies:        If file does not exist or is empty and $do_die is 1.
+#              if $filename is undefined (regardless of value of $do_die).
 # 
 ################################################################# 
 sub dng_ValidateFileExistsAndIsNonEmpty { 
@@ -2870,12 +2618,19 @@ sub dng_ValidateFileExistsAndIsNonEmpty {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($filename, $filedesc, $calling_sub_name, $do_die, $FH_HR) = @_;
 
+  if(! defined $filename) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, %sfilename%s is undef", 
+                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
+                         (defined $filedesc         ? " ($filedesc)" : "")),
+                 undef, 1, $FH_HR); 
+  }
+
   if(-d $filename) {
     if($do_die) { 
       ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s exists but is a directory.", 
                          (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
                          (defined $filedesc         ? " ($filedesc)" : "")),
-                 "RIBO", 1, $FH_HR); 
+                 undef, 1, $FH_HR); 
     }
     return -2;
   }
@@ -2884,7 +2639,7 @@ sub dng_ValidateFileExistsAndIsNonEmpty {
       ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s does not exist.", 
                          (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
                          (defined $filedesc         ? " ($filedesc)" : "")),
-                 "RIBO", 1, $FH_HR); 
+                 undef, 1, $FH_HR); 
     }
     return 0;
   }
@@ -2893,7 +2648,7 @@ sub dng_ValidateFileExistsAndIsNonEmpty {
       ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s exists but is empty.", 
                          (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
                          (defined $filedesc         ? " ($filedesc)" : "")),
-                 "RIBO", 1, $FH_HR); 
+                 undef, 1, $FH_HR); 
     }
     return -1;
   }
