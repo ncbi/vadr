@@ -2889,7 +2889,7 @@ sub output_feature_table {
     my $ftidx         = 0;  # index in @ftout_AH
     my $min_coord     = -1; # minimum coord in this feature
     my $cur_min_coord = -1; # minimum coord in this segment
-    my %fidx2idx_H    = (); # key is feature index $fidx, value is $ftidx index in @ftout_AH that $fidx corresponds to
+    my %ftr_idx2ftout_idx_H = (); # key is feature index $fidx, value is $ftidx index in @ftout_AH that $fidx corresponds to
     my $i;
 
     my @seq_alert_A = (); # all errors for this sequence
@@ -2907,79 +2907,66 @@ sub output_feature_table {
       my $ftr_results_HAHR = \%{$ftr_results_HHAHR->{$mdl_name}}; # for convenience
       my $sgm_results_HAHR = \%{$sgm_results_HHAHR->{$mdl_name}}; # for convenience
       my $nftr = scalar(@{$ftr_info_AHR});
-      # loop over features
-      for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        my $feature_type = $ftr_info_AHR->[$ftr_idx]{"type"};
-        my $orig_feature_type = $feature_type; 
-        # determine if this feature can be ignored or cannot be ignored (should be annotated), 
-        # it can be ignored if:
-        # - we do not have a defined "n_start" for any model associated with this feature
-        #   (this is equivalent to having a 'nop' error for all models associated with this feature)
-        # - we do not have a 'b_non' error for this feature
-        my $is_duplicate  = dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx);
-        my $dup_src_ftidx = undef; # for duplicate features, set to index in $ftout_AH that corresponds to source for this feature
-
-        my $defined_n_start = 0;
-        my $defined_p_start = 0;
-        my $do_ignore       = 1; 
-        my $src_idx = $ftr_info_AHR->[$ftr_idx]{"source_idx"};
-        if(exists $fidx2idx_H{$src_idx}) { 
-          $dup_src_ftidx = $fidx2idx_H{$src_idx}; 
-          $do_ignore = 0;
+      
+      # Determine what features we will annotate, if any,
+      # and Reorder them so that any duplicates occur after their 
+      # 'source' features from which their annotation will be copied.
+      # That way when we get to a duplicate, we already have the annotation
+      # of its source feature.
+      # Non-duplicate features are annotated if they have a nucleotide-based 
+      # or protein-based prediction.
+      # Duplicate features are annotated if their source features are annotated.
+      my @ftr_idx_to_annotate_A = ();
+      my $ftr_idx;
+      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        if((! dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) && 
+           ((defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) || 
+            (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}))) { 
+          push(@ftr_idx_to_annotate_A, $ftr_idx);
         }
-        else { # not a duplicate feature
-          $defined_n_start = ((defined $ftr_results_HAHR) && 
-                              (defined $ftr_results_HAHR->{$seq_name}) && 
-                              (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]) && 
-                              (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"})) ? 1: 0;
-          $defined_p_start = ((defined $ftr_results_HAHR) && 
-                              (defined $ftr_results_HAHR->{$seq_name}) && 
-                              (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]) && 
-                              (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"})) ? 1: 0;
-          $do_ignore       = ($defined_n_start || $defined_p_start) ? 0 : 1;
+      }
+      # second pass to add duplicate features with sources that have predictions
+      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        if((dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) && 
+           ((defined $ftr_results_HAHR->{$seq_name}[$ftr_info_AHR->[$ftr_idx]{"source_idx"}]{"n_start"}) || 
+            (defined $ftr_results_HAHR->{$seq_name}[$ftr_info_AHR->[$ftr_idx]{"source_idx"}]{"p_start"}))) { 
+          push(@ftr_idx_to_annotate_A, $ftr_idx);
         }
-        
-        if(! $do_ignore) { 
-          # per-feature values that are modified if we have an exception that covers all errors for this feature
-          my $is_misc_feature = 0;
-          my $is_5trunc = 0;
-          my $is_3trunc  = 0;
-          
-          my $ftr_coords_str = ""; # string of coordinates for this feature
-          my $ftr_out_str    = ""; # output string for this feature
-          my $long_out_str   = ""; # long feature table output string for this feature
-          my @ftr_long_output_A = (); # array of strings with complete error messages, for long feature table
-          my @ftr_note_A    = ();  # notes for this feature/sequence combination
+      }
+      foreach $ftr_idx (@ftr_idx_to_annotate_A) { 
+        # initialize
+        my $is_5trunc         = 0;  # '1' if this feature is truncated at the 3' end
+        my $is_3trunc         = 0;  # '1' if this feature is truncated at the 3' end
+        my $is_misc_feature   = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
+        my $ftr_coords_str    = ""; # string of coordinates for this feature
+        my $ftr_out_str       = ""; # output string for this feature
+        my $long_out_str      = ""; # long feature table output string for this feature
+        my @ftr_long_output_A = (); # array of strings with complete error messages, for long feature table
+        my @ftr_note_A        = (); # notes for this feature/sequence combination
 
-          if(! $is_duplicate) { # only look up alerts if we're not a duplicate feature
-            # fill an array and strings with all alerts for this sequence/feature combo
-            my $ftr_alt_str = helper_ftable_get_ftr_alert_code_strings($seq_name, $ftr_idx, $alt_ftr_instances_HAHR, $alt_info_HHR, \@ftr_long_output_A, $FH_HR);
-            $is_5trunc = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"}; 
-            $is_3trunc = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"}; 
-            dng_ProcessFeatureAlertsForFTable($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HAHR, 
-                                              \@ftr_note_A, \@seq_alert_A, $FH_HR);
-            if(scalar(@ftr_note_A) > 0) { 
-              $is_misc_feature = 1;
-              $feature_type = "misc_feature";
-              push(@seq_note_A, @ftr_note_A);
-            }
-            else { 
-              $is_misc_feature = 0; 
-            }
-          } # end of 'if(! $is_duplicate)'
+        my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
+        my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
+        my $feature_type      = $ftr_info_AHR->[$ftr_idx]{"type"}; # type of feature, e.g. 'CDS' or 'mat_peptide' or 'gene'
+        my $orig_feature_type = $feature_type;                     # original feature type ($feature_type could be changed to misc_feature)
+        my $is_duplicate      = dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx); # is this feature a duplicate?
           
-          # determine coordinates for the feature differently depending on:
-          # if we are: 
-          # - a duplicate ($is_duplicate)
-          # - we have at least one prediction ($defined_n_start) 
-          # - not a duplicate and don't have at least one prediction (in this case, $b_non_flag will be up, or else we would have ignored this feature)
-          if($is_duplicate) { 
-            $ftr_coords_str = $ftout_AH[$dup_src_ftidx]{"coords"};
-            $min_coord      = $ftout_AH[$dup_src_ftidx]{"mincoord"};
-            $is_5trunc      = $ftout_AH[$dup_src_ftidx]{"5trunc"};
-            $is_3trunc      = $ftout_AH[$dup_src_ftidx]{"3trunc"};
+        # determine coordinates for the feature differently depending on
+        # if we are a duplicate or not: 
+        if($is_duplicate) { 
+          # copy from previously determined source feature
+          if(! defined $ftr_idx2ftout_idx_H{$ftr_info_AHR->[$ftr_idx]{"source_idx"}}) { 
+            ofile_FAIL("ERROR, trying to output feature table info for a duplicate feature but source feature info is undefined", 1, $ofile_info_HHR->{"FH"});;
           }
-          elsif(! $defined_n_start) { 
+          my $dup_src_ftidx = $ftr_idx2ftout_idx_H{$ftr_info_AHR->[$ftr_idx]{"source_idx"}};
+          $is_5trunc      = $ftout_AH[$dup_src_ftidx]{"5trunc"};
+          $is_3trunc      = $ftout_AH[$dup_src_ftidx]{"3trunc"};
+          $ftr_coords_str = $ftout_AH[$dup_src_ftidx]{"coords"};
+          $min_coord      = $ftout_AH[$dup_src_ftidx]{"mincoord"};
+        }
+        else { # ! duplicate
+          $is_5trunc = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"}; 
+          $is_3trunc = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"}; 
+          if(! $defined_n_start) { 
             # $defined_p_start must be TRUE
             $ftr_coords_str = helper_ftable_get_coords_prot_only_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
                                                                             $ftr_results_HAHR, $FH_HR);
@@ -2988,55 +2975,71 @@ sub output_feature_table {
             $ftr_coords_str = helper_ftable_get_coords_from_nt_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
                                                                           $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
           }
-          # convert coordinate string to output string
-          $ftr_out_str = helper_ftable_coords_to_out_str($ftr_coords_str, $feature_type, $FH_HR);
+
+          # only look up alerts if we're not a duplicate feature
+          # fill an array and strings with all alerts for this sequence/feature combo
+          my $ftr_alt_str = helper_ftable_get_ftr_alert_code_strings($seq_name, $ftr_idx, $alt_ftr_instances_HAHR, $alt_info_HHR, \@ftr_long_output_A, $FH_HR);
+          dng_ProcessFeatureAlertsForFTable($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HAHR, 
+                                            \@ftr_note_A, \@seq_alert_A, $FH_HR);
+          if(scalar(@ftr_note_A) > 0) { 
+            $is_misc_feature = 1;
+            $feature_type = "misc_feature";
+            push(@seq_note_A, @ftr_note_A);
+          }
+          else { 
+            $is_misc_feature = 0; 
+          }
+        } # end of 'else' entered if ! $is_duplicate)'
           
-          # add qualifiers: product, gene, exception and codon_start (if !duplicate)
-          if(! $is_misc_feature) { 
-            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "product",   $qval_sep, $ftr_info_AHR, $FH_HR);
-            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene",      $qval_sep, $ftr_info_AHR, $FH_HR);
-            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
-            # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
-            if((! $is_duplicate) && (dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))) { 
-              my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_name, $ftr_idx, "p_frame", "codon_start", $ftr_results_HAHR, $FH_HR);
-               if($tmp_str eq "") { 
-                # we didn't have an p_frame value for this CDS, so raise a flag
-                # we check later that if the sequence passes that this flag 
-                # is *NOT* raised, if it is, something went wrong and we die
-                $missing_codon_start_flag = 1; 
-              } 
-              if($is_5trunc) { # only add the codon_start if we are 5' truncated (and if we're here we're not a duplicate)
-                $ftr_out_str .= $tmp_str;
-              }
+        # convert coordinate string to output string
+        $ftr_out_str = helper_ftable_coords_to_out_str($ftr_coords_str, $feature_type, $FH_HR);
+        
+        # add qualifiers: product, gene, exception and codon_start (if !duplicate)
+        if(! $is_misc_feature) { 
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "product",   $qval_sep, $ftr_info_AHR, $FH_HR);
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene",      $qval_sep, $ftr_info_AHR, $FH_HR);
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
+          # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
+          if((! $is_duplicate) && (dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))) { 
+            my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_name, $ftr_idx, "p_frame", "codon_start", $ftr_results_HAHR, $FH_HR);
+            if($tmp_str eq "") { 
+              # we didn't have an p_frame value for this CDS, so raise a flag
+              # we check later that if the sequence passes that this flag 
+              # is *NOT* raised, if it is, something went wrong and we die
+              $missing_codon_start_flag = 1; 
+            } 
+            if($is_5trunc) { # only add the codon_start if we are 5' truncated (and if we're here we're not a duplicate)
+              $ftr_out_str .= $tmp_str;
             }
           }
-          # add notes and full error messages (if !duplicate)
-          if(! $is_duplicate) { 
-            foreach my $note_value (@ftr_note_A) { 
-              if($note_value ne "") { # skip empty notes, we use these for b_per errors, which only occur for MPs for which the parent CDS has >= 1 error
-                $ftr_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
-              }
-            }
-            # add the full error messages as 'notes' to the long output string, which will be output to the long feature table
-            foreach my $long_line (@ftr_long_output_A) { 
-              $long_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $long_line);
+        }
+        # add notes and full alert messages (if !duplicate)
+        if(! $is_duplicate) { 
+          foreach my $note_value (@ftr_note_A) { 
+            if($note_value ne "") { # skip empty notes, we use these for b_per errors, which only occur for MPs for which the parent CDS has >= 1 error
+              $ftr_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
             }
           }
-          
-          # push to the output hash
-          %{$ftout_AH[$ftidx]} = ();
-          $ftout_AH[$ftidx]{"5trunc"}          = $is_5trunc;
-          $ftout_AH[$ftidx]{"3trunc"}          = $is_3trunc;
-          $ftout_AH[$ftidx]{"mincoord"}        = $min_coord;
-          $ftout_AH[$ftidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
-          $ftout_AH[$ftidx]{"coords"}          = $ftr_coords_str;
-          $ftout_AH[$ftidx]{"output"}          = $ftr_out_str;
-          $ftout_AH[$ftidx]{"long_output"}     = $ftr_out_str . $long_out_str;
-          $fidx2idx_H{$ftr_idx} = $ftidx;
-          $ftidx++;
-        } # end of 'if(! $do_ignore)'
+          # add the full error messages as 'notes' to the long output string, which will be output to the long feature table
+          foreach my $long_line (@ftr_long_output_A) { 
+            $long_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $long_line);
+          }
+        }
+        
+        # push to the output hash
+        %{$ftout_AH[$ftidx]} = ();
+        $ftout_AH[$ftidx]{"5trunc"}          = $is_5trunc;
+        $ftout_AH[$ftidx]{"3trunc"}          = $is_3trunc;
+        $ftout_AH[$ftidx]{"mincoord"}        = $min_coord;
+        $ftout_AH[$ftidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
+        $ftout_AH[$ftidx]{"coords"}          = $ftr_coords_str;
+        $ftout_AH[$ftidx]{"output"}          = $ftr_out_str;
+        $ftout_AH[$ftidx]{"long_output"}     = $ftr_out_str . $long_out_str;
+        $ftr_idx2ftout_idx_H{$ftr_idx} = $ftidx;
+        $ftidx++;
       } # end of 'for(my $ftr_idx...'
     } # end of 'if(defined $mdl_name)'
+
     #######################################
     # OUTPUT section 
     #######################################
@@ -3529,10 +3532,7 @@ sub helper_ftable_get_coords_from_nt_prediction {
   my @stop_A  = ();
   
   for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
-    if((defined $sgm_results_HAHR) && 
-       (defined $sgm_results_HAHR->{$seq_name}) && 
-       (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
-       (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"start"})) { 
+    if(defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"start"}) { 
       push(@start_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"start"});
       push(@stop_A,  $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stop"});
     }
