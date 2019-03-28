@@ -1035,14 +1035,14 @@ sub dng_PopulateFTableNoteOrAlert {
                              ($alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} eq "") ? "" : " [" . $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} . "]"); 
       $ret_msg =~ s/!DESC!/$desc_str/g;
     }
-    elsif(($ftr_idx == -1) && (exists $alt_seq_instances_HHR->{$alt_code}{$seq_name})) { 
+    elsif(($ftr_idx == -1) && (exists $alt_seq_instances_HHR->{$seq_name}{$alt_code})) { 
       my $desc_str = sprintf("%s%s", 
                              $alt_info_HHR->{$alt_code}{"desc"},
-                             ($alt_seq_instances_HHR->{$alt_code}{$seq_name} eq "") ? "" : " [" . $alt_seq_instances_HHR->{$alt_code}{$seq_name} . "]"); 
+                             ($alt_seq_instances_HHR->{$seq_name}{$alt_code} eq "") ? "" : " [" . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "]"); 
       $ret_msg =~ s/!DESC!/$desc_str/g;
     }
     else { 
-      ofile_FAIL("ERROR in $sub_name, trying to return $ekey message for $alt_code and sequence $seq_name feature $ftr_idx, but no error instance exists", "dnaorg", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, trying to return $ekey message for $alt_code and sequence $seq_name feature $ftr_idx, but no alert instance exists", "dnaorg", 1, $FH_HR);
     }
   }
   # replace !FEATURE_TYPE! with 
@@ -2917,7 +2917,7 @@ sub dng_GetIndexHashForArray {
 ################################################################# 
 sub dng_WaitForFarmJobsToFinish { 
   my $sub_name = "dng_WaitForFarmJobsToFinish()";
-  my $nargs_expected = 9;
+  my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($do_cmalign, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
@@ -2981,7 +2981,7 @@ sub dng_WaitForFarmJobsToFinish {
       if(! $is_finished_A[$i]) { 
         if(-s $outfile_A[$i]) { 
           if($do_cmalign) { 
-            my $success = dng_cmalignCheckStdOutput($outfile_A[$i], 
+            my $success = dng_CmalignCheckStdOutput($outfile_A[$i], 
                                                     (defined $mxsize_AR) ? \$mxsize_AR->[$i] : undef,
                                                     $FH_HR);
             if($success == 0 || $success == 1) { 
@@ -3315,7 +3315,7 @@ sub dng_CmalignOrCmsearchWrapperHelper {
                                                        ($do_cmalign) ? "" : "[ok]", # value is irrelevant for cmalign
                                                        opt_Get("--wait", $opt_HHR), opt_Get("--errcheck", $opt_HHR), $ofile_info_HHR->{"FH"});
       if($njobs_finished != $nseq_files) { 
-        ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
+        ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), "dnaorg", 1, $ofile_info_HHR->{"FH"});
       }
       ofile_OutputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by ofile_OutputProgressComplete()
     }

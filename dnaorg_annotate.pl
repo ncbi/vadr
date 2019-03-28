@@ -129,7 +129,7 @@ my $g = 0; # option group
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                            "display this help",                                  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "basic options";
-opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "forcing directory overwrite",                    "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "force directory overwrite",                      "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                     "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("-s",           "integer", 181,                     $g,    undef,  undef,     "seed for random number generator is <n>",        "seed for random number generator is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("-m",           "string",  undef,                   $g,    undef, undef,      "use CM file <s> instead of default",             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
@@ -167,7 +167,7 @@ opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, unde
 $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
 opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
-opt_Add("--tau",        "real",    1E-7,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--tau",        "real",    1E-3,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "fix the tau value when running cmalign, allow it to increase if nec",          "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 opt_Add("--nosub",      "boolean", 0,                       $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
 opt_Add("--noglocal",   "boolean", 0,                       $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
@@ -176,7 +176,7 @@ $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
 opt_Add("-p",           "boolean", 0,                       $g,    undef,  undef,      "parallelize cmsearch/cmalign on a compute farm",              "parallelize cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
 opt_Add("-q",           "string",  undef,                   $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 100,                     $g,     "-p",  undef,      "number of KB of seq for each cmsearch farm job is <n>",       "number of KB of sequence for each cmsearch farm job is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 10,                      $g,     "-p",  undef,      "number of KB of seq for each cmsearch farm job is <n>",       "number of KB of sequence for each cmsearch farm job is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                     $g,     "-p",  undef,      "allow <n> minutes for cmsearch jobs on farm",                 "allow <n> wall-clock minutes for cmsearch jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,                       $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,                    $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
@@ -314,7 +314,7 @@ if(-d $dir) {
 }
 if(-e $dir) { 
   $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+ if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
@@ -372,7 +372,6 @@ if(opt_Get("--sgminfo", \%opt_HH)) {
 if(opt_Get("--altinfo", \%opt_HH)) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "altinfo", $out_root . ".altinfo", 1, "Alert information (created due to --altinfo)");
 }
-
 
 # now we have the log file open, output the banner there too
 ofile_OutputBanner($log_FH, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
@@ -528,9 +527,9 @@ my $nseq = scalar(@seq_name_A);
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-####################################
-# Classification: first round search
-####################################
+#####################################
+# Classification: round 1 of cmsearch
+#####################################
 my $r1_cmsearch_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
 cmsearch_wrapper(\%execs_H, $cm_file, undef, $fa_file, $r1_cmsearch_opts, $out_root, 1, $tot_len_nt, $progress_w, \%opt_HH, \%ofile_info_HH);
 
@@ -561,6 +560,7 @@ my %mdl_seq_len_H    = ();  # key is model name $mdl_name, value is summed lengt
 my $seq_name;               # a sequence name
 my @r2_tblout_key_A  = ();  # array of round 2 search tblout keys in %ofile_info_HH
 my @r2_tblout_file_A = ();  # array of round 2 search tblout files 
+my $r2_cmsearch_opts = " --cpu 0 --hmmonly --noali"; 
 
 # create per-model sequence files
 for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
@@ -580,8 +580,6 @@ for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {
     $mdl_cls_ct_H{$mdl_name}++;
   }
 }
-
-my $r2_cmsearch_opts = " --cpu 0 --hmmonly --noali"; 
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -756,7 +754,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                          \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
 
-    add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+    add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HAH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
   }                
 }
@@ -1268,24 +1266,24 @@ sub parse_cmalign_stk_and_add_alignment_alerts {
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) { 
             alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $sgm_info_AHR->[$sgm_idx]{"map_ftr"}, "n_gp5", $seq_name, 
-                                "RF position $sgm_start_rfpos" . dng_FeatureInfoSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
+                                "RF position $sgm_start_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                 $FH_HR);
           } 
           elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
-            error_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $sgm_info_AHR->[$sgm_idx]{"map_ftr"}, "n_lp5", $seq_name, 
-                                sprintf("%.2f < %.2f, RF position $sgm_start_rfpos" . dng_FeatureInfoSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $pp_thresh),
+            alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $sgm_info_AHR->[$sgm_idx]{"map_ftr"}, "n_lp5", $seq_name, 
+                                sprintf("%.2f < %.2f, RF position $sgm_start_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $pp_thresh),
                                 $FH_HR);
           }
         }
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) { 
-            error_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $sgm_info_AHR->[$sgm_idx]{"map_ftr"}, "n_gp3", $seq_name, 
-                                "RF position $sgm_stop_rfpos" . dng_FeatureInfoSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
+            alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $sgm_info_AHR->[$sgm_idx]{"map_ftr"}, "n_gp3", $seq_name, 
+                                "RF position $sgm_stop_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                 $FH_HR);
           }
           elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
-            error_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $sgm_info_AHR->[$sgm_idx]{"map_ftr"}, "n_lp3", $seq_name, 
-                                sprintf("%.2f < %.2f, RF position $sgm_stop_rfpos" . dng_FeatureInfoSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $pp_thresh),
+            alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $sgm_info_AHR->[$sgm_idx]{"map_ftr"}, "n_lp3", $seq_name, 
+                                sprintf("%.2f < %.2f, RF position $sgm_stop_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $pp_thresh),
                               $FH_HR);
           }
         }
@@ -1344,6 +1342,7 @@ sub parse_cmalign_stk_and_add_alignment_alerts {
 #
 # Arguments: 
 #  $seq_name_AR:            REF to array of sequence names, PRE-FILLED
+#  $seq_len_HR:             REF to hash of of sequence lengths, PRE-FILLED
 #  $ftr_info_AHR:           REF to array of hashes with information on the features, PRE-FILLED
 #  $alt_info_HHR:           REF to array of hashes with information on the alerts, PRE-FILLED
 #  $ftr_results_HAHR:       REF to feature results HAH, PRE-FILLED
@@ -1356,10 +1355,10 @@ sub parse_cmalign_stk_and_add_alignment_alerts {
 ################################################################# 
 sub add_blastx_alerts { 
   my $sub_name = "add_blastx_alerts";
-  my $nargs_expected = 7;
+  my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($seq_name_AR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HAHR, $opt_HHR, $FH_HR) = @_;
+  my ($seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HAHR, $opt_HHR, $FH_HR) = @_;
   
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
@@ -1430,12 +1429,11 @@ sub add_blastx_alerts {
           if(defined $ftr_results_HR->{"p_score"})   { $p_score   = $ftr_results_HR->{"p_score"};   }
 
           # determine if the query is a full length sequence, or a fetched sequence feature:
-          (undef, undef, $p_qlen) = helper_blastx_breakdown_query($p_query, $seq_name, undef, $FH_HR); 
-          # helper_blastx_breakdown_query() will exit if $p_query is unparseable
-          # first two undefs: seqname after coords_str is removed, and coords_str
-          # $p_qlen will be undefined if $p_query is a full sequence name
-
-          $p_feature_flag = (defined $p_qlen) ? 1 : 0; 
+          my ($query_seq, $query_ftr_idx, $p_qlen) = helper_blastx_breakdown_query($p_query, $seq_len_HR, $FH_HR); 
+          if($query_seq ne $seq_name) { 
+            ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $query_seq, expected $seq_name)", "dnaorg", 1, $FH_HR);
+          }
+          $p_feature_flag = ($query_ftr_idx ne "") ? 1 : 0;
           printf("HEYA seq_name: $seq_name ftr: $ftr_idx x_query: $p_query x_feature_flag: $p_feature_flag x_start: $p_start x_stop: $p_stop x_score: $p_score\n");
         }
 
@@ -1652,6 +1650,13 @@ sub parse_blastx_results {
   dng_ValidateFileExistsAndIsNonEmpty($blastx_summary_file, "blastx summary file", $sub_name, 1, $FH_HR);
   my $nftr = scalar(@{$ftr_info_AHR});
 
+  # create a hash mapping ftr_type_idx strings to ftr_idx:
+  my %ftr_type_idx2ftr_idx_H = ();
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $ftr_type_idx = dng_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+    $ftr_type_idx2ftr_idx_H{$ftr_type_idx} = $ftr_idx;
+  }
+
   open(IN, $blastx_summary_file) || ofile_FileOpenFailure($blastx_summary_file, "dnaorg", $sub_name, $!, "reading", $FH_HR);
   
   # first step, determine which sequence each hit corresponds to
@@ -1659,7 +1664,8 @@ sub parse_blastx_results {
   my $target     = undef;
   my $hsp_idx    = undef;
   my $seq_name   = undef; 
-  my $ftr_idx    = undef;
+  my $q_ftr_idx  = undef; # feature index query pertains to, [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
+  my $t_ftr_idx  = undef; # feature index target (fetched CDS sequence from input fasta file) pertains to [0..$nftr-1]
   my $no_coords_query = undef; # name of query without coords, if query sequence is a predicted feature, e.g. "NC_002549.1/6039..8068:+" for query "NC_002549.1/6039..8068:+/10..885:+,885..2030:+"
   my $coords          = undef; # string of coordinates if this is a predicted feature, e.g. "10..885:+,885..2030:+" for "NC_002549.1/6039..8068:+/10..885:+,885..2030:+"
   my $top_score_flag = 0;      # set to '1' if current hit is top scoring one for this sequence/feature pair
@@ -1675,9 +1681,15 @@ sub parse_blastx_results {
       if($key eq "QACC") { 
         $query = $value;
         # determine what sequence it is
-        ($seq_name, undef, undef) = helper_blastx_breakdown_query($query, undef, $seq_len_HR, $FH_HR); 
+        my $q_ftr_type_idx; # feature type and index string, from $seq_name if not a full sequence (e.g. "CDS.4")
+        ($seq_name, $q_ftr_type_idx, undef) = helper_blastx_breakdown_query($query, $seq_len_HR, $FH_HR); 
         # helper_blastx_breakdown_query() will die if $query is unparseable
-        # two undefs: coords and query length, both irrelevant here
+        # undef return value is query length which is irrelevant here
+        # determine what feature this query corresponds to
+        $q_ftr_idx = ($q_ftr_type_idx eq "") ? -1 : $ftr_type_idx2ftr_idx_H{$q_ftr_type_idx};
+        if(! defined $q_ftr_idx) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, problem parsing QACC line unable to determine feature index from query $query", "dnaorg", 1, $FH_HR);
+        }
       }
       elsif($key eq "HACC") { 
         if(! defined $query) { 
@@ -1688,11 +1700,11 @@ sub parse_blastx_results {
         if($target =~ /(\S+)\/(\S+)/) { 
           my ($accn, $coords) = ($1, $2);
           # find it in @{$ftr_info_AHR}
-          $ftr_idx = dng_BlastxDbSeqNameToFtrIdx($target, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $ftr_idx
+          $t_ftr_idx = dng_BlastxDbSeqNameToFtrIdx($target, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
         }
       }
       elsif($key eq "HSP") { 
-        if((! defined $query) || (! defined $ftr_idx)) { 
+        if((! defined $query) || (! defined $t_ftr_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines\n", "dnaorg", 1, $FH_HR);
         }
         printf("HEYA BLASTX HSP $key $value\n");
@@ -1708,20 +1720,20 @@ sub parse_blastx_results {
         if($value eq "..") { # special case, no hits, silently move on
           ;
         }
-        elsif((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+        elsif((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read QRANGE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         elsif($top_score_flag) { 
           if($value =~ /^(\d+)..(\d+)$/) { 
             my ($blast_start, $blast_stop) = ($1, $2);
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
-            $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}  = $blast_start;
-            $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"}   = $blast_stop;
-            $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"} = $blast_strand;
-            $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_query"}  = $query;
-            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$ftr_idx]{p_start}  to " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"} . "\n");
-            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$ftr_idx]{p_stop}   to " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"} . "\n");
-            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$ftr_idx]{p_strand} to " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"} . "\n");
+            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"}  = $blast_start;
+            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"}   = $blast_stop;
+            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
+            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $query;
+            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_start}  to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"} . "\n");
+            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_stop}   to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"} . "\n");
+            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_strand} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} . "\n");
           }
           else { 
             ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", "dnaorg", 1, $FH_HR);
@@ -1729,14 +1741,14 @@ sub parse_blastx_results {
         }
       }
       elsif($key eq "MAXIN") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+        if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXIN line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         if($top_score_flag) { 
           if($value =~ /^(\d+)$/) { 
             my $maxins = $1;
-            $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_maxins"} = $maxins;
-            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$ftr_idx]{x_maxins} to " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_maxins"} . "\n");
+            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_maxins"} = $maxins;
+            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_maxins} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_maxins"} . "\n");
           }
           else { 
             ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", "dnaorg", 1, $FH_HR);
@@ -1744,14 +1756,14 @@ sub parse_blastx_results {
         }
       }
       elsif($key eq "MAXDE") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+        if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXDE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         if($top_score_flag) {
           if($value =~ /^(\d+)$/) { 
             my $maxdel = $1;
-            $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_maxdel"} = $maxdel;
-            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$ftr_idx]{x_maxdel} to " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_maxdel"} . "\n");
+            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_maxdel"} = $maxdel;
+            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_maxdel} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_maxdel"} . "\n");
           }
           else { 
             ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXDE line $line", "dnaorg", 1, $FH_HR);
@@ -1759,14 +1771,14 @@ sub parse_blastx_results {
         }
       }
       elsif($key eq "FRAME") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+        if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         if($top_score_flag) { 
           if($value =~ /^[\+\-]([123])$/) { 
             my $frame = $1;
-            $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"} = $frame;
-            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$ftr_idx]{x_frame} to " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"} . "\n");
+            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"} = $frame;
+            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_frame} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"} . "\n");
           }
           else { 
             ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", "dnaorg", 1, $FH_HR);
@@ -1774,24 +1786,26 @@ sub parse_blastx_results {
         }
       }
       elsif($key eq "STOP") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+        if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read STOP line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
         if($top_score_flag) { 
-          $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_trcstop"} = $value;
-          printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$ftr_idx]{x_trcstop} to " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_trcstop"} . "\n");
+          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $value;
+          printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_trcstop} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} . "\n");
         }
       }
       elsif($key eq "SCORE") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
+        if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
-        # is this sequence compatible and the highest scoring hit for this feature for this sequence? 
-        if((! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"}) || # first hit, so must be highest
-           ($value > $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"})) { # highest scoring hit
-          $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"} = $value;
+        # is this query/target pair compatible (query is full sequence or correct CDS feature) 
+        # and the highest scoring hit for this feature for this sequence? 
+        if((($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) && # query is full sequence OR query is fetched CDS that pertains to target
+           ((! exists $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest
+            ($value > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}))) { # highest scoring hit
+          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} = $value;
           $top_score_flag = 1;
-          printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$ftr_idx]{x_score} to " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"} . "\n");
+          printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_score} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} . "\n");
         }
         else { 
           $top_score_flag = 0;
@@ -1807,7 +1821,7 @@ sub parse_blastx_results {
   my $nseq = scalar(@{$seq_name_AR}); 
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     $seq_name = $seq_name_AR->[$seq_idx];
-    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       if((! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) && 
          (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"}) && 
          ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"} < $min_x_score)) { 
@@ -1823,82 +1837,66 @@ sub parse_blastx_results {
 # Subroutine: helper_blastx_breakdown_query()
 # Incept:     EPN, Wed Dec 19 12:05:02 2018
 #
-# Purpose:    Given a query name from blastx output, determine if
-#             it is for an entire input sequence, or a feature
-#             sequence fetched from an input sequence. 
-#             The way we tell is by looking up $in_query in $seq_len_HR.
-#             If it exists as a key, then the query is an entire input
-#             sequence. If it does not exist as a key, then it should
-#             be <seqname>/<coords>, and <seqname> should be 
-#             a key in $seq_info_HAR.
+# Purpose: Given a query name from blastx output, determine if it is
+#          for an entire input sequence, or a feature sequence
+#          fetched from an input sequence.  The way we tell is by
+#          looking up $in_query in $seq_len_HR.  If it exists as a
+#          key, then the query is an entire input sequence. If it
+#          does not exist as a key, then it should be
+#          "<seq_name>/<ftr_type_idx>/<coords>", and <seq_name>
+#          should be a key in $seq_info_HAR.
 #
 # Arguments:
 #   $in_query:     query name from blastx output 
-#   $exp_seqname:  expected sequence name, of undef if unknown
-#                  can only be undef if $seq_HR is undefined
-#   $seq_HR:       ref to hash, keys are possible sequence names, values are irrelevant
+#   $seq_len_HR:   ref to hash, keys are possible sequence names, values are sequence lengths
 #   $FH_HR:        ref to hash of file handles, including 'log'
 #             
-# Returns:  Three values:
-#           <seqname>:    name of input sequence this query corresponds to
-#           <coords_str>: undef if $in_query == <seqname>, else the coords
-#                         string for the fetched feature from <seqname>
-#           <len>:        undef if $in_query == <seqname>, total length of 
-#                         coordinate ranges listed in <coords_str>
+# Returns:  3 values:
+#           <seq_name>:     name of input sequence this query corresponds to
+#           <ftr_type_idx>: "" if $in_query eq <seq_name>, else a string 
+#                           of feature type and index separated by a '.'
+#                           e.g. 'CDS.4', derived from $in_query.
+#           <len>:          length of sequence ($seq_len_HR->{<seq_name>} if 
+#                           $in_query eq <seq_name> else length derived from
+#                           coordinate ranges listed in <coords_str>.
 #
-# Dies: If $in_query is not a valid key in $seq_info_HAR, and we can't
-#       break it down into a valid <seqname> and <coords_str>.
+# Dies: If $in_query is either not a valid <seq_name> (key in %{$seq_len_HR})
+#       and $in_query cannot be broken down into a valid <seq_name><ftr_type_idx><coords_str>
+#       
 #
 #################################################################
 sub helper_blastx_breakdown_query {
   my $sub_name  = "helper_blastx_breakdown_query";
-  my $nargs_expected = 4;
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($in_query, $exp_seqname, $seq_HR, $FH_HR) = (@_);
+  my ($in_query, $seq_len_HR, $FH_HR) = (@_);
 
-  my $ret_seqname = undef;
-  my $ret_coords_str = undef;
-  my $ret_len = 0;
-
-  # contract check
-  if((! defined $exp_seqname) && (! defined $seq_HR)) { 
-    ofile_FAIL("ERROR in $sub_name, contract failure: both <exp_seqname> and <seq_HR> are undefined", "dnaorg", 1, $FH_HR);
-  }
-  if((defined $exp_seqname) && (defined $seq_HR)) { 
-    ofile_FAIL("ERROR in $sub_name, contract failure: both <exp_seqname> and <seq_HR> are defined", "dnaorg", 1, $FH_HR);
+  # check for simple case, $in_query is a sequence name key in %{$seq_len_HR}
+  if(defined $seq_len_HR->{$in_query}) { 
+    return($in_query, "", $seq_len_HR->{$in_query});
   }
 
-  if((defined $exp_seqname) && ($in_query eq $exp_seqname)) {   
-    return($in_query, undef, undef);
-  }
-  elsif((! defined $exp_seqname) && (exists $seq_HR->{$in_query})) { 
-    return($in_query, undef, undef);
+  # else, break down $in_query into:
+  # <seq_name>/<ftr_type_idx>/<coords>
+  # example: NC_002549.1/CDS.4/6039..6923:+,6923..8068:+
+  # sequence is NC_002549.1 but we fetched feature CDS#4 as coordinates 6039..6293:+,6293..8068:+ from it
+  my $ret_seq_name     = undef;
+  my $ret_ftr_type_idx = undef;
+  my $ret_len          = undef;
+  my $coords_str       = undef;
+  if($in_query =~ /^(\S+)\/([^\/]+\.\d+)\/([^\/]+$)/) { 
+    ($ret_seq_name, $ret_ftr_type_idx, $coords_str) = ($1, $2, $3);
+    if(! defined $seq_len_HR->{$ret_seq_name}) { 
+      ofile_FAIL("ERROR in $sub_name, problem parsing query $in_query, unexpected sequence name $ret_seq_name (does not exist in input sequence length hash)", "dnaorg", 1, $FH_HR); 
+    }
+    $ret_len = dng_CoordsLength($coords_str, $FH_HR);
   }
   else { 
-    # sequence name does not exist, as is
-    # example: NC_002549.1/6039..8068:+/1..885:+,885..2030:+
-    # sequence is NC_002549.1/6039..8068:+ but we fetched the feature 1..885:+,885..2030:+ from it
-    if($in_query =~ /^(\S+)\/([^\/]+$)/) { 
-      ($ret_seqname, $ret_coords_str) = ($1, $2);
-      if((defined $exp_seqname) && ($ret_seqname ne $exp_seqname)) { 
-        ofile_FAIL("ERROR in $sub_name, unexpected sequence name $ret_seqname != $exp_seqname, derived from $in_query", "dnaorg", 1, $FH_HR); 
-      }
-      if((! defined $exp_seqname) && (! exists $seq_HR->{$ret_seqname})) { 
-        ofile_FAIL("ERROR in $sub_name, unable to find input sequence with name $in_query or $ret_seqname", "dnaorg", 1, $FH_HR); 
-      }
-
-      # if we get here $ret_seqname is a valid sequence
-      # return its length
-      $ret_len = dng_CoordsLength($ret_coords_str, $FH_HR);
-      # dng_CoordsLength() will die if $ret_coords_str is not in the expected format
-    }
-    else { 
-      ofile_FAIL("ERROR in $sub_name, unable to parse blastx query sequence name $in_query", "dnaorg", 1, $FH_HR); 
-    }
+    ofile_FAIL("ERROR in $sub_name, unable to parse query $in_query", "dnaorg", 1, $FH_HR); 
   }
-  
-  return ($ret_seqname, $ret_coords_str, $ret_len);
+
+  return ($ret_seq_name, $ret_ftr_type_idx, $ret_len);
 }
 
 #################################################################
@@ -1972,6 +1970,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       if(! dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) { 
         my $ftr_is_cds_or_mp = dng_FeatureTypeIsCdsOrMaturePeptide($ftr_info_AHR, $ftr_idx);
         my $ftr_is_cds       = dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+        my $ftr_type_idx     = $ftr_fileroot_A[$ftr_idx];
         my $ftr_sqstring = "";
         my $ftr_seq_name = undef;
         my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
@@ -2011,21 +2010,24 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             }
             
             # check or update feature strand, but only if cds or mp (otherwise we don't care)
-            if($ftr_is_cds_or_mp) { 
-              if(! defined $ftr_strand) { 
-                $ftr_strand = $strand; 
-              }
-              elsif($ftr_strand ne $strand) { 
+            if(! defined $ftr_strand) { 
+              $ftr_strand = $strand; 
+            }
+            elsif($ftr_strand ne $strand) { 
+              # mixture of strands on different segments, this shouldn't happen if we're a CDS or mat_peptide
+              if($ftr_is_cds_or_mp) { 
                 # this 'shouldn't happen' for a CDS or mature peptide, all segments should be the sames strand
                 ofile_FAIL("ERROR, in $sub_name, different model sgements have different strands for a CDS or MP feature $ftr_idx", "dnaorg", 1, undef);
               }
+              # mixture of strands, set to "!" 
+              $ftr_strand = "!";
             }
             
             # update $ftr_sqstring, $ftr_seq_name, $ftr_len, @ftr2org_pos_A, and @ftr2sgm_idx_A
             my $sgm_len = abs($stop - $start) + 1;
             $ftr_sqstring .= $sqfile->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
             if(! defined $ftr_seq_name) { 
-              $ftr_seq_name = $seq_name . "/"; 
+              $ftr_seq_name = $seq_name . "/" . $ftr_type_idx . "/"; 
             }
             else { 
               $ftr_seq_name .= ",";
@@ -2061,7 +2063,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                 $alt_str_H{"n_str"} = "";
               }
             }
-              }
+          }
           if((! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
             if($ftr_is_cds_or_mp) { 
               # feature is not truncated on either end, look for stop codons
@@ -2139,12 +2141,13 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               if(($ftr_is_cds) && ($alt_flag) && ($ftr_nchildren > 0)) { 
                 for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
                   my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-                  alt_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $child_ftr_idx, "b_per", $seq_name, "", $FH_HR);
+                  alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $child_ftr_idx, "b_per", $seq_name, "", $FH_HR);
                 }
               }
             } # end of 'if($ftr_is_cds_or_mp'
           } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
           # update %ftr_results_HR
+          printf("ftr_idx: $ftr_idx setting n_strand $ftr_strand\n");
           $ftr_results_HR->{"n_strand"} = $ftr_strand;
           $ftr_results_HR->{"n_start"}  = $ftr_start;
           $ftr_results_HR->{"n_stop"}   = $ftr_stop;
@@ -2270,7 +2273,7 @@ sub sqstring_find_stops {
 #################################################################
 #
 # Other subroutines related to errors: 
-# error_instances_add 
+# alert_instances_add 
 # parse_class_alerts_list_file 
 # error_list_output_to_ftable_alerts 
 # add_b_zft_alerts 
@@ -2333,14 +2336,14 @@ sub alert_instances_add {
     if(! defined $alt_ftr_instances_HAHR) { 
       ofile_FAIL("ERROR in $sub_name alert code $alt_code is a per-feature alert, but alt_ftr_instances_HAHR is undefined", "dnaorg", 1, $FH_HR);
     }
-    # this alert shouldn't already exist
-    if(exists $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code}) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, alert code $alt_code, seq_name $seq_name, this alert already exists as %s", $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code}), "dnaorg", 1, $FH_HR);
+    # if this alert already exists (rare case), add to it
+    if(defined $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code}) { 
+      $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} .= ";;" . $value;
     }
-    # set the value
-    $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} = $value;
+    else { # if it doesn't already exist (normal case), create it
+      $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} = $value;
+    }
   }
-
   elsif($pertype eq "sequence") { 
     if(! defined $alt_seq_instances_HHR) { 
       ofile_FAIL("ERROR in $sub_name alert code $alt_code is a per-sequence alert, but alt_seq_instances_HHR is undefined", "dnaorg", 1, $FH_HR);
@@ -2348,13 +2351,13 @@ sub alert_instances_add {
     if($ftr_idx != -1) { 
       ofile_FAIL("ERROR in $sub_name alert code $alt_code is a per-sequence alert, but passed in ftr_idx is not -1, but $ftr_idx", "dnaorg", 1, $FH_HR);
     }
-    # this alert shouldn't already exist
-    if(exists $alt_seq_instances_HHR->{$seq_name}{$alt_code}) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, alert code $alt_code, seq_name $seq_name, this alert already exists as %s", $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code}), "dnaorg", 1, $FH_HR);
+    # if this alert already exists (rare case), add to it
+    if(defined $alt_seq_instances_HHR->{$seq_name}{$alt_code}) { 
+      $alt_seq_instances_HHR->{$seq_name}{$alt_code} .= ";;" . $value; 
     }
-
-    # set the value
-    $alt_seq_instances_HHR->{$seq_name}{$alt_code} = $value; 
+    else { # if it doesn't already exist (normal case), create it
+      $alt_seq_instances_HHR->{$seq_name}{$alt_code} = $value; 
+    }
   }
   else { 
     ofile_FAIL("ERROR in $sub_name, unexpected pertype of $pertype for alert $alt_code", "dnaorg", 1, $FH_HR);
@@ -2446,7 +2449,7 @@ sub add_n_div_alerts {
 
   my $noverflow = scalar(@{$overflow_seq_AR});
   for(my $s = 0; $s < $noverflow; $s++) { 
-    error_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "n_div", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
+    alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "n_div", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
   }
 
   return;
@@ -2702,6 +2705,8 @@ sub output_tabular {
                       $w_sgm_pp, "5pp", $w_sgm_pp, "3pp", $w_sgm_gap, "5gap", $w_sgm_gap, "3gap");
 
   # main loop: for each sequence
+  my $new_seq_flag = undef;
+  my $prv_seq_name = undef;
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name  = $seq_name_AR->[$seq_idx];
     my $seq_len   = $seq_len_HR->{$seq_name};
@@ -2710,7 +2715,10 @@ sub output_tabular {
     my $seq_nftr_5trunc = 0;
     my $seq_nftr_3trunc = 0;
     my $nftr = 0;
-    $mdl_name = class_model_for_sequence($cls_results_HHHR, $seq_name);
+    my $printed_ftr_line = 0;
+    $mdl_name     = class_model_for_sequence($cls_results_HHHR, $seq_name);
+    $new_seq_flag = ((defined $prv_seq_name) && ($seq_name ne $prv_seq_name)) ? 1 : 0;
+    $prv_seq_name = $seq_name;
     if(defined $mdl_name) { 
       $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
       my $ftr_info_AHR = \@{$ftr_info_HAHR->{$mdl_name}}; # for convenience
@@ -2779,34 +2787,36 @@ sub output_tabular {
               my $sgm_pp3    = $sgm_results_HR->{"stoppp"};
               my $sgm_gap5   = ($sgm_results_HR->{"startgap"}) ? "yes" : "no";
               my $sgm_gap3   = ($sgm_results_HR->{"stopgap"})  ? "yes" : "no";
-            
+              
               if($coords_str ne "") { $coords_str .= ","; }
               $coords_str .= $sgm_start . ".." . $sgm_stop . ":" . $sgm_strand;
               $ftr_len_by_sgm += abs($sgm_start - $sgm_stop) + 1;
               
               if($ftr_dupidx eq "-") { 
                 printf $sgm_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s\n", 
-                                  $w_sgm_idx, $sgm_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
-                                  $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name, $w_ftr_ftridx, $ftr_idx+1, 
-                                  $w_sgm_sgmidx, $ftr_nsgm, $w_sgm_sgmidx, ($sgm_idx-$ftr_first_sgm+1), $w_sgm_start, $sgm_start, $w_sgm_stop, $sgm_stop, 
-                                  $w_sgm_len, $sgm_len, $w_ftr_strand, $sgm_strand, 
-                                  $w_sgm_pp, $sgm_pp5, $w_sgm_pp, $sgm_pp3, $w_sgm_gap, $sgm_gap5, $w_sgm_gap, $sgm_gap3);
+                                    $w_sgm_idx, $sgm_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
+                                    $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name, $w_ftr_ftridx, $ftr_idx+1, 
+                                    $w_sgm_sgmidx, $ftr_nsgm, $w_sgm_sgmidx, ($sgm_idx-$ftr_first_sgm+1), $w_sgm_start, $sgm_start, $w_sgm_stop, $sgm_stop, 
+                                    $w_sgm_len, $sgm_len, $w_ftr_strand, $sgm_strand, 
+                                    $w_sgm_pp, $sgm_pp5, $w_sgm_pp, $sgm_pp3, $w_sgm_gap, $sgm_gap5, $w_sgm_gap, $sgm_gap3);
+              }
             }
           }
-        }
-        my $ftr_nsgm_noannot = $ftr_nsgm - $ftr_nsgm_annot;
-        if($ftr_len_by_sgm == 0) { $ftr_len_by_sgm = "-"; }
-        if($ftr_alt_str eq "")   { $ftr_alt_str = "-"; }
+          my $ftr_nsgm_noannot = $ftr_nsgm - $ftr_nsgm_annot;
+          if($ftr_len_by_sgm == 0) { $ftr_len_by_sgm = "-"; }
+          if($ftr_alt_str eq "")   { $ftr_alt_str = "-"; }
 
-        printf $ftr_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %s\n", 
-                            $w_ftr_idx, $ftr_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
-                            $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name, $w_ftr_ftrlen, $ftr_len_by_sgm, $w_ftr_ftridx, $ftr_idx+1, 
-                            $w_ftr_strand, $ftr_strand, 
-                            $w_ftr_start, $ftr_n_start, $w_ftr_stop, $ftr_n_stop, $w_ftr_cstop, $ftr_n_stop_c, $w_ftr_trunc, $ftr_trunc, 
-                            $w_ftr_start, $ftr_p_start, $w_ftr_stop, $ftr_p_stop, $w_ftr_cstop, $ftr_p_stop_c, 
-                            $w_ftr_maxde, $ftr_p_maxde, $w_ftr_maxin, $ftr_p_maxin, $w_ftr_pscore, $ftr_p_score, 
-                            $w_ftr_dupidx, ($ftr_dupidx eq "-") ? "-" : $ftr_dupidx+1, 
-                            $w_ftr_nsgm, $ftr_nsgm_annot, $w_ftr_nsgm, $ftr_nsgm_noannot, $w_ftr_coords, $coords_str, $ftr_alt_str);
+          if($new_seq_flag) { printf $ftr_tab_FH "#\n"; }
+            
+          printf $ftr_tab_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %s\n", 
+                              $w_ftr_idx, $ftr_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
+                              $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name, $w_ftr_ftrlen, $ftr_len_by_sgm, $w_ftr_ftridx, $ftr_idx+1, 
+                              $w_ftr_strand, $ftr_strand, 
+                              $w_ftr_start, $ftr_n_start, $w_ftr_stop, $ftr_n_stop, $w_ftr_cstop, $ftr_n_stop_c, $w_ftr_trunc, $ftr_trunc, 
+                              $w_ftr_start, $ftr_p_start, $w_ftr_stop, $ftr_p_stop, $w_ftr_cstop, $ftr_p_stop_c, 
+                              $w_ftr_maxde, $ftr_p_maxde, $w_ftr_maxin, $ftr_p_maxin, $w_ftr_pscore, $ftr_p_score, 
+                              $w_ftr_dupidx, ($ftr_dupidx eq "-") ? "-" : $ftr_dupidx+1, 
+                              $w_ftr_nsgm, $ftr_nsgm_annot, $w_ftr_nsgm, $ftr_nsgm_noannot, $w_ftr_coords, $coords_str, $ftr_alt_str);
         }
       }
     }
@@ -4158,7 +4168,7 @@ sub feature_results_strand {
     }
     # only p_strand defined
     return $ftr_results_HR->{"p_strand"}; 
-  }
+  } # end of 'if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))'
   else { 
     return (defined $ftr_results_HR->{"n_strand"}) ? $ftr_results_HR->{"n_strand"} : "?";
   }
@@ -4392,10 +4402,14 @@ sub cmalign_wrapper_helper {
   # depends on $do_parallel, $round, and ($progress_w < 0), and 
   my $desc = "";
   if($do_parallel) { 
-    $desc = sprintf("Submitting $nseq_files round $round cmalign job(s) to the farm%s", ($round == 1) ? "" : " to find seqs too divergent to annotate");
+    $desc = sprintf("Submitting $nseq_files cmalign job(s)%s to the farm%s", 
+                    (defined $mdl_name) ? " ($mdl_name)" : "", 
+                    ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
   else { 
-    $desc = sprintf("Running $nseq_files round $round cmalign job(s)%s", ($round == 1) ? "" : " to find seqs too divergent to annotate");
+    $desc = sprintf("Aligning sequences%s%s", 
+                    (defined $mdl_name) ? " ($mdl_name)" : "", 
+                    ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
   my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
 
@@ -4543,7 +4557,7 @@ sub cmalign_run {
   if($do_parallel) { 
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
-    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 2; # multiply --mxsize Gb by 2 to be safe
+    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 3; # multiply --mxsize Gb by 3 to be safe
     if($mem_gb < 8.) { $mem_gb = 8.; } # set minimum of 8 Gb
     if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
       dng_SubmitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
@@ -4671,10 +4685,15 @@ sub cmsearch_wrapper {
   # determine description of the runs we are about to do
   my $desc = "";
   if($round == 1) { 
-    $desc = "Classifying sequences";
+    $desc = ($do_parallel) ? "Submitting $nseq_files cmsearch classification job(s) to the farm" : "Classifying sequences";
   }
   else { 
-    $desc = sprintf("Determining sequence coverage%s", (defined $mdl_name) ? " ($mdl_name)" : "");
+    if($do_parallel) { 
+      $desc = sprintf("Submitting $nseq_files cmsearch coverage determination job(s)%s to the farm", (defined $mdl_name) ? " ($mdl_name)" : "");
+    }
+    else { 
+      $desc = sprintf("Determining sequence coverage%s", (defined $mdl_name) ? " ($mdl_name)" : "");
+    }
   }
   my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
 
@@ -4688,8 +4707,6 @@ sub cmsearch_wrapper {
     }
     cmsearch_run($execs_HR, $mdl_file, $mdl_name, $seq_file_A[$s], $opt_str, \%{$out_file_AH[$s]}, $opt_HHR, $ofile_info_HHR);   
   }
-
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   if($do_parallel) { 
     # wait for the jobs to finish
@@ -4720,6 +4737,8 @@ sub cmsearch_wrapper {
   if(($do_split) && (! opt_Get("--keep", $opt_HHR))) { 
     dng_RemoveListOfFiles(\@seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
   }
+
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   return;
 }
@@ -4780,9 +4799,10 @@ sub cmsearch_run {
     $cmd = $execs_HR->{"cmsearch"} . " $opt_str $mdl_file $seq_file > $stdout_file";
   }
   if($do_parallel) { 
-    my $job_name = "J" . dng_RemoveDirPath($seq_file);
+    my $job_name = "J" . utl_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
-    my $mem_gb = 8.; # hardcoded for cmsearch
+    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 2; # multiply --mxsize Gb by 2 to be safe
+    if($mem_gb < 8.) { $mem_gb = 8.; } # set minimum of 8 Gb
     dng_SubmitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
   }
   else { 
