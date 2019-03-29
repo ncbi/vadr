@@ -581,7 +581,6 @@ for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {
   }
 }
 
-
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -5209,6 +5208,7 @@ sub add_classification_alerts {
         my $length = abs($start_HA{$rkey}[0] - $stop_HA{$rkey}[0]) + 1;
         my $score  = $score_A[0];
         my $bias   = ($rkey eq "r2") ? $bias_A[0] : undef;
+        my $nhits_bstrand = 1;
         for(my $i = 1; $i < $nhits; $i++) { 
           if($strand_HA{$rkey}[$i] eq $bstrand) { 
             $length += abs($start_HA{$rkey}[$i] - $stop_HA{$rkey}[$i]) + 1;
@@ -5216,6 +5216,7 @@ sub add_classification_alerts {
             if(defined $bias) { 
               $bias += $bias_A[$i];
             }
+            $nhits_bstrand++;
           }
         }
         $model_H{$rkey}   = $results_HR->{"model"};
@@ -5224,7 +5225,7 @@ sub add_classification_alerts {
         $scpnt_H{$rkey}   = $score / $length;
         $length_H{$rkey}  = $length;
         $bstrand_H{$rkey} = $bstrand;
-        $nhits_H{$rkey}   = $nhits;
+        $nhits_H{$rkey}   = $nhits_bstrand;
         printf("$rkey length $length\n");
       } # end of foreach $rkey
 
@@ -5247,14 +5248,15 @@ sub add_classification_alerts {
       }
       # low difference (c_lod) and very low difference (c_vld)
       if(defined $scpnt_H{"r1.2"}) { 
-        my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.2"};
-        my $diff2print = sprintf("%.3f", $diff);
-        $cls_output_HHR->{$seq_name}{"scdiff"} = $diff2print;
-        if($diff < $vlowdiffthresh_opt) { 
-          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_vld", $seq_name, $diff2print . "<" . $vlowdiffthresh_opt2print, $FH_HR);
+        my $diffpnt = $scpnt_H{"r1.1"} - $scpnt_H{"r1.2"};
+        my $diffpnt2print = sprintf("%.3f", $diffpnt);
+        $cls_output_HHR->{$seq_name}{"scdiff"}  = sprintf("%.1f", $score_H{"r1.1"} - $score_H{"r1.2"});
+        $cls_output_HHR->{$seq_name}{"diffpnt"} = $diffpnt2print;
+        if($diffpnt < $vlowdiffthresh_opt) { 
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_vld", $seq_name, $diffpnt2print . "<" . $vlowdiffthresh_opt2print, $FH_HR);
         }
-        elsif($diff < $lowdiffthresh_opt) { 
-          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_lod", $seq_name, $diff2print . "<" . $lowdiffthresh_opt2print, $FH_HR);
+        elsif($diffpnt < $lowdiffthresh_opt) { 
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_lod", $seq_name, $diffpnt2print . "<" . $lowdiffthresh_opt2print, $FH_HR);
         }
       }
       # unexpected group (c_ugr) 
