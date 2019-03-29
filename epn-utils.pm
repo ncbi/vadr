@@ -693,7 +693,7 @@ sub utl_HValidate {
 }
 
 #################################################################
-# Subroutine:  utl_MaxLengthScalarKeyInHash()
+# Subroutine:  utl_HMaxLengthKey()
 # Incept:      EPN, Thu Dec 13 15:52:09 2018
 # 
 # Purpose:     Return the maximum length of a scalar key
@@ -705,9 +705,9 @@ sub utl_HValidate {
 # Returns:     The length of the maximum length scalar key.
 #
 ################################################################# 
-sub utl_MaxLengthScalarKeyInHash { 
+sub utl_HMaxLengthKey { 
   my $nargs_expected = 1;
-  my $sub_name = "utl_MaxLengthScalarKeyInHash()";
+  my $sub_name = "utl_HMaxLengthKey()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($HR) = $_[0];
 
@@ -721,7 +721,7 @@ sub utl_MaxLengthScalarKeyInHash {
 }
 
 #################################################################
-# Subroutine:  utl_MaxLengthScalarValueInHash()
+# Subroutine:  utl_HMaxLengthValue()
 # Incept:      EPN, Mon Nov  3 09:09:59 2014 [rnavore]
 # 
 # Purpose:     Return the maximum length of a scalar value
@@ -733,9 +733,9 @@ sub utl_MaxLengthScalarKeyInHash {
 # Returns:     The length of the maximum length scalar.
 #
 ################################################################# 
-sub utl_MaxLengthScalarValueInHash { 
+sub utl_HMaxLengthValue { 
   my $nargs_expected = 1;
-  my $sub_name = "utl_MaxLengthScalarValueInHash()";
+  my $sub_name = "utl_HMaxLengthValue()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($HR) = $_[0];
 
@@ -748,8 +748,39 @@ sub utl_MaxLengthScalarValueInHash {
   return $max;
 }
 
+
 #################################################################
-# Subroutine:  utl_MaxLengthScalarValueInArray()
+# Subroutine:  utl_HHMaxLengthValueGiven2DKey()
+# Incept:      EPN, Fri Mar 29 12:01:18 2019
+# 
+# Purpose:     Return the maximum length of a scalar value
+#              in a 2D hash for a given 1D key hash.
+#              max(length($HHR->{}{$key}))
+#
+# Arguments: 
+#   $HHR:  reference to the hash of hashes
+#   $key2: 2D key
+# 
+# Returns: The length of the maximum length scalar.
+#
+################################################################# 
+sub utl_HHMaxLengthValueGiven2DKey { 
+  my $nargs_expected = 2;
+  my $sub_name = "utl_HHMaxLengthValueGiven2DKey()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($HHR, $key2) = (@_);
+
+  my $max = 0;
+  foreach my $key1 (keys (%{$HHR})) { 
+    if(defined $HHR->{$key1}{$key2}) { 
+      $max = utl_Max($max, length($HHR->{$key1}{$key2}));
+    }
+  }
+  return $max;
+}
+
+#################################################################
+# Subroutine:  utl_AMaxLengthValue()
 # Incept:      EPN, Thu Mar 17 12:38:53 2016
 # 
 # Purpose:     Return the maximum length of a scalar value
@@ -761,9 +792,9 @@ sub utl_MaxLengthScalarValueInHash {
 # Returns:     The length of the maximum length scalar.
 #
 ################################################################# 
-sub utl_MaxLengthScalarValueInArray { 
+sub utl_AMaxLengthValue { 
   my $nargs_expected = 1;
-  my $sub_name = "utl_MaxLengthScalarValueInArray()";
+  my $sub_name = "utl_AMaxLengthValue()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($AR) = $_[0];
 
