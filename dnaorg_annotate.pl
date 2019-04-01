@@ -160,6 +160,7 @@ opt_Add("--ppmin",          "real",  0.8,                    $g,     undef, unde
 
 $opt_group_desc_H{++$g} = "options for tuning protein validation with blastx";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
+opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,      "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",          "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xalntol",     "integer",  5,                      $g,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xindeltol",   "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
@@ -171,6 +172,7 @@ opt_Add("--tau",        "real",    1E-3,                    $g,    undef, undef,
 opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "fix the tau value when running cmalign, allow it to increase if nec",          "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 opt_Add("--nosub",      "boolean", 0,                       $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
 opt_Add("--noglocal",   "boolean", 0,                       $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -222,6 +224,7 @@ my $options_okay =
 # options for tuning nucleotide-based annotation errors
                 'ppmin=s'      => \$GetOptions_H{"--ppmin"},
 # options for tuning protein validation with blastx
+                'xminntlen=s'  => \$GetOptions_H{"--xminntlen"},
                 'xalntol=s'    => \$GetOptions_H{"--xalntol"},
                 'xindeltol=s'  => \$GetOptions_H{"--xindeltol"},
                 'xlonescore=s' => \$GetOptions_H{"--xlonescore"},
@@ -782,7 +785,8 @@ add_b_zft_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ann_tbl",      $out_root . ".ann.tbl", 1, "per-sequence tabular annotation summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cls_tbl",      $out_root . ".cls.tbl", 1, "per-sequence tabular classification summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ftr_tbl",      $out_root . ".ftr.tbl", 1, "per-feature tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgm_tbl",      $out_root . ".mdl.tbl", 1, "per-model-segment tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgm_tbl",      $out_root . ".sgm.tbl", 1, "per-model-segment tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "alt_tbl",      $out_root . ".alt.tbl", 1, "per-alert tabular summary file");
 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "pererr",         $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "allerr",         $out_root . ".all.errors",        1, "List of errors, one line per error");
@@ -1376,6 +1380,7 @@ sub add_blastx_alerts {
   
   my $aln_tol   = opt_Get("--xalntol",    $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
   my $indel_tol = opt_Get("--xindeltol",  $opt_HHR); # maximum allowed insertion and deletion length in blastx output
+  my $xminntlen = opt_Get("--xminntlen", $opt_HHR);
   
   # get children info for all features
   my @children_AA = ();
@@ -1386,172 +1391,185 @@ sub add_blastx_alerts {
   for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     # for each feature
     $seq_name = $seq_name_AR->[$seq_idx];
-    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-        $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
-        my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
-        printf("HEYA in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx] ");
-        if(defined $ftr_results_HR) { printf("(defined)\n"); }
-        else                        { printf("(undefined)\n"); }
-        my %alt_str_H = ();   # added to as we find alerts below, possible keys are:
-                              # "b_non", "b_nop", "b_cst", "b_p5l", "b_p5s", "b_p3l", "b_p3s", "p_lin", "p_lde", "p_trc"
-        
-        # initialize 
-        my $n_start        = undef; # predicted start  from CM 
-        my $n_stop         = undef; # predicted stop   from CM 
-        my $n_strand       = undef; # predicted strand from CM 
-        my $p_start        = undef; # predicted start  from blastx
-        my $p_stop         = undef; # predicted stop   from blastx
-        my $p_start2print  = undef; # predicted start  from blastx, to output
-        my $p_stop2print   = undef; # predicted stop   from blastx, to output
-        my $p_strand       = undef; # predicted strand from blastx
-        my $p_maxins       = undef; # maximum insert from blastx
-        my $p_maxdel       = undef; # maximum delete from blastx
-        my $p_trcstop      = undef; # premature stop from blastx
-        my $p_score        = undef; # raw score from blastx
-        my $p_query        = undef; # query name from blastx hit
-        my $p_qlen         = undef; # length of query sequence, if $p_feature_flag == 1
-        my $p_feature_flag = 0; # set to '1' if $p_query is a fetched feature sequence, not a full length input sequence
-        
-        my $start_diff = undef; # difference in start values between CM and blastx
-        my $stop_diff  = undef; # difference in start values between CM and blastx
-        
-        if(defined $ftr_results_HR->{"n_start"}) { 
-          $n_start  = $ftr_results_HR->{"n_start"};
-          $n_stop   = $ftr_results_HR->{"n_stop"};
-          $n_strand = $ftr_results_HR->{"n_strand"};
-        }
-        else { 
-          printf("HEYA n_start UNDEF\n");
-        }
-
-        if((defined $ftr_results_HR->{"p_start"}) && 
-           (defined $ftr_results_HR->{"p_stop"})) { 
-          $p_start   = $ftr_results_HR->{"p_start"};
-          $p_stop    = $ftr_results_HR->{"p_stop"};
-          $p_strand  = $ftr_results_HR->{"p_strand"};
-          $p_query   = $ftr_results_HR->{"p_query"};
-          if(defined $ftr_results_HR->{"p_maxins"})  { $p_maxins  = $ftr_results_HR->{"p_maxins"};  }
-          if(defined $ftr_results_HR->{"p_maxdel"})  { $p_maxdel  = $ftr_results_HR->{"p_maxdel"};  }
-          if(defined $ftr_results_HR->{"p_trcstop"}) { $p_trcstop = $ftr_results_HR->{"p_trcstop"}; }
-          if(defined $ftr_results_HR->{"p_score"})   { $p_score   = $ftr_results_HR->{"p_score"};   }
-
-          # determine if the query is a full length sequence, or a fetched sequence feature:
-          my ($query_seq, $query_ftr_idx, $p_qlen) = helper_blastx_breakdown_query($p_query, $seq_len_HR, $FH_HR); 
-          if($query_seq ne $seq_name) { 
-            ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $query_seq, expected $seq_name)", "dnaorg", 1, $FH_HR);
-          }
-          $p_feature_flag = ($query_ftr_idx ne "") ? 1 : 0;
-          printf("HEYA seq_name: $seq_name ftr: $ftr_idx x_query: $p_query x_feature_flag: $p_feature_flag x_start: $p_start x_stop: $p_stop x_score: $p_score\n");
-        }
-
-        # add errors as needed:
-        # check for b_non
-        if((! defined $n_start) && (defined $p_start) && (defined $p_score))  { 
-          # no nucleotide-based prediction but there is a protein-based blastx prediction
-          $alt_str_H{"b_non"} = "$p_start to $p_stop with score $p_score";
-        }
-        # check for b_nop
-        if(defined $n_start) { 
-          if(! defined $p_start) { 
-            $alt_str_H{"b_nop"} = "";
+    if($seq_len_HR->{$seq_name} >= $xminntlen) { 
+      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+          $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
+          my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
+          printf("HEYA in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx] ");
+          if(defined $ftr_results_HR) { printf("(defined)\n"); }
+          else                        { printf("(undefined)\n"); }
+          my %alt_str_H = ();   # added to as we find alerts below, possible keys are:
+          # "b_non", "b_nop", "b_cst", "b_p5l", "b_p5s", "b_p3l", "b_p3s", "p_lin", "p_lde", "p_trc"
+          
+          # initialize 
+          my $n_start        = undef; # predicted start  from CM 
+          my $n_stop         = undef; # predicted stop   from CM 
+          my $n_strand       = undef; # predicted strand from CM 
+          my $n_len          = undef; # predicted length from CM (summed over all segments)
+          my $p_start        = undef; # predicted start  from blastx
+          my $p_stop         = undef; # predicted stop   from blastx
+          my $p_start2print  = undef; # predicted start  from blastx, to output
+          my $p_stop2print   = undef; # predicted stop   from blastx, to output
+          my $p_strand       = undef; # predicted strand from blastx
+          my $p_maxins       = undef; # maximum insert from blastx
+          my $p_maxdel       = undef; # maximum delete from blastx
+          my $p_trcstop      = undef; # premature stop from blastx
+          my $p_score        = undef; # raw score from blastx
+          my $p_query        = undef; # query name from blastx hit
+          my $p_qlen         = undef; # length of query sequence, if $p_feature_flag == 1
+          my $p_hlen         = undef; # length of blastx hit
+          my $p_feature_flag = 0; # set to '1' if $p_query is a fetched feature sequence, not a full length input sequence
+          
+          my $start_diff = undef; # difference in start values between CM and blastx
+          my $stop_diff  = undef; # difference in start values between CM and blastx
+          
+          if(defined $ftr_results_HR->{"n_start"}) { 
+            $n_start  = $ftr_results_HR->{"n_start"};
+            $n_stop   = $ftr_results_HR->{"n_stop"};
+            $n_strand = $ftr_results_HR->{"n_strand"};
+            $n_len    = $ftr_results_HR->{"n_len"};
           }
           else { 
-            # we have both $n_start and $p_start, we can compare CM and blastx predictions
+            printf("HEYA n_start UNDEF\n");
+          }
 
-            # check for b_cst: strand mismatch failure, differently depending on $p_feature_flag
-            if(((  $p_feature_flag) && ($p_strand eq "-")) || 
-               ((! $p_feature_flag) && ($n_strand ne $p_strand))) { 
-              $alt_str_H{"b_cst"} = "";
+          # only proceed if we have a nucleotide prediction >= min length OR
+          # we have no nucleotide prediction
+          if(((defined $n_start) && ($n_len >= $xminntlen)) || (! defined $n_start)) { 
+
+            if((defined $ftr_results_HR->{"p_start"}) && 
+               (defined $ftr_results_HR->{"p_stop"})) { 
+              $p_start   = $ftr_results_HR->{"p_start"};
+              $p_stop    = $ftr_results_HR->{"p_stop"};
+              $p_strand  = $ftr_results_HR->{"p_strand"};
+              $p_query   = $ftr_results_HR->{"p_query"};
+              $p_hlen    = $ftr_results_HR->{"p_len"};
+              if(defined $ftr_results_HR->{"p_maxins"})  { $p_maxins  = $ftr_results_HR->{"p_maxins"};  }
+              if(defined $ftr_results_HR->{"p_maxdel"})  { $p_maxdel  = $ftr_results_HR->{"p_maxdel"};  }
+              if(defined $ftr_results_HR->{"p_trcstop"}) { $p_trcstop = $ftr_results_HR->{"p_trcstop"}; }
+              if(defined $ftr_results_HR->{"p_score"})   { $p_score   = $ftr_results_HR->{"p_score"};   }
+
+              # determine if the query is a full length sequence, or a fetched sequence feature:
+              my ($query_seq, $query_ftr_idx, $p_qlen) = helper_blastx_breakdown_query($p_query, $seq_len_HR, $FH_HR); 
+              if($query_seq ne $seq_name) { 
+                ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $query_seq, expected $seq_name)", "dnaorg", 1, $FH_HR);
+              }
+              $p_feature_flag = ($query_ftr_idx ne "") ? 1 : 0;
+              printf("HEYA seq_name: $seq_name ftr: $ftr_idx x_query: $p_query x_feature_flag: $p_feature_flag x_start: $p_start x_stop: $p_stop x_score: $p_score\n");
             }
-            else { 
-              # we have both $n_start and $p_start and predictions are on the same strand
-              # determine if predictions are 'close enough' in terms of sequence positions
-              # calcuate $start_diff and $stop_diff, differently depending on if hit
-              # was to the full sequence or a fetched features (true if $p_feature_flag == 1)
-              if($p_feature_flag) { 
-                $start_diff = $p_start - 1; 
-                $stop_diff  = $p_qlen - $p_stop;
-                $p_start2print = sprintf("$n_start %s $start_diff", ($n_strand eq "+") ? "+" : "-");
-                $p_stop2print  = sprintf("$n_stop %s $stop_diff",  ($n_strand eq "+") ? "-" : "+");
+
+            # add errors as needed:
+            # check for b_non
+            if((! defined $n_start) && (defined $p_start) && (defined $p_score))  { 
+              # no nucleotide-based prediction but there is a protein-based blastx prediction
+              # only add this if length meets our minimum
+              if($p_hlen >= $xminntlen) { 
+                $alt_str_H{"b_non"} = "$p_start to $p_stop with score $p_score";
+              }
+            }
+            if(defined $n_start) { 
+              # check for b_nop
+              if(! defined $p_start) { 
+                $alt_str_H{"b_nop"} = "";
               }
               else { 
-                $start_diff = abs($n_start - $p_start);
-                $stop_diff  = abs($n_stop  - $p_stop);
-                $p_start2print = $p_start;
-                $p_stop2print  = $p_stop;
-              }
-              # check for 'b_p5l': only for non-feature seqs blastx alignment extends outside of nucleotide/CM alignment on 5' end
-              if((! $p_feature_flag) && 
-                 ((($n_strand eq "+") && ($p_start < $n_start)) || 
-                  (($n_strand eq "-") && ($p_start > $n_start)))) { 
-                $alt_str_H{"b_p5l"} = "strand:$n_strand CM:$n_start blastx:$p_start2print";
-              }
-              # check for 'b_p5s': blastx 5' end too short, not within $aln_tol nucleotides
-              if(! exists $alt_str_H{"b_p5l"}) { # only add b_p5s if b_p5l does not exist
-                if($start_diff > $aln_tol) { 
-                  $alt_str_H{"b_p5s"} = "$start_diff > $aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
-                }                
-              }
-              # check for 'b_p3l': blastx alignment extends outside of nucleotide/CM alignment on 3' end
-              if((! $p_feature_flag) && 
-                 ((($n_strand eq "+") && ($p_stop  > $n_stop)) || 
-                  (($n_strand eq "-") && ($p_stop  < $n_stop)))) { 
-                $alt_str_H{"b_p3l"} = "strand:$n_strand CM:$n_stop blastx:$p_stop2print";
-              }
-              # check for 'b_p3s': blastx 3' end too short, not within $aln_tol nucleotides
-              # for the stop coordinates, we do this differently if the nucleotide prediction 
-              # includes the stop codon or not, if it does, we allow 3 more positions different
-              my $cur_aln_tol = undef;
-              my $cur_stop_str = undef;
-              my $n_has_stop_codon = ((! $ftr_results_HR->{"n_3trunc"}) && 
-                                      (! exists $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{"n_stp"})) ? 1 : 0;
-              if($n_has_stop_codon) { 
-                $cur_aln_tol  = $aln_tol + 3;
-                $cur_stop_str = "valid stop codon";
-              }
-              else { 
-                $cur_aln_tol  = $aln_tol;
-                $cur_stop_str = "no valid stop codon";
-              }
-              if(! exists $alt_str_H{"b_p3l"}) { # only add b_p3s if b_p3l does not exist
-                if($stop_diff > $cur_aln_tol) { 
-                  $alt_str_H{"b_p3s"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print, $cur_stop_str in CM prediction)";
+                # we have both $n_start and $p_start, we can compare CM and blastx predictions
+
+                # check for b_cst: strand mismatch failure, differently depending on $p_feature_flag
+                if(((  $p_feature_flag) && ($p_strand eq "-")) || 
+                   ((! $p_feature_flag) && ($n_strand ne $p_strand))) { 
+                  $alt_str_H{"b_cst"} = "";
+                }
+                else { 
+                  # we have both $n_start and $p_start and predictions are on the same strand
+                  # determine if predictions are 'close enough' in terms of sequence positions
+                  # calcuate $start_diff and $stop_diff, differently depending on if hit
+                  # was to the full sequence or a fetched features (true if $p_feature_flag == 1)
+                  if($p_feature_flag) { 
+                    $start_diff = $p_start - 1; 
+                    $stop_diff  = $p_qlen - $p_stop;
+                    $p_start2print = sprintf("$n_start %s $start_diff", ($n_strand eq "+") ? "+" : "-");
+                    $p_stop2print  = sprintf("$n_stop %s $stop_diff",  ($n_strand eq "+") ? "-" : "+");
+                  }
+                  else { 
+                    $start_diff = abs($n_start - $p_start);
+                    $stop_diff  = abs($n_stop  - $p_stop);
+                    $p_start2print = $p_start;
+                    $p_stop2print  = $p_stop;
+                  }
+                  # check for 'b_p5l': only for non-feature seqs blastx alignment extends outside of nucleotide/CM alignment on 5' end
+                  if((! $p_feature_flag) && 
+                     ((($n_strand eq "+") && ($p_start < $n_start)) || 
+                      (($n_strand eq "-") && ($p_start > $n_start)))) { 
+                    $alt_str_H{"b_p5l"} = "strand:$n_strand CM:$n_start blastx:$p_start2print";
+                  }
+                  # check for 'b_p5s': blastx 5' end too short, not within $aln_tol nucleotides
+                  if(! exists $alt_str_H{"b_p5l"}) { # only add b_p5s if b_p5l does not exist
+                    if($start_diff > $aln_tol) { 
+                      $alt_str_H{"b_p5s"} = "$start_diff > $aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
+                    }                
+                  }
+                  # check for 'b_p3l': blastx alignment extends outside of nucleotide/CM alignment on 3' end
+                  if((! $p_feature_flag) && 
+                     ((($n_strand eq "+") && ($p_stop  > $n_stop)) || 
+                      (($n_strand eq "-") && ($p_stop  < $n_stop)))) { 
+                    $alt_str_H{"b_p3l"} = "(strand:$n_strand CM:$n_stop blastx:$p_stop2print)";
+                  }
+                  # check for 'b_p3s': blastx 3' end too short, not within $aln_tol nucleotides
+                  # for the stop coordinates, we do this differently if the nucleotide prediction 
+                  # includes the stop codon or not, if it does, we allow 3 more positions different
+                  my $cur_aln_tol = undef;
+                  my $cur_stop_str = undef;
+                  my $n_has_stop_codon = ((! $ftr_results_HR->{"n_3trunc"}) && 
+                                          (! exists $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{"n_stp"})) ? 1 : 0;
+                  if($n_has_stop_codon) { 
+                    $cur_aln_tol  = $aln_tol + 3;
+                    $cur_stop_str = "valid stop codon";
+                  }
+                  else { 
+                    $cur_aln_tol  = $aln_tol;
+                    $cur_stop_str = "no valid stop codon";
+                  }
+                  if(! exists $alt_str_H{"b_p3l"}) { # only add b_p3s if b_p3l does not exist
+                    if($stop_diff > $cur_aln_tol) { 
+                      $alt_str_H{"b_p3s"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print, $cur_stop_str in CM prediction)";
+                    }
+                  }
+                  # check for 'p_lin': too long of an insert
+                  if((defined $p_maxins) && ($p_maxins > $indel_tol)) { 
+                    $alt_str_H{"p_lin"} = "longest blastx predicted insert of length $p_maxins > $indel_tol";
+                  }
+                  # check for 'p_lde': too long of a deletion
+                  if((defined $p_maxdel) && ($p_maxdel > $indel_tol)) { 
+                    $alt_str_H{"p_lde"} = "longest blastx predicted delete of length $p_maxdel > $indel_tol";
+                  }
+                  # check for 'p_trc': blast predicted truncation
+                  if(defined $p_trcstop) { 
+                    $alt_str_H{"p_trc"} = "$p_trcstop";
+                  }
                 }
               }
-              # check for 'p_lin': too long of an insert
-              if((defined $p_maxins) && ($p_maxins > $indel_tol)) { 
-                $alt_str_H{"p_lin"} = "longest blastx predicted insert of length $p_maxins > $indel_tol";
-              }
-              # check for 'p_lde': too long of a deletion
-              if((defined $p_maxdel) && ($p_maxdel > $indel_tol)) { 
-                $alt_str_H{"p_lde"} = "longest blastx predicted delete of length $p_maxdel > $indel_tol";
-              }
-              # check for 'p_trc': blast predicted truncation
-              if(defined $p_trcstop) { 
-                $alt_str_H{"p_trc"} = "$p_trcstop";
+            } # end of 'if(defined $n_start)' entered to identify b_* errors
+            my $alt_flag = 0;
+            foreach my $alt_code (sort keys %alt_str_H) { 
+              alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $ftr_idx, $alt_code, $seq_name, $alt_str_H{$alt_code}, $FH_HR);
+              $alt_flag = 1;
+            }
+            # if we added an alert, step through all children of this feature (if any) and add p_per
+            if(($alt_flag) && ($ftr_nchildren > 0)) { 
+              for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
+                my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
+                if(! exists $alt_ftr_instances_HAHR->{$seq_name}[$child_ftr_idx]{"b_per"}) { 
+                  alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $child_ftr_idx, "b_per", $seq_name, "", $FH_HR);
+                }
               }
             }
-          }
-        } # end of 'if(defined $n_start)' entered to identify b_* errors
-        my $alt_flag = 0;
-        foreach my $alt_code (sort keys %alt_str_H) { 
-          alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $ftr_idx, $alt_code, $seq_name, $alt_str_H{$alt_code}, $FH_HR);
-          $alt_flag = 1;
-        }
-        # if we added an alert, step through all children of this feature (if any) and add p_per
-        if(($alt_flag) && ($ftr_nchildren > 0)) { 
-          for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
-            my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-            if(! exists $alt_ftr_instances_HAHR->{$seq_name}[$child_ftr_idx]{"b_per"}) { 
-              alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $child_ftr_idx, "b_per", $seq_name, "", $FH_HR);
-            }
-          }
-        }
-      } # end of 'if(featureTypeIsCds($ftr_info_AHR, $ftr_idx))'
-    } # end of 'for($ftr_idx' loop
+          } # end of 'if(((defined $n_start) && ($n_len >= $xminntlen)) || (! defined $n_start))'
+        } # end of 'if(featureTypeIsCds($ftr_info_AHR, $ftr_idx))'
+      } # end of 'for($ftr_idx' loop
+    } # end of 'if($seq_len_HR->{$seq_name} >= $xminntlen)'
   } # end of 'for($seq_idx' loop
-
   return;
 }   
 
@@ -1671,11 +1689,16 @@ sub parse_blastx_results {
   my $target     = undef;
   my $hsp_idx    = undef;
   my $seq_name   = undef; 
+  my $q_len      = undef; # length of query sequence
   my $q_ftr_idx  = undef; # feature index query pertains to, [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
   my $t_ftr_idx  = undef; # feature index target (fetched CDS sequence from input fasta file) pertains to [0..$nftr-1]
   my $no_coords_query = undef; # name of query without coords, if query sequence is a predicted feature, e.g. "NC_002549.1/6039..8068:+" for query "NC_002549.1/6039..8068:+/10..885:+,885..2030:+"
   my $coords          = undef; # string of coordinates if this is a predicted feature, e.g. "10..885:+,885..2030:+" for "NC_002549.1/6039..8068:+/10..885:+,885..2030:+"
-  my $top_score_flag = 0;      # set to '1' if current hit is top scoring one for this sequence/feature pair
+  my $store_flag = 0;   # should we store this query/target/hit trio? 
+                        # set to '1' if current query/target pair is compatible (query is full sequence or correct CDS feature) 
+                        # and this is highest scoring hit for this feature for this sequence (query/target) pair
+                        # and the query (full length sequence, or predicted CDS) is at least <x> nt from --xminntlen <x>
+  my $xminntlen  = opt_Get("--xminntlen", $opt_HHR);
 
   while(my $line = <IN>) { 
     chomp $line;
@@ -1689,9 +1712,8 @@ sub parse_blastx_results {
         $query = $value;
         # determine what sequence it is
         my $q_ftr_type_idx; # feature type and index string, from $seq_name if not a full sequence (e.g. "CDS.4")
-        ($seq_name, $q_ftr_type_idx, undef) = helper_blastx_breakdown_query($query, $seq_len_HR, $FH_HR); 
+        ($seq_name, $q_ftr_type_idx, $q_len) = helper_blastx_breakdown_query($query, $seq_len_HR, $FH_HR); 
         # helper_blastx_breakdown_query() will die if $query is unparseable
-        # undef return value is query length which is irrelevant here
         # determine what feature this query corresponds to
         $q_ftr_idx = ($q_ftr_type_idx eq "") ? -1 : $ftr_type_idx2ftr_idx_H{$q_ftr_type_idx};
         if(! defined $q_ftr_idx) { 
@@ -1730,7 +1752,7 @@ sub parse_blastx_results {
         elsif((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read QRANGE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
-        elsif($top_score_flag) { 
+        elsif($store_flag) { 
           if($value =~ /^(\d+)..(\d+)$/) { 
             my ($blast_start, $blast_stop) = ($1, $2);
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
@@ -1738,6 +1760,7 @@ sub parse_blastx_results {
             $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"}   = $blast_stop;
             $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
             $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $query;
+            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}    = abs($blast_start - $blast_stop) + 1;
             printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_start}  to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"} . "\n");
             printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_stop}   to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"} . "\n");
             printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_strand} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} . "\n");
@@ -1751,7 +1774,7 @@ sub parse_blastx_results {
         if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXIN line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
-        if($top_score_flag) { 
+        if($store_flag) { 
           if($value =~ /^(\d+)$/) { 
             my $maxins = $1;
             $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_maxins"} = $maxins;
@@ -1766,7 +1789,7 @@ sub parse_blastx_results {
         if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXDE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
-        if($top_score_flag) {
+        if($store_flag) {
           if($value =~ /^(\d+)$/) { 
             my $maxdel = $1;
             $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_maxdel"} = $maxdel;
@@ -1781,7 +1804,7 @@ sub parse_blastx_results {
         if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
-        if($top_score_flag) { 
+        if($store_flag) { 
           if($value =~ /^[\+\-]([123])$/) { 
             my $frame = $1;
             $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"} = $frame;
@@ -1796,7 +1819,7 @@ sub parse_blastx_results {
         if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read STOP line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
-        if($top_score_flag) { 
+        if($store_flag) { 
           $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $value;
           printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_trcstop} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} . "\n");
         }
@@ -1805,17 +1828,21 @@ sub parse_blastx_results {
         if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
-        # is this query/target pair compatible (query is full sequence or correct CDS feature) 
-        # and the highest scoring hit for this feature for this sequence? 
+        # should we store this query/target/hit trio (set $store_flag to 1)? 
+        # we do if:
+        #  - this query/target pair is compatible (query is full sequence or correct CDS feature) 
+        #  - this is the highest scoring hit for this feature for this sequence (query/target pair)? 
+        #  - query length (full length seq or predicted CDS) is at least <x> nt from --xmminntlen
         if((($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) && # query is full sequence OR query is fetched CDS that pertains to target
            ((! exists $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest
-            ($value > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}))) { # highest scoring hit
+            ($value > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"})) && # highest scoring hit
+           ($q_len >= $xminntlen)) { # length >= --xminntlen
           $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} = $value;
-          $top_score_flag = 1;
+          $store_flag = 1;
           printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_score} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} . "\n");
         }
         else { 
-          $top_score_flag = 0;
+          $store_flag = 0;
         }
       }
       # Add elsif($key eq "") blocks here to store more values from the blastx.summary file
@@ -2161,6 +2188,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           $ftr_results_HR->{"n_stop_c"} = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
           $ftr_results_HR->{"n_5trunc"} = $ftr_is_5trunc;
           $ftr_results_HR->{"n_3trunc"} = $ftr_is_3trunc;
+          $ftr_results_HR->{"n_len"}    = $ftr_len;
           printf("HEYANOW1 ftr_idx: $ftr_idx\n");
           printf("set ftr_results_HR->{n_start} to " . $ftr_results_HR->{"n_start"} . "\n");
           printf("set ftr_results_HR->{n_stop}  to " . $ftr_results_HR->{"n_stop"} . "\n");
@@ -2567,8 +2595,9 @@ sub output_tabular {
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $seq_ann_tbl_FH = $FH_HR->{"ann_tbl"};  # one-line-per-sequence tabular annotation summary file
   my $seq_cls_tbl_FH = $FH_HR->{"cls_tbl"};  # one-line-per-sequence tabular classification summary file
-  my $ftr_tbl_FH     = $FH_HR->{"ftr_tbl"};  # one-line-per-model tabular file
-  my $sgm_tbl_FH     = $FH_HR->{"sgm_tbl"};  # one-line-per-model tabular file
+  my $ftr_tbl_FH     = $FH_HR->{"ftr_tbl"};  # one-line-per-feature tabular file
+  my $sgm_tbl_FH     = $FH_HR->{"sgm_tbl"};  # one-line-per-model-segment tabular file
+  my $alt_tbl_FH     = $FH_HR->{"alt_tbl"};  # one-line-per-alert tabular file
 
   # validate input and determine maximum counts of things
   my $nseq = scalar(@{$seq_name_AR});
@@ -2681,6 +2710,11 @@ sub output_tabular {
   my $w_sgm_pp     = 5;
   my $w_sgm_gap    = 4;
 
+  my $w_alt_seq_idx = $w_seq_idx;
+  my $w_alt_ftr_idx = $w_ftr_idx;
+  my $w_alt_code    = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "code"); # should be 5
+  my $w_alt_sdesc   = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "sdesc");
+
   $w_ftr_idx    = utl_Max($w_ftr_idx,    length("#idx"));
   $w_ftr_name   = utl_Max($w_ftr_name,   length("ftrname"));
   $w_ftr_seqlen = utl_Max($w_ftr_seqlen, length("seqlen"));
@@ -2698,6 +2732,11 @@ sub output_tabular {
   $w_sgm_start  = utl_Max($w_sgm_start,  length("start"));
   $w_sgm_stop   = utl_Max($w_sgm_stop,   length("stop"));
   $w_sgm_len    = utl_Max($w_sgm_len,    length("len"));
+
+  $w_alt_seq_idx = utl_Max($w_alt_seq_idx, length("#seqidx"));
+  $w_alt_ftr_idx = utl_Max($w_alt_ftr_idx, length("ftridx"));
+  $w_alt_code    = utl_Max($w_alt_code,    length("code"));
+  $w_alt_sdesc   = utl_Max($w_alt_sdesc,   length("desc"));
 
   # header lines
   printf $seq_ann_tbl_FH ("%-*s  %-*s  %-*s  %3s  %3s  %3s  %3s  %5s  %s\n", 
@@ -2745,9 +2784,16 @@ sub output_tabular {
                       $w_sgm_len, "len", $w_ftr_strand, "str", 
                       $w_sgm_pp, "5pp", $w_sgm_pp, "3pp", $w_sgm_gap, "5gap", $w_sgm_gap, "3gap");
 
+  printf $alt_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %-*s  %s\n", 
+                      $w_alt_seq_idx, "#seqidx", $w_seq_name, "seqname", $w_alt_ftr_idx, "ftridx", $w_ftr_name, "ftrname", 
+                      $w_alt_code, "code", $w_alt_sdesc, "desc", "detail");
+
   # main loop: for each sequence
   my $new_seq_flag = undef;
   my $prv_seq_name = undef;
+  my $ftr_nprinted = 0;  # number of lines printed to feature file for this sequence
+  my $sgm_nprinted = 0;  # number of lines printed to segment file for this sequence
+  my $alt_nprinted = 0;  # number of lines printed to alert file for this sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name  = $seq_name_AR->[$seq_idx];
     my $seq_len   = $seq_len_HR->{$seq_name};
@@ -2757,7 +2803,6 @@ sub output_tabular {
     my $seq_nftr_5trunc = 0;
     my $seq_nftr_3trunc = 0;
     my $nftr = 0;
-    my $printed_ftr_line = 0;
 
     # get per-sequence info from %{$cls_output_HHR->{$seq_name}}
     my $cls_output_HR = (defined $cls_output_HHR->{$seq_name}) ? \%{$cls_output_HHR->{$seq_name}} : undef;
@@ -2778,16 +2823,44 @@ sub output_tabular {
 
     $new_seq_flag = ((defined $prv_seq_name) && ($seq_name ne $prv_seq_name)) ? 1 : 0;
     $prv_seq_name = $seq_name;
+    $ftr_nprinted = 0;
+    $sgm_nprinted = 0;
+    $alt_nprinted = 0;
+
+    # print per-sequence alerts, if any
+    foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
+      if($alt_info_HHR->{$alt_code}{"pertype"} eq "sequence") { 
+        if(exists $alt_seq_instances_HHR->{$seq_name}{$alt_code}) { 
+          my @instance_str_A = ();
+          if($alt_seq_instances_HHR->{$seq_name}{$alt_code} eq "") { 
+            @instance_str_A = ("");
+          }
+          else {
+            @instance_str_A = split(":DNAORGSEP:", $alt_seq_instances_HHR->{$seq_name}{$alt_code});
+          }
+          foreach my $instance_str (@instance_str_A) { 
+            if($new_seq_flag && ($alt_nprinted == 0)) { print $alt_tbl_FH("#\n"); }
+            printf $alt_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %-*s  %s%s\n", 
+                                $w_alt_seq_idx, $seq_idx, $w_seq_name, $seq_name, $w_alt_ftr_idx, "-", $w_ftr_name, "-", 
+                                $w_alt_code, $alt_code, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                $alt_info_HHR->{$alt_code}{"ldesc"}, 
+                                ($instance_str eq "") ? "" : " [" . $instance_str . "]");
+            $alt_nprinted++;
+          }
+        }
+      }
+    }
+
     if(defined $seq_mdl1) { 
       $nftr = scalar(@{$ftr_info_HAHR->{$seq_mdl1}});
       my $ftr_info_AHR = \@{$ftr_info_HAHR->{$seq_mdl1}}; # for convenience
       for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         my $src_idx = $ftr_info_AHR->[$ftr_idx]{"source_idx"};
         my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$src_idx]; # for convenience
+        my $ftr_idx2print = ($seq_idx + 1) . "." . $seq_nftr_annot;
         if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
           printf("HEYANOW2 ftr_idx: $ftr_idx\n");
           $seq_nftr_annot++;
-          my $ftr_idx2print = ($seq_idx + 1) . "." . $seq_nftr_annot;
           my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
           my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
           my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
@@ -2850,12 +2923,14 @@ sub output_tabular {
               $ftr_len_by_sgm += abs($sgm_start - $sgm_stop) + 1;
               
               if($ftr_dupidx eq "-") { 
+                if($new_seq_flag && ($sgm_nprinted == 0)) { printf $sgm_tbl_FH "#\n"; }
                 printf $sgm_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s\n", 
                                     $w_sgm_idx, $sgm_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
                                     $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name2print, $w_ftr_ftridx, $ftr_idx+1, 
                                     $w_sgm_sgmidx, $ftr_nsgm, $w_sgm_sgmidx, ($sgm_idx-$ftr_first_sgm+1), $w_sgm_start, $sgm_start, $w_sgm_stop, $sgm_stop, 
                                     $w_sgm_len, $sgm_len, $w_ftr_strand, $sgm_strand, 
                                     $w_sgm_pp, $sgm_pp5, $w_sgm_pp, $sgm_pp3, $w_sgm_gap, $sgm_gap5, $w_sgm_gap, $sgm_gap3);
+                $sgm_nprinted++;
               }
             }
           }
@@ -2863,7 +2938,7 @@ sub output_tabular {
           if($ftr_len_by_sgm == 0) { $ftr_len_by_sgm = "-"; }
           if($ftr_alt_str eq "")   { $ftr_alt_str = "-"; }
 
-          if($new_seq_flag) { printf $ftr_tbl_FH "#\n"; }
+          if($new_seq_flag && ($ftr_nprinted == 0)) { printf $ftr_tbl_FH "#\n"; }
             
           printf $ftr_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %s\n", 
                               $w_ftr_idx, $ftr_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
@@ -2874,6 +2949,32 @@ sub output_tabular {
                               $w_ftr_maxde, $ftr_p_maxde, $w_ftr_maxin, $ftr_p_maxin, $w_ftr_pscore, $ftr_p_score, 
                               $w_ftr_dupidx, ($ftr_dupidx eq "-") ? "-" : $ftr_dupidx+1, 
                               $w_ftr_nsgm, $ftr_nsgm_annot, $w_ftr_nsgm, $ftr_nsgm_noannot, $w_ftr_coords, $coords_str, $ftr_alt_str);
+          $ftr_nprinted++;
+
+          # print per-feature alerts, if any
+          foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
+            if($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") { 
+              if(exists $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code}) { 
+                my @instance_str_A = ();
+                if($alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} eq "") { 
+                  @instance_str_A = ("");
+                }
+                else {
+                  @instance_str_A = split(":DNAORGSEP:", $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code});
+                }
+                foreach my $instance_str (@instance_str_A) { 
+                  if($new_seq_flag && ($alt_nprinted == 0)) { print $alt_tbl_FH("#\n"); }
+                  printf $alt_tbl_FH ("%*s  %-*s  %*s  %-*s  %-*s  %-*s  %s%s\n", 
+                                      $w_alt_seq_idx, ($seq_idx+1), $w_seq_name, $seq_name, $w_alt_ftr_idx, $ftr_idx2print, 
+                                      $w_ftr_name, $ftr_info_AHR->[$ftr_idx]{"outname"}, 
+                                      $w_alt_code, $alt_code, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                      $alt_info_HHR->{$alt_code}{"ldesc"}, 
+                                      ($instance_str eq "") ? "" : " [" . $instance_str . "]");
+                  $alt_nprinted++;
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -2958,6 +3059,8 @@ sub output_feature_table {
   # NOTE: $qval_sep == ':GPSEP:' is hard-coded value for separating multiple qualifier values for the same 
   # qualifier (see dnaorg.pm::dng_GenBankStoreQualifierValue)
 
+  my $xminntlen = opt_Get("--xminntlen", $opt_HHR);
+
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name  = $seq_name_AR->[$seq_idx];
@@ -2986,30 +3089,40 @@ sub output_feature_table {
       my $nftr = scalar(@{$ftr_info_AHR});
       
       # Determine what features we will annotate, if any,
-      # and Reorder them so that any duplicates occur after their 
+      # and order them so that any duplicates occur after their 
       # 'source' features from which their annotation will be copied.
       # That way when we get to a duplicate, we already have the annotation
       # of its source feature.
       # Non-duplicate features are annotated if they have a nucleotide-based 
-      # or protein-based prediction.
+      # or protein-based prediction and (are of a minimum length if they're CDS or mat_peptide)
       # Duplicate features are annotated if their source features are annotated.
       my @ftr_idx_to_annotate_A = ();
+      my @ftr_dup_idx_to_annotate_A = ();
       my $ftr_idx;
+      my $is_duplicate; # is the current feature a duplicate?
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        if((! dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) && 
-           ((defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) || 
-            (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}))) { 
-          push(@ftr_idx_to_annotate_A, $ftr_idx);
+        my $src_idx = $ftr_info_AHR->[$ftr_idx]{"source_idx"}; # will be $ftr_idx unless this sequence is a duplicate
+        my $is_cds_or_mp_or_gene = (dng_FeatureTypeIsCdsOrMaturePeptide($ftr_info_AHR, $src_idx) || ($ftr_info_AHR->[$src_idx]{"type"} eq "gene")) ? 1 : 0;
+        $is_duplicate = dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx);
+        if((defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) || 
+            (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"})) { 
+          # one more check: if a CDS or mat_peptide and we have a nucleotide prediction, 
+          # its length must be >= --xminntlen
+          if((! $is_cds_or_mp_or_gene) ||
+             ((! defined $ftr_results_HAHR->{$seq_name}[$src_idx]{"n_len"}) || 
+              ($ftr_results_HAHR->{$seq_name}[$src_idx]{"n_len"} >= $xminntlen))) { 
+            if($is_duplicate) { 
+              push(@ftr_dup_idx_to_annotate_A, $ftr_idx);
+            }
+            else { 
+              push(@ftr_idx_to_annotate_A, $ftr_idx);
+            }
+          }
         }
       }
-      # second pass to add duplicate features with sources that have predictions
-      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        if((dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) && 
-           ((defined $ftr_results_HAHR->{$seq_name}[$ftr_info_AHR->[$ftr_idx]{"source_idx"}]{"n_start"}) || 
-            (defined $ftr_results_HAHR->{$seq_name}[$ftr_info_AHR->[$ftr_idx]{"source_idx"}]{"p_start"}))) { 
-          push(@ftr_idx_to_annotate_A, $ftr_idx);
-        }
-      }
+      # add the duplicates to the end of the non-duplicates
+      push(@ftr_idx_to_annotate_A, @ftr_dup_idx_to_annotate_A);
+
       foreach $ftr_idx (@ftr_idx_to_annotate_A) { 
         # initialize
         my $is_5trunc         = 0;  # '1' if this feature is truncated at the 3' end
@@ -3022,7 +3135,7 @@ sub output_feature_table {
         my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
         my $feature_type      = $ftr_info_AHR->[$ftr_idx]{"type"}; # type of feature, e.g. 'CDS' or 'mat_peptide' or 'gene'
         my $orig_feature_type = $feature_type;                     # original feature type ($feature_type could be changed to misc_feature)
-        my $is_duplicate      = dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx); # is this feature a duplicate?
+        $is_duplicate         = dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx); # is this feature a duplicate?
           
         # determine coordinates for the feature differently depending on
         # if we are a duplicate or not: 
@@ -3119,7 +3232,7 @@ sub output_feature_table {
     # - zero notes and errors
     my $do_pass = (($cur_noutftr > 0) && ($cur_nalert == 0)) ? 1 : 0;
 
-    # sanity check, if we have no notes, alerts and didn't skip anything, we should also have set codon_start for all features
+    # sanity check, if we output at least one feature with zero alerts, we should also have set codon_start for all CDS features
     if($cur_noutftr > 0 && $cur_nalert == 0 && ($missing_codon_start_flag)) { 
       ofile_FAIL("ERROR in $sub_name, sequence $seq_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", "dnaorg", 1, $ofile_info_HHR->{"FH"});
     }
