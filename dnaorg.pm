@@ -385,17 +385,17 @@ sub dng_AlertInfoInitialize {
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_usg", "sequence",
-                   "unexpected classification", # description
+                   "per nucleotide score difference too large between best overall model and best expected subgroup model", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
-                   "Unexpected Classification: (*sequence*) !DESC!", # feature table err
+                   "Unexpected Subgroup Classification: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_ugr", "sequence",
-                   "unexpected taxonomy", # description
+                   "per nucleotide score difference too large between best overall model and best expected group model", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
-                   "Unexpected Taxonomy: (*sequence*) !DESC!", # feature table err
+                   "Unexpected Group Classification: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_loc", "sequence",
@@ -409,14 +409,14 @@ sub dng_AlertInfoInitialize {
                    "low difference", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
-                   "Low Difference: (*sequence*) !DESC!", # feature table err
+                   "Low Score Difference: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_vld", "sequence",
                    "very low difference", # description
                    1, 0, # causes_failure, prevents_annot
                    "", # feature table note, irrelevant for per-sequence errors
-                   "Very Low Difference: (*sequence*) !DESC!", # feature table err
+                   "Very Low Score Difference: (*sequence*) !DESC!", # feature table err
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_los", "sequence",

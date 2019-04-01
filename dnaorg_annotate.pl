@@ -545,7 +545,7 @@ ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "dnaorg", $r1_sort_tblout_key, 
 
 # parse the round 1 sorted tblout file
 my %cls_results_HHH = (); # key 1: sequence name, 
-                          # key 2: ("r1.1","r1.2","r1.g","r2")
+                          # key 2: ("r1.1","r1.2","r1.eg","r2")
                           # key 3: ("model", "coords", "bstrand", "score", "bias")
 cmsearch_parse_sorted_tblout($r1_sort_tblout_file, 1, # 1: round 1
                              \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
@@ -2345,7 +2345,7 @@ sub alert_instances_add {
     }
     # if this alert already exists (rare case), add to it
     if(defined $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code}) { 
-      $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} .= ";;" . $value;
+      $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} .= ";" . $value;
     }
     else { # if it doesn't already exist (normal case), create it
       $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} = $value;
@@ -2360,7 +2360,7 @@ sub alert_instances_add {
     }
     # if this alert already exists (rare case), add to it
     if(defined $alt_seq_instances_HHR->{$seq_name}{$alt_code}) { 
-      $alt_seq_instances_HHR->{$seq_name}{$alt_code} .= ";;" . $value; 
+      $alt_seq_instances_HHR->{$seq_name}{$alt_code} .= ";" . $value; 
     }
     else { # if it doesn't already exist (normal case), create it
       $alt_seq_instances_HHR->{$seq_name}{$alt_code} = $value; 
@@ -2703,11 +2703,11 @@ sub output_tabular {
   printf $seq_ann_tbl_FH ("%-*s  %-*s  %-*s  %3s  %3s  %3s  %3s  %5s  %s\n", 
                           $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "nfa", "nfn", "nf5", "nf3", "nfalt", "seqalt");
 
-  printf $seq_cls_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %-*s  %*s  %*s\n",
+  printf $seq_cls_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
                           $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", $w_seq_mdl1, "mdl1", $w_seq_grp1, "grp1", $w_seq_subgrp1, "sgrp1", 
                           $w_seq_score, "score", $w_seq_scpnt, "sc/nt", $w_seq_cov, "cov", $w_seq_score, "bias", $w_seq_nhits, "nhits", 
                           $w_seq_strand, "strand", $w_seq_mdl2, "mdl2", $w_seq_grp2, "grp1", $w_seq_subgrp2, "sgrp2", $w_seq_scdiff, "scdiff",
-                          $w_seq_diffpnt, "diff/nt");
+                          $w_seq_diffpnt, "diff/nt", "seqalt");
 
   printf $ftr_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %s\n", 
                       $w_ftr_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "seqlen", 
@@ -2752,6 +2752,7 @@ sub output_tabular {
     my $seq_name  = $seq_name_AR->[$seq_idx];
     my $seq_len   = $seq_len_HR->{$seq_name};
     my $seq_nftr_alt    = 0;
+    my $seq_nseq_alt    = 0;
     my $seq_nftr_annot  = 0;
     my $seq_nftr_5trunc = 0;
     my $seq_nftr_3trunc = 0;
@@ -2791,6 +2792,7 @@ sub output_tabular {
           if(defined $ftr_info_AHR->[$ftr_idx]{"product"}) { $ftr_name = $ftr_info_AHR->[$ftr_idx]{"product"}; }
           elsif(defined $ftr_info_AHR->[$ftr_idx]{"gene"}) { $ftr_name = $ftr_info_AHR->[$ftr_idx]{"gene"}; }
           else { $ftr_name = dng_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, "."); }
+          my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
 
           my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
           my $ftr_strand   = feature_results_strand($ftr_info_AHR, $ftr_results_HR, $src_idx);
@@ -2816,11 +2818,12 @@ sub output_tabular {
             $seq_nftr_3trunc++; 
           }
 
-          my $ftr_alt_str = helper_ftable_get_ftr_alert_code_strings($seq_name, $ftr_idx, $alt_ftr_instances_HAHR, $alt_info_HHR, undef, $FH_HR);
+          my $ftr_alt_str  = helper_ftable_get_ftr_alert_code_strings($seq_name, $ftr_idx, $alt_ftr_instances_HAHR, $alt_info_HHR, undef, $FH_HR);
           if($ftr_alt_str ne "") { 
             $seq_nftr_alt++; 
             $seq_nftr_alt += $ftr_alt_str =~ tr/,//; # plus 1 for each comma
           }
+
           my $coords_str     = "";
           my $ftr_nsgm_annot = 0;
           my $ftr_len_by_sgm = 0;
@@ -2853,7 +2856,7 @@ sub output_tabular {
               if($ftr_dupidx eq "-") { 
                 printf $sgm_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s\n", 
                                     $w_sgm_idx, $sgm_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
-                                    $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name, $w_ftr_ftridx, $ftr_idx+1, 
+                                    $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name2print, $w_ftr_ftridx, $ftr_idx+1, 
                                     $w_sgm_sgmidx, $ftr_nsgm, $w_sgm_sgmidx, ($sgm_idx-$ftr_first_sgm+1), $w_sgm_start, $sgm_start, $w_sgm_stop, $sgm_stop, 
                                     $w_sgm_len, $sgm_len, $w_ftr_strand, $sgm_strand, 
                                     $w_sgm_pp, $sgm_pp5, $w_sgm_pp, $sgm_pp3, $w_sgm_gap, $sgm_gap5, $w_sgm_gap, $sgm_gap3);
@@ -2868,7 +2871,7 @@ sub output_tabular {
             
           printf $ftr_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %s\n", 
                               $w_ftr_idx, $ftr_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
-                              $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name, $w_ftr_ftrlen, $ftr_len_by_sgm, $w_ftr_ftridx, $ftr_idx+1, 
+                              $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name2print, $w_ftr_ftrlen, $ftr_len_by_sgm, $w_ftr_ftridx, $ftr_idx+1, 
                               $w_ftr_strand, $ftr_strand, 
                               $w_ftr_start, $ftr_n_start, $w_ftr_stop, $ftr_n_stop, $w_ftr_cstop, $ftr_n_stop_c, $w_ftr_trunc, $ftr_trunc, 
                               $w_ftr_start, $ftr_p_start, $w_ftr_stop, $ftr_p_stop, $w_ftr_cstop, $ftr_p_stop_c, 
@@ -2878,17 +2881,21 @@ sub output_tabular {
         }
       }
     }
-    my $seq_alt_str = helper_ftable_get_seq_alert_code_strings($seq_name, $alt_seq_instances_HHR, $alt_info_HHR, $FH_HR);
-    if($seq_alt_str eq "") { $seq_alt_str = "-"; }
+    my $seq_alt_str  = helper_ftable_get_seq_alert_code_strings($seq_name, $alt_seq_instances_HHR, $alt_info_HHR, $FH_HR);
+    if($seq_alt_str ne "") { 
+      $seq_nseq_alt = 1;
+      $seq_nseq_alt += $seq_alt_str =~ tr/,//; # plus 1 for each comma
+    }
+    if($seq_alt_str  eq "") { $seq_alt_str  = "-"; }
     printf $seq_ann_tbl_FH ("%-*d  %-*s  %*d  %3d  %3d  %3d  %3d  %5s  %s\n", 
                             $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $seq_nftr_annot, ($nftr-$seq_nftr_annot), $seq_nftr_5trunc, $seq_nftr_3trunc, 
                             $seq_nftr_alt, $seq_alt_str);
 
-    printf $seq_cls_tbl_FH ("%-*d  %-*s  %*d  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*d  %*s  %-*s  %-*s  %-*s  %*s  %*s\n",
-                            $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $w_seq_mdl1, $seq_mdl1, $w_seq_grp1, $seq_grp1, $w_seq_subgrp1, $seq_subgrp1, 
+    printf $seq_cls_tbl_FH ("%-*d  %-*s  %*d  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*d  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
+                            $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $w_seq_mdl1, $seq_mdl1, $w_seq_grp1, helper_tabular_replace_spaces($seq_grp1), $w_seq_subgrp1, helper_tabular_replace_spaces($seq_subgrp1), 
                             $w_seq_score, $seq_score, $w_seq_scpnt, $seq_scpnt, $w_seq_cov, $seq_cov, $w_seq_score, $seq_bias, $w_seq_nhits, $seq_nhits,
-                            $w_seq_strand, $seq_strand, $w_seq_mdl2, $seq_mdl2, $w_seq_grp2, $seq_grp2, $w_seq_subgrp2, $seq_subgrp2, $w_seq_scdiff, $seq_scdiff, 
-                            $w_seq_diffpnt, $seq_diffpnt);
+                            $w_seq_strand, $seq_strand, $w_seq_mdl2, $seq_mdl2, $w_seq_grp2, helper_tabular_replace_spaces($seq_grp2), $w_seq_subgrp2, helper_tabular_replace_spaces($seq_subgrp2), $w_seq_scdiff, $seq_scdiff, 
+                            $w_seq_diffpnt, $seq_diffpnt, $seq_alt_str);
   }
   return;
 }
@@ -3535,9 +3542,8 @@ sub helper_ftable_get_ftr_alert_code_strings {
 # Subroutine:  helper_ftable_get_seq_alert_code_strings()
 # Incept:      EPN, Thu Jan 24 12:03:50 2019
 #
-
 # Purpose:    Given a sequence name, construct a string of all 
-#             per-sequence errors and return it.
+#             per-sequence alert codes and return it.
 #
 # Arguments: 
 #  $seq_name:              name of sequence
@@ -4910,31 +4916,37 @@ sub cmsearch_parse_sorted_tblout {
   # (--subgroup requires --group)
   # and if so, fill hashes of model groups and subgroups, 
   # (this data is in @{$mdl_info_HAR} already, we fill 
-  # these hashes onlyfor convenience)
+  # these hashes only for convenience)
   my $exp_group    = opt_Get("--group", \%opt_HH);
   my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
   # fill hashes of model groups and subgroups, for convenience
   my %mdl_group_H    = ();
   my %mdl_subgroup_H = ();
-  if(($round == 1) && (defined $exp_group)) { 
-    printf("HEYA 0\n");
-    utl_HFromAH(\%mdl_group_H, $mdl_info_AHR, "name", "group", "called from $sub_name ", $FH_HR);
-    printf("HEYA 1\n");
-    if(defined $exp_subgroup) { 
-      utl_HFromAH(\%mdl_subgroup_H, $mdl_info_AHR, "name", "subgroup", "called from $sub_name ", $FH_HR);
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  if($round == 1) { 
+    for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+      my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+      if(defined $mdl_info_AHR->[$mdl_idx]{"group"}) { 
+        $mdl_group_H{$mdl_name} = $mdl_info_AHR->[$mdl_idx]{"group"}; 
+      }
+      if(defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) { 
+        $mdl_subgroup_H{$mdl_name} = $mdl_info_AHR->[$mdl_idx]{"subgroup"}; 
+      }
     }
   }
 
-  my $seq;    # sequence name
-  my $model;  # model name
-  my $score;  # bit score
-  my $m_from; # model from position
-  my $m_to;   # model to position
-  my $s_from; # sequence from position
-  my $s_to;   # sequence to position
-  my $strand; # strand of hit
-  my $bias;   # bias score
-  my $key2;   # key in 2nd dim of %results
+  my $seq;      # sequence name
+  my $model;    # model name
+  my $score;    # bit score
+  my $m_from;   # model from position
+  my $m_to;     # model to position
+  my $s_from;   # sequence from position
+  my $s_to;     # sequence to position
+  my $strand;   # strand of hit
+  my $bias;     # bias score
+  my $key2;     # key in 2nd dim of %results
+  my $group;    # group for current sequence, can be undef
+  my $subgroup; # subgroup for current sequence, can be undef
   open(IN, $tblout_file) || ofile_FileOpenFailure($tblout_file, "dnaorg", $sub_name, 1, "reading", $FH_HR);
 
   while(my $line = <IN>) { 
@@ -4962,39 +4974,54 @@ sub cmsearch_parse_sorted_tblout {
         if(! defined $results_HHHR->{$seq}) { 
           %{$results_HHHR->{$seq}} = ();
         }
+        $group    = (defined $mdl_group_H{$model})    ? $mdl_group_H{$model}    : undef;
+        $subgroup = (defined $mdl_subgroup_H{$model}) ? $mdl_subgroup_H{$model} : undef;
+
         # determine if we are going to store this hit, and to what 2D keys 
         # (the following code only works because we know we are sorted by score)
-        my $is_1  = 0; # should we store this in $results_HHHR->{$seq}{"r1.1"} ? 
-        my $is_2  = 0; # should we store this in $results_HHHR->{$seq}{"r1.2"} ? 
-        my $is_g  = 0; # should we store this in $results_HHHR->{$seq}{"r1.g"} ? 
-        my $is_sg = 0; # should we store this in $results_HHHR->{$seq}{"r1.sg"} ? 
+        my $is_1   = 0; # should we store this in $results_HHHR->{$seq}{"r1.1"} ? 
+        my $is_2   = 0; # should we store this in $results_HHHR->{$seq}{"r1.2"} ? 
+        my $is_eg  = 0; # should we store this in $results_HHHR->{$seq}{"r1.eg"} ? 
+        my $is_esg = 0; # should we store this in $results_HHHR->{$seq}{"r1.esg"} ? 
 
-        if((! defined $results_HHHR->{$seq}{"r1.1"}) || # first (top) hit for this sequence 
-           ($results_HHHR->{$seq}{"r1.1"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+        # store hit as r1.1 only if it's the first hit seen to any model, or it's an additional hit to the r1.1 model
+        # SHOULD WE ONLY BE STORING TOP HIT IN ROUND 1?
+        if((! defined $results_HHHR->{$seq}{"r1.1"}) || # first (best) hit for this sequence 
+           ($results_HHHR->{$seq}{"r1.1"}{"model"} eq $model)) { # additional hit for r1.1 sequence/model pair
           $is_1 = 1; 
         }
-        elsif((! defined $results_HHHR->{$seq}{"r1.2"}) || # first hit not to top model for this sequence
-              ($results_HHHR->{$seq}{"r1.2"}{"model"} eq $model)) { # additional hit for this sequence/model pair
-          $is_2 = 1; 
+        # store hit as r1.2 only if it's an additional hit to the r1.2 model
+        # or there is no r1.2 hit yet, and r1.1 model and r1.2 model are not in the same subgroup
+        # (if either r1.1 or r1.2 models do not have a subgroup, they are considered to NOT be in the same subgroup)
+        elsif((defined $results_HHHR->{$seq}{"r1.2"}) && 
+              ($results_HHHR->{$seq}{"r1.2"}{"model"} eq $model)) { # additional hit for r1.2 sequence/model pair
+          $is_2 = 1;
         }
+        elsif((! defined $results_HHHR->{$seq}{"r1.2"}) && # no r1.2 hit yet exists AND
+              ((! defined $results_HHHR->{$seq}{"r1.1"}{"subgroup"}) ||       # (r1.1 hit has no subgroup OR
+               (! defined $subgroup) ||                                       #  this hit has no subgroup OR
+               ($results_HHHR->{$seq}{"r1.1"}{"subgroup"} ne $subgroup))) {   #  both have subgroups but they differ)
+          $is_2 = 1;
+        }               
+
         # determine if we are going to store this hit as best in 'group' and/or 'subgroup'
         # to the expected group and/or expected subgroup
-        if((defined $exp_group) && ($mdl_group_H{$model} eq $exp_group)) { 
-          if((! defined $results_HHHR->{$seq}{"r1.g"}) || # first (top) hit for this sequence to this group
-             ($results_HHHR->{$seq}{"r1.g"}{"model"} eq $model)) { # additional hit for this sequence/model pair
-            $is_g = 1; 
+        if((defined $exp_group) && (defined $group) && ($exp_group eq $group)) { 
+          if((! defined $results_HHHR->{$seq}{"r1.eg"}) || # first (top) hit for this sequence to this group
+             ($results_HHHR->{$seq}{"r1.eg"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+            $is_eg = 1; 
           }
-          if((defined $exp_subgroup) && ($mdl_subgroup_H{$model} eq $exp_subgroup)) { 
-            if((! defined $results_HHHR->{$seq}{"r1.sg"}) || # first (top) hit for this sequence to this subgroup
-               ($results_HHHR->{$seq}{"r1.sg"}{"model"} eq $model)) { # additional hit for this sequence/model pair
-              $is_sg = 1; 
+          if((defined $exp_subgroup) && (defined $subgroup) && ($exp_subgroup eq $subgroup)) { 
+            if((! defined $results_HHHR->{$seq}{"r1.esg"}) || # first (top) hit for this sequence to this subgroup
+               ($results_HHHR->{$seq}{"r1.esg"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+              $is_esg = 1; 
             }
           }
         }
-        if($is_1)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.1"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
-        if($is_2)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.2"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
-        if($is_g)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.g"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
-        if($is_sg) { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.sg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR); }
+        if($is_1)   { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.1"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_2)   { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.2"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_eg)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.eg"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_esg) { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.esg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
       }
       else { # round 2
         ##target name                 accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
@@ -5007,7 +5034,7 @@ sub cmsearch_parse_sorted_tblout {
         # determine if we are going to store this hit
         if((! defined $results_HHHR->{$seq}{"r2"}) || # first (top) hit for this sequence 
            ($results_HHHR->{$seq}{"r2"}{"model"} eq $model)) { # additional hit for this sequence/model pair
-          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r2"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR);          
+          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r2"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in round 2
         }
         elsif((defined $results_HHHR->{$seq}{"r2"}) &&
               ($results_HHHR->{$seq}{"r2"}{"model"} ne $model)) { 
@@ -5037,6 +5064,8 @@ sub cmsearch_parse_sorted_tblout {
 #  $s_to:          end position on sequence
 #  $m_from:        start position on model
 #  $m_to:          end position on model
+#  $group:         group for $model, can be undef
+#  $subgroup:      subgroup for $model, can be undef
 #  $FH_HR:         ref to file handle hash
 # 
 # Returns: void
@@ -5046,10 +5075,10 @@ sub cmsearch_parse_sorted_tblout {
 ################################################################# 
 sub cmsearch_store_hit { 
   my $sub_name = "cmsearch_store_hit()";
-  my $nargs_expected = 10;
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($HR, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $FH_HR) = @_;
+  my ($HR, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR) = @_;
 
   if(scalar(keys(%{$HR})) == 0) { # initialize
     $HR->{"model"}    = $model; # all hits stored in this hash will be to $model
@@ -5070,8 +5099,10 @@ sub cmsearch_store_hit {
   }
   $HR->{"s_coords"} .= $s_from . ".." . $s_to . ":" . $strand;
   $HR->{"score"}    .= sprintf("%.1f", $score);
-  if(defined $m_from) { $HR->{"m_coords"} .= $m_from . ".." . $m_to . ":+"; }
-  if(defined $bias)   { $HR->{"bias"}     .= sprintf("%.1f", $bias); }
+  if(defined $m_from)   { $HR->{"m_coords"} .= $m_from . ".." . $m_to . ":+"; }
+  if(defined $bias)     { $HR->{"bias"}     .= sprintf("%.1f", $bias); }
+  if(defined $group)    { $HR->{"group"}     = $group; }
+  if(defined $subgroup) { $HR->{"subgroup"}  = $subgroup; }
 
   return;
 }
@@ -5114,19 +5145,6 @@ sub add_classification_alerts {
   # these hashes onlyfor convenience)
   my $exp_group    = opt_Get("--group", \%opt_HH);
   my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
-  # fill hashes of model groups and subgroups, for convenience
-  my %mdl_group_H    = ();
-  my %mdl_subgroup_H = ();
-  if(defined $exp_group) { 
-    utl_HFromAH(\%mdl_group_H,    $mdl_info_AHR, "name", "group",    "called from $sub_name ", $FH_HR);
-    if(defined $exp_subgroup) { 
-      utl_HFromAH(\%mdl_subgroup_H, $mdl_info_AHR, "name", "subgroup", "called from $sub_name ", $FH_HR);
-    }
-  }
-
-  # create the model name idx hash, so we can determine index in @{$mdl_info_AHR} given a model name
-  my %mdl_idx_H = ();
-  utl_IdxHFromAH(\%mdl_idx_H, $mdl_info_AHR, "name", $sub_name, $FH_HR);
 
   # get thresholds
   my $small_value        = 0.00000001; # for handling precision issues
@@ -5170,11 +5188,10 @@ sub add_classification_alerts {
       %{$cls_output_HHR->{$seq_name}} = ();
       # gather the information we need to detect alerts for this sequence
       # convert coords values into start, stop and strand arrays
-      # hash of hit info, hash key is one of "r1.1", "r1.2", "r1.g", "r1.sg", "r2"
+      # hash of hit info, hash key is one of "r1.1", "r1.2", "r1.eg", "r1.esg", "r2"
       my %start_HA   = (); # sequence start positions for each hit for this sequence/model pair
       my %stop_HA    = (); # sequence stop  positions for each hit for this sequence/model pair
       my %strand_HA  = (); # sequence strands for each hit for this sequence/model pair
-      my %model_H    = (); # model name
       my %score_H    = (); # summed score of all hits
       my %bias_H     = (); # summed bias of all hits
       my %scpnt_H    = (); # score per nt 
@@ -5219,13 +5236,12 @@ sub add_classification_alerts {
             $nhits_bstrand++;
           }
         }
-        $model_H{$rkey}   = $results_HR->{"model"};
-        $score_H{$rkey}   = $score;
-        $bias_H{$rkey}    = (defined $bias) ? $bias : 0.;
-        $scpnt_H{$rkey}   = $score / $length;
-        $length_H{$rkey}  = $length;
-        $bstrand_H{$rkey} = $bstrand;
-        $nhits_H{$rkey}   = $nhits_bstrand;
+        $score_H{$rkey}    = $score;
+        $bias_H{$rkey}     = (defined $bias) ? $bias : 0.;
+        $scpnt_H{$rkey}    = $score / $length;
+        $length_H{$rkey}   = $length;
+        $bstrand_H{$rkey}  = $bstrand;
+        $nhits_H{$rkey}    = $nhits_bstrand;
         printf("$rkey length $length\n");
       } # end of foreach $rkey
 
@@ -5261,27 +5277,27 @@ sub add_classification_alerts {
       }
       # unexpected group (c_ugr) 
       # $exp_group must be defined 
-      # - no hits in r1.g (no hits to group)
+      # - no hits in r1.eg (no hits to group)
       # OR 
-      # - hit(s) in r1.g but scpernt diff between
-      #   r1.g and r1.1 exceeds cthresh_opt
+      # - hit(s) in r1.eg but scpernt diff between
+      #   r1.eg and r1.1 exceeds cthresh_opt
       #
       # unexpected subgroup (c_usg) 
-      # - no hits in r1.sg (no hits to subgroup)
+      # - no hits in r1.esg (no hits to subgroup)
       # OR 
-      # - hit(s) in r1.sg but scpernt diff between
-      #   r1.sg and r1.1 exceeds cthresh_opt
+      # - hit(s) in r1.esg but scpernt diff between
+      #   r1.esg and r1.1 exceeds cthresh_opt
       my $ugr_flag = 0;
       if(defined $exp_group) { 
-        if(! defined $scpnt_H{"r1.g"}) { 
+        if(! defined $scpnt_H{"r1.eg"}) { 
           alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_ugr", $seq_name, "no hits to expected group $exp_group", $FH_HR);
           $ugr_flag = 1;
         }
         else { 
-          my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.g"};
+          my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.eg"};
           my $diff2print = sprintf("%.3f", $diff);
           if($diff > $cthresh_opt) { 
-            my $alt_str = ($ctoponly_opt_used) ? "not best model" : "$diff2print > $cthresh_opt2print";
+            my $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print;
             alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_ugr", $seq_name, $alt_str, $FH_HR);
             $ugr_flag = 1;
           }
@@ -5290,19 +5306,19 @@ sub add_classification_alerts {
 
       # unexpected subgroup (c_usg) 
       # - c_ugr not already detected
-      # - no hits in r1.sg (no hits to subgroup)
+      # - no hits in r1.esg (no hits to subgroup)
       # OR 
-      # - hit(s) in r1.sg but scpernt diff between
-      #   r1.sg and r1.1 exceeds cthresh_opt
+      # - hit(s) in r1.esg but scpernt diff between
+      #   r1.esg and r1.1 exceeds cthresh_opt
       if((! $ugr_flag) && (defined $exp_subgroup)) { 
-        if(! defined $scpnt_H{"r1.sg"}) { 
+        if(! defined $scpnt_H{"r1.esg"}) { 
           alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_usg", $seq_name, "no hits to expected subgroup $exp_subgroup", $FH_HR);
         }
         else { 
-          my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.sg"};
+          my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.esg"};
           my $diff2print = sprintf("%.3f", $diff);
           if($diff > $cthresh_opt) { 
-            my $alt_str = ($ctoponly_opt_used) ? "not best model" : "$diff2print > $cthresh_opt2print";
+            my $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print;
             alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_usg", $seq_name, $alt_str, $FH_HR);
           }
         }
@@ -5310,6 +5326,7 @@ sub add_classification_alerts {
 
       # classification alerts that depend on round 2 results
       if(defined $nhits_H{"r2"}) { $cls_output_HHR->{$seq_name}{"nhits"} = $nhits_H{"r2"}; }
+      if(defined $bias_H{"r2"})  { $cls_output_HHR->{$seq_name}{"bias"}  = $bias_H{"r2"}; }
 
       # minus strand (c_mst)
       if(defined $bstrand_H{"r2"}) { 
@@ -5338,21 +5355,15 @@ sub add_classification_alerts {
       }
       
       # finally fill $cls_output_HHR->{$seq_name} info related to models and groups
-      my $tmp_mdl_name = undef;
-      my $tmp_mdl_idx  = undef;
-      if($model_H{"r1.1"}) { 
-        $tmp_mdl_name = $model_H{"r1.1"};
-        $tmp_mdl_idx = $mdl_idx_H{$tmp_mdl_name};
-        $cls_output_HHR->{$seq_name}{"model1"} = $tmp_mdl_name;
-        if(defined $mdl_info_AHR->[$tmp_mdl_idx]{"group"})    { $cls_output_HHR->{$seq_name}{"group1"}    = $mdl_info_AHR->[$tmp_mdl_idx]{"group"};    }
-        if(defined $mdl_info_AHR->[$tmp_mdl_idx]{"subgroup"}) { $cls_output_HHR->{$seq_name}{"subgroup1"} = $mdl_info_AHR->[$tmp_mdl_idx]{"subgroup"}; }
+      if(defined $cls_results_HHHR->{$seq_name}{"r1.1"}) { 
+        $cls_output_HHR->{$seq_name}{"model1"}    = $cls_results_HHHR->{$seq_name}{"r1.1"}{"model"};
+        $cls_output_HHR->{$seq_name}{"group1"}    = $cls_results_HHHR->{$seq_name}{"r1.1"}{"group"};    # can be undef
+        $cls_output_HHR->{$seq_name}{"subgroup1"} = $cls_results_HHHR->{$seq_name}{"r1.1"}{"subgroup"}; # can be undef
       }
-      if(defined $model_H{"r1.2"}) { 
-        $tmp_mdl_name = $model_H{"r1.2"};
-        $tmp_mdl_idx = $mdl_idx_H{$tmp_mdl_name};
-        $cls_output_HHR->{$seq_name}{"model2"} = $tmp_mdl_name;
-        if(defined $mdl_info_AHR->[$tmp_mdl_idx]{"group"})    { $cls_output_HHR->{$seq_name}{"group2"}    = $mdl_info_AHR->[$tmp_mdl_idx]{"group"};    }
-        if(defined $mdl_info_AHR->[$tmp_mdl_idx]{"subgroup"}) { $cls_output_HHR->{$seq_name}{"subgroup2"} = $mdl_info_AHR->[$tmp_mdl_idx]{"subgroup"}; }
+      if(defined $cls_results_HHHR->{$seq_name}{"r1.2"}) { 
+        $cls_output_HHR->{$seq_name}{"model2"}    = $cls_results_HHHR->{$seq_name}{"r1.2"}{"model"};
+        $cls_output_HHR->{$seq_name}{"group2"}    = $cls_results_HHHR->{$seq_name}{"r1.2"}{"group"};    # can be undef
+        $cls_output_HHR->{$seq_name}{"subgroup2"} = $cls_results_HHHR->{$seq_name}{"r1.2"}{"subgroup"}; # can be undef
       }
     } # else entered if we didn't report a c_noa alert
   } # end of foreach seq loop
@@ -5434,5 +5445,30 @@ sub class_model_for_sequence {
           (defined $cls_results_HHHR->{$seq_name}{"r1.1"}{"model"})) ? 
           $cls_results_HHH{$seq_name}{"r1.1"}{"model"} : undef;
 }
-    
 
+
+
+#################################################################
+# Subroutine:  helper_tabular_replace_spaces
+# Incept:      EPN, Fri Mar 29 13:57:35 2019
+#
+# Purpose:    Given a string, replace any spaces in it with "_".
+#
+# Arguments: 
+#  $str:       string to remove spaces from
+#
+# Returns:    $str with spaces converted to "_"
+#
+################################################################# 
+sub helper_tabular_replace_spaces { 
+  my $sub_name = "helper_tabular_replace_spaces";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($str) = @_;
+
+  $str =~ s/\s/\_/g;  # replace each space with "_"
+
+  return $str;
+}
+    
