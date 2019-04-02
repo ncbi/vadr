@@ -4349,7 +4349,6 @@ sub dng_FeaturePositionSpecificValueBreakdown {
     foreach my $tok (@tok_A) { 
       if($tok =~ /^(\d+)\:(\S+)$/) { 
         $HR->{$1} = $2;
-        print("in $sub_name key: $key set HR->{$1} to $2\n");
       }
       else { 
         ofile_FAIL("ERROR, in $sub_name, unable to parse token $tok parsed out of " . $ftr_info_AHR->[$ftr_idx]{$key}, 1, $FH_HR);
