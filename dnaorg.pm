@@ -4311,6 +4311,56 @@ sub dng_FeatureSummaryStrand {
 }
   
 #################################################################
+# Subroutine: dng_FeaturePositionSpecificValueBreakdown()
+# Incept:     EPN, Tue Apr  2 10:22:16 2019
+#
+# Purpose:    Breakdown a list of position specific values
+#             from a string in %{$ftr_info_AHR->[$ftr_idx]}
+#             and fill %HR with key/value pairs.
+# 
+#             String must be in format of one or more tokens
+#             of: "<d>:<s>" separated by ";" if more than one.
+#
+#             If $ftr_info_AHR->[$ftr_idx] does not exist just
+#             return.
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#  $key:            key in $ftr_info_AHR->[$ftr_idx]
+#  $HR:             ref to hash to fill
+#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $ftr_info_AHR->[$ftr_idx] exists but cannot
+#             be parsed.
+#
+################################################################# 
+sub dng_FeaturePositionSpecificValueBreakdown { 
+  my $sub_name = "dng_FeaturePositionSpecificValueBreakdown";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx, $key, $HR, $FH_HR) = @_;
+ 
+  if(defined $ftr_info_AHR->[$ftr_idx]{$key}) { 
+    my @tok_A = split(";", $ftr_info_AHR->[$ftr_idx]{$key});
+    foreach my $tok (@tok_A) { 
+      if($tok =~ /^(\d+)\:(\S+)$/) { 
+        $HR->{$1} = $2;
+        print("in $sub_name key: $key set HR->{$1} to $2\n");
+      }
+      else { 
+        ofile_FAIL("ERROR, in $sub_name, unable to parse token $tok parsed out of " . $ftr_info_AHR->[$ftr_idx]{$key}, 1, $FH_HR);
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine:  dng_SqstringAddNewlines()
 # Incept:      EPN, Thu Mar 14 06:12:11 2019
 #

@@ -161,9 +161,10 @@ opt_Add("--ppmin",          "real",  0.8,                    $g,     undef, unde
 $opt_group_desc_H{++$g} = "options for tuning protein validation with blastx";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
 opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,      "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",          "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xalntol",     "integer",  5,                      $g,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xindeltol",   "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xalntol",     "integer",  5,                      $g,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>",  "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxins",     "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion length in blastx validation is <n>",                           "max allowed nucleotide insertion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxdel",     "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide deletion length in blastx validation is <n>",                            "max allowed nucleotide deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",            "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
@@ -226,7 +227,8 @@ my $options_okay =
 # options for tuning protein validation with blastx
                 'xminntlen=s'  => \$GetOptions_H{"--xminntlen"},
                 'xalntol=s'    => \$GetOptions_H{"--xalntol"},
-                'xindeltol=s'  => \$GetOptions_H{"--xindeltol"},
+                'xmaxins=s'    => \$GetOptions_H{"--xmaxins"},
+                'xmaxdel=s'    => \$GetOptions_H{"--xmaxdel"},
                 'xlonescore=s' => \$GetOptions_H{"--xlonescore"},
 # options for changing search sensitivity modes
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
@@ -677,7 +679,7 @@ my %ftr_results_HHAH = ();  # 1st dim: hash, keys are model names
                             # 3rd dim: array, 0..$nsgm-1, one per segment
                             # 4th dim: hash of feature results, keys are:
                             # keys include "n_start", "n_stop", "n_stop_c", "n_strand", "n_5trunc", "n_3trunc"
-                            # "p_start", "p_stop", "p_strand", "p_query", "p_maxins", p_maxdel", "p_trcstop", "p_score"
+                            # "p_start", "p_stop", "p_strand", "p_query", "p_ins", p_del", "p_trcstop", "p_score"
 
 my %sgm_results_HHAH = ();  # 1st dim: hash, keys are model names
                             # 2nd dim: hash, keys are sequence names
@@ -1378,15 +1380,26 @@ sub add_blastx_alerts {
   my $seq_name;  # name of one sequence
   my $ftr_idx;   # counter over features
   
-  my $aln_tol   = opt_Get("--xalntol",    $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
-  my $indel_tol = opt_Get("--xindeltol",  $opt_HHR); # maximum allowed insertion and deletion length in blastx output
+  my $aln_tol   = opt_Get("--xalntol",   $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
+  my $xmaxins   = opt_Get("--xmaxins",   $opt_HHR); # maximum allowed insertion length in blastx output
+  my $xmaxdel   = opt_Get("--xmaxdel",   $opt_HHR); # maximum allowed deletion length in blastx output
   my $xminntlen = opt_Get("--xminntlen", $opt_HHR);
   
   # get children info for all features
   my @children_AA = ();
   my $ftr_nchildren = undef;
   dng_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, \@children_AA, $FH_HR);
-  
+
+  # get info on position-specific insert and delete maximum exceptions if there are any
+  my @maxins_exc_AH = ();
+  my @maxdel_exc_AH = ();
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    %{$maxins_exc_AH[$ftr_idx]} = ();
+    %{$maxdel_exc_AH[$ftr_idx]} = ();
+    dng_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "xmaxins_exc", \%{$maxins_exc_AH[$ftr_idx]}, $FH_HR);
+    dng_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "xmaxdel_exc", \%{$maxdel_exc_AH[$ftr_idx]}, $FH_HR);
+  }
+
   # for each sequence, for each feature, detect and report alerts
   for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     # for each feature
@@ -1412,8 +1425,8 @@ sub add_blastx_alerts {
           my $p_start2print  = undef; # predicted start  from blastx, to output
           my $p_stop2print   = undef; # predicted stop   from blastx, to output
           my $p_strand       = undef; # predicted strand from blastx
-          my $p_maxins       = undef; # maximum insert from blastx
-          my $p_maxdel       = undef; # maximum delete from blastx
+          my $p_ins          = undef; # insert string from blastx
+          my $p_del          = undef; # delete string from blastx
           my $p_trcstop      = undef; # premature stop from blastx
           my $p_score        = undef; # raw score from blastx
           my $p_query        = undef; # query name from blastx hit
@@ -1445,8 +1458,8 @@ sub add_blastx_alerts {
               $p_strand  = $ftr_results_HR->{"p_strand"};
               $p_query   = $ftr_results_HR->{"p_query"};
               $p_hlen    = $ftr_results_HR->{"p_len"};
-              if(defined $ftr_results_HR->{"p_maxins"})  { $p_maxins  = $ftr_results_HR->{"p_maxins"};  }
-              if(defined $ftr_results_HR->{"p_maxdel"})  { $p_maxdel  = $ftr_results_HR->{"p_maxdel"};  }
+              if(defined $ftr_results_HR->{"p_ins"})     { $p_ins     = $ftr_results_HR->{"p_ins"};  }
+              if(defined $ftr_results_HR->{"p_del"})     { $p_del     = $ftr_results_HR->{"p_del"};  }
               if(defined $ftr_results_HR->{"p_trcstop"}) { $p_trcstop = $ftr_results_HR->{"p_trcstop"}; }
               if(defined $ftr_results_HR->{"p_score"})   { $p_score   = $ftr_results_HR->{"p_score"};   }
 
@@ -1537,12 +1550,32 @@ sub add_blastx_alerts {
                     }
                   }
                   # check for 'p_lin': too long of an insert
-                  if((defined $p_maxins) && ($p_maxins > $indel_tol)) { 
-                    $alt_str_H{"p_lin"} = "longest blastx predicted insert of length $p_maxins > $indel_tol";
+                  if(defined $p_ins) { 
+                    my @p_ins_qpos_A = ();
+                    my @p_ins_spos_A = ();
+                    my @p_ins_len_A  = ();
+                    my $nins = helper_blastx_breakdown_max_indel_str($p_ins, \@p_ins_qpos_A, \@p_ins_spos_A, \@p_ins_len_A, $FH_HR);
+                    for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
+                      my $local_xmaxins = defined ($maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
+                      if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
+                        if(defined $alt_str_H{"p_lin"}) { $alt_str_H{"p_lin"} .= ":DNAORGSEP:"; }
+                        $alt_str_H{"p_lin"} = "blastx predicted insert of length " . $p_ins_len_A[$ins_idx] . ">$local_xmaxins starting at reference amino acid posn " . $p_ins_spos_A[$ins_idx];
+                      }
+                    }
                   }
                   # check for 'p_lde': too long of a deletion
-                  if((defined $p_maxdel) && ($p_maxdel > $indel_tol)) { 
-                    $alt_str_H{"p_lde"} = "longest blastx predicted delete of length $p_maxdel > $indel_tol";
+                  if(defined $p_del) { 
+                    my @p_del_qpos_A = ();
+                    my @p_del_spos_A = ();
+                    my @p_del_len_A  = ();
+                    my $ndel = helper_blastx_breakdown_max_indel_str($p_del, \@p_del_qpos_A, \@p_del_spos_A, \@p_del_len_A, $FH_HR);
+                    for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
+                      my $local_xmaxdel = defined ($maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
+                      if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
+                        if(defined $alt_str_H{"p_lde"}) { $alt_str_H{"p_lde"} .= ":DNAORGSEP:"; }
+                        $alt_str_H{"p_lde"} = "blastx predicted delete of length " . $p_del_len_A[$del_idx] . ">$local_xmaxdel starting at reference amino acid posn " . $p_del_spos_A[$del_idx];
+                      }
+                    }
                   }
                   # check for 'p_trc': blast predicted truncation
                   if(defined $p_trcstop) { 
@@ -1553,8 +1586,11 @@ sub add_blastx_alerts {
             } # end of 'if(defined $n_start)' entered to identify b_* errors
             my $alt_flag = 0;
             foreach my $alt_code (sort keys %alt_str_H) { 
-              alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $ftr_idx, $alt_code, $seq_name, $alt_str_H{$alt_code}, $FH_HR);
-              $alt_flag = 1;
+              my @alt_str_A = split(":DNAORGSEP:", $alt_str_H{$alt_code});
+              foreach my $alt_str (@alt_str_A) { 
+                alert_instances_add($alt_ftr_instances_HAHR, undef, $alt_info_HHR, $ftr_idx, $alt_code, $seq_name, $alt_str, $FH_HR);
+                $alt_flag = 1;
+              }
             }
             # if we added an alert, step through all children of this feature (if any) and add p_per
             if(($alt_flag) && ($ftr_nchildren > 0)) { 
@@ -1770,34 +1806,24 @@ sub parse_blastx_results {
           }
         }
       }
-      elsif($key eq "MAXIN") { 
+      elsif($key eq "INS") { 
         if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXIN line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
-        if($store_flag) { 
-          if($value =~ /^(\d+)$/) { 
-            my $maxins = $1;
-            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_maxins"} = $maxins;
-            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_maxins} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_maxins"} . "\n");
-          }
-          else { 
-            ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", "dnaorg", 1, $FH_HR);
-          }
+        if($store_flag && ($value ne "")) { 
+          my $ins = $value;
+          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = $ins;
+          printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_ins} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} . "\n");
         }
       }
-      elsif($key eq "MAXDE") { 
+      elsif($key eq "DEL") { 
         if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXDE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
         }
-        if($store_flag) {
-          if($value =~ /^(\d+)$/) { 
-            my $maxdel = $1;
-            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_maxdel"} = $maxdel;
-            printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_maxdel} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_maxdel"} . "\n");
-          }
-          else { 
-            ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXDE line $line", "dnaorg", 1, $FH_HR);
-          }
+        if($store_flag && ($value ne "")) { 
+          my $del = $value;
+          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} = $del;
+          printf("HEYA BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_del} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} . "\n");
         }
       }
       elsif($key eq "FRAME") { 
@@ -1933,6 +1959,50 @@ sub helper_blastx_breakdown_query {
   return ($ret_seq_name, $ret_ftr_type_idx, $ret_len);
 }
 
+#################################################################
+# Subroutine: helper_blastx_breakdown_max_indel_str()
+# Incept:     EPN, Tue Apr  2 06:35:13 2019
+#
+# Purpose: Given a string of one or more indel strings in the format:
+#          "Q<d1>:S<d2>[+-]<d3>", separated by ";" if more than one.
+#          fill arrays with <d1>, <d2>, and <d3>.
+#
+# Arguments:
+#   $in_str:       input max indel string returned from parse_blastx.pl
+#   $qpos_AR:      ref to array of query positions to fill
+#   $spos_AR:      ref to array of subject positions to fill
+#   $len_AR:       ref to array of lengths to fill
+#   $FH_HR:        ref to hash of file handles, including 'log'
+#             
+# Returns:  number of indel strings parsed (number of elements added to @{$qpos_AR}, 
+#           @{$spos_AR} and @{$len_AR}.
+#
+# Dies: If $in_str is not parseable
+#
+#################################################################
+sub helper_blastx_breakdown_max_indel_str {
+  my $sub_name  = "helper_blastx_breakdown_max_indel_str";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_str, $qpos_AR, $spos_AR, $len_AR, $FH_HR) = (@_);
+
+  printf("in $sub_name, in_str: $in_str\n");
+
+  my @str_A = split(";", $in_str); 
+  foreach my $str (@str_A) { 
+    if($str =~ /^Q(\d+)\:S(\d+)[\+\-](\d+)$/) { 
+      if(defined $qpos_AR) { push(@{$qpos_AR}, $1); }
+      if(defined $spos_AR) { push(@{$spos_AR}, $2); }
+      if(defined $len_AR)  { push(@{$len_AR},  $3); }
+    }
+    else { 
+      ofile_FAIL("ERROR, in $sub_name, unable to parse indel string $str parsed out of $in_str", "dnaorg", 1, $FH_HR);
+    }
+  }
+
+  return scalar(@str_A);
+}
 #################################################################
 #
 # Subroutines related to identifying CDS and MP errors:
@@ -2695,8 +2765,6 @@ sub output_tabular {
   my $w_ftr_stop   = $w_seq_len;
   my $w_ftr_cstop  = $w_seq_len;
   my $w_ftr_pscore = 5;
-  my $w_ftr_maxin  = length("p_ins");
-  my $w_ftr_maxde  = length("p_del");
   my $w_ftr_dupidx = $w_ftr_ftridx;
   my $w_ftr_nsgm   = utl_NumberOfDigits($max_nsgm);
   my $w_ftr_coords = ($max_nsgm * (($w_seq_len * 2) + 4)) - 1;
@@ -2748,13 +2816,12 @@ sub output_tabular {
                           $w_seq_strand, "strand", $w_seq_mdl2, "mdl2", $w_seq_grp2, "grp1", $w_seq_subgrp2, "sgrp2", $w_seq_scdiff, "scdiff",
                           $w_seq_diffpnt, "diff/nt", "seqalt");
 
-  printf $ftr_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %s\n", 
+  printf $ftr_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %s\n", 
                       $w_ftr_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "seqlen", 
                       $w_ftr_type, "type", $w_ftr_name, "ftrname", $w_ftr_ftrlen, "ftrlen", $w_ftr_ftridx, "fidx", 
                       $w_ftr_strand, "str", 
                       $w_ftr_start, "n_start", $w_ftr_stop, "n_end", $w_ftr_cstop, "n_instp", $w_ftr_trunc, "trunc", 
-                      $w_ftr_start, "p_start", $w_ftr_stop, "p_end", $w_ftr_cstop, "p_instp", 
-                      $w_ftr_maxde, "p_ins", $w_ftr_maxin, "p_del", $w_ftr_pscore, "p_sc",
+                      $w_ftr_start, "p_start", $w_ftr_stop, "p_end", $w_ftr_cstop, "p_instp", $w_ftr_pscore, "p_sc",
                       $w_ftr_dupidx, "didx", $w_ftr_nsgm, "nsa", $w_ftr_nsgm, "nsn", $w_ftr_coords, "coords", 
                       "ftralt");
 
@@ -2851,7 +2918,7 @@ sub output_tabular {
       }
     }
 
-    if(defined $seq_mdl1) { 
+    if($seq_mdl1 ne "-") { 
       $nftr = scalar(@{$ftr_info_HAHR->{$seq_mdl1}});
       my $ftr_info_AHR = \@{$ftr_info_HAHR->{$seq_mdl1}}; # for convenience
       for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -2876,10 +2943,8 @@ sub output_tabular {
           if($ftr_p_stop_c ne "-") { 
             $ftr_p_stop_c =~ s/;.*$//; # keep only first early stop position
           }
-          my $ftr_p_maxin  = (defined $ftr_results_HR->{"p_maxins"})  ? $ftr_results_HR->{"p_maxins"}  : "-";
-          my $ftr_p_maxde  = (defined $ftr_results_HR->{"p_maxdel"})  ? $ftr_results_HR->{"p_maxdel"}  : "-";
-          my $ftr_p_score  = (defined $ftr_results_HR->{"p_score"})   ? $ftr_results_HR->{"p_score"}   : "-";
-          my $ftr_dupidx   = dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx) ? $ftr_info_AHR->[$ftr_idx]{"source_idx"} : "-";
+          my $ftr_p_score = (defined $ftr_results_HR->{"p_score"})  ? $ftr_results_HR->{"p_score"} : "-";
+          my $ftr_dupidx  = dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx) ? $ftr_info_AHR->[$ftr_idx]{"source_idx"} : "-";
           if((defined $ftr_results_HR->{"n_5trunc"}) && ($ftr_results_HR->{"n_5trunc"})) { 
             $seq_nftr_5trunc++; 
           }
@@ -2940,13 +3005,12 @@ sub output_tabular {
 
           if($new_seq_flag && ($ftr_nprinted == 0)) { printf $ftr_tbl_FH "#\n"; }
             
-          printf $ftr_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %s\n", 
+          printf $ftr_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %s\n", 
                               $w_ftr_idx, $ftr_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, 
                               $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name2print, $w_ftr_ftrlen, $ftr_len_by_sgm, $w_ftr_ftridx, $ftr_idx+1, 
                               $w_ftr_strand, $ftr_strand, 
                               $w_ftr_start, $ftr_n_start, $w_ftr_stop, $ftr_n_stop, $w_ftr_cstop, $ftr_n_stop_c, $w_ftr_trunc, $ftr_trunc, 
-                              $w_ftr_start, $ftr_p_start, $w_ftr_stop, $ftr_p_stop, $w_ftr_cstop, $ftr_p_stop_c, 
-                              $w_ftr_maxde, $ftr_p_maxde, $w_ftr_maxin, $ftr_p_maxin, $w_ftr_pscore, $ftr_p_score, 
+                              $w_ftr_start, $ftr_p_start, $w_ftr_stop, $ftr_p_stop, $w_ftr_cstop, $ftr_p_stop_c, $w_ftr_pscore, $ftr_p_score, 
                               $w_ftr_dupidx, ($ftr_dupidx eq "-") ? "-" : $ftr_dupidx+1, 
                               $w_ftr_nsgm, $ftr_nsgm_annot, $w_ftr_nsgm, $ftr_nsgm_noannot, $w_ftr_coords, $coords_str, $ftr_alt_str);
           $ftr_nprinted++;
