@@ -13,6 +13,7 @@ use LWP::Simple;
 require "dnaorg.pm"; 
 require "epn-options.pm";
 require "epn-ofile.pm";
+require "epn-sqfile.pm";
 require "epn-utils.pm";
 
 #######################################################################################
@@ -36,8 +37,8 @@ require "epn-utils.pm";
 # 
 #######################################################################################
 # make sure DNAORGDIR and DNAORGBLASTDIR environment variable is set
-my $env_dnaorgdir      = dng_VerifyEnvVariableIsValidDir("DNAORGDIR");
-my $env_dnaorgblastdir = dng_VerifyEnvVariableIsValidDir("DNAORGBLASTDIR");
+my $env_dnaorgdir      = utl_DirEnvVarValid("DNAORGDIR");
+my $env_dnaorgblastdir = utl_DirEnvVarValid("DNAORGBLASTDIR");
 
 my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
 my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
@@ -298,7 +299,7 @@ $start_secs = ofile_OutputProgressPrior("Parsing GenBank file", $progress_w, $lo
 
 my %ftr_info_HAH = (); # the feature info 
 my %seq_info_HH  = (); # the sequence info 
-dng_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
+sqfile_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
 if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
   ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", "dnaorg", 1, $FH_HR);
 }
@@ -441,12 +442,12 @@ if($ncds > 0) {
 
   $cds_fa_file  = $out_root . ".cds.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
-  dng_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  sqfile_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   close $ofile_info_HH{"FH"}{"cdsfasta"};
   
   $protein_fa_file = $out_root . ".protein.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
-  dng_CdsTranslateToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
+  dng_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
                               $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
 
@@ -623,9 +624,9 @@ sub process_add_and_skip_options {
 
   my ($df_string, $add_opt, $skip_opt, $df_HR, $add_HR, $skip_HR, $opt_HHR, $FH_HR) = @_;
 
-  dng_HashFromCommaSeparatedString($df_HR, $df_string);
-  if(opt_IsUsed($add_opt,  $opt_HHR)) { dng_HashFromCommaSeparatedString($add_HR,  opt_Get($add_opt,  $opt_HHR)); }
-  if(opt_IsUsed($skip_opt, $opt_HHR)) { dng_HashFromCommaSeparatedString($skip_HR, opt_Get($skip_opt, $opt_HHR)); }
+  utl_ExistsHFromCommaSepString($df_HR, $df_string);
+  if(opt_IsUsed($add_opt,  $opt_HHR)) { utl_ExistsHFromCommaSepString($add_HR,  opt_Get($add_opt,  $opt_HHR)); }
+  if(opt_IsUsed($skip_opt, $opt_HHR)) { utl_ExistsHFromCommaSepString($skip_HR, opt_Get($skip_opt, $opt_HHR)); }
   # make sure $add_opt and $skip_opt have no values in common
   foreach my $key (sort keys (%{$add_HR})) { 
     if(defined $skip_HR->{$key}) { 

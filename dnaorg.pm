@@ -31,207 +31,557 @@
 #########################
 # Common data structures used in this file:
 #
-# - $FH_HR: a reference to a hash of file handles. Important keys are "log" and "cmd",
-#           the log and command files we are outputting to. This data structure is passed
-#           into nearly all functions because it is also passed into ofile_FAIL() which 
-#           can be called from nearly all functions. ofile_FAIL() outputs an error message
-#           both the summary and log files before exiting, and appends a # DNAORG-FAILURE
-#           to those files before closing them and exiting. This is done so the user
-#           has a record of the reason the execution of the program failed, and it is also
-#           useful for debugging purposes.
+# - $ftr_info_AHR: reference to an array of hashes with feature information for a single model.
+#                   
+# - $sgm_info_AHR: reference to an array of hashes with model-segment information for a single model.
+#                   
+# - $alt_info_HHR: reference to a hash of hashes with alert information.
 #
-# - $ofile_info_HHR: reference to an 'info hash of hashes' in which all 2nd dim hashes are the same
-#                    size and have the same set of keys, and contain information on an output file
-#                    created by the main script (e.g. dnaorg_build.pl). The 1st dim hash keys describe
-#                    the type of information, e.g. "fullpath" is the full path of the file, and 2nd
-#                    dim keys pertain to which file, e.g. "log" for the log file which contains 
-#                    all the output printed to stdout during the course of the execution of the script.
-#                    A special 1d key is 'order' which is used for keeping track of the order that
-#                    the files are added in, mainly so we can output information on them in the same
-#                    order. The HH values for "order" are 1..$num_ofiles, where $num_ofiles is the
-#                    number of total output files (scalar(keys %{$ofile_info_HHR{"order"}})).
-#                    See validateOutputFileInfoHashOfHashes() for a list and explanation of all
-#                    of the keys.
-# 
-# - $ftr_info_HAR: reference to an 'info hash of arrays' in which all arrays are the same 
-#                  size, and contain information on a 'feature' (e.g. CDS or mature peptide)
-#                  The hash has specific keys (e.g. "ref_len"), each of which points to 
-#                  an array with the relevant information. See validateFeatureInfoHashIsComplete()
-#                  for a list and explanation of the keys. The contents of this data structure
-#                  can be printed to file <f> by dnaorg_build.pl or dnaorg_annotate.pl with the
-#                  --ftrinfo <f> command line option.
-#                   
-# - $sgm_info_HAR: similar to ${ftr,seq,err}_info_HAR, except contains information pertaining 
-#                  to each model, >= 1 of which will model a single feature (1 model for single
-#                  exon CDS, 2 models for dual exon CDS, etc.). See 
-#                  validateSegmentInfoHashIsComplete() for a list and explanation of the keys.
-#                  The contents of this data structure can be printed to file <f> by dnaorg_build.pl 
-#                  or dnaorg_annotate.pl with the --mdlinfo <f> command line option.
-#
-# - $seq_info_HAR: similar to ${ftr,mdl,err}_info_HAR, except contains information pertaining 
-#                  to each sequence. See validateSequenceInfoHashIsComplete()
-#                  for a list and explanation of the keys. The contents of this data structure
-#                  can be printed to file <f> by dnaorg_annotate.pl with the --seqinfo <f>
-#                  command line option.
-#                   
-# - $alt_info_HAR: similar to ${ftr,mdl}_info_HAR, except contains information pertaining to each 
-#                  error code. See validateAlertInfoHashIsComplete() for a list and explanation 
-#                  of the keys. The contents of this data structure can be printed to file <f>
-#                  by dnaorg_annotate.pl with the --errinfo <f> command line option.
-#                   
 ########################################################################################
 #
 # List of subroutines in this file, divided into categories. 
-#
-# The names of the subroutines are meant to be descriptive. The
-# convention for subroutine names are to use camel-caps
-# (e.g. determineFeatureTypes()), as opposed to local subroutine names
-# in the scripts dnaorg_build.pl and dnaorg_annotate.pl which use
-# underscores, e.g. determine_feature_types().
-#
-# Subroutines related to the feature and model info hash data
-# structures:
-#   getReferenceFeatureInfo()
-#   fetchReferenceFeatureSequences()
-#
-# Subroutines related to the output info hash:
-#   openAndAddFileToOutputInfo()
-#   addClosedFileToOutputInfo()
-#   helperAddFileToOutputInfo()
-#
-# Subroutines related to the error info hash:
-#   dng_InitializeHardCodedAlertInfoHash()
-#   addToAlertInfoHash()
-#   setIncompatibilityAlertInfoHash()
-#
-# Subroutines related to the feature table error exception array of hashes:
-#   initializeHardCodedFTableAlertExceptions()
-#   addFTableAlertException()
-#
-# Massive wrapper subroutines that call other subroutines:
-#   wrapperGetInfoUsingEdirect()
-#   wrapperFetchAllSequencesAndProcessReferenceSequence()
-#
-# Subroutines related to feature tables output from edirect:
-#   edirectFtableOrMatPept2SingleFeatureTableInfo()
-#   getSingleFeatureTableInfo()
-#   helperBreakdownFac()
-#
-# Subroutines for parsing different file types:
-#   parseMatPeptSpecFile()
-#   parseLengthFile()
-#   parseEdirectFtableFile()
-#   parseEdirectMatPeptideFile()
-#   parseListFile()
-#   parseSpecStartFile()
-#   parseConsOptsFile()
-#   parseNonConsOptsFile()
-#
-# Subroutines related to parsing NCBI coordinate strings:
-#   getStrandStats()
-#   startsStopsStrandsFromCoordsLength()
-#   startsStopsFromCoords()
-#   getLengthsAndCoords()
-#   lengthFromCoords()
-#
-# Subroutines related to parsing dash-coords (non-NCBI) coordinate strings:
-#   dashCoordsStringCommaDelimitedToLength()
-#   dashCoordsToLength()
-#
-# Subroutines related to output:
-#   outputProgressPrior()
-#   outputProgressComplete()
-#   outputConclusionAndCloseFiles()
-#   outputTiming()
-#   ofile_OutputString()
-#   outputBanner()
-#   outputDividingLine()
-# 
-# Subroutines for dumping data structures, usually for debugging:
-#   dumpInfoHashOfArrays()
-#   dumpHashOfHashes()
-#   dumpArrayOfHashesOfHashes()
-#   dumpArrayOfHashes()
-#
-# Subroutines for validating the special data structures:
-#   validateExecutableHash()
-#   validateFeatureInfoHashIsComplete()
-#   validateSegmentInfoHashIsComplete()
-#   validateSequenceInfoHashIsComplete()
-#   validateAlertInfoHashIsComplete()
-#   validateInfoHashOfArraysIsComplete()
-#   validateOutputFileInfoHashOfHashes()
-#   validateAndGetSizeOfInfoHashOfArrays()
-#   getConsistentSizeOfInfoHashOfArrays()
-#   validateFTableAlertExceptions()
-#
-# Subroutines related to codons:
-#   fetchStopCodon()
-#   fetchStartCodon()
-#   fetchCodon()
-#   validateStopCodon()
-#
-# Subroutines related to timings:
-#   ofile_SecondsSinceEpoch()
-#   formatTimeString()
-#
-# Simple utility subroutines for hashes and arrays:
-#   findNonNumericValueInArray()
-#   numNonNumericValueInArray()
-#   maxLengthScalarValueInHash()
-#   maxLengthScalarValueInArray()
-#   findValueInArray()
-#   numberOfDigits()
-# 
-# Simple utility subroutines:
-#   ofile_FAIL()
-#   fileOpenFailure()
-#   utl_RunCommand()
-#   removeDirPath()
-#   removeScriptNameFromString()
-#   dng_RemoveFileUsingSystemRm()
-#   getMonocharacterString()
-#   countLinesInFile()
-#   fileLinesToArray()
-#   arrayToNewlineDelimitedString()
-#   hashKeysToNewlineDelimitedString()
-#   hashValuesToNewlineDelimitedString()
-#   validateFileExistsAndIsNonEmpty()
-#   concatenateListOfFiles()
-#   md5ChecksumOfFile()
-#   nseBreakdown()
-#
-# Miscellaneous subroutines that don't fall into one of the above
-# categories:
-#   dng_StripVersion()
-#   fetchedNameToListName()
-#   fetchSequencesUsingEslFetchCds()
-#   addNameAndBlankSsToStockholmAlignment()
-#   getQualifierValues()
-#   createCmDb()
-#   matpeptValidateCdsRelationships()
-#   checkForSpanningSequenceSegments()
-#   getIndexHashForArray()
-#   waitForFarmJobsToFinish()
-#   splitFastaFile()
 #
 use strict;
 use warnings;
 use Cwd;
 
-#################################################################
-#################################################################
+#########################################################################################
 #
-# Subroutines related to the feature and model info hash data
-# structures:
-#   determineFeatureTypes()
-#   getNumFeaturesAnnotatedByModels()
-#   getReferenceFeatureInfo()
-#   fetchReferenceFeatureSequences()
-#   featureHasChildren()
-#   featureHasParent()
+# Subroutines related to features or segments:
+# dng_FeatureInfoImputeCoords
+# dng_FeatureInfoImputeLength
+# dng_FeatureInfoImputeSourceIdx
+# dng_FeatureInfoImputeParentIdx
+# dng_FeatureInfoImputeOutname()
+# dng_FeatureInfoImpute3paFtrIdx
+# dng_FeatureInfoStartStopStrandArrays()
+# dng_FeatureInfoCountType
+# dng_FeatureInfoValidateCoords
+# dng_FeatureInfoChildrenArrayOfArrays()
+#
+# dng_SegmentInfoPopulate()
+# 
+# dng_FeatureTypeAndTypeIndexString()
+# dng_FeatureTypeIsCds()
+# dng_FeatureTypeIsMaturePeptide()
+# dng_FeatureTypeIsCdsOrMaturePeptide()
+# dng_FeatureChildrenArray()
+# dng_FeatureNumSegments()
+# dng_FeatureIsDuplicate()
+# dng_Feature5pMostPosition()
+# dng_Feature3pMostPosition()
+# dng_FeatureSummarizeSegment()
+# dng_FeatureStartStopStrandArrays()
+# dng_FeatureSummaryStrand
+# dng_FeaturePositionSpecificValueBreakdown()
+# 
+##
+# 
+# Subroutines related to alerts:
+# dng_AlertInfoInitialize()
+# dng_AlertInfoAdd()
+# dng_AlertInfoSetFTableInvalidatedBy
+# 
+##
+# 
+# Subroutines related to parallelization on the compute farm:
+# dng_SubmitJob()
+# dng_WaitForFarmJobsToFinish()
+#
+##
+# 
+# Subroutines related to sequence and model coordinates: 
+# dng_CoordsTokenParse()
+# dng_CoordsLength()
+# dng_CoordsFromLocation()
+# dng_CoordsComplement()
+##
+# 
+# Subroutines related to eutils:
+# dng_EutilsFetchToFile()
+# dng_EutilsFetchUrl()
+# 
+## 
+# 
+# Subroutines related to GenBank files:
+# dng_GenbankParse()
+# dng_GenbankStoreQualifierValue()
+# 
+# Miscellaneous subroutines:
+# dng_ValidateExecutableHash()
+# dng_ValidateCapitalizedDnaStartCodon
+# dng_ValidateCapitalizedDnaStopCodon
+# dng_StripVersion()
 #
 
+
+#################################################################
+# Subroutine: dng_FeatureInfoImputeCoords
+# Incept:     EPN, Wed Mar 13 13:15:33 2019
+# 
+# Purpose:    Fill "coords" values in %{$ftr_info_AHR}
+# 
+# Arguments:
+#   $ftr_info_AHR:   REF to feature information, added to here
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub dng_FeatureInfoImputeCoords { 
+  my $sub_name = "dng_FeatureInfoImputeCoords";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  # ftr_info_AHR should already have array data for keys "type", "location"
+  my @keys_A = ("type", "location");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_info_AHR->[$ftr_idx]{"coords"} = dng_CoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: dng_FeatureInfoImputeLength
+# Incept:     EPN, Thu Mar 14 12:07:16 2019
+# 
+# Purpose:    Fill "length" values in @{$ftr_info_AHR}
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub dng_FeatureInfoImputeLength { 
+  my $sub_name = "dng_FeatureInfoImputeSourceIdx";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  # go through all features and determine length by parsing the 
+  # "coords" value
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $len = 0;
+    my @sgm_start_A  = (); # array of starts, one per segment
+    my @sgm_stop_A   = (); # array of stops, one per segment
+    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, undef, $FH_HR);
+    for(my $s = 0; $s < scalar(@sgm_start_A); $s++) { 
+      $len += abs($sgm_start_A[$s] - $sgm_stop_A[$s]) + 1;
+    }
+    $ftr_info_AHR->[$ftr_idx]{"length"} = $len;
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: dng_FeatureInfoImputeSourceIdx
+# Incept:     EPN, Wed Mar 13 13:20:01 2019
+# 
+# Purpose:    Fill "source_idx" values in @{$ftr_info_AHR}
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub dng_FeatureInfoImputeSourceIdx { 
+  my $sub_name = "dng_FeatureInfoImputeSourceIdx";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  # go through all features and determine duplicates (set 'source_idx')
+  # 
+  # $ftr_info_AHR->{"source_idx"}[$ftr_idx] set to $ftr_idx2 if
+  # - $ftr_idx type is gene
+  # - $ftr_idx2 type is CDS
+  # - $ftr_idx and $ftr_idx2 have identical coords (for all segments)
+  #
+  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
+  #
+  # dies if more than one $ftr_idx2 satisfies above
+  my ($ftr_idx, $ftr_idx2); # feature indices
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_info_AHR->[$ftr_idx]{"source_idx"} = $ftr_idx; # initialize
+    for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+      if($ftr_idx != $ftr_idx2) {
+        if(($ftr_info_AHR->[$ftr_idx]{"type"}  eq "gene") && 
+           ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
+           ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
+          if($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) { 
+            ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine source (two choices) for duplicate feature of type %s and coords %s\n", 
+                                $ftr_info_AHR->[$ftr_idx]{"type"}, $ftr_info_AHR->[$ftr_idx]{"coords"}), "dnaorg", 1, $FH_HR);
+          }
+          $ftr_info_AHR->[$ftr_idx]{"source_idx"} = $ftr_idx2;
+        }
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: dng_FeatureInfoImputeParentIdx
+# Incept:     EPN, Wed Mar 13 13:33:33 2019
+# 
+# Purpose:    Fill "parent_idx" values in @{$ftr_info_AHR}
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub dng_FeatureInfoImputeParentIdx {
+  my $sub_name = "dng_FeatureInfoImputeParentIdx";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  # go through all features and determine parents (set 'parent_idx')
+  # 
+  # $ftr_info_AHR->{"parent_idx"}[$ftr_idx] set to $ftr_idx2 if:
+  # - $ftr_idx type is mat_peptide
+  # - $ftr_idx2 type is CDS
+  # - start of $ftr_idx2 is 5' of or equal to start of $ftr_idx
+  # - stop  of $ftr_idx2 is 3' of or equal to stop of $ftr_idx
+  # - $ftr_idx and $ftr_idx2 are both "+" or both "-" strands
+  # 
+  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
+  #
+  # dies if more than one $ftr_idx2 satisfies above
+  my ($ftr_idx, $ftr_idx2); # feature indices
+  my $ftr_5p_pos;  # 3'-most position for feature $ftr_idx
+  my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
+  my $ftr_5p_pos2; # 5'-most position for feature $ftr_idx2
+  my $ftr_3p_pos2; # 5'-most position for feature $ftr_idx2
+  my $ftr_strand;  # strand for feature $ftr_idx
+  my $ftr_strand2; # strand for feature $ftr_idx2
+  my $found_parent; # flag for if we found a parent or not
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = -1; # initialize
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
+      $ftr_5p_pos = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_strand = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+        $ftr_5p_pos2 = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_3p_pos2 = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_strand2 = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+        $found_parent = 0;
+        if(($ftr_idx != $ftr_idx2) && 
+           ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
+           ($ftr_strand eq $ftr_strand2)) { 
+          if(($ftr_strand eq "+") && 
+             ($ftr_5p_pos2 <= $ftr_5p_pos) &&
+             ($ftr_3p_pos2 >= $ftr_3p_pos)) { 
+            $found_parent = 1;
+          }
+          if(($ftr_strand eq "-") && 
+             ($ftr_5p_pos2 >= $ftr_5p_pos) &&
+             ($ftr_3p_pos2 <= $ftr_3p_pos)) { 
+            $found_parent = 1;
+          }
+          if($found_parent) { 
+            if($ftr_info_AHR->[$ftr_idx]{"parent_idx"} != -1) { 
+              printf("ftr_5p_pos:  $ftr_5p_pos\n");
+              printf("ftr_3p_pos:  $ftr_3p_pos\n");
+              printf("ftr_5p_pos2: $ftr_5p_pos2\n");
+              printf("ftr_3p_pos2: $ftr_3p_pos2\n");
+              ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine parent of mature peptide with coords %s (multiple CDS cover it with coords %s and %s)\n", 
+                                  $ftr_info_AHR->[$ftr_idx]{"coords"},
+                                  $ftr_info_AHR->[($ftr_info_AHR->[$ftr_idx]{"parent_idx"})]{"coords"}, 
+                                  $ftr_info_AHR->[$ftr_idx2]{"coords"}), "dnaorg", 1, $FH_HR);
+            }
+            $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = $ftr_idx2;
+          }
+        }
+      }
+    }
+  }   
+  return 0;
+}
+      
+#################################################################
+# Subroutine: dng_FeatureInfoImputeOutname()
+# Incept:     EPN, Mon Apr  1 06:49:20 2019
+#
+# Purpose:    Fill "outname" values in @{$ftr_info_AHR}
+#             This is defined as:
+#                  $ftr_info_AHR->[$ftr_idx]{"product"} if defined,
+#             else $ftr_info_AHR->[$ftr_idx]{"gene"} if defined,
+#             else string of type and type index (e.g. CDS.1)
+#
+# Arguments: 
+#   $ftr_info_AHR:  REF to array of hashes of feature info
+#
+# Returns:    Feature name string
+#
+# Dies: Never, nothing is validated
+# 
+#################################################################
+sub dng_FeatureInfoImputeOutname { 
+  my $sub_name  = "dng_FeatureInfoImputeOutname";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_AHR, $ftr_idx) = (@_);
+
+  my $nftr = scalar(@{$ftr_info_AHR}); 
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(defined $ftr_info_AHR->[$ftr_idx]{"product"}) { 
+      $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"product"}; 
+    }
+    elsif(defined $ftr_info_AHR->[$ftr_idx]{"gene"}) { 
+      $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"gene"}; 
+    }
+    else { 
+      $ftr_info_AHR->[$ftr_idx]{"outname"} = dng_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: dng_FeatureInfoImpute3paFtrIdx
+# Incept:     EPN, Wed Mar 13 13:39:34 2019
+# 
+# Purpose:    Fill "3pa_ftr_idx" values in @{$ftr_info_AHR}
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub dng_FeatureInfoImpute3paFtrIdx {
+  my $sub_name = "dng_FeatureInfoImpute3paFtrIdx";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  # go through all features and determine adjacent mat_peptides (set '3pa_ftr_idx')
+  # 
+  # $ftr_info_AHR->{"3pa_ftr_idx"}[$ftr_idx] set to $ftr_idx2 if:
+  # - $ftr_idx type is mat_peptide
+  # - $ftr_idx2 type is mat_peptide
+  # - $ftr_idx starts at 1 position 3' of stop position of $ftr_idx
+  # - $ftr_idx and $ftr_idx2 are both "+" or both "-" strands
+  # 
+  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
+  #
+  # dies if more than one $ftr_idx2 satisfies above
+  my ($ftr_idx, $ftr_idx2); # feature indices
+  my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
+  my $ftr_5p_pos2; # 5'-most position for feature $ftr_idx2
+  my $ftr_strand;  # strand for feature $ftr_idx
+  my $ftr_strand2; # strand for feature $ftr_idx2
+  my $found_adj = 0;
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = -1;
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
+      $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR, $ftr_idx, $FH_HR);
+      $ftr_strand = dng_FeatureSummaryStrand($ftr_info_AHR, $ftr_idx, $FH_HR);
+      for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+        $ftr_5p_pos2 = dng_Feature5pMostPosition($ftr_info_AHR, $ftr_idx2, $FH_HR);
+        $ftr_strand2 = dng_FeatureSummaryStrand($ftr_info_AHR, $ftr_idx2, $FH_HR);
+        $found_adj = 0;
+        if(($ftr_idx != $ftr_idx2) && 
+           ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "mat_peptide") &&
+           ($ftr_strand eq $ftr_strand2)) { 
+          if(($ftr_strand eq "+") && (($ftr_3p_pos+1) == ($ftr_5p_pos2))) { 
+            $found_adj = 1;
+          }
+          if(($ftr_strand eq "-") && (($ftr_3p_pos-1) == ($ftr_5p_pos2))) { 
+            $found_adj = 1; 
+          }
+          if($found_adj) { 
+            if($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1) { 
+              ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine 3' mature peptide of mature peptide with coords (multiple mature peptides satisfy criteria)\n", 
+                                  $ftr_info_AHR->[$ftr_idx]{"coords"}), "dnaorg", 1, $FH_HR);
+            }
+            $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = $ftr_idx2; 
+          }
+        }
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: dng_FeatureInfoStartStopStrandArrays()
+# Incept:     EPN, Fri Mar 15 15:39:35 2019
+#
+# Synopsis: For all features in a @{$ftr_info_AHR}, validate 
+#           "coords" values and fill @{$start_AAR}, @{$stop_AAR} and
+#           @{$strand_AAR} based on them.
+# 
+# Arguments:
+#  $ftr_info_AHR:  REF to the feature info array of hashes
+#  $start_AAR:     REF to array of start position array to fill here, FILLED here, can be undef
+#  $stop_AAR:      REF to array of stop position array to fill here, FILLED here, can be undef
+#  $strand_AAR:    REF to array of strand array to fill here with "+" or "-", FILLED here, can be undef
+#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords_str
+#
+#################################################################
+sub dng_FeatureInfoStartStopStrandArrays {
+  my $sub_name = "dng_FeatureInfoStartStopStrandArrays";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $start_AAR, $stop_AAR, $strand_AAR, $FH_HR) = @_;
+
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  my @start_AA  = ();
+  my @stop_AA   = ();
+  my @strand_AA = ();
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    @{$start_AA[$ftr_idx]}  = ();
+    @{$stop_AA[$ftr_idx]}   = ();
+    @{$strand_AA[$ftr_idx]} = ();
+    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@{$start_AA[$ftr_idx]}, \@{$stop_AA[$ftr_idx]}, \@{$strand_AA[$ftr_idx]}, $FH_HR);
+  }
+  if(defined $start_AAR)  { @{$start_AAR}   = @start_AA;   }
+  if(defined $stop_AAR)   { @{$stop_AAR}    = @stop_AA;    }
+  if(defined $strand_AAR) { @{$strand_AAR}  = @strand_AA;  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: dng_FeatureInfoCountType
+# Incept:     EPN, Thu Mar 14 12:16:26 2019
+# 
+# Purpose:    Count number of elements in @{$ftr_info_AHR} 
+#             have type of $type.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $type:          type we are interested in
+#
+# Returns:    void
+# 
+# Dies:       never, nothing is validated
+#
+#################################################################
+sub dng_FeatureInfoCountType { 
+  my $sub_name = "dng_FeatureInfoCountType";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $type) = @_;
+
+  my $ntype = 0;
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if((defined $ftr_info_AHR->[$ftr_idx]{"type"}) && 
+       ($ftr_info_AHR->[$ftr_idx]{"type"} eq $type)) { 
+      $ntype++;
+    }
+  }
+  
+  return $ntype;
+}
+
+#################################################################
+# Subroutine: dng_FeatureInfoValidateCoords
+# Incept:     EPN, Fri Mar 15 14:31:36 2019
+# 
+# Purpose:    Validate that "coords" values are in the proper
+#             format and all less than or equal to $length.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $length:        type we are interested in
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       If a "coords" value is in the incorrect format or
+#             if a position in a "coords" value exceeds $length
+#
+#################################################################
+sub dng_FeatureInfoValidateCoords { 
+  my $sub_name = "dng_FeatureInfoValidateCoords";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $length, $FH_HR) = @_;
+
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $fail_str = ""; # added to if any elements are out of range
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my @start_A  = (); # array of starts, one per segment
+    my @stop_A   = (); # array of stops, one per segment
+    # this sub dng_Will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
+    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, undef, $FH_HR); 
+    foreach my $start (@start_A) { if($start > $length) { $fail_str .= "ftr_idx: $ftr_idx, start position $start > $length\n"; } }
+    foreach my $stop  (@stop_A)  { if($stop  > $length) { $fail_str .= "ftr_idx: $ftr_idx, stop  position $stop  > $length\n"; } }
+  }
+
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some coordinates exceed model length ($length):\n$fail_str\n", "dnaorg", 1, $FH_HR);
+  }
+  
+  return;
+}
 
 #################################################################
 # Subroutine:  dng_FeatureInfoChildrenArrayOfArrays()
@@ -263,6 +613,203 @@ sub dng_FeatureInfoChildrenArrayOfArrays {
   }
   
   return;
+}
+
+#################################################################
+# Subroutine: dng_SegmentInfoPopulate()
+# Incept:     EPN, Wed Mar 13 13:55:56 2019
+#
+# Synopsis: Fill @{$sgm_info_AHR} and add to @{$ftr_info_AHR}
+#           based on existing information in @{$ftr_info_AHR}.
+#
+#           The following values are added to %{$sgm_info_HAR}:
+#                "start":    start position of segment in the reference genome
+#                "stop":     stop position of segment in the reference genome
+#                "strand":   strand of segment in the reference genome
+#                "map_ftr":  the feature index (array index in ftr_info_AHR) 
+#                            this segment is for
+#                "is_5p":    '1' if this segment is the 5'-most segment for its feature
+#                            (when the segments are joined to make the feature, not 
+#                            necessarily in reference genome)
+#                "is_3p":    '1' if this segment is the 3'-most model for its feature
+#                            (when the segments are joined to make the feature, not 
+#                            necessarily in reference genome)
+#
+#           The following values are added to %{$ftr_info_AHR}:
+#                "5p_sgm_idx":   index (in arrays of %sgm_info_HA) of 5'-most segment for this feature
+#                "3p_sgm_idx":   index (in arrays of %sgm_info_HA) of 3'-most segment for this feature
+# Arguments:
+#  $sgm_info_AHR:      ref to array of hashes with information on the segments, FILLED HERE
+#  $ftr_info_AHR:      ref to array of hashes with information on the features, ADDED TO HERE
+#  $FH_HR:             REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if @{$ftr_info_AHR} is not valid upon entry
+#
+#################################################################
+sub dng_SegmentInfoPopulate {
+  my $sub_name = "dng_SegmentInfoPopulate";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($sgm_info_AHR, $ftr_info_AHR, $FH_HR) = @_;
+
+  # ftr_info_AHR should already have array data for keys "type", "coords", "source_idx"
+  my @keys_A = ("type", "coords", "source_idx");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  # initialize new %{$ftr_info_AHR} values
+  my ($ftr_idx, $ftr_idx2, $sgm_idx, $sgm_idx2); # feature and segment indices
+  my ($sgm_start, $sgm_stop, $sgm_strand); # start, stop and strand for a segment
+  my $nseg = 0; 
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = -1; # remains -1 if $ftr_idxs_dup
+    $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = -2; # remains -2 if $ftr_idxs_dup
+    my $ftr_type   = $ftr_info_AHR->[$ftr_idx]{"type"};
+    my $ftr_is_dup = ($ftr_info_AHR->[$ftr_idx]{"source_idx"} == $ftr_idx) ? 0 : 1;
+
+    if(! $ftr_is_dup) { 
+      # determine start and stop positions of all segments
+      my @sgm_start_A  = (); # array of starts, one per segment
+      my @sgm_stop_A   = (); # array of stops, one per segment
+      my @sgm_strand_A = (); # array of strands ("+", "-"), one per segment
+      dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
+      my $cur_nseg = scalar(@sgm_start_A);
+      for(my $s = 0; $s < $cur_nseg; $s++) { 
+        $sgm_info_AHR->[$nseg]{"start"}   = $sgm_start_A[$s];
+        $sgm_info_AHR->[$nseg]{"stop"}    = $sgm_stop_A[$s];
+        $sgm_info_AHR->[$nseg]{"strand"}  = $sgm_strand_A[$s];
+        $sgm_info_AHR->[$nseg]{"map_ftr"} = $ftr_idx;
+        if($s == 0) { 
+          $sgm_info_AHR->[$nseg]{"is_5p"} = 1;
+          $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = $nseg; 
+        }
+        else { 
+          $sgm_info_AHR->[$nseg]{"is_5p"} = 0;
+        }
+        if($s == ($cur_nseg-1)) { 
+          $sgm_info_AHR->[$nseg]{"is_3p"} = 1;
+          $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = $nseg;
+        }
+        else { 
+          $sgm_info_AHR->[$nseg]{"is_3p"} = 0;
+        }
+        $nseg++;
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  dng_FeatureTypeAndTypeIndexString()
+# Incept:      EPN, Sun Mar 10 06:41:53 2019
+#
+# Purpose:     Return a string giving feature type and type index
+#              (e.g. "CDS#2") for feature $ftr_idx.
+# 
+# Arguments: 
+#   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:        index we are interested in
+#   $sep_char:       character to separate type and index in return string
+#                    e.g. "#" or "."
+# 
+# Returns:     String
+#
+################################################################# 
+sub dng_FeatureTypeAndTypeIndexString { 
+  my $nargs_expected = 3;
+  my $sub_name = "dng_FeatureChildrenArray";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_AHR, $ftr_idx, $sep_char) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $type = $ftr_info_AHR->[$ftr_idx]{"type"};
+  my $type_idx = 1;
+  for(my $ftr_idx2 = 0; $ftr_idx2 < $ftr_idx; $ftr_idx2++) { 
+    if($ftr_info_AHR->[$ftr_idx2]{"type"} eq $type) { $type_idx++; }
+  }
+  
+  return $type . $sep_char . $type_idx;
+}
+
+#################################################################
+# Subroutine: dng_FeatureTypeIsCds()
+# Incept:     EPN, Mon Mar 25 11:07:05 2019
+#
+# Purpose:    Is feature $ftr_idx a CDS?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub dng_FeatureTypeIsCds { 
+  my $sub_name = "dng_FeatureTypeIsCds";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: dng_FeatureTypeIsMaturePeptide()
+# Incept:     
+#
+# Purpose:    Is feature $ftr_idx a mature peptide?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub dng_FeatureTypeIsMaturePeptide { 
+  my $sub_name = "dng_FeatureTypeIsMaturePeptide";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") ? 1 : 0;
+}
+
+
+#################################################################
+# Subroutine: dng_FeatureTypeIsCdsOrMaturePeptide()
+# Incept:     EPN, Mon Feb 25 14:30:34 2019
+#
+# Purpose:    Is feature $ftr_idx a CDS or mature peptide?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub dng_FeatureTypeIsCdsOrMaturePeptide { 
+  my $sub_name = "dng_FeatureTypeIsCdsOrMaturePeptide";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
+          ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide")) ? 1 : 0;
 }
 
 #################################################################
@@ -302,49 +849,310 @@ sub dng_FeatureChildrenArray {
 }
 
 #################################################################
-# Subroutine:  dng_FeatureTypeAndTypeIndexString()
-# Incept:      EPN, Sun Mar 10 06:41:53 2019
+# Subroutine: dng_FeatureNumSegments()
+# Incept:     EPN, Tue Mar  5 13:05:38 2019
 #
-# Purpose:     Return a string giving feature type and type index
-#              (e.g. "CDS#2") for feature $ftr_idx.
-# 
+# Purpose:    Return number of segments in feature $ftr_idx.
+#
 # Arguments: 
-#   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
-#   $ftr_idx:        index we are interested in
-#   $sep_char:       character to separate type and index in return string
-#                    e.g. "#" or "."
-# 
-# Returns:     String
+#   $ftr_info_AHR:  REF to array of hashes of feature info
+#   $ftr_idx:       feature index we are interested in
 #
-################################################################# 
-sub dng_FeatureTypeAndTypeIndexString { 
-  my $nargs_expected = 3;
-  my $sub_name = "dng_FeatureChildrenArray";
+# Returns:    Number of segments for $ftr_idx.
+#
+# Dies: Never, nothing is validated
+# 
+#################################################################
+sub dng_FeatureNumSegments { 
+  my $sub_name  = "featureNumSegments";
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_AHR, $ftr_idx, $sep_char) = @_;
-
-  my $nftr = scalar(@{$ftr_info_AHR});
-  my $type = $ftr_info_AHR->[$ftr_idx]{"type"};
-  my $type_idx = 1;
-  for(my $ftr_idx2 = 0; $ftr_idx2 < $ftr_idx; $ftr_idx2++) { 
-    if($ftr_info_AHR->[$ftr_idx2]{"type"} eq $type) { $type_idx++; }
-  }
   
-  return $type . $sep_char . $type_idx;
+  my ($ftr_info_AHR, $ftr_idx) = (@_);
+
+  return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
 }
 
 
+
 #################################################################
+# Subroutine: dng_FeatureIsDuplicate()
+# Incept:      EPN, Sun Mar 10 07:04:24 2019
+#
+# Purpose:    Is feature $ftr_idx a duplicate of another feature?
+#             This is true if $ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0 
+# 
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub dng_FeatureIsDuplicate { 
+  my $sub_name = "dng_FeatureIsDuplicate";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return(($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) ? 1 : 0);
+}
+
 #################################################################
+# Subroutine: dng_Feature5pMostPosition()
+# Incept:      EPN, Fri Mar  8 12:57:21 2019
 #
-# Subroutines related to the error info hash:
-#   dng_AlertInfoInitialize()
-#   addToAlertInfoHash()
-#   setIncompatibilityAlertInfoHash()
-#   setFTableInvalidatedByAlertInfoHash()
-#   processFeatureAlertsForFTable()
-#   populateFTableNoteOrAlert()
+# Purpose:    Return 5'-most position in all segments for a feature.
 #
+# Arguments: 
+#  $coords:  coords value from feature info
+#  $FH_HR:   ref to hash of file handles
+# 
+# Returns:   5'-most position
+#
+# Dies:      if $coords is not parseable.
+#
+################################################################# 
+sub dng_Feature5pMostPosition { 
+  my $sub_name = "dng_Feature5pMostPosition";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($coords, $FH_HR) = @_;
+  
+  if($coords =~ /^(\d+)\.\.\d+/) { 
+    return $1;
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, "dnaorg", 1, $FH_HR); 
+  }
+
+  return; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: dng_Feature3pMostPosition()
+# Incept:      EPN, Fri Mar  8 13:00:31 2019
+#
+# Purpose:    Return 3'-most position in all segments for a feature.
+#
+# Arguments: 
+#  $coords:  coords value from feature info
+#  $FH_HR:   ref to hash of file handles
+# 
+# Returns:   3'-most position
+#
+# Dies:      if $coords is not parseable.
+#
+################################################################# 
+sub dng_Feature3pMostPosition { 
+  my $sub_name = "dng_Feature3pMostPosition";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($coords, $FH_HR) = @_;
+  
+  if($coords =~ /\d+\.\.(\d+)\:[\+\-]$/) { 
+    return $1;
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, "dnaorg", 1, $FH_HR); 
+  }
+
+  return; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: dng_FeatureSummarizeSegment()
+# Incept:      EPN, Fri Mar  1 12:36:36 2019
+#
+# Purpose:    Return a string indicating what model this is
+#             for features that are covered by multiple model spans.
+#
+# Arguments: 
+#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
+#  $sgm_info_AHR: ref to segment info array of hashes, PRE-FILLED
+#  $sgm_idx:      model index
+#
+# Returns:    "" if this is the only model for this feature
+#             string like ", model 1 of 2", if not
+# 
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub dng_FeatureSummarizeSegment { 
+  my $sub_name = "dng_FeatureSummarizeSegment";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx) = @_;
+
+  my $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
+  my $nmdl = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
+  if($nmdl > 1) { 
+    return sprintf(", segment %d of %d", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $nmdl);
+  }
+
+  return ""; # return "" if $nmdl == 1;
+}
+
+
+
+#################################################################
+# Subroutine: dng_FeatureStartStopStrandArrays()
+# Incept:     EPN, Sat Mar  9 05:50:10 2019
+#
+# Synopsis: Given a comma separated coords string, parse it, 
+#           validate it, and fill @{$start_AR}, @{$stop_AR} and
+#           @{$strand_AR} based on it.
+# 
+# Arguments:
+#  $coords:       coordinate string
+#  $start_AR:     REF to start position array to fill here, FILLED here, can be undef
+#  $stop_AR:      REF to stop position array to fill here, FILLED here, can be undef
+#  $strand_AR:    REF to strand array to fill here with "+" or "-", FILLED here, can be undef
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub dng_FeatureStartStopStrandArrays {
+  my $sub_name = "dng_FeatureStartStopStrandArrays";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+  }
+
+  my @start_A  = ();
+  my @stop_A   = ();
+  my @strand_A = ();
+  my ($start, $stop, $strand, $sgm_idx);
+  my @coords_A  = split(",", $coords);
+  my $nsgm = scalar(@coords_A);
+  for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
+    ($start, $stop, $strand) = dng_CoordsTokenParse($coords_A[$sgm_idx], $FH_HR);
+    # dng_CoordsTokenParse() will fail if unable to parse $coords_A[$sgm_idx]
+    push(@start_A,  $start);
+    push(@stop_A,   $stop);
+    push(@strand_A, $strand); 
+  }
+
+  if(defined $start_AR)  { @{$start_AR}   = @start_A;  }
+  if(defined $stop_AR)   { @{$stop_AR}    = @stop_A;   }
+  if(defined $strand_AR) { @{$strand_AR}  = @strand_A;  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: dng_FeatureSummaryStrand
+# Incept:     EPN, Wed Mar 13 15:38:06 2019
+# 
+# Purpose:    Summarize the strandedness of segments for a feature
+#             by parsing the "coords" value.
+# 
+# Arguments:
+#   $coords:   coords string to complement
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    "+" if all segments in $coords are "+"
+#             "-" if all segments in $coords are "-"
+#             "!" if >= 1 segment in $coords is "+"
+#                 and >= 1 segment in $coords is "-"
+#
+# Dies:      if unable to parse $coords
+#
+#################################################################
+sub dng_FeatureSummaryStrand { 
+  my $sub_name = "dng_FeatureSummaryStrand";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($coords, $FH_HR) = @_;
+
+  # Examples we can parse: 
+  # $coords                  return value
+  # -----------------------  -----------------
+  # 1-200:+                  200-1:-
+  # 1-200:+,300-400:+        400-300:-,200-1:-
+
+  my @strand_A = ();
+  dng_FeatureStartStopStrandArrays($coords, undef, undef, \@strand_A, $FH_HR);
+
+  my $npos = 0;
+  my $nneg = 0;
+  foreach my $strand (@strand_A) { 
+    if   ($strand eq "+") { $npos++; }
+    elsif($strand eq "-") { $nneg++; }
+    else { ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", "dnaorg", 1, $FH_HR); }
+  }
+
+  if(($npos >  0) && ($nneg == 0)) { return "+"; }
+  if(($npos == 0) && ($nneg >  0)) { return "-"; }
+  if(($npos == 0) && ($nneg == 0)) { 
+    ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", "dnaorg", 1, $FH_HR); 
+  }
+
+  return; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: dng_FeaturePositionSpecificValueBreakdown()
+# Incept:     EPN, Tue Apr  2 10:22:16 2019
+#
+# Purpose:    Breakdown a list of position specific values
+#             from a string in %{$ftr_info_AHR->[$ftr_idx]}
+#             and fill %HR with key/value pairs.
+# 
+#             String must be in format of one or more tokens
+#             of: "<d>:<s>" separated by ";" if more than one.
+#
+#             If $ftr_info_AHR->[$ftr_idx] does not exist just
+#             return.
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#  $key:            key in $ftr_info_AHR->[$ftr_idx]
+#  $HR:             ref to hash to fill
+#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $ftr_info_AHR->[$ftr_idx] exists but cannot
+#             be parsed.
+#
+################################################################# 
+sub dng_FeaturePositionSpecificValueBreakdown { 
+  my $sub_name = "dng_FeaturePositionSpecificValueBreakdown";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx, $key, $HR, $FH_HR) = @_;
+ 
+  if(defined $ftr_info_AHR->[$ftr_idx]{$key}) { 
+    my @tok_A = split(";", $ftr_info_AHR->[$ftr_idx]{$key});
+    foreach my $tok (@tok_A) { 
+      if($tok =~ /^(\d+)\:(\S+)$/) { 
+        $HR->{$1} = $2;
+      }
+      else { 
+        ofile_FAIL("ERROR, in $sub_name, unable to parse token $tok parsed out of " . $ftr_info_AHR->[$ftr_idx]{$key}, 1, $FH_HR);
+      }
+    }
+  }
+
+  return;
+}
+
 #################################################################
 # Subroutine: dng_AlertInfoInitialize()
 # Incept:     EPN, Fri Mar  4 12:56:43 2016
@@ -663,7 +1471,6 @@ sub dng_AlertInfoAdd {
   return;
 }
 
-
 #################################################################
 # Subroutine: dng_AlertInfoSetFTableInvalidatedBy
 # Incept:     EPN, Thu Nov  1 10:10:03 2018
@@ -709,1362 +1516,6 @@ sub dng_AlertInfoSetFTableInvalidatedBy {
 }
 
 #################################################################
-# Subroutine: dng_ProcessFeatureAlertsForFTable()
-# Incept:     EPN, Thu Nov  1 12:10:34 2018
-#
-# Purpose:    Given a string of alerts that correspond to a specific
-#             sequence and feature, use the %{$alt_info_HHR} and
-#             process that string to determine what (if any) notes,
-#             and alerts should be added to the feature table
-#             for this seq/feature pair.
-#
-# Arguments:
-#   $alt_code_str:           string of errors, comma separated, can be ""
-#   $seq_name:               name of sequence
-#   $ftr_idx:                feature index
-#   $ftr_info_AHR:           REF to array of hashes with information on the features, PRE-FILLED
-#   $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
-#   $alt_ftr_instances_HAHR: REF to hash of array of hashes with per-feature errors, PRE-FILLED
-#   $ret_alert_AR:           REF to array of errors, possibly added to here (not created)
-#   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: number of alerts added to $ret_alert_AR
-#
-# Dies: Never
-#################################################################
-sub dng_ProcessFeatureAlertsForFTable { 
-  my $sub_name = "dng_ProcessFeatureAlertsForFTable";
-  my $nargs_expected = 8;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($alt_code_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HAHR, $ret_alert_AR, $FH_HR) = (@_);
-
-  if($alt_code_str eq "") { 
-    return 0; 
-  }
-
-  # printf("HEYA in $sub_name $seq_name $ftr_idx, $alt_code_str\n");
-
-  # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
-  my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
-  my $alt_code; 
-  foreach $alt_code (split(",", $alt_code_str)) { 
-    if(! defined $alt_info_HHR->{$alt_code}) { 
-      ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", "dnaorg", 1, $FH_HR);
-    }
-    $input_alt_code_H{$alt_code} = 1; 
-  }
-
-  my $valid = 0;
-  my $ret_nadded = 0;
-  foreach $alt_code (sort keys (%input_alt_code_H)) { 
-    $valid = 1; # may be set to '0' below
-    if($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "") { 
-      # printf("\t\tinvalid_by is " . $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} . "\n");
-      my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"});
-      foreach my $alt_code2 (@invalid_by_alt_code_A) {
-        if(exists $input_alt_code_H{$alt_code2}) { 
-          $valid = 0; # $alt_code is invalidated by $alt_code2, which is also present in $alt_code_str
-          # printf("\t\t\tinvalidated by $alt_code2\n");
-        }
-      }
-    }
-    if($valid) { 
-      # we could have more than one instance of this sequence/feature pair
-      my @instance_str_A = ();
-      if($alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} eq "") { 
-        @instance_str_A = ("");
-      }
-      else {
-        @instance_str_A = split(":DNAORGSEP:", $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code});
-      }
-      foreach my $instance_str (@instance_str_A) { 
-        my $alert_str = sprintf("%s: (%s) %s%s", 
-                             $alt_info_HHR->{$alt_code}{"sdesc"}, 
-                             $ftr_info_AHR->[$ftr_idx]{"outname"}, 
-                             $alt_info_HHR->{$alt_code}{"ldesc"}, 
-                             ($instance_str ne "") ? " [" . $instance_str . "]" : "");
-        # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
-        my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
-        if($idx == -1) { 
-          push(@{$ret_alert_AR}, $alert_str); 
-          $ret_nadded++;
-        }
-      }
-    }
-  }
-
-  return $ret_nadded;
-}
-
-#################################################################
-# Subroutine: dng_ProcessSequenceAlertsForFTable()
-# Incept:     EPN, Thu Jan 24 12:09:24 2019
-#
-# Purpose:    Given a string of per-sequence alerts that correspond
-#             to a specific sequence, use the %{$alt_info_HHR} and
-#             process that string to determine what (if any) 
-#             alerts should be added to the feature table
-#             for this sequence. Note that we do not add any 'notes'
-#             as we possibly could in processFeatureAlertsForFTable() 
-#             because we are dealing with the full sequence and not
-#             a feature for a sequence.
-#
-# Arguments:
-#   $alt_code_str:           string of alerts, comma separated, can be ""
-#   $seq_name:               name of sequence
-#   $alt_info_HHR:           REF to hash of hashes with information on the alerts, PRE-FILLED
-#   $alt_seq_instances_HHR:  REF to 2D hashes with per-sequence alerts, PRE-FILLED
-#   $ret_alert_AR:           REF to array of alerts, possibly added to here (not created)
-#   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: number of alerts added to $ret_alert_AR
-#
-# Dies: Never
-#################################################################
-sub dng_ProcessSequenceAlertsForFTable { 
-  my $sub_name = "dng_ProcessSequenceAlertsForFTable";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($alt_code_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $ret_alert_AR, $FH_HR) = (@_);
-
-  if($alt_code_str eq "") { 
-    return 0; 
-  }
-
-  my $ret_nadded = 0;
-  # NOTE: there's some code duplication in this sub with
-  # processFeatureAlertsForFtable(), possibly a chance for additional
-  # subroutines
-
-  # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
-  my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
-  my $alt_code; 
-  my $alt_idx; 
-  foreach $alt_code (split(",", $alt_code_str)) { 
-    if(! defined $alt_info_HHR->{$alt_code}) { 
-      ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", "dnaorg", 1, $FH_HR);
-    }
-    $input_alt_code_H{$alt_code} = 1; 
-  }
-
-  my $valid = 0;
-  foreach $alt_code (sort keys (%input_alt_code_H)) { 
-    $valid = 1; # may be set to '0' below
-    if($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "") { 
-      # printf("\t\tinvalid_by is " . $alt_info_HHR->{"ftbl_invalid_by"}[$alt_idx] . "\n");
-      my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{"ftbl_invalid_by"}[$alt_idx]);
-      foreach my $alt_code2 (@invalid_by_alt_code_A) {
-        if(exists $input_alt_code_H{$alt_code2}) { 
-          $valid = 0; # $alt_idx is invalidated by $alt_code2, which is also present in $alt_str
-          # printf("\t\t\tinvalidated by $alt_code2\n");
-        }
-      }
-    }
-    if($valid) { 
-      # we could have more than one instance of this sequence/feature pair
-      my @instance_str_A = ();
-      if($alt_seq_instances_HHR->{$seq_name}{$alt_code} eq "") { 
-        @instance_str_A = ("");
-      }
-      else {
-        @instance_str_A = split(":DNAORGSEP:", $alt_seq_instances_HHR->{$seq_name}{$alt_code});
-      }
-      foreach my $instance_str (@instance_str_A) { 
-        my $alert_str = sprintf("%s: (*sequence*) %s%s", 
-                             $alt_info_HHR->{$alt_code}{"sdesc"}, 
-                             $alt_info_HHR->{$alt_code}{"ldesc"}, 
-                             ($instance_str ne "") ? " [" . $instance_str . "]" : "");
-        # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
-        my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
-        if($idx == -1) { 
-          push(@{$ret_alert_AR}, $alert_str); 
-          $ret_nadded++;
-        }
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-#
-# Subroutines for parsing different file types:
-#   parseMatPeptSpecFile()
-#   parseLengthFile()
-#   parseEdirectFtableFile()
-#   parseEdirectMatPeptideFile()
-#   parseListFile()
-#   parseSpecStartFile()
-#   parseConsOptsFile()
-#   parseNonConsOptsFile()
-#
-
-
-#################################################################
-# Subroutine:  dng_ParseListFile()
-# Incept:      EPN, Thu Feb 18 13:05:30 2016
-#
-# Purpose:     Given a file name remove the directory path.
-#              For example: "foodir/foodir2/foo.stk" becomes "foo.stk".
-#
-# Arguments: 
-#   $listfile: name of list file to parse
-#   $do_accn:  '1' if lines are accessions, else '0'.
-#              If '1', this changes behavior 
-#              of the function in two ways: 
-#              1) we should strip version from each accession
-#              2) if any accessions are duplicated in the list
-#                 file, we should print all duplicates and die
-#   $line_AR:  REF to array to fill, each element will be a line 
-#              of $listfile with newline removed. FILLED HERE
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd", can be undef
-#
-# Returns:     void, fills @{$line_AR}
-#
-# Dies:        if $listfile does not exist or is not readable, or
-#              if $listfile exists as a directory.
-#              if $do_accn is 1 and >=1 accession occurs more 
-#              than once in $listfile
-################################################################# 
-sub dng_ParseListFile {
-  my $nargs_expected = 4;
-  my $sub_name = "dng_ParseListFile()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name, entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($infile, $do_accn, $line_AR, $FH_HR) = @_;
-
-  # a hash that keeps track of counts of accessions, only used if $do_accn = 1
-  my %accn_ct_H    = (); # key: an accession, value: number of times accession occurs (possibly with different versions)
-  my @accn_order_A = (); # the accessions read in the input file, in order
-
-  if(-d $infile) { 
-    ofile_FAIL("ERROR in $sub_name, trying to read list file $infile, but a directory of the same name exists.", "dnaorg", 1, $FH_HR);
-  }
-
-  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
-
-  while(my $line = <IN>) { 
-    if($line =~ m/\w/) {  # skip blank lines
-      chomp $line;
-      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
-      if($do_accn) { 
-        my $accn = $line;
-        dng_StripVersion(\$accn); # remove version from $accn
-        $accn_ct_H{$accn}++; 
-        if($accn_ct_H{$accn} == 1) { 
-          push(@accn_order_A, $accn);
-        }
-      }
-      push(@{$line_AR}, $line);
-    }
-  }
-
-  # check if we need to exit because we read >= 1 accessions 
-  # more than once
-  if($do_accn) { 
-    my $errmsg = ""; # we may fill this below
-    foreach my $accn (@accn_order_A) { 
-      if($accn_ct_H{$accn} > 1) { 
-        $errmsg .= "$accn\n";
-      }
-    }
-    if($errmsg ne "") { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, the following accessions occur on multiple lines, possibly with different versions:\n%s", $errmsg), "dnaorg", 1, $FH_HR);
-    }
-  }
-    
-  close(IN); 
-
-  return;
-}
-
-#################################################################
-#
-# Subroutines related to parsing NCBI coordinate strings:
-#   getStrandStats()
-#   startsStopsStrandsFromCoordsLength()
-#   startsStopsFromCoords()
-#   getLengthsAndCoords()
-#   lengthFromCoords()
-#
-#################################################################
-# Subroutine: dng_GetStrandStats()
-# Incept:     EPN, Thu Feb 11 15:14:09 2016
-# 
-# Purpose:    Retrieve strand stats from a tbl_HHA.
-#
-# Arguments:
-#   $tbl_HHAR:  ref to hash of hash of arrays
-#   $accn:      1D key to get strand info for
-#   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    6 values:
-#             $nfeatures:  number of features
-#             $npos:       number of genes with all segments on positive strand
-#             $nneg:       number of genes with all segments on negative strand
-#             $nunc:       number of genes with all segments on unknown strand 
-#             $nbth:       number of genes with that don't fit above 3 categories
-#             $strand_str: strand string, summarizing strand of all genes, in order
-#
-# Dies: if 'strand' doesn't exist as a key in $tbl_HHAR
-#       if we can't parse a strand value
-#################################################################
-sub dng_GetStrandStats {
-  my $sub_name = "dng_GetStrandStats()";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
- 
-  my ($tbl_HHAR, $accn, $FH_HR) = @_;
-
-  my $nfeatures; # number of genes in this genome
-  my $npos = 0;  # number of genes on positive strand 
-  my $nneg = 0;  # number of genes on negative strand 
-  my $nbth = 0;  # number of genes with >= 1 segment on both strands (usually 0)
-  my $nunc = 0;  # number of genes with >= 1 segments that are uncertain (usually 0)
-  my $strand_str = "";
-
-  if(! exists $tbl_HHAR->{$accn}{"strand"}) { ofile_FAIL("ERROR in $sub_name, didn't read strand information for accn: $accn", "dnaorg", 1, $FH_HR); }
-
-  $nfeatures = scalar(@{$tbl_HHAR->{$accn}{"coords"}});
-  if ($nfeatures > 0) { 
-    for(my $i = 0; $i < $nfeatures; $i++) { 
-      if   ($tbl_HHAR->{$accn}{"strand"}[$i] eq "+") { $npos++; }
-      elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "-") { $nneg++; }
-      elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "!") { $nbth++; }
-      elsif($tbl_HHAR->{$accn}{"strand"}[$i] eq "?") { $nunc++; }
-      else { ofile_FAIL(sprintf("ERROR in $sub_name, unable to parse strand (%s) for feature %d for $accn\n", $tbl_HHAR->{$accn}{"strand"}[$i], $i+1), "dnaorg", 1, $FH_HR); }
-      $strand_str .= $tbl_HHAR->{$accn}{"strand"}[$i];
-    }
-  }
-
-  return ($nfeatures, $npos, $nneg, $nunc, $nbth, $strand_str);
-}
-#################################################################
-# Subroutine: dng_StartsStopsStrandsFromCoordsLength()
-# Incept:     EPN, Thu Feb 11 14:57:22 2016
-#
-# Purpose:    Determine the starts, stops and strands from a coords string
-#             and length.
-# 
-# Arguments:
-#   $coords:      the coords string
-#   $totlen:      total length of sequence
-#   $do_circular: '1' if we're searching a circular (duplicated) genome and we'll allow stop..start boundary spans
-#   $starts_AR:   ref to array to fill with start positions
-#   $stops_AR:    ref to array to fill with stop positions
-#   $strands_AR:  ref to array to fill with strands of each segment, can be undef
-#   $nsegments_R: ref to scalar that fill with the number of segments
-#   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void; but fills @{$starts_AR}, @{$stops_AR}, and $$nsegments_R.
-#
-# Dies:       if we see a feature that spans stop..start but $do_circular is 0
-#################################################################
-sub dng_StartsStopsStrandsFromCoordsLength { 
-  my $sub_name = "dng_StartsStopsStrandsFromCoordsLength()";
-  my $nargs_expected = 8;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($coords, $totlen, $do_circular, $starts_AR, $stops_AR, $strands_AR, $nsegments_R, $FH_HR) = @_;
-
-  # zero/initialize what we will be determining in this subroutine
-  @{$starts_AR} = ();
-  @{$stops_AR}  = ();
-  $$nsegments_R    = 0;
-  
-  my $orig_coords = $coords;
-  # Examples:
-  # complement(2173412..2176090)
-  # complement(join(226623..226774, 226854..229725))
-
-  # remove 'complement('  ')'
-  my $strand = "+";
-  if($coords =~ m/^complement\(/) { 
-    $coords =~ s/^complement\(//;
-    $strand = "-";
-  }
-  $coords =~ s/\)$//;
-
-  # remove 'join('  ')'
-  $coords =~ s/^join\(//;
-  $coords =~ s/\)$//;
-
-  my @el_A = split(/\s*\,\s*/, $coords);
-
-  my $length = 0;
-  my $cur_strand = $strand;
-  foreach my $el (@el_A) { 
-    # rare case: remove 'complement(' ')' that still exists:
-    $cur_strand = $strand;
-    if($el =~ m/^complement\(/) { 
-      ofile_FAIL("ERROR in $sub_name: found internal complement in coords string $coords, we assume all segments are on same strand...", "dnaorg", 1, $FH_HR); 
-      $el =~ s/^complement\(//;
-      if($cur_strand eq "-") { ofile_FAIL("ERROR in $sub_name, found nested 'complement' annotations in coord string: $coords", "dnaorg", 1, $FH_HR); }
-      $cur_strand = "-";
-    }
-    $el =~ s/\)$//;
-    $el =~ s/\<//; # remove '<'
-    $el =~ s/\>//; # remove '>'
-    if($el =~ m/^(\d+)\.\.(\d+)$/) { 
-      push(@{$starts_AR}, $1);
-      push(@{$stops_AR},  $2);
-      if(defined $strands_AR) { push(@{$strands_AR}, $cur_strand); }
-      $$nsegments_R++;
-    }
-    elsif($el =~ m/^(\d+)$/) { # a single nucleotide
-      push(@{$starts_AR}, $1);
-      push(@{$stops_AR},  $1);
-      if(defined $strands_AR) { push(@{$strands_AR}, $cur_strand); }
-      $$nsegments_R++;
-    }
-    else { 
-      ofile_FAIL("ERROR unable to parse $orig_coords in $sub_name", "dnaorg", 1, $FH_HR); 
-    }
-  }
-
-  # check if we have a spanning segment (that spans stop..start) and if we do
-  # and (! $do_circular) then die, because that shouldn't happen.
-  my $have_spanning_segment = checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nsegments_R, 0, $strand, $totlen); # 1 says: do correct the spanning segment
-  if($have_spanning_segment) { 
-    if(! $do_circular) { 
-      ofile_FAIL("ERROR in $sub_name, found segment that spanned stop..start boundary, but we're not allowing circular genomes...", "dnaorg", 1, $FH_HR); 
-    }
-    else { 
-      # fix it
-      checkForSpanningSequenceSegments($starts_AR, $stops_AR, $nsegments_R, 1, $strand, $totlen); # 0 says: don't correct the spanning segment
-    }
-  }
-
-  return;
-}
-#################################################################
-# Subroutine: dng_StartsStopsFromCoords()
-# Incept:     EPN, Thu Feb 11 14:22:54 2016
-#
-# Purpose:    Extract the starts and stops from a coords string.
-#
-# Args:
-#   $coords:      the coords string
-#   $starts_AR:   REF to array to fill with start positions, FILLED HERE
-#   $stops_AR:    REF to array to fill with stop positions, FILLED HERE
-#   $nsegments_R: REF to scalar that fill with the number of segments, FILLED HERE
-#   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:      void; but fills @{$starts_AR}, @{$stops_AR}, and $$nsegments_R.
-#
-# Dies:         if we can't parse $coords
-#################################################################
-sub dng_StartsStopsFromCoords { 
-  my $sub_name = "dng_StartsStopsFromCoords()";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($coords, $starts_AR, $stops_AR, $nsegments_R, $FH_HR) = @_;
-
-  @{$starts_AR} = ();
-  @{$stops_AR}  = ();
-  $$nsegments_R    = 0;
-  
-  my $orig_coords = $coords;
-  # Examples:
-  # complement(2173412..2176090)
-  # complement(join(226623..226774, 226854..229725))
-
-  # remove 'complement('  ')'
-  $coords =~ s/^complement\(//;
-  $coords =~ s/\)$//;
-
-  # remove 'join('  ')'
-  $coords =~ s/^join\(//;
-  $coords =~ s/\)$//;
-
-  my @el_A = split(/\s*\,\s*/, $coords);
-
-  my $length = 0;
-  foreach my $el (@el_A) { 
-    # rare case: remove 'complement(' ')' that still exists:
-    $el =~ s/^complement\(//;
-    $el =~ s/\)$//;
-    $el =~ s/\<//; # remove '<'
-    $el =~ s/\>//; # remove '>'
-    if($el =~ m/^(\d+)\.\.(\d+)$/) { 
-      push(@{$starts_AR}, $1);
-      push(@{$stops_AR},  $2);
-      $$nsegments_R++;
-    }
-    elsif($el =~ m/^(\d+)$/) { # a single nucleotide
-      push(@{$starts_AR}, $1);
-      push(@{$stops_AR},  $1);
-      $$nsegments_R++;
-    }
-    else { 
-      ofile_FAIL("ERROR in $sub_name, unable to parse coordinates $orig_coords", "dnaorg", 1, $FH_HR); 
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_GetLengthsAndCoords()
-# Incept:     EPN, Thu Feb 11 13:32:34 2016
-#
-# Purpose:    For a given accession, retreive lengths and coorindate
-#             strings of all features.
-#
-# Arguments:
-#   $len_AR:    REF to array to fill with lengths of features in %{$tbl_HAR}, FILLED HERE
-#   $coords_AR: REF to array to fill with coordinates for each gene, FILLED HERE
-#   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void; fills @{$len_AR} and @{$coords_AR}
-#
-#################################################################
-sub dng_GetLengthsAndCoords { 
-  my $sub_name = "dng_GetLengthsAndCoords()";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($tbl_HAR, $len_AR, $coords_AR, $FH_HR) = @_;
-
-  my $ngenes = scalar(@{$tbl_HAR->{"coords"}});
-
-  if ($ngenes > 0) { 
-    for(my $i = 0; $i < $ngenes; $i++) { 
-      push(@{$len_AR},    lengthFromCoords($tbl_HAR->{"coords"}[$i], $FH_HR));
-      push(@{$coords_AR}, $tbl_HAR->{"coords"}[$i]);
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_LengthFromCoords()
-# Incept:     EPN, Thu Feb 11 15:28:20 2016
-#
-# Purpose:    Determine the length of a region from its coords in NCBI format.
-#
-# Arguments:
-#   $coords:  the coords string in NCBI format
-#   $FH_HR:   REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    length in nucleotides implied by $coords  
-#################################################################
-sub dng_LengthFromCoords { 
-  my $sub_name = "dng_LengthFromCoords()";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($coords, $FH_HR) = @_;
-
-  my @starts_A = ();
-  my @stops_A  = ();
-  my $nsegments   = 0;
-
-  startsStopsFromCoords($coords, \@starts_A, \@stops_A, \$nsegments, $FH_HR);
-
-  my $length = 0;
-  for(my $i = 0; $i < $nsegments; $i++) { 
-    $length += abs($starts_A[$i] - $stops_A[$i]) + 1;
-  }
-
-  return $length;
-}
-
-#################################################################
-#################################################################
-#
-# Subroutines related to parsing dash-coords (non-NCBI) coordinate strings:
-#   dashCoordsStringCommaDelimitedToLength()
-#   dashCoordsToLength()
-#
-#################################################################
-# Subroutine: dng_DashCoordsStringCommaDelimitedToLength
-# Incept:     EPN, Fri Mar  4 15:24:25 2016
-#
-# Purpose:    Given a string with >= 1 'dash coordinate' strings
-#             separated by commas (e.g. "10-100,101-250") return the
-#             total length of all coordinates summed together.  Die if
-#             the string is not in the correct format.
-#
-# Arguments:
-#   $dash_coords_str: the dashed coords string
-#   $caller_sub_name: name of caller, can be undef
-#   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: total length
-#
-# Dies:    - if we can't parse $dash_coords_str because it's
-#            in an unexpected format
-#          - if any coordinate is negative
-#
-#################################################################
-sub dng_DashCoordsStringCommaDelimitedToLength {
-  my $sub_name = "dng_DashCoordsStringCommaDelimitedToLength()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($dash_coords_str, $caller_sub_name, $FH_HR) = (@_);
-  
-  my $len = 0;
-  my @start_stop_A = split(",", $dash_coords_str);
-  foreach my $start_stop (@start_stop_A) { 
-    $len += dashCoordsToLength($start_stop, $caller_sub_name, $FH_HR); 
-    # dashCoordsToLength() will die if $start_stop has a negative index or is incorrectly formatted in some other way
-  }
-  
-  return $len;
-}
-
-#################################################################
-# Subroutine: dng_DashCoordsToLength
-# Incept:     EPN, Fri Mar  4 15:29:07 2016
-#
-# Purpose:    Given a string with 1 'dash coordinate' 
-#             (e.g. "10-100), return the length implied.
-#             Die if either start or stop is negative or
-#             if there's something else is wrong with the
-#             format of $dash_coords
-# Arguments:
-#   $start_stop: the dashed coords string
-#   $caller_sub_name: name of caller, can be undef
-#   $FH_HR:      REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: length
-#
-# Dies:    - if we can't parse $start_stop because it's
-#            in an unexpected format
-#          - if any coordinate is negative
-#
-#################################################################
-sub dng_DashCoordsToLength { 
-  my $sub_name = "dng_DashCoordsToLength";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($start_stop, $caller_sub_name, $FH_HR) = (@_);
-
-  my $len = undef;
-
-  # make sure that we $start_stop is not valid except for the fact that
-  # $start or $stop is a negative position (we do not allow negative positions
-  # in this function)
-  if($start_stop =~ m/^\-+\d+\-\-\d+$/) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, %sstart and stop positions are negative in coords string $start_stop", 
-                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
-  }
-  elsif($start_stop =~ m/^\-\d+\-\d+$/) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, %sstart position is negative in coords string $start_stop", 
-                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
-  }
-  elsif($start_stop =~ m/^\d+\-\-\d+$/) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, %sstop position is negative in coords string $start_stop", 
-                        (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
-  }
-
-  # if we get here, $start_stop is either valid, or invalid for a reason other
-  # than having a negative position
-  if($start_stop =~ m/^(\d+)\-(\d+)$/) { 
-    # $start_stop is valid
-    $len = (abs($1 - $2) + 1);
-  }
-  else { 
-    # $start_stop is not valid, for some reason other than just having a negative position
-    ofile_FAIL("ERROR in $sub_name, called by $caller_sub_name, unable to parse start-stop string: $start_stop", "dnaorg", 1, $FH_HR); 
-  }
-
-  return $len;
-}
-#################################################################
-#
-# Subroutines for dumping data structures, usually for debugging:
-#   dumpInfoHashOfArrays()
-#   dumpHashOfHashes()
-#   dumpArrayOfHashesOfHashes()
-#   dumpArrayOfHashes()
-#
-
-
-#################################################################
-# Subroutine: dng_ArrayOfHashesKeepKeys()
-# Incept:     EPN, Wed Mar 13 11:33:26 2019
-#
-# Purpose:    Delete all key/value pairs from all hashes
-#             in an array of hashes, except those in @{$keys_AR}.
-#
-# Args:       $AHR:      ref of the array of hashes
-#             $keys_HR:  ref to hash with key values to keep
-#
-# Returns:    void
-# 
-# Dies:       never
-#
-#################################################################
-sub dng_ArrayOfHashesKeepKeys { 
-  my $sub_name = "dng_ArrayOfHashesKeepKeys";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($AHR, $keys_HR) = @_;
-
-  my $nel1 = scalar(@{$AHR});
-  for(my $i1 = 0; $i1 < $nel1; $i1++) { 
-    foreach my $key (keys %{$AHR->[$i1]}) { 
-      if(! exists $keys_HR->{$key}) { 
-        delete $AHR->[$i1]{$key};
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-#################################################################
-#
-# Subroutines for validating the special data structures:
-#   validateExecutableHash()
-#   validateFeatureInfoHashIsComplete()
-#   validateSegmentInfoHashIsComplete()
-#   validateSequenceInfoHashIsComplete()
-#   validateAlertInfoHashIsComplete()
-#   validateInfoHashOfArraysIsComplete()
-#   validateOutputFileInfoHashOfHashes()
-#   validateAndGetSizeOfInfoHashOfArrays()
-#   getConsistentSizeOfInfoHashOfArrays()
-#
-#################################################################
-# Subroutine:  dng_ValidateExecutableHash()
-# Incept:      EPN, Sat Feb 13 06:27:51 2016
-#
-# Purpose:     Given a reference to a hash in which the 
-#              values are paths to executables, validate
-#              those files are executable.
-#
-# Arguments: 
-#   $execs_HR: REF to hash, keys are short names to executable
-#              e.g. "cmbuild", values are full paths to that
-#              executable, e.g. "/usr/local/infernal/1.1.1/bin/cmbuild"
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns:     void
-#
-# Dies:        if one or more executables does not exist#
-#
-################################################################# 
-sub dng_ValidateExecutableHash { 
-  my $nargs_expected = 2;
-  my $sub_name = "dng_ValidateExecutableHash()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($execs_HR, $FH_HR) = @_;
-
-  my $fail_str = undef;
-  foreach my $key (sort keys %{$execs_HR}) { 
-    if(! -e $execs_HR->{$key}) { 
-      $fail_str .= "\t$execs_HR->{$key} does not exist.\n"; 
-    }
-    elsif(! -x $execs_HR->{$key}) { 
-      $fail_str .= "\t$execs_HR->{$key} exists but is not an executable file.\n"; 
-    }
-  }
-  
-  if(defined $fail_str) { 
-    ofile_FAIL("ERROR in $sub_name(),\n$fail_str", "dnaorg", 1, $FH_HR);
-  }
-
-  return;
-}
-
-
-#################################################################
-# Subroutine: dng_ValidateSequenceInfoHashIsComplete()
-# Incept:     EPN, Tue Mar 15 05:35:22 2016
-#
-# Purpose:    Validate that a 'sequence info' hash is valid and complete.
-#             'Complete' means it has all the expected keys, each of which is an identically sized array.
-#             The expected keys are:
-#                "seq_name":    name of the sequence in the sequence file we create and search in
-#                "len":         length of the sequence with name in "seq_name"in the sequence file we create and search in
-#                "accn_name":   accession of the sequence in GenBank
-#
-#             Optional keys are:
-#                "ifile_spos":  starting model position for this aligned sequence, read from cmalign --ifile output file, 
-#                               -1 if aligned sequence spans 0 model positions
-#                "ifile_epos":  ending   model position for this aligned sequence, read from cmalign --ifile output file,
-#                               -1 if aligned sequence spans 0 model positions
-#                "ifile_ins":   string of all inserts in this aligned sequence, read from cmalign --ifile output file 
-#                               "" if no inserts; else format is : 1 or more "<c_x>:<u_x>:<i_x>;" where
-#                               <c_x> is a model position; if 0: inserts before 1st consensus posn)
-#                               <u_x> is the *unaligned* sequence position of the first inserted residue after <c_x>.
-#                               <i_x> is the number of inserted residues after position <c_x>
-#                               
-#             If @{exceptions_AR} is non-empty, then keys in 
-#             in that array need not be in %{$seq_info_HAR}.
-#
-# Arguments:
-#   $seq_info_HAR:  REF to hash of arrays of sequence information
-#   $exceptions_AR: REF to array of keys that may be excluded from the hash
-#   $opts_HHR:      REF to the 2D hash of command line options
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: Number of elements in each and every array of %{$seq_info_HAR}
-#
-# Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
-#            does not exist in $seq_info_HAR
-#          - if two arrays in $seq_info_HAR are of different sizes
-#          - if any key listed in @{$exceptions_AR} is not one of the expected keys
-#
-#################################################################
-sub dng_ValidateSequenceInfoHashIsComplete { 
-  my $sub_name = "dng_ValidateSequenceInfoHashIsComplete()";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($seq_info_HAR, $exceptions_AR, $opt_HHR, $FH_HR) = (@_);
-  
-  my @expected_keys_A = ("seq_name", "len", "accn_name", "len");
-
-  my $nseq = validateInfoHashOfArraysIsComplete($seq_info_HAR, \@expected_keys_A, $exceptions_AR, $FH_HR);
-  # above call will die if we are invalid
-
-  # make sure we do not have any duplicate accessions/names
-  my %name_H = ();
-  my %accn_H = ();
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    if(exists $name_H{$seq_name}) { 
-      ofile_FAIL("ERROR in $sub_name, sequence name $seq_name exists twice", "dnaorg", 1, $FH_HR);
-    }
-    if(exists $accn_H{$accn_name}) { 
-      ofile_FAIL("ERROR in $sub_name, accession $accn_name exists twice", "dnaorg", 1, $FH_HR);
-    }
-    $name_H{$seq_name} = 1;
-    $accn_H{$accn_name} = 1;
-  }
-
-  return $nseq;
-}
-
-#################################################################
-# Subroutine: dng_ValidateInfoHashOfArraysIsComplete()
-# Incept:     EPN, Tue Feb 16 11:10:40 2016
-#
-# Purpose:    Validate that a 'info' hash is valid and complete.
-#             'Complete' means it has all the expected keys, each of 
-#             which is an identically sized array.
-#             The expected keys are passed in in @{$expected_AR}.
-#             If @{exceptions_AR} is non-empty, then keys in 
-#             in that array do not need to be in %{$info_HAR},
-#             but they can be.
-#
-# Arguments:
-#   $info_HAR:         REF to hash of arrays of information
-#   $expected_keys_AR: REF to array of keys that are expected to be in the hash
-#   $exceptions_AR:    REF to array of keys in @{$expected_keys_AR} that may be excluded from the hash
-#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: Number of elements in each and every array of %{$info_HAR}
-#
-# Dies:    - if one of the expected keys (listed above and not in @{$exceptions_AR})
-#            does not exist in $info_HAR
-#          - if two arrays in $info_HAR are of different sizes
-#          - if any other key other than those listed above exist in ${%info_HAR}
-#          - if any key listed in @{$exceptions_AR} is not one of the expected keys
-#################################################################
-sub dng_ValidateInfoHashOfArraysIsComplete { 
-  my $sub_name = "dng_ValidateInfoHashOfArraysIsComplete()";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($info_HAR, $expected_keys_AR, $exceptions_AR, $FH_HR) = (@_);
-  
-  # make sure our exceptions are actually in the expected array
-  if(defined $exceptions_AR) { 
-    foreach my $key (@{$exceptions_AR}) { 
-      if(utl_AFindNonNumericValue($expected_keys_AR, $key, $FH_HR) == -1) { 
-        ofile_FAIL("ERROR in $sub_name, excepted value $key is not an expected key in the feature info hash", "dnaorg", 1, $FH_HR);
-      }
-    }
-  }
-
-  # make the list of keys we'll require, this is all expected keys minus any exceptions in @{$exceptions_AR}
-  my @reqd_keys_A = ();
-  foreach my $key (@{$expected_keys_AR}) { 
-    if((! defined $exceptions_AR) || (utl_AFindNonNumericValue($key, $exceptions_AR, $FH_HR) == -1)) { 
-      push(@reqd_keys_A, $key);
-    }
-  }
-                         
-  my $nftr = dng_ValidateAndGetSizeOfInfoHashOfArrays($info_HAR, \@reqd_keys_A, $FH_HR);  
-
-  return $nftr;
-}
-
-#################################################################
-# Subroutine: dng_ValidateOutputFileInfoHashOfHashes()
-# Incept:     EPN, Mon Feb 29 09:21:51 2016
-#
-# Purpose:    Validate an 'output file' info hash of hashes.
-#             A valid info hash of hashes has the same set of 2d
-#             keys for each 1d key except for "FH". The set of 1d keys is 
-#             "order": integer, the order in which this element was added
-#             "fullpath":  full path to the file 
-#             "nodirpath": file name, "fullpath" minus directories
-#             "mainout":   '1' if this file should be listed in the main output,
-#                          '0' if it should only be listed in the .list file
-#             "desc":      short description of the file
-#             "FH":        open file handle for this file, or undef             
-#
-#             For "FH", the value for each $ofile_info_HH{"FH"}{$key2d} can
-#             be either defined or not defined.
-#
-# Arguments:
-#   $ofile_info_HHR:  REF to hash of hashes of output file information
-# 
-# Returns: Number of elements in each and every 2d hash (except possibly %{$ofile_info_HHR->{"FH"}})
-#
-# Dies:    - if one of the expected keys (listed above) does not exist in $ofile_info_HHR
-#          - if two 2d hashes in $ofile_info_HHR (besides %{$ofile_info_HHR->{"FH"}}) are of different sizes
-#          - if two 2d hashes in $ofile_info_HHR (besides %{$ofile_info_HHR->{"FH"}}) have different set of keys
-#################################################################
-sub dng_ValidateOutputFileInfoHashOfHashes { 
-  my $sub_name = "dng_ValidateOutputFileInfoHashOfHashes()";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($ofile_info_HHR) = (@_);
-  
-  # we can only pass $FH_HR to ofile_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  my @same_keys1d_A = ("order", "fullpath", "nodirpath", "mainout", "desc"); # all of these 2nd dim hashes should have same set of keys
-  my @all_keys1d_A   = (@same_keys1d_A, "FH");             # all 1d keys
-  my $i;     # a counter
-  my $key1d; # a 1st dim key
-  my $key2d; # a 2nd dim key
-
-  # make sure we don't have any extra 1d keys we don't expect
-  foreach $key1d (keys %{$ofile_info_HHR}) { 
-    my $found_it = 0;
-    foreach my $tmp_key1d (@all_keys1d_A) { 
-      if($key1d eq $tmp_key1d) { 
-        $found_it = 1;
-      }
-    }
-    if($found_it == 0) { 
-      ofile_FAIL("ERROR in $sub_name, unexpected 1d key $key1d exists.", "dnaorg", 1, $FH_HR);
-    }     
-  } 
-  
-  # make sure all 2nd dim keys for all 1st dim keys are the same as the 2nd dim keys for 1st dim key "order"
-  if(! defined $ofile_info_HHR->{"order"}) { 
-    ofile_FAIL("ERROR in $sub_name, expected 1d key order does not exist.", "dnaorg", 1, $FH_HR);
-  }
-  foreach my $key1d (@same_keys1d_A) { 
-    if($key1d ne "order") { # skip "order"
-      if(! defined $ofile_info_HHR->{$key1d}) { 
-        ofile_FAIL("ERROR in $sub_name, expected 1d key $key1d does not exist.", "dnaorg", 1, $FH_HR);
-      }
-      # we make sure the set of 2d keys in $ofile_info_HHR->{"order"} and $ofile_info_HHR->{$key1d} are 
-      # identical in 2 steps:
-      # 1) make sure all 2d keys from $ofile_info_HHR->{"order"} are also in $ofile_info_HHR->{"order"}
-      foreach $key2d (keys %{$ofile_info_HHR->{"order"}}) { 
-        if(! defined $ofile_info_HHR->{$key1d}{$key2d}) { 
-          ofile_FAIL("ERROR in $sub_name, 2nd dim key $key2d exists for ofile_info_HHR->{order} but not for ofile_info_HHR->{$key1d}", "dnaorg", 1, $FH_HR); 
-        }
-      }
-      # 2) make sure all the 2d keys in $ofile_info_HHR->{$key1d} are also in $ofile_info_HHR->{"order"}
-      foreach $key2d (keys %{$ofile_info_HHR->{$key1d}}) { 
-        if(! defined $ofile_info_HHR->{"order"}{$key2d}) { 
-          ofile_FAIL("ERROR in $sub_name, 2nd dim key $key2d exists for ofile_info_HHR->{order} but not for ofile_info_HHR->{$key1d}", "dnaorg", 1, $FH_HR); 
-        }
-      }
-    }
-  }
-
-  # make sure that $ofile_info_HHR->{"order"} has all values 1..$nkey2d
-  my $nkey2d = scalar(keys %{$ofile_info_HHR->{"order"}});
-  my @check_A = (); 
-  for ($i = 1; $i <= $nkey2d; $i++) { 
-    $check_A[$i] = 0; # changed to 1 when we observe it below
-  }
-  foreach $key2d (keys %{$ofile_info_HHR->{"order"}}) { 
-    $check_A[$ofile_info_HHR->{"order"}{$key2d}] = 1;
-  }
-  for ($i = 1; $i <= $nkey2d; $i++) { 
-    if($check_A[$i] != 1) { 
-      ofile_FAIL("ERROR in $sub_name, invalid values for ofile_info_HH{order}, $nkey2d 2nd dim keys, but value $i does not exist", "dnaorg", 1, $FH_HR);
-    }
-  }
-
-  return $nkey2d;
-}
-
-#################################################################
-# Subroutine: dng_ValidateAndGetSizeOfInfoHashOfArrays()
-# Incept:     EPN, Thu Feb 11 15:06:40 2016
-#
-# Purpose:    Validate that the arrays in a hash of arrays are all the
-#             same size, and return that size.
-#
-# Arguments:
-#   $HAR:          REF to hash of array to validate
-#   $reqd_keys_AR: REF to array of keys that must be in $HAR, else we die
-#   $FH_HR:        REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: number of elements (scalar(@{$HAR->{$key}})) for all keys $key
-#          because we validate that all arrays are the same size, and die
-#          if that is not true
-#
-# Dies:    if not all of the arrays (for all keys) are not the same size
-#          OR if $reqd_keys_AR is defined and $HAR->{$key} does not exist for
-#          >= 1 of the keys in $reqd_keys_AR.
-#################################################################
-sub dng_ValidateAndGetSizeOfInfoHashOfArrays {
-  my $sub_name = "dng_ValidateAndGetSizeOfInfoHashOfArrays()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($HAR, $reqd_keys_AR, $FH_HR) = (@_);
-  
-  #  make sure that all required keys exist
-  if(defined $reqd_keys_AR && @{$reqd_keys_AR}) { 
-    foreach my $reqd_key (@{$reqd_keys_AR}) { 
-      if(! exists $HAR->{$reqd_key}) { 
-        ofile_FAIL("ERROR in $sub_name, required key $reqd_key does not exist in the hash of arrays", "dnaorg", 1, $FH_HR); 
-      }
-    }
-  }
-
-  # get size and check consistency
-  my $nel = dng_GetConsistentSizeOfInfoHashOfArrays($HAR, $FH_HR); 
-  # this will die if not all elements are the same size, or any values are undefined
-
-
-  return $nel;
-}
-
-#################################################################
-# Subroutine: dng_GetConsistentSizeOfInfoHashOfArrays()
-# Incept:     EPN, Fri Mar  4 08:57:17 2016
-#
-# Purpose:    Return number of hash keys ($nkey) in a 'info hash',
-#             which is actually a hash of arrays.
-#             No keys are required, but at least one must exist.
-#             Die if all existing keys do not have the exact
-#             same number of ($nkey) elements in their arrays.
-#             Die if any values are undefined.
-#
-# Arguments:
-#   $info_HAR:  REF to hash of arrays of hash
-#   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: Number of elements in each and every array of %{$info_HAR}
-#
-# Dies:    - if two arrays in %{$HAR} are of different sizes
-#          - if %{$HAR} has no keys
-#          - if any value of $HAR{$key}[] is undef 
-#################################################################
-sub dng_GetConsistentSizeOfInfoHashOfArrays { 
-  my $sub_name = "dng_GetConsistentSizeOfInfoHashOfArrays()";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($HAR, $FH_HR) = (@_);
-  
-  if((! %{$HAR}) || (scalar(keys %{$HAR}) == 0)) { 
-    ofile_FAIL("ERROR in $sub_name, hash of arrays does not exist or has no keys", "dnaorg", 1, $FH_HR);
-  }
-
-  # get size and check consistency: each array should be the same size
-  my $nel = -1;
-  my $nkey = scalar(keys %{$HAR});
-  my $nel_key = undef;
-  my $nel_key_values = ""; # the element values for $HAR->{$nel_key}, only used if we encounter an error
-  foreach my $key (sort keys %{$HAR}) { 
-    if($nel == -1) { 
-      $nel = scalar(@{$HAR->{$key}});
-      $nel_key = $key;
-      foreach my $el (@{$HAR->{$key}}) { 
-        $nel_key_values .= "$el ";
-      }
-    }
-    else { 
-      if($nel != scalar(@{$HAR->{$key}})) { 
-        ofile_FAIL(sprintf("ERROR in $sub_name, expected number of elements in array for key $key is $nel (from key $nel_key) but %d exist for key $key!\nElement values from key $nel_key are: %s", scalar(@{$HAR->{$key}}), $nel_key_values), "dnaorg", 1, $FH_HR);
-      }
-    }
-    # check that all values are defined
-    for(my $i = 0; $i < $nel; $i++) { 
-      if(! defined $HAR->{$key}[$i]) { 
-        ofile_FAIL("ERROR in $sub_name, undefined value: key: $key index: $i", "dnaorg", 1, $FH_HR); 
-      }        
-    }
-  }
-
-  return $nel;
-}
-
-#################################################################
-# Subroutine: dng_GetSizeOfInfoHashOfArrays()
-# Incept:     EPN, Tue Mar  5 08:00:34 2019
-#
-# Purpose:    Quickly determine the size of 'info hash' without
-#             validating it, using key $key.
-#
-# Arguments:
-#   $info_HAR:  REF to info hash of arrays
-#   $key:       key to use to get size
-#   $FH_HR:     REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns: Number of elements in @{$info_HAR->{$key}}
-#
-# Dies:    - if $info_HAR is undefined or $info_HAR->{$key} does not exist
-#
-#################################################################
-sub dng_GetSizeOfInfoHashOfArrays { 
-  my $sub_name = "dng_GetSizeOfInfoHashOfArrays()";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($info_HAR, $key, $FH_HR) = (@_);
-  
-  if(! defined $info_HAR) { 
-    ofile_FAIL("ERROR in $sub_name, input info_HAR undefined", "dnaorg", 1, $FH_HR);
-  }
-  if(! exists $info_HAR->{$key}) { 
-    ofile_FAIL("ERROR in $sub_name, key $key does not exist in info_HAR hash", "dnaorg", 1, $FH_HR);
-  }
-
-  return(scalar(@{$info_HAR->{$key}}));
-}
-
-#################################################################
-# Subroutine: dng_ValidateCapitalizedDnaStopCodon()
-# Incept:     EPN, Mon Mar 14 13:47:57 2016
-# 
-# Purpose:    Given an already capitalized DNA codon, return '1' 
-#             if it's a valid stop codon, else return 0.
-#
-# Args:
-#  $codon:  the codon
-#
-# Returns:    The codon as a string
-#
-#################################################################
-sub dng_ValidateCapitalizedDnaStopCodon {
-  my $sub_name = "dng_ValidateCapitaliedDnaStopCodon";
-  my $nargs_exp = 1;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($codon) = @_;
-  
-  if($codon eq "TAA" || 
-     $codon eq "TGA" || 
-     $codon eq "TAG" || 
-     $codon eq "TAR") { 
-    return 1;
-  }
-
-  return 0;
-}
-
-
-#################################################################
-# Subroutine: dng_ValidateCapitalizedDnaStartCodon()
-# Incept:     EPN, Sat Feb 23 10:01:55 2019
-# 
-# Purpose:    Given an already capitalized DNA codon, return '1' 
-#             if it's a valid start codon, else return 0.
-#
-# Args:
-#  $codon:  the codon
-#
-# Returns:    The codon as a string
-#
-#################################################################
-sub dng_ValidateCapitalizedDnaStartCodon {
-  my $sub_name = "dng_ValidateCapitaliedDnaStartCodon";
-  my $nargs_exp = 1;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($codon) = @_;
-  
-  if($codon eq "ATG") { 
-    return 1;
-  }
-
-  return 0;
-}
-
-#################################################################
-#################################################################
-#
-# Simple utility subroutines for hashes and arrays:
-#   utl_AFindNonNumericValue()
-#   numNonNumericValueInArray()
-#   maxLengthScalarKeyInHash()
-#   maxLengthScalarValueInHash()
-#   maxLengthScalarValueInArray()
-#   numberOfDigits()
-#   findValueInArray()
-#   sumArray()
-#   sumHashValues()
-
-#
-
-#################################################################
-# Subroutine:  dng_NumNonNumericValueInArray()
-# Incept:      EPN, Fri Mar 11 06:34:51 2016
-#
-# Purpose:     Returns number of times nonnumeric value 
-#              $value exists in @{$AR}. Returns 0 if
-#              it doesn't exist.
-#
-# Arguments: 
-#   $AR:       REF to array 
-#   $value:    the value we're looking for in @{$AR}
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns:     Number of occurrences of $value in @{$AR}.
-#
-# Dies:        if $value is numeric, or @{$AR} is not defined.
-################################################################# 
-sub dng_NumNonNumericValueInArray { 
-  my $nargs_expected = 3;
-  my $sub_name = "dng_NumNonNumericValueInArray()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($AR, $value, $FH_HR) = @_;
-
-  if(verify_real($value)) { 
-    ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", "dnaorg", 1, $FH_HR);
-  }
-
-  if(! defined $AR) { 
-    ofile_FAIL("ERROR in $sub_name, array reference is not defined", "dnaorg", 1, $FH_HR);
-  }
-
-  my $ct = 0;
-  for(my $i = 0; $i < scalar(@{$AR}); $i++) {
-    if($AR->[$i] eq $value) { 
-      $ct++;
-    }
-  }
-
-  return $ct;
-}
-
-
-#################################################################
-# Subroutine: dng_FindValueInArray()
-# Incept:     EPN, Tue Mar  8 11:26:03 2016
-# Synopsis:   Look for a value in an array and return the index
-#             of it, if found, else return -1. If it exists more than
-#             once, return the minimum index.
-#
-# Arguments:
-#  $value:   value to look for
-#  $AR:      array to look in
-#
-# Returns:    void
-# 
-#################################################################
-sub dng_FindValueInArray { 
-  my $sub_name = "dng_FindValueInArray()";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
- 
-  my ($value, $AR, $FH_HR) = @_;
-
-  if(verify_real($value)) { # compare with ==
-    for(my $i = 0; $i < scalar(@{$AR}); $i++) { 
-      my $el = $AR->[$i];
-      if(verify_real($el) && ($value == $el)) { 
-        return $i;
-      }
-    }
-  }
-  else { # compare with 'eq'
-    for(my $i = 0; $i < scalar(@{$AR}); $i++) { 
-      my $el = $AR->[$i];
-      if((! verify_real($el)) && ($value eq $el)) { 
-        return $i;
-      }
-    }
-  }
-  return -1;
-}  
-
-#################################################################
-# Subroutine:  dng_SumArray()
-# Incept:      EPN, Wed Feb  7 13:53:07 2018
-# 
-# Purpose:     Sum the scalar values in an array
-#
-# Arguments: 
-#   $AR: reference to the array
-# 
-# Returns:     Sum of all values in the array
-#
-################################################################# 
-sub dng_SumArray {
-  my $nargs_expected = 1;
-  my $sub_name = "dng_SumArray()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($AR) = $_[0];
-
-  my $sum = 0;
-  foreach my $el (@{$AR}) { 
-    $sum += $el; 
-  }
-  return $sum;
-}
-
-#################################################################
-# Subroutine:  dng_SumHashValues()
-# Incept:      EPN, Wed Feb  7 13:58:25 2018
-# 
-# Purpose:     Sum the values for all keys in a hash
-#
-# Arguments: 
-#   $HR: reference to the hash
-# 
-# Returns:     Sum of all values in the hash
-#
-################################################################# 
-sub dng_SumHashValues {
-  my $nargs_expected = 1;
-  my $sub_name = "dng_SumHashValues()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($HR) = $_[0];
-
-  my $sum = 0;
-  foreach my $key (keys (%{$HR})) { 
-    $sum += $HR->{$key};
-  }
-  return $sum;
-}
-
-#################################################################
-#################################################################
-#
-# Simple utility subroutines:
-#   utl_RunCommand()
-#   removeDirPath()
-#   removeScriptNameFromString()
-#   utl_FileRemoveUsingSystemRm()
-#   getMonocharacterString()
-#   countLinesInFile()
-#   validateFileExistsAndIsNonEmpty()
-#   concatenateListOfFiles()
-#   md5ChecksumOfFile()
-#   nseBreakdown()
-#
-#################################################################
 # Subroutine: dng_SubmitJob()
 # Incept:      EPN, Wed Feb  6 12:35:04 2019
 #
@@ -2102,597 +1553,8 @@ sub dng_SubmitJob {
   return;
 }
 
-
 #################################################################
-# Subroutine:  dng_RemoveScriptNameFromString()
-# Incept:      EPN, Wed Mar  2 14:04:14 2016
-#
-# Purpose:     Remove a 'dnaorg_*' script name from a string and
-#              return the modified version. 
-#              For example: "NC_001346.dnaorg_annotate' becomes 'NC_001346'
-#
-# Arguments: 
-#   $string: string to potentially modify
-# 
-# Returns:     The string $string with any script names removed.
-#
-################################################################# 
-sub dng_RemoveScriptNameFromString { 
-  my $sub_name = "dng_RemoveScriptNameFromString()";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my $string = $_[0];
-
-  my @script_A = ("dnaorg_build", "dnaorg_annotate");
-
-  foreach my $script (@script_A) { 
-    $string =~ s/\.$script\./\./g; # if bordered by two '.', leave one of them
-    $string =~ s/\.$script$//g;    # if this ends the string and a '.' precedes it, remove ".$string"
-    $string =~ s/$script//g;       # if it's a substr, but not caught by the two commands above, remove it
-  }
-
-  return $string;
-}
-
-#################################################################
-# Subroutine:  dng_RemoveListOfFiles()
-# Incept:      EPN, Fri Oct 19 12:44:05 2018 [ribovore]
-#
-# Purpose:     Remove each file in an array of file
-#              names. If there are more than 100 files, then
-#              remove 100 at a time.
-# 
-# Arguments: 
-#   $files2remove_AR:  REF to array with list of files to remove
-#   $caller_sub_name:  name of calling subroutine (can be undef)
-#   $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-#   $FH_HR:            ref to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies:        If one of the rm -rf commands fails.
-#
-################################################################# 
-sub dng_RemoveListOfFiles { 
-  my $nargs_expected = 4;
-  my $sub_name = "dng_RemoveListOfFiles()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($files2remove_AR, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
-
-  my $i = 0; 
-  my $nfiles = scalar(@{$files2remove_AR});
-
-  while($i < $nfiles) { 
-    my $file_list = "";
-    my $up = $i+100;
-    if($up > $nfiles) { $up = $nfiles; }
-    for(my $j = $i; $j < $up; $j++) { 
-      $file_list .= " " . $files2remove_AR->[$j];
-    }
-    my $rm_cmd = "rm $file_list"; 
-    utl_RunCommand($rm_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-    $i = $up;
-  }
-  
-  return;
-}
-
-#################################################################
-# Subroutine: dng_GetMonocharacterString()
-# Incept:     EPN, Thu Mar 10 21:02:35 2016
-#
-# Purpose:    Return a string of length $len of repeated instances
-#             of the character $char.
-#
-# Arguments:
-#   $len:   desired length of the string to return
-#   $char:  desired character
-#   $FH_HR: REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:  A string of $char repeated $len times.
-# 
-# Dies:     if $len is not a positive integer
-#
-#################################################################
-sub dng_GetMonocharacterString {
-  my $sub_name = "dng_GetMonocharacterString";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($len, $char, $FH_HR) = @_;
-
-  if(! verify_integer($len)) { 
-    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is not a non-negative integer", "dnaorg", 1, $FH_HR);
-  }
-  if($len < 0) { 
-    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is a negative integer", "dnaorg", 1, $FH_HR);
-  }
-    
-  my $ret_str = "";
-  for(my $i = 0; $i < $len; $i++) { 
-    $ret_str .= $char;
-  }
-
-  return $ret_str;
-}
-
-#################################################################
-# Subroutine:  dng_CountLinesInFile()
-# Incept:      EPN, Tue Mar  1 09:36:56 2016
-#
-# Purpose:     Count the number of lines in a file
-#              by opening it and reading in all lines.
-#
-# Arguments: 
-#   $filename:         file that we are checking on
-#   $FH_HR:            ref to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies:        If $filename does not exist or cannot be opened for reading.
-#
-################################################################# 
-sub dng_CountLinesInFile { 
-  my $nargs_expected = 2;
-  my $sub_name = "dng_CountLinesInFile()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($filename, $FH_HR) = @_;
-
-  my $nlines = 0;
-  open(IN, $filename) || fileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
-  while(<IN>) { 
-    $nlines++;
-  }
-  close(IN);
-
-  return $nlines;
-}
-
-#################################################################
-# Subroutine:  dng_FileLinesToArray()
-# Incept:      EPN, Tue Nov 21 10:26:58 2017
-#
-# Purpose:     Store each non-blank line in a file as an element
-#              in an array, after removing newline.
-#
-# Arguments: 
-#   $filename:                   file that we are parsing
-#   $remove_trailing_whitespace: '1' to remove trailing whitespace in each line, '0' not to
-#   $AR:                         ref to array to add to
-#   $FH_HR:                      ref to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies:        If $filename does not exist or cannot be opened for reading.
-#
-################################################################# 
-sub dng_FileLinesToArray { 
-  my $nargs_expected = 4;
-  my $sub_name = "dng_FileLinesToArray()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($filename, $remove_trailing_whitespace, $AR, $FH_HR) = @_;
-
-  open(IN, $filename) || fileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
-  while(my $line = <IN>) { 
-    if($line =~ /\S/) { 
-      chomp $line;
-      if($remove_trailing_whitespace) { $line =~ s/\s*$//; }
-      push(@{$AR}, $line);
-    }
-  }
-  close(IN);
-
-  return;
-}
-
-#################################################################
-# Subroutine:  dng_ArrayToNewlineDelimitedString()
-# Incept:      EPN, Fri Dec 14 09:21:41 2018
-#
-# Purpose:     Return a newline delimited string with all values of an array.
-#
-# Arguments: 
-#   $AR:     ref to array
-# 
-# Returns:     string
-# 
-# Dies:        Never.
-#
-################################################################# 
-sub dng_ArrayToNewlineDelimitedString {
-  my $nargs_expected = 1;
-  my $sub_name = "dng_ArrayToNewlineDelimitedString";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($AR) = @_;
-
-  my $retstr = "";
-  foreach my $el (@{$AR}) { 
-    $retstr .= $el . "\n";
-  }
-  if($retstr eq "") { 
-    $retstr = "\n";
-  }
-  return $retstr;
-}
-
-#################################################################
-# Subroutine:  dng_ArrayToString()
-# Incept:      EPN, Tue Mar 12 13:07:03 2019
-#
-# Purpose:     Return a string with all values of an array delimited
-#              by $delim_char;
-#
-# Arguments: 
-#   $AR:         ref to array
-#   $delim_char: character to delimit with
-# 
-# Returns:     string
-# 
-# Dies:        Never.
-#
-################################################################# 
-sub dng_ArrayToString { 
-  my $nargs_expected = 2;
-  my $sub_name = "dng_ArrayToString";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($AR, $delim_char) = (@_);
-
-  my $retstr = "";
-  if(@{$AR}) { 
-    $retstr .= $AR->[0];
-    for(my $i = 1; $i < scalar(@{$AR}); $i++) { 
-      $retstr .= $delim_char . $AR->[$i];
-    }
-  }
-  return $retstr;
-}
-
-#################################################################
-# Subroutine:  dng_hashKeysToNewlineDelimitedString()
-# Incept:      EPN, Fri Dec 14 09:25:24 2018
-#
-# Purpose:     Return a newline delimited string with all (sorted) keys in a hash.
-#
-# Arguments: 
-#   $HR:     ref to hash
-# 
-# Returns:     string
-# 
-# Dies:        Never.
-#
-################################################################# 
-sub dng_HashKeysToNewlineDelimitedString {
-  my $nargs_expected = 1;
-  my $sub_name = "dng_HashKeysToNewlineDelimitedString";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($HR) = @_;
-
-  my $retstr = "";
-  foreach my $el (sort keys %{$HR}) { 
-    $retstr .= $el . "\n";
-  }
-  if($retstr eq "") { 
-    $retstr = "\n";
-  }
-  return $retstr;
-}
-
-#################################################################
-# Subroutine:  dng_hashValuesToNewlineDelimitedString()
-# Incept:      EPN, Fri Dec 14 09:26:16 2018
-#
-# Purpose:     Return a newline delimited string with all values in a hash.
-#
-# Arguments: 
-#   $HR:     ref to hash
-# 
-# Returns:     string
-# 
-# Dies:        Never.
-#
-################################################################# 
-sub dng_HashValuesToNewlineDelimitedString {
-  my $nargs_expected = 1;
-  my $sub_name = "dng_HashValuesToNewlineDelimitedString";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($HR) = @_;
-
-  my $retstr = "";
-  foreach my $el (sort keys %{$HR}) { 
-    $retstr .= $HR->{$el} . "\n";
-  }
-  if($retstr eq "") { 
-    $retstr = "\n";
-  }
-  return $retstr;
-}
-
-
-#################################################################
-# Subroutine : dng_ValidateFileExistsAndIsNonEmpty()
-# Incept:      EPN, Thu May  4 09:30:32 2017
-#
-# Purpose:     Check if a file exists and is non-empty. 
-#
-# Arguments: 
-#   $filename:         file that we are checking on
-#   $filedesc:         description of file
-#   $calling_sub_name: name of calling subroutine (can be undef)
-#   $do_die:           '1' if we should die if it does not exist.  
-#   $FH_HR:            ref to hash of file handles, can be undef
-# 
-# Returns:     Return '1' if it does and is non empty
-#              Return '0' if it does not exist (and ! $do_die)
-#              Return '-1' if it exists but is empty (and ! $do_die)
-#              Return '-2' if it exists as a directory (and ! $do_die)
-#
-# Dies:        If file does not exist or is empty and $do_die is 1.
-#              if $filename is undefined (regardless of value of $do_die).
-# 
-################################################################# 
-sub dng_ValidateFileExistsAndIsNonEmpty { 
-  my $nargs_expected = 5;
-  my $sub_name = "dng_ValidateFileExistsAndIsNonEmpty()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($filename, $filedesc, $calling_sub_name, $do_die, $FH_HR) = @_;
-
-  if(! defined $filename) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, %sfilename%s is undef", 
-                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
-                         (defined $filedesc         ? " ($filedesc)" : "")),
-                 undef, 1, $FH_HR); 
-  }
-
-  if(-d $filename) {
-    if($do_die) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s exists but is a directory.", 
-                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
-                         (defined $filedesc         ? " ($filedesc)" : "")),
-                 undef, 1, $FH_HR); 
-    }
-    return -2;
-  }
-  elsif(! -e $filename) { 
-    if($do_die) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s does not exist.", 
-                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
-                         (defined $filedesc         ? " ($filedesc)" : "")),
-                 undef, 1, $FH_HR); 
-    }
-    return 0;
-  }
-  elsif(! -s $filename) { 
-    if($do_die) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s exists but is empty.", 
-                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
-                         (defined $filedesc         ? " ($filedesc)" : "")),
-                 undef, 1, $FH_HR); 
-    }
-    return -1;
-  }
-  
-  return 1;
-}
-
-
-#################################################################
-# Subroutine:  dng_md5ChecksumOfFile()
-# Incept:      EPN, Fri May 27 14:02:30 2016
-#
-# Purpose:     Use md5sum to get a checksum of a file, return
-#              the checksum. Not efficient. Creates a temporary
-#              file and then deletes it.
-# 
-# Arguments: 
-#   $file:             REF to array of all files to concatenate
-#   $caller_sub_name:  name of calling subroutine (can be undef)
-#   $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-#   $FH_HR:            ref to hash of file handles
-# 
-# Returns:     md5sum of the file.
-# 
-# Dies:        If the file doesn't exist or the command fails.
-#
-################################################################# 
-sub dng_Md5ChecksumOfFile { 
-  my $nargs_expected = 4;
-  my $sub_name = "dng_Md5ChecksumOfFile()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($file, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
-
-  if(! -s $file) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name%s, file to get md5 checksum of ($file) does no exist or is empty", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
-  }
-
-  my $out_file = removeDirPath($file . ".md5sum");
-  utl_RunCommand("md5sum $file > $out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
-
-  open(MD5, $out_file) || fileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
-  #194625f7c3e2a5129f9880c7e29f63de  wnv.lin2.matpept.in
-  my $md5sum = <MD5>;
-  chomp $md5sum;
-  if($md5sum =~ /^(\S+)\s+(\S+)$/) { 
-    $md5sum = $1;
-  }
-  else { 
-    ofile_FAIL(sprintf("ERROR in $sub_name%s, unable to parse md5sum output: $md5sum", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
-  }
-  close(MD5);
-
-  utl_FileRemoveUsingSystemRm($out_file, $caller_sub_name, $opt_HHR, $FH_HR);
-
-  return $md5sum;
-}
-
-#################################################################
-# Subroutine:  dng_nseBreakdown()
-# Incept:      EPN, Wed Jan 30 09:50:07 2013 [rfam-family-pipeline:Utils.pm]
-#
-# Purpose  : Checks if $nse is of format "name/start-end" and if so
-#          : breaks it down into $n, $s, $e, $str (see 'Returns' section)
-# 
-# Arguments: 
-#   $seqname:  sequence name, possibly in "name/start-end" format
-# 
-# Returns:     5 values:
-#              '1' if seqname was of "name/start-end" format, else '0'
-#              $n:   name ("" if seqname does not match "name/start-end")
-#              $s:   start, maybe <= or > than $e (0 if seqname does not match "name/start-end")
-#              $e:   end,   maybe <= or > than $s (0 if seqname does not match "name/start-end")
-#              $str: strand, 1 if $s <= $e, else -1
-# 
-# Dies:        Never
-#
-################################################################# 
-sub dng_NseBreakdown {
-  my $nargs_expected = 1;
-  my $sub_name = "dng_NseBreakdown()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($sqname) = $_[0];
-
-  my $n;       # sqacc
-  my $s;       # start, from seq name (can be > $end)
-  my $e;       # end,   from seq name (can be < $start)
-  my $str;     # strand, 1 if $start <= $end, else -1
-
-  if($sqname =~ m/^(\S+)\/(\d+)\-(\d+)\s*/) {
-    ($n, $s, $e) = ($1,$2,$3);
-    $str = ($s <= $e) ? 1 : -1; 
-    return (1, $n, $s, $e, $str);
-  }
-  return (0, "", 0, 0, 0); # if we get here, $sqname is not in name/start-end format
-}
-
-#################################################################
-#
-# Miscellaneous subroutines that don't fall into one of the above
-# categories:
-#   dng_StripVersion()
-#   fetchedNameToListName()
-#   fetchSequencesUsingEslFetchCds()
-#   addNameAndBlankSsToStockholmAlignment()
-#   getQualifierValues()
-#   createCmDb()
-#   matpeptValidateCdsRelationships()
-#   checkForSpanningSequenceSegments()
-#   getIndexHashForArray()
-#
-#################################################################
-# Subroutine: dng_StripVersion()
-# Incept:     EPN, Thu Feb 11 14:25:52 2016
-#
-# Purpose:    Given a ref to an accession.version string, remove the version.
-#
-# Arguments: 
-#   $accver_R: ref to accession version string to remove version from
-#
-# Returns:    Nothing, $$accver_R has version removed
-#
-# Dies:       never
-#################################################################
-sub dng_StripVersion {
-  my $sub_name  = "dng_StripVersion()";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($accver_R) = (@_);
-
-  $$accver_R =~ s/\.[0-9]*$//; # strip version
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_FetchedNameToListName()
-# Incept:     EPN, Thu Feb 11 14:25:52 2016
-#
-# Purpose:    Convert a fetched sequence name via efetch to the 
-#             name that was used as input to efetch, with a version.
-#
-# Arguments: 
-#   $fetched_name: name from fasta file efetch returned
-#
-# Returns:    $list_name, processed fetched_name
-#
-# Dies:       never
-#################################################################
-sub dng_FetchedNameToListName { 
-  my $sub_name  = "fetchedNameToListName";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($fetched_name) = (@_);
-
-  my $list_name = $fetched_name;
-  
-  $list_name =~ s/^gi\|?\d+\|\w+\|//; # get rid of everything before the accession number
-  if($list_name =~ /^pdb\|(\S+)\|(\S+)$/) {  # special case of PDB accessions
-    $list_name = $1 . "_" . $2;
-  }
-  else { 
-    $list_name =~ s/\|$//;              # get rid of end | or
-    $list_name =~ s/\|\w+//;            # get rid of end | and everything after |
-  }
-  $list_name =~ s/\.[0-9]*$//;        # strip version
-
-  return $list_name;
-}
-
-
-#################################################################
-# Subroutine:  dng_getIndexHashForArray()
-# Incept:      EPN, Tue Mar  1 14:11:38 2016
-#
-# Purpose:     Create an 'index hash' %{$index_HR} for an array
-#              @{$AR}, such that $index_HR{$value} = $n, if 
-#              $AR->[$n] = $value. 
-#              
-# Arguments: 
-#   $AR:       REF to the array, PRE-FILLED
-#   $index_HR: REF to the hash to fill, FILLED HERE
-#   $FH_HR:    REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-# Dies:        If there are any duplicate values in array as
-#              measured by eq, or if any elements in the array
-#              are numeric (as determined by verify_real() from
-#              epn-options.pm)
-#
-################################################################# 
-sub dng_GetIndexHashForArray { 
-  my $nargs_expected = 3;
-  my $sub_name = "dng_GetIndexHashForArray()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($AR, $index_HR, $FH_HR) = @_;
-
-  # initialize
-  %{$index_HR} = (); 
-
-  for(my $i = 0; $i < scalar(@{$AR}); $i++) { 
-    my $el = $AR->[$i];
-    # verify it's not a number, we don't want numbers because
-    # then we can't be sure that $index_HR->{$num} will be 
-    # testable using 'eq' due to precision issues with storing
-    # numbers. 
-    if(verify_real($el)) { 
-      ofile_FAIL("ERROR in $sub_name(), value $el is numeric"); 
-    }
-    if(exists $index_HR->{$el}) { 
-      ofile_FAIL("ERROR in $sub_name(), the value $el appears twice in the array"); 
-    }
-    $index_HR->{$el} = $i;
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  dng_waitForFarmJobsToFinish()
+# Subroutine:  dng_WaitForFarmJobsToFinish()
 # Incept:      EPN, Mon Feb 29 16:20:54 2016
 #              EPN, Wed Aug 31 09:07:05 2016 [moved from dnaorg_annotate.pl to dnaorg.pm]
 #
@@ -2857,1206 +1719,39 @@ sub dng_WaitForFarmJobsToFinish {
 }
 
 #################################################################
-# Subroutine:  dng_SplitFastaFile()
-# Incept:      EPN, Tue Mar  1 09:30:10 2016
-#
-# Purpose: Split up a fasta file into <n> smaller files by calling
-#          the esl-ssplit perl script.
-#
-# Arguments: 
-#  $esl_ssplit:      path to the esl-ssplit.pl script to use
-#  $fasta_file:      fasta file to split up
-#  $nfiles:          desired number of files to split $fasta_file into, -1 for one file for each sequence
-#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information
-# 
-# Returns:    Number of files actually created (can differ from requested
-#             amount (which is $nfiles)).
-#
-# Dies:       if esl-ssplit command fails
-#
-################################################################# 
-sub dng_SplitFastaFile { 
-  my $sub_name = "dng_SplitFastaFile()";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($esl_ssplit, $fasta_file, $nfiles, $opt_HHR, $ofile_info_HHR) = @_;
-
-  # we can only pass $FH_HR to ofile_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  my $outfile = $fasta_file . ".esl-ssplit";
-  my $cmd = undef;
-  if($nfiles == -1) { # special case: put 1 file per sequence
-    $cmd = "$esl_ssplit -v $fasta_file 1 > $outfile";
-  }
-  else { 
-    $cmd = "$esl_ssplit -v -r -n $fasta_file $nfiles > $outfile";
-  }
-  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-
-  # parse output to determine exactly how many files were created:
-  # $esl_ssplit will have output exactly 1 line per fasta file it created
-  my $nfiles_created = dng_CountLinesInFile($outfile, $FH_HR);
-
-  if(! opt_Get("--keep", $opt_HHR)) { 
-    utl_RunCommand("rm $outfile", opt_Get("-v", $opt_HHR), 0, $FH_HR);
-  }
-
-  return $nfiles_created;
-}
-
-
-#################################################################
-# Subroutine:  dng_CmsearchWrapper()
-# Incept:      EPN, Mon Mar 18 14:44:46 2019
-#
-# Purpose:     Run one or more cmsearch jobs on the farm
-#              or locally, after possibly splitting up the input
-#              sequence file with dng_SplitFastaFile and 
-#              then calling dng_CmalignOrCmsearchWrapperHelper(). 
-#
-# Arguments: 
-#  $execs_HR:              ref to executables with "esl-ssplit" and "cmsearch"
-#                          defined as keys
-#  $round:                 round index (1 or 2)
-#  $out_root:              string for naming output files
-#  $seq_file:              name of sequence file with all sequences to run against
-#  $tot_len_nt:            total length of all nucleotides in $seq_file
-#  $progress_w:            width for outputProgressPrior output
-#  $mdl_file:              name of model file to use
-#  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
-#  $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:        REF to 2D hash of output file information
-#
-# Returns:     void, updates $$nfa_created_R with number of
-#              fasta files created.
-# 
-# Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
-#       command fails if we're running locally
-################################################################# 
-sub dng_CmsearchWrapper { 
-  my $sub_name = "dng_CmsearchWrapper";
-  my $nargs_expected = 10;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($execs_HR, $round, $out_root, $seq_file, $tot_len_nt, $progress_w,
-      $mdl_file, $mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $nfasta_created = 0; # number of fasta files created by esl-ssplit
-  my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
-  my $start_secs; # timing start
-  my $do_parallel = opt_Get("-p", $opt_HHR);
-
-  # set up output file names
-  my @concat_keys_A = (); # %out_file_HAR keys we are going to concatenate files for
-  my %concat_HA = ();     # hash of arrays of all files to concatenate together
-  my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err"
-  @concat_keys_A = ("tblout");
-  if($do_parallel) { push(@concat_keys_A, "err"); }
-  foreach my $out_key (@concat_keys_A) { 
-    @{$concat_HA{$out_key}} = ();
-  }    
-
-  my @seq_file_A  = (); # [0..$nr-1]: name of sequence file for this run
-  my %out_file_HA = (); # hash of arrays ([0..$nr-1]) of output files for cmsearch runs (filled by dng_CmalignOrCmsearchWrapperHelper())
-  my $nr = 1;
-
-  if($do_parallel) { 
-    # -p used: we need to split up the sequence file, and submit a separate 
-    # cmsearch job for each
-    my $targ_nseqfiles = dng_SplitNumSeqFiles($tot_len_nt, $opt_HHR);
-    if($targ_nseqfiles > 1) { # we are going to split up the fasta file 
-      $nr = dng_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
-      # dng_SplitFastaFile will return the actual number of fasta files created, 
-      # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
-      for(my $i = 0; $i < $nr; $i++) { 
-        $seq_file_A[$i] = $seq_file . "." . ($i+1);
-      }
-    }
-    else { # targ_nseqfiles is 1, no need to split
-      $seq_file_A[0] = $seq_file;
-    }
-  }
-  else { # -p not used
-    $seq_file_A[0] = $seq_file;
-  }
-    
-  dng_CmalignOrCmsearchWrapperHelper($execs_HR, $out_root . ".r" . $round, $progress_w, $mdl_file, $mdl_name, 
-                                     \@seq_file_A, \%out_file_HA, undef, undef, $opt_HHR, $ofile_info_HHR); 
-  
-  # concatenate all the tblout and possibly .err files into one 
-  foreach $out_key (@concat_keys_A) { 
-    my $concat_file = $out_root . ".r" . $round . ".cmsearch." . $out_key;
-    dng_ConcatenateListOfFiles($out_file_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-    # dng_ConcatenateListOfFiles() removes individual files unless --keep enabled
-    my $out_root_key = sprintf("r%s.concat.%s$out_key", $round, (defined $mdl_name) ? $mdl_name . "." : "");
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $out_root_key, $concat_file, 0, "round $round search $out_key file");
-  }
-
-  # remove sequence files if we created any
-  if(($do_parallel) && (! opt_Get("--keep", $opt_HHR))) { 
-    dng_RemoveListOfFiles(\@seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-  }
-
-  return;
-}
-
-
-#################################################################
-# Subroutine:  dng_CmalignOrCmsearchWrapperHelper()
-# Incept:      EPN, Mon Mar 18 14:37:54 2019
-#
-# Purpose:     Run one or more cmalign or cmsearch jobs on the farm
-#              or locally.
-#
-#              Helper subroutine for cmalignWrapper() and
-#              cmsearchWrapper() subroutines.
-#              see those sub's "Purpose" for more details.
-#
-# Arguments: 
-#  $execs_HR:              ref to hash with paths to cmalign, cmsearch and cmfetch
-#  $out_root:              string for naming output files
-#  $progress_w:            width for outputProgressPrior output
-#                          also serves as flag for what 'round' (1 or 2) we are in
-#                          $progress_w will be > 0 for round 1 and < 0 for round 2
-#                          in round 2 $progress_w is actually -1 * $progress_w
-#  $mdl_file:              name of model file to use
-#  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
-#  $seq_file_AR:           ref to array of sequence file names for each cmalign/nhmmscan call, PRE-FILLED
-#  $out_file_HAR:          ref to hash of arrays of output file names, FILLED HERE 
-#  $success_AR:            ref to array of success values, can be undef if $executable is "cmsearch"
-#                          $success_AR->[$j] set to '1' if job finishes successfully
-#                                            set to '0' if job fails due to mx overflow (must be cmalign)
-#  $mxsize_AR:             ref to array of required matrix sizes, can be undef if $executable is "cmsearch"
-#                          $mxsize_AR->[$j] set to value readh from cmalign output, if $success_AR->[$j] == 0
-#                                           else set to '0'
-#  $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:        REF to 2D hash of output file information
-#
-# Returns:     void
-# 
-# Dies: If an executable doesn't exist, or command fails (and its not a cmalign allowed failure)
-#
-################################################################# 
-sub dng_CmalignOrCmsearchWrapperHelper { 
-  my $sub_name = "dng_CmalignOrCmsearchWrapperHelper";
-  my $nargs_expected = 11;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($execs_HR, $out_root, $progress_w, $mdl_file, $mdl_name, $seq_file_AR, $out_file_HAR, $success_AR, $mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $do_cmalign     = (defined $mxsize_AR) ? 1 : 0;
-  my $do_parallel    = opt_Get("-p", $opt_HHR) ? 1 : 0;
-  my $program_choice = ($do_cmalign) ? "cmalign" : "cmsearch";
-  my $nfasta_created = 0;     # number of fasta files created by esl-ssplit
-  my $log_FH         = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
-  my $nseq_files     = scalar(@{$seq_file_AR});
-
-  # determine description of the runs we are about to do, 
-  # depends on $do_parallel, $round, and ($progress_w < 0), and 
-  my $desc = "";
-  if($do_parallel) { 
-    if($progress_w < 0) { # flag for 'rerunning'
-      $desc = "Resubmitting $nseq_files $program_choice jobs to the farm to find seqs too divergent to align";
-      $progress_w *= -1;
-    }
-    else { 
-      $desc = "Submitting $nseq_files $program_choice jobs to the farm"
-    }
-  }      
-  else { 
-    if($progress_w < 0) { # flag for 'rerunning'
-      $desc = "Rerunning $program_choice locally to find sequences that are too divergent to align";
-      $progress_w *= -1;
-    }
-    else { 
-      $desc = "Running $program_choice locally";
-    }
-  }
-  my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
-
-  # define output file names
-  %{$out_file_HAR} = ();
-  my @out_keys_A = ();
-  my $s;
-  my $key;
-  if($do_cmalign) { 
-    @out_keys_A = ("stdout", "err", "ifile", "tfile", "stk");
-  }
-  else { 
-    @out_keys_A = ("stdout", "err", "tblout");
-  }
-  foreach $key (@out_keys_A) { 
-    @{$out_file_HAR->{$key}} = ();
-  }
-
-  for($s = 0; $s < $nseq_files; $s++) { 
-    foreach $key (@out_keys_A) { 
-      $out_file_HAR->{$key}[$s] = $out_root . ".s" . $s . "." . $key;
-    }
-    if($do_cmalign) { 
-      $success_AR->[$s] = dng_RunCmalign($execs_HR, $mdl_file, $mdl_name, $seq_file_AR->[$s], 
-                                         $out_file_HAR->{"stdout"}[$s], $out_file_HAR->{"ifile"}[$s], $out_file_HAR->{"tfile"}[$s], 
-                                         $out_file_HAR->{"stk"}[$s], $out_file_HAR->{"err"}[$s],
-                                         (defined $mxsize_AR) ? \$mxsize_AR->[$s] : undef, 
-                                         $opt_HHR, $ofile_info_HHR);   
-    }
-    else { 
-      dng_RunCmsearch($execs_HR, $mdl_file, $mdl_name, $seq_file_AR->[$s], 
-                      $out_file_HAR->{"stdout"}[$s], $out_file_HAR->{"tblout"}[$s], $out_file_HAR->{"err"}[$s],
-                      $opt_HHR, $ofile_info_HHR);   
-      # we don't bother with @{$success_AR->[$s]} for cmsearch, if dng_runCmsearch() returns the run was successful
-    }
-    # if we are running parallel, ignore the return values from the run{Cmalign,Cmsearch} subroutines
-    # dng_WaitForFarmJobsToFinish() will fill these later
-    if(($do_parallel) && (defined $success_AR)) { $success_AR->[$s] = 0; }
-  }
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-  if($do_parallel) { 
-    if((opt_Exists("--skipalign", $opt_HHR)) && (opt_Get("--skipalign", $opt_HHR))) { 
-      for($s = 0; $s < $nseq_files; $s++) { 
-        $success_AR->[$s] = 1; 
-      }
-    }
-    else { 
-      # --skipalign not enabled
-      # wait for the jobs to finish
-      $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
-                                              $progress_w, $log_FH, *STDOUT);
-      my $njobs_finished = dng_WaitForFarmJobsToFinish($do_cmalign, 
-                                                       ($do_cmalign) ? $out_file_HAR->{"stdout"} : $out_file_HAR->{"tblout"}, 
-                                                       $out_file_HAR->{"err"}, 
-                                                       $success_AR, # this may be undef
-                                                       $mxsize_AR,  # this may be undef
-                                                       ($do_cmalign) ? "" : "[ok]", # value is irrelevant for cmalign
-                                                       opt_Get("--wait", $opt_HHR), opt_Get("--errcheck", $opt_HHR), $ofile_info_HHR->{"FH"});
-      if($njobs_finished != $nseq_files) { 
-        ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), "dnaorg", 1, $ofile_info_HHR->{"FH"});
-      }
-      ofile_OutputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by ofile_OutputProgressComplete()
-    }
-  }
-  
-  return;
-}
-
-#################################################################
-# Subroutine: dng_FeatureNumSegments()
-# Incept:     EPN, Tue Mar  5 13:05:38 2019
-#
-# Purpose:    Return number of segments in feature $ftr_idx.
-#
-# Arguments: 
-#   $ftr_info_AHR:  REF to array of hashes of feature info
-#   $ftr_idx:       feature index we are interested in
-#
-# Returns:    Number of segments for $ftr_idx.
-#
-# Dies: Never, nothing is validated
-# 
-#################################################################
-sub dng_FeatureNumSegments { 
-  my $sub_name  = "featureNumSegments";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($ftr_info_AHR, $ftr_idx) = (@_);
-
-  return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
-}
-
-
-#################################################################
-# Subroutine: dng_FormatTabDelimitedStringForAlertListFile()
-# Incept:     EPN, Wed Dec 12 10:57:59 2018
-#
-# Purpose:    Given a sequence name and a string <error_str> that
-#             describes an error, return a tab-delimited one that is
-#             ready for output to an 'errors.list' file.
-#
-#             That return string will have 4 tokens:
-#             <sequence-name>
-#             <error-name>
-#             <feature-name>
-#             <error-description>
-#
-#             The input string must be in the following format:
-#             <error-name>
-# Arguments:
-#   $seqname:   name of sequence
-#   $errstr:    error string to convert
-#   $FH_HR:     ref to hash of file handles, including 'log'
-#             
-# Returns:    $alt_tab_str: tab delimited string in format described above.
-#
-# Dies: If $errstr is not in required format
-#
-#################################################################
-sub dng_FormatTabDelimitedStringForAlertListFile() {
-  my $sub_name  = "formatTabDelimitedStringForAlertListFile";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($seqname, $errstr, $FH_HR) = (@_);
-
-  # first replace any '_' characters with single spaces
-  chomp $errstr;
-  $errstr =~ s/\_/ /g;
-
-  my $error_name   = undef;
-  my $feature_name = undef;
-  my $error_desc   = undef;
-
-  if($errstr =~ /^([^\:]+)\:\s*(.+)$/) {
-    ($error_name, $error_desc) = ($1, $2);
-    if($error_desc =~ /^\([^\)]+\)\s*(.*)$/) { 
-      $feature_name = $1;
-      $error_desc   = $2;
-    }
-    if(! defined $feature_name) { 
-      $feature_name = "*sequence*";
-    }
-  }
-  elsif($errstr =~ /^([^\[]+)\[([^\]]+)\]\;$/) {
-    # example from dnaorg_classify.pl:
-    #Unexpected Classification[NC 001959,NC 029647 was specified, but NC 039476 is predicted];
-    ($error_name, $error_desc) = ($1, $2);
-    $feature_name = "*sequence*";
-  }
-  elsif($errstr =~ /^([^\[\:]+)\;$/) {
-    # example from dnaorg_classify.pl:
-    #No Annotation;
-    ($error_name) = ($1);
-    $feature_name = "*sequence*";
-  }
-  else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse input error string: $errstr", "dnaorg", 1, $FH_HR);
-  }
-
-  if($error_desc eq "") { 
-    $error_desc = "-";
-  }
-  return $seqname . "\t" . $error_name . "\t" . $feature_name . "\t" . $error_desc;
-}
-
-#################################################################
-# Subroutine: dng_BlastxDbSeqnameToFtrIdx()
-# Incept:     EPN, Tue Dec 18 13:27:50 2018
-#
-# Purpose:    Find the feature $ftr_idx that corresponds to the blastx
-#             db sequence that was named with the convention:
-#
-#             <protein-accession>/<coords-str>
-#
-#             Where <coords-str> is identical to $ftr_info_AHR->{"ref_coords"}[$ftr_idx].
-#
-# Arguments: 
-#  $blastx_seqname: sequence name
-#  $ftr_info_AHR:   ref to the feature info array of hashes 
-#  $FH_HR:          ref to hash of file handles
-#
-# Returns:    <$ftr_idx>
-#
-# Dies:       If we find zero features that match to this sequence
-#             If we find more than 1 features that match to this sequence
-#
-################################################################# 
-sub dng_BlastxDbSeqNameToFtrIdx { 
-  my $sub_name = "dng_BlastxDbSeqNameToFtrIdx";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($blastx_seqname, $ftr_info_AHR, $FH_HR) = @_;
-
-  my $nftr = scalar(@{$ftr_info_AHR});
-
-  my $ret_ftr_idx = undef;
-  if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
-    my ($accn, $coords) = ($1, $2);
-    # find it in @{$ftr_info_AHR->{"coords"}}
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS")) { 
-        if($ftr_info_AHR->[$ftr_idx]{"coords"} eq $coords) { 
-          if(defined $ret_ftr_idx) { # found more than 1 features that match
-            ofile_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match two features, ftr_idx: $ftr_idx and $ret_ftr_idx", "dnaorg", 1, $FH_HR);
-          }                  
-          $ret_ftr_idx = $ftr_idx;
-        }
-      }
-    }
-    if(! defined $ret_ftr_idx) { # did not find match
-      ofile_FAIL("ERROR in $sub_name, did not find matching feature for blastx db sequence $blastx_seqname", "dnaorg", 1, $FH_HR);
-    }
-  }
-  else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse blastx db sequence name $blastx_seqname", "dnaorg", 1, $FH_HR); 
-  }
-
-  return $ret_ftr_idx;
-}
-
-#################################################################
-# Subroutine: dng_ValidateBlastDbExists()
-# Incept:      EPN, Tue Dec 18 15:32:50 2018
-#
-# Purpose:    Validate that a blast database exists.
-#
-# Arguments: 
-#  $blastdb_name:  name of the blast db
-#  $FH_HR:         ref to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       If any of the required files for a blast db do not exist.
-#
-################################################################# 
-sub dng_ValidateBlastDbExists {
-  my $sub_name = "dng_ValidateBlastDbExists";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($blastdb_name, $FH_HR) = @_;
-
-  foreach my $sfx (".phr", ".pin", ".psq") { 
-    if(! -s $blastdb_name . $sfx) { 
-      ofile_FAIL("ERROR in $sub_name, required blast DB file " . $blastdb_name . $sfx . " does not exist or is empty", "dnaorg", 1, $FH_HR); 
-    }
-  }
-
-  return;
-}
-
-
-#################################################################
-# Subroutine: dng_FeatureTypeIsCdsOrMaturePeptide()
-# Incept:     EPN, Mon Feb 25 14:30:34 2019
-#
-# Purpose:    Is feature $ftr_idx a CDS or mature peptide?
-#
-# Arguments: 
-#  $ftr_info_AHR:   ref to the feature info array of hashes 
-#  $ftr_idx:        feature index
-#
-# Returns:    1 or 0
-#
-# Dies:       never; does not validate anything.
-#
-################################################################# 
-sub dng_FeatureTypeIsCdsOrMaturePeptide { 
-  my $sub_name = "dng_FeatureTypeIsCdsOrMaturePeptide";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_AHR, $ftr_idx) = @_;
-
-  return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
-          ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide")) ? 1 : 0;
-}
-
-
-
-#################################################################
-# Subroutine: dng_FeatureTypeIsCds()
-# Incept:     EPN, Mon Mar 25 11:07:05 2019
-#
-# Purpose:    Is feature $ftr_idx a CDS?
-#
-# Arguments: 
-#  $ftr_info_AHR:   ref to the feature info array of hashes 
-#  $ftr_idx:        feature index
-#
-# Returns:    1 or 0
-#
-# Dies:       never; does not validate anything.
-#
-################################################################# 
-sub dng_FeatureTypeIsCds { 
-  my $sub_name = "dng_FeatureTypeIsCds";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_AHR, $ftr_idx) = @_;
-
-  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") ? 1 : 0;
-}
-
-
-#################################################################
-# Subroutine: dng_FeatureTypeIsMaturePeptide()
-# Incept:     
-#
-# Purpose:    Is feature $ftr_idx a mature peptide?
-#
-# Arguments: 
-#  $ftr_info_AHR:   ref to the feature info array of hashes 
-#  $ftr_idx:        feature index
-#
-# Returns:    1 or 0
-#
-# Dies:       never; does not validate anything.
-#
-################################################################# 
-sub dng_FeatureTypeIsMaturePeptide { 
-  my $sub_name = "dng_FeatureTypeIsMaturePeptide";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_AHR, $ftr_idx) = @_;
-
-  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") ? 1 : 0;
-}
-
-
-#################################################################
-# Subroutine: dng_FeatureIsDuplicate()
-# Incept:      EPN, Sun Mar 10 07:04:24 2019
-#
-# Purpose:    Is feature $ftr_idx a duplicate of another feature?
-#             This is true if $ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx
-#
-# Arguments: 
-#  $ftr_info_AHR:   ref to the feature info array of hashes 
-#  $ftr_idx:        feature index
-#
-# Returns:    1 or 0 
-# 
-# Dies:       never; does not validate anything.
-#
-################################################################# 
-sub dng_FeatureIsDuplicate { 
-  my $sub_name = "dng_FeatureIsDuplicate";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_AHR, $ftr_idx) = @_;
-
-  return(($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) ? 1 : 0);
-}
-
-#################################################################
-# Subroutine: dng_Feature5pMostPosition()
-# Incept:      EPN, Fri Mar  8 12:57:21 2019
-#
-# Purpose:    Return 5'-most position in all segments for a feature.
-#
-# Arguments: 
-#  $coords:  coords value from feature info
-#  $FH_HR:   ref to hash of file handles
-# 
-# Returns:   5'-most position
-#
-# Dies:      if $coords is not parseable.
-#
-################################################################# 
-sub dng_Feature5pMostPosition { 
-  my $sub_name = "dng_Feature5pMostPosition";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($coords, $FH_HR) = @_;
-  
-  if($coords =~ /^(\d+)\.\.\d+/) { 
-    return $1;
-  }
-  else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, "dnaorg", 1, $FH_HR); 
-  }
-
-  return; # NEVER REACHED
-}
-
-#################################################################
-# Subroutine: dng_Feature3pMostPosition()
-# Incept:      EPN, Fri Mar  8 13:00:31 2019
-#
-# Purpose:    Return 3'-most position in all segments for a feature.
-#
-# Arguments: 
-#  $coords:  coords value from feature info
-#  $FH_HR:   ref to hash of file handles
-# 
-# Returns:   3'-most position
-#
-# Dies:      if $coords is not parseable.
-#
-################################################################# 
-sub dng_Feature3pMostPosition { 
-  my $sub_name = "dng_Feature3pMostPosition";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($coords, $FH_HR) = @_;
-  
-  if($coords =~ /\d+\.\.(\d+)\:[\+\-]$/) { 
-    return $1;
-  }
-  else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, "dnaorg", 1, $FH_HR); 
-  }
-
-  return; # NEVER REACHED
-}
-
-#################################################################
-# Subroutine: dng_FeatureSummarizeSegment()
-# Incept:      EPN, Fri Mar  1 12:36:36 2019
-#
-# Purpose:    Return a string indicating what model this is
-#             for features that are covered by multiple model spans.
-#
-# Arguments: 
-#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
-#  $sgm_info_AHR: ref to segment info array of hashes, PRE-FILLED
-#  $sgm_idx:      model index
-#
-# Returns:    "" if this is the only model for this feature
-#             string like ", model 1 of 2", if not
-# 
-# Dies:       never; does not validate anything.
-#
-################################################################# 
-sub dng_FeatureSummarizeSegment { 
-  my $sub_name = "dng_FeatureSummarizeSegment";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx) = @_;
-
-  my $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
-  my $nmdl = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
-  if($nmdl > 1) { 
-    return sprintf(", segment %d of %d", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $nmdl);
-  }
-
-  return ""; # return "" if $nmdl == 1;
-}
-
-#################################################################
-# Subroutine: dng_FeatureInfoImputeCoords
-# Incept:     EPN, Wed Mar 13 13:15:33 2019
-# 
-# Purpose:    Fill "coords" values in %{$ftr_info_AHR}
+# Subroutine: dng_CoordsTokenParse()
+# Incept:     EPN, Tue Mar 26 06:15:09 2019
+#
+# Synopsis: Given a single coords token, validate it, 
+#           and return its start, stop, strand values.
 # 
 # Arguments:
-#   $ftr_info_AHR:   REF to feature information, added to here
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#
-#################################################################
-sub dng_FeatureInfoImputeCoords { 
-  my $sub_name = "dng_FeatureInfoImputeCoords";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $FH_HR) = @_;
-  
-  # ftr_info_AHR should already have array data for keys "type", "location"
-  my @keys_A = ("type", "location");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"coords"} = dng_FeatureCoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_FeatureInfoImputeLength
-# Incept:     EPN, Thu Mar 14 12:07:16 2019
-# 
-# Purpose:    Fill "length" values in @{$ftr_info_AHR}
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#
-#################################################################
-sub dng_FeatureInfoImputeLength { 
-  my $sub_name = "dng_FeatureInfoImputeSourceIdx";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $FH_HR) = @_;
-  
-  # ftr_info_AHR should already have array data for keys "type", "coords"
-  my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
-
-  # go through all features and determine length by parsing the 
-  # "coords" value
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $len = 0;
-    my @sgm_start_A  = (); # array of starts, one per segment
-    my @sgm_stop_A   = (); # array of stops, one per segment
-    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, undef, $FH_HR);
-    for(my $s = 0; $s < scalar(@sgm_start_A); $s++) { 
-      $len += abs($sgm_start_A[$s] - $sgm_stop_A[$s]) + 1;
-    }
-    $ftr_info_AHR->[$ftr_idx]{"length"} = $len;
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_FeatureInfoImputeSourceIdx
-# Incept:     EPN, Wed Mar 13 13:20:01 2019
-# 
-# Purpose:    Fill "source_idx" values in @{$ftr_info_AHR}
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#
-#################################################################
-sub dng_FeatureInfoImputeSourceIdx { 
-  my $sub_name = "dng_FeatureInfoImputeSourceIdx";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $FH_HR) = @_;
-  
-  # ftr_info_AHR should already have array data for keys "type", "coords"
-  my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
-
-  # go through all features and determine duplicates (set 'source_idx')
-  # 
-  # $ftr_info_AHR->{"source_idx"}[$ftr_idx] set to $ftr_idx2 if
-  # - $ftr_idx type is gene
-  # - $ftr_idx2 type is CDS
-  # - $ftr_idx and $ftr_idx2 have identical coords (for all segments)
-  #
-  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
-  #
-  # dies if more than one $ftr_idx2 satisfies above
-  my ($ftr_idx, $ftr_idx2); # feature indices
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"source_idx"} = $ftr_idx; # initialize
-    for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-      if($ftr_idx != $ftr_idx2) {
-        if(($ftr_info_AHR->[$ftr_idx]{"type"}  eq "gene") && 
-           ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
-           ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
-          if($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) { 
-            ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine source (two choices) for duplicate feature of type %s and coords %s\n", 
-                                $ftr_info_AHR->[$ftr_idx]{"type"}, $ftr_info_AHR->[$ftr_idx]{"coords"}), "dnaorg", 1, $FH_HR);
-          }
-          $ftr_info_AHR->[$ftr_idx]{"source_idx"} = $ftr_idx2;
-        }
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_FeatureInfoImputeParentIdx
-# Incept:     EPN, Wed Mar 13 13:33:33 2019
-# 
-# Purpose:    Fill "parent_idx" values in @{$ftr_info_AHR}
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#
-#################################################################
-sub dng_FeatureInfoImputeParentIdx {
-  my $sub_name = "dng_FeatureInfoImputeParentIdx";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $FH_HR) = @_;
-  
-  # ftr_info_AHR should already have array data for keys "type", "coords"
-  my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
-
-  # go through all features and determine parents (set 'parent_idx')
-  # 
-  # $ftr_info_AHR->{"parent_idx"}[$ftr_idx] set to $ftr_idx2 if:
-  # - $ftr_idx type is mat_peptide
-  # - $ftr_idx2 type is CDS
-  # - start of $ftr_idx2 is 5' of or equal to start of $ftr_idx
-  # - stop  of $ftr_idx2 is 3' of or equal to stop of $ftr_idx
-  # - $ftr_idx and $ftr_idx2 are both "+" or both "-" strands
-  # 
-  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
-  #
-  # dies if more than one $ftr_idx2 satisfies above
-  my ($ftr_idx, $ftr_idx2); # feature indices
-  my $ftr_5p_pos;  # 3'-most position for feature $ftr_idx
-  my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
-  my $ftr_5p_pos2; # 5'-most position for feature $ftr_idx2
-  my $ftr_3p_pos2; # 5'-most position for feature $ftr_idx2
-  my $ftr_strand;  # strand for feature $ftr_idx
-  my $ftr_strand2; # strand for feature $ftr_idx2
-  my $found_parent; # flag for if we found a parent or not
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = -1; # initialize
-    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
-      $ftr_5p_pos = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_strand = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_3p_pos2 = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_strand2 = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-        $found_parent = 0;
-        if(($ftr_idx != $ftr_idx2) && 
-           ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
-           ($ftr_strand eq $ftr_strand2)) { 
-          if(($ftr_strand eq "+") && 
-             ($ftr_5p_pos2 <= $ftr_5p_pos) &&
-             ($ftr_3p_pos2 >= $ftr_3p_pos)) { 
-            $found_parent = 1;
-          }
-          if(($ftr_strand eq "-") && 
-             ($ftr_5p_pos2 >= $ftr_5p_pos) &&
-             ($ftr_3p_pos2 <= $ftr_3p_pos)) { 
-            $found_parent = 1;
-          }
-          if($found_parent) { 
-            if($ftr_info_AHR->[$ftr_idx]{"parent_idx"} != -1) { 
-              printf("ftr_5p_pos:  $ftr_5p_pos\n");
-              printf("ftr_3p_pos:  $ftr_3p_pos\n");
-              printf("ftr_5p_pos2: $ftr_5p_pos2\n");
-              printf("ftr_3p_pos2: $ftr_3p_pos2\n");
-              ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine parent of mature peptide with coords %s (multiple CDS cover it with coords %s and %s)\n", 
-                                  $ftr_info_AHR->[$ftr_idx]{"coords"},
-                                  $ftr_info_AHR->[($ftr_info_AHR->[$ftr_idx]{"parent_idx"})]{"coords"}, 
-                                  $ftr_info_AHR->[$ftr_idx2]{"coords"}), "dnaorg", 1, $FH_HR);
-            }
-            $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = $ftr_idx2;
-          }
-        }
-      }
-    }
-  }   
-  return 0;
-}
-      
-#################################################################
-# Subroutine: dng_FeatureInfoImputeOutname()
-# Incept:     EPN, Mon Apr  1 06:49:20 2019
-#
-# Purpose:    Fill "outname" values in @{$ftr_info_AHR}
-#             This is defined as:
-#                  $ftr_info_AHR->[$ftr_idx]{"product"} if defined,
-#             else $ftr_info_AHR->[$ftr_idx]{"gene"} if defined,
-#             else string of type and type index (e.g. CDS.1)
-#
-# Arguments: 
-#   $ftr_info_AHR:  REF to array of hashes of feature info
-#
-# Returns:    Feature name string
-#
-# Dies: Never, nothing is validated
-# 
-#################################################################
-sub dng_FeatureInfoImputeOutname { 
-  my $sub_name  = "dng_FeatureInfoImputeOutname";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($ftr_info_AHR, $ftr_idx) = (@_);
-
-  my $nftr = scalar(@{$ftr_info_AHR}); 
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(defined $ftr_info_AHR->[$ftr_idx]{"product"}) { 
-      $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"product"}; 
-    }
-    elsif(defined $ftr_info_AHR->[$ftr_idx]{"gene"}) { 
-      $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"gene"}; 
-    }
-    else { 
-      $ftr_info_AHR->[$ftr_idx]{"outname"} = dng_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_FeatureInfoImpute3paFtrIdx
-# Incept:     EPN, Wed Mar 13 13:39:34 2019
-# 
-# Purpose:    Fill "3pa_ftr_idx" values in @{$ftr_info_AHR}
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#
-#################################################################
-sub dng_FeatureInfoImpute3paFtrIdx {
-  my $sub_name = "dng_FeatureInfoImpute3paFtrIdx";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $FH_HR) = @_;
-  
-  # ftr_info_AHR should already have array data for keys "type", "coords"
-  my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
-
-  # go through all features and determine adjacent mat_peptides (set '3pa_ftr_idx')
-  # 
-  # $ftr_info_AHR->{"3pa_ftr_idx"}[$ftr_idx] set to $ftr_idx2 if:
-  # - $ftr_idx type is mat_peptide
-  # - $ftr_idx2 type is mat_peptide
-  # - $ftr_idx starts at 1 position 3' of stop position of $ftr_idx
-  # - $ftr_idx and $ftr_idx2 are both "+" or both "-" strands
-  # 
-  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
-  #
-  # dies if more than one $ftr_idx2 satisfies above
-  my ($ftr_idx, $ftr_idx2); # feature indices
-  my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
-  my $ftr_5p_pos2; # 5'-most position for feature $ftr_idx2
-  my $ftr_strand;  # strand for feature $ftr_idx
-  my $ftr_strand2; # strand for feature $ftr_idx2
-  my $found_adj = 0;
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = -1;
-    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
-      $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR, $ftr_idx, $FH_HR);
-      $ftr_strand = dng_FeatureSummaryStrand($ftr_info_AHR, $ftr_idx, $FH_HR);
-      for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = dng_Feature5pMostPosition($ftr_info_AHR, $ftr_idx2, $FH_HR);
-        $ftr_strand2 = dng_FeatureSummaryStrand($ftr_info_AHR, $ftr_idx2, $FH_HR);
-        $found_adj = 0;
-        if(($ftr_idx != $ftr_idx2) && 
-           ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "mat_peptide") &&
-           ($ftr_strand eq $ftr_strand2)) { 
-          if(($ftr_strand eq "+") && (($ftr_3p_pos+1) == ($ftr_5p_pos2))) { 
-            $found_adj = 1;
-          }
-          if(($ftr_strand eq "-") && (($ftr_3p_pos-1) == ($ftr_5p_pos2))) { 
-            $found_adj = 1; 
-          }
-          if($found_adj) { 
-            if($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1) { 
-              ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine 3' mature peptide of mature peptide with coords (multiple mature peptides satisfy criteria)\n", 
-                                  $ftr_info_AHR->[$ftr_idx]{"coords"}), "dnaorg", 1, $FH_HR);
-            }
-            $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = $ftr_idx2; 
-          }
-        }
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_SegmentInfoPopulate()
-# Incept:     EPN, Wed Mar 13 13:55:56 2019
-#
-# Synopsis: Fill @{$sgm_info_AHR} and add to @{$ftr_info_AHR}
-#           based on existing information in @{$ftr_info_AHR}.
-#
-#           The following values are added to %{$sgm_info_HAR}:
-#                "start":    start position of segment in the reference genome
-#                "stop":     stop position of segment in the reference genome
-#                "strand":   strand of segment in the reference genome
-#                "map_ftr":  the feature index (array index in ftr_info_AHR) 
-#                            this segment is for
-#                "is_5p":    '1' if this segment is the 5'-most segment for its feature
-#                            (when the segments are joined to make the feature, not 
-#                            necessarily in reference genome)
-#                "is_3p":    '1' if this segment is the 3'-most model for its feature
-#                            (when the segments are joined to make the feature, not 
-#                            necessarily in reference genome)
-#
-#           The following values are added to %{$ftr_info_AHR}:
-#                "5p_sgm_idx":   index (in arrays of %sgm_info_HA) of 5'-most segment for this feature
-#                "3p_sgm_idx":   index (in arrays of %sgm_info_HA) of 3'-most segment for this feature
-# Arguments:
-#  $sgm_info_AHR:      ref to array of hashes with information on the segments, FILLED HERE
-#  $ftr_info_AHR:      ref to array of hashes with information on the features, ADDED TO HERE
-#  $FH_HR:             REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       if @{$ftr_info_AHR} is not valid upon entry
-#
-#################################################################
-sub dng_SegmentInfoPopulate {
-  my $sub_name = "dng_SegmentInfoPopulate";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($sgm_info_AHR, $ftr_info_AHR, $FH_HR) = @_;
-
-  # ftr_info_AHR should already have array data for keys "type", "coords", "source_idx"
-  my @keys_A = ("type", "coords", "source_idx");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
-
-  # initialize new %{$ftr_info_AHR} values
-  my ($ftr_idx, $ftr_idx2, $sgm_idx, $sgm_idx2); # feature and segment indices
-  my ($sgm_start, $sgm_stop, $sgm_strand); # start, stop and strand for a segment
-  my $nseg = 0; 
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = -1; # remains -1 if $ftr_idxs_dup
-    $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = -2; # remains -2 if $ftr_idxs_dup
-    my $ftr_type   = $ftr_info_AHR->[$ftr_idx]{"type"};
-    my $ftr_is_dup = ($ftr_info_AHR->[$ftr_idx]{"source_idx"} == $ftr_idx) ? 0 : 1;
-
-    if(! $ftr_is_dup) { 
-      # determine start and stop positions of all segments
-      my @sgm_start_A  = (); # array of starts, one per segment
-      my @sgm_stop_A   = (); # array of stops, one per segment
-      my @sgm_strand_A = (); # array of strands ("+", "-"), one per segment
-      dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
-      my $cur_nseg = scalar(@sgm_start_A);
-      for(my $s = 0; $s < $cur_nseg; $s++) { 
-        $sgm_info_AHR->[$nseg]{"start"}   = $sgm_start_A[$s];
-        $sgm_info_AHR->[$nseg]{"stop"}    = $sgm_stop_A[$s];
-        $sgm_info_AHR->[$nseg]{"strand"}  = $sgm_strand_A[$s];
-        $sgm_info_AHR->[$nseg]{"map_ftr"} = $ftr_idx;
-        if($s == 0) { 
-          $sgm_info_AHR->[$nseg]{"is_5p"} = 1;
-          $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = $nseg; 
-        }
-        else { 
-          $sgm_info_AHR->[$nseg]{"is_5p"} = 0;
-        }
-        if($s == ($cur_nseg-1)) { 
-          $sgm_info_AHR->[$nseg]{"is_3p"} = 1;
-          $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = $nseg;
-        }
-        else { 
-          $sgm_info_AHR->[$nseg]{"is_3p"} = 0;
-        }
-        $nseg++;
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_FeatureInfoStartStopStrandArrays()
-# Incept:     EPN, Fri Mar 15 15:39:35 2019
-#
-# Synopsis: For all features in a @{$ftr_info_AHR}, validate 
-#           "coords" values and fill @{$start_AAR}, @{$stop_AAR} and
-#           @{$strand_AAR} based on them.
-# 
-# Arguments:
-#  $ftr_info_AHR:  REF to the feature info array of hashes
-#  $start_AAR:     REF to array of start position array to fill here, FILLED here, can be undef
-#  $stop_AAR:      REF to array of stop position array to fill here, FILLED here, can be undef
-#  $strand_AAR:    REF to array of strand array to fill here with "+" or "-", FILLED here, can be undef
-#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies: if unable to parse $coords_str
-#
-#################################################################
-sub dng_FeatureInfoStartStopStrandArrays {
-  my $sub_name = "dng_FeatureInfoStartStopStrandArrays";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($ftr_info_AHR, $start_AAR, $stop_AAR, $strand_AAR, $FH_HR) = @_;
-
-  # ftr_info_AHR should already have array data for keys "type", "coords"
-  my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
-
-  my @start_AA  = ();
-  my @stop_AA   = ();
-  my @strand_AA = ();
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    @{$start_AA[$ftr_idx]}  = ();
-    @{$stop_AA[$ftr_idx]}   = ();
-    @{$strand_AA[$ftr_idx]} = ();
-    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@{$start_AA[$ftr_idx]}, \@{$stop_AA[$ftr_idx]}, \@{$strand_AA[$ftr_idx]}, $FH_HR);
-  }
-  if(defined $start_AAR)  { @{$start_AAR}   = @start_AA;   }
-  if(defined $stop_AAR)   { @{$stop_AAR}    = @stop_AA;    }
-  if(defined $strand_AAR) { @{$strand_AAR}  = @strand_AA;  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_FeatureStartStopStrandArrays()
-# Incept:     EPN, Sat Mar  9 05:50:10 2019
-#
-# Synopsis: Given a comma separated coords string, parse it, 
-#           validate it, and fill @{$start_AR}, @{$stop_AR} and
-#           @{$strand_AR} based on it.
-# 
-# Arguments:
-#  $coords:       coordinate string
-#  $start_AR:     REF to start position array to fill here, FILLED here, can be undef
-#  $stop_AR:      REF to stop position array to fill here, FILLED here, can be undef
-#  $strand_AR:    REF to strand array to fill here with "+" or "-", FILLED here, can be undef
+#  $coords_tok:   coordinate token
 #  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    void
+# Returns:    3 values:
+#             $start:  start position
+#             $stop:   stop position
+#             $strand: strand
 #
 # Dies: if unable to parse $coords
 #
 #################################################################
-sub dng_FeatureStartStopStrandArrays {
-  my $sub_name = "dng_FeatureStartStopStrandArrays";
-  my $nargs_expected = 5;
+sub dng_CoordsTokenParse {
+  my $sub_name = "dng_CoordsTokenParse";
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($coords, $start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
-  if(! defined $coords) { 
+  my ($coords_tok, $FH_HR) = @_;
+  if(! defined $coords_tok) { 
     ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
   }
-
-  my @start_A  = ();
-  my @stop_A   = ();
-  my @strand_A = ();
-  my ($start, $stop, $strand, $sgm_idx);
-  my @coords_A  = split(",", $coords);
-  my $nsgm = scalar(@coords_A);
-  for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
-    ($start, $stop, $strand) = dng_CoordsTokenParse($coords_A[$sgm_idx], $FH_HR);
-    # dng_CoordsTokenParse() will fail if unable to parse $coords_A[$sgm_idx]
-    push(@start_A,  $start);
-    push(@stop_A,   $stop);
-    push(@strand_A, $strand); 
+  if($coords_tok =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-])$/) { 
+    return ($1, $2, $3);
   }
+  ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords_tok", "dnaorg", 1, $FH_HR); 
 
-  if(defined $start_AR)  { @{$start_AR}   = @start_A;  }
-  if(defined $stop_AR)   { @{$stop_AR}    = @stop_A;   }
-  if(defined $strand_AR) { @{$strand_AR}  = @strand_A;  }
-
-  return;
+  return; # NEVER REACHED
 }
 
 #################################################################
@@ -4103,43 +1798,7 @@ sub dng_CoordsLength {
 }
 
 #################################################################
-# Subroutine: dng_CoordsTokenParse()
-# Incept:     EPN, Tue Mar 26 06:15:09 2019
-#
-# Synopsis: Given a single coords token, validate it, 
-#           and return its start, stop, strand values.
-# 
-# Arguments:
-#  $coords_tok:   coordinate token
-#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    3 values:
-#             $start:  start position
-#             $stop:   stop position
-#             $strand: strand
-#
-# Dies: if unable to parse $coords
-#
-#################################################################
-sub dng_CoordsTokenParse {
-  my $sub_name = "dng_CoordsTokenLength";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($coords_tok, $FH_HR) = @_;
-  if(! defined $coords_tok) { 
-    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
-  }
-  if($coords_tok =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-])$/) { 
-    return ($1, $2, $3);
-  }
-  ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords_tok", "dnaorg", 1, $FH_HR); 
-
-  return; # NEVER REACHED
-}
-
-#################################################################
-# Subroutine: dng_FeatureCoordsFromLocation
+# Subroutine: dng_CoordsFromLocation
 # Incept:     EPN, Wed Mar 13 14:17:08 2019
 # 
 # Purpose:    Convert a GenBank file 'location' value to 
@@ -4161,8 +1820,8 @@ sub dng_CoordsTokenParse {
 #      and
 #      https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html
 #################################################################
-sub dng_FeatureCoordsFromLocation { 
-  my $sub_name = "dng_FeatureCoordsFromLocation";
+sub dng_CoordsFromLocation { 
+  my $sub_name = "dng_CoordsFromLocation";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -4184,18 +1843,18 @@ sub dng_FeatureCoordsFromLocation {
   my $ret_val = "";
   if($location =~ /^join\((.+)\)$/) { 
     my $location_to_join = $1;
-    $ret_val = dng_FeatureCoordsFromLocation($location_to_join, $FH_HR);
+    $ret_val = dng_CoordsFromLocation($location_to_join, $FH_HR);
   }
   elsif($location =~ /^complement\((.+)\)$/) { 
     my $location_to_complement = $1;
-    my $coords_to_complement = dng_FeatureCoordsFromLocation($location_to_complement, $FH_HR);
-    $ret_val = dng_FeatureCoordsComplement($coords_to_complement, $FH_HR);
+    my $coords_to_complement = dng_CoordsFromLocation($location_to_complement, $FH_HR);
+    $ret_val = dng_CoordsComplement($coords_to_complement, $FH_HR);
   }
   elsif($location =~ /\,/) { 
     # not wrapped in join() or complement(), but multiple segments
     foreach my $location_el (split(",", $location)) { 
       if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= dng_FeatureCoordsFromLocation($location_el, $FH_HR);
+      $ret_val .= dng_CoordsFromLocation($location_el, $FH_HR);
     }
   }
   elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
@@ -4209,7 +1868,7 @@ sub dng_FeatureCoordsFromLocation {
 }
 
 #################################################################
-# Subroutine: dng_FeatureCoordsComplement
+# Subroutine: dng_CoordsComplement
 # Incept:     EPN, Wed Mar 13 15:00:24 2019
 # 
 # Purpose:    Complement a coords string by complementing all
@@ -4225,8 +1884,8 @@ sub dng_FeatureCoordsFromLocation {
 #             is already on the negative strand.
 #
 #################################################################
-sub dng_FeatureCoordsComplement { 
-  my $sub_name = "dng_FeatureCoordsComplement";
+sub dng_CoordsComplement { 
+  my $sub_name = "dng_CoordsComplement";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -4257,228 +1916,6 @@ sub dng_FeatureCoordsComplement {
 
   return $ret_val;
 }
-
-#################################################################
-# Subroutine: dng_FeatureSummaryStrand
-# Incept:     EPN, Wed Mar 13 15:38:06 2019
-# 
-# Purpose:    Summarize the strandedness of segments for a feature
-#             by parsing the "coords" value.
-# 
-# Arguments:
-#   $coords:   coords string to complement
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    "+" if all segments in $coords are "+"
-#             "-" if all segments in $coords are "-"
-#             "!" if >= 1 segment in $coords is "+"
-#                 and >= 1 segment in $coords is "-"
-#
-# Dies:      if unable to parse $coords
-#
-#################################################################
-sub dng_FeatureSummaryStrand { 
-  my $sub_name = "dng_FeatureSummaryStrand";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($coords, $FH_HR) = @_;
-
-  # Examples we can parse: 
-  # $coords                  return value
-  # -----------------------  -----------------
-  # 1-200:+                  200-1:-
-  # 1-200:+,300-400:+        400-300:-,200-1:-
-
-  my @strand_A = ();
-  dng_FeatureStartStopStrandArrays($coords, undef, undef, \@strand_A, $FH_HR);
-
-  my $npos = 0;
-  my $nneg = 0;
-  foreach my $strand (@strand_A) { 
-    if   ($strand eq "+") { $npos++; }
-    elsif($strand eq "-") { $nneg++; }
-    else { ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", "dnaorg", 1, $FH_HR); }
-  }
-
-  if(($npos >  0) && ($nneg == 0)) { return "+"; }
-  if(($npos == 0) && ($nneg >  0)) { return "-"; }
-  if(($npos == 0) && ($nneg == 0)) { 
-    ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", "dnaorg", 1, $FH_HR); 
-  }
-
-  return; # NEVER REACHED
-}
-  
-#################################################################
-# Subroutine: dng_FeaturePositionSpecificValueBreakdown()
-# Incept:     EPN, Tue Apr  2 10:22:16 2019
-#
-# Purpose:    Breakdown a list of position specific values
-#             from a string in %{$ftr_info_AHR->[$ftr_idx]}
-#             and fill %HR with key/value pairs.
-# 
-#             String must be in format of one or more tokens
-#             of: "<d>:<s>" separated by ";" if more than one.
-#
-#             If $ftr_info_AHR->[$ftr_idx] does not exist just
-#             return.
-#
-# Arguments: 
-#  $ftr_info_AHR:   ref to the feature info array of hashes 
-#  $ftr_idx:        feature index
-#  $key:            key in $ftr_info_AHR->[$ftr_idx]
-#  $HR:             ref to hash to fill
-#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       if $ftr_info_AHR->[$ftr_idx] exists but cannot
-#             be parsed.
-#
-################################################################# 
-sub dng_FeaturePositionSpecificValueBreakdown { 
-  my $sub_name = "dng_FeaturePositionSpecificValueBreakdown";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_AHR, $ftr_idx, $key, $HR, $FH_HR) = @_;
- 
-  if(defined $ftr_info_AHR->[$ftr_idx]{$key}) { 
-    my @tok_A = split(";", $ftr_info_AHR->[$ftr_idx]{$key});
-    foreach my $tok (@tok_A) { 
-      if($tok =~ /^(\d+)\:(\S+)$/) { 
-        $HR->{$1} = $2;
-      }
-      else { 
-        ofile_FAIL("ERROR, in $sub_name, unable to parse token $tok parsed out of " . $ftr_info_AHR->[$ftr_idx]{$key}, 1, $FH_HR);
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  dng_SqstringAddNewlines()
-# Incept:      EPN, Thu Mar 14 06:12:11 2019
-#
-# Purpose:     Add newlines to $sqstring after every $linelen
-#              characters and return result.
-#
-# Arguments: 
-#   $sqstring: the sequence string
-#   $linelen:  interval for newlines
-# 
-# Returns:     $sqstring with newlines inserted every $linelen 
-#              characters and at end of string.
-# 
-# Dies:        Never.
-#
-################################################################# 
-sub dng_SqstringAddNewlines { 
-  my $nargs_expected = 2;
-  my $sub_name = "dng_SqstringAddNewlines";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($sqstring, $linelen) = @_;
-
-  my $retstr = "";
-  my $sqpos = 0;
-  my $sqlen = length($sqstring);
-
-  while($sqpos < $sqlen) { 
-    $retstr .= substr($sqstring, $sqpos, $linelen) . "\n";
-    $sqpos += $linelen;
-  }
-
-  return $retstr;
-}
-    
-
-#################################################################
-# Subroutine: dng_FeatureInfoCountType
-# Incept:     EPN, Thu Mar 14 12:16:26 2019
-# 
-# Purpose:    Count number of elements in @{$ftr_info_AHR} 
-#             have type of $type.
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $type:          type we are interested in
-#
-# Returns:    void
-# 
-# Dies:       never, nothing is validated
-#
-#################################################################
-sub dng_FeatureInfoCountType { 
-  my $sub_name = "dng_FeatureInfoCountType";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $type) = @_;
-
-  my $ntype = 0;
-  my $nftr = scalar(@{$ftr_info_AHR});
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if((defined $ftr_info_AHR->[$ftr_idx]{"type"}) && 
-       ($ftr_info_AHR->[$ftr_idx]{"type"} eq $type)) { 
-      $ntype++;
-    }
-  }
-  
-  return $ntype;
-}
-
-
-
-#################################################################
-# Subroutine: dng_FeatureInfoValidateCoords
-# Incept:     EPN, Fri Mar 15 14:31:36 2019
-# 
-# Purpose:    Validate that "coords" values are in the proper
-#             format and all less than or equal to $length.
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $length:        type we are interested in
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       If a "coords" value is in the incorrect format or
-#             if a position in a "coords" value exceeds $length
-#
-#################################################################
-sub dng_FeatureInfoValidateCoords { 
-  my $sub_name = "dng_FeatureInfoValidateCoords";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $length, $FH_HR) = @_;
-
-  # ftr_info_AHR should already have array data for keys "type", "coords"
-  my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
-  my $fail_str = ""; # added to if any elements are out of range
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my @start_A  = (); # array of starts, one per segment
-    my @stop_A   = (); # array of stops, one per segment
-    # this sub dng_Will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
-    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, undef, $FH_HR); 
-    foreach my $start (@start_A) { if($start > $length) { $fail_str .= "ftr_idx: $ftr_idx, start position $start > $length\n"; } }
-    foreach my $stop  (@stop_A)  { if($stop  > $length) { $fail_str .= "ftr_idx: $ftr_idx, stop  position $stop  > $length\n"; } }
-  }
-
-  if($fail_str ne "") { 
-    ofile_FAIL("ERROR in $sub_name, some coordinates exceed model length ($length):\n$fail_str\n", "dnaorg", 1, $FH_HR);
-  }
-  
-  return;
-}
-
 
 #################################################################
 # Subroutine: dng_EutilsFetchToFile()
@@ -4549,620 +1986,6 @@ sub dng_EutilsFetchUrl {
   return sprintf("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=%s&retmode=text", $accn, $format);
 }
 
-#################################################################
-# Subroutine: dng_GenbankParse()
-# Incept:     EPN, Tue Mar 12 14:04:14 2019
-#
-# Synopsis: Parse a GenBank format file.
-#
-# Arguments:
-#  $infile:   GenBank file to parse
-#  $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       if we have trouble parsing the file
-#
-# Reference: https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html
-#            http://www.insdc.org/documents/feature-table
-#################################################################
-sub dng_GenbankParse { 
-  my $sub_name = "dng_GenbankParse";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($infile, $seq_info_HHR, $ftr_info_HAHR, $FH_HR) = @_;
-
-  my $line_idx  = 0;     # line index of input file
-  my $acc       = undef; # accession, read from LOCUS line
-  my $tmp_acc   = undef; # accession, read from ACCESSION or VERSION line
-  my $len       = undef; # length, read from LOCUS line
-  my $def       = undef; # seq definition, read from DEFINITION line
-  my $ver       = undef; # sequence version, read from VERSION line
-  my $feature   = undef; # a feature   read from a feature/location line in the FEATURES section
-  my $location  = undef; # a location  read from a feature/location line in the FEATURES section
-  my $qualifier = undef; # a qualifier read from a qualifier/value  line in the FEATURES section
-  my $value     = undef; # a value     read from a qualifier/value  line in the FEATURES section
-  my $seq       = undef; # sequence, read from the ORIGIN section
-  my $seqline   = undef; # single line of sequence
-  my $seq_idx   = 0;     # number of sequences read
-  my $ftr_idx   = -1;    # number of features read for current sequence
-  my $line      = undef; # a line
-
-  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
-
-  $line = <IN>; 
-  while(defined $line) { 
-    chomp $line; $line_idx++;
-    if($line =~ /^LOCUS\s+(\S+)\s+(\d+)/) { 
-      #LOCUS       NC_039477               7567 bp    RNA     linear   VRL 22-FEB-2019
-      if((defined $acc) || (defined $len)) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple LOCUS lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
-      }
-      ($acc, $len) = ($1, $2);
-      # initialize the array of hashes for this accession's features
-      if(defined $ftr_info_HAHR->{$acc}) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, trying to add feature info for accession $acc, but it already exists, line:\n$line\n", "dnaorg", 1, $FH_HR);
-      }
-      @{$ftr_info_HAHR->{$acc}} = ();
-      $line = <IN>; 
-    }
-    elsif($line =~ /^DEFINITION\s+(.*)$/) { 
-      #DEFINITION  Norovirus GII isolate strain Hu/GBR/2016/GII.P16-GII.4_Sydney/226,
-      #            complete genome.
-      if(defined $def) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple DEFINITION lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
-      }
-      $def = $1;
-      # read remainder of the definition (>= 0 lines)
-      $line = <IN>; 
-      while((defined $line) && ($line =~ /^\s+(.+)$/)) {
-        chomp $line; $line_idx++;
-        $def .= $1;
-        $line = <IN>; 
-      }
-    }
-    elsif($line =~ /^ACCESSION\s+(\S+)$/) { 
-      # ACCESSION   NC_039477
-      # verify this matches what we read in the LOCUS line
-      $tmp_acc = $1;
-      if((! defined $acc) || ($tmp_acc ne $acc)) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, accession mismatch for $tmp_acc, line:\n$line\n", "dnaorg", 1, $FH_HR);
-      }
-      $line = <IN>;
-    }
-    elsif($line =~ /^VERSION\s+(\S+)$/) { 
-      #VERSION     NC_039477.1
-      if(defined $ver) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple VERSION lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
-      }
-      # verify this matches what we read in the LOCUS line
-      $ver = $1;
-      $tmp_acc = $ver;
-      dng_StripVersion(\$tmp_acc);
-      if((! defined $acc) || ($tmp_acc ne $acc)) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, version/accession mismatch for $tmp_acc, line:\n$line\n", "dnaorg", 1, $FH_HR);
-      }
-      $line = <IN>;
-    }
-    elsif($line =~ /^FEATURES\s+Location\/Qualifiers$/) { 
-      # parse the features and then the sequence
-      # FEATURES section
-      # two types of line:
-      # feature/location line
-      #        example:      gene            5..5104
-      #        example:      misc_feature    join(2682..2689,1..2)
-      #        example:      misc_feature    join(161990..162784,complement(88222..88806),complement(86666..87448))
-      # qualifier/value line type A, first line of a new qualifier
-      #        example: /codon_start=1
-      #        example: /gene="ORF1"
-      # qualifier/value line type B, not the first line of a new qualifier, line 2 to N of a qualifier value
-      #        example: QNVIDPWIRNNFVQAPGGEFTVSPRNAPGEILWSAPLGPDLNPYLSHLARMYNGYAGG
-      #        example: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
-      if($ftr_idx != -1) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple FEATURES lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
-      }
-      $line = <IN>;
-      while((defined $line) && ($line !~ /^ORIGIN/)) { 
-        chomp $line; $line_idx++;
-        if($line =~ /^\s+\/(\S+)\=(.+)$/) { # first token must start with '/'
-          # qualifier/value line type A, examples:
-          #  /codon_start=1
-          #  /gene="ORF1"
-          #  /translation="MKMASNDATVAVACNNNNDKEKSSGEGLFTNMSSTLKKALGARP
-          my ($save_qualifier, $save_value) = ($1, $2);
-          if(defined $value) { # we are finished with previous value
-            dng_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
-          }
-          ($qualifier, $value) = ($save_qualifier, $save_value);
-        }
-        elsif($line =~ /^\s+(\S+)\s+(\S+)$/) { 
-          # NOTE: this will pass for a non-first line of a qualifier value that has whitespace in it:
-          # e.g.                      KQP ASRDESQKPPRPPTPELVKRIPPPPPNGEEEEEPVIRYEVKSGISGLPELTTVPQ
-          # But I think those are illegal, if they're not, then we'll set "KQP" as feature below, which is bad
-          if(defined $value) { # we are finished with previous value
-            dng_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
-            ($qualifier, $value) = (undef, undef);
-          }
-          # feature/location line, examples:
-          #   gene            5..5104
-          ($feature, $location) = ($1, $2);
-          $ftr_idx++;
-          dng_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",     $feature,  $FH_HR);
-          dng_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "location", $location, $FH_HR);
-        }
-        else { 
-          # qualifier/value line type B
-          #        example: QNVIDPWIRNNFVQAPGGEFTVSPRNAPGEILWSAPLGPDLNPYLSHLARMYNGYAGG
-          #        example: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
-          $line =~ s/^\s+//; # remove leading whitespace
-          if(! defined $value) { 
-            ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, in FEATURES section read qualifier value line without qualifier first, line:\n$line\n", "dnaorg", 1, $FH_HR);
-          }
-          $value .= $line; 
-        }
-        $line = <IN>; chomp $line; $line_idx++;
-      }
-      if(! defined $line) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to read ORIGIN line after FEATURES but did not\n", "dnaorg", 1, $FH_HR);
-      }
-      # if we get here we just read the ORIGIN line
-      # first store final qualifier/value
-      if(defined $value) { 
-        dng_GenbankStoreQualifierValue($ftr_info_HAHR->{$acc}, $ftr_idx, $qualifier, $value, $FH_HR);
-      }
-      # parse the ORIGIN sequence
-      $line = <IN>;
-      # sanity check
-      if(defined $seq) { 
-        ofile_FAIL("ERROR in $sub_name, read multiple ORIGIN lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
-      }
-      $seq = "";
-      while((defined $line) && ($line !~ /^\/\/$/)) { 
-        chomp $line; $line_idx++;
-        # sequence lines
-        # examples:
-        # 7501 gtcacgggcg taatgtgaaa agacaaaact gattatcttt ctttttcttt agtgtctttt
-        # 7561 aaaaaaa
-        if($line =~ /^\s+\d+\s+(.+)$/) { 
-          $seqline = $1;
-          $seqline =~ s/\s+//g; # remove spaces
-          $seq .= $seqline;
-        }
-        $line = <IN>;
-      }
-      if(! defined $line) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to find a // line after ORIGIN but did not, line $line_idx\n", "dnaorg", 1, $FH_HR);
-      }
-      # if we get here we just read the // line
-      # we are finished with this sequence, store the information
-      if(! defined $acc) { ofile_FAIL(        "ERROR in $sub_name, failed to read accession, line: $line_idx\n", "dnaorg", 1, $FH_HR); }
-      if(! defined $len) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read length (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
-      if(! defined $ver) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read version (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
-      if(! defined $def) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read definition (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
-      if(! defined $seq) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read sequence (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
-
-      # store sequence info
-      %{$seq_info_HHR->{$acc}} = ();
-      $seq_info_HHR->{$acc}{"len"} = $len;
-      $seq_info_HHR->{$acc}{"ver"} = $ver;
-      $seq_info_HHR->{$acc}{"def"} = $def;
-      $seq_info_HHR->{$acc}{"seq"} = $seq;
-
-      # reset variables
-      $seq = undef;
-      $len = undef;
-      $acc = undef;
-      $ver = undef;
-      $def = undef;
-      $feature   = undef;
-      $location  = undef;
-      $qualifier = undef;
-      $value     = undef;
-
-      $seq_idx++;
-      $ftr_idx = -1;
-      $line = <IN>;
-    } # end of 'elsif($line =~ /^FEATURES\s+Location\/Qualifiers$/) {' 
-    else { 
-      # not a line we will parse, read the next line
-      $line = <IN>;
-    }
-  }
-
-  if($seq_idx == 0) { 
-    ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, failed to read any sequence data\n", "dnaorg", 1, $FH_HR);
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: dng_GenbankStoreQualifierValue()
-# Incept:     EPN, Wed Mar 13 09:42:22 2019
-#
-# Synopsis: Store a genbank qualifier and value.
-#
-# Arguments:
-#  $ftr_info_AHR: REF to the array of hashes to store data in
-#  $ftr_idx:      feature index
-#  $qualifier:    qualifier
-#  $value:        qualifier value
-#  $FH_HR:        REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
-#
-# Returns:    '1' if $ftr_info_AHR->[$ftr_idx]{$qualifier} created
-#             '0' if $ftr_info_AHR->[$ftr_idx]{$qualifier} exists upon entering function
-#
-# Dies:       If $value includes the string ":GPSEP:, which we use 
-#             to separate multiple qualifier values for the same qualifier.
-#             
-#################################################################
-sub dng_GenbankStoreQualifierValue { 
-  my $sub_name = "dng_GenbankStoreQualifierValue";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($ftr_info_AHR, $ftr_idx, $qualifier, $value, $FH_HR) = @_;
-
-  if($value =~ /\:GPSEP\:/) { 
-    ofile_FAIL("ERROR in $sub_name, qualifier value $value includes the special string :GPSEP:, this is not allowed", "dnaorg", 1, $FH_HR);
-  }
-
-  # remove leading and trailing " in the value, if they exist
-  # GenBank format uses "" as a substitute for " in these strings
-  $value =~ s/^\"//;
-  $value =~ s/\"$//;
-
-  # printf("in $sub_name q: $qualifier v: $value\n");
-  if(! defined ($ftr_info_AHR->[$ftr_idx])) { 
-    %{$ftr_info_AHR->[$ftr_idx]} = (); 
-  }
-  if(! defined $ftr_info_AHR->[$ftr_idx]{$qualifier}) { 
-    $ftr_info_AHR->[$ftr_idx]{$qualifier} = $value;
-  }
-  else { 
-    $ftr_info_AHR->[$ftr_idx]{$qualifier} .= ":GBSEP:" . $value;
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  dng_verifyEnvVariableIsValidDir()
-# Incept:      EPN, Wed Oct 25 10:09:28 2017 [ribo.pm]
-#
-# Purpose:     Verify that the environment variable $envvar exists 
-#              and that it is a valid directory. Return directory path.
-#              
-# Arguments: 
-#   $envvar:  environment variable
-#
-# Returns:    directory path $ENV{'$envvar'}
-#
-################################################################# 
-sub dng_VerifyEnvVariableIsValidDir { 
-  my $nargs_expected = 1;
-  my $sub_name = "dng_VerifyEnvVariableIsValidDir()";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($envvar) = $_[0];
-
-  if(! exists($ENV{"$envvar"})) { 
-    die "ERROR, the environment variable $envvar is not set";
-    # it's okay this isn't ofile_FAIL because this is called before ofile_info_HH is set-up
-  }
-  my $envdir = $ENV{"$envvar"};
-  if(! (-d $envdir)) { 
-    die "ERROR, the directory specified by your environment variable $envvar does not exist.\n"; 
-    # it's okay this isn't ofile_FAIL because this is called before ofile_info_HH is set-up
-  }    
-
-  return $envdir;
-}
-
-
-#################################################################
-# Subroutine: dng_SqstringCapitalize
-# Incept:     EPN, Fri Mar 15 13:32:36 2019
-# 
-# Purpose:    Capitalize a string in place.
-# 
-# Arguments:
-#   $sqstring_R: REF to sequence string to capitalize
-#
-# Returns:    void
-# 
-# Dies:       never
-#
-#################################################################
-sub dng_SqstringCapitalize {
-  my $sub_name = "dng_SqstringCapitalize";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($sqstring_R) = @_;
-  
-  $$sqstring_R =~ tr/a-z/A-Z/;
-  return;
-}
-
-#################################################################
-# Subroutine: dng_SqstringDnaize
-# Incept:     EPN, Fri Mar 15 13:33:39 2019
-# 
-# Purpose:    Convert a RNA/DNA sqstring to DNA in place.
-# 
-# Arguments:
-#   $sqstring_R: REF to sequence string to capitalize
-#
-# Returns:    void
-# 
-# Dies:       never
-#
-#################################################################
-sub dng_SqstringDnaize {
-  my $sub_name = "dng_SqstringDnaize";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($sqstring_R) = @_;
-  
-  $$sqstring_R =~ tr/Uu/Tt/;
-  return;
-}
-
-
-#################################################################
-# Subroutine: dng_SqstringReverseComplement
-# Incept:     EPN, Fri Mar 15 15:35:10 2019
-# 
-# Purpose:    Reverse complement a RNA/DNA sqstring in place.
-# 
-# Arguments:
-#   $sqstring_R: REF to reverse complement
-#
-# Returns:    void
-# 
-# Dies:       never
-#
-#################################################################
-sub dng_SqstringReverseComplement {
-  my $sub_name = "dng_SqstringReverseComplement";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($sqstring_R) = @_;
-
-  # DNA-ize it
-  sqstringDnaize($sqstring_R);
-  # reverse it 
-  $$sqstring_R = reverse $$sqstring_R;
-  # complement it
-  $$sqstring_R =~ tr/ACGTRYMKHBVDacgtrymkhbvd/TGCAYRKMDVBHtgcayrkmdvbh/;
-  # see esl_alphabet.c::set_complementarity()
-  # note that S, W, N are omitted as they are their own complements
-
-  return;
-}
-
-
-#################################################################
-# Subroutine: dng_SqstringDiffSummary
-# Incept:     EPN, Fri Mar 15 13:35:28 2019
-# 
-# Purpose:    Return a string summarizes the differences between
-#             two sqstrings.
-# 
-# Arguments:
-#   $sqstring1: sqstring 1
-#   $sqstring2: sqstring 2
-#
-# Returns:    String with N newlines for N differences.
-#             "" if sqstrings are identical.
-# 
-# Dies:       never
-#
-#################################################################
-sub dng_SqstringDiffSummary {
-  my $sub_name = "dng_SqstringDiffSummary";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($sqstring1, $sqstring2) = @_;
-
-  if(! defined $sqstring1) { 
-    return "sequence 1 is undefined\n"; 
-  }
-  if(! defined $sqstring2) { 
-    return "sequence 2 is undefined\n"; 
-  }
-  dng_SqstringCapitalize(\$sqstring1);
-  dng_SqstringCapitalize(\$sqstring2);
-  dng_SqstringDnaize(\$sqstring1);
-  dng_SqstringDnaize(\$sqstring2);
-  if($sqstring1 eq $sqstring2) { 
-    return "";
-  }
-  my $n1 = length($sqstring1); 
-  my $n2 = length($sqstring2); 
-  if($n1 != $n2) {
-    return "sequence lengths mismatch ($n1 != $n2)\n"; 
-  }
-  my $ret_str = "";
-  my @sqstring1_A = split("", $sqstring1); 
-  my @sqstring2_A = split("", $sqstring2); 
-  my $n = ($n1 > $n2) ? $n1 : $n2;
-  for(my $i = 0; $i < $n; $i++) { 
-    if($i >= $n1) { 
-      $ret_str .= " char " . ($i+1) . " seq1: off-end seq2: " . $sqstring2_A[$i] . "\n";
-    }
-    elsif($i >= $n2) { 
-      $ret_str .= " char " . ($i+1) . " seq1: " . $sqstring1_A[$i] . " seq2: off-end\n";
-    }
-    elsif($sqstring1_A[$i] ne $sqstring2_A[$i]) { 
-      $ret_str .= " char " . ($i+1) . " seq1: " . $sqstring1_A[$i] . " seq2: " . $sqstring2_A[$i] . "\n";
-    }
-  }
-
-  return $ret_str;
-}
-
-#################################################################
-# Subroutine: dng_CdsFetchStockholmToFasta()
-# Incept:     EPN, Thu Mar 14 12:30:33 2019
-# 
-# Purpose:    Given coordinates of all CDS features in %{$ftr_info_AHR}
-#             fetch all the CDS for all sequences in the Stockholm alignment
-#             and create a new output fasta file with just the CDS features.
-#
-#             We don't really need both the stockholm and fasta file 
-#             if there are no gaps in the stockholm alignment (as is the
-#             case in dnaorg_build.pl (which requires a single sequence 
-#             'alignment' with no gaps), but this implemenation works for
-#             alignments with gaps too.
-#
-# Arguments:
-#   $out_FH:         output file handle
-#   $stk_file:       stockholm file with aligned full length sequences
-#   $ftr_info_AHR:   REF to the feature info, pre-filled
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
-#                    
-# Returns: void
-#
-# Dies:    if we have trouble fetching a sequence
-#
-#################################################################
-sub dng_CdsFetchStockholmToFasta { 
-  my $sub_name = "dng_CdsFetchStockholmToFasta";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($out_FH, $stk_file, $ftr_info_AHR, $FH_HR) = @_;
-
-  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1});
-  my $msa_has_rf = $msa->has_rf;
-
-  # precompute start, stop, strand, for all features, so we don't have to redo this for each seq
-  my @sgm_start_AA  = ();
-  my @sgm_stop_AA   = ();
-  my @sgm_strand_AA = ();
-  dng_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
-
-  my $nftr = scalar(@{$ftr_info_AHR});
-  my $nseq = $msa->nseq;
-  my $ftr_idx = undef; # feature index
-  my $seq_idx = undef; # feature index
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
-        my $cds_sqstring = "";
-        foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AA[$ftr_idx]}); $sgm_idx++) { 
-          my $rfstart = $sgm_start_AA[$ftr_idx][$sgm_idx];
-          my $rfstop  = $sgm_stop_AA[$ftr_idx][$sgm_idx];
-          my $astart  = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstart) : $rfstart;
-          my $astop   = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstop)  : $rfstop;
-          my $sgm_sqstring = $msa->get_sqstring_unaligned_and_truncated($seq_idx, $astart, $astop);
-          if($sgm_strand_AA[$ftr_idx][$sgm_idx] eq "-") { 
-            sqstringReverseComplement(\$sgm_sqstring);
-          }
-          $cds_sqstring .= $sgm_sqstring;
-        }
-        print $out_FH(">" . $msa->get_sqname($seq_idx) . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n" . dng_SqstringAddNewlines($cds_sqstring, 60));
-      }
-    }
-  }
-  return;
-}
-
-#################################################################
-# Subroutine: dng_CdsTranslateToFastaFile()
-# Incept:     EPN, Thu Mar 14 12:30:28 2019
-# 
-# Purpose:    Use esl-translate to translate a fasta file with
-#             CDS sequences pertaining to the CDS features in 
-#             @{$ftr_info_AHR} into fasta protein files.
-#
-# Arguments:
-#   $out_FH:         output file handle to print to 
-#   $esl_translate:  path to esl-translate executable
-#   $cds_fa_file:    fasta file with CDS sequences
-#   $out_root:       string that is the 'root' for naming output files
-#   $ftr_info_AHR:   REF to the feature info, pre-filled
-#   $opt_HHR:        command line options
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
-#                    
-# Returns: void
-#
-# Dies:    if we have trouble fetching a sequence
-#
-#################################################################
-sub dng_CdsTranslateToFastaFile { 
-  my $sub_name = "dng_CdsTranslateToFastaFiles";
-  my $nargs_expected = 7;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($out_FH, $esl_translate, $cds_fa_file, $out_root, $ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
-
-  my $tmp1_translate_fa_file  = $out_root . ".cds.esl-translate.1.fa";
-  my $tmp2_translate_fa_file  = $out_root . ".cds.esl-translate.2.fa";
-  my $tmp1_translate_ssi_file = $out_root . ".cds.esl-translate.1.fa.ssi";
-  my $tmp2_translate_ssi_file = $out_root . ".cds.esl-translate.2.fa.ssi";
-  if(-e $tmp1_translate_ssi_file) { unlink $tmp1_translate_ssi_file; }
-  if(-e $tmp2_translate_ssi_file) { unlink $tmp2_translate_ssi_file; }
-
-  my $c_opt = "";
-  if((opt_IsUsed("--ttbl", $opt_HHR)) && (opt_Get("--ttbl", $opt_HHR) != 1)) { 
-    $c_opt = "-c " . opt_Get("--ttbl", $opt_HHR);
-  }
-  my $translate_cmd = "$esl_translate $c_opt -M -l 3 --watson $cds_fa_file > $tmp1_translate_fa_file";
-  utl_RunCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-
-  # go through output fasta file and rewrite names, so we can fetch 
-  open(IN,       $tmp1_translate_fa_file) || fileOpenFailure($tmp1_translate_fa_file, $sub_name, $!, "reading", $FH_HR);
-  open(OUT, ">", $tmp2_translate_fa_file) || fileOpenFailure($tmp2_translate_fa_file, $sub_name, $!, "writing", $FH_HR);
-  while(my $line = <IN>) { 
-    if($line =~ m/^\>/) { 
-      #>orf58 source=NC_039477.1/5..5104:+ coords=1..5097 length=1699 frame=1  
-      chomp $line;
-      if($line =~ /^\>orf\d+\s+(source\=\S+)\s+(coords\=\S+)\s+length\=\d+\s+frame\=\S+/) { 
-        # rename as 'source=NC_039477.1/5..5104:+,coords=1..5097'
-        print OUT (">" . $1 . "," . $2 . "\n");
-      }
-      else { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing esl-translate output file $tmp1_translate_fa_file, line:\n$line\n", "dnaorg", 1, $FH_HR);
-      }
-    }
-    else { 
-      print OUT $line; 
-    }
-  }
-  close(IN);
-  close(OUT);
-
-  # $tmp2_translate_fa_file now includes renamed translated sequences from esl-translate
-  # fetch expected translated seqs and print to $out_FH
-  my $cds_sqfile     = Bio::Easel::SqFile->new({ fileLocation => $cds_fa_file });
-  my $protein_sqfile = Bio::Easel::SqFile->new({ fileLocation => $tmp2_translate_fa_file });
-
-  my $nftr = scalar(@{$ftr_info_AHR});
-  for(my $seq_idx = 0; $seq_idx < $cds_sqfile->nseq_ssi; $seq_idx++) { 
-    my ($seq_name, $seq_length) = $cds_sqfile->fetch_seq_name_and_length_given_ssi_number($seq_idx);
-    my $fetch_name = "source=" . $seq_name . ",coords=1.." . ($seq_length - 3); # subtract length of stop codon
-    if(! $protein_sqfile->check_seq_exists($fetch_name)) { 
-      ofile_FAIL("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\texpected sequence:$fetch_name\n", "dnaorg", 1, $FH_HR);
-    }
-    print $out_FH ">" . $seq_name . "\n";
-    print $out_FH dng_SqstringAddNewlines($protein_sqfile->fetch_seq_to_sqstring($fetch_name), 60);
-  }
-  # remove temporary files unless --keep
-  if(! opt_Get("--keep", $opt_HHR)) { 
-    utl_FileRemoveUsingSystemRm($tmp1_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
-    utl_FileRemoveUsingSystemRm($tmp2_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
-    utl_FileRemoveUsingSystemRm($tmp2_translate_fa_file . ".ssi", $sub_name, $opt_HHR, $FH_HR);
-  }
-
-  return;
-}
 
 #################################################################
 # Subroutine: dng_ModelInfoFileWrite()
@@ -5420,38 +2243,6 @@ sub dng_ModelInfoFileParse {
 }
 
 #################################################################
-# Subroutine: dng_HashFromCommaSeparatedString
-# Incept:     EPN, Mon Mar 18 06:52:21 2019
-#
-# Synopsis: Given a hash reference and a comma separated string
-#           fill the hash with keys for each token in the string,
-#           with all values set as 1.
-#
-# Arguments:
-#  $HR:      hash reference
-#  $string:  comma separated string
-#
-# Returns:    void
-#
-# Dies:       never
-#################################################################
-sub dng_HashFromCommaSeparatedString {
-  my $sub_name = "dng_HashFromCommaSeparatedString";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($HR, $string) = @_;
-
-  %{$HR} = ();
-  my @key_A = split(",", $string);
-  foreach my $key (@key_A) { 
-    $HR->{$key} = 1; 
-  }
-
-  return;
-}
-
-#################################################################
 # Subroutine: dng_BlastDbProteinCreate
 # Incept:     EPN, Mon Mar 18 09:40:28 2019
 # 
@@ -5474,6 +2265,97 @@ sub dng_BlastDbProteinCreate {
   my ($makeblastdb, $fa_file, $opt_HHR, $FH_HR) = @_;
 
   utl_RunCommand($makeblastdb . " -in $fa_file -dbtype prot > /dev/null", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  return;
+}
+
+
+#################################################################
+# Subroutine: dng_EslTranslateCdsToFastaFile()
+# Incept:     EPN, Thu Mar 14 12:30:28 2019
+# 
+# Purpose:    Use esl-translate to translate a fasta file with
+#             CDS sequences pertaining to the CDS features in 
+#             @{$ftr_info_AHR} into fasta protein files.
+#
+# Arguments:
+#   $out_FH:         output file handle to print to 
+#   $esl_translate:  path to esl-translate executable
+#   $cds_fa_file:    fasta file with CDS sequences
+#   $out_root:       string that is the 'root' for naming output files
+#   $ftr_info_AHR:   REF to the feature info, pre-filled
+#   $opt_HHR:        command line options
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#                    
+# Returns: void
+#
+# Dies:    if we have trouble fetching a sequence
+#
+#################################################################
+sub dng_EslTranslateCdsToFastaFile { 
+  my $sub_name = "dng_EslTranslateCdsTranslateToFastaFile";
+  my $nargs_expected = 7;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_FH, $esl_translate, $cds_fa_file, $out_root, $ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+
+  my $tmp1_translate_fa_file  = $out_root . ".cds.esl-translate.1.fa";
+  my $tmp2_translate_fa_file  = $out_root . ".cds.esl-translate.2.fa";
+  my $tmp1_translate_ssi_file = $out_root . ".cds.esl-translate.1.fa.ssi";
+  my $tmp2_translate_ssi_file = $out_root . ".cds.esl-translate.2.fa.ssi";
+  if(-e $tmp1_translate_ssi_file) { unlink $tmp1_translate_ssi_file; }
+  if(-e $tmp2_translate_ssi_file) { unlink $tmp2_translate_ssi_file; }
+
+  my $c_opt = "";
+  if((opt_IsUsed("--ttbl", $opt_HHR)) && (opt_Get("--ttbl", $opt_HHR) != 1)) { 
+    $c_opt = "-c " . opt_Get("--ttbl", $opt_HHR);
+  }
+  my $translate_cmd = "$esl_translate $c_opt -M -l 3 --watson $cds_fa_file > $tmp1_translate_fa_file";
+  utl_RunCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  # go through output fasta file and rewrite names, so we can fetch 
+  open(IN,       $tmp1_translate_fa_file) || fileOpenFailure($tmp1_translate_fa_file, $sub_name, $!, "reading", $FH_HR);
+  open(OUT, ">", $tmp2_translate_fa_file) || fileOpenFailure($tmp2_translate_fa_file, $sub_name, $!, "writing", $FH_HR);
+  while(my $line = <IN>) { 
+    if($line =~ m/^\>/) { 
+      #>orf58 source=NC_039477.1/5..5104:+ coords=1..5097 length=1699 frame=1  
+      chomp $line;
+      if($line =~ /^\>orf\d+\s+(source\=\S+)\s+(coords\=\S+)\s+length\=\d+\s+frame\=\S+/) { 
+        # rename as 'source=NC_039477.1/5..5104:+,coords=1..5097'
+        print OUT (">" . $1 . "," . $2 . "\n");
+      }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, problem parsing esl-translate output file $tmp1_translate_fa_file, line:\n$line\n", "dnaorg", 1, $FH_HR);
+      }
+    }
+    else { 
+      print OUT $line; 
+    }
+  }
+  close(IN);
+  close(OUT);
+
+  # $tmp2_translate_fa_file now includes renamed translated sequences from esl-translate
+  # fetch expected translated seqs and print to $out_FH
+  my $cds_sqfile     = Bio::Easel::SqFile->new({ fileLocation => $cds_fa_file });
+  my $protein_sqfile = Bio::Easel::SqFile->new({ fileLocation => $tmp2_translate_fa_file });
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $seq_idx = 0; $seq_idx < $cds_sqfile->nseq_ssi; $seq_idx++) { 
+    my ($seq_name, $seq_length) = $cds_sqfile->fetch_seq_name_and_length_given_ssi_number($seq_idx);
+    my $fetch_name = "source=" . $seq_name . ",coords=1.." . ($seq_length - 3); # subtract length of stop codon
+    if(! $protein_sqfile->check_seq_exists($fetch_name)) { 
+      ofile_FAIL("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\texpected sequence:$fetch_name\n", "dnaorg", 1, $FH_HR);
+    }
+    print $out_FH ">" . $seq_name . "\n";
+    print $out_FH seq_SqstringAddNewlines($protein_sqfile->fetch_seq_to_sqstring($fetch_name), 60);
+  }
+  # remove temporary files unless --keep
+  if(! opt_Get("--keep", $opt_HHR)) { 
+    utl_FileRemoveUsingSystemRm($tmp1_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    utl_FileRemoveUsingSystemRm($tmp2_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    utl_FileRemoveUsingSystemRm($tmp2_translate_fa_file . ".ssi", $sub_name, $opt_HHR, $FH_HR);
+  }
 
   return;
 }
@@ -5506,12 +2388,12 @@ sub dng_FastaWriteSequence {
   if(! defined $seq)  { ofile_FAIL("ERROR in $sub_name, name is undefined", "dnaorg", 1, $FH_HR); }
 
   # capitalize and DNAize $seq
-  dng_SqstringCapitalize(\$seq);
-  dng_SqstringDnaize(\$seq);
+  seq_SqstringCapitalize(\$seq);
+  seq_SqstringDnaize(\$seq);
   printf $out_FH (">%s%s\n%s", 
                   $name, 
                   (defined $def) ? " " . $def : "",
-                  dng_SqstringAddNewlines($seq, 60));
+                  seq_SqstringAddNewlines($seq, 60));
   
   return;
 }
@@ -5582,6 +2464,57 @@ sub dng_StockholmFileWriteFromFastaFile {
 }
 
 #################################################################
+# Subroutine:  dng_SplitFastaFile()
+# Incept:      EPN, Tue Mar  1 09:30:10 2016
+#
+# Purpose: Split up a fasta file into <n> smaller files by calling
+#          the esl-ssplit perl script.
+#
+# Arguments: 
+#  $esl_ssplit:      path to the esl-ssplit.pl script to use
+#  $fasta_file:      fasta file to split up
+#  $nfiles:          desired number of files to split $fasta_file into, -1 for one file for each sequence
+#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+# 
+# Returns:    Number of files actually created (can differ from requested
+#             amount (which is $nfiles)).
+#
+# Dies:       if esl-ssplit command fails
+#
+################################################################# 
+sub dng_SplitFastaFile { 
+  my $sub_name = "dng_SplitFastaFile()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($esl_ssplit, $fasta_file, $nfiles, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to ofile_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $outfile = $fasta_file . ".esl-ssplit";
+  my $cmd = undef;
+  if($nfiles == -1) { # special case: put 1 file per sequence
+    $cmd = "$esl_ssplit -v $fasta_file 1 > $outfile";
+  }
+  else { 
+    $cmd = "$esl_ssplit -v -r -n $fasta_file $nfiles > $outfile";
+  }
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  # parse output to determine exactly how many files were created:
+  # $esl_ssplit will have output exactly 1 line per fasta file it created
+  my $nfiles_created = utl_FileCountLines($outfile, $FH_HR);
+
+  if(! opt_Get("--keep", $opt_HHR)) { 
+    utl_RunCommand("rm $outfile", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  }
+
+  return $nfiles_created;
+}
+
+#################################################################
 # Subroutine: dng_SplitNumSeqFiles()
 # Incept:     EPN, Mon Mar 18 15:01:44 2019
 #
@@ -5618,73 +2551,129 @@ sub dng_SplitNumSeqFiles {
   return $ret_nseqfiles;
 }
 
+#################################################################
+# Subroutine:  dng_ValidateExecutableHash()
+# Incept:      EPN, Sat Feb 13 06:27:51 2016
+#
+# Purpose:     Given a reference to a hash in which the 
+#              values are paths to executables, validate
+#              those files are executable.
+#
+# Arguments: 
+#   $execs_HR: REF to hash, keys are short names to executable
+#              e.g. "cmbuild", values are full paths to that
+#              executable, e.g. "/usr/local/infernal/1.1.1/bin/cmbuild"
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns:     void
+#
+# Dies:        if one or more executables does not exist#
+#
+################################################################# 
+sub dng_ValidateExecutableHash { 
+  my $nargs_expected = 2;
+  my $sub_name = "dng_ValidateExecutableHash()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($execs_HR, $FH_HR) = @_;
 
+  my $fail_str = undef;
+  foreach my $key (sort keys %{$execs_HR}) { 
+    if(! -e $execs_HR->{$key}) { 
+      $fail_str .= "\t$execs_HR->{$key} does not exist.\n"; 
+    }
+    elsif(! -x $execs_HR->{$key}) { 
+      $fail_str .= "\t$execs_HR->{$key} exists but is not an executable file.\n"; 
+    }
+  }
+  
+  if(defined $fail_str) { 
+    ofile_FAIL("ERROR in $sub_name(),\n$fail_str", "dnaorg", 1, $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: dng_ValidateCapitalizedDnaStartCodon()
+# Incept:     EPN, Sat Feb 23 10:01:55 2019
+# 
+# Purpose:    Given an already capitalized DNA codon, return '1' 
+#             if it's a valid start codon, else return 0.
+#
+# Args:
+#  $codon:  the codon
+#
+# Returns:    The codon as a string
+#
+#################################################################
+sub dng_ValidateCapitalizedDnaStartCodon {
+  my $sub_name = "dng_ValidateCapitaliedDnaStartCodon";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($codon) = @_;
+  
+  if($codon eq "ATG") { 
+    return 1;
+  }
+
+  return 0;
 
 
 #################################################################
-# Subroutine:  dng_CmalignCheckStdOutput()
-# Incept:      EPN, Wed Feb  6 14:18:59 2019
-#
-# Purpose:     Check cmalign output to see if it indicates that 
-#              a cmalign run finished successfully, in error, or 
-#              has not yet finished.
-#              
-# Arguments: 
-#  $stdout_file:      path to the stdout file we will check
-#  $ret_mxsize_R:     REF to required matrix size, only filled meaningfully if return value is '0'
-#  $FH_HR:            REF to hash of file handles
+# Subroutine: dng_ValidateCapitalizedDnaStopCodon()
+# Incept:     EPN, Mon Mar 14 13:47:57 2016
 # 
-# Returns:     '1' if $stdout_file indicates cmalign job finished successfully
-#              '0' if $stdout_file indicates cmalign job finished in error but in
-#                  a way that is allowed, fills $$ret_mxsize_R
-#             '-1' if $stdout_file indicates cmalign job is not yet finished
-#                  or failed in some way we aren't looking for
+# Purpose:    Given an already capitalized DNA codon, return '1' 
+#             if it's a valid stop codon, else return 0.
 #
-# Dies: If $stdout_file does not exist or is empty
-# 
-################################################################# 
-sub dng_CmalignCheckStdOutput { 
-  my $sub_name = "dng_CmalignCheckStdOutput";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+# Args:
+#  $codon:  the codon
+#
+# Returns:    The codon as a string
+#
+#################################################################
+sub dng_ValidateCapitalizedDnaStopCodon {
+  my $sub_name = "dng_ValidateCapitaliedDnaStopCodon";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($stdout_file, $ret_mxsize_R, $FH_HR) = @_;
-  if(defined $ret_mxsize_R) { 
-    $$ret_mxsize_R = 0; # overwritten below if nec
+  my ($codon) = @_;
+  
+  if($codon eq "TAA" || 
+     $codon eq "TGA" || 
+     $codon eq "TAG" || 
+     $codon eq "TAR") { 
+    return 1;
   }
 
-  if(! -e $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", "dnaorg", 1, $FH_HR);
-  }
-  if(! -s $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", "dnaorg", 1, $FH_HR);
-  }
-
-  # if we get here, the file exists and is non-empty
-  my $final_line = `tail -n 1 $stdout_file`;
-  chomp $final_line;
-  if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-  if($final_line =~ m/\Q# CPU time/) { 
-    return 1; 
-  }
-  else { 
-    # job did NOT finish successfully, check for mx overflow error
-    my $error_line = `grep ^Error $stdout_file | tail -n 1`;
-    if($error_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-    if($error_line =~ /Error: HMM banded truncated alignment mxes need (\d+\.\d+)/) { 
-      if(defined $ret_mxsize_R) { 
-        $$ret_mxsize_R = $1;
-      }
-      return 0;
-    }
-    else { 
-      return -1;
-    }
-  }
-    
-  return -1; # NEVER REACHED
+  return 0;
 }
 
+#################################################################
+# Subroutine: dng_StripVersion()
+# Incept:     EPN, Thu Feb 11 14:25:52 2016
+#
+# Purpose:    Given a ref to an accession.version string, remove the version.
+#
+# Arguments: 
+#   $accver_R: ref to accession version string to remove version from
+#
+# Returns:    Nothing, $$accver_R has version removed
+#
+# Dies:       never
+#################################################################
+sub dng_StripVersion {
+  my $sub_name  = "dng_StripVersion()";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($accver_R) = (@_);
+
+  $$accver_R =~ s/\.[0-9]*$//; # strip version
+
+  return;
+}
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value

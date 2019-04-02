@@ -14,6 +14,7 @@ require "dnaorg.pm";
 require "epn-options.pm";
 require "epn-ofile.pm";
 require "epn-seq.pm";
+require "epn-sqfile.pm";
 require "epn-utils.pm";
 
 #######################################################################################
@@ -92,8 +93,8 @@ require "epn-utils.pm";
 #
 #######################################################################################
 # make sure DNAORGDIR and DNAORGBLASTDIR environment variable is set
-my $env_dnaorgdir      = dng_VerifyEnvVariableIsValidDir("DNAORGDIR");
-my $env_dnaorgblastdir = dng_VerifyEnvVariableIsValidDir("DNAORGBLASTDIR");
+my $env_dnaorgdir      = utl_DirEnvVarValid("DNAORGDIR");
+my $env_dnaorgblastdir = utl_DirEnvVarValid("DNAORGBLASTDIR");
 
 my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
 my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
@@ -393,7 +394,7 @@ my $progress_w = 60; # the width of the left hand column in our progress output,
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
 # make sure the sequence, CM, modelinfo, qsubinfo files exist
-dng_ValidateFileExistsAndIsNonEmpty($fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+utl_FileValidateExistsAndNonEmpty($fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 my $df_model_dir = "/panfs/pan1/infernal/notebook/19_0307_virus_dnaorg_classify_annotate_merge/norovirus-testing-20190318/models";
 
@@ -402,10 +403,10 @@ my $cm_file      = undef;
 if(! opt_IsUsed("-m", \%opt_HH)) { $cm_file = $df_cm_file; }
 else                             { $cm_file = opt_Get("-m", \%opt_HH); }
 if(! opt_IsUsed("-m", \%opt_HH)) {
-  dng_ValidateFileExistsAndIsNonEmpty($cm_file, "default CM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  utl_FileValidateExistsAndNonEmpty($cm_file, "default CM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 else { # -m used on the command line
-  dng_ValidateFileExistsAndIsNonEmpty($cm_file, "CM file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  utl_FileValidateExistsAndNonEmpty($cm_file, "CM file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
 my $df_modelinfo_file = $df_model_dir . "/" . "dnaorg." . $model_version_str . ".modelinfo";
@@ -413,10 +414,10 @@ my $modelinfo_file = undef;
 if(! opt_IsUsed("-i", \%opt_HH)) { $modelinfo_file = $df_modelinfo_file; }
 else                             { $modelinfo_file = opt_Get("-i", \%opt_HH); }
 if(! opt_IsUsed("-i", \%opt_HH)) {
-  dng_ValidateFileExistsAndIsNonEmpty($modelinfo_file, "default model info file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  utl_FileValidateExistsAndNonEmpty($modelinfo_file, "default model info file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 else { # -i used on the command line
-  dng_ValidateFileExistsAndIsNonEmpty($modelinfo_file, "model info file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
 my $qsubinfo_file    = undef;
@@ -427,10 +428,10 @@ else                             { $qsubinfo_file = opt_Get("-q", \%opt_HH); }
 if(opt_IsUsed("-p", \%opt_HH)) { 
   # check for existence of qsub info file
   if(! opt_IsUsed("-q", \%opt_HH)) {
-    dng_ValidateFileExistsAndIsNonEmpty($qsubinfo_file, "default qsub info file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+    utl_FileValidateExistsAndNonEmpty($qsubinfo_file, "default qsub info file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   }
   else { # -q used on the command line
-    dng_ValidateFileExistsAndIsNonEmpty($qsubinfo_file, "qsub info file specified with -q", undef, 1, \%{$ofile_info_HH{"FH"}}); # 1 says: die if it doesn't exist or is empty
+    utl_FileValidateExistsAndNonEmpty($qsubinfo_file, "qsub info file specified with -q", undef, 1, \%{$ofile_info_HH{"FH"}}); # 1 says: die if it doesn't exist or is empty
   }
 }
 # make sure the blastdb directory exists
@@ -467,7 +468,7 @@ my @mdl_info_AH  = (); # array of hashes with model info
 my %ftr_info_HAH = (); # hash of array of hashes with feature info 
 my %sgm_info_HAH = (); # hash of array of hashes with segment info 
 
-dng_ValidateFileExistsAndIsNonEmpty($modelinfo_file, "model info file", undef, 1, $FH_HR);
+utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file", undef, 1, $FH_HR);
 dng_ModelInfoFileParse($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 
 # validate %mdl_info_AH
@@ -528,7 +529,9 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 my $seqstat_file = $out_root . ".seqstat";
 my @seq_name_A = (); # [0..$i..$nseq-1]: name of sequence $i in input file
 my %seq_len_H = ();  # key: sequence name (guaranteed to be unique), value: seq length
-my $tot_len_nt = seq_ProcessSequenceFile($execs_H{"esl-seqstat"}, $fa_file, $seqstat_file, \@seq_name_A, \%seq_len_H, \%opt_HH, \%ofile_info_HH);
+utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+ofile_AddClosedFileToOutputInfo($ofile_info_HHR, undef, "seqstat", $seqstat_file, 0, "esl-seqstat -a output for input fasta file");
+my $tot_len_nt = sqfile_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 my $nseq = scalar(@seq_name_A);
 #my %seq_idx_H = ();  # key: sequence name <sqname>, value index [0..$nseq-1] of <sqname> in @seq_name_A
 #utl_IdxHFromA(\%seq_idx_H, \@seq_name_A, undef, $FH_HR);
@@ -539,14 +542,14 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Classification: cmsearch round 1
 ####################################
 my $r1_cmsearch_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
-cmsearch_wrapper(\%execs_H, $cm_file, undef, $fa_file, $r1_cmsearch_opts, $out_root, 1, $tot_len_nt, $progress_w, \%opt_HH, \%ofile_info_HH);
+cmsearch_wrapper(\%execs_H, $cm_file, undef, $fa_file, $r1_cmsearch_opts, $out_root, 1, $nseq, $tot_len_nt, $progress_w, \%opt_HH, \%ofile_info_HH);
 
 # sort into a new file by score
 my $r1_tblout_key  = "search.r1.tblout"; # set in cmsearch_wrapper()
 my $r1_tblout_file = $ofile_info_HH{"fullpath"}{$r1_tblout_key};
 my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
 my $r1_sort_tblout_key  = $r1_tblout_key . ".sort";
-dng_ValidateFileExistsAndIsNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+utl_FileValidateExistsAndNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 my $sort_cmd = "grep -v ^\# $r1_tblout_file | sort -k 1,1 -k 3,3rn > $r1_sort_tblout_file"; 
 utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
@@ -584,7 +587,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
 
     # now run cmsearch against this file
-    cmsearch_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $r2_cmsearch_opts, $out_root, 2, $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
+    cmsearch_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $r2_cmsearch_opts, $out_root, 2, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
+                     $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
     my $r2_tblout_key = "search.r2.$mdl_name.tblout"; # set in cmsearch_wrapper()
     push(@r2_tblout_key_A,  $r2_tblout_key);
     push(@r2_tblout_file_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key});
@@ -659,7 +663,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 
     # run cmalign
     @{$stk_file_HA{$mdl_name}} = ();
-    cmalign_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $out_root, $mdl_seq_len_H{$mdl_name}, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
+    cmalign_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $out_root, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
+                    $mdl_seq_len_H{$mdl_name}, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                     \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
 
     # add n_div errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
@@ -747,7 +752,7 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgm_tbl",      $out
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "alt_tbl",      $out_root . ".alt.tbl", 1, "per-alert tabular summary file");
 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "pass_ftbl",      $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fail_ftbl",      $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fail_ftbl",      $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "pass_list",      $out_root . ".ap.seqlist",        1, "list of passing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fail_list",      $out_root . ".af.seqlist",        1, "list of failing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "alerts_list",    $out_root . ".altlist",           1, "list of errors in the sequence tables");
@@ -823,6 +828,7 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 # cmalign_parse_ifile 
 # cmalign_parse_stk_and_add_alignment_alerts 
 # cmalign_store_overflow
+# cmalign_check_stdout
 # fetch_features_and_add_cds_and_mp_alerts 
 # sqstring_check_start
 # sqstring_find_stops 
@@ -833,6 +839,7 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 # parse_blastx_results 
 # helper_blastx_breakdown_query
 # helper_blastx_breakdown_max_indel_str
+# helper_blastx_db_seqname_to_ftr_idx 
 #
 # Other subroutines related to alerts: 
 # alert_instances_add 
@@ -860,6 +867,7 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 # helper_ftable_add_qualifier_from_ftr_info
 # helper_ftable_add_qualifier_from_ftr_results
 # helper_ftable_class_model_for_sequence
+
 #
 # Miscellaneous subroutines:
 # process_input_fasta_file 
@@ -884,6 +892,7 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 #  $opt_str:         option string for cmsearch run
 #  $out_root:        string for naming output files
 #  $round:           round, 1 or 2 
+#  $nseq:            number of sequences in $seq_file
 #  $tot_len_nt:      total length of all nucleotides in $seq_file
 #  $progress_w:      width for outputProgressPrior output
 #  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
@@ -897,11 +906,11 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 ################################################################# 
 sub cmsearch_wrapper { 
   my $sub_name = "cmsearch_wrapper";
-  my $nargs_expected = 11;
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $opt_str, 
-      $out_root, $round, $tot_len_nt, $progress_w, $opt_HHR, $ofile_info_HHR) = @_;
+      $out_root, $round, $nseq, $tot_len_nt, $progress_w, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $do_parallel = opt_Get("-p", $opt_HHR);
@@ -937,14 +946,14 @@ sub cmsearch_wrapper {
   # determine description of the runs we are about to do
   my $desc = "";
   if($round == 1) { 
-    $desc = ($do_parallel) ? "Submitting $nseq_files cmsearch classification job(s) to the farm" : "Classifying sequences";
+    $desc = ($do_parallel) ? "Submitting $nseq_files cmsearch classification job(s) to the farm" : "Classifying sequences ($nseq seqs)";
   }
   else { 
     if($do_parallel) { 
-      $desc = sprintf("Submitting $nseq_files cmsearch coverage determination job(s)%s to the farm", (defined $mdl_name) ? " ($mdl_name)" : "");
+      $desc = "Submitting $nseq_files cmsearch coverage determination job(s) ($mdl_name: $nseq seqs) to the farm";
     }
     else { 
-      $desc = sprintf("Determining sequence coverage%s", (defined $mdl_name) ? " ($mdl_name)" : "");
+      $desc = "Determining sequence coverage ($mdl_name: $nseq seqs)"
     }
   }
   my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
@@ -1037,8 +1046,8 @@ sub cmsearch_run {
   if(-e $tblout_file) { unlink $tblout_file; }
   if(-e $err_file)    { unlink $err_file; }
   
-  dng_ValidateFileExistsAndIsNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
-  dng_ValidateFileExistsAndIsNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
+  utl_FileValidateExistsAndNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
+  utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
   if(! (defined $opt_str)) { $opt_str = ""; }
   $opt_str .= " --tblout $tblout_file"; 
@@ -1639,6 +1648,7 @@ sub populate_per_model_data_structures_given_classification_results {
 # cmalign_parse_ifile 
 # cmalign_parse_stk_and_add_alignment_alerts 
 # cmalign_store_overflow
+# cmalign_check_stdout
 # fetch_features_and_add_cds_and_mp_alerts 
 # sqstring_check_start
 # sqstring_find_stops 
@@ -1674,6 +1684,7 @@ sub populate_per_model_data_structures_given_classification_results {
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:              name of sequence file with all sequences to run against
 #  $out_root:              string for naming output files
+#  $nseq:                  total number of all seqs in $seq_file
 #  $tot_len_nt:            total length of all nucleotides in $seq_file
 #  $progress_w:            width for outputProgressPrior output
 #  $stk_file_AR:           ref to array of stockholm files created here, FILLED HERE
@@ -1690,11 +1701,11 @@ sub populate_per_model_data_structures_given_classification_results {
 ################################################################# 
 sub cmalign_wrapper { 
   my $sub_name = "cmalign_wrapper";
-  my $nargs_expected = 12;
+  my $nargs_expected = 13;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $out_root,
-      $tot_len_nt, $progress_w, $stk_file_AR, $overflow_seq_AR, 
+      $nseq, $tot_len_nt, $progress_w, $stk_file_AR, $overflow_seq_AR, 
       $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $nfasta_created = 0; # number of fasta files created by esl-ssplit
@@ -1737,7 +1748,7 @@ sub cmalign_wrapper {
     $r1_seq_file_A[0] = $seq_file;
   }
   
-  cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 1, $progress_w, 
+  cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 1, $nseq, $progress_w, 
                          \@r1_seq_file_A, \@r1_out_file_AH, \@r1_success_A, \@r1_mxsize_A, 
                          $opt_HHR, $ofile_info_HHR);
 
@@ -1782,7 +1793,7 @@ sub cmalign_wrapper {
 
   # do all round 2 runs
   if($nr2 > 0) { 
-    cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 2, $progress_w, 
+    cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 2, $nr2, $progress_w, 
                            \@r2_seq_file_A, \@r2_out_file_AH, \@r2_success_A, \@r2_mxsize_A, 
                            $opt_HHR, $ofile_info_HHR);
     # go through all round 2 runs: 
@@ -1838,6 +1849,7 @@ sub cmalign_wrapper {
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $out_root:              string for naming output files
 #  $round:                 round we are on, "1" or "2"
+#  $nseq:                  total number of sequences in all seq files in @{$seq_file_AR}
 #  $progress_w:            width for ofile_OutputProgress* subroutines
 #  $seq_file_AR:           ref to array of sequence file names for each cmalign/nhmmscan call, PRE-FILLED
 #  $out_file_AHR:          ref to array of hashes of output file names, FILLED HERE 
@@ -1857,10 +1869,10 @@ sub cmalign_wrapper {
 ################################################################# 
 sub cmalign_wrapper_helper { 
   my $sub_name = "cmalign_wrapper_helper";
-  my $nargs_expected = 12;
+  my $nargs_expected = 13;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $mdl_file, $mdl_name, $out_root, $round, $progress_w, $seq_file_AR, $out_file_AHR, $success_AR, $mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $mdl_file, $mdl_name, $out_root, $round, $nseq, $progress_w, $seq_file_AR, $out_file_AHR, $success_AR, $mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $log_FH         = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $do_parallel    = opt_Get("-p", $opt_HHR) ? 1 : 0;
@@ -1870,13 +1882,11 @@ sub cmalign_wrapper_helper {
   # depends on $do_parallel, $round, and ($progress_w < 0), and 
   my $desc = "";
   if($do_parallel) { 
-    $desc = sprintf("Submitting $nseq_files cmalign job(s)%s to the farm%s", 
-                    (defined $mdl_name) ? " ($mdl_name)" : "", 
+    $desc = sprintf("Submitting $nseq_files cmalign job(s) ($mdl_name: $nseq seqs) to the farm%s", 
                     ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
   else { 
-    $desc = sprintf("Aligning sequences%s%s", 
-                    (defined $mdl_name) ? " ($mdl_name)" : "", 
+    $desc = sprintf("Aligning sequences ($mdl_name: $nseq seqs)%s", 
                     ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
   my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
@@ -1996,8 +2006,8 @@ sub cmalign_run {
     if(-e $stk_file)    { unlink $stk_file; }
     if(-e $err_file)    { unlink $err_file; }
   }
-  dng_ValidateFileExistsAndIsNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
-  dng_ValidateFileExistsAndIsNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
+  utl_FileValidateExistsAndNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
+  utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
   # determine cmalign options based on command line options
   my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file --tfile $tfile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
@@ -2036,7 +2046,7 @@ sub cmalign_run {
       utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
     }
     # command has completed, check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
-    $success = dng_CmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
+    $success = cmalign_check_stdout($stdout_file, $ret_mxsize_R, $FH_HR);
     if($success == -1) { # indicates job did not finish properly, this shouldn't happen because utl_RunCommand() didn't die
       ofile_FAIL("ERROR in $sub_name, cmalign failed in a bad way, see $stdout_file for error output", 1, $ofile_info_HHR->{"FH"});
     }
@@ -2475,6 +2485,71 @@ sub cmalign_store_overflow {
 }
 
 #################################################################
+# Subroutine:  cmalign_check_stdout()
+# Incept:      EPN, Wed Feb  6 14:18:59 2019
+#
+# Purpose:     Check cmalign output to see if it indicates that 
+#              a cmalign run finished successfully, in error, or 
+#              has not yet finished.
+#              
+# Arguments: 
+#  $stdout_file:      path to the stdout file we will check
+#  $ret_mxsize_R:     REF to required matrix size, only filled meaningfully if return value is '0'
+#  $FH_HR:            REF to hash of file handles
+# 
+# Returns:     '1' if $stdout_file indicates cmalign job finished successfully
+#              '0' if $stdout_file indicates cmalign job finished in error but in
+#                  a way that is allowed, fills $$ret_mxsize_R
+#             '-1' if $stdout_file indicates cmalign job is not yet finished
+#                  or failed in some way we aren't looking for
+#
+# Dies: If $stdout_file does not exist or is empty
+# 
+################################################################# 
+sub cmalign_check_stdout { 
+  my $sub_name = "cmalign_check_stdout";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($stdout_file, $ret_mxsize_R, $FH_HR) = @_;
+  if(defined $ret_mxsize_R) { 
+    $$ret_mxsize_R = 0; # overwritten below if nec
+  }
+
+  if(! -e $stdout_file) { 
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", "dnaorg", 1, $FH_HR);
+  }
+  if(! -s $stdout_file) { 
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", "dnaorg", 1, $FH_HR);
+  }
+
+  # if we get here, the file exists and is non-empty
+  my $final_line = `tail -n 1 $stdout_file`;
+  chomp $final_line;
+  if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
+  if($final_line =~ m/\Q# CPU time/) { 
+    return 1; 
+  }
+  else { 
+    # job did NOT finish successfully, check for mx overflow error
+    my $error_line = `grep ^Error $stdout_file | tail -n 1`;
+    if($error_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
+    if($error_line =~ /Error: HMM banded truncated alignment mxes need (\d+\.\d+)/) { 
+      if(defined $ret_mxsize_R) { 
+        $$ret_mxsize_R = $1;
+      }
+      return 0;
+    }
+    else { 
+      return -1;
+    }
+  }
+    
+  return -1; # NEVER REACHED
+}
+
+
+#################################################################
 # Subroutine: fetch_features_and_add_cds_and_mp_alerts()
 # Incept:     EPN, Fri Feb 22 14:25:49 2019
 #
@@ -2844,6 +2919,7 @@ sub sqstring_find_stops {
 # parse_blastx_results 
 # helper_blastx_breakdown_query
 # helper_blastx_breakdown_max_indel_str
+# helper_blastx_db_seqname_to_ftr_idx 
 #
 #################################################################
 #################################################################
@@ -3168,7 +3244,7 @@ sub run_blastx_and_summarize_output {
   # affect the output and mess up our parsing if they are too long)
   # AND all the predicted CDS sequences
   my $blastx_query_file = $out_root . "." . $mdl_name . ".a.blastx.fa";
-  seq_FastaRemoveDescriptions($mdl_fa_file, $blastx_query_file, $ofile_info_HHR);
+  sqfile_FastaFileRemoveDescriptions($mdl_fa_file, $blastx_query_file, $ofile_info_HHR);
   # now add the predicted CDS sequences
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
@@ -3225,7 +3301,7 @@ sub parse_blastx_results {
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  dng_ValidateFileExistsAndIsNonEmpty($blastx_summary_file, "blastx summary file", $sub_name, 1, $FH_HR);
+  utl_FileValidateExistsAndNonEmpty($blastx_summary_file, "blastx summary file", $sub_name, 1, $FH_HR);
   my $nftr = scalar(@{$ftr_info_AHR});
 
   # create a hash mapping ftr_type_idx strings to ftr_idx:
@@ -3282,7 +3358,7 @@ sub parse_blastx_results {
         if($target =~ /(\S+)\/(\S+)/) { 
           my ($accn, $coords) = ($1, $2);
           # find it in @{$ftr_info_AHR}
-          $t_ftr_idx = dng_BlastxDbSeqNameToFtrIdx($target, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
+          $t_ftr_idx = helper_blastx_db_seqname_to_ftr_idx($target, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
         }
       }
       elsif($key eq "HSP") { 
@@ -3521,6 +3597,61 @@ sub helper_blastx_breakdown_max_indel_str {
   return scalar(@str_A);
 }
 
+#################################################################
+# Subroutine: helper_blastx_db_seqname_to_ftr_idx()
+# Incept:     EPN, Tue Dec 18 13:27:50 2018
+#
+# Purpose:    Find the feature $ftr_idx that corresponds to the blastx
+#             db sequence that was named with the convention:
+#
+#             <protein-accession>/<coords-str>
+#
+#             Where <coords-str> is identical to $ftr_info_AHR->{"ref_coords"}[$ftr_idx].
+#
+# Arguments: 
+#  $blastx_seqname: sequence name
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $FH_HR:          ref to hash of file handles
+#
+# Returns:    <$ftr_idx>
+#
+# Dies:       If we find zero features that match to this sequence
+#             If we find more than 1 features that match to this sequence
+#
+################################################################# 
+sub helper_blastx_db_seqname_to_ftr_idx { 
+  my $sub_name = "helper_blastx_db_seqname_to_ftr_idx";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($blastx_seqname, $ftr_info_AHR, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  my $ret_ftr_idx = undef;
+  if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
+    my ($accn, $coords) = ($1, $2);
+    # find it in @{$ftr_info_AHR->{"coords"}}
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS")) { 
+        if($ftr_info_AHR->[$ftr_idx]{"coords"} eq $coords) { 
+          if(defined $ret_ftr_idx) { # found more than 1 features that match
+            ofile_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match two features, ftr_idx: $ftr_idx and $ret_ftr_idx", "dnaorg", 1, $FH_HR);
+          }                  
+          $ret_ftr_idx = $ftr_idx;
+        }
+      }
+    }
+    if(! defined $ret_ftr_idx) { # did not find match
+      ofile_FAIL("ERROR in $sub_name, did not find matching feature for blastx db sequence $blastx_seqname", "dnaorg", 1, $FH_HR);
+    }
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unable to parse blastx db sequence name $blastx_seqname", "dnaorg", 1, $FH_HR); 
+  }
+
+  return $ret_ftr_idx;
+}
 
 #################################################################
 #
@@ -4445,6 +4576,8 @@ sub helper_tabular_replace_spaces {
 # helper_ftable_add_qualifier_from_ftr_info
 # helper_ftable_add_qualifier_from_ftr_results
 # helper_ftable_class_model_for_sequence
+# helper_ftable_process_feature_alerts
+# helper_ftable_process_sequence_alerts
 #
 #################################################################
 
@@ -4528,7 +4661,7 @@ sub output_feature_table {
 
     # first check for per-sequence alerts
     my $seq_alt_str = helper_ftable_seq_alert_code_strings($seq_name, $alt_seq_instances_HHR, $alt_info_HHR, $FH_HR);
-    dng_ProcessSequenceAlertsForFTable($seq_alt_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, \@seq_alert_A, $FH_HR);
+    helper_ftable_process_sequence_alerts($seq_alt_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, \@seq_alert_A, $FH_HR);
 
     my $mdl_name = helper_ftable_class_model_for_sequence($cls_results_HHHR, $seq_name);
     if(defined $mdl_name) { 
@@ -4615,7 +4748,7 @@ sub output_feature_table {
           # only look up alerts if we're not a duplicate feature
           # fill an array and strings with all alerts for this sequence/feature combo
           my $ftr_alt_str = helper_ftable_ftr_alert_code_strings($seq_name, $ftr_idx, $alt_ftr_instances_HAHR, $alt_info_HHR, $FH_HR);
-          if(dng_ProcessFeatureAlertsForFTable($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HAHR, \@seq_alert_A, $FH_HR)) { 
+          if(helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HAHR, \@seq_alert_A, $FH_HR)) { 
             $is_misc_feature = 1;
             $feature_type = "misc_feature";
           }
@@ -5088,6 +5221,187 @@ sub helper_ftable_class_model_for_sequence {
           (defined $cls_results_HHHR->{$seq_name}{"r1.1"}) && 
           (defined $cls_results_HHHR->{$seq_name}{"r1.1"}{"model"})) ? 
           $cls_results_HHH{$seq_name}{"r1.1"}{"model"} : undef;
+}
+
+#################################################################
+# Subroutine: helper_ftable_process_feature_alerts()
+# Incept:     EPN, Thu Nov  1 12:10:34 2018
+#
+# Purpose:    Given a string of alerts that correspond to a specific
+#             sequence and feature, use the %{$alt_info_HHR} and
+#             process that string to determine what (if any) notes,
+#             and alerts should be added to the feature table
+#             for this seq/feature pair.
+#
+# Arguments:
+#   $alt_code_str:           string of errors, comma separated, can be ""
+#   $seq_name:               name of sequence
+#   $ftr_idx:                feature index
+#   $ftr_info_AHR:           REF to array of hashes with information on the features, PRE-FILLED
+#   $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
+#   $alt_ftr_instances_HAHR: REF to hash of array of hashes with per-feature errors, PRE-FILLED
+#   $ret_alert_AR:           REF to array of errors, possibly added to here (not created)
+#   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: number of alerts added to $ret_alert_AR
+#
+# Dies: Never
+#################################################################
+sub helper_ftable_process_feature_alerts { 
+  my $sub_name = "helper_ftable_process_feature_alerts";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($alt_code_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HAHR, $ret_alert_AR, $FH_HR) = (@_);
+
+  if($alt_code_str eq "") { 
+    return 0; 
+  }
+
+  # printf("HEYA in $sub_name $seq_name $ftr_idx, $alt_code_str\n");
+
+  # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
+  my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
+  my $alt_code; 
+  foreach $alt_code (split(",", $alt_code_str)) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", "dnaorg", 1, $FH_HR);
+    }
+    $input_alt_code_H{$alt_code} = 1; 
+  }
+
+  my $valid = 0;
+  my $ret_nadded = 0;
+  foreach $alt_code (sort keys (%input_alt_code_H)) { 
+    $valid = 1; # may be set to '0' below
+    if($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "") { 
+      # printf("\t\tinvalid_by is " . $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} . "\n");
+      my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"});
+      foreach my $alt_code2 (@invalid_by_alt_code_A) {
+        if(exists $input_alt_code_H{$alt_code2}) { 
+          $valid = 0; # $alt_code is invalidated by $alt_code2, which is also present in $alt_code_str
+          # printf("\t\t\tinvalidated by $alt_code2\n");
+        }
+      }
+    }
+    if($valid) { 
+      # we could have more than one instance of this sequence/feature pair
+      my @instance_str_A = ();
+      if($alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} eq "") { 
+        @instance_str_A = ("");
+      }
+      else {
+        @instance_str_A = split(":DNAORGSEP:", $alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code});
+      }
+      foreach my $instance_str (@instance_str_A) { 
+        my $alert_str = sprintf("%s: (%s) %s%s", 
+                             $alt_info_HHR->{$alt_code}{"sdesc"}, 
+                             $ftr_info_AHR->[$ftr_idx]{"outname"}, 
+                             $alt_info_HHR->{$alt_code}{"ldesc"}, 
+                             ($instance_str ne "") ? " [" . $instance_str . "]" : "");
+        # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
+        my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
+        if($idx == -1) { 
+          push(@{$ret_alert_AR}, $alert_str); 
+          $ret_nadded++;
+        }
+      }
+    }
+  }
+
+  return $ret_nadded;
+}
+
+#################################################################
+# Subroutine: helper_ftable_process_sequence_alerts()
+# Incept:     EPN, Thu Jan 24 12:09:24 2019
+#
+# Purpose:    Given a string of per-sequence alerts that correspond
+#             to a specific sequence, use the %{$alt_info_HHR} and
+#             process that string to determine what (if any) 
+#             alerts should be added to the feature table
+#             for this sequence. Note that we do not add any 'notes'
+#             as we possibly could in processFeatureAlertsForFTable() 
+#             because we are dealing with the full sequence and not
+#             a feature for a sequence.
+#
+# Arguments:
+#   $alt_code_str:           string of alerts, comma separated, can be ""
+#   $seq_name:               name of sequence
+#   $alt_info_HHR:           REF to hash of hashes with information on the alerts, PRE-FILLED
+#   $alt_seq_instances_HHR:  REF to 2D hashes with per-sequence alerts, PRE-FILLED
+#   $ret_alert_AR:           REF to array of alerts, possibly added to here (not created)
+#   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: number of alerts added to $ret_alert_AR
+#
+# Dies: Never
+#################################################################
+sub helper_ftable_process_sequence_alerts { 
+  my $sub_name = "helper_ftable_process_sequence_alerts";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($alt_code_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $ret_alert_AR, $FH_HR) = (@_);
+
+  if($alt_code_str eq "") { 
+    return 0; 
+  }
+
+  my $ret_nadded = 0;
+  # NOTE: there's some code duplication in this sub with
+  # processFeatureAlertsForFtable(), possibly a chance for additional
+  # subroutines
+
+  # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
+  my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
+  my $alt_code; 
+  my $alt_idx; 
+  foreach $alt_code (split(",", $alt_code_str)) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", "dnaorg", 1, $FH_HR);
+    }
+    $input_alt_code_H{$alt_code} = 1; 
+  }
+
+  my $valid = 0;
+  foreach $alt_code (sort keys (%input_alt_code_H)) { 
+    $valid = 1; # may be set to '0' below
+    if($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "") { 
+      # printf("\t\tinvalid_by is " . $alt_info_HHR->{"ftbl_invalid_by"}[$alt_idx] . "\n");
+      my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{"ftbl_invalid_by"}[$alt_idx]);
+      foreach my $alt_code2 (@invalid_by_alt_code_A) {
+        if(exists $input_alt_code_H{$alt_code2}) { 
+          $valid = 0; # $alt_idx is invalidated by $alt_code2, which is also present in $alt_str
+          # printf("\t\t\tinvalidated by $alt_code2\n");
+        }
+      }
+    }
+    if($valid) { 
+      # we could have more than one instance of this sequence/feature pair
+      my @instance_str_A = ();
+      if($alt_seq_instances_HHR->{$seq_name}{$alt_code} eq "") { 
+        @instance_str_A = ("");
+      }
+      else {
+        @instance_str_A = split(":DNAORGSEP:", $alt_seq_instances_HHR->{$seq_name}{$alt_code});
+      }
+      foreach my $instance_str (@instance_str_A) { 
+        my $alert_str = sprintf("%s: (*sequence*) %s%s", 
+                             $alt_info_HHR->{$alt_code}{"sdesc"}, 
+                             $alt_info_HHR->{$alt_code}{"ldesc"}, 
+                             ($instance_str ne "") ? " [" . $instance_str . "]" : "");
+        # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
+        my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
+        if($idx == -1) { 
+          push(@{$ret_alert_AR}, $alert_str); 
+          $ret_nadded++;
+        }
+      }
+    }
+  }
+
+  return $ret_nadded;
 }
 
 #################################################################

@@ -238,7 +238,7 @@ sub utl_AFindNonNumericValue {
 
   my ($AR, $value, $FH_HR) = (@_);
 
-  if(verify_real($value)) { 
+  if(utl_IsReal($value)) { 
     ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", undef, 1, $FH_HR);
   }
 
@@ -253,6 +253,95 @@ sub utl_AFindNonNumericValue {
   }
 
   return -1; # did not find it
+}
+
+#################################################################
+# Subroutine: utl_AFindValue()
+# Incept:     EPN, Tue Mar  8 11:26:03 2016
+# Synopsis:   Look for a value in an array and return the index
+#             of it, if found, else return -1. If it exists more than
+#             once, return the minimum index.
+#
+# Arguments:
+#  $value:   value to look for
+#  $AR:      array to look in
+#
+# Returns:     index ($i) '1' if $value exists in @{$AR}, '-1' if not
+#
+# Dies:        if $value is numeric, or @{$AR} is not defined.
+# 
+#################################################################
+sub utl_AFindValue { 
+  my $sub_name = "utl_AFindValue()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($value, $AR, $FH_HR) = @_;
+
+  if(! defined $AR) { 
+    ofile_FAIL("ERROR in $sub_name, array reference is not defined", undef, 1, $FH_HR);
+  }
+
+  if(utl_IsReal($value)) { # compare with ==
+    for(my $i = 0; $i < scalar(@{$AR}); $i++) { 
+      my $el = $AR->[$i];
+      if(utl_IsReal($el) && ($value == $el)) { 
+        return $i;
+      }
+    }
+  }
+  else { # compare with 'eq'
+    for(my $i = 0; $i < scalar(@{$AR}); $i++) { 
+      my $el = $AR->[$i];
+      if((! utl_IsReal($el)) && ($value eq $el)) { 
+        return $i;
+      }
+    }
+  }
+  return -1;
+}  
+
+#################################################################
+# Subroutine:  utl_ACountNonNumericValue()
+# Incept:      EPN, Fri Mar 11 06:34:51 2016
+#
+# Purpose:     Returns number of times nonnumeric value 
+#              $value exists in @{$AR}. Returns 0 if
+#              it doesn't exist.
+#
+# Arguments: 
+#   $AR:       REF to array 
+#   $value:    the value we're looking for in @{$AR}
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns:     Number of occurrences of $value in @{$AR}.
+#
+# Dies:        if $value is numeric, or @{$AR} is not defined.
+#
+################################################################# 
+sub utl_ACountNonNumericValue { 
+  my $nargs_expected = 3;
+  my $sub_name = "utl_ACountNonNumericValue()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($AR, $value, $FH_HR) = @_;
+
+  if(utl_IsReal($value)) { 
+    ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", undef, 1, $FH_HR);
+  }
+
+  if(! defined $AR) { 
+    ofile_FAIL("ERROR in $sub_name, array reference is not defined", undef, 1, $FH_HR);
+  }
+
+  my $ct = 0;
+  for(my $i = 0; $i < scalar(@{$AR}); $i++) {
+    if($AR->[$i] eq $value) { 
+      $ct++;
+    }
+  }
+
+  return $ct;
 }
 
 #################################################################
@@ -530,6 +619,7 @@ sub utl_IdxHFromA {
   for(my $i = 0; $i < $n; $i++) { 
     my $key = $AR->[$i];
     if(defined $HR->{$key}) { 
+      # should I check here that $key is not a number? 
       ofile_FAIL("ERROR in $sub_name,%stwo elements in array have same value ($key)",
                  (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
     }
@@ -1067,6 +1157,563 @@ sub utl_HHHDump {
       printf $FH ("\n");
     }
     printf $FH ("\n");
+  }
+
+  return;
+}
+
+
+#####################################################################
+# Subroutine: utl_IsInteger()
+# Incept:     EPN, Wed Oct 29 10:14:06 2014
+# 
+# Purpose:  Verify that $x is a (positive or negative) integer. Return
+#           '1' if it is, else return '0'.
+#
+# Arguments:
+# $x:         value to check
+#
+# Returns:    see purpose
+####################################################################
+sub utl_IsInteger { 
+  my $narg_expected = 1;
+  my $sub_name = "utl_IsInteger()";
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+
+  my ($x) = @_;
+
+  return ($x =~ m/^\-?\d+$/) ? 1 : 0;
+}
+
+#####################################################################
+# Subroutine: utl_IsReal()
+# Incept:     EPN, Wed Oct 29 10:15:31 2014
+# 
+# Purpose:    Verify that $x is a real number. Return '1' if it is,
+#             else return '0'.
+#
+# Arguments:
+# $x:         value to check
+#
+# Returns:    see purpose
+####################################################################
+sub utl_IsReal { 
+  my $narg_expected = 1;
+  my $sub_name = "utl_IsReal()";
+  if(scalar(@_) != $narg_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $narg_expected); exit(1); } 
+
+  my ($x) = @_;
+
+  if(! defined $x)                { return 0; }
+  if($x eq "")                    { return 0; }
+  if($x =~ m/^\-?\d*\.?\d*$/)     { return 1; } # matches: 1, 3.4, 53.43, .3, .333, 0., 155., 150, -1, -3.4, -53.43, -.3, -.333, -0., -155., -150
+  if($x =~ m/^\-?\d+[Ee]\-?\d*$/) { return 1; } # matches: 3E5, -3E5, -3E-5, 3e5, -3e5, -3e-5
+  return 0;
+}
+
+#################################################################
+# Subroutine:  utl_ASum()
+# Incept:      EPN, Wed Feb  7 13:53:07 2018
+# 
+# Purpose:     Sum the scalar values in an array
+#
+# Arguments: 
+#   $AR: reference to the array
+# 
+# Returns:     Sum of all values in the array
+#
+################################################################# 
+sub utl_ASum {
+  my $nargs_expected = 1;
+  my $sub_name = "utl_ASum()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR) = $_[0];
+
+  my $sum = 0;
+  foreach my $el (@{$AR}) { 
+    $sum += $el; 
+  }
+  return $sum;
+}
+
+#################################################################
+# Subroutine:  utl_HSumValues()
+# Incept:      EPN, Wed Feb  7 13:58:25 2018
+# 
+# Purpose:     Sum the values for all keys in a hash
+#
+# Arguments: 
+#   $HR: reference to the hash
+# 
+# Returns:     Sum of all values in the hash
+#
+################################################################# 
+sub utl_HSumValues {
+  my $nargs_expected = 1;
+  my $sub_name = "utl_HSumValues()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($HR) = $_[0];
+
+  my $sum = 0;
+  foreach my $key (keys (%{$HR})) { 
+    $sum += $HR->{$key};
+  }
+  return $sum;
+}
+
+
+#################################################################
+# Subroutine: utl_StringMonoChar()
+# Incept:     EPN, Thu Mar 10 21:02:35 2016
+#
+# Purpose:    Return a string of length $len of repeated instances
+#             of the character $char.
+#
+# Arguments:
+#   $len:   desired length of the string to return
+#   $char:  desired character
+#   $FH_HR: REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  A string of $char repeated $len times.
+# 
+# Dies:     if $len is not a positive integer
+#
+#################################################################
+sub utl_StringMonoChar {
+  my $sub_name = "utl_StringMonoChar";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($len, $char, $FH_HR) = @_;
+
+  if(! utl_IsInteger($len)) { 
+    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is not a non-negative integer", "dnaorg", 1, $FH_HR);
+  }
+  if($len < 0) { 
+    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is a negative integer", "dnaorg", 1, $FH_HR);
+  }
+    
+  my $ret_str = "";
+  for(my $i = 0; $i < $len; $i++) { 
+    $ret_str .= $char;
+  }
+
+  return $ret_str;
+}
+
+#################################################################
+# Subroutine:  utl_FileCountLines()
+# Incept:      EPN, Tue Mar  1 09:36:56 2016
+#
+# Purpose:     Count the number of lines in a file
+#              by opening it and reading in all lines.
+#
+# Arguments: 
+#   $filename:         file that we are checking on
+#   $FH_HR:            ref to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies:        If $filename does not exist or cannot be opened for reading.
+#
+################################################################# 
+sub utl_FileCountLines { 
+  my $nargs_expected = 2;
+  my $sub_name = "utl_FileCountLines()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($filename, $FH_HR) = @_;
+
+  my $nlines = 0;
+  open(IN, $filename) || fileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
+  while(<IN>) { 
+    $nlines++;
+  }
+  close(IN);
+
+  return $nlines;
+}
+
+#################################################################
+# Subroutine:  utl_FileLinesToArray()
+# Incept:      EPN, Tue Nov 21 10:26:58 2017
+#
+# Purpose:     Store each non-blank line in a file as an element
+#              in an array, after removing newline.
+#
+# Arguments: 
+#   $filename:                   file that we are parsing
+#   $remove_trailing_whitespace: '1' to remove trailing whitespace in each line, '0' not to
+#   $AR:                         ref to array to add to
+#   $FH_HR:                      ref to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies:        If $filename does not exist or cannot be opened for reading.
+#
+################################################################# 
+sub utl_FileLinesToArray { 
+  my $nargs_expected = 4;
+  my $sub_name = "utl_FileLinesToArray()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($filename, $remove_trailing_whitespace, $AR, $FH_HR) = @_;
+
+  open(IN, $filename) || fileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <IN>) { 
+    if($line =~ /\S/) { 
+      chomp $line;
+      if($remove_trailing_whitespace) { $line =~ s/\s*$//; }
+      push(@{$AR}, $line);
+    }
+  }
+  close(IN);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  utl_FileRemoveList()
+# Incept:      EPN, Fri Oct 19 12:44:05 2018 [ribovore]
+#
+# Purpose:     Remove each file in an array of file
+#              names. If there are more than 100 files, then
+#              remove 100 at a time.
+# 
+# Arguments: 
+#   $files2remove_AR:  REF to array with list of files to remove
+#   $caller_sub_name:  name of calling subroutine (can be undef)
+#   $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:            ref to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies:        If one of the rm -rf commands fails.
+#
+################################################################# 
+sub utl_FileRemoveList { 
+  my $nargs_expected = 4;
+  my $sub_name = "utl_FileRemoveList()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($files2remove_AR, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
+
+  my $i = 0; 
+  my $nfiles = scalar(@{$files2remove_AR});
+
+  while($i < $nfiles) { 
+    my $file_list = "";
+    my $up = $i+100;
+    if($up > $nfiles) { $up = $nfiles; }
+    for(my $j = $i; $j < $up; $j++) { 
+      $file_list .= " " . $files2remove_AR->[$j];
+    }
+    my $rm_cmd = "rm $file_list"; 
+    utl_RunCommand($rm_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+    $i = $up;
+  }
+  
+  return;
+}
+
+#################################################################
+# Subroutine:  utl_AToNewLineDelimString()
+# Incept:      EPN, Fri Dec 14 09:21:41 2018
+#
+# Purpose:     Return a newline delimited string with all values of an array.
+#
+# Arguments: 
+#   $AR:     ref to array
+# 
+# Returns:     string
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub utl_AToNewLineDelimString {
+  my $nargs_expected = 1;
+  my $sub_name = "utl_AToNewLineDelimString";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR) = @_;
+
+  my $retstr = "";
+  foreach my $el (@{$AR}) { 
+    $retstr .= $el . "\n";
+  }
+  if($retstr eq "") { 
+    $retstr = "\n";
+  }
+  return $retstr;
+}
+
+#################################################################
+# Subroutine:  utl_AToString()
+# Incept:      EPN, Tue Mar 12 13:07:03 2019
+#
+# Purpose:     Return a string with all values of an array delimited
+#              by $delim_char;
+#
+# Arguments: 
+#   $AR:         ref to array
+#   $delim_char: character to delimit with
+# 
+# Returns:     string
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub utl_AToString { 
+  my $nargs_expected = 2;
+  my $sub_name = "utl_AToString";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($AR, $delim_char) = (@_);
+
+  my $retstr = "";
+  if(@{$AR}) { 
+    $retstr .= $AR->[0];
+    for(my $i = 1; $i < scalar(@{$AR}); $i++) { 
+      $retstr .= $delim_char . $AR->[$i];
+    }
+  }
+  return $retstr;
+}
+
+#################################################################
+# Subroutine:  utl_HKeysToNewLineDelimString()
+# Incept:      EPN, Fri Dec 14 09:25:24 2018
+#
+# Purpose:     Return a newline delimited string with all (sorted) keys in a hash.
+#
+# Arguments: 
+#   $HR:     ref to hash
+# 
+# Returns:     string
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub utl_HKeysToNewLineDelimString {
+  my $nargs_expected = 1;
+  my $sub_name = "utl_HKeysToNewLineDelimString";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($HR) = @_;
+
+  my $retstr = "";
+  foreach my $el (sort keys %{$HR}) { 
+    $retstr .= $el . "\n";
+  }
+  if($retstr eq "") { 
+    $retstr = "\n";
+  }
+  return $retstr;
+}
+
+#################################################################
+# Subroutine:  utl_HValuesToNewLineDelimString()
+# Incept:      EPN, Fri Dec 14 09:26:16 2018
+#
+# Purpose:     Return a newline delimited string with all values in a hash.
+#
+# Arguments: 
+#   $HR:     ref to hash
+# 
+# Returns:     string
+# 
+# Dies:        Never.
+#
+################################################################# 
+sub utl_HValuesToNewLineDelimString {
+  my $nargs_expected = 1;
+  my $sub_name = "utl_HValuesToNewLineDelimString";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($HR) = @_;
+
+  my $retstr = "";
+  foreach my $el (sort keys %{$HR}) { 
+    $retstr .= $HR->{$el} . "\n";
+  }
+  if($retstr eq "") { 
+    $retstr = "\n";
+  }
+  return $retstr;
+}
+
+
+#################################################################
+# Subroutine : utl_FileValidateExistsAndNonEmpty()
+# Incept:      EPN, Thu May  4 09:30:32 2017
+#
+# Purpose:     Check if a file exists and is non-empty. 
+#
+# Arguments: 
+#   $filename:         file that we are checking on
+#   $filedesc:         description of file
+#   $calling_sub_name: name of calling subroutine (can be undef)
+#   $do_die:           '1' if we should die if it does not exist.  
+#   $FH_HR:            ref to hash of file handles, can be undef
+# 
+# Returns:     Return '1' if it does and is non empty
+#              Return '0' if it does not exist (and ! $do_die)
+#              Return '-1' if it exists but is empty (and ! $do_die)
+#              Return '-2' if it exists as a directory (and ! $do_die)
+#
+# Dies:        If file does not exist or is empty and $do_die is 1.
+#              if $filename is undefined (regardless of value of $do_die).
+# 
+################################################################# 
+sub utl_FileValidateExistsAndNonEmpty { 
+  my $nargs_expected = 5;
+  my $sub_name = "utl_FileValidateExistsAndNonEmpty()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($filename, $filedesc, $calling_sub_name, $do_die, $FH_HR) = @_;
+
+  if(! defined $filename) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, %sfilename%s is undef", 
+                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
+                         (defined $filedesc         ? " ($filedesc)" : "")),
+                 undef, 1, $FH_HR); 
+  }
+
+  if(-d $filename) {
+    if($do_die) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s exists but is a directory.", 
+                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
+                         (defined $filedesc         ? " ($filedesc)" : "")),
+                 undef, 1, $FH_HR); 
+    }
+    return -2;
+  }
+  elsif(! -e $filename) { 
+    if($do_die) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s does not exist.", 
+                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
+                         (defined $filedesc         ? " ($filedesc)" : "")),
+                 undef, 1, $FH_HR); 
+    }
+    return 0;
+  }
+  elsif(! -s $filename) { 
+    if($do_die) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s exists but is empty.", 
+                         (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
+                         (defined $filedesc         ? " ($filedesc)" : "")),
+                 undef, 1, $FH_HR); 
+    }
+    return -1;
+  }
+  
+  return 1;
+}
+
+
+#################################################################
+# Subroutine:  utl_FileMd5()
+# Incept:      EPN, Fri May 27 14:02:30 2016
+#
+# Purpose:     Use md5sum to get a checksum of a file, return
+#              the checksum. Not efficient. Creates a temporary
+#              file and then deletes it.
+# 
+# Arguments: 
+#   $file:             REF to array of all files to concatenate
+#   $caller_sub_name:  name of calling subroutine (can be undef)
+#   $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:            ref to hash of file handles
+# 
+# Returns:     md5sum of the file.
+# 
+# Dies:        If the file doesn't exist or the command fails.
+#
+################################################################# 
+sub utl_FileMd5 { 
+  my $nargs_expected = 4;
+  my $sub_name = "utl_FileMd5()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($file, $caller_sub_name, $opt_HHR, $FH_HR) = @_;
+
+  if(! -s $file) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name%s, file to get md5 checksum of ($file) does no exist or is empty", 
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
+  }
+
+  my $out_file = removeDirPath($file . ".md5sum");
+  utl_RunCommand("md5sum $file > $out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  open(MD5, $out_file) || fileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
+  #194625f7c3e2a5129f9880c7e29f63de  wnv.lin2.matpept.in
+  my $md5sum = <MD5>;
+  chomp $md5sum;
+  if($md5sum =~ /^(\S+)\s+(\S+)$/) { 
+    $md5sum = $1;
+  }
+  else { 
+    ofile_FAIL(sprintf("ERROR in $sub_name%s, unable to parse md5sum output: $md5sum", 
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
+  }
+  close(MD5);
+
+  utl_FileRemoveUsingSystemRm($out_file, $caller_sub_name, $opt_HHR, $FH_HR);
+
+  return $md5sum;
+}
+
+#################################################################
+# Subroutine:  utl_DirEnvVarValid()
+# Incept:      EPN, Wed Oct 25 10:09:28 2017 [ribo.pm]
+#
+# Purpose:     Verify that the environment variable $envvar exists 
+#              and that it is a valid directory. Return directory path.
+#              
+# Arguments: 
+#   $envvar:  environment variable
+#
+# Returns:    directory path $ENV{'$envvar'}
+#
+################################################################# 
+sub utl_DirEnvVarValid { 
+  my $nargs_expected = 1;
+  my $sub_name = "utl_DirEnvVarValid()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($envvar) = $_[0];
+
+  if(! exists($ENV{"$envvar"})) { 
+    die "ERROR, the environment variable $envvar is not set";
+    # it's okay this isn't ofile_FAIL because this is called before ofile_info_HH is set-up
+  }
+  my $envdir = $ENV{"$envvar"};
+  if(! (-d $envdir)) { 
+    die "ERROR, the directory specified by your environment variable $envvar does not exist.\n"; 
+    # it's okay this isn't ofile_FAIL because this is called before ofile_info_HH is set-up
+  }    
+
+  return $envdir;
+}
+
+#################################################################
+# Subroutine: utl_ExistsHFromCommaSepString
+# Incept:     EPN, Mon Mar 18 06:52:21 2019
+#
+# Synopsis: Given a hash reference and a comma separated string
+#           fill the hash with keys for each token in the string,
+#           with all values set as 1.
+#
+# Arguments:
+#  $HR:      hash reference
+#  $string:  comma separated string
+#
+# Returns:    void
+#
+# Dies:       never
+#################################################################
+sub utl_ExistsHFromCommaSepString {
+  my $sub_name = "utl_ExistsHFromCommaSepString";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($HR, $string) = @_;
+
+  %{$HR} = ();
+  my @key_A = split(",", $string);
+  foreach my $key (@key_A) { 
+    $HR->{$key} = 1; 
   }
 
   return;
