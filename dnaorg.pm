@@ -1177,208 +1177,208 @@ sub dng_AlertInfoInitialize {
   dng_AlertInfoAdd($alt_info_HHR, "c_noa", "sequence",
                    "No Annotation", # short description
                    "no significant similarity detected", # long  description
-                   1, 1, # causes_failure, prevents_annot
+                   1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_usg", "sequence",
                    "Unexpected Subgroup Classification", # short description
-                   "per nucleotide score difference too large between best overall model and best expected subgroup model", # long description
-                   1, 0, # causes_failure, prevents_annot
+                   "score difference too large between best overall model and best expected subgroup model", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_ugr", "sequence",
                    "Unexpected Group Classification", # short description
-                   "per nucleotide score difference too large between best overall model and best expected group model", # long description
-                   1, 0, # causes_failure, prevents_annot
+                   "score difference too large between best overall model and best expected group model", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_loc", "sequence",
                    "Low Coverage", # short description, 
                    "low sequence fraction with significant similarity to homology model", # long description
-                   1, 0, # causes_failure, prevents_annot
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_lod", "sequence",
                    "Low Score Difference", # short description
-                   "low per nucleotide score difference between best overall model and second best model (not in best model's subgroup)", # long description
-                   1, 0, # causes_failure, prevents_annot
+                   "low score difference between best overall model and second best model (not in best model's subgroup)", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_vld", "sequence",
                    "Very Low Score Difference", # description
-                   "very low per nucleotide score difference between best overall model and second best model (not in best model's subgroup)", # long description
-                   1, 0, # causes_failure, prevents_annot
+                   "very low score difference between best overall model and second best model (not in best model's subgroup)", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_los", "sequence",
                    "Low Score", # short description
-                   "low per nucleotide score", # long description
-                   1, 0, # causes_failure, prevents_annot
+                   "low score", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_vls", "sequence",
                    "Very Low Score", # short description
-                   "very low per-nucleotide score", # long description
-                   1, 0, # causes_failure, prevents_annot
+                   "very low score", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_hbi", "sequence",
                    "Biased Sequence", # short description
                    "high fraction of score attributed to biased sequence composition", # long description
-                   1, 0, # causes_failure, prevents_annot
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_mst", "sequence",
-                   "Minus Strand:", # short description
+                   "Minus Strand", # short description
                    "sequence appears to be reverse complemented", # long description
-                   1, 1, # causes_failure, prevents_annot
-                   $FH_HR); 
-
-  dng_AlertInfoAdd($alt_info_HHR, "n_nst", "feature",  
-                   "Mutation at End", # short description
-                   "expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "n_nm3", "feature",  
-                   "Unexpected Length", # short description
-                   "length of nucleotide feature is not a multiple of 3", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "n_stp", "feature",
-                   "Mutation at End", # short description
-                   "expected stop codong could not be identified, predicted CDS stop by homology is invalid, there may be a valid stop in a different location due to truncation (n_trc) or extension (n_ext)", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "n_trc", "feature",
-                   "Unexpected Stop Codon", # short description
-                   "in-frame stop codon exists 5' of stop position predicted by homology to reference", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "n_ext", "feature",
-                   "Mutation at End", # short description
-                   "expected stop codon could not be identified, first in-frame stop codon exists 3' of stop position predicted by similarity to homology model", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "b_per", "feature",
-                   "Peptide Translation Problem", # short description
-                   "mat_peptide may not be translated because its CDS has a problem", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "n_str", "feature",
-                   "Mutation at Start", # short description
-                   "expected start codon could not be identified", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "n_gp5", "feature",
-                   "Indefinite Annotation at Start", # short description
-                   "alignment to homology model is a gap at 5' boundary", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "n_gp3", "feature",
-                   "Indefinite Annotation at End", # short description
-                   "alignment to homology model is a gap at 3' boundary", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "n_lp5", "feature",
-                   "Indefinite Annotation at Start", # short description
-                   "alignment to homology model has low confidence at 5' boundary", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "n_lp3", "feature",
-                   "Indefinite Annotation at End", # short description
-                   "alignment to homology model has low confidence at 3' boundary", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "b_non", "feature",
-                   "Indefinite Annotation", # short description
-                   "protein-based search identifies CDS not identified in nucleotide-based search", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "b_nop", "feature",
-                   "Indefinite Annotation", # short description
-                   "nucleotide-based search identifies CDS not identified in protein-based search", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "b_cst", "feature",
-                   "Indefinite Annotation", # short description
-                   "strand mismatch between protein-based and nucleotide-based predictions", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "b_p5l", "feature",
-                   "Indefinite Annotation at Start", # short description
-                   "protein-based alignment extends past nucleotide-based alignment at 5' end", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "b_p5s", "feature",
-                   "Indefinite Annotation at Start", , # short description
-                   "protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "b_p3l", "feature",
-                   "Indefinite Annotation at End", # short description
-                   "protein-based alignment extends past nucleotide-based alignment at 3' end", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "b_p3s", "feature",
-                   "Indefinite Annotation at End", # short description
-                   "protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "p_lin", "feature",
-                   "Insertion of Nucleotides", # short description
-                   "too large of an insertion in protein-based alignment", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "p_lde", "feature",
-                   "Deletion of Nucleotides", # short description
-                   "too large of a deletion in protein-based alignment", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "p_trc", "feature",
-                   "Unexpected Stop Codon", # short description
-                   "stop codon in protein-based alignment", # long description
-                   1, 0, # causes_failure, prevents_annot
-                   $FH_HR);
-
-  dng_AlertInfoAdd($alt_info_HHR, "b_zft", "sequence",
-                   "No Features Annotated", # short description
-                   "sequence similarity to homology model does not overlap with any features", # long description
-                   1, 0, # causes_failure, prevents_annot
+                   0, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "n_div", "sequence",
                    "Unexpected Divergence", # short description
                    "sequence is too divergent to confidently assign nucleotide-based annotation", # long description
-                   1, 1, # causes_failure, prevents_annot
+                   0, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
+
+  dng_AlertInfoAdd($alt_info_HHR, "b_zft", "sequence",
+                   "No Features Annotated", # short description
+                   "sequence similarity to homology model does not overlap with any features", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_str", "feature",
+                   "Mutation at Start", # short description
+                   "expected start codon could not be identified", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_stp", "feature",
+                   "Mutation at End", # short description
+                   "expected stop codon could not be identified, predicted CDS stop by homology is invalid", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_nst", "feature",  
+                   "Mutation at End", # short description
+                   "expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_ext", "feature",
+                   "Mutation at End", # short description
+                   "expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_nm3", "feature",  
+                   "Unexpected Length", # short description
+                   "length of complete coding (CDS or mat_peptide) feature is not a multiple of 3", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_trc", "feature",
+                   "Unexpected Stop Codon", # short description
+                   "in-frame stop codon exists 5' of stop position predicted by homology to reference", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "p_trc", "feature",
+                   "Unexpected Stop Codon", # short description
+                   "stop codon in protein-based alignment", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "b_per", "feature",
+                   "Peptide Translation Problem", # short description
+                   "mat_peptide may not be translated because its CDS has a problem", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "b_non", "feature",
+                   "Indefinite Annotation", # short description
+                   "protein-based search identifies CDS not identified in nucleotide-based search", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "b_nop", "feature",
+                   "Indefinite Annotation", # short description
+                   "nucleotide-based search identifies CDS not identified in protein-based search", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_gp5", "feature",
+                   "Indefinite Annotation at Start", # short description
+                   "alignment to homology model is a gap at 5' boundary", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_lp5", "feature",
+                   "Indefinite Annotation at Start", # short description
+                   "alignment to homology model has low confidence at 5' boundary", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "b_p5l", "feature",
+                   "Indefinite Annotation at Start", # short description
+                   "protein-based alignment extends past nucleotide-based alignment at 5' end", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "b_p5s", "feature",
+                   "Indefinite Annotation at Start", , # short description
+                   "protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_gp3", "feature",
+                   "Indefinite Annotation at End", # short description
+                   "alignment to homology model is a gap at 3' boundary", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_lp3", "feature",
+                   "Indefinite Annotation at End", # short description
+                   "alignment to homology model has low confidence at 3' boundary", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "b_p3l", "feature",
+                   "Indefinite Annotation at End", # short description
+                   "protein-based alignment extends past nucleotide-based alignment at 3' end", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "b_p3s", "feature",
+                   "Indefinite Annotation at End", # short description
+                   "protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "b_cst", "feature",
+                   "Indefinite Strand", # short description
+                   "strand mismatch between protein-based and nucleotide-based predictions", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "p_lin", "feature",
+                   "Insertion of Nucleotides", # short description
+                   "too large of an insertion in protein-based alignment", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "p_lde", "feature",
+                   "Deletion of Nucleotides", # short description
+                   "too large of a deletion in protein-based alignment", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
 
   # define the ftbl_invalid_by values, these are one-sided, any error code listed in the 
   # 3rd argument invalidates the 2nd argument error code, but not vice versa
 
-  # trc, ext and nst are preferred to stp
+  # n_trc, n_ext and n_nst are preferred to n_stp
   dng_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "n_stp", "n_trc,n_ext,n_nst", $FH_HR); 
 
-  # n_div is preferred to zft
+  # n_div is preferred to b_zft
   dng_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "b_zft", "n_div", $FH_HR);
 
   # validate the alert info hash
@@ -1400,7 +1400,8 @@ sub dng_AlertInfoInitialize {
 #   $pertype:         the 'per-type' of the element we are adding, "sequence" or "feature"
 #   $sdesc:           short description of the alert we are adding
 #   $ldesc:           long  description of the alert we are adding
-#   $causes_failure:  '1' if this alert causes its sequence to FAIL, '0' if not
+#   $always_fails:    '1' if this alert *always* causes its sequence to FAIL, '0' if not
+#   $causes_failure:  '1' if this alert causes its sequence to FAIL by default, '0' if not
 #   $prevents_annot:  '1' if this alert prevents its sequence from being annotated, '0' if not
 #   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
 # 
@@ -1413,19 +1414,27 @@ sub dng_AlertInfoInitialize {
 ######################p###########################################
 sub dng_AlertInfoAdd { 
   my $sub_name = "dng_AlertInfoAdd";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($alt_info_HHR, $code, $pertype, $sdesc, $ldesc, $causes_failure, $prevents_annot, $FH_HR) = (@_);
+  my ($alt_info_HHR, $code, $pertype, $sdesc, $ldesc, $always_fails, $causes_failure, $prevents_annot, $FH_HR) = (@_);
 
   # make sure $pertype is valid
   if(($pertype ne "feature") && ($pertype ne "sequence")) { 
     ofile_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\".", "dnaorg", 1, $FH_HR); 
   }
   
-  # make sure $causes_failure is valid
+  # make sure $always_fails is valid
   if((! defined $causes_failure) || (($causes_failure != 0) && ($causes_failure != 1))) { 
     ofile_FAIL("ERROR in $sub_name, trying to add code $code but causes_failure is undefined or not 0 or 1", "dnaorg", 1, $FH_HR);
+  }
+
+  # make sure $causes_failure is valid, and makes sense with $always_fail
+  if((! defined $causes_failure) || (($causes_failure != 0) && ($causes_failure != 1))) { 
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but causes_failure is undefined or not 0 or 1", "dnaorg", 1, $FH_HR);
+  }
+  if($always_fails && (! $causes_failure)) { 
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but always_fails is 1 and causes_failure 0", "dnaorg", 1, $FH_HR);
   }
   
   # make sure $prevents_annot is valid
@@ -1453,6 +1462,7 @@ sub dng_AlertInfoAdd {
   $alt_info_HHR->{$code}{"pertype"}         = $pertype;
   $alt_info_HHR->{$code}{"sdesc"}           = $sdesc;
   $alt_info_HHR->{$code}{"ldesc"}           = $ldesc;
+  $alt_info_HHR->{$code}{"always_fails"}    = $always_fails;
   $alt_info_HHR->{$code}{"causes_failure"}  = $causes_failure;
   $alt_info_HHR->{$code}{"prevents_annot"}  = $prevents_annot;
   $alt_info_HHR->{$code}{"ftbl_invalid_by"} = ""; # initialized to no invalid_by's, possibly added to later with setFTableInvalidatedByErrorInfoHash()
@@ -1500,6 +1510,72 @@ sub dng_AlertInfoSetFTableInvalidatedBy {
 
   # set the value
   $alt_info_HHR->{$code1}{"ftbl_invalid_by"} = $code2str;
+
+  return;
+}
+
+#################################################################
+# Subroutine:  dng_AlertInfoDump()
+# Incept:      EPN, Wed Apr  3 11:11:26 2019
+#
+# Purpose:    Output all the information in the alert info 2D hash.
+#
+# Arguments: 
+#  $alt_info_HHR:  REF to the alert info hash of arrays, PRE-FILLED
+#  $FH:            file handle to print to
+#
+# Returns:    void
+#
+# Dies:       never
+#
+#################################################################
+sub dng_AlertInfoDump { 
+  my $sub_name = "dng_AlertInfoDump";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_info_HHR, $FH) = @_;
+
+  my $w_sdesc   = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "sdesc");
+  my $w_ldesc   = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "ldesc");
+  my $w_pertype = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "pertype");
+  my $w_afails  = length("always");
+  my $w_fails   = length("fails");
+  my $w_annot   = length("prevents");
+  my $w_invalid = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "ftbl_invalid_by");
+  $w_invalid = utl_Max($w_invalid, length("invalidated"));
+
+  # determine order of codes to print
+  my @code_A = ();
+  foreach my $code (sort keys (%{$alt_info_HHR})) { 
+    $code_A[($alt_info_HHR->{$code}{"order"})] = $code;
+  }
+
+  printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %-*s\n", 
+              "#", "", $w_sdesc, "short", $w_afails, "fails", $w_fails, "", $w_annot, "prevents", $w_invalid, "invalidated", $w_ldesc, "long");
+  printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %-*s\n", 
+              "#idx", "code", $w_sdesc, "desc", $w_afails, "always", $w_fails, "fails", $w_annot, "annot", $w_invalid, "by", $w_ldesc, "desc");
+  printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %-*s\n", 
+              "#---", "-----", 
+              $w_sdesc,   utl_StringMonoChar($w_sdesc,   "-", undef), 
+              $w_afails,  utl_StringMonoChar($w_afails,  "-", undef), 
+              $w_fails,   utl_StringMonoChar($w_fails,   "-", undef), 
+              $w_annot,   utl_StringMonoChar($w_annot,   "-", undef), 
+              $w_invalid, utl_StringMonoChar($w_invalid, "-", undef), 
+              $w_ldesc,   utl_StringMonoChar($w_ldesc,   "-", undef));
+
+  my $idx = 0;
+  foreach my $code (@code_A) { 
+    $idx++;
+    printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %-*s\n", 
+                $idx, $code, 
+                $w_sdesc,  helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                $w_afails, $alt_info_HHR->{$code}{"always_fails"}   ? "yes" : "no",
+                $w_fails,  $alt_info_HHR->{$code}{"causes_failure"} ? "yes" : "no",
+                $w_annot,  $alt_info_HHR->{$code}{"prevents_annot"} ? "yes" : "no",
+                $w_invalid, $alt_info_HHR->{$code}{"ftbl_invalid_by"}, 
+                $w_ldesc, $alt_info_HHR->{$code}{"ldesc"});
+  }
 
   return;
 }

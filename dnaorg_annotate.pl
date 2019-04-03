@@ -73,7 +73,7 @@ require "epn-utils.pm";
 # 1. add_classification_alerts()
 #    c_noa, c_vls, c_los, c_vld, c_lod, c_ugr, c_usg, c_mst, c_loc, c_hbi (10)
 #
-# 2. add_n_div_alerts()
+# 2. alert_add_n_div()
 #    n_div (1)
 #
 # 3. cmalign_parse_stk_and_add_alignment_alerts()
@@ -85,7 +85,7 @@ require "epn-utils.pm";
 # 5. add_blastx_alerts()
 #    b_nop, b_cst, b_p5l, b_p5s, b_p3l, b_p3s, p_lin, p_lde, p_trc, b_non, b_per* (11)
 #
-# 6. add_b_zft_alerts()
+# 6. alert_add_b_zft()
 #    b_zft (1)
 # 
 # * b_per errors can be added in two places, and are only added in add_blastx_alerts for
@@ -148,6 +148,10 @@ opt_Add("--group",         "string",  undef,                  $g,     undef, und
 opt_Add("--subgroup",      "string",  undef,                  $g, "--group", undef,     "set expected classification of all seqs to subgroup <s>",          "set expected classification of all seqs to subgroup <s>",         \%opt_HH, \@opt_order_A);
 opt_Add("--cthresh",         "real",  "0.3",                  $g,     undef, undef,     "expected classification must be within <x> bits/nt of top match",  "expected classification must be within <x> bits/nt of top match", \%opt_HH, \@opt_order_A);
 opt_Add("--ctoponly",     "boolean",  0,                      $g,     undef, undef,     "top match must be expected classification",                        "top match must be expected classification",                       \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for controlling which alerts cause a sequence to FAIL";
+#        option               type   default                group  requires incompat    preamble-output                                                     help-output    
+opt_Add("--alt_list",     "boolean",  0,                     $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                           \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning classification alerts";
 #     option                type         default            group   requires incompat     preamble-output                                                   help-output    
@@ -218,6 +222,8 @@ my $options_okay =
                 'subgroup=s'  => \$GetOptions_H{"--subgroup"},
                 'cthresh=s'   => \$GetOptions_H{"--cthresh"},
                 'ctoponly'    => \$GetOptions_H{"--ctoponly"},
+# options for controlling which alerts cause failure
+                "alt_list"    => \$GetOptions_H{"--alt_list"},
 # options for tuning classification alerts
                 "lowcovthresh=s"   => \$GetOptions_H{"--lowcovthresh"},
                 "lowscthresh=s"    => \$GetOptions_H{"--lowscthresh"},
@@ -276,6 +282,23 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
   else                { exit 0; } # -h, exit with 0 status
 }
 
+# set options in opt_HH
+opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
+
+# validate options (check for conflicts)
+opt_ValidateSet(\%opt_HH, \@opt_order_A);
+
+#######################################
+# deal with --alt_list option, if used
+#######################################
+# initialize error related data structures, we have to do this early, so we can deal with --alt_list opition
+my %alt_info_HH = (); 
+dng_AlertInfoInitialize(\%alt_info_HH, undef);
+if(opt_IsUsed("--alt_list",\%opt_HH)) { 
+  alert_list_option(\%alt_info_HH);
+  exit 0;
+}
+
 # check that number of command line args is correct
 if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
@@ -286,13 +309,9 @@ if(scalar(@ARGV) != 2) {
 
 my ($fa_file, $dir) = (@ARGV);
 
-# set options in opt_HH
-opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
-
-# validate options (check for conflicts)
-opt_ValidateSet(\%opt_HH, \@opt_order_A);
-
-# option checks that are too sophisticated for epn-options:
+############################################################
+# option checks that are too sophisticated for epn-options
+############################################################
 # enforce that lowscthresh >= vlowscthresh
 if(opt_IsUsed("--lowscthresh",\%opt_HH) || opt_IsUsed("--vlowscthresh",\%opt_HH)) { 
   if(opt_Get("--lowscthresh",\%opt_HH) < opt_Get("--vlowscthresh",\%opt_HH)) { 
@@ -457,10 +476,6 @@ $execs_H{"blastx"}            = $blast_exec_dir . "/blastx";
 $execs_H{"parse_blastx"}      = $env_dnaorgdir  . "/dnaorg_scripts/parse_blastx.pl";
 utl_ExecHValidate(\%execs_H, \%{$ofile_info_HH{"FH"}});
 
-# initialize error related data structures
-my %alt_info_HH = (); 
-dng_AlertInfoInitialize(\%alt_info_HH, \%{$ofile_info_HH{"FH"}});
-
 ###########################
 # Parse the model info file
 ###########################
@@ -530,6 +545,7 @@ my $seqstat_file = $out_root . ".seqstat";
 my @seq_name_A = (); # [0..$i..$nseq-1]: name of sequence $i in input file
 my %seq_len_H = ();  # key: sequence name (guaranteed to be unique), value: seq length
 utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+if(-e $fa_file . ".ssi") { unlink $fa_file . ".ssi"}; # remove SSI file if it exists, it may be out of date
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, undef, "seqstat", $seqstat_file, 0, "esl-seqstat -a output for input fasta file");
 my $tot_len_nt = sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 my $nseq = scalar(@seq_name_A);
@@ -670,7 +686,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # add n_div errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
     $mdl_n_div_H{$mdl_name} = scalar(@overflow_seq_A);
     if($mdl_n_div_H{$mdl_name} > 0) { 
-      add_n_div_alerts(\@overflow_seq_A, \@overflow_mxsize_A, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
+      alert_add_n_div(\@overflow_seq_A, \@overflow_mxsize_A, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
     }
   }
 }
@@ -738,7 +754,7 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Add b_zft errors for sequences with zero annotated features
 ##############################################################
 # add per-sequence 'b_zft' errors (zero annotated features)
-add_b_zft_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
+alert_add_b_zft(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
                  \%alt_seq_instances_HH, \%alt_ftr_instances_HAH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
 
 ################################
@@ -787,8 +803,9 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
 if(exists $ofile_info_HH{"FH"}{"sgminfo"}) { 
   utl_HAHDump("Segment information", \%sgm_info_HAH, $ofile_info_HH{"FH"}{"sgminfo"});
 }
-if(exists $ofile_info_HH{"FH"}{"errinfo"}) { 
-  utl_HHDump("Alert information", \%alt_info_HH, $ofile_info_HH{"FH"}{"altinfo"});
+if(exists $ofile_info_HH{"FH"}{"altinfo"}) { 
+  dng_AlertInfoDump(\%alt_info_HH, $ofile_info_HH{"FH"}{"altinfo"});
+  dng_AlertInfoDump(\%alt_info_HH, *STDOUT);
 }
 
 ############
@@ -842,9 +859,11 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 # helper_blastx_db_seqname_to_ftr_idx 
 #
 # Other subroutines related to alerts: 
+# alert_list_option
 # alert_instances_add 
-# add_b_zft_alerts 
-# add_n_div_alerts 
+# alert_add_b_zft 
+# alert_add_n_div 
+# alert_instances_check_prevents_annot
 #
 # Subroutines for creating tabular output:
 # output_tabular
@@ -867,12 +886,11 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 # helper_ftable_add_qualifier_from_ftr_info
 # helper_ftable_add_qualifier_from_ftr_results
 # helper_ftable_class_model_for_sequence
-
 #
 # Miscellaneous subroutines:
-# process_input_fasta_file 
 # initialize_ftr_or_sgm_results()
-# convert_pp_char_to_pp_avg 
+# convert_pp_char_to_pp_avg ()
+# group_subgroup_string_from_classification_results()
 #
 #################################################################
 # Subroutine:  cmsearch_wrapper()
@@ -1447,10 +1465,10 @@ sub add_classification_alerts {
         $cls_output_HHR->{$seq_name}{"scpnt"} = $scpnt2print;
         $cls_output_HHR->{$seq_name}{"score"} = sprintf("%.1f", $score_H{"r1.1"});
         if($scpnt_H{"r1.1"} < $vlowscthresh_opt) { 
-          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_vls", $seq_name, $scpnt2print . "<" . $vlowscthresh_opt2print, $FH_HR);
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_vls", $seq_name, $scpnt2print . "<" . $vlowscthresh_opt2print . " bits/nt", $FH_HR);
         }
         elsif($scpnt_H{"r1.1"} < $lowscthresh_opt) { 
-          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_los", $seq_name, $scpnt2print . "<" . $lowscthresh_opt2print, $FH_HR);
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_los", $seq_name, $scpnt2print . "<" . $lowscthresh_opt2print . " bits/nt", $FH_HR);
         }
       }
       # low difference (c_lod) and very low difference (c_vld)
@@ -1459,11 +1477,16 @@ sub add_classification_alerts {
         my $diffpnt2print = sprintf("%.3f", $diffpnt);
         $cls_output_HHR->{$seq_name}{"scdiff"}  = sprintf("%.1f", $score_H{"r1.1"} - $score_H{"r1.2"});
         $cls_output_HHR->{$seq_name}{"diffpnt"} = $diffpnt2print;
+        my $group_str = "best group/subgroup: " . 
+            group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"}) . 
+            ", second group/subgroup: " . 
+            group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.2"});
+
         if($diffpnt < $vlowdiffthresh_opt) { 
-          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_vld", $seq_name, $diffpnt2print . "<" . $vlowdiffthresh_opt2print, $FH_HR);
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_vld", $seq_name, $diffpnt2print . "<" . $vlowdiffthresh_opt2print . " bits/nt, " . $group_str, $FH_HR);
         }
         elsif($diffpnt < $lowdiffthresh_opt) { 
-          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_lod", $seq_name, $diffpnt2print . "<" . $lowdiffthresh_opt2print, $FH_HR);
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_lod", $seq_name, $diffpnt2print . "<" . $lowdiffthresh_opt2print . " bits/nt, " . $group_str, $FH_HR);
         }
       }
       # unexpected group (c_ugr) 
@@ -1481,14 +1504,17 @@ sub add_classification_alerts {
       my $ugr_flag = 0;
       if(defined $exp_group) { 
         if(! defined $scpnt_H{"r1.eg"}) { 
-          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_ugr", $seq_name, "no hits to expected group $exp_group", $FH_HR);
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_ugr", $seq_name, 
+                              "no hits to expected group $exp_group, best model group/subgroup: " . 
+                              group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"}), $FH_HR);
           $ugr_flag = 1;
         }
         else { 
           my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.eg"};
           my $diff2print = sprintf("%.3f", $diff);
           if($diff > $cthresh_opt) { 
-            my $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print;
+            my $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print . 
+                " bits/nt, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
             alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_ugr", $seq_name, $alt_str, $FH_HR);
             $ugr_flag = 1;
           }
@@ -1509,7 +1535,8 @@ sub add_classification_alerts {
           my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.esg"};
           my $diff2print = sprintf("%.3f", $diff);
           if($diff > $cthresh_opt) { 
-            my $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print;
+            my $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print . 
+                " bits/nt, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
             alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_usg", $seq_name, $alt_str, $FH_HR);
           }
         }
@@ -1523,7 +1550,7 @@ sub add_classification_alerts {
       if(defined $bstrand_H{"r2"}) { 
         $cls_output_HHR->{$seq_name}{"bstrand"} = $bstrand_H{"r2"};
         if($bstrand_H{"r2"} eq "-") { 
-          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_mst", $seq_name, "-", $FH_HR);
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_mst", $seq_name, "", $FH_HR);
         }
       }
       # low coverage (c_loc)
@@ -1600,7 +1627,7 @@ sub populate_per_model_data_structures_given_classification_results {
   my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name_AR, $seq_len_HR, $cls_results_HHHR, $alt_seq_instances_HHR, $alt_info_HHR, $mdl_seq_name_HAR, $mdl_seq_len_HR, $mdl_ct_HR, $FH_HR) = @_;
+  my ($seq_name_AR, $seq_len_HR, $cls_results_HHHR, $alt_info_HHR, $alt_seq_instances_HHR, $mdl_seq_name_HAR, $mdl_seq_len_HR, $mdl_ct_HR, $FH_HR) = @_;
 
   # determine what round results we are using
   my $cls_2d_key = (defined $alt_seq_instances_HHR) ? "r2" : "r1.1";
@@ -3658,10 +3685,56 @@ sub helper_blastx_db_seqname_to_ftr_idx {
 #################################################################
 #
 # Other subroutines related to alerts: 
+# alert_list_option
 # alert_instances_add 
-# add_b_zft_alerts 
-# add_n_div_alerts 
+# alert_add_b_zft 
+# alert_add_n_div 
 # alert_instances_check_prevents_annot
+#
+#################################################################
+# Subroutine:  alert_list_option()
+# Incept:      EPN, Wed Apr  3 11:11:26 2019
+#
+# Purpose:    Handle the --alt_list option by outputting a list 
+#             of all alerts and whether they cause failure or not
+#             by default to stdout.
+#
+# Arguments: 
+#  $alt_info_HHR:  REF to the alert info hash of arrays, PRE-FILLED
+#
+# Returns:    void
+#
+# Dies:       never
+#
+#################################################################
+sub alert_list_option { 
+  my $sub_name = "alert_list_option()"; 
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_info_HHR) = @_;
+
+  my $w_alt_sdesc   = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "sdesc");
+  my $w_alt_ldesc   = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "ldesc");
+
+  # determine order of codes to print
+  my @code_A = ();
+  foreach my $code (sort keys (%{$alt_info_HHR})) { 
+    $code_A[($alt_info_HHR->{$code}{"order"})] = $code;
+  }
+
+  printf("%4s  %5s  %-*s  %-*s\n", 
+         "#idx", "code", $w_alt_sdesc, "sdesc", $w_alt_ldesc, "ldesc");
+  my $idx = 0;
+  foreach my $code (@code_A) { 
+    $idx++;
+    printf("%4d  %5s  %-*s  %-*s\n", 
+           $idx, $code, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+           $w_alt_ldesc, $alt_info_HHR->{$code}{"ldesc"});
+  }
+
+  return;
+}
 #
 #################################################################
 # Subroutine:  alert_instances_add()
@@ -3750,9 +3823,8 @@ sub alert_instances_add {
   return;
 }
 
-
 #################################################################
-# Subroutine: add_b_zft_alerts()
+# Subroutine: alert_add_b_zft()
 # Incept:     EPN, Thu Jan 24 12:31:16 2019
 # Purpose:    Adds b_zft alerts for sequences with 0 predicted features
 #             and b_per alerts for mature peptides that have parent 
@@ -3773,8 +3845,8 @@ sub alert_instances_add {
 # Dies:     never
 #
 #################################################################
-sub add_b_zft_alerts { 
-  my $sub_name = "add_b_zft_alerts";
+sub alert_add_b_zft { 
+  my $sub_name = "alert_add_b_zft";
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -3805,7 +3877,7 @@ sub add_b_zft_alerts {
 }
 
 #################################################################
-# Subroutine: add_n_div_alerts()
+# Subroutine: alert_add_n_div()
 # Incept:     EPN, Thu Feb  7 11:54:56 2019
 # Purpose:    Adds n_div alerts for sequences listed in the array @overflow_seq_A, if any.
 #
@@ -3822,8 +3894,8 @@ sub add_b_zft_alerts {
 # Dies:     never
 #
 #################################################################
-sub add_n_div_alerts { 
-  my $sub_name = "add_n_div_alerts";
+sub alert_add_n_div { 
+  my $sub_name = "alert_add_n_div";
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -3865,18 +3937,10 @@ sub alert_instances_check_prevents_annot {
 
   my ($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $FH_HR) = @_;
 
-  my $nalt = scalar(keys %{$alt_info_HHR});
-
-  if(! defined $alt_seq_instances_HHR->{$seq_name}) { 
-    return 0; # no alerts
-  }
-
   foreach my $alt_code (sort keys (%{$alt_seq_instances_HHR->{$seq_name}})) { 
     if(($alt_info_HHR->{$alt_code}{"pertype"} eq "sequence") && 
        ($alt_info_HHR->{$alt_code}{"prevents_annot"} == 1)) { 
-      if(exists $alt_seq_instances_HHR->{$seq_name}{$alt_code}) { 
-        return 1;
-      }
+      return 1;
     }
   }
   
@@ -5409,106 +5473,11 @@ sub helper_ftable_process_sequence_alerts {
 #################################################################
 #
 # Miscellaneous subroutines:
-# process_input_fasta_file 
 # initialize_ftr_or_sgm_results()
-# convert_pp_char_to_pp_avg 
+# convert_pp_char_to_pp_avg()
+# group_subgroup_string_from_classification_results()
 #
 #################################################################
-
-#################################################################
-# Subroutine: process_input_fasta_file()
-# Incept:     EPN, Wed May 18 10:01:02 2016
-#
-# Purpose:   Given the name of the input fasta file
-#            (specified with --infasta), open the 
-#            file, and determine the lengths of all
-#            the N sequences in it. Fill 
-#            $seq_info_HAR->{"accn_name"}[$i] and
-#            $seq_info_HAR->{"len"}[$i]
-#            for sequences $i=1..N.
-#
-# Arguments:
-#  $infasta_file:  name of the input fasta file
-#  $out_root:      root for naming output files
-#  $seq_info_HAR:  REF to hash of arrays of sequence information, added to here
-#  $opt_HHR:       REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:         REF to hash of file handles
-#  
-# Returns:  Number of sequences read in $infasta_file.
-# 
-# Dies: If $seq_info_HAR->{"len"} and $seq_info_HAR->{"accn_name"} 
-#       are not both arrays of exactly length 1 (with information on 
-#       *only* the reference accession.)
-#       
-#       If the same sequence exists more than once in the input sequence
-#       file.
-#
-#       If the names of any sequences in $infasta_file include the
-#       string 'dnaorg', this will cause problems later on because
-#       we add this to sequence names sometimes and then parse
-#       based on its location, if the original sequence name already
-#       has 'dnaorg', we can't guarantee that we'll be able to 
-#       parse the modified sequence name correctly.
-#
-#################################################################
-sub process_input_fasta_file { 
-  my $sub_name = "process_input_fasta_file";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($infasta_file, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
-
-  my %accn_exists_H = ();  # keeps track of which accessions have been read from the sequence file
-  my $err_flag = 0;        # changed to '1' if an accession exists more than once in the input fasta file
-
-  my $ssi_file = $infasta_file . ".ssi";
-  if(-e $ssi_file) { 
-    utl_RunCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
-  }
-  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infasta_file }); # the sequence file object
-  my $nseq = $sqfile->nseq_ssi;
-
-  for(my $i = 0; $i < $nseq; $i++) { 
-    my $next_fasta_str = $sqfile->fetch_consecutive_seqs(1, "", -1);
-    # get name and length of the sequence
-    if($next_fasta_str =~ /^\>(\S+).*\n(\S+)\n+$/) { 
-      my ($accn, $seq) = ($1, $2);
-      my $len = length($seq);
-      if($accn =~ m/dnaorg/) { 
-        ofile_FAIL("ERROR in $sub_name, sequence $accn read from $infasta_file includes the string \"dnaorg\", this is not allowed", "dnaorg", 1, $FH_HR);
-      }
-      push(@{$seq_info_HAR->{"accn_name"}}, $accn);
-      push(@{$seq_info_HAR->{"len"}}, $len);
-
-      if(exists $accn_exists_H{$accn}) {
-        $accn_exists_H{$accn}++;
-        $err_flag = 1;
-      }
-      else { 
-        $accn_exists_H{$accn} = 1;
-      }
-    }
-    else { 
-      ofile_FAIL("ERROR in $sub_name, unable to parse fasta sequence string $next_fasta_str", "dnaorg", 1, $FH_HR);
-    }
-  }
-
-  # fail if we found an accession more than once in $infasta_file
-  my $errmsg = "";
-  if($err_flag) { 
-    $errmsg = "ERROR in $sub_name, the following accessions exist more than once in $infasta_file\nEach accession should exist only once.\n";
-    for(my $i = 0; $i < scalar(@{$seq_info_HAR->{"accn_name"}}); $i++) { 
-      my $accn = $seq_info_HAR->{"accn_name"}[$i];
-      if((exists $accn_exists_H{$accn}) && ($accn_exists_H{$accn} > 1)) { 
-        $errmsg .= "\t$accn ($accn_exists_H{$accn} occurrences)\n";
-        delete $accn_exists_H{$accn};
-      }
-    }
-    ofile_FAIL($errmsg, "dnaorg", 1, $FH_HR);
-  }
-
-  return $nseq;
-}
 
 #################################################################
 # Subroutine: initialize_ftr_or_sgm_results_for_model()
@@ -5587,5 +5556,44 @@ sub convert_pp_char_to_pp_avg {
   ofile_FAIL("ERROR in $sub_name, invalid PP char: $ppchar", "dnaorg", 1, $FH_HR); 
 
   return 0.; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: group_subgroup_string_from_classification_results()
+# Incept:     EPN, Wed Apr  3 10:25:32 2019
+# Purpose:    Return a string describing a model's group
+#             and subgroup 
+#             probability it represents.
+#
+# Arguments:
+#  $results_HR: hash potentially with keys "group" and "subgroup"
+#               (typically 3rd dim of cls_results_HHH,
+#                e.g. cls_results_HHHR->{$seq_name}{"r1.1"})
+#             
+# Returns:  "*NONE*" if "group" key not defined in %{$results_HR}
+#           $results_HR->{"group"}/*NONE* if "group" key defined but "subgroup" key undef
+#           $results_HR->{"group"}/$results_HR->{"subgroup"} if both "group" and "subgroup" keys defined
+#
+# Dies:     never
+#
+#################################################################
+sub group_subgroup_string_from_classification_results { 
+  my $sub_name = "group_subgroup_string_from_classification_results";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($results_HR) = (@_);
+
+  if(! defined $results_HR->{"group"}) { 
+    return "*NONE*";
+  }
+  elsif(! defined $results_HR->{"subgroup"}) {
+    return $results_HR->{"group"} . "/*NONE*";
+  }
+  else { 
+    return $results_HR->{"group"} . "/" . $results_HR->{"subgroup"};
+  }
+
+  return; # NEVER REACHED
 }
 
