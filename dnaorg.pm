@@ -1180,6 +1180,12 @@ sub dng_AlertInfoInitialize {
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  dng_AlertInfoAdd($alt_info_HHR, "c_mst", "sequence",
+                   "Minus Strand", # short description
+                   "sequence appears to be reverse complemented", # long description
+                   1, 1, 1, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
   dng_AlertInfoAdd($alt_info_HHR, "c_usg", "sequence",
                    "Unexpected Subgroup Classification", # short description
                    "score difference too large between best overall model and best expected subgroup model", # long description
@@ -1201,25 +1207,25 @@ sub dng_AlertInfoInitialize {
   dng_AlertInfoAdd($alt_info_HHR, "c_lod", "sequence",
                    "Low Score Difference", # short description
                    "low score difference between best overall model and second best model (not in best model's subgroup)", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_vld", "sequence",
                    "Very Low Score Difference", # description
                    "very low score difference between best overall model and second best model (not in best model's subgroup)", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_los", "sequence",
                    "Low Score", # short description
-                   "low score", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   "score to homology model below low threshold", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_vls", "sequence",
                    "Very Low Score", # short description
-                   "very low score", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   "score to homology model below very low threshold", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_hbi", "sequence",
@@ -1228,16 +1234,10 @@ sub dng_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_mst", "sequence",
-                   "Minus Strand", # short description
-                   "sequence appears to be reverse complemented", # long description
-                   0, 1, 1, # always_fails, causes_failure, prevents_annot
-                   $FH_HR); 
-
   dng_AlertInfoAdd($alt_info_HHR, "n_div", "sequence",
                    "Unexpected Divergence", # short description
                    "sequence is too divergent to confidently assign nucleotide-based annotation", # long description
-                   0, 1, 1, # always_fails, causes_failure, prevents_annot
+                   1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "b_zft", "sequence",
@@ -1510,6 +1510,43 @@ sub dng_AlertInfoSetFTableInvalidatedBy {
 
   # set the value
   $alt_info_HHR->{$code1}{"ftbl_invalid_by"} = $code2str;
+
+  return;
+}
+
+#################################################################
+# Subroutine: dng_AlertInfoSetCausesFailure
+# Incept:     EPN, Wed Apr  3 12:58:58 2019
+#
+# Purpose:    Set the "causes_failure" value for %{$ftr_info_HHR->{$code}
+#
+# Arguments:
+#   $alt_info_HHR: REF to hash of hashes of error information, FILLED HERE
+#   $code:         the code of the element we are adding ftbl_invalid_by values for
+#   $value:        value we are setting $ftbl_info_HHR->{$code}{"causes_failure"} to 
+#   $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: void
+#
+# Dies:    if $code does not exist in %{$atl_info_HHR}
+#          if $value is not '1' or '0'
+#
+#################################################################
+sub dng_AlertInfoSetCausesFailure {
+  my $sub_name = "dng_AlertInfoSetCausesFailure";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($alt_info_HHR, $code, $value, $FH_HR) = (@_);
+
+  if(! defined $alt_info_HHR->{$code}) { 
+    ofile_FAIL("ERROR in $sub_name, trying to set causes_failure for invalid code $code", "dnaorg", 1, $FH_HR);
+  }
+  if(($value ne "1") && ($value ne "0")) { 
+    ofile_FAIL("ERROR in $sub_name, trying to set causes_failure to invalid value $value (must be 1 or 0)", "dnaorg", 1, $FH_HR);
+  }
+
+  $alt_info_HHR->{$code}{"causes_failure"} = $value;
 
   return;
 }

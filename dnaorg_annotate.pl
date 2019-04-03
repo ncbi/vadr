@@ -151,7 +151,9 @@ opt_Add("--ctoponly",     "boolean",  0,                      $g,     undef, und
 
 $opt_group_desc_H{++$g} = "options for controlling which alerts cause a sequence to FAIL";
 #        option               type   default                group  requires incompat    preamble-output                                                     help-output    
-opt_Add("--alt_list",     "boolean",  0,                     $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                           \%opt_HH, \@opt_order_A);
+opt_Add("--alt_list",     "boolean",  0,                     $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
+opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> DO     cause FAILure",             "specify that alert codes in comma-separated <s> DO NOT cause FAILure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> DO NOT cause FAILure",             "specify that alert codes in comma-separated <s> DO     cause FAILure", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning classification alerts";
 #     option                type         default            group   requires incompat     preamble-output                                                   help-output    
@@ -224,6 +226,8 @@ my $options_okay =
                 'ctoponly'    => \$GetOptions_H{"--ctoponly"},
 # options for controlling which alerts cause failure
                 "alt_list"    => \$GetOptions_H{"--alt_list"},
+                "alt_pass=s"  => \$GetOptions_H{"--alt_pass"},
+                "alt_fail=s"  => \$GetOptions_H{"--alt_fail"},
 # options for tuning classification alerts
                 "lowcovthresh=s"   => \$GetOptions_H{"--lowcovthresh"},
                 "lowscthresh=s"    => \$GetOptions_H{"--lowscthresh"},
@@ -325,6 +329,11 @@ if(opt_IsUsed("--lowdiffthresh",\%opt_HH) || opt_IsUsed("--vlowdiffthresh",\%opt
     die sprintf("ERROR, with --lowdiffthresh <x> and --vlowdiffthresh <y>, <x> must be less than <y> (got <x>: %f, <y>: %f)\n", 
                 opt_Get("--lowdiffthresh",\%opt_HH), opt_Get("--vlowdiffthresh",\%opt_HH)); 
   }
+}
+
+# enforce that --alt_pass and --alt_fail options are valid
+if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
+  alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
 }
 
 #############################
@@ -860,6 +869,7 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 #
 # Other subroutines related to alerts: 
 # alert_list_option
+# alert_pass_fail_options
 # alert_instances_add 
 # alert_add_b_zft 
 # alert_add_n_div 
@@ -3711,31 +3721,153 @@ sub alert_list_option {
   my $sub_name = "alert_list_option()"; 
   my $nargs_exp = 1;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
+  
   my ($alt_info_HHR) = @_;
-
+  
   my $w_alt_sdesc   = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "sdesc");
   my $w_alt_ldesc   = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "ldesc");
-
+  my $div_line = utl_StringMonoChar(60, "#", undef) . "\n";
+  
   # determine order of codes to print
   my @code_A = ();
   foreach my $code (sort keys (%{$alt_info_HHR})) { 
     $code_A[($alt_info_HHR->{$code}{"order"})] = $code;
   }
+  
+  my $idx = 0;
+  my $code = undef;
 
+  print $div_line;
+  print("#\n");
+
+  printf("# Alert codes that ALWAYS cause a sequence to FAIL, and cannot be\n");
+  printf("# listed in --alt_pass or --alt_fail option strings:\n#\n");
   printf("%4s  %5s  %-*s  %-*s\n", 
          "#idx", "code", $w_alt_sdesc, "sdesc", $w_alt_ldesc, "ldesc");
-  my $idx = 0;
-  foreach my $code (@code_A) { 
-    $idx++;
-    printf("%4d  %5s  %-*s  %-*s\n", 
-           $idx, $code, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
-           $w_alt_ldesc, $alt_info_HHR->{$code}{"ldesc"});
+  $idx = 0;
+  foreach $code (@code_A) { 
+    if($alt_info_HHR->{$code}{"always_fails"}) { 
+      $idx++;
+      printf("%-4d  %5s  %-*s  %-*s\n", 
+             $idx, $code, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+             $w_alt_ldesc, $alt_info_HHR->{$code}{"ldesc"});
+    }
   }
+
+  print("#\n");
+  print $div_line;
+  print ("#\n");
+
+  printf("# Alert codes that cause a sequence to FAIL by default, but can be set\n");
+  printf("# to not FAIL a sequence by listing the code as part of a comma separated\n");
+  printf("# string of codes in <s> with the --alt_pass <s> option:\n#\n");
+  printf("%4s  %5s  %-*s  %-*s\n", 
+         "#idx", "code", $w_alt_sdesc, "sdesc", $w_alt_ldesc, "ldesc");
+  $idx = 0;
+  foreach $code (@code_A) { 
+    if(($alt_info_HHR->{$code}{"causes_failure"}) && 
+       (! $alt_info_HHR->{$code}{"always_fails"})) { 
+      $idx++;
+      printf("%-4d  %5s  %-*s  %-*s\n", 
+             $idx, $code, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+             $w_alt_ldesc, $alt_info_HHR->{$code}{"ldesc"});
+    }
+  }
+
+  print("#\n");
+  print $div_line;
+  print("#\n");
+
+  printf("# Alert codes that do not cause a sequence to FAIL by default, but can be set\n");
+  printf("# to FAIL a sequence by listing the code as part of a comma separated\n");
+  printf("# string of codes in <s> with the --alt_fail <s> option:\n#\n");
+  printf("%4s  %5s  %-*s  %-*s\n", 
+         "#idx", "code", $w_alt_sdesc, "sdesc", $w_alt_ldesc, "ldesc");
+  $idx = 0;
+  foreach $code (@code_A) { 
+    if((! $alt_info_HHR->{$code}{"causes_failure"}) && 
+       (! $alt_info_HHR->{$code}{"always_fails"})) { 
+      $idx++;
+      printf("%-4d  %5s  %-*s  %-*s\n", 
+             $idx, $code, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+             $w_alt_ldesc, $alt_info_HHR->{$code}{"ldesc"});
+    }
+  }
+
+  print("#\n");
+  print $div_line;
 
   return;
 }
+
+#################################################################
+# Subroutine:  alert_pass_fail_options()
+# Incept:      EPN, Wed Apr  3 12:51:25 2019
 #
+# Purpose:    Handle the --alt_pass and --alt_fail options by 
+#             parsing their strings, determining if they are valid
+#             and updating the "causes_failure" values in 
+#             %{$alt_info_HHR}.
+#
+# Arguments: 
+#  $alt_info_HHR:   REF to the alert info hash of arrays, PRE-FILLED
+#  $opt_HHR:        REF to 2D hash of option values
+#
+# Returns:    void
+#
+# Dies:       if --alt_pass or --alt_fail option strings are invalid
+#
+#################################################################
+sub alert_pass_fail_options { 
+  my $sub_name = "alert_pass_fail_options()"; 
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($alt_info_HHR, $opt_HHR) = @_;
+  
+  my @pass_A = ();
+  my @fail_A = ();
+  if(opt_IsUsed("--alt_pass", $opt_HHR)) { 
+    @pass_A = split(",", opt_Get("--alt_pass", $opt_HHR));
+  }
+  if(opt_IsUsed("--alt_fail", $opt_HHR)) { 
+    @fail_A = split(",", opt_Get("--alt_fail", $opt_HHR));
+  }
+
+  my $die_str = "";
+  my $alt_code = undef;
+
+  # --alt_pass codes
+  foreach my $alt_code (@pass_A) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      $die_str .= "alert code $alt_code is invalid (does not exist)\n";
+    }
+    elsif($alt_info_HHR->{$alt_code}{"always_fails"}) { 
+      $die_str .= "alert code $alt_code always causes failure, it cannot be listed in --alt_pass string\n";
+    }
+    else { 
+      dng_AlertInfoSetCausesFailure($alt_info_HHR, $alt_code, 0, undef);
+    }
+  }
+
+  # --alt_fail codes
+  foreach my $alt_code (@fail_A) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      $die_str .= "alert code $alt_code is invalid (does not exist)\n";
+    }
+    else { 
+      dng_AlertInfoSetCausesFailure($alt_info_HHR, $alt_code, 1, undef);
+    }
+  }
+
+  if($die_str ne "") { 
+    $die_str .= "Use the --alt_list to see a list possible alert codes\nto use with --alt_pass and --alt_fail.\n";
+    ofile_FAIL("ERROR processing --alt_fail and/or --alt_pass options:\n$die_str", "dnaorg", 1, undef);
+  }
+  
+  return;
+}
+
 #################################################################
 # Subroutine:  alert_instances_add()
 # Incept:      EPN, Tue Mar  8 11:06:18 2016
@@ -5326,8 +5458,8 @@ sub helper_ftable_process_feature_alerts {
 
   # printf("HEYA in $sub_name $seq_name $ftr_idx, $alt_code_str\n");
 
-  # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
-  my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
+  # create a hash of all alerts in the input $alt_str
+  my %input_alt_code_H = (); # $input_slt_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
   my $alt_code; 
   foreach $alt_code (split(",", $alt_code_str)) { 
     if(! defined $alt_info_HHR->{$alt_code}) { 
@@ -5336,22 +5468,23 @@ sub helper_ftable_process_feature_alerts {
     $input_alt_code_H{$alt_code} = 1; 
   }
 
-  my $valid = 0;
+  my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not
   my $ret_nadded = 0;
   foreach $alt_code (sort keys (%input_alt_code_H)) { 
-    $valid = 1; # may be set to '0' below
-    if($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "") { 
-      # printf("\t\tinvalid_by is " . $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} . "\n");
+    $do_report = $alt_info_HHR->{$alt_code}{"causes_failure"}; # only report alerts that cause failure in the feature table
+    # check if this alert is invalidated by another we will also report
+    if(($do_report) && ($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "")) { 
       my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"});
       foreach my $alt_code2 (@invalid_by_alt_code_A) {
-        if(exists $input_alt_code_H{$alt_code2}) { 
-          $valid = 0; # $alt_code is invalidated by $alt_code2, which is also present in $alt_code_str
+        if(($alt_info_HHR->{$alt_code2}{"causes_failure"}) && 
+           (exists $input_alt_code_H{$alt_code2})) { 
+          $do_report = 0; # $alt_code is invalidated by $alt_code2, $alt_code2 causes failure and is also present in $alt_code_str
           # printf("\t\t\tinvalidated by $alt_code2\n");
         }
       }
     }
-    if($valid) { 
-      # we could have more than one instance of this sequence/feature pair
+    if($do_report) { 
+      # we could have more than one instance of this sequence/feature/alert trio
       my @instance_str_A = ();
       if($alt_ftr_instances_HAHR->{$seq_name}[$ftr_idx]{$alt_code} eq "") { 
         @instance_str_A = ("");
@@ -5430,21 +5563,21 @@ sub helper_ftable_process_sequence_alerts {
     $input_alt_code_H{$alt_code} = 1; 
   }
 
-  my $valid = 0;
+  my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not
   foreach $alt_code (sort keys (%input_alt_code_H)) { 
-    $valid = 1; # may be set to '0' below
-    if($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "") { 
-      # printf("\t\tinvalid_by is " . $alt_info_HHR->{"ftbl_invalid_by"}[$alt_idx] . "\n");
+    $do_report = $alt_info_HHR->{$alt_code}{"causes_failure"}; # only report alerts that cause failure in the feature table
+    # check if this alert is invalidated by another we will also report
+    if(($do_report) && ($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "")) { 
       my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{"ftbl_invalid_by"}[$alt_idx]);
       foreach my $alt_code2 (@invalid_by_alt_code_A) {
-        if(exists $input_alt_code_H{$alt_code2}) { 
-          $valid = 0; # $alt_idx is invalidated by $alt_code2, which is also present in $alt_str
-          # printf("\t\t\tinvalidated by $alt_code2\n");
+        if(($alt_info_HHR->{$alt_code2}{"causes_failure"}) && 
+           (exists $input_alt_code_H{$alt_code2})) { 
+          $do_report = 0; # $alt_code is invalidated by $alt_code2, $alt_code2 causes failure and is also present in $alt_code_str
         }
       }
     }
-    if($valid) { 
-      # we could have more than one instance of this sequence/feature pair
+    if($do_report) { 
+      # we could have more than one instance of this sequence/alert pair
       my @instance_str_A = ();
       if($alt_seq_instances_HHR->{$seq_name}{$alt_code} eq "") { 
         @instance_str_A = ("");
