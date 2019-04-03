@@ -63,8 +63,10 @@ use Cwd;
 # 
 # dng_FeatureTypeAndTypeIndexString()
 # dng_FeatureTypeIsCds()
-# dng_FeatureTypeIsMaturePeptide()
-# dng_FeatureTypeIsCdsOrMaturePeptide()
+# dng_FeatureTypeIsMatPeptide()
+# dng_FeatureTypeIsGene()
+# dng_FeatureTypeIsCdsOrMatPeptide()
+# dng_FeatureTypeIsCdsOrMatPeptideOrGene()
 # dng_FeatureChildrenArray()
 # dng_FeatureNumSegments()
 # dng_FeatureIsDuplicate()
@@ -750,10 +752,10 @@ sub dng_FeatureTypeIsCds {
 }
 
 #################################################################
-# Subroutine: dng_FeatureTypeIsMaturePeptide()
+# Subroutine: dng_FeatureTypeIsGene()
 # Incept:     
 #
-# Purpose:    Is feature $ftr_idx a mature peptide?
+# Purpose:    Is feature $ftr_idx a gene?
 #
 # Arguments: 
 #  $ftr_info_AHR:   ref to the feature info array of hashes 
@@ -764,19 +766,19 @@ sub dng_FeatureTypeIsCds {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub dng_FeatureTypeIsMaturePeptide { 
-  my $sub_name = "dng_FeatureTypeIsMaturePeptide";
+sub dng_FeatureTypeIsGene { 
+  my $sub_name = "dng_FeatureTypeIsGene";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($ftr_info_AHR, $ftr_idx) = @_;
 
-  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") ? 1 : 0;
+  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "gene") ? 1 : 0;
 }
 
 
 #################################################################
-# Subroutine: dng_FeatureTypeIsCdsOrMaturePeptide()
+# Subroutine: dng_FeatureTypeIsCdsOrMatPeptide()
 # Incept:     EPN, Mon Feb 25 14:30:34 2019
 #
 # Purpose:    Is feature $ftr_idx a CDS or mature peptide?
@@ -790,8 +792,8 @@ sub dng_FeatureTypeIsMaturePeptide {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub dng_FeatureTypeIsCdsOrMaturePeptide { 
-  my $sub_name = "dng_FeatureTypeIsCdsOrMaturePeptide";
+sub dng_FeatureTypeIsCdsOrMatPeptide { 
+  my $sub_name = "dng_FeatureTypeIsCdsOrMatPeptide";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -799,6 +801,33 @@ sub dng_FeatureTypeIsCdsOrMaturePeptide {
 
   return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
           ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide")) ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: dng_FeatureTypeIsCdsOrMatPeptideOrGene()
+# Incept:     EPN, Wed Apr  3 14:31:33 2019
+#
+# Purpose:    Is feature $ftr_idx a CDS or mature peptide or gene?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub dng_FeatureTypeIsCdsOrMatPeptideOrGene { 
+  my $sub_name = "dng_FeatureTypeIsCdsOrMatPeptideOrGene";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
+          ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") ||
+          ($ftr_info_AHR->[$ftr_idx]{"type"} eq "gene")) ? 1 : 0;
 }
 
 #################################################################
@@ -1243,7 +1272,7 @@ sub dng_AlertInfoInitialize {
   dng_AlertInfoAdd($alt_info_HHR, "b_zft", "sequence",
                    "No Features Annotated", # short description
                    "sequence similarity to homology model does not overlap with any features", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   1, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "n_str", "feature",
