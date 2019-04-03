@@ -8,46 +8,41 @@ use Getopt::Long;
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
+use LWP::Simple; 
 
 require "dnaorg.pm"; 
 require "epn-options.pm";
+require "epn-ofile.pm";
+require "epn-seqfile.pm";
+require "epn-utils.pm";
 
 #######################################################################################
 # What this script does: 
 #
-# Preliminaries: 
-#   - process options
-#   - create the output directory
-#   - output program banner and open output files
-#   - parse the optional input files, if necessary
-#   - make sure the required executables are executable
+# - Preliminaries: 
+#   o processes options
+#   o creates the output directory
+#   o outputs program banner
+#   o makes sure the required executables are executable
 #
-# Step 1. Gather and process information on reference genome using Edirect
-#
-# Step 2. Fetch and process the reference genome sequence
-#
-# Step 3. Build and calibrate models
+# - Fetches GenBank file (if ! --gb)
+# - Parses GenBank file
+# - Prunes data read from GenBank file
+# - Parses input stockholm file (if --stk)
+# - Fills in feature and segment info
+# - Translates CDS (if any) and creates BLAST db
+# - Builds CM 
+# - Writes model info file
+# - Writes optional output files
+# 
 #######################################################################################
+# make sure DNAORGDIR and DNAORGBLASTDIR environment variable is set
+my $env_dnaorgdir      = utl_DirEnvVarValid("DNAORGDIR");
+my $env_dnaorgblastdir = utl_DirEnvVarValid("DNAORGBLASTDIR");
 
-# first, determine the paths to all modules, scripts and executables that we'll need
-
-# make sure the DNAORGDIR environment variable is set
-my $dnaorgdir = $ENV{'DNAORGDIR'};
-if(! exists($ENV{'DNAORGDIR'})) { 
-    printf STDERR ("\nERROR, the environment variable DNAORGDIR is not set, please set it to the directory where you installed the dnaorg scripts and their dependencies.\n"); 
-    exit(1); 
-}
-if(! (-d $dnaorgdir)) { 
-    printf STDERR ("\nERROR, the dnaorg directory specified by your environment variable DNAORGDIR does not exist.\n"); 
-    exit(1); 
-}    
- 
-# determine other required paths to executables relative to $dnaorgdir
-my $inf_exec_dir      = $dnaorgdir . "/infernal-dev/src/";
-my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
-my $esl_exec_dir      = $dnaorgdir . "/infernal-dev/easel/miniapps/";
-my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
-my $blast_exec_dir    = "/usr/bin/"; # HARD-CODED FOR NOW
+my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
+my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
+my $blast_exec_dir    = $env_dnaorgblastdir;
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -73,78 +68,113 @@ my $blast_exec_dir    = "/usr/bin/"; # HARD-CODED FOR NOW
 my %opt_HH = ();      
 my @opt_order_A = (); 
 my %opt_group_desc_H = ();
+my $g = 0; # option group
 
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
-$opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                                 help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                          "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",                  "force; if dir <reference accession> exists, overwrite it", \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                   "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                    1,    undef, undef,      "output directory specified as <s>",            "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--matpept",    "string",  undef,                    1,    undef, undef,      "using pre-specified mat_peptide info",         "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("--nomatpept",  "boolean", 0,                        1,    undef,"--matpept", "ignore mat_peptide annotation",                "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
-opt_Add("--xfeat",      "string",  undef,                    1,    undef, undef,      "build models of additional qualifiers",        "build models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
-opt_Add("--dfeat",      "string",  undef,                    1,    undef, undef,      "annotate additional qualifiers as duplicates", "annotate qualifiers in <s> from duplicates (e.g. gene from CDS)",  \%opt_HH, \@opt_order_A);  
-opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",           "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "basic options";
+#     option            type       default  group   requires incompat     preamble-output                                                help-output    
+opt_Add("-h",           "boolean", 0,           0,    undef, undef,       undef,                                                         "display this help",                                   \%opt_HH, \@opt_order_A);
+opt_Add("-g",           "string", 0,           $g,    undef, undef,       "define model group for model info file as <s>",               "define model group for model info file as <s>", \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,          $g,    undef, undef,       "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--stk",        "string",  undef,      $g,    undef,  undef,      "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--gb",         "string",  undef,      $g,    undef,  undef,      "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,          $g,    undef, undef,       "leave intermediate files on disk",                            "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"2"} = "optional output files";
-#       option       type       default                group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                        2,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
-opt_Add("--ftrinfo",    "boolean", 0,                        2,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide]";
+#     option            type       default  group   requires incompat     preamble-output                                                      help-output    
+opt_Add("--fall",       "boolean", 0,          $g,    undef,  undef,      "store info for all feature types (except those in --fskip)",        "store info for all feature types (except those in --fskip)", \%opt_HH, \@opt_order_A);
+opt_Add("--fadd",       "string",  undef,      $g,    undef,"--fall",     "also store features types in comma separated string <s>",           "also store feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--fskip",      "string",  undef,      $g,    undef,  undef,      "do not store info for feature types in comma separated string <s>",  "do not store info for feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{"3"} = "options for skipping stages and using files from an earlier, identical run, primarily useful for debugging";
-#     option               type       default               group   requires    incompat                  preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                       3,   undef,      undef,                    "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                       3,   undef,      undef,                    "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipbuild",     "boolean", 0,                       3,   undef,      undef,                    "skip the build/calibrate steps",                         "skip the model building/calibrating, requires --mdlinfo and/or --ftrinfo", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file\n[default set is:product,gene,exception]";
+#     option            type       default  group   requires incompat     preamble-output                                                   help-output    
+opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers (except those in --qskip)",        "store info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
+opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",   "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--qskip",      "string",   undef,    $g,    undef,  undef,       "do not store info for qualifiers in comma separated string <s>", "do not store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for controlling CDS translation step";
+#     option          type       default    group   requires    incompat   preamble-output                                             help-output    
+opt_Add("--ttbl",     "integer", 1,            $g,  undef,         undef,  "use NCBI translation table <n> to translate CDS",          "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for controlling cmbuild step";
+#     option          type       default    group   requires    incompat   preamble-output                                             help-output    
+opt_Add("--cmn",      "integer", 0,           $g,   undef, "--skipbuild",  "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--cmp7ml",   "boolean", 0,           $g,   undef, "--skipbuild",  "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
+opt_Add("--cmere",    "real",    0,           $g,   undef,  "--skipbuild", "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
+opt_Add("--cmeset",   "real",    0,           $g,   undef,  "--skipbuild", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for skipping stages";
+#       option             type       default     group requires   incompat  preamble-output                                    help-output    
+opt_Add("--skipbuild",     "boolean", 0,         $g,    undef,     undef,    "skip the cmbuild step",                           "skip the cmbuild step", \%opt_HH, \@opt_order_A);
+opt_Add("--onlyurl",       "boolean", 0,         $g,    undef,"--stk,--gb",  "output genbank file url for accession and exit",  "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "optional output files";
+#       option       type       default     group  requires     incompat  preamble-output                          help-output    
+opt_Add("--ftrinfo",    "boolean", 0,         $g,    undef,     undef,    "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--sgminfo",    "boolean", 0,         $g,    undef,     undef,    "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
+
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: dnaorg_build.pl [-options] <reference accession>\n";
-my $synopsis = "dnaorg_build.pl :: build homology models for features of a reference sequence";
+my $usage    = "Usage: dnaorg_build.pl [-options] <accession> <path to output directory to create>\n";
+my $synopsis = "dnaorg_build.pl :: build homology model of a single sequence for feature annotation";
 
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
+                'g=s'          => \$GetOptions_H{"-g"},
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
-                'dirout=s'     => \$GetOptions_H{"--dirout"},
-                'matpept=s'    => \$GetOptions_H{"--matpept"},
-                'nomatpept'    => \$GetOptions_H{"--nomatpept"},
-                'xfeat=s'      => \$GetOptions_H{"--xfeat"},
-                'dfeat=s'      => \$GetOptions_H{"--dfeat"},
+                'stk=s'        => \$GetOptions_H{"--stk"},
+                'gb=s'         => \$GetOptions_H{"--gb"},
                 'keep'         => \$GetOptions_H{"--keep"},
+# options for controlling what feature types are stored in model info file
+                'fall'         => \$GetOptions_H{"--fall"},
+                'fadd=s'       => \$GetOptions_H{"--fadd"},
+                'fskip=s'      => \$GetOptions_H{"--fskip"},
+# options for controlling what qualifiers are stored in model info file
+                'qall'         => \$GetOptions_H{"--qall"},
+                'qadd=s'       => \$GetOptions_H{"--qadd"},
+                'qskip=s'      => \$GetOptions_H{"--qskip"},
+# options for controlling CDS translation step
+                'ttbl=s'       => \$GetOptions_H{"--ttbl"},
+# options for controlling cmbuild step
+                'cmn=s'        => \$GetOptions_H{"--cmn"},
+                'cmp7ml'       => \$GetOptions_H{"--cmp7ml"},
+                'cmere=s'      => \$GetOptions_H{"--cmere"},
+                'cmeset=s'     => \$GetOptions_H{"--cmeset"},
+# optional for skipping stages
+                'skipbuild'    => \$GetOptions_H{"--skipbuild"},
+                'onlyurl'      => \$GetOptions_H{"--onlyurl"},
 # optional output files
-                'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
-                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"},
-# options for skipping stages, using earlier results
-                'skipedirect'  => \$GetOptions_H{"--skipedirect"},
-                'skipfetch'    => \$GetOptions_H{"--skipfetch"},
-                'skipbuild'    => \$GetOptions_H{"--skipbuild"});
+                'sgminfo'      => \$GetOptions_H{"--sgminfo"},
+                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});
 
-my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
+my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.45";
+my $version       = "0.45x";
 my $releasedate   = "Feb 2019";
+my $pkgname       = "dnaorg";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+  ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, undef);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
 }
 
 # check that number of command line args is correct
-if(scalar(@ARGV) != 1) {   
+if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
   print "\nTo see more help on available options, do dnaorg_build.pl -h\n\n";
   exit(1);
 }
-my ($ref_accn) = (@ARGV);
+my ($mdl_name, $dir) = (@ARGV);
 
 # set options in opt_HH
 opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
@@ -152,56 +182,51 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
-# do checks that are too sophisticated for epn-options.pm
-if((opt_Get("--skipbuild", \%opt_HH)) && 
-   (! (opt_Get("--mdlinfo", \%opt_HH) || opt_Get("--ftrinfo", \%opt_HH)))) { 
-  die "ERROR, --skipbuild requires one or both of --mdlinfo or --ftrinfo"; 
+############################################
+# if --onlyurl used, output the url and exit
+############################################
+if(opt_Get("--onlyurl", \%opt_HH)) { 
+  print dng_EutilsFetchUrl($mdl_name, "gb") . "\n";
+  exit 0;
 }
-
-my $dir        = opt_Get("--dirout", \%opt_HH);          # this will be undefined unless -d set on cmdline
-my $do_matpept = opt_IsOn("--matpept", \%opt_HH);
-my $do_origin  = opt_IsUsed("--matpept", \%opt_HH);
 
 #############################
 # create the output directory
 #############################
-my $cmd;              # a command to run with runCommand()
+my $cmd;              # a command to run with utl_RunCommand()
 my @early_cmd_A = (); # array of commands we run before our log file is opened
-# check if the $dir exists, and that it contains the files we need
-# check if our output dir $symbol exists
-if(! defined $dir) { 
-  $dir = $ref_accn;
-}
-else { 
-  if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
-}
+
+if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 if(-e $dir) { 
   $cmd = "rm $dir";
-  if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
 $cmd = "mkdir $dir";
-runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
+utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
 push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir
 my $out_root = $dir . "/" . $dir_tail . ".dnaorg_build";
 
-#############################################
-# output program banner and open output files
-#############################################
+#######################
+# output program banner
+#######################
 # output preamble
-my @arg_desc_A = ("reference accession");
-my @arg_A      = ($ref_accn);
-outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+my @arg_desc_A = ("accession/model name", "output directory");
+my @arg_A      = ($mdl_name, $dir);
+my %extra_H    = ();
+$extra_H{"\$DNAORGDIR"}       = $env_dnaorgdir;
+$extra_H{"\$DNAORGBLASTDIR"}  = $env_dnaorgblastdir;
+ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
@@ -217,24 +242,17 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "cmd": command file with list of all commands executed
 
 # open the log and command files 
-openAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", 1, "Output printed to screen");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", 1, "List of executed commands");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "log",  $out_root . ".log",  1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "list", $out_root . ".list", 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
+my $FH_HR  = $ofile_info_HH{"FH"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
-# open optional output files
-if(opt_Get("--mdlinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "mdlinfo", $out_root . ".mdlinfo", 1, "Model information (created due to --mdlinfo)");
-}
-if(opt_Get("--ftrinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
-}
-
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+ofile_OutputBanner($log_FH, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
@@ -242,353 +260,381 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-########################################
-# parse the optional input files, if nec
-########################################
-# -matpept <f>
-my @cds2pmatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of primary matpept indices that comprise this CDS
-my @cds2amatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of all     matpept indices that comprise this CDS
-if($do_matpept) { 
-  my $matpept_optfile = opt_Get("--matpept", \%opt_HH);
-  my $dest_matpept_optfile = $out_root . ".matpept";
-  parseMatPeptSpecFile($matpept_optfile, \@cds2pmatpept_AA, \@cds2amatpept_AA, $ofile_info_HH{"FH"});
-  # copy the matpept file to a special file name
-  runCommand("cp $matpept_optfile $dest_matpept_optfile", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+#############################################################
+# make sure the required executables exist and are executable
+#############################################################
+my %execs_H = (); # hash with paths to all required executables
+if(! opt_Get("--skipbuild", \%opt_HH)) { 
+  $execs_H{"cmbuild"}       = $inf_exec_dir . "/cmbuild";
+}
+$execs_H{"esl-reformat"}  = $esl_exec_dir . "/esl-reformat";
+$execs_H{"esl-translate"} = $esl_exec_dir . "/esl-translate";
+$execs_H{"makeblastdb"}   = $blast_exec_dir . "/makeblastdb";
+utl_ExecHValidate(\%execs_H, $ofile_info_HH{"FH"});
+
+###########################################
+# Fetch the genbank file (if --gb not used)
+###########################################
+my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
+my $start_secs;
+my $gb_file = undef;
+if(opt_IsUsed("--gb", \%opt_HH)) { 
+  $gb_file = opt_Get("--gb", \%opt_HH);
+}
+else { 
+  # --gb not used, create gb file by fetching using eutils
+  $start_secs = ofile_OutputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
+
+  $gb_file = $out_root . ".gb";
+  dng_EutilsFetchToFile($gb_file, $mdl_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
+
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
-###################################################
-# make sure the required executables are executable
-###################################################
-my %execs_H = (); # hash with paths to all required executables
-$execs_H{"cmbuild"}       = $inf_exec_dir . "cmbuild";
-$execs_H{"esl-reformat"}  = $esl_exec_dir . "esl-reformat";
-$execs_H{"esl_fetch_cds"} = $esl_fetch_cds;
-$execs_H{"makeblastdb"}   = $blast_exec_dir . "makeblastdb";
-validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
+########################
+# Parse the genbank file
+########################
+$start_secs = ofile_OutputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
 
-###########################################################################
-# Step 1. Output the consopts file that dnaorg_annotate.pl will use to 
-#         make sure options used are consistent between dnaorg_build.pl and 
-#         dnaorg_annotate.pl 
-###########################################################################
-my $progress_w = 80; # the width of the left hand column in our progress output, hard-coded
-my $start_secs = outputProgressPrior("Outputting information on options used for future use with dnaorg_annotate.pl", $progress_w, $log_FH, *STDOUT);
-output_consopts_file($out_root . ".consopts", \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+my %ftr_info_HAH = (); # the feature info 
+my %seq_info_HH  = (); # the sequence info 
+sqf_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
+if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
+  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", "dnaorg", 1, $FH_HR);
+}
+if(! exists $ftr_info_HAH{$mdl_name}) { 
+  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", "dnaorg", 1, $FH_HR);
+}
 
-###########################################################################
-# Step 2. Gather and process information on reference genome using Edirect.
-###########################################################################
-$start_secs = outputProgressPrior("Gathering information on reference using edirect", $progress_w, $log_FH, *STDOUT);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-my %cds_tbl_HHA = ();    # CDS data from .cds.tbl file, hash of hashes of arrays, 
-                         # 1D: key: accession
-                         # 2D: key: column name in gene ftable file
-                         # 3D: per-row values for each column
-my %mp_tbl_HHA = ();     # mat_peptide data from .matpept.tbl file, hash of hashes of arrays, 
-                         # 1D: key: accession
-                         # 2D: key: column name in gene ftable file
-                         # 3D: per-row values for each column
-my %xfeat_tbl_HHHA = (); # xfeat (extra feature) data from feature table file, hash of hash of hashes of arrays
-                         # 1D: qualifier name, e.g. 'gene'
-                         # 2D: key: accession
-                         # 3D: key: column name in gene ftable file
-                         # 4D: per-row values for each column
-my %dfeat_tbl_HHHA = (); # dfeat (duplicate feature) data from feature table file, hash of hash of hashes of arrays
-                         # 1D: qualifier name, e.g. 'gene'
-                         # 2D: key: accession
-                         # 3D: key: column name in gene ftable file
-                         # 4D: per-row values for each column
-my %seq_info_HA = ();    # hash of arrays, avlues are arrays [0..$nseq-1];
-                         # 1st dim keys are "seq_name", "accn_name", "len"
-                         # $seq_info_HA{"accn_name"}[0] is our reference accession
-@{$seq_info_HA{"accn_name"}} = ($ref_accn);
+#######################################################
+# Prune data read from %ftr_info_HAH, only keeping what
+# we want to output to the eventual model info file
+#######################################################
+$start_secs = ofile_OutputProgressPrior("Pruning data read from GenBank file", $progress_w, $log_FH, *STDOUT);
 
-# parse --xfeat option if necessary and initiate hash of hash of arrays for each comma separated value
-my $do_xfeat = 0;
-if(opt_IsUsed("--xfeat", \%opt_HH)) { 
-  $do_xfeat = 1;
-  my $xfeat_str = opt_Get("--xfeat", \%opt_HH);
-  foreach my $xfeat (split(",", $xfeat_str)) { 
-    %{$xfeat_tbl_HHHA{$xfeat}} = ();
+# determine what types of features we will store based on cmdline options
+# --fall is incompatible with --fadd
+my %fdf_H   = (); # default feature types to keep
+my %fadd_H  = (); # feature types to add
+my %fskip_H = (); # feature types to skip
+process_add_and_skip_options("CDS,gene,mat_peptide", "--fadd", "--fskip", \%fdf_H, \%fadd_H, \%fskip_H, \%opt_HH, $FH_HR);
+
+# determine what qualifiers we will store based on cmdline options
+# --qall is incompatible with --qadd
+my %qdf_H   = (); # default qualifiers to keep
+my %qadd_H  = (); # qualifiers to add
+my %qskip_H = (); # qualifiers to skip
+process_add_and_skip_options("type,location,product,gene,exception", "--qadd", "--qskip", \%qdf_H, \%qadd_H, \%qskip_H, \%opt_HH, $FH_HR);
+
+# remove all features types we don't want
+my $ftr_idx;
+my @ftr_idx_to_remove_A = ();
+for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
+  # we skip this type and remove it from ftr_info_HAH
+  # if all three of A1, A2, A3 OR B is satisfied
+  # (A1) it's not a default feature type AND
+  # (A2) it's not listed in --fadd AND
+  # (A3) --fall not used
+  # OR 
+  # (B) it is listed in --fskip string 
+  if(((! defined $fdf_H{$ftype})     && # (A1)
+      (! defined $fadd_H{$ftype})    && # (A2)
+      (! opt_Get("--fall", \%opt_HH)))  # (A3)
+     || (defined $fskip_H{$ftype})) {   # (B)
+    splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
+    $ftr_idx--; # this is about to be incremented
   }
 }
-# parse --dfeat option if necessary
-my $do_dfeat = 0;
-if(opt_IsUsed("--dfeat", \%opt_HH)) { 
-  $do_dfeat = 1;
-  my $dfeat_str = opt_Get("--dfeat", \%opt_HH);
-  foreach my $dfeat (split(",", $dfeat_str)) { 
-    %{$dfeat_tbl_HHHA{$dfeat}} = ();
-    if(exists $xfeat_tbl_HHHA{$dfeat}) {
-      DNAORG_FAIL("ERROR, with --xfeat <s1> and --dfeat <s2>, no qualifier names can be in common between <s1> and <s2>, found $dfeat", 1, $ofile_info_HH{"FH"});
+
+# remove any qualifier key/value pairs with keys not in %qual_H, unless --qall used
+for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+  foreach my $qual (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) { 
+    # we skip this qualifier and remove it from ftr_info_HAH
+    # if all three of A1, A2, A3 OR B is satisfied
+    # (A1) it's not a default qualifier AND
+    # (A2) it's not listed in --qadd AND
+    # (A3) --qall not used
+    # OR 
+    # (B) it is listed in --qskip string 
+    if(((! defined $qdf_H{$qual})        && # (A1)
+        (! defined $qadd_H{$qual})       && # (A2)
+        (! opt_Get("--qall", \%opt_HH)))    # (A3)
+       || (defined $qskip_H{$qual})) {      # (B)
+      delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$qual};
     }
   }
 }
 
-# Call the wrapper function that does the following:
-#  1) creates the edirect .mat_peptide file, if necessary
-#  2) creates the edirect .ftable file
-#  3) creates the length file
-#  4) parses the edirect .mat_peptide file, if necessary
-#  5) parses the edirect .ftable file
-#  6) parses the length file
-wrapperGetInfoUsingEdirect(undef, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA,
-                           \%seq_info_HA, \%ofile_info_HH, 
-                           \%opt_HH, $ofile_info_HH{"FH"}); # 1st argument is undef because we are only getting info for $ref_accn
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-if($do_matpept) {  
-  # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, 0, $seq_info_HA{"len"}[0], $ofile_info_HH{"FH"});
+#####################################################################
+# Parse the input stockholm file (if --stk) or create it (if ! --stk)
+#####################################################################
+my $stk_file = $out_root . ".stk";
+my $fa_file  = $out_root . ".fa";
+my $stk_has_ss = undef;
+my $in_stk_file = opt_Get("--stk", \%opt_HH);
+if(defined $in_stk_file) { 
+  $start_secs = ofile_OutputProgressPrior("Validating input Stockholm file", $progress_w, $log_FH, *STDOUT);
+
+  $stk_has_ss = stockholm_validate_single_sequence_input($in_stk_file, $seq_info_HH{$mdl_name}{"seq"}, \%opt_HH, $FH_HR);
+
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  
+  $start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
+
+  utl_RunCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "fasta", "stockholm", \%opt_HH, $FH_HR);
+
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+else { 
+  # --stk not used, we create it by first making a fasta file of the model
+  # model sequence read from the gb file, then converting that fasta file 
+  # to a stockholm file
+  $start_secs = ofile_OutputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
 
-#########################################################
-# Step 3. Fetch and process the reference genome sequence
-##########################################################
-$start_secs = outputProgressPrior("Fetching and processing the reference genome", $progress_w, $log_FH, *STDOUT);
-my %mdl_info_HA = ();          # hash of arrays, values are arrays [0..$nmdl-1];
-                               # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
-                               # filled in wrapperFetchAllSequencesAndProcessReferenceSequence()
-my %ftr_info_HA = ();          # hash of arrays, values are arrays [0..$nftr-1], 
-                               # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
-                               # filled in wrapperFetchAllSequencesAndProcessReferenceSequence()
-my $sqfile = undef;            # pointer to the Bio::Easel::SqFile object we'll open in wrapperFetchAllSequencesAndProcessReferenceSequence()
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
+  sqf_FastaWriteSequence($ofile_info_HH{"FH"}{"fasta"}, 
+                         $seq_info_HH{$mdl_name}{"ver"}, 
+                         $seq_info_HH{$mdl_name}{"def"}, 
+                         $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
+  close $ofile_info_HH{"FH"}{"fasta"};
 
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-# Call the wrapper function that does the following:
-#   1) fetches the sequences listed in @{$seq_info_HAR->{"accn_name"} into a fasta file 
-#      and indexes that fasta file, the reference sequence is $seq_info_HAR->{"accn_name"}[0].
-#   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
-#   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
-#   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $out_root, # yes, $out_root is passed in twice, on purpose
-                                                    undef, undef, undef,  # 4 variables used only if --infasta enabled in dnaorg_annotate.pl (irrelevant here)
-                                                    \%cds_tbl_HHA, 
-                                                    ($do_matpept) ? \%mp_tbl_HHA      : undef, 
-                                                    ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
-                                                    ($do_dfeat)   ? \%dfeat_tbl_HHHA  : undef,
-                                                    ($do_matpept) ? \@cds2pmatpept_AA : undef, 
-                                                    ($do_matpept) ? \@cds2amatpept_AA : undef, 
-                                                    \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA,
-                                                    \%opt_HH, \%ofile_info_HH);
+  $start_secs = ofile_OutputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
-# verify our model and feature info hashes are complete, 
-# if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
-my $nftr = validateFeatureInfoHashIsComplete(\%ftr_info_HA, undef, $ofile_info_HH{"FH"}); # nftr: number of features
-my $nmdl = validateModelInfoHashIsComplete  (\%mdl_info_HA, undef, $ofile_info_HH{"FH"}); # nmdl: number of homology models
+  sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "afa", "stockholm", \%opt_HH, $FH_HR);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-#dumpInfoHashOfArrays("ftr_info", 0, \%ftr_info_HA, *STDOUT);
-
-if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
-  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
-}
-if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
-  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
-#######################################################################
-# Step 3B. Fetch the CDS protein translations and build BLAST database
-#######################################################################
-$start_secs = outputProgressPrior("Fetching protein translations of CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
-my @prot_fa_file_A = ();
-fetch_proteins_into_fasta_files($out_root, $ref_accn, \%ftr_info_HA, \@prot_fa_file_A, \%opt_HH, \%ofile_info_HH);
+######################################################################
+# Finish populating @{$ftr_info_HAH{$mdl_name} and create @sgm_info_AH
+######################################################################
+$start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
 
-foreach my $prot_fa_file (@prot_fa_file_A) { 
-  create_blast_protein_db(\%execs_H, $prot_fa_file, \%opt_HH, \%ofile_info_HH);
+dng_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
+
+my @sgm_info_AH = (); # segment info, inferred from feature info
+dng_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+###################################
+# Translate the CDS, if we have any
+###################################
+my $ncds = dng_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
+my $cds_fa_file = undef;
+my $protein_fa_file = undef;
+if($ncds > 0) { 
+  $start_secs = ofile_OutputProgressPrior("Translating CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
+
+  $cds_fa_file  = $out_root . ".cds.fa";
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
+  dng_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  close $ofile_info_HH{"FH"}{"cdsfasta"};
+  
+  $protein_fa_file = $out_root . ".protein.fa";
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
+  sqf_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
+                                 $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
+  close $ofile_info_HH{"FH"}{"proteinfasta"};
+
+  sqf_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-#########################
-# Step 4. Build the model
-#########################
+##############
+# Build the CM
+##############
+my $cm_file = undef;
 if(! opt_Get("--skipbuild", \%opt_HH)) { 
-  $start_secs = outputProgressPrior("Building model (this could take a while)", $progress_w, $log_FH, *STDOUT);
+  my $cmbuild_str = undef;
+  my $clen_times_cmn = $seq_info_HH{$mdl_name}{"len"} * 200;
+  if(opt_IsUsed("--cmn", \%opt_HH)) { 
+    $clen_times_cmn *= (opt_Get("--cmn", \%opt_HH) / 200);
+  }
+  if   ($clen_times_cmn > 4000000) { $cmbuild_str = "(may take more than an hour)"; }
+  elsif($clen_times_cmn > 3000000) { $cmbuild_str = "(should take roughly an hour)"; }
+  elsif($clen_times_cmn > 2000000) { $cmbuild_str = "(should take roughly 20-40 minutes)"; }
+  elsif($clen_times_cmn > 1000000) { $cmbuild_str = "(should take roughly 10-30 minutes)"; }
+  elsif($clen_times_cmn >  500000) { $cmbuild_str = "(should take roughly 5-10 minutes)"; }
+  else                             { $cmbuild_str = "(shouldn't take more than a few minutes)"; }
 
-  my $cmbuild_cmd  = $execs_H{"cmbuild"} . " --verbose -F $out_root.cm " . $ofile_info_HH{"fullpath"}{"refstk"} . " > $out_root.cmbuild";
-  #runCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+  $start_secs = ofile_OutputProgressPrior("Building model $cmbuild_str", $progress_w, $log_FH, *STDOUT);
 
-  outputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+  my $cmbuild_opts = "-n $mdl_name --verbose ";
+  if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
+  if(opt_IsUsed("--cmn",    \%opt_HH)) { $cmbuild_opts .= " --EgfN " . opt_Get("--cmn", \%opt_HH); }
+  if(opt_IsUsed("--cmp7ml", \%opt_HH)) { $cmbuild_opts .= " --p7ml"; }
+  if(opt_IsUsed("--cmere",  \%opt_HH)) { $cmbuild_opts .= " --ere "  . opt_Get("--cmere", \%opt_HH); }
+  if(opt_IsUsed("--cmeset", \%opt_HH)) { $cmbuild_opts .= " --eset " . opt_Get("--cmeset", \%opt_HH); }
 
-  addClosedFileToOutputInfo(\%ofile_info_HH, "cm", "$out_root.cm", 1, "CM file");
+  my $cmbuild_file = $out_root . ".cmbuild";
+  $cm_file         = $out_root . ".cm";
+  my $cmbuild_cmd  = $execs_H{"cmbuild"} . " " . $cmbuild_opts . " $cm_file $stk_file > $cmbuild_file";
+  utl_RunCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+  ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cm",      $cm_file, 1, "CM file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmbuild", $cmbuild_file, 1, "cmbuild output file");
 }
+
+########################
+# Output model info file
+########################
+$start_secs = ofile_OutputProgressPrior("Creating model info file", $progress_w, $log_FH, *STDOUT);
+
+# create @mdl_info_AH, and add info for our lone model
+# modelInfoFileWrite() can output data for multiple models at once, 
+# but we use it here only for a single model.
+my @mdl_info_AH = (); 
+%{$mdl_info_AH[0]} = ();
+$mdl_info_AH[0]{"name"}   = $mdl_name;
+$mdl_info_AH[0]{"length"} = $seq_info_HH{$mdl_name}{"len"};
+if(defined $cm_file) { 
+  $mdl_info_AH[0]{"cmfile"} = utl_RemoveDirPath($cm_file);
+}
+if($ncds > 0) { 
+  $mdl_info_AH[0]{"blastdb"} = utl_RemoveDirPath($protein_fa_file);
+  if((opt_IsUsed("--ttbl", \%opt_HH)) && (opt_Get("--ttbl", \%opt_HH) != 1))  { 
+    $mdl_info_AH[0]{"transl_table"} = opt_Get("--ttbl", \%opt_HH);
+  }
+}
+if(opt_IsUsed("-g", \%opt_HH)) { 
+  $mdl_info_AH[0]{"group"} = opt_Get("-g", \%opt_HH); 
+}
+my $modelinfo_file  = $out_root . ".modelinfo";
+dng_ModelInfoFileWrite($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "modelinfo", $modelinfo_file, 1, "DNAORG 'model info' format file for $mdl_name");
+
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ##########
 # Conclude
 ##########
 # output optional output files
-if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
-  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
+if(opt_Get("--sgminfo", \%opt_HH)) { 
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgminfo", $out_root . ".sgminfo", 1, "Model information (created due to --sgminfo)");
+  dng_DumpArrayOfHashes("Feature information (ftr_info_AH) for $mdl_name", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
-if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
-  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
+if(exists $ofile_info_HH{"FH"}{"sgminfo"}) { 
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
+  dng_DumpArrayOfHashes("Segment information (sgm_info_AH) for $mdl_name", \@sgm_info_AH, $ofile_info_HH{"FH"}{"sgminfo"});
 }
 
-$total_seconds += secondsSinceEpoch();
-outputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
+$total_seconds += ofile_SecondsSinceEpoch();
+ofile_OutputConclusionAndCloseFiles($total_seconds, $pkgname, $dir, \%ofile_info_HH);
 exit 0;
 
+###############
+# SUBROUTINES #
+###############
+
 #################################################################
-# Subroutine: output_consopts_file()
-# Incept:     EPN, Fri May 27 14:20:28 2016
+# Subroutine: stockholm_validate_single_sequence_input()
+# Incept:     EPN, Fri Mar 15 13:19:32 2019
 #
-# Purpose:   Output a simple .consopts file that includes 
-#            information on options that must be kept consistent
-#            between dnaorg_build.pl and dnaorg_annotate.pl.
-#            Currently this is only "--matpept", "--nomatpept",
-#            "--xfeat", and "--dfeat".
+# Synopsis: Validate an input Stockholm file is in the correct 
+#           format, has exactly 1 sequence and no gaps.
 #
 # Arguments:
-#  $consopts_file:     name of the file to create
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:    REF to output file hash
-# 
-# Returns:  void
-# 
-# Dies: If $consopts_file doesn't exist, or we can't parse it.
+#  $in_stk_file:  input stockholm file to validate
+#  $exp_sqstring: sequence we expect to be in the stockholm alignment
+#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 #
-#       If an option enabled in dnaorg_build.pl that needs to 
-#       be consistently used in dnaorg_annotate.pl is not, or
-#       vice versa.
+# Returns:    '1' if Stockholm file has SS_cons annotation, else '0'
 #
-#       If an option enabled in dnaorg_build.pl that takes a file
-#       as input has a different checksum for that file than 
-#       
+# Dies:       if there's a problem parsing the file or 
+#             a requirement is not met
 #################################################################
-sub output_consopts_file { 
-  my $sub_name = "output_consopts_files";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($consopts_file, $opt_HHR, $ofile_info_HHR) = @_;
-
-  open(OUT, ">", $consopts_file) || fileOpenFailure($consopts_file, $sub_name, $!, "writing", $ofile_info_HHR->{"FH"});
-
-  my $printed_any_options = 0;
-  if(opt_Get("--nomatpept", $opt_HHR)) { 
-    print OUT ("--nomatpept\n");
-    $printed_any_options = 1;
-  }
-  if(opt_IsUsed("--matpept", $opt_HHR)) { 
-    my $matpept_file = opt_Get("--matpept", $opt_HHR);
-    printf OUT ("--matpept %s %s\n", 
-                $matpept_file, 
-                md5ChecksumOfFile($matpept_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}));
-    $printed_any_options = 1;
-  }
-  if(opt_IsUsed("--xfeat", $opt_HHR)) { 
-    printf OUT ("--xfeat %s\n", opt_Get("--xfeat", $opt_HHR));
-    $printed_any_options = 1;
-  }
-  if(opt_IsUsed("--dfeat", $opt_HHR)) { 
-    printf OUT ("--dfeat %s\n", opt_Get("--dfeat", $opt_HHR));
-    $printed_any_options = 1;
-  }
-  
-  if(! $printed_any_options) { 
-    print OUT "none\n";
-  }
-  close(OUT);
-  
-  addClosedFileToOutputInfo($ofile_info_HHR, "consopts", "$consopts_file", 1, "File with list of options that must be kept consistent between dnaorg_build.pl and dnaorg_annotate.pl runs");
-  return;
-}
-
-
-#################################################################
-# Subroutine: fetch_proteins_into_fasta_files()
-# Incept:     EPN, Wed Oct  3 16:10:26 2018
-# 
-# Purpose:    Fetch the protein translations of CDS for the genome
-#             and create multiple N+1 FASTA files, one with each
-#             single sequence (N) and one with all sequences.
-#             Fill @{$fa_file_AR} with the sequence file names.
-#
-# Arguments:
-#   $out_root:       string for naming output files
-#   $ref_accn:       reference accession
-#   $ftr_info_HAR:   REF to the feature info, pre-filled
-#   $fa_file_AR:     REF to array of fasta file names, filled here 
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
-#   $ofile_info_HHR: REF to the 2D hash of output file information
-#                    
-# Returns: void
-# Dies:    if a fetched location for a feature does not match to any feature's "ref_coords" 
-#
-#################################################################
-sub fetch_proteins_into_fasta_files { 
-  my $sub_name = "fetch_proteins_into_fasta_files";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($out_root, $ref_accn, $ftr_info_HAR, $fa_file_AR, $opt_HHR, $ofile_info_HHR) = @_;
-  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-
-  my $efetch_out_file  = $out_root . ".prot.efetch";
-  my $all_fa_out_file  = $out_root . ".prot.fa";
-  runCommand("esearch -db nuccore -query $ref_accn | efetch -format gpc | xtract -insd CDS protein_id INSDFeature_location translation > $efetch_out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR); 
-  # NOTE: could get additional information to add to fasta defline, e.g. add 'product' after 'translation' above.
-
-  # parse that file to create the fasta files
-  open(IN,         $efetch_out_file) || fileOpenFailure($efetch_out_file,  $sub_name, $!, "reading", $FH_HR);
-  open(ALLFA, ">", $all_fa_out_file) || fileOpenFailure($all_fa_out_file,  $sub_name, $!, "writing", $FH_HR);
-  while(my $line = <IN>) { 
-    chomp $line;
-    my @el_A = split(/\t/, $line);
-    if(scalar(@el_A) != 4) { 
-      DNAORG_FAIL("ERROR in $sub_name, not exactly 4 tab delimited tokens in efetch output file line\n$line\n", 1, $ofile_info_HHR->{"FH"});
-    }
-    my ($read_ref_accn, $prot_accn, $location, $translation) = (@el_A);
-    my $new_name = $prot_accn . "/" . $location;
-
-    print ALLFA  (">$new_name\n$translation\n");
-
-    # determine what feature this corresponds to, and create the individual fasta file for that
-    my $ftr_idx = blastxDbSeqNameToFtrIdx($new_name, $ftr_info_HAR, $ofile_info_HHR->{"FH"}); # this will die if we can't find the feature with $location
-    my $indi_fa_out_file = $out_root . ".f" . $ftr_idx . ".prot.fa";
-    open(INDIFA, ">", $indi_fa_out_file) || fileOpenFailure($indi_fa_out_file, $sub_name, $!, "writing", $FH_HR);
-    print INDIFA (">$new_name\n$translation\n");
-    close(INDIFA);
-    addClosedFileToOutputInfo($ofile_info_HHR, "prot-indi-f" . $ftr_idx . "-fa", $indi_fa_out_file, 0, "protein FASTA file with proteins for feature $ftr_idx");
-    push(@{$fa_file_AR}, $indi_fa_out_file);
-  }
-  close(IN);
-  close(ALLFA);
-
-  addClosedFileToOutputInfo($ofile_info_HHR, "prot-all-fa", $all_fa_out_file, 0, "protein FASTA file with proteins for all features");
-  push(@{$fa_file_AR}, $all_fa_out_file);
-
-  addClosedFileToOutputInfo($ofile_info_HHR, "prot-fetch",   $efetch_out_file,  0, "efetch output with protein information");
-
-  return;
-}
-
-#################################################################
-# Subroutine: create_blast_protein_db
-# Incept:     EPN, Wed Oct  3 16:31:38 2018
-# 
-# Purpose:    Create a protein blast database from a fasta file.
-#
-# Arguments:
-#   $execs_HR:       reference to hash with infernal executables, 
-#                    e.g. $execs_HR->{"cmcalibrate"} is path to cmcalibrate, PRE-FILLED
-#   $prot_fa_file:   FASTA file of protein sequences to make blast db from
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
-#   $ofile_info_HHR: REF to the 2D hash of output file information
-#                    
-# Returns:    void
-#
-#################################################################
-sub create_blast_protein_db {
-  my $sub_name = "create_blast_protein_db";
+sub stockholm_validate_single_sequence_input {
+  my $sub_name = "stockholm_validate_single_sequence_input";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $prot_fa_file, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($in_stk_file, $exp_sqstring, $opt_HHR, $FH_HR) = @_;
 
-  runCommand($execs_HR->{"makeblastdb"} . " -in $prot_fa_file -dbtype prot > /dev/null", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+  if(! -e $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file does not exist", "dnaorg", 1, $FH_HR); }
+  if(! -s $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file exists but is empty", "dnaorg", 1, $FH_HR); }
+  if(  -d $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file is actually a directory", "dnaorg", 1, $FH_HR); }
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $in_stk_file, isDna => 1});
+  my $nseq = $msa->nseq;
+  if($nseq == 1) { 
+    # single sequence, make sure there are no gaps
+    if($msa->any_allgap_columns) { 
+      ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it has gaps, this is not allowed for single sequence 'alignments' (remove gaps with 'esl-reformat --mingap')", "dnaorg", 1, $FH_HR);
+    }
+    # validate it matches $exp_sqstring
+    my $fetched_sqstring = $msa->get_sqstring_unaligned(0);
+    dng_SqstringCapitalize(\$fetched_sqstring);
+    dng_SqstringCapitalize(\$exp_sqstring);
+    dng_SqstringDnaize(\$fetched_sqstring);
+    dng_SqstringDnaize(\$exp_sqstring);
+    if($fetched_sqstring ne $exp_sqstring) { 
+      my $summary_sqstring_diff_str = dng_SqstringDiffSummary($fetched_sqstring, $exp_sqstring);
+      ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it does not match sequence read from GenBank file $gb_file:\n$summary_sqstring_diff_str", "dnaorg", 1, $FH_HR); 
+    }
+  }
+  else { # nseq != 1
+    ofile_FAIL("ERROR, did not read exactly 1 sequence in --stk file $in_stk_file.\nTo use DNAORG with models built from alignments of multiple sequences,\nyou will have to build the CM with cmbuild and create the model info file manually.\n", "dnaorg", 1, $FH_HR);
+  }
+
+  return $msa->has_ss;
+}
+
+#################################################################
+# Subroutine: process_add_and_skip_options()
+# Incept:     EPN, Mon Mar 18 06:29:21 2019
+#
+# Synopsis: Process cmdline --{f,q}add and --{f,q}skip options 
+#           for features or qualifiers.
+#
+# Arguments:
+#  $df_string:  comma separated string of default values (e.g. "CDS,gene,mat_peptide")
+#  $add_opt:    name of add option (e.g. "--fadd")
+#  $skip_opt:   name of skip option (e.g. "--fskip")
+#  $df_HR:      ref to hash of default keys, filled here, values will all be '1'
+#  $add_HR:     ref to hash of keys to add, filled here, values will all be '1'
+#  $skip_HR:    ref to hash of keys to skip, filled here, values will all be '1'
+#  $opt_HHR:    ref to hash of cmdline options
+#  $FH_HR:      ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if a key is listed in both the $add_opt and $skip_opt option strings.
+#################################################################
+sub process_add_and_skip_options { 
+  my $sub_name = "process_add_and_skip_options";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($df_string, $add_opt, $skip_opt, $df_HR, $add_HR, $skip_HR, $opt_HHR, $FH_HR) = @_;
+
+  utl_ExistsHFromCommaSepString($df_HR, $df_string);
+  if(opt_IsUsed($add_opt,  $opt_HHR)) { utl_ExistsHFromCommaSepString($add_HR,  opt_Get($add_opt,  $opt_HHR)); }
+  if(opt_IsUsed($skip_opt, $opt_HHR)) { utl_ExistsHFromCommaSepString($skip_HR, opt_Get($skip_opt, $opt_HHR)); }
+  # make sure $add_opt and $skip_opt have no values in common
+  foreach my $key (sort keys (%{$add_HR})) { 
+    if(defined $skip_HR->{$key}) { 
+      ofile_FAIL("ERROR in $sub_name, processing $add_opt <s1> and $skip_opt <s2> options, $key exists in both <s1> and <s2>", "dnaorg", 1, $FH_HR);
+    }
+  }
 
   return;
 }
+
+
