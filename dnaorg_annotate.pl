@@ -3029,6 +3029,8 @@ sub add_blastx_alerts {
           my $p_qlen         = undef; # length of query sequence, if $p_feature_flag == 1
           my $p_hlen         = undef; # length of blastx hit
           my $p_feature_flag = 0; # set to '1' if $p_query is a fetched feature sequence, not a full length input sequence
+          my $p_qseq_name    = undef; # query seq name parsed out of blast query $p_query
+          my $p_qftr_idx     = undef; # feature idx a blast query pertains to, parsed out of blast query $p_query
           
           my $start_diff = undef; # difference in start values between CM and blastx
           my $stop_diff  = undef; # difference in start values between CM and blastx
@@ -3057,12 +3059,12 @@ sub add_blastx_alerts {
               if(defined $ftr_results_HR->{"p_score"})   { $p_score   = $ftr_results_HR->{"p_score"};   }
 
               # determine if the query is a full length sequence, or a fetched sequence feature:
-              my ($query_seq, $query_ftr_idx, $p_qlen) = helper_blastx_breakdown_query($p_query, $seq_len_HR, $FH_HR); 
-              if($query_seq ne $seq_name) { 
-                ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $query_seq, expected $seq_name)", "dnaorg", 1, $FH_HR);
+              ($p_qseq_name, $p_qftr_idx, $p_qlen) = helper_blastx_breakdown_query($p_query, $seq_len_HR, $FH_HR); 
+              if($p_qseq_name ne $seq_name) { 
+                ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $p_qseq_name, expected $seq_name)", "dnaorg", 1, $FH_HR);
               }
-              $p_feature_flag = ($query_ftr_idx ne "") ? 1 : 0;
-              # printf("seq_name: $seq_name ftr: $ftr_idx x_query: $p_query x_feature_flag: $p_feature_flag x_start: $p_start x_stop: $p_stop x_score: $p_score\n");
+              $p_feature_flag = ($p_qftr_idx ne "") ? 1 : 0;
+              # printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_feature_flag: $p_feature_flag p_start: $p_start p_stop: $p_stop p_score: $p_score\n");
             }
 
             # add alerts as needed:
