@@ -117,7 +117,7 @@ sub seq_SqstringReverseComplement {
   my ($sqstring_R) = @_;
 
   # DNA-ize it
-  sqstringDnaize($sqstring_R);
+  seq_SqstringDnaize($sqstring_R);
   # reverse it 
   $$sqstring_R = reverse $$sqstring_R;
   # complement it
@@ -188,6 +188,63 @@ sub seq_SqstringDiffSummary {
   }
 
   return $ret_str;
+}
+
+#################################################################
+# Subroutine: seq_CodonValidateStartCapDna()
+# Incept:     EPN, Sat Feb 23 10:01:55 2019
+# 
+# Purpose:    Given an already capitalized DNA codon, return '1' 
+#             if it's a valid start codon, else return 0.
+#
+# Args:
+#  $codon:  the codon
+#
+# Returns:    '1' if $codon is "ATG" else '0'
+#
+#################################################################
+sub seq_CodonValidateStartCapDna {
+  my $sub_name = "seq_CodonValidateStartCapDna";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($codon) = @_;
+  
+  if($codon eq "ATG") { 
+    return 1;
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine: seq_CodonValidateStopCapDna()
+# Incept:     EPN, Mon Mar 14 13:47:57 2016
+# 
+# Purpose:    Given an already capitalized DNA codon, return '1' 
+#             if it's a valid stop codon, else return 0.
+#
+# Args:
+#  $codon:  the codon
+#
+# Returns:    '1' if codon is valid stop, else '0'
+#
+#################################################################
+sub seq_CodonValidateStopCapDna {
+  my $sub_name = "seq_CodonValidateStopCapDna";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($codon) = @_;
+  
+  if($codon eq "TAA" || 
+     $codon eq "TGA" || 
+     $codon eq "TAG" || 
+     $codon eq "TAR") { 
+    return 1;
+  }
+
+  return 0;
 }
 
 ####################################################################

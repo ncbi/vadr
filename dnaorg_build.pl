@@ -13,7 +13,7 @@ use LWP::Simple;
 require "dnaorg.pm"; 
 require "epn-options.pm";
 require "epn-ofile.pm";
-require "epn-sqfile.pm";
+require "epn-seqfile.pm";
 require "epn-utils.pm";
 
 #######################################################################################
@@ -270,7 +270,7 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "/esl-reformat";
 $execs_H{"esl-translate"} = $esl_exec_dir . "/esl-translate";
 $execs_H{"makeblastdb"}   = $blast_exec_dir . "/makeblastdb";
-dng_ValidateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
+utl_ExecHValidate(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################
 # Fetch the genbank file (if --gb not used)
@@ -299,7 +299,7 @@ $start_secs = ofile_OutputProgressPrior("Parsing GenBank file", $progress_w, $lo
 
 my %ftr_info_HAH = (); # the feature info 
 my %seq_info_HH  = (); # the sequence info 
-sqfile_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
+sqf_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
 if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
   ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", "dnaorg", 1, $FH_HR);
 }
@@ -388,7 +388,7 @@ if(defined $in_stk_file) {
   $start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
 
   utl_RunCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  dng_fastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
+  sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "fasta", "stockholm", \%opt_HH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -399,7 +399,7 @@ else {
   $start_secs = ofile_OutputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
-  dng_FastaWriteSequence($ofile_info_HH{"FH"}{"fasta"}, 
+  sqf_FastaWriteSequence($ofile_info_HH{"FH"}{"fasta"}, 
                          $seq_info_HH{$mdl_name}{"ver"}, 
                          $seq_info_HH{$mdl_name}{"def"}, 
                          $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
@@ -409,7 +409,7 @@ else {
 
   $start_secs = ofile_OutputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
-  dng_StockholmFileWriteFromFastaFile($execs_H{"esl-reformat"}, $fa_file, $stk_file, \%opt_HH, $FH_HR);
+  sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "afa", "stockholm", \%opt_HH, $FH_HR);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -442,16 +442,16 @@ if($ncds > 0) {
 
   $cds_fa_file  = $out_root . ".cds.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
-  sqfile_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   close $ofile_info_HH{"FH"}{"cdsfasta"};
   
   $protein_fa_file = $out_root . ".protein.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
-  dng_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
-                              $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
+  sqf_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
+                                 $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
 
-  dng_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+  sqf_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }

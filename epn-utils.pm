@@ -141,7 +141,7 @@ sub utl_ConcatenateListOfFiles {
 
   if(utl_AFindNonNumericValue($file_AR, $outfile, $FH_HR) != -1) { 
     ofile_FAIL(sprintf("ERROR in $sub_name%s, output file name $outfile exists in list of files to concatenate", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), undef, 1, $FH_HR);
   }
 
   # first, convert @{$file_AR} array into a 2D array of file names, each of which has 
@@ -370,7 +370,7 @@ sub utl_FileRemoveUsingSystemRm {
   
   if(! -e $file) { 
     ofile_FAIL(sprintf("ERROR in $sub_name, %s trying to remove file $file but it does not exist", 
-                (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), "dnaorg", 1, $FH_HR); 
+                (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), undef, 1, $FH_HR); 
   }
 
   utl_RunCommand("rm $file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -772,10 +772,10 @@ sub utl_HValidate {
 
   foreach my $key (@{$keys_AR}) { 
     if(! exists $HR->{$key}) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key does not exist\n%s", (defined $fail_str) ? $fail_str : ""), "dnaorg", 1, $FH_HR); 
+      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key does not exist\n%s", (defined $fail_str) ? $fail_str : ""), undef, 1, $FH_HR); 
     }
     if(! defined $HR->{$key}) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key exists but its value is undefined\n%s", (defined $fail_str) ? $fail_str : ""), "dnaorg", 1, $FH_HR); 
+      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key exists but its value is undefined\n%s", (defined $fail_str) ? $fail_str : ""), undef, 1, $FH_HR); 
     }
   }
 
@@ -911,16 +911,16 @@ sub utl_AMaxLengthValue {
 #
 ################################################################# 
 sub utl_NumberOfDigits { 
-    my $nargs_expected = 1;
-    my $sub_name = "utl_NumberOfDigits()";
-    if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-    my ($num) = (@_);
-
-    my $ndig = 1; 
-    while($num >= 10) { $ndig++; $num /= 10.; }
-
-    return $ndig;
+  my $nargs_expected = 1;
+  my $sub_name = "utl_NumberOfDigits()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($num) = (@_);
+  
+  my $ndig = 1; 
+  while($num >= 10) { $ndig++; $num /= 10.; }
+  
+  return $ndig;
 }
 
 #################################################################
@@ -936,13 +936,13 @@ sub utl_NumberOfDigits {
 #
 ################################################################# 
 sub utl_Max { 
-    my $nargs_expected = 2;
-    my $sub_name = "utl_Max()";
-    if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-    my ($x, $y) = (@_);
-
-    return ($x > $y) ? $x : $y;
+  my $nargs_expected = 2;
+  my $sub_name = "utl_Max()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($x, $y) = (@_);
+  
+  return ($x > $y) ? $x : $y;
 }
 
 #################################################################
@@ -958,13 +958,39 @@ sub utl_Max {
 #
 ################################################################# 
 sub utl_Min { 
-    my $nargs_expected = 2;
-    my $sub_name = "utl_Min()";
-    if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my $nargs_expected = 2;
+  my $sub_name = "utl_Min()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($x, $y) = (@_);
+  
+  return ($x < $y) ? $x : $y;
+}
 
-    my ($x, $y) = (@_);
-
-    return ($x < $y) ? $x : $y;
+#################################################################
+# Subroutine:  utl_Swap()
+# Incept:      EPN, Wed Apr  3 06:37:38 2019
+# 
+# Purpose:     Swaps $$xR} and $$yR in place.
+# Arguments:
+# $xR:         ref to first scalar
+# $yR:         ref to second scalar
+# 
+# Returns:     void
+#
+################################################################# 
+sub utl_Swap { 
+  my $nargs_expected = 2;
+  my $sub_name = "utl_Swap()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($xR, $yR) = (@_);
+  
+  my $tmp = $$xR;
+  $$xR = $$yR;
+  $$yR = $tmp;
+  
+  return;
 }
 
 #################################################################
@@ -1287,10 +1313,10 @@ sub utl_StringMonoChar {
   my ($len, $char, $FH_HR) = @_;
 
   if(! utl_IsInteger($len)) { 
-    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is not a non-negative integer", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is not a non-negative integer", undef, 1, $FH_HR);
   }
   if($len < 0) { 
-    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is a negative integer", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is a negative integer", undef, 1, $FH_HR);
   }
     
   my $ret_str = "";
@@ -1630,7 +1656,7 @@ sub utl_FileMd5 {
 
   if(! -s $file) { 
     ofile_FAIL(sprintf("ERROR in $sub_name%s, file to get md5 checksum of ($file) does no exist or is empty", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), undef, 1, $FH_HR);
   }
 
   my $out_file = removeDirPath($file . ".md5sum");
@@ -1645,7 +1671,7 @@ sub utl_FileMd5 {
   }
   else { 
     ofile_FAIL(sprintf("ERROR in $sub_name%s, unable to parse md5sum output: $md5sum", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), "dnaorg", 1, $FH_HR);
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), undef, 1, $FH_HR);
   }
   close(MD5);
 
@@ -1714,6 +1740,48 @@ sub utl_ExistsHFromCommaSepString {
   my @key_A = split(",", $string);
   foreach my $key (@key_A) { 
     $HR->{$key} = 1; 
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  utl_ExecHValidate()
+# Incept:      EPN, Sat Feb 13 06:27:51 2016
+#
+# Purpose:     Given a reference to a hash in which the 
+#              values are paths to executables, validate
+#              those files are executable.
+#
+# Arguments: 
+#   $execs_HR: REF to hash, keys are short names to executable
+#              e.g. "cmbuild", values are full paths to that
+#              executable, e.g. "/usr/local/infernal/1.1.1/bin/cmbuild"
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns:     void
+#
+# Dies:        if one or more executables does not exist#
+#
+################################################################# 
+sub utl_ExecHValidate { 
+  my $nargs_expected = 2;
+  my $sub_name = "utl_ExecHValidate()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($execs_HR, $FH_HR) = @_;
+
+  my $fail_str = undef;
+  foreach my $key (sort keys %{$execs_HR}) { 
+    if(! -e $execs_HR->{$key}) { 
+      $fail_str .= "\t$execs_HR->{$key} does not exist.\n"; 
+    }
+    elsif(! -x $execs_HR->{$key}) { 
+      $fail_str .= "\t$execs_HR->{$key} exists but is not an executable file.\n"; 
+    }
+  }
+  
+  if(defined $fail_str) { 
+    ofile_FAIL("ERROR in $sub_name(),\n$fail_str", undef, 1, $FH_HR);
   }
 
   return;

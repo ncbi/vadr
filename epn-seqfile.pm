@@ -1,17 +1,18 @@
 #!/usr/bin/perl
 #
-# epn-seq.pm
+# epn-seqfile.pm
 # Eric Nawrocki
-# EPN, Tue Mar 19 13:29:58 2019
+# EPN, Wed Apr  3 06:13:49 2019
 # version: 0.00
 #
 use strict;
 use warnings;
 use Time::HiRes qw(gettimeofday);
 
-require "epn-utils.pm";
 require "epn-ofile.pm";
 require "epn-options.pm";
+require "epn-seq.pm";
+require "epn-utils.pm";
 
 #####################################################################
 # Data structures used in this module:
@@ -21,7 +22,7 @@ require "epn-options.pm";
 # List of subroutines:
 # 
 #################################################################
-# Subroutine : sqfile_EslSeqstatOptAParse()
+# Subroutine : sqf_EslSeqstatOptAParse()
 # Incept:      EPN, Wed Dec 14 16:16:22 2016 [ribo.pm]
 #
 # Purpose:     Parse an esl-seqstat -a output file.
@@ -39,9 +40,9 @@ require "epn-options.pm";
 #              If no sequences were read.
 #
 ################################################################# 
-sub sqfile_EslSeqstatOptAParse { 
+sub sqf_EslSeqstatOptAParse { 
   my $nargs_expected = 4;
-  my $sub_name = "sqfile_EslSeqstatOptAParse";
+  my $sub_name = "sqf_EslSeqstatOptAParse";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($seqstat_file, $seq_name_AR, $seq_len_HR, $FH_HR) = @_;
@@ -108,7 +109,7 @@ sub sqfile_EslSeqstatOptAParse {
 }
 
 #################################################################
-# Subroutine : sqfile_FastaFileRemoveDescriptions()
+# Subroutine : sqf_FastaFileRemoveDescriptions()
 # Incept:      EPN, Mon Mar 25 11:30:16 2019
 #
 # Purpose:     Given an FASTA file, create a new one that is
@@ -126,9 +127,9 @@ sub sqfile_EslSeqstatOptAParse {
 #              for writing.
 #
 ################################################################# 
-sub sqfile_FastaFileRemoveDescriptions {
+sub sqf_FastaFileRemoveDescriptions {
   my $nargs_expected = 3;
-  my $sub_name = "sqfile_FastaFileRemoveDescriptions()";
+  my $sub_name = "sqf_FastaFileRemoveDescriptions()";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($in_file, $out_file, $ofile_info_HHR) = (@_);
 
@@ -153,7 +154,7 @@ sub sqfile_FastaFileRemoveDescriptions {
 }
 
 #################################################################
-# Subroutine: sqfile_GenbankParse()
+# Subroutine: sqf_GenbankParse()
 # Incept:     EPN, Tue Mar 12 14:04:14 2019
 #
 # Synopsis: Parse a GenBank format file.
@@ -169,8 +170,8 @@ sub sqfile_FastaFileRemoveDescriptions {
 # Reference: https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html
 #            http://www.insdc.org/documents/feature-table
 #################################################################
-sub sqfile_GenbankParse { 
-  my $sub_name = "sqfile_GenbankParse";
+sub sqf_GenbankParse { 
+  my $sub_name = "sqf_GenbankParse";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -275,7 +276,7 @@ sub sqfile_GenbankParse {
           #  /translation="MKMASNDATVAVACNNNNDKEKSSGEGLFTNMSSTLKKALGARP
           my ($save_qualifier, $save_value) = ($1, $2);
           if(defined $value) { # we are finished with previous value
-            sqfile_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+            sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
           }
           ($qualifier, $value) = ($save_qualifier, $save_value);
         }
@@ -284,15 +285,15 @@ sub sqfile_GenbankParse {
           # e.g.                      KQP ASRDESQKPPRPPTPELVKRIPPPPPNGEEEEEPVIRYEVKSGISGLPELTTVPQ
           # But I think those are illegal, if they're not, then we'll set "KQP" as feature below, which is bad
           if(defined $value) { # we are finished with previous value
-            sqfile_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+            sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
             ($qualifier, $value) = (undef, undef);
           }
           # feature/location line, examples:
           #   gene            5..5104
           ($feature, $location) = ($1, $2);
           $ftr_idx++;
-          sqfile_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",     $feature,  $FH_HR);
-          sqfile_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "location", $location, $FH_HR);
+          sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",     $feature,  $FH_HR);
+          sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "location", $location, $FH_HR);
         }
         else { 
           # qualifier/value line type B
@@ -312,7 +313,7 @@ sub sqfile_GenbankParse {
       # if we get here we just read the ORIGIN line
       # first store final qualifier/value
       if(defined $value) { 
-        sqfile_GenbankStoreQualifierValue($ftr_info_HAHR->{$acc}, $ftr_idx, $qualifier, $value, $FH_HR);
+        sqf_GenbankStoreQualifierValue($ftr_info_HAHR->{$acc}, $ftr_idx, $qualifier, $value, $FH_HR);
       }
       # parse the ORIGIN sequence
       $line = <IN>;
@@ -381,7 +382,7 @@ sub sqfile_GenbankParse {
 }
 
 #################################################################
-# Subroutine: sqfile_GenbankStoreQualifierValue()
+# Subroutine: sqf_GenbankStoreQualifierValue()
 # Incept:     EPN, Wed Mar 13 09:42:22 2019
 #
 # Synopsis: Store a genbank qualifier and value.
@@ -400,8 +401,8 @@ sub sqfile_GenbankParse {
 #             to separate multiple qualifier values for the same qualifier.
 #             
 #################################################################
-sub sqfile_GenbankStoreQualifierValue { 
-  my $sub_name = "sqfile_GenbankStoreQualifierValue";
+sub sqf_GenbankStoreQualifierValue { 
+  my $sub_name = "sqf_GenbankStoreQualifierValue";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -430,24 +431,49 @@ sub sqfile_GenbankStoreQualifierValue {
   return;
 }
 
+
 #################################################################
-# Subroutine: dng_CdsFetchStockholmToFasta()
-# Incept:     EPN, Thu Mar 14 12:30:33 2019
+# Subroutine: sqf_BlastDbProteinCreate
+# Incept:     EPN, Mon Mar 18 09:40:28 2019
 # 
-# Purpose:    Given coordinates of all CDS features in %{$ftr_info_AHR}
-#             fetch all the CDS for all sequences in the Stockholm alignment
-#             and create a new output fasta file with just the CDS features.
-#
-#             We don't really need both the stockholm and fasta file 
-#             if there are no gaps in the stockholm alignment (as is the
-#             case in dnaorg_build.pl (which requires a single sequence 
-#             'alignment' with no gaps), but this implemenation works for
-#             alignments with gaps too.
+# Purpose:    Create a protein blast database from a fasta file.
 #
 # Arguments:
-#   $out_FH:         output file handle
-#   $stk_file:       stockholm file with aligned full length sequences
+#   $makeblastdb:    path to 'makeblastdb' executable
+#   $fa_file:        FASTA file of protein sequences to make blast db from
+#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#                    
+# Returns:    void
+#
+#################################################################
+sub sqf_BlastDbProteinCreate {
+  my $sub_name = "sqf_BlastDbProteinCreate";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($makeblastdb, $fa_file, $opt_HHR, $FH_HR) = @_;
+
+  utl_RunCommand($makeblastdb . " -in $fa_file -dbtype prot > /dev/null", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine: sqf_EslTranslateCdsToFastaFile()
+# Incept:     EPN, Thu Mar 14 12:30:28 2019
+# 
+# Purpose:    Use esl-translate to translate a fasta file with
+#             CDS sequences pertaining to the CDS features in 
+#             @{$ftr_info_AHR} into fasta protein files.
+#
+# Arguments:
+#   $out_FH:         output file handle to print to 
+#   $esl_translate:  path to esl-translate executable
+#   $cds_fa_file:    fasta file with CDS sequences
+#   $out_root:       string that is the 'root' for naming output files
 #   $ftr_info_AHR:   REF to the feature info, pre-filled
+#   $opt_HHR:        command line options
 #   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
 #                    
 # Returns: void
@@ -455,45 +481,145 @@ sub sqfile_GenbankStoreQualifierValue {
 # Dies:    if we have trouble fetching a sequence
 #
 #################################################################
-sub dng_CdsFetchStockholmToFasta { 
-  my $sub_name = "dng_CdsFetchStockholmToFasta";
-  my $nargs_expected = 4;
+sub sqf_EslTranslateCdsToFastaFile { 
+  my $sub_name = "sqf_EslTranslateCdsTranslateToFastaFile";
+  my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_FH, $stk_file, $ftr_info_AHR, $FH_HR) = @_;
+  my ($out_FH, $esl_translate, $cds_fa_file, $out_root, $ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
 
-  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1});
-  my $msa_has_rf = $msa->has_rf;
+  my $tmp1_translate_fa_file  = $out_root . ".cds.esl-translate.1.fa";
+  my $tmp2_translate_fa_file  = $out_root . ".cds.esl-translate.2.fa";
+  my $tmp1_translate_ssi_file = $out_root . ".cds.esl-translate.1.fa.ssi";
+  my $tmp2_translate_ssi_file = $out_root . ".cds.esl-translate.2.fa.ssi";
+  if(-e $tmp1_translate_ssi_file) { unlink $tmp1_translate_ssi_file; }
+  if(-e $tmp2_translate_ssi_file) { unlink $tmp2_translate_ssi_file; }
 
-  # precompute start, stop, strand, for all features, so we don't have to redo this for each seq
-  my @sgm_start_AA  = ();
-  my @sgm_stop_AA   = ();
-  my @sgm_strand_AA = ();
-  dng_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
+  my $c_opt = "";
+  if((opt_IsUsed("--ttbl", $opt_HHR)) && (opt_Get("--ttbl", $opt_HHR) != 1)) { 
+    $c_opt = "-c " . opt_Get("--ttbl", $opt_HHR);
+  }
+  my $translate_cmd = "$esl_translate $c_opt -M -l 3 --watson $cds_fa_file > $tmp1_translate_fa_file";
+  utl_RunCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
-  my $nftr = scalar(@{$ftr_info_AHR});
-  my $nseq = $msa->nseq;
-  my $ftr_idx = undef; # feature index
-  my $seq_idx = undef; # feature index
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
-        my $cds_sqstring = "";
-        foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AA[$ftr_idx]}); $sgm_idx++) { 
-          my $rfstart = $sgm_start_AA[$ftr_idx][$sgm_idx];
-          my $rfstop  = $sgm_stop_AA[$ftr_idx][$sgm_idx];
-          my $astart  = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstart) : $rfstart;
-          my $astop   = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstop)  : $rfstop;
-          my $sgm_sqstring = $msa->get_sqstring_unaligned_and_truncated($seq_idx, $astart, $astop);
-          if($sgm_strand_AA[$ftr_idx][$sgm_idx] eq "-") { 
-            sqstringReverseComplement(\$sgm_sqstring);
-          }
-          $cds_sqstring .= $sgm_sqstring;
-        }
-        print $out_FH(">" . $msa->get_sqname($seq_idx) . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n" . seq_SqstringAddNewlines($cds_sqstring, 60));
+  # go through output fasta file and rewrite names, so we can fetch 
+  open(IN,       $tmp1_translate_fa_file) || fileOpenFailure($tmp1_translate_fa_file, $sub_name, $!, "reading", $FH_HR);
+  open(OUT, ">", $tmp2_translate_fa_file) || fileOpenFailure($tmp2_translate_fa_file, $sub_name, $!, "writing", $FH_HR);
+  while(my $line = <IN>) { 
+    if($line =~ m/^\>/) { 
+      #>orf58 source=NC_039477.1/5..5104:+ coords=1..5097 length=1699 frame=1  
+      chomp $line;
+      if($line =~ /^\>orf\d+\s+(source\=\S+)\s+(coords\=\S+)\s+length\=\d+\s+frame\=\S+/) { 
+        # rename as 'source=NC_039477.1/5..5104:+,coords=1..5097'
+        print OUT (">" . $1 . "," . $2 . "\n");
+      }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, problem parsing esl-translate output file $tmp1_translate_fa_file, line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
     }
+    else { 
+      print OUT $line; 
+    }
   }
+  close(IN);
+  close(OUT);
+
+  # $tmp2_translate_fa_file now includes renamed translated sequences from esl-translate
+  # fetch expected translated seqs and print to $out_FH
+  my $cds_sqfile     = Bio::Easel::SqFile->new({ fileLocation => $cds_fa_file });
+  my $protein_sqfile = Bio::Easel::SqFile->new({ fileLocation => $tmp2_translate_fa_file });
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $seq_idx = 0; $seq_idx < $cds_sqfile->nseq_ssi; $seq_idx++) { 
+    my ($seq_name, $seq_length) = $cds_sqfile->fetch_seq_name_and_length_given_ssi_number($seq_idx);
+    my $fetch_name = "source=" . $seq_name . ",coords=1.." . ($seq_length - 3); # subtract length of stop codon
+    if(! $protein_sqfile->check_seq_exists($fetch_name)) { 
+      ofile_FAIL("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\texpected sequence:$fetch_name\n", "dnaorg", 1, $FH_HR);
+    }
+    print $out_FH ">" . $seq_name . "\n";
+    print $out_FH seq_SqstringAddNewlines($protein_sqfile->fetch_seq_to_sqstring($fetch_name), 60);
+  }
+  # remove temporary files unless --keep
+  if(! opt_Get("--keep", $opt_HHR)) { 
+    utl_FileRemoveUsingSystemRm($tmp1_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    utl_FileRemoveUsingSystemRm($tmp2_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    utl_FileRemoveUsingSystemRm($tmp2_translate_fa_file . ".ssi", $sub_name, $opt_HHR, $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: sqf_FastaWriteSequence()
+# Incept:     EPN, Thu Mar 14 06:06:59 2019
+#
+# Synopsis: Print a sequence to a fasta file.
+#
+# Arguments:
+#  $out_FH:    output file handle
+#  $name:      sequence name
+#  $def:       sequence definition, can be undef
+#  $seq:       sequence string
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $name or $seq is undef
+#################################################################
+sub sqf_FastaWriteSequence {
+  my $sub_name = "sqf_FastaWriteSequence";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_FH, $name, $def, $seq, $FH_HR) = @_;
+
+  if(! defined $name) { ofile_FAIL("ERROR in $sub_name, name is undefined", "dnaorg", 1, $FH_HR); }
+  if(! defined $seq)  { ofile_FAIL("ERROR in $sub_name, name is undefined", "dnaorg", 1, $FH_HR); }
+
+  # capitalize and DNAize $seq
+  seq_SqstringCapitalize(\$seq);
+  seq_SqstringDnaize(\$seq);
+  printf $out_FH (">%s%s\n%s", 
+                  $name, 
+                  (defined $def) ? " " . $def : "",
+                  seq_SqstringAddNewlines($seq, 60));
+  
+  return;
+}
+
+#################################################################
+# Subroutine: sqf_EslReformatRun()
+# Incept:     EPN, Fri Mar 15 12:56:04 2019
+#
+# Synopsis: Use esl-reformat to convert a file from one format to another
+#
+# Arguments:
+#  $esl_reformat: esl-reformat executable file
+#  $in_file:      input file for esl-reformat
+#  $out_file:     output file from esl-reformat
+#  $in_format:    input format
+#  $out_format:   output format
+#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if there's a problem fetching the sequence file
+#################################################################
+sub sqf_EslReformatRun { 
+  my $sub_name = "sqf_EslReformatRun";
+  my $nargs_expected = 7;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($esl_reformat, $in_file, $out_file, $in_format, $out_format, $opt_HHR, $FH_HR) = @_;
+
+  my $cmd = $esl_reformat . " --informat $in_format $out_format $in_file > $out_file";
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  # remove a .ssi file for newly created file if it exists
+  my $ssi_file = $out_file . ".ssi";
+  if(-e $ssi_file) { unlink $ssi_file; }
+
   return;
 }
 

@@ -14,7 +14,7 @@ require "dnaorg.pm";
 require "epn-options.pm";
 require "epn-ofile.pm";
 require "epn-seq.pm";
-require "epn-sqfile.pm";
+require "epn-seqfile.pm";
 require "epn-utils.pm";
 
 #######################################################################################
@@ -133,7 +133,7 @@ my $g = 0; # option group
 opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                            "display this help",                                  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "basic options";
-opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "force directory overwrite",                      "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "force directory overwrite",                      "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                     "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("-s",           "integer", 181,                     $g,    undef,  undef,     "seed for random number generator is <n>",        "seed for random number generator is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("-m",           "string",  undef,                   $g,    undef, undef,      "use CM file <s> instead of default",             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
@@ -455,7 +455,7 @@ $execs_H{"esl-seqstat"}       = $esl_exec_dir   . "/esl-seqstat";
 $execs_H{"esl-ssplit"}        = $esl_ssplit;
 $execs_H{"blastx"}            = $blast_exec_dir . "/blastx";
 $execs_H{"parse_blastx"}      = $env_dnaorgdir  . "/dnaorg_scripts/parse_blastx.pl";
-dng_ValidateExecutableHash(\%execs_H, \%{$ofile_info_HH{"FH"}});
+utl_ExecHValidate(\%execs_H, \%{$ofile_info_HH{"FH"}});
 
 # initialize error related data structures
 my %alt_info_HH = (); 
@@ -530,8 +530,8 @@ my $seqstat_file = $out_root . ".seqstat";
 my @seq_name_A = (); # [0..$i..$nseq-1]: name of sequence $i in input file
 my %seq_len_H = ();  # key: sequence name (guaranteed to be unique), value: seq length
 utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-ofile_AddClosedFileToOutputInfo($ofile_info_HHR, undef, "seqstat", $seqstat_file, 0, "esl-seqstat -a output for input fasta file");
-my $tot_len_nt = sqfile_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, undef, "seqstat", $seqstat_file, 0, "esl-seqstat -a output for input fasta file");
+my $tot_len_nt = sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 my $nseq = scalar(@seq_name_A);
 #my %seq_idx_H = ();  # key: sequence name <sqname>, value index [0..$nseq-1] of <sqname> in @seq_name_A
 #utl_IdxHFromA(\%seq_idx_H, \@seq_name_A, undef, $FH_HR);
@@ -2695,7 +2695,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
             ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "dnaorg", $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".predicted.hits.fa", 1, "predicted hits to model $mdl_name for feature " . $ftr_outroot_A[$ftr_idx]);
           }
-          print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . dng_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
+          print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . seq_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
               
           if(! $ftr_is_5trunc) { 
             # feature is not 5' truncated, look for a start codon if it's the proper feature
@@ -2828,11 +2828,11 @@ sub sqstring_check_start {
   my $sqlen = length($sqstring);
   if($sqlen < 3) { return 0; } 
 
-  $sqstring =~ tr/a-z/A-Z/; # convert to uppercase
-  $sqstring =~ tr/U/T/;     # convert to DNA
   my $start_codon = substr($sqstring, 0, 3);
+  $start_codon =~ tr/a-z/A-Z/; # convert to uppercase
+  $start_codon =~ tr/U/T/;     # convert to DNA
 
-  return dng_ValidateCapitalizedDnaStartCodon($start_codon);
+  return seq_CodonValidateStartCapDna($start_codon);
 
 }
 
@@ -2895,7 +2895,7 @@ sub sqstring_find_stops {
     $cstart = $i;
     $codon = $sqstring_A[$cstart] . $sqstring_A[($cstart+1)] . $sqstring_A[($cstart+2)];
     if($frame == 1) { 
-      if(dng_ValidateCapitalizedDnaStopCodon($codon)) { 
+      if(seq_CodonValidateStopCapDna($codon)) { 
         $cur_stp = $i+2;
       }
     }
@@ -3244,7 +3244,7 @@ sub run_blastx_and_summarize_output {
   # affect the output and mess up our parsing if they are too long)
   # AND all the predicted CDS sequences
   my $blastx_query_file = $out_root . "." . $mdl_name . ".a.blastx.fa";
-  sqfile_FastaFileRemoveDescriptions($mdl_fa_file, $blastx_query_file, $ofile_info_HHR);
+  sqf_FastaFileRemoveDescriptions($mdl_fa_file, $blastx_query_file, $ofile_info_HHR);
   # now add the predicted CDS sequences
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
