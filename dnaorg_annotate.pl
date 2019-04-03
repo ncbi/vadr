@@ -775,7 +775,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # Output annotations and alerts
 ################################
 # open files for writing
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ann_tbl",      $out_root . ".ann.tbl", 1, "per-sequence tabular annotation summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ant_tbl",      $out_root . ".ant.tbl", 1, "per-sequence tabular annotation summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cls_tbl",      $out_root . ".cls.tbl", 1, "per-sequence tabular classification summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ftr_tbl",      $out_root . ".ftr.tbl", 1, "per-feature tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgm_tbl",      $out_root . ".sgm.tbl", 1, "per-model-segment tabular summary file");
@@ -4139,7 +4139,7 @@ sub output_tabular {
       $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $seq_ann_tbl_FH = $FH_HR->{"ann_tbl"};  # one-line-per-sequence tabular annotation summary file
+  my $seq_ant_tbl_FH = $FH_HR->{"ant_tbl"};  # one-line-per-sequence tabular annotation summary file
   my $seq_cls_tbl_FH = $FH_HR->{"cls_tbl"};  # one-line-per-sequence tabular classification summary file
   my $ftr_tbl_FH     = $FH_HR->{"ftr_tbl"};  # one-line-per-feature tabular file
   my $sgm_tbl_FH     = $FH_HR->{"sgm_tbl"};  # one-line-per-model-segment tabular file
@@ -4281,10 +4281,10 @@ sub output_tabular {
   $w_alt_sdesc   = utl_Max($w_alt_sdesc,   length("desc"));
 
   # header lines
-  printf $seq_ann_tbl_FH ("%-*s  %-*s  %-*s  %4s  %3s  %*s  %*s  %*s  %3s  %3s  %3s  %3s  %5s  %s\n", 
+  printf $seq_ant_tbl_FH ("%-*s  %-*s  %-*s  %4s  %3s  %*s  %*s  %*s  %3s  %3s  %3s  %3s  %5s  %s\n", 
                           $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "p/f", "ant", $w_seq_mdl1, "mdl", $w_seq_grp1, "grp", $w_seq_subgrp1, "sgrp", 
                           "nfa", "nfn", "nf5", "nf3", "nfalt", "seqalt");
-  printf $seq_ann_tbl_FH ("%s  %s  %s  %4s  %3s  %s  %s  %s  %3s  %3s  %3s  %3s  %5s  %s\n", 
+  printf $seq_ant_tbl_FH ("%s  %s  %s  %4s  %3s  %s  %s  %s  %3s  %3s  %3s  %3s  %5s  %s\n", 
                           "#" . utl_StringMonoChar($w_seq_idx-1, "-", undef), 
                           utl_StringMonoChar($w_seq_name, "-", undef), 
                           utl_StringMonoChar($w_seq_len, "-", undef), 
@@ -4294,11 +4294,32 @@ sub output_tabular {
                           utl_StringMonoChar($w_seq_subgrp1, "-", undef), 
                           "---", "---", "---", "---", "-----", "------");
 
-  printf $seq_cls_tbl_FH ("%-*s  %-*s  %*s  %4s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
-                          $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "p/f", $w_seq_mdl1, "mdl1", $w_seq_grp1, "grp1", $w_seq_subgrp1, "sgrp1", 
+  printf $seq_cls_tbl_FH ("%-*s  %-*s  %*s  %4s  %3s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
+                          $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "p/f", "ant", $w_seq_mdl1, "mdl1", $w_seq_grp1, "grp1", $w_seq_subgrp1, "sgrp1", 
                           $w_seq_score, "score", $w_seq_scpnt, "sc/nt", $w_seq_cov, "cov", $w_seq_score, "bias", $w_seq_nhits, "nhits", 
                           $w_seq_strand, "strand", $w_seq_mdl2, "mdl2", $w_seq_grp2, "grp1", $w_seq_subgrp2, "sgrp2", $w_seq_scdiff, "scdiff",
                           $w_seq_diffpnt, "diff/nt", "seqalt");
+  printf $seq_cls_tbl_FH ("%s  %s  %s  %4s  %3s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s\n",
+                          "#" . utl_StringMonoChar($w_seq_idx-1, "-", undef), 
+                          utl_StringMonoChar($w_seq_name, "-", undef), 
+                          utl_StringMonoChar($w_seq_len, "-", undef), 
+                          "----", "---", 
+                          utl_StringMonoChar($w_seq_mdl1, "-", undef), 
+                          utl_StringMonoChar($w_seq_grp1, "-", undef), 
+                          utl_StringMonoChar($w_seq_subgrp1, "-", undef), 
+                          utl_StringMonoChar($w_seq_score, "-", undef), 
+                          utl_StringMonoChar($w_seq_scpnt, "-", undef), 
+                          utl_StringMonoChar($w_seq_cov, "-", undef), 
+                          utl_StringMonoChar($w_seq_score, "-", undef), 
+                          utl_StringMonoChar($w_seq_nhits, "-", undef), 
+                          utl_StringMonoChar($w_seq_strand, "-", undef), 
+                          utl_StringMonoChar($w_seq_mdl2, "-", undef), 
+                          utl_StringMonoChar($w_seq_grp2, "-", undef), 
+                          utl_StringMonoChar($w_seq_subgrp2, "-", undef), 
+                          utl_StringMonoChar($w_seq_scdiff, "-", undef), 
+                          utl_StringMonoChar($w_seq_diffpnt, "-", undef), 
+                          "-----");
+
 
   printf $ftr_tbl_FH ("%-*s  %-*s  %*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %s\n", 
                       $w_ftr_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "seqlen", 
@@ -4536,14 +4557,15 @@ sub output_tabular {
     my $seq_nftr_notannot = $nftr - $seq_nftr_annot;
     if($seq_alt_str eq "")   { $seq_alt_str  = "-"; }
     if($seq_annot   eq "no") { $seq_nftr_annot = $seq_nftr_notannot = $seq_nftr_5trunc = $seq_nftr_3trunc = $seq_nftr_alt = "-"; }
-    printf $seq_ann_tbl_FH ("%-*d  %-*s  %*d  %4s  %3s  %*s  %*s  %*s  %3s  %3s  %3s  %3s  %5s  %s\n", 
+    printf $seq_ant_tbl_FH ("%-*d  %-*s  %*d  %4s  %3s  %*s  %*s  %*s  %3s  %3s  %3s  %3s  %5s  %s\n", 
                             $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $seq_pass_fail, $seq_annot, 
                             $w_seq_mdl1, $seq_mdl1, $w_seq_grp1, $seq_grp1, $w_seq_subgrp1, $seq_subgrp1, 
                             $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str);
 
-    printf $seq_cls_tbl_FH ("%-*d  %-*s  %*d  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*d  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
-                            $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $w_seq_mdl1, $seq_mdl1, $w_seq_grp1, 
-                            helper_tabular_replace_spaces($seq_grp1), $w_seq_subgrp1, helper_tabular_replace_spaces($seq_subgrp1), 
+    printf $seq_cls_tbl_FH ("%-*d  %-*s  %*d  %4s  %3s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*d  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
+                            $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $seq_pass_fail, $seq_annot, 
+                            $w_seq_mdl1, $seq_mdl1, $w_seq_grp1, helper_tabular_replace_spaces($seq_grp1), 
+                            $w_seq_subgrp1, helper_tabular_replace_spaces($seq_subgrp1), 
                             $w_seq_score, $seq_score, $w_seq_scpnt, $seq_scpnt, $w_seq_cov, $seq_cov, $w_seq_score, $seq_bias, $w_seq_nhits, $seq_nhits,
                             $w_seq_strand, $seq_strand, $w_seq_mdl2, $seq_mdl2, $w_seq_grp2, helper_tabular_replace_spaces($seq_grp2), 
                             $w_seq_subgrp2, helper_tabular_replace_spaces($seq_subgrp2), $w_seq_scdiff, $seq_scdiff, 
