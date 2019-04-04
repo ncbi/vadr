@@ -641,7 +641,7 @@ cmsearch_parse_sorted_tblout($r2_sort_tblout_file, 2, # 2: round 2
 my %alt_seq_instances_HH = (); # 2D key with info on all instances of per-sequence alerts 
                                # key1: sequence name, key2 alert code, value: alert message
 my %cls_output_HH = (); # 2D key with info to output derived from the classification stage
-                        # key1: sequence name, key2 one of: "score", "scpnt", "scdiff", "bstrand", "cov", "model1", "model2"
+                        # key1: sequence name, key2 one of: "score", "scpnt", "scdiff", "bstrand", "scov", "mcov", "model1", "model2"
 add_classification_alerts(\%alt_seq_instances_HH, \%seq_len_H, \@mdl_info_AH, \%alt_info_HH, \%cls_results_HHH, \%cls_output_HH, \%opt_HH, \%ofile_info_HH);
 
 ##################
@@ -1363,12 +1363,17 @@ sub add_classification_alerts {
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $nseq = scalar(keys (%{$seq_len_HR}));
 
+  # create the model index hash which gives index in $mdl_info_AHR[] 
+  # for a given model name, this allows us to find model length given model name
+  my %mdl_idx_H = ();
+  utl_IdxHFromAH(\%mdl_idx_H, $mdl_info_AHR, "name", $sub_name, $FH_HR);
+   
   # determine if we have an expected group and subgroup
   # (--subgroup requires --group)
   # and if so, fill hashes of model groups and subgroups, 
-  # (this data is in @{$mdl_info_HAR} already, we fill 
+  # (this data is in @{$mdl_info_AHR} already, we fill 
   # these hashes onlyfor convenience)
-  my $exp_group    = opt_Get("--group", \%opt_HH);
+  my $exp_group    = opt_Get("--group",    \%opt_HH);
   my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
 
   # get thresholds
@@ -1397,6 +1402,8 @@ sub add_classification_alerts {
   %{$cls_output_HHR} = ();
   foreach $seq_name (sort keys(%{$seq_len_HR})) { 
     my $seq_len  = $seq_len_HR->{$seq_name};
+    my $mdl_name = undef;
+    my $mdl_len  = undef;
     %{$cls_output_HHR->{$seq_name}} = ();
     # check for c_noa alert: no hits in round 1 search
     # or >=1 hits in round 1 search but 0 hits in round 2 search (should be rare)
@@ -1407,54 +1414,72 @@ sub add_classification_alerts {
       alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_noa", $seq_name, "-", $FH_HR);
     }
     else { 
-      # we should have a top model from round r1.1
       if(! defined $cls_results_HHHR->{$seq_name}{"r1.1"}) { 
         ofile_FAIL("ERROR in $sub_name, seq $seq_name should have but does not have any r1.1 hits", 1, $FH_HR);
       }
+      # determine model name and length
+      $mdl_name = $cls_results_HHHR->{$seq_name}{"r2"}{"model"};
+      $mdl_len  = $mdl_info_AHR->[$mdl_idx_H{$mdl_name}]{"length"};
       # gather the information we need to detect alerts for this sequence
       # convert coords values into start, stop and strand arrays
       # hash of hit info, hash key is one of "r1.1", "r1.2", "r1.eg", "r1.esg", "r2"
-      my %start_HA   = (); # sequence start positions for each hit for this sequence/model pair
-      my %stop_HA    = (); # sequence stop  positions for each hit for this sequence/model pair
-      my %strand_HA  = (); # sequence strands for each hit for this sequence/model pair
-      my %score_H    = (); # summed score of all hits
-      my %bias_H     = (); # summed bias of all hits
-      my %scpnt_H    = (); # score per nt 
-      my %length_H   = (); # total length of all hits
-      my %bstrand_H  = (); # strand of highest-scoring hit
-      my %nhits_H    = (); # number of hits
+      # we need to fill s_start_HA, s_stop_HA and s_strand_HA because 
+      # not all hits might be to best strand, and we only want to collect
+      # data on hits to best strand
+      my %s_start_HA  = (); # sequence start positions for each hit for this sequence/model pair
+      my %s_stop_HA   = (); # sequence stop  positions for each hit for this sequence/model pair
+      my %s_strand_HA = (); # sequence strands for each hit for this sequence/model pair      
+      my %score_H     = (); # summed score of all hits
+      my %bias_H      = (); # summed bias of all hits
+      my %scpnt_H     = (); # score per nt 
+      my %s_length_H  = (); # total length of all hits in sequence coords
+      my %m_length_H  = (); # total length of all hits in model coords
+      my %bstrand_H   = (); # strand of highest-scoring hit
+      my %nhits_H     = (); # number of hits
+      my @m_start_A   = (); # model start positions for r2 hit for this sequence/model pair
+      my @m_stop_A    = (); # model stop  positions for r2 hit for this sequence/model pair
       foreach my $rkey (keys (%{$cls_results_HHHR->{$seq_name}})) { 
         my $results_HR = \%{$cls_results_HHHR->{$seq_name}{$rkey}}; # for convenience
-        @{$start_HA{$rkey}}  = ();
-        @{$stop_HA{$rkey}}   = ();
-        @{$strand_HA{$rkey}} = ();
+        @{$s_start_HA{$rkey}}  = ();
+        @{$s_stop_HA{$rkey}}   = ();
+        @{$s_strand_HA{$rkey}} = ();
         dng_FeatureStartStopStrandArrays($results_HR->{"s_coords"},
-                                         \@{$start_HA{$rkey}},
-                                         \@{$stop_HA{$rkey}},
-                                         \@{$strand_HA{$rkey}}, $FH_HR);
+                                         \@{$s_start_HA{$rkey}},
+                                         \@{$s_stop_HA{$rkey}},
+                                         \@{$s_strand_HA{$rkey}}, $FH_HR);
 
-        my $nhits = scalar(@{$start_HA{$rkey}});
+
+        my $nhits = scalar(@{$s_start_HA{$rkey}});
         my @score_A = split(",", $results_HR->{"score"});
         if(scalar(@score_A) != $nhits) { 
           ofile_FAIL("ERROR in $sub_name, problem checking alerts for seq $seq_name, round $rkey, hit count differs for s_coords and score", 1, $FH_HR);
         }
+
         my @bias_A = ();
         if($rkey eq "r2") { 
           @bias_A = split(",", $results_HR->{"bias"});
           if(scalar(@bias_A) != $nhits) { 
             ofile_FAIL("ERROR in $sub_name, problem checking alerts for seq $seq_name, round $rkey, hit count differs for s_coords and bias", "dnaorg", 1, $FH_HR);
           }
+          dng_FeatureStartStopStrandArrays($results_HR->{"m_coords"},
+                                           \@m_start_A,
+                                           \@m_stop_A,
+                                           undef, $FH_HR);
         }
 
-        my $bstrand = $strand_HA{$rkey}[0];
-        my $length = abs($start_HA{$rkey}[0] - $stop_HA{$rkey}[0]) + 1;
-        my $score  = $score_A[0];
-        my $bias   = ($rkey eq "r2") ? $bias_A[0] : undef;
+        my $bstrand  = $s_strand_HA{$rkey}[0];
+        my $s_length = abs($s_start_HA{$rkey}[0] - $s_stop_HA{$rkey}[0]) + 1;
+        my $score    = $score_A[0];
+        my $m_length = ($rkey eq "r2") ? $m_stop_A[0] - $m_start_A[0] + 1 : undef;
+        my $bias     = ($rkey eq "r2") ? $bias_A[0] : undef;
         my $nhits_bstrand = 1;
         for(my $i = 1; $i < $nhits; $i++) { 
-          if($strand_HA{$rkey}[$i] eq $bstrand) { 
-            $length += abs($start_HA{$rkey}[$i] - $stop_HA{$rkey}[$i]) + 1;
-            $score  += $score_A[$i];
+          if($s_strand_HA{$rkey}[$i] eq $bstrand) { 
+            $s_length += abs($s_start_HA{$rkey}[$i] - $s_stop_HA{$rkey}[$i]) + 1;
+            $score    += $score_A[$i];
+            if(defined $m_length) { 
+              $m_length += $m_stop_A[$i] - $m_start_A[$i] + 1;
+            }
             if(defined $bias) { 
               $bias += $bias_A[$i];
             }
@@ -1462,11 +1487,12 @@ sub add_classification_alerts {
           }
         }
         $score_H{$rkey}    = $score;
-        $bias_H{$rkey}     = (defined $bias) ? $bias : 0.;
-        $scpnt_H{$rkey}    = $score / $length;
-        $length_H{$rkey}   = $length;
+        $scpnt_H{$rkey}    = $score / $s_length;
+        $s_length_H{$rkey} = $s_length;
         $bstrand_H{$rkey}  = $bstrand;
         $nhits_H{$rkey}    = $nhits_bstrand;
+        $bias_H{$rkey}     = (defined $bias)     ? $bias     : undef;
+        $m_length_H{$rkey} = (defined $m_length) ? $m_length : undef;
       } # end of foreach $rkey
 
       #####################################################################
@@ -1569,12 +1595,14 @@ sub add_classification_alerts {
         }
       }
       # low coverage (c_loc)
-      if(defined $length_H{"r2"}) { 
-        my $cov = $length_H{"r2"} / $seq_len;
-        my $cov2print = sprintf("%.3f", $cov);
-        $cls_output_HHR->{$seq_name}{"cov"} = $cov2print;
-        if($cov < $lowcovthresh_opt) { 
-          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_loc", $seq_name, $cov2print . "<" . $lowcovthresh_opt2print, $FH_HR);
+      if(defined $s_length_H{"r2"}) { 
+        my $scov = $s_length_H{"r2"} / $seq_len;
+        my $scov2print = sprintf("%.3f", $scov);
+        my $mcov2print = sprintf("%.3f", $m_length_H{"r2"} / $mdl_len);
+        $cls_output_HHR->{$seq_name}{"scov"} = $scov2print;
+        $cls_output_HHR->{$seq_name}{"mcov"} = $mcov2print;
+        if($scov < $lowcovthresh_opt) { 
+          alert_instances_add(undef, $alt_seq_instances_HHR, $alt_info_HHR, -1, "c_loc", $seq_name, $scov2print . "<" . $lowcovthresh_opt2print, $FH_HR);
         }
       }
       # high bias (c_hbi) 
@@ -4204,6 +4232,7 @@ sub output_tabular {
   my $w_seq_grp2     = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "group2");
   my $w_seq_subgrp2  = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "subgroup2");
   my $w_seq_score    = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "score");
+  my $w_seq_bias     = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "bias");
   my $w_seq_scpnt    = 5; # <d>.<d><d><d>
   my $w_seq_cov      = 5; # <d>.<d><d><d>
   my $w_seq_nhits    = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "nhits");
@@ -4222,10 +4251,11 @@ sub output_tabular {
   $w_seq_grp2    = utl_Max($w_seq_grp2,    length("grp2"));
   $w_seq_subgrp2 = utl_Max($w_seq_subgrp2, length("sgrp2"));
   $w_seq_score   = utl_Max($w_seq_score,   length("score"));
+  $w_seq_bias    = utl_Max($w_seq_bias,    length("bias"));
   $w_seq_scpnt   = utl_Max($w_seq_scpnt,   length("sc/nt"));
-  $w_seq_cov     = utl_Max($w_seq_cov,     length("cov"));
-  $w_seq_nhits   = utl_Max($w_seq_nhits,   length("nhits"));
-  $w_seq_strand  = utl_Max($w_seq_strand,  length("strand"));
+  $w_seq_cov     = utl_Max($w_seq_cov,     length("scov"));
+  $w_seq_nhits   = utl_Max($w_seq_nhits,   length("nh"));
+  $w_seq_strand  = utl_Max($w_seq_strand,  length("str"));
   $w_seq_scdiff  = utl_Max($w_seq_scdiff,  length("scdiff"));
   $w_seq_diffpnt = utl_Max($w_seq_diffpnt, length("diff/nt"));
 
@@ -4294,12 +4324,12 @@ sub output_tabular {
                           utl_StringMonoChar($w_seq_subgrp1, "-", undef), 
                           "---", "---", "---", "---", "-----", "------");
 
-  printf $seq_cls_tbl_FH ("%-*s  %-*s  %*s  %4s  %3s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
+  printf $seq_cls_tbl_FH ("%-*s  %-*s  %*s  %4s  %3s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
                           $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "p/f", "ant", $w_seq_mdl1, "mdl1", $w_seq_grp1, "grp1", $w_seq_subgrp1, "sgrp1", 
-                          $w_seq_score, "score", $w_seq_scpnt, "sc/nt", $w_seq_cov, "cov", $w_seq_score, "bias", $w_seq_nhits, "nhits", 
-                          $w_seq_strand, "strand", $w_seq_mdl2, "mdl2", $w_seq_grp2, "grp1", $w_seq_subgrp2, "sgrp2", $w_seq_scdiff, "scdiff",
+                          $w_seq_score, "score", $w_seq_scpnt, "sc/nt", $w_seq_cov, "scov", $w_seq_cov, "mcov", $w_seq_bias, "bias", $w_seq_nhits, "nh", 
+                          $w_seq_strand, "str", $w_seq_mdl2, "mdl2", $w_seq_grp2, "grp1", $w_seq_subgrp2, "sgrp2", $w_seq_scdiff, "scdiff",
                           $w_seq_diffpnt, "diff/nt", "seqalt");
-  printf $seq_cls_tbl_FH ("%s  %s  %s  %4s  %3s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s\n",
+  printf $seq_cls_tbl_FH ("%s  %s  %s  %4s  %3s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s\n",
                           "#" . utl_StringMonoChar($w_seq_idx-1, "-", undef), 
                           utl_StringMonoChar($w_seq_name, "-", undef), 
                           utl_StringMonoChar($w_seq_len, "-", undef), 
@@ -4310,7 +4340,8 @@ sub output_tabular {
                           utl_StringMonoChar($w_seq_score, "-", undef), 
                           utl_StringMonoChar($w_seq_scpnt, "-", undef), 
                           utl_StringMonoChar($w_seq_cov, "-", undef), 
-                          utl_StringMonoChar($w_seq_score, "-", undef), 
+                          utl_StringMonoChar($w_seq_cov, "-", undef), 
+                          utl_StringMonoChar($w_seq_bias, "-", undef), 
                           utl_StringMonoChar($w_seq_nhits, "-", undef), 
                           utl_StringMonoChar($w_seq_strand, "-", undef), 
                           utl_StringMonoChar($w_seq_mdl2, "-", undef), 
@@ -4380,7 +4411,8 @@ sub output_tabular {
     my $cls_output_HR = (defined $cls_output_HHR->{$seq_name}) ? \%{$cls_output_HHR->{$seq_name}} : undef;
     my $seq_score   = ((defined $cls_output_HR) && (defined $cls_output_HR->{"score"}))     ? $cls_output_HR->{"score"}     : "-";
     my $seq_scpnt   = ((defined $cls_output_HR) && (defined $cls_output_HR->{"scpnt"}))     ? $cls_output_HR->{"scpnt"}     : "-";
-    my $seq_cov     = ((defined $cls_output_HR) && (defined $cls_output_HR->{"cov"}))       ? $cls_output_HR->{"cov"}       : "-";
+    my $seq_scov    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"scov"}))      ? $cls_output_HR->{"scov"}      : "-";
+    my $seq_mcov    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"mcov"}))      ? $cls_output_HR->{"mcov"}      : "-";
     my $seq_bias    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"bias"}))      ? $cls_output_HR->{"bias"}      : "-";
     my $seq_nhits   = ((defined $cls_output_HR) && (defined $cls_output_HR->{"nhits"}))     ? $cls_output_HR->{"nhits"}     : "-";
     my $seq_strand  = ((defined $cls_output_HR) && (defined $cls_output_HR->{"bstrand"}))   ? $cls_output_HR->{"bstrand"}   : "_";
@@ -4562,11 +4594,11 @@ sub output_tabular {
                             $w_seq_mdl1, $seq_mdl1, $w_seq_grp1, $seq_grp1, $w_seq_subgrp1, $seq_subgrp1, 
                             $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str);
 
-    printf $seq_cls_tbl_FH ("%-*d  %-*s  %*d  %4s  %3s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*d  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
+    printf $seq_cls_tbl_FH ("%-*d  %-*s  %*d  %4s  %3s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*d  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
                             $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $seq_pass_fail, $seq_annot, 
                             $w_seq_mdl1, $seq_mdl1, $w_seq_grp1, helper_tabular_replace_spaces($seq_grp1), 
-                            $w_seq_subgrp1, helper_tabular_replace_spaces($seq_subgrp1), 
-                            $w_seq_score, $seq_score, $w_seq_scpnt, $seq_scpnt, $w_seq_cov, $seq_cov, $w_seq_score, $seq_bias, $w_seq_nhits, $seq_nhits,
+                            $w_seq_subgrp1, helper_tabular_replace_spaces($seq_subgrp1), $w_seq_score, $seq_score, $w_seq_scpnt, 
+                            $seq_scpnt, $w_seq_cov, $seq_scov, $w_seq_cov, $seq_mcov, $w_seq_bias, $seq_bias, $w_seq_nhits, $seq_nhits,
                             $w_seq_strand, $seq_strand, $w_seq_mdl2, $seq_mdl2, $w_seq_grp2, helper_tabular_replace_spaces($seq_grp2), 
                             $w_seq_subgrp2, helper_tabular_replace_spaces($seq_subgrp2), $w_seq_scdiff, $seq_scdiff, 
                             $w_seq_diffpnt, $seq_diffpnt, $seq_alt_str);
@@ -5134,12 +5166,10 @@ sub helper_ftable_ftr_alert_code_strings {
   my ($seq_name, $ftr_idx, $alt_ftr_instances_HHHR, $alt_info_HHR, $FH_HR) = @_;
 
   my $ret_alt_str = "";
-  foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
+  foreach my $alt_code (sort keys (%{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}})) { 
     if($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") { 
-      if(exists $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code}) { 
-        if($ret_alt_str ne "") { $ret_alt_str .= ","; }
-        $ret_alt_str .= $alt_code;
-      }
+      if($ret_alt_str ne "") { $ret_alt_str .= ","; }
+      $ret_alt_str .= $alt_code;
     }
   }
   
@@ -5170,15 +5200,11 @@ sub helper_ftable_seq_alert_code_strings {
 
   my ($seq_name, $alt_seq_instances_HHR, $alt_info_HHR, $FH_HR) = @_;
 
-  my $nalt = scalar(keys %{$alt_info_HHR});
-
   my $ret_alt_str = "";
-  foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
+  foreach my $alt_code (sort keys (%{$alt_seq_instances_HHR->{$seq_name}})) { 
     if($alt_info_HHR->{$alt_code}{"pertype"} eq "sequence") { 
-      if(exists $alt_seq_instances_HHR->{$seq_name}{$alt_code}) { 
-        if($ret_alt_str ne "") { $ret_alt_str .= ","; }
-        $ret_alt_str .= $alt_code;
-      }
+      if($ret_alt_str ne "") { $ret_alt_str .= ","; }
+      $ret_alt_str .= $alt_code;
     }
   }
   

@@ -994,6 +994,36 @@ sub utl_Swap {
 }
 
 #################################################################
+# Subroutine: utl_HDump()
+# Incept:     EPN, Thu Apr  4 06:12:39 2019
+#
+# Purpose:    Dump the contents of a hash,
+#             probably for debugging purposes.
+#
+# Args:       $name2print:  name of array of hashes of hashes
+#             $HR:          ref of the hash
+#             $FH:          file handle to print (often *STDOUT)
+#
+# Returns:    void
+# 
+#################################################################
+sub utl_HDump { 
+  my $sub_name = "utl_HDump()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($name2print, $HR, $FH) = @_;
+
+  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
+  
+  foreach my $key (sort keys %{$HR}) { 
+    printf $FH ("\tH key: $key value: %s\n", $HR->{$key});
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: utl_HHDump()
 # Incept:     EPN, Thu Dec 20 13:36:00 2018
 #

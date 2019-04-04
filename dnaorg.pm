@@ -168,14 +168,7 @@ sub dng_FeatureInfoImputeLength {
   # go through all features and determine length by parsing the 
   # "coords" value
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $len = 0;
-    my @sgm_start_A  = (); # array of starts, one per segment
-    my @sgm_stop_A   = (); # array of stops, one per segment
-    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, undef, $FH_HR);
-    for(my $s = 0; $s < scalar(@sgm_start_A); $s++) { 
-      $len += abs($sgm_start_A[$s] - $sgm_stop_A[$s]) + 1;
-    }
-    $ftr_info_AHR->[$ftr_idx]{"length"} = $len;
+    $ftr_info_AHR->[$ftr_idx]{"length"} = dng_CoordsLength($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
   }
 
   return;
