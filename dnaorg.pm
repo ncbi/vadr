@@ -1886,8 +1886,8 @@ sub dng_CoordsTokenParse {
 #           validate it, and return its length.
 # 
 # Arguments:
-#  $coords:       coordinate string
-#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#  $coords:  coordinate string
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
