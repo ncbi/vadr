@@ -247,6 +247,60 @@ sub seq_CodonValidateStopCapDna {
   return 0;
 }
 
+#################################################################
+# Subroutine: seq_Overlap()
+# Incept:     EPN, Mon Mar 14 13:47:57 2016 [dnaorg.pm]
+#
+# Purpose:    Calculate number of nucleotides of overlap between
+#             two regions.
+#
+# Args:
+#  $start1: start position of hit 1 (must be <= $end1)
+#  $end1:   end   position of hit 1 (must be >= $end1)
+#  $start2: start position of hit 2 (must be <= $end2)
+#  $end2:   end   position of hit 2 (must be >= $end2)
+#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  Number of nucleotides of overlap between hit1 and hit2,
+#           0 if none
+#
+# Dies:     if $end1 < $start1 or $end2 < $start2.
+#
+#################################################################
+sub seq_Overlap {
+  my $sub_name = "seq_Overlap";
+  my $nargs_exp = 5;
+  if(scalar(@_) != 5) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($start1, $end1, $start2, $end2, $FH_HR) = @_; 
+
+  # printf("in $sub_name $start1..$end1 $start2..$end2\n");
+
+  if($start1 > $end1) { ofile_FAIL("ERROR in $sub_name start1 > end1 ($start1 > $end1)", undef, 1, $FH_HR); }
+  if($start2 > $end2) { ofile_FAIL("ERROR in $sub_name start2 > end2 ($start2 > $end2)", undef, 1, $FH_HR); }
+
+  # Given: $start1 <= $end1 and $start2 <= $end2.
+  
+  # Swap if nec so that $start1 <= $start2.
+  if($start1 > $start2) { 
+    my $tmp;
+    $tmp   = $start1; $start1 = $start2; $start2 = $tmp;
+    $tmp   =   $end1;   $end1 =   $end2;   $end2 = $tmp;
+  }
+  
+  # 3 possible cases:
+  # Case 1. $start1 <=   $end1 <  $start2 <=   $end2  Overlap is 0
+  # Case 2. $start1 <= $start2 <=   $end1 <    $end2  
+  # Case 3. $start1 <= $start2 <=   $end2 <=   $end1
+  if($end1 < $start2) { return 0; }                      # case 1
+  if($end1 <   $end2) { return ($end1 - $start2 + 1); }  # case 2
+  if($end2 <=  $end1) { return ($end2 - $start2 + 1); }  # case 3
+  die "ERROR in $sub_name, unforeseen case in $start1..$end1 and $start2..$end2";
+
+  return; # NOT REACHED
+}
+
+
 ####################################################################
 # the next line is critical, a perl module must return a true value
 return 1;

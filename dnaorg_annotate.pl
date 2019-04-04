@@ -3544,17 +3544,55 @@ sub parse_blastx_results {
   close(IN);
 
   # go back through and remove any hits that are below the minimum score
+  # UNLESS that hit overlaps by at least 1 nt on same strand with a 
+  # CM prediction
   my $min_x_score = opt_Get("--xlonescore", $opt_HHR); # minimum score for a lone hit (no corresponding CM prediction) to be considered
   my $nseq = scalar(@{$seq_name_AR}); 
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     $seq_name = $seq_name_AR->[$seq_idx];
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if((! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) && 
-         (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"}) && 
-         ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"} < $min_x_score)) { 
-        %{$ftr_results_HAHR->{$seq_name}[$ftr_idx]} = (); # delete the hash
+    if(defined $ftr_results_HAHR->{$seq_name}) { 
+      for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        if(defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]) { 
+          if((defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"}) && 
+             $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"} < $min_x_score) { # blastx hit is below minimum score
+            my $remove_blastx_hit = 1; # could be changed to '0' below
+            if(defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) { 
+              # there is a CM prediction, check if it overlaps on same strand
+              if(($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "+") &&
+                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"} eq "+") &&
+                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "+") &&
+                 (seq_Overlap($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"},
+                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_stop"},
+                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"},
+                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"}) > 0)) { 
+                # overlaps on '+' strand by at least 1 nt: DO NOT REMOVE blastx hit
+                $remove_blastx_hit = 0;
+              }
+              if(($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "-") &&
+                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"} eq "-") &&
+                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "-") &&
+                 (seq_Overlap($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_stop"},
+                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"},
+                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"},
+                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) > 0)) { 
+                
+                # overlaps on '-' strand by at least 1 nt: DO NOT REMOVE blastx hit
+                $remove_blastx_hit = 0;
+              }
+            }
+            if($remove_blastx_hit) { 
+              # set all values of "p_*" keys to undef
+              foreach my $p_key (keys %{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}) { 
+                if($p_key =~ m/^p\_/) { # key starts with "p_"
+                  $ftr_results_HAHR->{$seq_name}[$ftr_idx]{$p_key} = undef;
+                  printf("HEYA0 set ftr_results_HAHR->{$seq_name}[$ftr_idx]{$p_key} to undef\n");
+                }
+              }
+            }
+          }
+        }
       }
-     }
+    }
   }
 
   return 0;
@@ -4631,7 +4669,7 @@ sub helper_tabular_ftr_results_strand {
   my ($ftr_info_AHR, $ftr_results_HR, $ftr_idx) = (@_);
 
   if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-    if((! defined $ftr_results_HR->{"n_strand"}) || 
+    if((! defined $ftr_results_HR->{"n_strand"}) && 
        (! defined $ftr_results_HR->{"p_strand"})) { 
       # neither defined
       return "?";
