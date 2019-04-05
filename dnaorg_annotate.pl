@@ -630,8 +630,6 @@ ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "dnaorg", $r2_sort_tblout_key, 
 cmsearch_parse_sorted_tblout($r2_sort_tblout_file, 2, # 2: round 2
                              \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
 
-#utl_HHHDump("cls_results", \%cls_results_HHH, *STDOUT);
-
 ############################
 # Add classification alerts
 ############################
@@ -774,11 +772,13 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # Output annotations and alerts
 ################################
 # open files for writing
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ant_tbl",      $out_root . ".ant.tbl", 1, "per-sequence tabular annotation summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cls_tbl",      $out_root . ".cls.tbl", 1, "per-sequence tabular classification summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ant_tbl",      $out_root . ".sqa.tbl", 1, "per-sequence tabular annotation summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cls_tbl",      $out_root . ".sqc.tbl", 1, "per-sequence tabular classification summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ftr_tbl",      $out_root . ".ftr.tbl", 1, "per-feature tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgm_tbl",      $out_root . ".sgm.tbl", 1, "per-model-segment tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "mdl_tbl",      $out_root . ".mdl.tbl", 1, "per-model tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "alt_tbl",      $out_root . ".alt.tbl", 1, "per-alert tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "act_tbl",      $out_root . ".alc.tbl", 1, "alert count tabular summary file");
 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "pass_ftbl",      $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fail_ftbl",      $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences");
@@ -790,6 +790,7 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "alerts_list",    $o
 # tabular output files #
 ########################
 my %class_alerts_per_seq_H = ();
+
 $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
 output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_ant_ct_H, \@seq_name_A, \%seq_len_H, 
                \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, \%cls_output_HH, \%ftr_results_HHAH, \%sgm_results_HHAH, 
@@ -3202,8 +3203,11 @@ sub add_blastx_alerts {
                   # includes the stop codon or not, if it does, we allow 3 more positions different
                   my $cur_aln_tol = undef;
                   my $cur_stop_str = undef;
-                  my $n_has_stop_codon = ((! $ftr_results_HR->{"n_3trunc"}) && 
-                                          (! exists $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{"n_stp"})) ? 1 : 0;
+                  my $n_has_stop_codon = 1;
+                  if(($ftr_results_HR->{"n_3trunc"}) || 
+                     (defined (fetch_alert_feature_instance($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "n_stp")))) { 
+                    $n_has_stop_codon = 0; 
+                  }                    
                   if($n_has_stop_codon) { 
                     $cur_aln_tol  = $aln_tol + 3;
                     $cur_stop_str = "valid stop codon";
@@ -3798,8 +3802,6 @@ sub alert_list_option {
   
   my ($alt_info_HHR) = @_;
   
-  my $w_alt_sdesc   = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "sdesc");
-  my $w_alt_ldesc   = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "ldesc");
   my $div_line = utl_StringMonoChar(60, "#", undef) . "\n";
   
   # determine order of codes to print
@@ -3809,65 +3811,64 @@ sub alert_list_option {
   my $idx = 0;
   my $code = undef;
 
-  print $div_line;
-  print("#\n");
+  my @data_AA  = ();
+  my @head_AA  = ();
+  my @bcom_A   = ();
 
-  printf("# Alert codes that ALWAYS cause a sequence to FAIL, and cannot be\n");
-  printf("# listed in --alt_pass or --alt_fail option strings:\n#\n");
-  printf("%4s  %5s  %-*s  %-*s\n", 
-         "#idx", "code", $w_alt_sdesc, "sdesc", $w_alt_ldesc, "ldesc");
+  @{$head_AA[0]} = ("",    "alert",  "short",       "long");
+  @{$head_AA[1]} = ("idx", "code",   "description", "description");
+
+  push(@bcom_A, $div_line);
+  push(@bcom_A, "#\n");
+  push(@bcom_A, "# Alert codes that ALWAYS cause a sequence to FAIL, and cannot be\n");
+  push(@bcom_A, "# listed in --alt_pass or --alt_fail option strings:\n#\n");
   $idx = 0;
   foreach $code (@code_A) { 
     if($alt_info_HHR->{$code}{"always_fails"}) { 
       $idx++;
-      printf("%-4d  %5s  %-*s  %-*s\n", 
-             $idx, $code, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
-             $w_alt_ldesc, $alt_info_HHR->{$code}{"ldesc"});
+      push(@data_AA, [$idx, $code, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", *STDOUT, undef, undef);
 
-  print("#\n");
-  print $div_line;
-  print ("#\n");
-
-  printf("# Alert codes that cause a sequence to FAIL by default, but can be set\n");
-  printf("# to not FAIL a sequence by listing the code as part of a comma separated\n");
-  printf("# string of codes in <s> with the --alt_pass <s> option:\n#\n");
-  printf("%4s  %5s  %-*s  %-*s\n", 
-         "#idx", "code", $w_alt_sdesc, "sdesc", $w_alt_ldesc, "ldesc");
+  @bcom_A  = ();
+  @data_AA = ();
+  push(@bcom_A, "#\n");
+  push(@bcom_A, $div_line);
+  push(@bcom_A, "#\n");
+  push(@bcom_A, "# Alert codes that cause a sequence to FAIL by default, but can be set\n");
+  push(@bcom_A, "# to not FAIL a sequence by listing the code as part of a comma separated\n");
+  push(@bcom_A, "# string of codes in <s> with the --alt_pass <s> option:\n#\n");
   $idx = 0;
   foreach $code (@code_A) { 
     if(($alt_info_HHR->{$code}{"causes_failure"}) && 
        (! $alt_info_HHR->{$code}{"always_fails"})) { 
       $idx++;
-      printf("%-4d  %5s  %-*s  %-*s\n", 
-             $idx, $code, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
-             $w_alt_ldesc, $alt_info_HHR->{$code}{"ldesc"});
+      push(@data_AA, [$idx, $code, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", *STDOUT, undef, undef);
 
-  print("#\n");
-  print $div_line;
-  print("#\n");
-
-  printf("# Alert codes that do not cause a sequence to FAIL by default, but can be set\n");
-  printf("# to FAIL a sequence by listing the code as part of a comma separated\n");
-  printf("# string of codes in <s> with the --alt_fail <s> option:\n#\n");
-  printf("%4s  %5s  %-*s  %-*s\n", 
-         "#idx", "code", $w_alt_sdesc, "sdesc", $w_alt_ldesc, "ldesc");
+  @bcom_A  = ();
+  @data_AA = ();
+  push(@bcom_A, "#\n");
+  push(@bcom_A, $div_line);
+  push(@bcom_A, "#\n");
+  push(@bcom_A, "# Alert codes that do not cause a sequence to FAIL by default, but can be set\n");
+  push(@bcom_A, "# to FAIL a sequence by listing the code as part of a comma separated\n");
+  push(@bcom_A, "# string of codes in <s> with the --alt_fail <s> option:\n#\n");
   $idx = 0;
   foreach $code (@code_A) { 
     if((! $alt_info_HHR->{$code}{"causes_failure"}) && 
        (! $alt_info_HHR->{$code}{"always_fails"})) { 
       $idx++;
-      printf("%-4d  %5s  %-*s  %-*s\n", 
-             $idx, $code, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
-             $w_alt_ldesc, $alt_info_HHR->{$code}{"ldesc"});
+      push(@data_AA, [$idx, $code, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
-
-  print("#\n");
-  print $div_line;
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", *STDOUT, undef, undef);
 
   return;
 }
@@ -3945,6 +3946,8 @@ sub alert_pass_fail_options {
 # Incept:      EPN, Thu Apr  4 12:59:41 2019
 #
 # Purpose:    Fill arrays with the order of alerts for outputting.
+#             Alerts that DO NOT cause failure are listed first, 
+#             then alerts that DO cause failure. 
 #
 # Arguments: 
 #  $alt_info_HHR:  ref to the alert info hash of arrays, PRE-FILLED
@@ -3965,24 +3968,42 @@ sub alert_order_arrays {
   my ($alt_info_HHR, $all_order_AR, $seq_order_AR, $ftr_order_AR) = @_;
   
   my @all_A = ();
-  my @seq_A = ();
-  my @ftr_A = ();
+  my @all_pass_A = ();
+  my @all_fail_A = ();
+  my @seq_pass_A = ();
+  my @seq_fail_A = ();
+  my @ftr_pass_A = ();
+  my @ftr_fail_A = ();
   my $alt_code = undef;
+  # first get array using "order" key
   foreach $alt_code (sort keys (%{$alt_info_HHR})) { 
     $all_A[($alt_info_HHR->{$alt_code}{"order"})] = $alt_code;
   }
+
   foreach $alt_code (@all_A) { 
-    if($alt_info_HHR->{$alt_code}{"pertype"} eq "sequence") { 
-      push(@seq_A, $alt_code); 
+    if($alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+      push(@all_fail_A, $alt_code); 
+      if($alt_info_HHR->{$alt_code}{"pertype"} eq "sequence") { 
+        push(@seq_fail_A, $alt_code); 
+      }
+      if($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") { 
+        push(@ftr_fail_A, $alt_code); 
+      }
     }
-    if($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") { 
-      push(@ftr_A, $alt_code); 
+    else { # does not cause failure
+      push(@all_pass_A, $alt_code); 
+      if($alt_info_HHR->{$alt_code}{"pertype"} eq "sequence") { 
+        push(@seq_pass_A, $alt_code); 
+      }
+      if($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") { 
+        push(@ftr_pass_A, $alt_code); 
+      }
     }
   }
 
-  if(defined $all_order_AR) { @{$all_order_AR} = @all_A; }
-  if(defined $seq_order_AR) { @{$seq_order_AR} = @seq_A; }
-  if(defined $ftr_order_AR) { @{$ftr_order_AR} = @ftr_A; }
+  if(defined $all_order_AR) { @{$all_order_AR} = (@all_pass_A, @all_fail_A); }
+  if(defined $seq_order_AR) { @{$seq_order_AR} = (@seq_pass_A, @seq_fail_A); }
+  if(defined $ftr_order_AR) { @{$ftr_order_AR} = (@ftr_pass_A, @ftr_fail_A); }
 
   return;
 }
@@ -4073,8 +4094,8 @@ sub alert_feature_instance_add {
 
   my ($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $value, $FH_HR) = @_;
 
-  my $tmp_altmsg = "ftr_idx: $ftr_idx, alt_code: $alt_code, seq_name: $seq_name, value: $value\n";
-  printf("ALERT-ADD in $sub_name $tmp_altmsg\n");
+  # my $tmp_altmsg = "ftr_idx: $ftr_idx, alt_code: $alt_code, seq_name: $seq_name, value: $value\n";
+  # printf("in $sub_name $tmp_altmsg\n");
   
   if(! defined $alt_ftr_instances_HHHR) { 
     ofile_FAIL("ERROR in $sub_name, but alt_ftr_instances_HHHR is undefined", "dnaorg", 1, $FH_HR);
@@ -4283,11 +4304,6 @@ sub output_tabular {
       $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $seq_ant_tbl_FH = $FH_HR->{"ant_tbl"};  # one-line-per-sequence tabular annotation summary file
-  my $seq_cls_tbl_FH = $FH_HR->{"cls_tbl"};  # one-line-per-sequence tabular classification summary file
-  my $ftr_tbl_FH     = $FH_HR->{"ftr_tbl"};  # one-line-per-feature tabular file
-  my $sgm_tbl_FH     = $FH_HR->{"sgm_tbl"};  # one-line-per-model-segment tabular file
-  my $alt_tbl_FH     = $FH_HR->{"alt_tbl"};  # one-line-per-alert tabular file
 
   # validate input and determine maximum counts of things
   my $nseq = scalar(@{$seq_name_AR});
@@ -4300,41 +4316,68 @@ sub output_tabular {
 
   # determine order of alert codes to print
   my $alt_code;
+  my @alt_code_A     = (); # all alerts in output order
   my @seq_alt_code_A = (); # per-sequence alerts in output order
   my @ftr_alt_code_A = (); # per-feature  alerts in output order
-  alert_order_arrays($alt_info_HHR, undef, \@seq_alt_code_A, \@ftr_alt_code_A);
+  alert_order_arrays($alt_info_HHR, \@alt_code_A, \@seq_alt_code_A, \@ftr_alt_code_A);
+
   my $nalt_seq_possible = scalar(@seq_alt_code_A);
+  my %alt_ct_H     = (); # total number of alerts per alert code
+  my %alt_seq_ct_H = (); # number of seqs with at least one instance of each alert code
+  foreach $alt_code (@alt_code_A) { 
+    $alt_ct_H{$alt_code} = 0;
+    $alt_seq_ct_H{$alt_code} = 0;
+  }
+
+  # make hash of model names to indices in mdl_info_AHR, we'll 
+  # use this when creating the per-model table
+  my %mdl_idx_H = ();
+  utl_IdxHFromAH(\%mdl_idx_H, $mdl_info_AHR, "name", $sub_name, $FH_HR);
+  my %mdl_pass_ct_H = (); # number of seqs per model that pass
+  my %mdl_fail_ct_H = (); # number of seqs per model that fail
 
   # define the header columns
   my @head_ant_tbl_AA = ();
   my @data_ant_tbl_AA = ();
   @{$head_ant_tbl_AA[0]} = ("seq", "seq",  "seq", "",    "",    "best",  "",    "sub", "",    "",    "",    "",    "",      "seq");
   @{$head_ant_tbl_AA[1]} = ("idx", "name", "len", "p/f", "ant", "model", "grp", "grp", "nfa", "nfn", "nf5", "nf3", "nfalt", "alerts");
-  my @clj_ant_tbl_A     = (1,     1,      0,     1,     1,     1,       1,     1,     0,     0,     0,     0,     0,       1);
+  my @clj_ant_tbl_A      = (1,     1,      0,     1,     1,     1,       1,     1,     0,     0,     0,     0,     0,       1);
 
   my @head_cls_tbl_AA = ();
   my @data_cls_tbl_AA = ();
   @{$head_cls_tbl_AA[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "",      "seq", "mdl", "",     "num",  "",    "",       "",     "sub",  "score", "diff/", "seq");
   @{$head_cls_tbl_AA[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "score", "sc/nt", "cov", "cov", "bias", "hits", "str", "model2", "grp2", "grp2", "diff",  "nt",    "alerts");
-  my @clj_cls_tbl_A     = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
+  my @clj_cls_tbl_A      = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
 
   my @head_ftr_tbl_AA = ();
   my @data_ftr_tbl_AA = ();
   @{$head_ftr_tbl_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "",    "",       "",     "",        "",    "",       "",     "",        "",     "dup", "",    "",    "seq",    "model",  "ftr");
   @{$head_ftr_tbl_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "str", "n_from", "n_to", "n_instp", "trc", "p_from", "p_to", "p_instp", "p_sc", "idx", "nsa", "nsn", "coords", "coords", "alerts");
-  my @clj_ftr_tbl_A     = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,        0,      0,         1,     0,        0,      0,         0,       0,    0,     0,     0,        0,        1);
+  my @clj_ftr_tbl_A      = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,        0,      0,         1,     0,        0,      0,         0,       0,    0,     0,     0,        0,        1);
 
   my @head_sgm_tbl_AA = ();
   my @data_sgm_tbl_AA = ();
   @{$head_sgm_tbl_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "num", "sgm", "seq",  "seq", "mdl",  "mdl", "sgm", "",    "",    "5'", "3'", "5'",  "3'");
   @{$head_sgm_tbl_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "idx", "sgm", "idx", "from", "to",  "from", "to",  "len", "str", "trc", "pp", "pp", "gap", "gap");
-  my @clj_sgm_tbl_A     = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,      0,     0,      0,     0,     0,     1,     0,    0,    1,     1);
+  my @clj_sgm_tbl_A      = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,      0,     0,      0,     0,     0,     1,     0,    0,    1,     1);
 
   my @head_alt_tbl_AA = ();
   my @data_alt_tbl_AA = ();
   @{$head_alt_tbl_AA[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "alert");
   @{$head_alt_tbl_AA[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "detail");
-  my @clj_alt_tbl_A     = (1,     1,      1,       1,      1,      0,     1,       1,      1,        1);
+  my @clj_alt_tbl_A      = (1,     1,      1,       1,      1,      0,     1,       1,      1,        1);
+
+  my @head_act_tbl_AA = ();
+  my @data_act_tbl_AA = ();
+  @{$head_act_tbl_AA[0]} = ("",    "alert",  "causes",  "short",       "per",  "num",   "num",  "long");
+  @{$head_act_tbl_AA[1]} = ("idx", "code",   "failure", "description", "type", "cases", "seqs", "description");
+  my @clj_act_tbl_A      = (1,     1,        1,          1,            0,      0,      0,        1);
+
+  my @head_mdl_tbl_AA = ();
+  my @data_mdl_tbl_AA = ();
+  @{$head_mdl_tbl_AA[0]} = ("",    "",      "",      "",         "num",  "num",  "num",  "num");
+  @{$head_mdl_tbl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail", "notannot");
+  my @clj_mdl_tbl_A      = (1,     1,       1,       1,          0,      0,      0,      0);
 
   #printf $out_FH ("#sequence: sequence name\n");
   #printf $out_FH ("#product:  CDS product name\n");
@@ -4373,8 +4416,8 @@ sub output_tabular {
     my $seq_nftr_5trunc = 0;
     my $seq_nftr_3trunc = 0;
     my $nftr = 0;
-
-    # get per-sequence info from %{$cls_output_HHR->{$seq_name}}
+ 
+   # get per-sequence info from %{$cls_output_HHR->{$seq_name}}
     my $cls_output_HR = (defined $cls_output_HHR->{$seq_name}) ? \%{$cls_output_HHR->{$seq_name}} : undef;
     my $seq_score   = ((defined $cls_output_HR) && (defined $cls_output_HR->{"score"}))     ? $cls_output_HR->{"score"}     : "-";
     my $seq_scpnt   = ((defined $cls_output_HR) && (defined $cls_output_HR->{"scpnt"}))     ? $cls_output_HR->{"scpnt"}     : "-";
@@ -4395,6 +4438,13 @@ sub output_tabular {
     my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
 
+    if($seq_mdl1 ne "-") { 
+      if(! defined $mdl_pass_ct_H{$seq_mdl1}) { $mdl_pass_ct_H{$seq_mdl1} = 0; }
+      if(! defined $mdl_fail_ct_H{$seq_mdl1}) { $mdl_fail_ct_H{$seq_mdl1} = 0; }
+      if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$seq_mdl1}++; }
+      if($seq_pass_fail eq "FAIL") { $mdl_fail_ct_H{$seq_mdl1}++; }
+    }
+
     $new_seq_flag = ((defined $prv_seq_name) && ($seq_name ne $prv_seq_name)) ? 1 : 0;
     $prv_seq_name = $seq_name;
     $ftr_nprinted = 0; # number of total features printed for this sequence 
@@ -4406,23 +4456,22 @@ sub output_tabular {
     # print per-sequence alerts, if any
     if(defined $alt_seq_instances_HHR->{$seq_name}) { 
       foreach $alt_code (@seq_alt_code_A) { 
-        if(defined $alt_seq_instances_HHR->{$seq_name}{$alt_code}) { 
-          my @instance_str_A = ();
-          my $alt_fail = $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no"; 
-          if($alt_seq_instances_HHR->{$seq_name}{$alt_code} eq "") { 
-            @instance_str_A = ("");
+        my $alt_instance = fetch_alert_sequence_instance($seq_name, $alt_code);
+        if(defined $alt_instance) { 
+          if($new_seq_flag && ($alt_nprinted == 0)) { 
+            $alt_seq_ct_H{$alt_code}++;
+            push(@data_alt_tbl_AA, []); # push empty array --> blank line
           }
-          else {
-            @instance_str_A = split(":DNAORGSEP:", $alt_seq_instances_HHR->{$seq_name}{$alt_code});
-          }
+          if($alt_nprinted == 0) { $alt_nftr++; }
+          my @instance_str_A = split(":DNAORGSEP:", $alt_instance);
           foreach my $instance_str (@instance_str_A) { 
-            if($new_seq_flag && ($alt_nprinted == 0)) { print $alt_tbl_FH("#\n"); }
-            if($alt_nprinted == 0) { $alt_nftr++; }
             $alt_ncur++;
+            $alt_ct_H{$alt_code}++;
             my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_ncur;
-            push(@data_alt_tbl_AA, [$alt_idx2print, $seq_name, $seq_mdl1, "-", "-", "-", $alt_code, $alt_fail, 
+            push(@data_alt_tbl_AA, [$alt_idx2print, $seq_name, $seq_mdl1, "-", "-", "-", $alt_code, 
+                                    $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
                                     helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
-                                    $alt_info_HHR->{$alt_code}{"ldesc"} . ($instance_str eq "") ? "" : " [" . $instance_str . "]"]);
+                                    $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "") ? "" : " [" . $instance_str . "]")]);
             $alt_nprinted++;
           }
         }
@@ -4503,7 +4552,7 @@ sub output_tabular {
               $m_coords_str .= $sgm_mstart . ".." . $sgm_mstop . ":+"; # always positive
               $ftr_len_by_sgm += abs($sgm_sstart - $sgm_sstop) + 1;
               
-              ###if($new_seq_flag && ($sgm_nprinted == 0)) { printf $sgm_tbl_FH "#\n"; }
+              if($new_seq_flag && ($sgm_nprinted == 0)) { push(@data_sgm_tbl_AA, []); } # empty array -> blank line
               push(@data_sgm_tbl_AA, [$sgm_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), 
                                       $ftr_nsgm, ($sgm_idx-$ftr_first_sgm+1), $sgm_sstart, $sgm_sstop, $sgm_mstart, $sgm_mstop, $sgm_slen, $sgm_strand, 
                                       $sgm_trunc, $sgm_pp5, $sgm_pp3, $sgm_gap5, $sgm_gap3]);
@@ -4514,8 +4563,7 @@ sub output_tabular {
           if($ftr_len_by_sgm == 0) { $ftr_len_by_sgm = "-"; }
           if($ftr_alt_str eq "")   { $ftr_alt_str = "-"; }
 
-          ###if($new_seq_flag && ($ftr_nprinted == 0)) { printf $ftr_tbl_FH "#\n"; }
-            
+          if($new_seq_flag && ($ftr_nprinted == 0)) { push(@data_ftr_tbl_AA, []); } # empty array -> blank line
           push(@data_ftr_tbl_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
                                   ($ftr_idx+1), $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, 
                                   $ftr_p_score, ($ftr_dupidx eq "-") ? "-" : ($ftr_dupidx+1), $ftr_nsgm_annot, $ftr_nsgm_noannot, $s_coords_str, $m_coords_str,
@@ -4527,23 +4575,22 @@ sub output_tabular {
           if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
              (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
             foreach my $alt_code (@ftr_alt_code_A) { 
-              if(defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code}) { 
-                my $alt_fail = $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no"; 
-                my @instance_str_A = ();
-                if($alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code} eq "") { 
-                  @instance_str_A = ("");
+              my $alt_instance = fetch_alert_feature_instance($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code);
+              if(defined $alt_instance) { 
+                if($new_seq_flag && ($alt_nprinted == 0)) { 
+                  $alt_seq_ct_H{$alt_code}++;
+                  push(@data_alt_tbl_AA, []); # empty array -> blank line
                 }
-                else {
-                  @instance_str_A = split(":DNAORGSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code});
-                }
+                if($alt_ncur == 0) { $alt_nftr++; }
+                my @instance_str_A = split(":DNAORGSEP:", $alt_instance);
                 foreach my $instance_str (@instance_str_A) { 
-                  if($new_seq_flag && ($alt_nprinted == 0)) { print $alt_tbl_FH("#\n"); }
-                  if($alt_ncur == 0) { $alt_nftr++; }
                   $alt_ncur++;
+                  $alt_ct_H{$alt_code}++;
                   my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_ncur;
-                  push(@data_alt_tbl_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, $alt_fail, 
+                  push(@data_alt_tbl_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
+                                          $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
                                           helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
-                                          $alt_info_HHR->{$alt_code}{"ldesc"} . ($instance_str eq "") ? "" : " [" . $instance_str . "]"]);
+                                          $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "") ? "" : " [" . $instance_str . "]")]);
                   $alt_nprinted++;
                 }
               }
@@ -4573,12 +4620,49 @@ sub output_tabular {
                             $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
   }
 
+  # add data to the alert count table
+  my $alt_idx = 0;
+  my $at_least_one_alert = 0;
+  foreach my $alt_code (@alt_code_A) { 
+    if($alt_ct_H{$alt_code} > 0) { 
+      $alt_idx++;
+      push(@data_act_tbl_AA, [$alt_idx, $alt_code, 
+                              ($alt_info_HH{$alt_code}{"causes_failure"} ? "yes" : "no"), 
+                              helper_tabular_replace_spaces($alt_info_HH{$alt_code}{"sdesc"}), 
+                              $alt_info_HH{$alt_code}{"pertype"}, 
+                              $alt_ct_H{$alt_code}, $alt_seq_ct_H{$alt_code},
+                              $alt_info_HHR->{$alt_code}{"ldesc"}]);
+      $at_least_one_alert = 1;
+    }
+  }
+
+  # add data to the model table
+  my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} } keys (%{$mdl_cls_ct_HR}));
+  my $mdl_tbl_idx = 0;
+  my $at_least_one_classification = 0;
+  foreach $mdl_name (@mdl_tbl_order_A) { 
+    if($mdl_cls_ct_HR->{$mdl_name} > 0) { 
+      $mdl_tbl_idx++;
+      $mdl_idx = $mdl_idx_H{$mdl_name};
+      push(@data_mdl_tbl_AA, [$mdl_tbl_idx, $mdl_name, 
+                              (defined $mdl_info_AHR->[$mdl_idx]{"group"})    ? $mdl_info_AHR->[$mdl_idx]{"group"}    : "-", 
+                              (defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) ? $mdl_info_AHR->[$mdl_idx]{"subgroup"} : "-", 
+                              $mdl_cls_ct_HR->{$mdl_name},
+                              $mdl_pass_ct_H{$mdl_name}, 
+                              $mdl_fail_ct_H{$mdl_name}, 
+                              $mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct_HR->{$mdl_name}]);
+      $at_least_one_classification = 1;
+    }
+  }
+
   # output the tables:
   ofile_TableHumanOutput(\@data_ant_tbl_AA, \@head_ant_tbl_AA, \@clj_ant_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"ant_tbl"}, *STDOUT, $FH_HR);
   ofile_TableHumanOutput(\@data_cls_tbl_AA, \@head_cls_tbl_AA, \@clj_cls_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"cls_tbl"}, *STDOUT, $FH_HR);
   ofile_TableHumanOutput(\@data_ftr_tbl_AA, \@head_ftr_tbl_AA, \@clj_ftr_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"ftr_tbl"}, *STDOUT, $FH_HR);
   ofile_TableHumanOutput(\@data_sgm_tbl_AA, \@head_sgm_tbl_AA, \@clj_sgm_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"sgm_tbl"}, *STDOUT, $FH_HR);
   ofile_TableHumanOutput(\@data_alt_tbl_AA, \@head_alt_tbl_AA, \@clj_alt_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"alt_tbl"}, *STDOUT, $FH_HR);
+  ofile_TableHumanOutput(\@data_act_tbl_AA, \@head_act_tbl_AA, \@clj_act_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"act_tbl"}, *STDOUT, $FH_HR);
+  ofile_TableHumanOutput(\@data_mdl_tbl_AA, \@head_mdl_tbl_AA, \@clj_mdl_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"mdl_tbl"}, *STDOUT, $FH_HR);
 
   return;
 }
@@ -5000,7 +5084,7 @@ sub output_feature_table {
     # another sanity check, our $do_pass value should match what check_if_sequence_passes() returns
     # based on alerts
     if($do_pass != check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) { 
-      ofile_FAIL("ERROR in $sub_name, sequence $seq_name set to PASS but that disagrees with PASS/FAIL designation based on alert instances - shouldn't happen.", "dnaorg", 1, $ofile_info_HHR->{"FH"});
+      ofile_FAIL("ERROR in $sub_name, sequence $seq_name, feature table do_pass: $do_pass disagrees with PASS/FAIL designation based on alert instances - shouldn't happen.", "dnaorg", 1, $ofile_info_HHR->{"FH"});
     }
               
     if($do_pass) { 
@@ -5836,4 +5920,73 @@ sub check_if_sequence_was_annotated {
 
   return 0; # no, it wasn't annotated
 }
+
+#################################################################
+# Subroutine: fetch_alert_feature_instance()
+# Incept:     EPN, Fri Apr  5 11:59:00 2019
+# Purpose:    Return $alt_ftr_instance_HHHR->{$seq_name}{$ftr_idx}{$alt_code} 
+#             if it is defined, else returns undef.
+#
+# Arguments:
+#  $alt_ftr_instances_HHHR: ref to 3D hash of feature alert instances
+#  $seq_name:               the sequence name
+#  $ftr_idx:                the feature index
+#  $alt_code:               the alert code.
+#
+# Returns:  $alt_ftr_instance_HHHR->{$seq_name}{$ftr_idx}{$alt_code} 
+#           undef if that is not defined
+#
+# Dies:     never
+#
+#################################################################
+sub fetch_alert_feature_instance { 
+  my $sub_name = "fetch_alert_feature_instance";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code) = (@_);
+
+  if((defined $alt_ftr_instances_HHHR) && 
+     (defined $alt_ftr_instances_HHHR->{$seq_name}) && 
+     (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}) && 
+     (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code})) { 
+    return $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code}; # defined
+  }
+
+  return undef; # not defined
+}
+
+#################################################################
+# Subroutine: fetch_alert_sequence_instance()
+# Incept:     EPN, Fri Apr  5 12:02:29 2019
+# Purpose:    Return $alt_seq_instance_HHR->{$seq_name}{$alt_code} 
+#             if it is defined, else returns undef.
+#
+# Arguments:
+#  $alt_seq_instances_HHHR: ref to 2D hash of sequence alert instances
+#  $seq_name:               the sequence name
+#  $alt_code:               the alert code.
+#
+# Returns:  $alt_seq_instance_HHHR->{$seq_name}{$alt_code} 
+#           undef if that is not defined
+#
+# Dies:     never
+#
+#################################################################
+sub fetch_alert_sequence_instance { 
+  my $sub_name = "fetch_alert_sequence_instance";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_seq_instances_HHHR, $seq_name, $alt_code) = (@_);
+
+  if((defined $alt_seq_instances_HHHR) && 
+     (defined $alt_seq_instances_HHHR->{$seq_name}) && 
+     (defined $alt_seq_instances_HHHR->{$seq_name}{$alt_code})) { 
+    return $alt_seq_instances_HHHR->{$seq_name}{$alt_code}; # defined
+  }
+
+  return undef; # not defined
+}
+
 

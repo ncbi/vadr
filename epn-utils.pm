@@ -994,6 +994,37 @@ sub utl_Swap {
 }
 
 #################################################################
+# Subroutine: utl_ADump()
+# Incept:     EPN, Fri Apr  5 12:12:16 2019
+#
+# Purpose:    Dump the contents of an array,
+#             probably for debugging purposes.
+#
+# Args:       $name2print:  name of array of hashes of hashes
+#             $AR:          ref of the array
+#             $FH:          file handle to print (often *STDOUT)
+#
+# Returns:    void
+# 
+#################################################################
+sub utl_ADump { 
+  my $sub_name = "utl_ADump()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($name2print, $AR, $FH) = @_;
+
+  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
+  
+  my $nel = scalar(@{$AR});
+  for(my $i = 0; $i < $nel; $i++) { 
+    printf $FH ("*A el $i: " . $AR->[$i] . "\n");
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: utl_HDump()
 # Incept:     EPN, Thu Apr  4 06:12:39 2019
 #
