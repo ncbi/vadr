@@ -408,11 +408,11 @@ sub dng_FeatureInfoImpute3paFtrIdx {
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = -1;
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
-      $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR, $ftr_idx, $FH_HR);
-      $ftr_strand = dng_FeatureSummaryStrand($ftr_info_AHR, $ftr_idx, $FH_HR);
+      $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_strand = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = dng_Feature5pMostPosition($ftr_info_AHR, $ftr_idx2, $FH_HR);
-        $ftr_strand2 = dng_FeatureSummaryStrand($ftr_info_AHR, $ftr_idx2, $FH_HR);
+        $ftr_5p_pos2 = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_strand2 = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
         $found_adj = 0;
         if(($ftr_idx != $ftr_idx2) && 
            ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "mat_peptide") &&
@@ -745,8 +745,33 @@ sub dng_FeatureTypeIsCds {
 }
 
 #################################################################
+# Subroutine: dng_FeatureTypeIsMatPeptide()
+# Incept:     EPN, Fri Apr  5 14:32:28 2019
+#
+# Purpose:    Is feature $ftr_idx a mat_peptide?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub dng_FeatureTypeIsMatPeptide { 
+  my $sub_name = "dng_FeatureTypeIsMatPeptide";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") ? 1 : 0;
+}
+
+#################################################################
 # Subroutine: dng_FeatureTypeIsGene()
-# Incept:     
+# Incept:     EPN, Fri Apr  5 14:32:54 2019
 #
 # Purpose:    Is feature $ftr_idx a gene?
 #
@@ -768,7 +793,6 @@ sub dng_FeatureTypeIsGene {
 
   return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "gene") ? 1 : 0;
 }
-
 
 #################################################################
 # Subroutine: dng_FeatureTypeIsCdsOrMatPeptide()
@@ -1313,6 +1337,12 @@ sub dng_AlertInfoInitialize {
   dng_AlertInfoAdd($alt_info_HHR, "b_per", "feature",
                    "Peptide Translation Problem", # short description
                    "mat_peptide may not be translated because its CDS has a problem", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "n_adj", "feature",
+                   "Peptide Adjacency Problem", # short description
+                   "predictions of two mat_peptides expected to be adjacent are not adjacent", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
