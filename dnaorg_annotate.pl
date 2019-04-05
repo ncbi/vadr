@@ -4297,221 +4297,44 @@ sub output_tabular {
   my $max_nsgm = 0;
   my ($mdl_idx, $ftr_idx, $sgm_idx);
   my $mdl_name;
-  my $w_ftr_type = 0;
-  my $w_ftr_name = 0;
-  my $w_mdl_len  = 0;
 
   # determine order of alert codes to print
   my $alt_code;
   my @seq_alt_code_A = (); # per-sequence alerts in output order
   my @ftr_alt_code_A = (); # per-feature  alerts in output order
   alert_order_arrays($alt_info_HHR, undef, \@seq_alt_code_A, \@ftr_alt_code_A);
+  my $nalt_seq_possible = scalar(@seq_alt_code_A);
 
-  # populate maximum widths of things
-  # only look at models to which at least 
-  # one sequence was classified to or annotated with
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
-    if(((defined $mdl_cls_ct_HR) && 
-        (defined $mdl_cls_ct_HR->{$mdl_name})) ||
-       ((defined $mdl_ant_ct_HR) && 
-        (defined $mdl_ant_ct_HR->{$mdl_name}))) { 
-      $max_nftr   = utl_Max($max_nftr, scalar(@{$ftr_info_HAHR->{$mdl_name}}));
-      $w_mdl_len  = utl_Max($w_mdl_len, utl_NumberOfDigits($mdl_info_AHR->[$mdl_idx]{"length"}));
-      for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAHR->{$mdl_name}}); $ftr_idx++) { 
-        $max_nsgm = utl_Max($max_nsgm, dng_FeatureNumSegments(\@{$ftr_info_HAHR->{$mdl_name}}, $ftr_idx));
-        $w_ftr_type   = utl_Max($w_ftr_type, length($ftr_info_HAHR->{$mdl_name}[$ftr_idx]{"type"}));
-        # update $w_ftr_name, this is max length of "product", "gene", 
-        # or length of "$type.$idx" 
-        if(defined $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{"product"}) { 
-          $w_ftr_name = utl_Max($w_ftr_name, length($ftr_info_HAHR->{$mdl_name}[$ftr_idx]{"product"}));
-        }
-        elsif(defined $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{"gene"}) { 
-          $w_ftr_name = utl_Max($w_ftr_name, length($ftr_info_HAHR->{$mdl_name}[$ftr_idx]{"gene"}));
-        }
-        else { 
-          $w_ftr_name = utl_Max($w_ftr_name, length($ftr_info_HAHR->{$mdl_name}[$ftr_idx]{"type"}) + utl_NumberOfDigits($ftr_idx) + 1);
-        }
-      }
-    }
-  }
+  # define the header columns
+  my @head_ant_tbl_AA = ();
+  my @data_ant_tbl_AA = ();
+  @{$head_ant_tbl_AA[0]} = ("seq", "seq",  "seq", "",    "",    "best",  "",    "sub", "",    "",    "",    "",    "",      "seq");
+  @{$head_ant_tbl_AA[1]} = ("idx", "name", "len", "p/f", "ant", "model", "grp", "grp", "nfa", "nfn", "nf5", "nf3", "nfalt", "alerts");
+  my @clj_ant_tbl_A     = (1,     1,      0,     1,     1,     1,       1,     1,     0,     0,     0,     0,     0,       1);
 
-  # determine number of sequence alerts
-  my $nalt_seq_possible = 0;
-  foreach $alt_code (sort keys (%{$alt_info_HHR})) { 
-    if($alt_info_HHR->{$alt_code}{"pertype"} eq "sequence") { 
-      $nalt_seq_possible++;
-    }
-  }
+  my @head_cls_tbl_AA = ();
+  my @data_cls_tbl_AA = ();
+  @{$head_cls_tbl_AA[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "",      "seq", "mdl", "",     "num",  "",    "",       "",     "sub",  "score", "diff/", "seq");
+  @{$head_cls_tbl_AA[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "score", "sc/nt", "cov", "cov", "bias", "hits", "str", "model2", "grp2", "grp2", "diff",  "nt",    "alerts");
+  my @clj_cls_tbl_A     = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
 
-  # determine max width of text strings for per-sequence table
-  my $w_seq_idx      = utl_NumberOfDigits($nseq);
-  my $w_seq_name     = utl_AMaxLengthValue($seq_name_AR);
-  my $w_seq_len      = utl_HMaxLengthValue($seq_len_HR);
-  my $w_seq_mdl1     = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "model1");
-  my $w_seq_grp1     = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "group1");
-  my $w_seq_subgrp1  = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "subgroup1");
-  my $w_seq_mdl2     = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "model2");
-  my $w_seq_grp2     = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "group2");
-  my $w_seq_subgrp2  = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "subgroup2");
-  my $w_seq_score    = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "score");
-  my $w_seq_bias     = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "bias");
-  my $w_seq_scpnt    = 5; # <d>.<d><d><d>
-  my $w_seq_cov      = 5; # <d>.<d><d><d>
-  my $w_seq_nhits    = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "nhits");
-  my $w_seq_strand   = 1;
-  my $w_seq_diffpnt  = 5; # <d>.<d><d><d>
-  my $w_seq_scdiff   = utl_HHMaxLengthValueGiven2DKey($cls_output_HHR, "scdiff");
+  my @head_ftr_tbl_AA = ();
+  my @data_ftr_tbl_AA = ();
+  @{$head_ftr_tbl_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "",    "",       "",     "",        "",    "",       "",     "",        "",     "dup", "",    "",    "seq",    "model",  "ftr");
+  @{$head_ftr_tbl_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "str", "n_from", "n_to", "n_instp", "trc", "p_from", "p_to", "p_instp", "p_sc", "idx", "nsa", "nsn", "coords", "coords", "alerts");
+  my @clj_ftr_tbl_A     = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,        0,      0,         1,     0,        0,      0,         0,       0,    0,     0,     0,        0,        1);
 
-  # ensure they widths can accomodate the column headings
-  $w_seq_idx     = utl_Max($w_seq_idx,     length("#idx"));
-  $w_seq_name    = utl_Max($w_seq_name,    length("seqname"));
-  $w_seq_len     = utl_Max($w_seq_len,     length("len"));
-  $w_seq_mdl1    = utl_Max($w_seq_mdl1,    length("model1"));
-  $w_seq_grp1    = utl_Max($w_seq_grp1,    length("grp1"));
-  $w_seq_subgrp1 = utl_Max($w_seq_subgrp1, length("sgrp1"));
-  $w_seq_mdl2    = utl_Max($w_seq_mdl2,    length("model2"));
-  $w_seq_grp2    = utl_Max($w_seq_grp2,    length("grp2"));
-  $w_seq_subgrp2 = utl_Max($w_seq_subgrp2, length("sgrp2"));
-  $w_seq_score   = utl_Max($w_seq_score,   length("score"));
-  $w_seq_bias    = utl_Max($w_seq_bias,    length("bias"));
-  $w_seq_scpnt   = utl_Max($w_seq_scpnt,   length("sc/nt"));
-  $w_seq_cov     = utl_Max($w_seq_cov,     length("scov"));
-  $w_seq_nhits   = utl_Max($w_seq_nhits,   length("nh"));
-  $w_seq_strand  = utl_Max($w_seq_strand,  length("str"));
-  $w_seq_scdiff  = utl_Max($w_seq_scdiff,  length("scdiff"));
-  $w_seq_diffpnt = utl_Max($w_seq_diffpnt, length("diff/nt"));
+  my @head_sgm_tbl_AA = ();
+  my @data_sgm_tbl_AA = ();
+  @{$head_sgm_tbl_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "num", "sgm", "seq",  "seq", "mdl",  "mdl", "sgm", "",    "",    "5'", "3'", "5'",  "3'");
+  @{$head_sgm_tbl_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "idx", "sgm", "idx", "from", "to",  "from", "to",  "len", "str", "trc", "pp", "pp", "gap", "gap");
+  my @clj_sgm_tbl_A     = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,      0,     0,      0,     0,     0,     1,     0,    0,    1,     1);
 
-  # determine max width of text strings for per-feature table
-  my $w_ftr_idx     = $w_seq_idx + 1 + utl_NumberOfDigits($max_nftr+1);
-  my $w_ftr_seqlen  = $w_seq_len;
-  my $w_ftr_ftrlen  = $w_seq_len;
-  my $w_ftr_ftridx  = utl_NumberOfDigits($max_nftr);
-  my $w_ftr_strand  = length("str");
-  my $w_ftr_start   = $w_seq_len;
-  my $w_ftr_stop    = $w_seq_len;
-  my $w_ftr_cstop   = $w_seq_len;
-  my $w_ftr_pscore  = 5;
-  my $w_ftr_dupidx  = $w_ftr_ftridx;
-  my $w_ftr_nsgm    = utl_NumberOfDigits($max_nsgm);
-  my $w_ftr_scoords = ($max_nsgm * (($w_seq_len * 2) + 5)) - 1;
-  my $w_ftr_mcoords = ($max_nsgm * (($w_mdl_len * 2) + 5)) - 1;
-  my $w_ftr_trunc   = length("5'&3'");
-
-  my $w_sgm_idx    = $w_seq_idx + 1 + utl_NumberOfDigits($max_nftr+1) + 1 + utl_NumberOfDigits($max_nsgm);
-  my $w_sgm_sgmidx = utl_NumberOfDigits($max_nsgm);
-  my $w_sgm_sstart = $w_seq_len;
-  my $w_sgm_sstop  = $w_seq_len;
-  my $w_sgm_mstart = $w_mdl_len;
-  my $w_sgm_mstop  = $w_mdl_len;
-  my $w_sgm_len    = $w_seq_len;
-  my $w_sgm_pp     = 5;
-  my $w_sgm_gap    = 4;
-
-  my $w_alt_idx     = $w_seq_idx + 1 + utl_NumberOfDigits($max_nftr+1) + 1 + 4; # up to 9999 alerts per-feature alerts per feature or per-seq alerts per sequence
-  my $w_alt_code    = utl_HMaxLengthKey($alt_info_HHR); # should be 5
-  my $w_alt_sdesc   = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "sdesc");
-  my $w_alt_fail    = 4; # "fail"
-
-  $w_ftr_idx     = utl_Max($w_ftr_idx,     length("#idx"));
-  $w_ftr_name    = utl_Max($w_ftr_name,    length("ftrname"));
-  $w_ftr_seqlen  = utl_Max($w_ftr_seqlen,  length("seqlen"));
-  $w_ftr_ftrlen  = utl_Max($w_ftr_ftrlen,  length("ftrlen"));
-  $w_ftr_ftridx  = utl_Max($w_ftr_ftridx,  length("ftridx"));
-  $w_ftr_start   = utl_Max($w_ftr_start,   length("n_from"));
-  $w_ftr_stop    = utl_Max($w_ftr_stop,    length("n_to"));
-  $w_ftr_cstop   = utl_Max($w_ftr_cstop,   length("n_instp"));
-  $w_ftr_dupidx  = utl_Max($w_ftr_dupidx,  length("didx"));
-  $w_ftr_nsgm    = utl_Max($w_ftr_nsgm,    length("nsg"));
-  $w_ftr_scoords = utl_Max($w_ftr_scoords, length("seq_coords"));
-  $w_ftr_mcoords = utl_Max($w_ftr_mcoords, length("mdl_coords"));
-
-  $w_sgm_idx    = utl_Max($w_sgm_idx,    length("#idx"));
-  $w_sgm_sgmidx = utl_Max($w_sgm_sgmidx, length("sidx"));
-  $w_sgm_sstart = utl_Max($w_sgm_sstart, length("seq_from"));
-  $w_sgm_sstop  = utl_Max($w_sgm_sstop,  length("seq_to"));
-  $w_sgm_mstart = utl_Max($w_sgm_mstart, length("mdl_from"));
-  $w_sgm_mstop  = utl_Max($w_sgm_mstop,  length("mdl_to"));
-  $w_sgm_len    = utl_Max($w_sgm_len,    length("len"));
-
-  $w_alt_idx     = utl_Max($w_alt_idx,     length("#idx"));
-  $w_alt_code    = utl_Max($w_alt_code,    length("code"));
-  $w_alt_sdesc   = utl_Max($w_alt_sdesc,   length("desc"));
-
-  # header lines
-  printf $seq_ant_tbl_FH ("%-*s  %-*s  %-*s  %4s  %3s  %*s  %*s  %*s  %3s  %3s  %3s  %3s  %5s  %s\n", 
-                          $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "p/f", "ant", $w_seq_mdl1, "model", $w_seq_grp1, "grp", $w_seq_subgrp1, "sgrp", 
-                          "nfa", "nfn", "nf5", "nf3", "nfalt", "seqalt");
-  printf $seq_ant_tbl_FH ("%s  %s  %s  %4s  %3s  %s  %s  %s  %3s  %3s  %3s  %3s  %5s  %s\n", 
-                          "#" . utl_StringMonoChar($w_seq_idx-1, "-", undef), 
-                          utl_StringMonoChar($w_seq_name, "-", undef), 
-                          utl_StringMonoChar($w_seq_len, "-", undef), 
-                          "----", "---", 
-                          utl_StringMonoChar($w_seq_mdl1, "-", undef), 
-                          utl_StringMonoChar($w_seq_grp1, "-", undef), 
-                          utl_StringMonoChar($w_seq_subgrp1, "-", undef), 
-                          "---", "---", "---", "---", "-----", "------");
-
-  printf $seq_cls_tbl_FH ("%-*s  %-*s  %*s  %4s  %3s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
-                          $w_seq_idx, "#idx", $w_seq_name, "seqname", $w_seq_len, "len", "p/f", "ant", $w_seq_mdl1, "model1", $w_seq_grp1, "grp1", $w_seq_subgrp1, "sgrp1", 
-                          $w_seq_score, "score", $w_seq_scpnt, "sc/nt", $w_seq_cov, "scov", $w_seq_cov, "mcov", $w_seq_bias, "bias", $w_seq_nhits, "nh", 
-                          $w_seq_strand, "str", $w_seq_mdl2, "model2", $w_seq_grp2, "grp2", $w_seq_subgrp2, "sgrp2", $w_seq_scdiff, "scdiff",
-                          $w_seq_diffpnt, "diff/nt", "seqalt");
-  printf $seq_cls_tbl_FH ("%s  %s  %s  %4s  %3s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s\n",
-                          "#" . utl_StringMonoChar($w_seq_idx-1, "-", undef), 
-                          utl_StringMonoChar($w_seq_name, "-", undef), 
-                          utl_StringMonoChar($w_seq_len, "-", undef), 
-                          "----", "---", 
-                          utl_StringMonoChar($w_seq_mdl1, "-", undef), 
-                          utl_StringMonoChar($w_seq_grp1, "-", undef), 
-                          utl_StringMonoChar($w_seq_subgrp1, "-", undef), 
-                          utl_StringMonoChar($w_seq_score, "-", undef), 
-                          utl_StringMonoChar($w_seq_scpnt, "-", undef), 
-                          utl_StringMonoChar($w_seq_cov, "-", undef), 
-                          utl_StringMonoChar($w_seq_cov, "-", undef), 
-                          utl_StringMonoChar($w_seq_bias, "-", undef), 
-                          utl_StringMonoChar($w_seq_nhits, "-", undef), 
-                          utl_StringMonoChar($w_seq_strand, "-", undef), 
-                          utl_StringMonoChar($w_seq_mdl2, "-", undef), 
-                          utl_StringMonoChar($w_seq_grp2, "-", undef), 
-                          utl_StringMonoChar($w_seq_subgrp2, "-", undef), 
-                          utl_StringMonoChar($w_seq_scdiff, "-", undef), 
-                          utl_StringMonoChar($w_seq_diffpnt, "-", undef), 
-                          "-----");
-
-
-  printf $ftr_tbl_FH ("%-*s  %-*s  %*s  %4s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %-*s  %s\n", 
-                      $w_ftr_idx, "#idx", $w_seq_name, "seqname", $w_ftr_seqlen, "seqlen", "p/f", $w_seq_mdl1, "model", 
-                      $w_ftr_type, "type", $w_ftr_name, "ftrname", $w_ftr_ftrlen, "ftrlen", $w_ftr_ftridx, "fidx", $w_ftr_strand, "str", 
-                      $w_ftr_start, "n_from", $w_ftr_stop, "n_to", $w_ftr_cstop, "n_instp", $w_ftr_trunc, "trunc", 
-                      $w_ftr_start, "p_from", $w_ftr_stop, "p_to", $w_ftr_cstop, "p_instp", $w_ftr_pscore, "p_sc",
-                      $w_ftr_dupidx, "didx", $w_ftr_nsgm, "nsa", $w_ftr_nsgm, "nsn", $w_ftr_scoords, "seq_coords", $w_ftr_mcoords, "mdl_coords", 
-                      "ftralt");
-  printf $ftr_tbl_FH ("%-s  %s  %s  %4s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s\n", 
-                      "#" . utl_StringMonoChar($w_ftr_idx-1, "-", undef), 
-                      utl_StringMonoChar($w_seq_name,    "-", undef), 
-                      utl_StringMonoChar($w_ftr_seqlen,  "-", undef), 
-                      "----",
-                      utl_StringMonoChar($w_seq_mdl1,    "-", undef), 
-                      utl_StringMonoChar($w_ftr_type,    "-", undef), 
-                      utl_StringMonoChar($w_ftr_name,    "-", undef), 
-                      utl_StringMonoChar($w_ftr_ftrlen,  "-", undef), 
-                      utl_StringMonoChar($w_ftr_ftridx,  "-", undef), 
-                      utl_StringMonoChar($w_ftr_strand,  "-", undef), 
-                      utl_StringMonoChar($w_ftr_start,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_stop,    "-", undef), 
-                      utl_StringMonoChar($w_ftr_cstop,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_trunc,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_start,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_stop,    "-", undef), 
-                      utl_StringMonoChar($w_ftr_cstop,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_pscore,  "-", undef), 
-                      utl_StringMonoChar($w_ftr_dupidx,  "-", undef), 
-                      utl_StringMonoChar($w_ftr_nsgm,    "-", undef), 
-                      utl_StringMonoChar($w_ftr_nsgm,    "-", undef), 
-                      utl_StringMonoChar($w_ftr_scoords, "-", undef), 
-                      utl_StringMonoChar($w_ftr_mcoords, "-", undef), 
-                      "------");
+  my @head_alt_tbl_AA = ();
+  my @data_alt_tbl_AA = ();
+  @{$head_alt_tbl_AA[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "alert");
+  @{$head_alt_tbl_AA[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "detail");
+  my @clj_alt_tbl_A     = (1,     1,      1,       1,      1,      0,     1,       1,      1,        1);
 
   #printf $out_FH ("#sequence: sequence name\n");
   #printf $out_FH ("#product:  CDS product name\n");
@@ -4531,54 +4354,6 @@ sub output_tabular {
   #printf $out_FH ("#bxmaxde:  maximum delete length in top blastx HSP\n");
   #printf $out_FH ("#bxtrc:    position of stop codon in top blastx HSP, if there is one\n");
   #printf $out_FH ("#alerts:   list of alerts for this sequence, - if none\n");
-
-  printf $sgm_tbl_FH ("%-*s  %-*s  %*s  %4s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s\n", 
-                      $w_sgm_idx, "#idx", $w_seq_name, "seqname", $w_ftr_seqlen, "seqlen", "p/f", $w_seq_mdl1, "model", 
-                      $w_ftr_type, "type", $w_ftr_name, "ftrname", $w_ftr_ftridx, "fidx", 
-                      $w_sgm_sgmidx, "nsgm", $w_sgm_sgmidx, "sidx", 
-                      $w_sgm_sstart, "seq_from", $w_sgm_sstop, "seq_to", 
-                      $w_sgm_mstart, "mdl_from", $w_sgm_mstop, "mdl_to", 
-                      $w_sgm_len, "len", $w_ftr_strand, "str", $w_ftr_trunc, "trunc", 
-                      $w_sgm_pp, "5pp", $w_sgm_pp, "3pp", $w_sgm_gap, "5gap", $w_sgm_gap, "3gap");
-  printf $sgm_tbl_FH ("%s  %s  %s  %4s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s  %s\n", 
-                      "#" . utl_StringMonoChar($w_sgm_idx-1, "-", undef), 
-                      utl_StringMonoChar($w_seq_name, "-", undef), 
-                      utl_StringMonoChar($w_ftr_seqlen,  "-", undef), 
-                      "----",
-                      utl_StringMonoChar($w_seq_mdl1,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_type,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_name,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_ftridx, "-", undef), 
-                      utl_StringMonoChar($w_sgm_sgmidx, "-", undef), 
-                      utl_StringMonoChar($w_sgm_sgmidx, "-", undef), 
-                      utl_StringMonoChar($w_sgm_sstart, "-", undef), 
-                      utl_StringMonoChar($w_sgm_sstop,  "-", undef), 
-                      utl_StringMonoChar($w_sgm_mstart, "-", undef), 
-                      utl_StringMonoChar($w_sgm_mstop,  "-", undef), 
-                      utl_StringMonoChar($w_sgm_len,    "-", undef), 
-                      utl_StringMonoChar($w_ftr_strand, "-", undef), 
-                      utl_StringMonoChar($w_ftr_trunc,  "-", undef), 
-                      utl_StringMonoChar($w_sgm_pp,     "-", undef), 
-                      utl_StringMonoChar($w_sgm_pp,     "-", undef), 
-                      utl_StringMonoChar($w_sgm_gap,    "-", undef), 
-                      utl_StringMonoChar($w_sgm_gap,    "-", undef));
-
-  printf $alt_tbl_FH ("%-*s  %-*s  %-*s  %-*s  %-*s  %*s  %-*s  %-*s  %-*s  %s\n", 
-                      $w_alt_idx, "#idx", $w_seq_name, "seqname", $w_seq_mdl1, "model", 
-                      $w_ftr_type, "ftype", $w_ftr_name, "fname", $w_ftr_ftridx, "fidx", 
-                      $w_alt_code, "code", $w_alt_fail, "fail", $w_alt_sdesc, "desc", "detail");
-  printf $alt_tbl_FH ("%s  %s  %s  %s  %s  %s  %s  %s  %s  %s\n", 
-                      "#" . utl_StringMonoChar($w_alt_idx-1, "-", undef), 
-                      utl_StringMonoChar($w_seq_name,   "-", undef), 
-                      utl_StringMonoChar($w_seq_mdl1,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_type,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_name,   "-", undef), 
-                      utl_StringMonoChar($w_ftr_ftridx, "-", undef), 
-                      utl_StringMonoChar($w_alt_code,   "-", undef), 
-                      utl_StringMonoChar($w_alt_fail,   "-", undef), 
-                      utl_StringMonoChar($w_alt_sdesc,  "-", undef), 
-                      "------");
-
 
   # main loop: for each sequence
   my $new_seq_flag = undef;
@@ -4645,12 +4420,9 @@ sub output_tabular {
             if($alt_nprinted == 0) { $alt_nftr++; }
             $alt_ncur++;
             my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_ncur;
-            printf $alt_tbl_FH ("%-*s  %-*s  %-*s  %-*s  %-*s  %*s  %-*s  %-*s  %-*s  %s%s\n", 
-                                $w_alt_idx, $alt_idx2print, $w_seq_name, $seq_name, $w_seq_mdl1, $seq_mdl1, 
-                                $w_ftr_type, "-", $w_ftr_name, "-", $w_ftr_ftridx, "-",
-                                $w_alt_code, $alt_code, $w_alt_fail, $alt_fail, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
-                                $alt_info_HHR->{$alt_code}{"ldesc"}, 
-                                ($instance_str eq "") ? "" : " [" . $instance_str . "]");
+            push(@data_alt_tbl_AA, [$alt_idx2print, $seq_name, $seq_mdl1, "-", "-", "-", $alt_code, $alt_fail, 
+                                    helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                    $alt_info_HHR->{$alt_code}{"ldesc"} . ($instance_str eq "") ? "" : " [" . $instance_str . "]"]);
             $alt_nprinted++;
           }
         }
@@ -4731,34 +4503,23 @@ sub output_tabular {
               $m_coords_str .= $sgm_mstart . ".." . $sgm_mstop . ":+"; # always positive
               $ftr_len_by_sgm += abs($sgm_sstart - $sgm_sstop) + 1;
               
-#              if($ftr_dupidx eq "-") { 
-                if($new_seq_flag && ($sgm_nprinted == 0)) { printf $sgm_tbl_FH "#\n"; }
-                printf $sgm_tbl_FH ("%-*s  %-*s  %*s  %4s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s\n", 
-                                    $w_sgm_idx, $sgm_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, $seq_pass_fail, $w_seq_mdl1, $seq_mdl1,
-                                    $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name2print, $w_ftr_ftridx, $ftr_idx+1, 
-                                    $w_sgm_sgmidx, $ftr_nsgm, $w_sgm_sgmidx, ($sgm_idx-$ftr_first_sgm+1), 
-                                    $w_sgm_sstart, $sgm_sstart, $w_sgm_sstop, $sgm_sstop, $w_sgm_mstart, $sgm_mstart, $w_sgm_mstop, $sgm_mstop,
-                                    $w_sgm_len, $sgm_slen, $w_ftr_strand, $sgm_strand, $w_ftr_trunc, $sgm_trunc, 
-                                    $w_sgm_pp, $sgm_pp5, $w_sgm_pp, $sgm_pp3, $w_sgm_gap, $sgm_gap5, $w_sgm_gap, $sgm_gap3);
-                $sgm_nprinted++;
-#              }
+              ###if($new_seq_flag && ($sgm_nprinted == 0)) { printf $sgm_tbl_FH "#\n"; }
+              push(@data_sgm_tbl_AA, [$sgm_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), 
+                                      $ftr_nsgm, ($sgm_idx-$ftr_first_sgm+1), $sgm_sstart, $sgm_sstop, $sgm_mstart, $sgm_mstop, $sgm_slen, $sgm_strand, 
+                                      $sgm_trunc, $sgm_pp5, $sgm_pp3, $sgm_gap5, $sgm_gap3]);
+              $sgm_nprinted++;
             }
           }
           my $ftr_nsgm_noannot = $ftr_nsgm - $ftr_nsgm_annot;
           if($ftr_len_by_sgm == 0) { $ftr_len_by_sgm = "-"; }
           if($ftr_alt_str eq "")   { $ftr_alt_str = "-"; }
 
-          if($new_seq_flag && ($ftr_nprinted == 0)) { printf $ftr_tbl_FH "#\n"; }
+          ###if($new_seq_flag && ($ftr_nprinted == 0)) { printf $ftr_tbl_FH "#\n"; }
             
-          printf $ftr_tbl_FH ("%-*s  %-*s  %*s  %4s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %*s  %-*s  %-*s  %s\n", 
-                              $w_ftr_idx, $ftr_idx2print, $w_seq_name, $seq_name, $w_ftr_seqlen, $seq_len, $seq_pass_fail, $w_seq_mdl1, $seq_mdl1, 
-                              $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name2print, $w_ftr_ftrlen, $ftr_len_by_sgm, $w_ftr_ftridx, $ftr_idx+1, 
-                              $w_ftr_strand, $ftr_strand, 
-                              $w_ftr_start, $ftr_n_start, $w_ftr_stop, $ftr_n_stop, $w_ftr_cstop, $ftr_n_stop_c, $w_ftr_trunc, $ftr_trunc, 
-                              $w_ftr_start, $ftr_p_start, $w_ftr_stop, $ftr_p_stop, $w_ftr_cstop, $ftr_p_stop_c, $w_ftr_pscore, $ftr_p_score, 
-                              $w_ftr_dupidx, ($ftr_dupidx eq "-") ? "-" : $ftr_dupidx+1, 
-                              $w_ftr_nsgm, $ftr_nsgm_annot, $w_ftr_nsgm, $ftr_nsgm_noannot, 
-                              $w_ftr_scoords, $s_coords_str, $w_ftr_mcoords, $m_coords_str, $ftr_alt_str);
+          push(@data_ftr_tbl_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
+                                  ($ftr_idx+1), $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, 
+                                  $ftr_p_score, ($ftr_dupidx eq "-") ? "-" : ($ftr_dupidx+1), $ftr_nsgm_annot, $ftr_nsgm_noannot, $s_coords_str, $m_coords_str,
+                                  $ftr_alt_str]);
           $ftr_nprinted++;
 
           # print per-feature alerts, if any
@@ -4780,12 +4541,9 @@ sub output_tabular {
                   if($alt_ncur == 0) { $alt_nftr++; }
                   $alt_ncur++;
                   my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_ncur;
-                  printf $alt_tbl_FH ("%-*s  %-*s  %-*s  %-*s  %-*s  %*s  %-*s  %-*s  %-*s  %s%s\n", 
-                                      $w_alt_idx, $alt_idx2print, $w_seq_name, $seq_name, $w_seq_mdl1, $seq_mdl1, 
-                                      $w_ftr_type, $ftr_type, $w_ftr_name, $ftr_name2print, $w_ftr_ftridx, $ftr_idx+1,
-                                      $w_alt_code, $alt_code, $w_alt_fail, $alt_fail, $w_alt_sdesc, helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
-                                      $alt_info_HHR->{$alt_code}{"ldesc"}, 
-                                      ($instance_str eq "") ? "" : " [" . $instance_str . "]");
+                  push(@data_alt_tbl_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, $alt_fail, 
+                                          helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                          $alt_info_HHR->{$alt_code}{"ldesc"} . ($instance_str eq "") ? "" : " [" . $instance_str . "]"]);
                   $alt_nprinted++;
                 }
               }
@@ -4802,20 +4560,25 @@ sub output_tabular {
     my $seq_nftr_notannot = $nftr - $seq_nftr_annot;
     if($seq_alt_str eq "")   { $seq_alt_str  = "-"; }
     if($seq_annot   eq "no") { $seq_nftr_annot = $seq_nftr_notannot = $seq_nftr_5trunc = $seq_nftr_3trunc = $seq_nftr_alt = "-"; }
-    printf $seq_ant_tbl_FH ("%-*d  %-*s  %*d  %4s  %3s  %*s  %*s  %*s  %3s  %3s  %3s  %3s  %5s  %s\n", 
-                            $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $seq_pass_fail, $seq_annot, 
-                            $w_seq_mdl1, $seq_mdl1, $w_seq_grp1, $seq_grp1, $w_seq_subgrp1, $seq_subgrp1, 
-                            $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str);
 
-    printf $seq_cls_tbl_FH ("%-*d  %-*s  %*d  %4s  %3s  %-*s  %-*s  %-*s  %*s  %*s  %*s  %*s  %*s  %*d  %*s  %-*s  %-*s  %-*s  %*s  %*s  %s\n",
-                            $w_seq_idx, $seq_idx+1, $w_seq_name, $seq_name, $w_seq_len, $seq_len, $seq_pass_fail, $seq_annot, 
-                            $w_seq_mdl1, $seq_mdl1, $w_seq_grp1, helper_tabular_replace_spaces($seq_grp1), 
-                            $w_seq_subgrp1, helper_tabular_replace_spaces($seq_subgrp1), $w_seq_score, $seq_score, $w_seq_scpnt, 
-                            $seq_scpnt, $w_seq_cov, $seq_scov, $w_seq_cov, $seq_mcov, $w_seq_bias, $seq_bias, $w_seq_nhits, $seq_nhits,
-                            $w_seq_strand, $seq_strand, $w_seq_mdl2, $seq_mdl2, $w_seq_grp2, helper_tabular_replace_spaces($seq_grp2), 
-                            $w_seq_subgrp2, helper_tabular_replace_spaces($seq_subgrp2), $w_seq_scdiff, $seq_scdiff, 
-                            $w_seq_diffpnt, $seq_diffpnt, $seq_alt_str);
+    push(@data_ant_tbl_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, $seq_grp1, $seq_subgrp1, 
+                            $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str]);
+    
+    push(@data_cls_tbl_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
+                            helper_tabular_replace_spaces($seq_grp1), 
+                            helper_tabular_replace_spaces($seq_subgrp1), 
+                            $seq_score, $seq_scpnt, $seq_scov, $seq_mcov, $seq_bias, $seq_nhits, $seq_strand, $seq_mdl2, 
+                            helper_tabular_replace_spaces($seq_grp2), 
+                            helper_tabular_replace_spaces($seq_subgrp2), 
+                            $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
   }
+
+  # output the tables:
+  ofile_TableHumanOutput(\@data_ant_tbl_AA, \@head_ant_tbl_AA, \@clj_ant_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"ant_tbl"}, *STDOUT, $FH_HR);
+  ofile_TableHumanOutput(\@data_cls_tbl_AA, \@head_cls_tbl_AA, \@clj_cls_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"cls_tbl"}, *STDOUT, $FH_HR);
+  ofile_TableHumanOutput(\@data_ftr_tbl_AA, \@head_ftr_tbl_AA, \@clj_ftr_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"ftr_tbl"}, *STDOUT, $FH_HR);
+  ofile_TableHumanOutput(\@data_sgm_tbl_AA, \@head_sgm_tbl_AA, \@clj_sgm_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"sgm_tbl"}, *STDOUT, $FH_HR);
+  ofile_TableHumanOutput(\@data_alt_tbl_AA, \@head_alt_tbl_AA, \@clj_alt_tbl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"alt_tbl"}, *STDOUT, $FH_HR);
 
   return;
 }

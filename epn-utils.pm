@@ -1024,6 +1024,42 @@ sub utl_HDump {
 }
 
 #################################################################
+# Subroutine: utl_AADump()
+# Incept:     EPN, Fri Apr  5 10:09:57 2019
+#
+# Purpose:    Dump the contents of a 2D array
+#             probably for debugging purposes.
+#
+# Args:       $name2print:  name of array of hashes of hashes
+#             $AAR:         ref of the array of arrays
+#             $FH:          file handle to print (often *STDOUT)
+#
+# Returns:    void
+# 
+#################################################################
+sub utl_AADump { 
+  my $sub_name = "utl_AADump()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($name2print, $AAR, $FH) = @_;
+
+  printf $FH ("in $sub_name, printing %s:\n", (defined $name2print) ? $name2print : "undefined");
+
+  my $nel1 = scalar(@{$AAR});
+  for(my $i1 = 0; $i1 < $nel1; $i1++) { 
+    printf $FH ("*A*A el1 %2d\n", ($i1)); 
+    my $nel2 = scalar(@{$AAR->[$i1]});
+    for(my $i2 = 0; $i2 < $nel2; $i2++) { 
+      printf $FH ("\tA*A*[$i1][$i2]: %s\n", $AAR->[$i1][$i2]);
+    }
+    printf $FH ("\n");
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: utl_HHDump()
 # Incept:     EPN, Thu Dec 20 13:36:00 2018
 #
