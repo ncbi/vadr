@@ -1027,7 +1027,7 @@ sub cmsearch_wrapper {
     }
   }
   my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
-
+  if($do_parallel) { ofile_OutputString($log_FH, 1, "\n"); }
   # run cmsearch
   my $out_key;
   my @out_keys_A = ("stdout", "err", "tblout");
@@ -2000,6 +2000,7 @@ sub cmalign_wrapper_helper {
                     ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
   my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
+  if($do_parallel) { ofile_OutputString($log_FH, 1, "\n"); }
 
   my $key; # a file key
   my $s;   # counter over sequence files
@@ -3848,7 +3849,7 @@ sub alert_list_option {
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
-  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", *STDOUT, undef, undef);
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", "-", *STDOUT, undef, undef);
 
   @bcom_A  = ();
   @data_AA = ();
@@ -3867,7 +3868,7 @@ sub alert_list_option {
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
-  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", *STDOUT, undef, undef);
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", "-", *STDOUT, undef, undef);
 
   @bcom_A  = ();
   @data_AA = ();
@@ -3886,7 +3887,7 @@ sub alert_list_option {
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
-  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", *STDOUT, undef, undef);
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", "-", *STDOUT, undef, undef);
 
   return;
 }
@@ -4055,8 +4056,8 @@ sub alert_sequence_instance_add {
 
   my ($alt_seq_instances_HHR, $alt_info_HHR, $alt_code, $seq_name, $value, $FH_HR) = @_;
 
-  my $tmp_altmsg = "alt_code: $alt_code, seq_name: $seq_name, value: $value\n";
-  printf("in $sub_name $tmp_altmsg\n");
+  # my $tmp_altmsg = "alt_code: $alt_code, seq_name: $seq_name, value: $value\n";
+  # printf("in $sub_name $tmp_altmsg\n");
   
   if(! defined $alt_seq_instances_HHR) { 
     ofile_FAIL("ERROR in $sub_name, alt_seq_instances_HHR is undefined", "dnaorg", 1, $FH_HR);
@@ -4112,8 +4113,8 @@ sub alert_feature_instance_add {
 
   my ($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $value, $FH_HR) = @_;
 
-  my $tmp_altmsg = "ftr_idx: $ftr_idx, alt_code: $alt_code, seq_name: $seq_name, value: $value\n";
-  printf("in $sub_name $tmp_altmsg\n");
+  # my $tmp_altmsg = "ftr_idx: $ftr_idx, alt_code: $alt_code, seq_name: $seq_name, value: $value\n";
+  # printf("in $sub_name $tmp_altmsg\n");
   
   if(! defined $alt_ftr_instances_HHHR) { 
     ofile_FAIL("ERROR in $sub_name, but alt_ftr_instances_HHHR is undefined", "dnaorg", 1, $FH_HR);
@@ -4713,24 +4714,39 @@ sub output_tabular {
 
   # add data to the alert count table
   my $alt_idx = 0;
-  my $zero_alerts = 0;
+  my $zero_alerts = 1; # set to '0' below if we have >= 1 alerts
+  my $sum_alt_ct     = 0;
+  my $sum_alt_seq_ct = 0;
   foreach my $alt_code (@alt_code_A) { 
     if($alt_ct_H{$alt_code} > 0) { 
       $alt_idx++;
+      if(($alt_idx > 0) && ($alt_info_HH{$alt_code}{"causes_failure"})) { 
+        # print separation line between alerts that cause and do not cause failure
+        push(@data_alc_AA, []); # separator line
+      }
       push(@data_alc_AA, [$alt_idx, $alt_code, 
-                              ($alt_info_HH{$alt_code}{"causes_failure"} ? "yes" : "no"), 
-                              helper_tabular_replace_spaces($alt_info_HH{$alt_code}{"sdesc"}), 
-                              $alt_info_HH{$alt_code}{"pertype"}, 
-                              $alt_ct_H{$alt_code}, $alt_seq_ct_H{$alt_code},
-                              $alt_info_HHR->{$alt_code}{"ldesc"}]);
+                          ($alt_info_HH{$alt_code}{"causes_failure"} ? "yes" : "no"), 
+                          helper_tabular_replace_spaces($alt_info_HH{$alt_code}{"sdesc"}), 
+                          $alt_info_HH{$alt_code}{"pertype"}, 
+                          $alt_ct_H{$alt_code}, $alt_seq_ct_H{$alt_code},
+                          $alt_info_HHR->{$alt_code}{"ldesc"}]);
+      $sum_alt_ct     += $alt_ct_H{$alt_code};
+      $sum_alt_seq_ct += $alt_seq_ct_H{$alt_code};
       $zero_alerts = 0;
+    }
+    if(! $zero_alerts) { 
+      push(@data_alc_AA, []); # separator line
     }
   }
 
   # add data to the model table
   my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} } keys (%{$mdl_cls_ct_HR}));
   my $mdl_tbl_idx = 0;
-  my $zero_classifications = 0;
+  my $zero_classifications = 1; # set to '0' below if we have >=1 classifications
+  my $sum_mdl_cls_ct     = 0;
+  my $sum_mdl_pass_ct    = 0;
+  my $sum_mdl_fail_ct    = 0;
+  my $sum_mdl_noannot_ct = 0;
   foreach $mdl_name (@mdl_tbl_order_A) { 
     if($mdl_cls_ct_HR->{$mdl_name} > 0) { 
       $mdl_tbl_idx++;
@@ -4742,18 +4758,32 @@ sub output_tabular {
                               $mdl_pass_ct_H{$mdl_name}, 
                               $mdl_fail_ct_H{$mdl_name}, 
                               $mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct_HR->{$mdl_name}]);
+      $sum_mdl_cls_ct     += $mdl_cls_ct_HR->{$mdl_name};
+      $sum_mdl_pass_ct    += $mdl_pass_ct_H{$mdl_name};
+      $sum_mdl_fail_ct    += $mdl_fail_ct_H{$mdl_name};
+      $sum_mdl_noannot_ct += $mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct_HR->{$mdl_name};
       $zero_classifications = 0;
     }
   }
+  # add mdl summary line
+  if(! $zero_classifications) { 
+    push(@data_mdl_AA, []); # separator line
+    push(@data_mdl_AA, ["-", "*all*", "-", "-", 
+                        $sum_mdl_cls_ct, 
+                        $sum_mdl_pass_ct, 
+                        $sum_mdl_fail_ct, 
+                        $sum_mdl_noannot_ct]);
+    push(@data_mdl_AA, []); # separator line
+  }
 
   # output the tables:
-  ofile_TableHumanOutput(\@data_ant_AA, \@head_ant_AA, \@clj_ant_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"ant_tbl"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_cls_AA, \@head_cls_AA, \@clj_cls_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"cls_tbl"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_ftr_AA, \@head_ftr_AA, \@clj_ftr_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"ftr_tbl"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_sgm_AA, \@head_sgm_AA, \@clj_sgm_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"sgm_tbl"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"alt_tbl"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"alc_tbl"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", undef, "", $FH_HR->{"mdl_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_ant_AA, \@head_ant_AA, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_cls_AA, \@head_cls_AA, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_ftr_AA, \@head_ftr_AA, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_sgm_AA, \@head_sgm_AA, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl_tbl"}, undef, $FH_HR);
 
   return ($zero_classifications, $zero_alerts);
 }

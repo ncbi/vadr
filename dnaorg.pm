@@ -424,11 +424,10 @@ sub dng_FeatureInfoImpute3paFtrIdx {
             $found_adj = 1; 
           }
           if($found_adj) { 
-            if($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1) { 
-              ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine 3' mature peptide of mature peptide with coords (multiple mature peptides satisfy criteria)\n", 
-                                  $ftr_info_AHR->[$ftr_idx]{"coords"}), "dnaorg", 1, $FH_HR);
+            if($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} == -1) { 
+              # if multiple features are 3'-adjacent, keep only the first one
+              $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = $ftr_idx2; 
             }
-            $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = $ftr_idx2; 
           }
         }
       }
