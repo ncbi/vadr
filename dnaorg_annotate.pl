@@ -187,10 +187,10 @@ opt_Add("--noglocal",   "boolean", 0,                       $g,"--nosub", undef,
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
-opt_Add("-p",           "boolean", 0,                       $g,    undef,  undef,      "parallelize cmsearch/cmalign on a compute farm",              "parallelize cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("-p",           "boolean", 0,                       $g,    undef,  undef,      "parallelize cmscan/cmsearch/cmalign on a compute farm",       "parallelize cmscan/cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
 opt_Add("-q",           "string",  undef,                   $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 10,                      $g,     "-p",  undef,      "number of KB of seq for each cmsearch farm job is <n>",       "number of KB of sequence for each cmsearch farm job is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 500,                     $g,     "-p",  undef,      "allow <n> minutes for cmsearch jobs on farm",                 "allow <n> wall-clock minutes for cmsearch jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 10,                      $g,     "-p",  undef,      "number of KB of seq for each farm job is <n>",                "number of KB of sequence for each farm job is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 500,                     $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,                       $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,                    $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
@@ -481,6 +481,7 @@ if(! -d $blastdb_dir) {
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmalign"}           = $inf_exec_dir   . "/cmalign";
 $execs_H{"cmfetch"}           = $inf_exec_dir   . "/cmfetch";
+$execs_H{"cmscan"}            = $inf_exec_dir   . "/cmscan";
 $execs_H{"cmsearch"}          = $inf_exec_dir   . "/cmsearch";
 $execs_H{"esl-seqstat"}       = $esl_exec_dir   . "/esl-seqstat";
 $execs_H{"esl-ssplit"}        = $esl_ssplit;
@@ -570,17 +571,17 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ####################################
 # Classification: cmsearch round 1
 ####################################
-my $r1_cmsearch_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
-cmsearch_wrapper(\%execs_H, $cm_file, undef, $fa_file, $r1_cmsearch_opts, $out_root, 1, $nseq, $tot_len_nt, $progress_w, \%opt_HH, \%ofile_info_HH);
+my $r1_cmscan_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
+cmsearch_or_cmscan_wrapper(\%execs_H, $cm_file, undef, $fa_file, $r1_cmscan_opts, $out_root, 1, $nseq, $tot_len_nt, $progress_w, \%opt_HH, \%ofile_info_HH);
 
 # sort into a new file by score
-my $r1_tblout_key  = "search.r1.tblout"; # set in cmsearch_wrapper()
+my $r1_tblout_key  = "scan.r1.tblout"; # set in cmsearch_or_cmscan_wrapper()
 my $r1_tblout_file = $ofile_info_HH{"fullpath"}{$r1_tblout_key};
 my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
 my $r1_sort_tblout_key  = $r1_tblout_key . ".sort";
 utl_FileValidateExistsAndNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-my $sort_cmd = "grep -v ^\# $r1_tblout_file | sort -k 1,1 -k 3,3rn > $r1_sort_tblout_file"; 
+my $sort_cmd = "grep -v ^\# $r1_tblout_file | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
 utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "dnaorg", $r1_sort_tblout_key, $r1_sort_tblout_file, 0, "sorted round 1 search tblout file");
 
@@ -588,8 +589,8 @@ ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "dnaorg", $r1_sort_tblout_key, 
 my %cls_results_HHH = (); # key 1: sequence name, 
                           # key 2: ("r1.1","r1.2","r1.eg","r2.bs", "r2.os")
                           # key 3: ("model", "coords", "bstrand", "score", "bias")
-cmsearch_parse_sorted_tblout($r1_sort_tblout_file, 1, # 1: round 1
-                             \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
+cmsearch_or_cmscan_parse_sorted_tblout($r1_sort_tblout_file, 1, # 1: round 1
+                                       \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
 
 ###########################################
 # Coverage determination: cmsearch round 2
@@ -619,9 +620,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
 
     # now run cmsearch against this file
-    cmsearch_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $r2_cmsearch_opts, $out_root, 2, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
-                     $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
-    my $r2_tblout_key = "search.r2.$mdl_name.tblout"; # set in cmsearch_wrapper()
+    cmsearch_or_cmscan_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $r2_cmsearch_opts, $out_root, 2, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
+                               $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
+    my $r2_tblout_key = "search.r2.$mdl_name.tblout"; # set in cmsearch_or_cmscan_wrapper()
     push(@r2_tblout_key_A,  $r2_tblout_key);
     push(@r2_tblout_file_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key});
   }
@@ -635,8 +636,8 @@ utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "dnaorg", $r2_sort_tblout_key, $r2_sort_tblout_file, 0, "sorted round 2 search tblout file");
 
 # parse cmsearch round 2 tblout data
-cmsearch_parse_sorted_tblout($r2_sort_tblout_file, 2, # 2: round 2
-                             \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
+cmsearch_or_cmscan_parse_sorted_tblout($r2_sort_tblout_file, 2, # 2: round 2
+                                       \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
 
 ############################
 # Add classification alerts
@@ -884,10 +885,10 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 #################################################################
 #
 # Subroutines related to cmsearch and classification:
-# cmsearch_wrapper
-# cmsearch_run
-# cmsearch_parse_sorted_tblout
-# cmsearch_store_hit
+# cmsearch_or_cmscan_wrapper
+# cmsearch_or_cmscan_run
+# cmsearch_or_cmscan_parse_sorted_tblout
+# cmsearch_or_cmscan_store_hit
 # add_classification_errors
 # populate_per_model_data_structures_given_classification_results
 #
@@ -949,7 +950,7 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 # group_subgroup_string_from_classification_results()
 #
 #################################################################
-# Subroutine:  cmsearch_wrapper()
+# Subroutine:  cmsearch_or_cmscan_wrapper()
 # Incept:      EPN, Mon Mar 18 14:44:46 2019
 #
 # Purpose:     Run one or more cmsearch jobs on the farm
@@ -978,8 +979,8 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info
 # Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
 #       command fails if we're running locally
 ################################################################# 
-sub cmsearch_wrapper { 
-  my $sub_name = "cmsearch_wrapper";
+sub cmsearch_or_cmscan_wrapper { 
+  my $sub_name = "cmsearch_or_cmscan_wrapper";
   my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -1021,7 +1022,7 @@ sub cmsearch_wrapper {
   my $desc = "";
   if($round == 1) { 
     $desc = ($do_parallel) ? 
-        "Submitting $nseq_files cmsearch classification job(s) to the farm" : 
+        "Submitting $nseq_files cmscan classification job(s) to the farm" : 
         sprintf("Classifying sequences ($nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
   else { 
@@ -1035,15 +1036,16 @@ sub cmsearch_wrapper {
   }
   my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
   if($do_parallel) { ofile_OutputString($log_FH, 1, "\n"); }
-  # run cmsearch
+  # run cmsearch or cmscan
   my $out_key;
   my @out_keys_A = ("stdout", "err", "tblout");
+  my $round_str = ($round eq "1") ? "scan.r1" : "search.r2";
   for(my $s = 0; $s < $nseq_files; $s++) { 
     %{$out_file_AH[$s]} = (); 
     foreach my $out_key (@out_keys_A) { 
-      $out_file_AH[$s]{$out_key} = $out_root . ".search.r" . $round . ".s" . $s . "." . $out_key;
+      $out_file_AH[$s]{$out_key} = $out_root . "." . $round_str . ".s" . $s . "." . $out_key;
     }
-    cmsearch_run($execs_HR, $mdl_file, $mdl_name, $seq_file_A[$s], $opt_str, \%{$out_file_AH[$s]}, $opt_HHR, $ofile_info_HHR);   
+    cmsearch_or_cmscan_run($execs_HR, $mdl_file, $mdl_name, $seq_file_A[$s], $opt_str, \%{$out_file_AH[$s]}, $opt_HHR, $ofile_info_HHR);   
   }
 
   if($do_parallel) { 
@@ -1061,13 +1063,13 @@ sub cmsearch_wrapper {
   # concatenate files into one
   foreach $out_key (@out_keys_A) { 
     if(($do_parallel) || ($out_key ne "err")) { # .err files don't exist if (! $do_parallel)
-      my $concat_key  = sprintf("search.r%s.%s%s", $round, (defined $mdl_name) ? $mdl_name . "." : "", $out_key);                                
+      my $concat_key  = sprintf("%s.%s%s", $round_str, (defined $mdl_name) ? $mdl_name . "." : "", $out_key);                                
       my $concat_file = $out_root . "." . $concat_key;
       my @concat_A = ();
       utl_ArrayOfHashesToArray(\@out_file_AH, \@concat_A, $out_key);
       utl_ConcatenateListOfFiles(\@concat_A, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
       # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
-      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $concat_key, $concat_file, 0, sprintf("round $round search $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $concat_key, $concat_file, 0, sprintf("round $round scan/search $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
     }
   }
 
@@ -1082,17 +1084,17 @@ sub cmsearch_wrapper {
 }
 
 #################################################################
-# Subroutine:  cmsearch_run()
+# Subroutine:  cmsearch_or_cmscan_run()
 # Incept:      EPN, Wed Feb  6 12:38:11 2019
 #
-# Purpose:     Run Infernal's cmsearch executable using $mdl_file
+# Purpose:     Run Infernal's cmsearch or cmscan executable using $mdl_file
 #              as the model file on sequence file $seq_file, either
 #              locally or on the farm.
 #
 # Arguments: 
-#  $execs_HR:         ref to hash with paths to cmsearch and cmfetch
+#  $execs_HR:         hash with paths to cmsearch, cmscan and cmfetch
 #  $mdl_file:         path to the CM file
-#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
+#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch and run cmscan instead of cmsearch)
 #  $seq_file:         path to the sequence file
 #  $opt_str:          option string for cmsearch run
 #  $out_file_HR:      ref to hash of output files to create
@@ -1103,8 +1105,8 @@ sub cmsearch_wrapper {
 # Returns:     void
 # 
 ################################################################# 
-sub cmsearch_run {
-  my $sub_name = "cmsearch_run()";
+sub cmsearch_or_cmscan_run {
+  my $sub_name = "cmsearch_or_cmscan_run()";
   my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -1134,7 +1136,7 @@ sub cmsearch_run {
     $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmsearch"} . " $opt_str - $seq_file > $stdout_file";
   }
   else { 
-    $cmd = $execs_HR->{"cmsearch"} . " $opt_str $mdl_file $seq_file > $stdout_file";
+    $cmd = $execs_HR->{"cmscan"} . " $opt_str $mdl_file $seq_file > $stdout_file";
   }
   if($do_parallel) { 
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
@@ -1150,7 +1152,7 @@ sub cmsearch_run {
 }
 
 #################################################################
-# Subroutine:  cmsearch_parse_sorted_tblout()
+# Subroutine:  cmsearch_or_cmscan_parse_sorted_tblout()
 # Incept:      EPN, Wed Mar 20 13:30:16 2019
 #
 # Purpose:     Parse a sorted cmsearch tblout output file and 
@@ -1170,8 +1172,8 @@ sub cmsearch_run {
 # Dies: if there's a problem parsing the tblout file
 #      
 ################################################################# 
-sub cmsearch_parse_sorted_tblout {
-  my $sub_name = "cmsearch_parse_sorted_tblout()";
+sub cmsearch_or_cmscan_parse_sorted_tblout {
+  my $sub_name = "cmsearch_or_cmscan_parse_sorted_tblout()";
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -1231,14 +1233,14 @@ sub cmsearch_parse_sorted_tblout {
       $s_to   = undef;
       $strand = undef;
       my @el_A = split(/\s+/, $line);
-      if($round == 1) { # round 1 --trmF3 tblout 
-        ##sequence                    modelname  score  start    end strand bounds ovp      seqlen
-        ##--------------------------- --------- ------ ------ ------ ------ ------ --- -----------
-        #gi|307574518|dbj|AB525810.1| NC_001959   85.5      1    338      +     []  ?          338
+      if($round == 1) { # round 1 cmscan --trmF3 tblout 
+        #modelname sequence                      score  start    end strand bounds ovp      seqlen
+        ##--------- ---------------------------- ------ ------ ------ ------ ------ --- -----------
+        #NC_039477  gi|1215708385|gb|KY594653.1|  275.8      1    301      +     []  *          301
         if(scalar(@el_A) != 9) { 
           ofile_FAIL("ERROR parsing $tblout_file for round 1, unexpected number of space-delimited tokens on line $line", "dnaorg", 1, $FH_HR); 
         }
-        ($seq, $model, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
+        ($model, $seq, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
         if(! defined $results_HHHR->{$seq}) { 
           %{$results_HHHR->{$seq}} = ();
         }
@@ -1290,12 +1292,12 @@ sub cmsearch_parse_sorted_tblout {
             }
           }
         }
-        if($is_1)   { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.1"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
-        if($is_2)   { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.2"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
-        if($is_eg)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.eg"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
-        if($is_esg) { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r1.esg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_1)   { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r1.1"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_2)   { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r1.2"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_eg)  { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r1.eg"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_esg) { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r1.esg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
       }
-      else { # round 2
+      else { # round 2 cmsearch --tblout output
         ##target name                 accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
         ##--------------------------- --------- -------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
         #gi|1215708385|gb|KY594653.1| -         NC_039477            -         hmm     5089     5389        1      301      +     -    6 0.52   0.0  268.1   3.4e-85 !   Norovirus GII.4 isolate Hu/GII/CR7410/CHN/2014 VP1 gene, partial cds
@@ -1307,12 +1309,12 @@ sub cmsearch_parse_sorted_tblout {
         if((! defined $results_HHHR->{$seq}{"r2.bs"}) || # first (top) hit for this sequence, 
            (($results_HHHR->{$seq}{"r2.bs"}{"model"}   eq $model) && 
             ($results_HHHR->{$seq}{"r2.bs"}{"bstrand"} eq $strand))) { # additional hit for this sequence/model/strand trio
-          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r2.bs"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in round 2
+          cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r2.bs"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in round 2
         }
         elsif((! defined $results_HHHR->{$seq}{"r2.os"}) || # first (top) hit on OTHER strand for this sequence, 
               (($results_HHHR->{$seq}{"r2.os"}{"model"}   eq $model) && 
                ($results_HHHR->{$seq}{"r2.os"}{"bstrand"} eq $strand))) { # additional hit for this sequence/model/strand trio
-          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r2.os"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in round 2
+          cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r2.os"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in round 2
         }
       }
     }
@@ -1322,7 +1324,7 @@ sub cmsearch_parse_sorted_tblout {
 }
 
 #################################################################
-# Subroutine:  cmsearch_store_hit()
+# Subroutine:  cmsearch_or_cmscan_store_hit()
 # Incept:      EPN, Thu Mar 21 14:55:25 2019
 #
 # Purpose:     Store information on a hit in %{$HR}. 
@@ -1347,8 +1349,8 @@ sub cmsearch_parse_sorted_tblout {
 # Dies: if not the first hit, but $HR->{"model"} ne $model
 #      
 ################################################################# 
-sub cmsearch_store_hit { 
-  my $sub_name = "cmsearch_store_hit()";
+sub cmsearch_or_cmscan_store_hit { 
+  my $sub_name = "cmsearch_or_cmscan_store_hit()";
   my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -3437,6 +3439,7 @@ sub parse_blastx_results {
 
   open(IN, $blastx_summary_file) || ofile_FileOpenFailure($blastx_summary_file, "dnaorg", $sub_name, $!, "reading", $FH_HR);
   
+  my $line_idx   = 0;
   my $xminntlen  = opt_Get("--xminntlen",  $opt_HHR);
   my $xlonescore = opt_Get("--xlonescore", $opt_HHR);
   my $seq_name   = undef; # sequence name this hit corresponds to 
@@ -3473,6 +3476,7 @@ sub parse_blastx_results {
 
   while(my $line = <IN>) { 
     chomp $line;
+    $line_idx++;
     if($line ne "END_MATCH") { 
       my @el_A = split(/\t/, $line);
       if(scalar(@el_A) != 2) { 
@@ -3493,7 +3497,7 @@ sub parse_blastx_results {
       }
       elsif($key eq "HACC") { 
         if(! defined $cur_H{"QACC"}) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HACC line before QACC line\n", "dnaorg", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HACC line before QACC line (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
         # determine what feature it is
@@ -3508,7 +3512,7 @@ sub parse_blastx_results {
       }
       elsif($key eq "HSP") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines\n", "dnaorg", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
         if($value !~ /^(\d+)$/) { 
@@ -3517,7 +3521,7 @@ sub parse_blastx_results {
       }
       elsif($key eq "SCORE") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
         if($value !~ /^(\d+)$/) { 
@@ -3526,7 +3530,7 @@ sub parse_blastx_results {
       }
       elsif($key eq "FRAME") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, HSP, or SCORE lines\n", "dnaorg", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, HSP, or SCORE lines (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
         }
         if($value =~ /^[\+\-]([123])$/) { 
           $cur_H{$key} = $1;
@@ -3538,17 +3542,23 @@ sub parse_blastx_results {
       }
       elsif(($key eq "STOP") || ($key eq "DEL") || ($key eq "INS")) { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"}) || (! defined $cur_H{"FRAME"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, SCORE or FRAME lines\n", "dnaorg", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, SCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
         }
         if($value ne "") { 
           $cur_H{$key} = $value;
         } 
       }
       elsif($key eq "QRANGE") { 
-        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"}) || (! defined $cur_H{"FRAME"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, SCORE or FRAME lines\n", "dnaorg", 1, $FH_HR);
+        # we don't require all of QACC, HACC, HSP, SCORE and FRAME even though we should have them
+        # sometimes we don't (may be a bug in parse-blastx.pl), we only require QACC
+        if(! defined $cur_H{"QACC"}) { 
+
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before QACC line (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
         }
         if($value eq "..") { # special case, no hits, silently move on
+          ;
+        }
+        elsif(! defined $cur_H{"SCORE"}) { # special case, no SCORE lines yet seen (may be a bug in parse-blastx.pl?), silently move on
           ;
         }
         else { 
