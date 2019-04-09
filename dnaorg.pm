@@ -1279,6 +1279,24 @@ sub dng_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  dng_AlertInfoAdd($alt_info_HHR, "c_dpr", "sequence",
+                   "Duplicate Regions", # short description
+                   "similarity to a model region occurs more than once", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_who", "sequence",
+                   "Wrong Order", # short description
+                   "not all hits are in the same order in the sequence and the homology model", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_bst", "sequence",
+                   "Indefinite Strand", # short description
+                   "significant similarity detected on both strands", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   dng_AlertInfoAdd($alt_info_HHR, "n_div", "sequence",
                    "Unexpected Divergence", # short description
                    "sequence is too divergent to confidently assign nucleotide-based annotation", # long description

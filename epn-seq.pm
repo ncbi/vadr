@@ -261,8 +261,10 @@ sub seq_CodonValidateStopCapDna {
 #  $end2:   end   position of hit 2 (must be >= $end2)
 #  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:  Number of nucleotides of overlap between hit1 and hit2,
-#           0 if none
+# Returns:  Two values:
+#           $noverlap:    Number of nucleotides of overlap between hit1 and hit2, 
+#                         0 if none
+#           $overlap_reg: region of overlap, "" if none
 #
 # Dies:     if $end1 < $start1 or $end2 < $start2.
 #
@@ -292,10 +294,10 @@ sub seq_Overlap {
   # Case 1. $start1 <=   $end1 <  $start2 <=   $end2  Overlap is 0
   # Case 2. $start1 <= $start2 <=   $end1 <    $end2  
   # Case 3. $start1 <= $start2 <=   $end2 <=   $end1
-  if($end1 < $start2) { return 0; }                      # case 1
-  if($end1 <   $end2) { return ($end1 - $start2 + 1); }  # case 2
-  if($end2 <=  $end1) { return ($end2 - $start2 + 1); }  # case 3
-  die "ERROR in $sub_name, unforeseen case in $start1..$end1 and $start2..$end2";
+  if($end1 < $start2) { return (0, ""); }                                           # case 1
+  if($end1 <   $end2) { return (($end1 - $start2 + 1), ($start2 . "-" . $end1)); }  # case 2
+  if($end2 <=  $end1) { return (($end2 - $start2 + 1), ($start2 . "-" . $end2)); }  # case 3
+  die "ERROR in $sub_name, unforeseen case in $sub_name, $start1..$end1 and $start2..$end2";
 
   return; # NOT REACHED
 }

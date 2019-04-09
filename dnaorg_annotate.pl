@@ -162,6 +162,8 @@ opt_Add("--vlowscthresh",   "real",    0.2,                  $g,   undef,   unde
 opt_Add("--lowdiffthresh",  "real",    0.06,                 $g,   undef,   undef,        "bits per nucleotide diff threshold for 'low diff' is <x>",       "bits per nucleotide diff threshold for 'low diff' alert is <x>",      \%opt_HH, \@opt_order_A);
 opt_Add("--vlowdiffthresh", "real",    0.006,                $g,   undef,   undef,        "bits per nucleotide diff threshold for 'very low diff' is <x>",  "bits per nucleotide diff threshold for 'very low diff' alert is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",      "real",    0.25,                 $g,   undef,   undef,        "fractional threshold for 'high bias' is <x>",                    "fractional threshold for 'high bias' alert is <x>",                   \%opt_HH, \@opt_order_A);
+opt_Add("--dupregmin",   "integer",    20,                   $g,   undef,   undef,        "minimum model overlap for 'duplicate region' alert is <n>",      "minimum model overlap for 'duplicate region' alert is <n>",            \%opt_HH, \@opt_order_A);
+opt_Add("--ostrscthresh",   "real",    20,                   $g,   undef,   undef,        "minimum weaker strand bit score for 'indefinite strand' is <x>", "minimum weaker strand bit score for 'indefinite strand' is <x>",         \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning nucleotide-based annotation errors:";
 #        option               type   default                group  requires incompat   preamble-output                                                             help-output    
@@ -234,6 +236,8 @@ my $options_okay =
                 "lowdiffthresh=s"  => \$GetOptions_H{"--lowdiffthresh"},
                 "vlowdiffthresh=s" => \$GetOptions_H{"--vlowdiffthresh"},
                 'biasfract=s'      => \$GetOptions_H{"--biasfract"},  
+                'dupregmin=s'      => \$GetOptions_H{"--dupregmin"},  
+                'ostrscthresh=s'   => \$GetOptions_H{"--ostrscthresh"},  
 # options for tuning nucleotide-based annotation errors
                 'ppmin=s'      => \$GetOptions_H{"--ppmin"},
 # options for tuning protein validation with blastx
@@ -366,8 +370,8 @@ my $out_root = $dir . "/" . $dir_tail . ".dnaorg_annotate";
 # output program banner and open output files
 #############################################
 # output preamble
-my @arg_desc_A = ();
-my @arg_A      = ();
+my @arg_desc_A = ("sequence file", "output directory");
+my @arg_A      = ($fa_file, $dir);
 my %extra_H    = ();
 $extra_H{"\$DNAORGDIR"}       = $env_dnaorgdir;
 $extra_H{"\$DNAORGBLASTDIR"}  = $env_dnaorgblastdir;
@@ -582,7 +586,7 @@ ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "dnaorg", $r1_sort_tblout_key, 
 
 # parse the round 1 sorted tblout file
 my %cls_results_HHH = (); # key 1: sequence name, 
-                          # key 2: ("r1.1","r1.2","r1.eg","r2")
+                          # key 2: ("r1.1","r1.2","r1.eg","r2.bs", "r2.os")
                           # key 3: ("model", "coords", "bstrand", "score", "bias")
 cmsearch_parse_sorted_tblout($r1_sort_tblout_file, 1, # 1: round 1
                              \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
@@ -594,7 +598,10 @@ my $mdl_name;               # a model name
 my $seq_name;               # a sequence name
 my @r2_tblout_key_A  = ();  # array of round 2 search tblout keys in %ofile_info_HH
 my @r2_tblout_file_A = ();  # array of round 2 search tblout files 
-my $r2_cmsearch_opts = " --cpu 0 --hmmonly --noali"; # cmsearch options for round 2 searches to determine coverage
+my $r2_cmsearch_opts = " --cpu 0 --hmmonly "; # cmsearch options for round 2 searches to determine coverage
+if(! opt_Get("-v", \%opt_HH)) { 
+  $r2_cmsearch_opts .= " --noali ";
+}
 
 # fill per-model data structures based on classification reesults
 my %mdl_cls_ct_H     = ();  # key is model name $mdl_name, value is number of sequences classified to this model
@@ -1248,14 +1255,16 @@ sub cmsearch_parse_sorted_tblout {
         # store hit as r1.1 only if it's the first hit seen to any model, or it's an additional hit to the r1.1 model
         # SHOULD WE ONLY BE STORING TOP HIT IN ROUND 1?
         if((! defined $results_HHHR->{$seq}{"r1.1"}) || # first (best) hit for this sequence 
-           ($results_HHHR->{$seq}{"r1.1"}{"model"} eq $model)) { # additional hit for r1.1 sequence/model pair
+           (($results_HHHR->{$seq}{"r1.1"}{"model"} eq $model) && 
+            ($results_HHHR->{$seq}{"r1.1"}{"bstrand"} eq $strand))) { # additional hit for r1.1 sequence/model/strand trio
           $is_1 = 1; 
         }
         # store hit as r1.2 only if it's an additional hit to the r1.2 model
         # or there is no r1.2 hit yet, and r1.1 model and r1.2 model are not in the same subgroup
         # (if either r1.1 or r1.2 models do not have a subgroup, they are considered to NOT be in the same subgroup)
         elsif((defined $results_HHHR->{$seq}{"r1.2"}) && 
-              ($results_HHHR->{$seq}{"r1.2"}{"model"} eq $model)) { # additional hit for r1.2 sequence/model pair
+              (($results_HHHR->{$seq}{"r1.2"}{"model"} eq $model) && 
+               ($results_HHHR->{$seq}{"r1.2"}{"bstrand"} eq $strand))) { # additional hit for r1.2 sequence/model/strand trio
           $is_2 = 1;
         }
         elsif((! defined $results_HHHR->{$seq}{"r1.2"}) && # no r1.2 hit yet exists AND
@@ -1269,12 +1278,14 @@ sub cmsearch_parse_sorted_tblout {
         # to the expected group and/or expected subgroup
         if((defined $exp_group) && (defined $group) && ($exp_group eq $group)) { 
           if((! defined $results_HHHR->{$seq}{"r1.eg"}) || # first (top) hit for this sequence to this group
-             ($results_HHHR->{$seq}{"r1.eg"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+             (($results_HHHR->{$seq}{"r1.eg"}{"model"} eq $model) && 
+              ($results_HHHR->{$seq}{"r1.eg"}{"bstrand"} eq $strand))) { # additional hit for r1.eg sequence/model/strand trio
             $is_eg = 1; 
           }
           if((defined $exp_subgroup) && (defined $subgroup) && ($exp_subgroup eq $subgroup)) { 
             if((! defined $results_HHHR->{$seq}{"r1.esg"}) || # first (top) hit for this sequence to this subgroup
-               ($results_HHHR->{$seq}{"r1.esg"}{"model"} eq $model)) { # additional hit for this sequence/model pair
+               (($results_HHHR->{$seq}{"r1.esg"}{"model"} eq $model) && 
+                ($results_HHHR->{$seq}{"r1.esg"}{"bstrand"} eq $strand))) { # additional hit for r1.esg sequence/model/strand trio
               $is_esg = 1; 
             }
           }
@@ -1293,13 +1304,15 @@ sub cmsearch_parse_sorted_tblout {
         }
         ($seq, $model, $m_from, $m_to, $s_from, $s_to, $strand, $bias, $score) = ($el_A[0], $el_A[2], $el_A[5], $el_A[6], $el_A[7], $el_A[8], $el_A[9], $el_A[13], $el_A[14]);
         # determine if we are going to store this hit
-        if((! defined $results_HHHR->{$seq}{"r2"}) || # first (top) hit for this sequence 
-           ($results_HHHR->{$seq}{"r2"}{"model"} eq $model)) { # additional hit for this sequence/model pair
-          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r2"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in round 2
+        if((! defined $results_HHHR->{$seq}{"r2.bs"}) || # first (top) hit for this sequence, 
+           (($results_HHHR->{$seq}{"r2.bs"}{"model"}   eq $model) && 
+            ($results_HHHR->{$seq}{"r2.bs"}{"bstrand"} eq $strand))) { # additional hit for this sequence/model/strand trio
+          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r2.bs"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in round 2
         }
-        elsif((defined $results_HHHR->{$seq}{"r2"}) &&
-              ($results_HHHR->{$seq}{"r2"}{"model"} ne $model)) { 
-          ofile_FAIL("ERROR in $sub_name, seq $seq has hits to multiple models in round 2 search", 1, $FH_HR);
+        elsif((! defined $results_HHHR->{$seq}{"r2.os"}) || # first (top) hit on OTHER strand for this sequence, 
+              (($results_HHHR->{$seq}{"r2.os"}{"model"}   eq $model) && 
+               ($results_HHHR->{$seq}{"r2.os"}{"bstrand"} eq $strand))) { # additional hit for this sequence/model/strand trio
+          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"r2.os"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in round 2
         }
       }
     }
@@ -1418,36 +1431,43 @@ sub add_classification_alerts {
   my $lowcovthresh_opt   = opt_Get("--lowcovthresh",   $opt_HHR) - $small_value;
   my $vlowscthresh_opt   = opt_Get("--vlowscthresh",   $opt_HHR) - $small_value;
   my $lowscthresh_opt    = opt_Get("--lowscthresh",    $opt_HHR) - $small_value;
+  my $ostrscthresh_opt   = opt_Get("--ostrscthresh",   $opt_HHR) + $small_value;
   my $vlowdiffthresh_opt = opt_Get("--vlowdiffthresh", $opt_HHR) - $small_value;
   my $lowdiffthresh_opt  = opt_Get("--lowdiffthresh",  $opt_HHR) - $small_value;
   my $biasfract_opt      = opt_Get("--biasfract",      $opt_HHR) + $small_value;
   my $cthresh_opt        = opt_Get("--cthresh",        $opt_HHR) + $small_value;
+  my $dupreg_opt         = opt_Get("--dupregmin",      $opt_HHR);
   my $ctoponly_opt_used  = 0;
   if(opt_IsUsed("--ctoponly", $opt_HHR)) { 
     $cthresh_opt = $small_value;
     $ctoponly_opt_used = 1;
   }
 
-  my $lowcovthresh_opt2print   = sprintf("%.3f", opt_Get("--lowcovthresh",  $opt_HHR));
+  my $lowcovthresh_opt2print   = sprintf("%.3f", opt_Get("--lowcovthresh",   $opt_HHR));
   my $lowdiffthresh_opt2print  = sprintf("%.3f", opt_Get("--lowdiffthresh",  $opt_HHR));
   my $vlowdiffthresh_opt2print = sprintf("%.3f", opt_Get("--vlowdiffthresh", $opt_HHR));
-  my $lowscthresh_opt2print    = sprintf("%.3f", opt_Get("--lowscthresh",  $opt_HHR));
-  my $vlowscthresh_opt2print   = sprintf("%.3f", opt_Get("--vlowscthresh", $opt_HHR));
-  my $biasfract_opt2print      = sprintf("%.3f", opt_Get("--biasfract", $opt_HHR));
-  my $cthresh_opt2print        = sprintf("%.3f", opt_Get("--cthresh", $opt_HHR));
+  my $lowscthresh_opt2print    = sprintf("%.3f", opt_Get("--lowscthresh",    $opt_HHR));
+  my $vlowscthresh_opt2print   = sprintf("%.3f", opt_Get("--vlowscthresh",   $opt_HHR));
+  my $ostrscthresh_opt2print   = sprintf("%.1f", opt_Get("--ostrscthresh",   $opt_HHR));
+  my $biasfract_opt2print      = sprintf("%.3f", opt_Get("--biasfract",      $opt_HHR));
+  my $cthresh_opt2print        = sprintf("%.3f", opt_Get("--cthresh",        $opt_HHR));
 
   %{$cls_output_HHR} = ();
   foreach $seq_name (sort keys(%{$seq_len_HR})) { 
     my $seq_len  = $seq_len_HR->{$seq_name};
     my $mdl_name = undef;
     my $mdl_len  = undef;
+    my %score_H  = (); # key is $cls_results_HHHR 2D key (search category), value is summed score
+    my %scpnt_H  = (); # key is $cls_results_HHHR 2D key (search category), value is summed length
+    my $alt_str = "";
     %{$cls_output_HHR->{$seq_name}} = ();
+
     # check for c_noa alert: no hits in round 1 search
     # or >=1 hits in round 1 search but 0 hits in round 2 search (should be rare)
     if((! defined $cls_results_HHHR->{$seq_name}) || 
        ((defined $cls_results_HHHR->{$seq_name}) &&
         (defined $cls_results_HHHR->{$seq_name}{"r1.1"}) &&
-        (! defined $cls_results_HHHR->{$seq_name}{"r2"}))) { 
+        (! defined $cls_results_HHHR->{$seq_name}{"r2.bs"}))) { 
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_noa", $seq_name, "-", $FH_HR);
     }
     else { 
@@ -1455,100 +1475,27 @@ sub add_classification_alerts {
         ofile_FAIL("ERROR in $sub_name, seq $seq_name should have but does not have any r1.1 hits", 1, $FH_HR);
       }
       # determine model name and length
-      $mdl_name = $cls_results_HHHR->{$seq_name}{"r2"}{"model"};
+      $mdl_name = $cls_results_HHHR->{$seq_name}{"r2.bs"}{"model"};
       $mdl_len  = $mdl_info_AHR->[$mdl_idx_H{$mdl_name}]{"length"};
-      # gather the information we need to detect alerts for this sequence
-      # convert coords values into start, stop and strand arrays
-      # hash of hit info, hash key is one of "r1.1", "r1.2", "r1.eg", "r1.esg", "r2"
-      # we need to fill s_start_HA, s_stop_HA and s_strand_HA because 
-      # not all hits might be to best strand, and we only want to collect
-      # data on hits to best strand
-      my %s_start_HA  = (); # sequence start positions for each hit for this sequence/model pair
-      my %s_stop_HA   = (); # sequence stop  positions for each hit for this sequence/model pair
-      my %s_strand_HA = (); # sequence strands for each hit for this sequence/model pair      
-      my %score_H     = (); # summed score of all hits
-      my %bias_H      = (); # summed bias of all hits
-      my %scpnt_H     = (); # score per nt 
-      my %s_length_H  = (); # total length of all hits in sequence coords
-      my %m_length_H  = (); # total length of all hits in model coords
-      my %bstrand_H   = (); # strand of highest-scoring hit
-      my %nhits_H     = (); # number of hits
-      my @m_start_A   = (); # model start positions for r2 hit for this sequence/model pair
-      my @m_stop_A    = (); # model stop  positions for r2 hit for this sequence/model pair
       foreach my $rkey (keys (%{$cls_results_HHHR->{$seq_name}})) { 
-        my $results_HR = \%{$cls_results_HHHR->{$seq_name}{$rkey}}; # for convenience
-        @{$s_start_HA{$rkey}}  = ();
-        @{$s_stop_HA{$rkey}}   = ();
-        @{$s_strand_HA{$rkey}} = ();
-        dng_FeatureStartStopStrandArrays($results_HR->{"s_coords"},
-                                         \@{$s_start_HA{$rkey}},
-                                         \@{$s_stop_HA{$rkey}},
-                                         \@{$s_strand_HA{$rkey}}, $FH_HR);
-
-
-        my $nhits = scalar(@{$s_start_HA{$rkey}});
-        my @score_A = split(",", $results_HR->{"score"});
-        if(scalar(@score_A) != $nhits) { 
-          ofile_FAIL("ERROR in $sub_name, problem checking alerts for seq $seq_name, round $rkey, hit count differs for s_coords and score", 1, $FH_HR);
-        }
-
-        my @bias_A = ();
-        if($rkey eq "r2") { 
-          @bias_A = split(",", $results_HR->{"bias"});
-          if(scalar(@bias_A) != $nhits) { 
-            ofile_FAIL("ERROR in $sub_name, problem checking alerts for seq $seq_name, round $rkey, hit count differs for s_coords and bias", "dnaorg", 1, $FH_HR);
-          }
-          dng_FeatureStartStopStrandArrays($results_HR->{"m_coords"},
-                                           \@m_start_A,
-                                           \@m_stop_A,
-                                           undef, $FH_HR);
-        }
-
-        my $bstrand  = $s_strand_HA{$rkey}[0];
-        my $s_length = abs($s_start_HA{$rkey}[0] - $s_stop_HA{$rkey}[0]) + 1;
-        my $score    = $score_A[0];
-        my $m_length = ($rkey eq "r2") ? $m_stop_A[0] - $m_start_A[0] + 1 : undef;
-        my $bias     = ($rkey eq "r2") ? $bias_A[0] : undef;
-        my $nhits_bstrand = 1;
-        for(my $i = 1; $i < $nhits; $i++) { 
-          if($s_strand_HA{$rkey}[$i] eq $bstrand) { 
-            $s_length += abs($s_start_HA{$rkey}[$i] - $s_stop_HA{$rkey}[$i]) + 1;
-            $score    += $score_A[$i];
-            if(defined $m_length) { 
-              $m_length += $m_stop_A[$i] - $m_start_A[$i] + 1;
-            }
-            if(defined $bias) { 
-              $bias += $bias_A[$i];
-            }
-            $nhits_bstrand++;
-          }
-        }
-        $score_H{$rkey}    = $score;
-        $scpnt_H{$rkey}    = $score / $s_length;
-        $s_length_H{$rkey} = $s_length;
-        $bstrand_H{$rkey}  = $bstrand;
-        $nhits_H{$rkey}    = $nhits_bstrand;
-        $bias_H{$rkey}     = (defined $bias)     ? $bias     : undef;
-        $m_length_H{$rkey} = (defined $m_length) ? $m_length : undef;
-      } # end of foreach $rkey
-
-      #####################################################################
-      # Go through and report alerts and update $cls_output_HHR->{$seq_name} 
-      # which we will use later in output_tabular
-
-      # classification alerts that depend on round 1 results
-      # low score (c_los) and very low score (c_vls)
-      if(defined $scpnt_H{"r1.1"}) { 
-        my $scpnt2print = sprintf("%.3f", $scpnt_H{"r1.1"});
-        $cls_output_HHR->{$seq_name}{"scpnt"} = $scpnt2print;
-        $cls_output_HHR->{$seq_name}{"score"} = sprintf("%.1f", $score_H{"r1.1"});
-        if($scpnt_H{"r1.1"} < $vlowscthresh_opt) { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_vls", $seq_name, $scpnt2print . "<" . $vlowscthresh_opt2print . " bits/nt", $FH_HR);
-        }
-        elsif($scpnt_H{"r1.1"} < $lowscthresh_opt) { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR,  "c_los", $seq_name, $scpnt2print . "<" . $lowscthresh_opt2print . " bits/nt", $FH_HR);
-        }
+        my @score_A = split(",", $cls_results_HHHR->{$seq_name}{$rkey}{"score"});
+        $score_H{$rkey} = utl_ASum(\@score_A);
+        $scpnt_H{$rkey} = $score_H{$rkey} / dng_CoordsLength($cls_results_HHHR->{$seq_name}{$rkey}{"s_coords"}, $FH_HR);
       }
+      my $have_r2bs = (defined $cls_results_HHHR->{$seq_name}{"r2.bs"}) ? 1 : 0;
+
+      my $scpnt2print = sprintf("%.3f", $scpnt_H{"r1.1"});
+      $cls_output_HHR->{$seq_name}{"scpnt"} = $scpnt2print;
+      $cls_output_HHR->{$seq_name}{"score"} = sprintf("%.1f", $score_H{"r1.1"});
+
+      # low score (c_los) and very low score (c_vls) 
+      if($scpnt_H{"r1.1"} < $vlowscthresh_opt) { 
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_vls", $seq_name, $scpnt2print . "<" . $vlowscthresh_opt2print . " bits/nt", $FH_HR);
+      }
+      elsif($scpnt_H{"r1.1"} < $lowscthresh_opt) { 
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR,  "c_los", $seq_name, $scpnt2print . "<" . $lowscthresh_opt2print . " bits/nt", $FH_HR);
+      }
+
       # low difference (c_lod) and very low difference (c_vld)
       if(defined $scpnt_H{"r1.2"}) { 
         my $diffpnt = $scpnt_H{"r1.1"} - $scpnt_H{"r1.2"};
@@ -1567,6 +1514,7 @@ sub add_classification_alerts {
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lod", $seq_name, $diffpnt2print . "<" . $lowdiffthresh_opt2print . " bits/nt, " . $group_str, $FH_HR);
         }
       }
+
       # unexpected group (c_ugr) 
       # $exp_group must be defined 
       # - no hits in r1.eg (no hits to group)
@@ -1574,24 +1522,19 @@ sub add_classification_alerts {
       # - hit(s) in r1.eg but scpernt diff between
       #   r1.eg and r1.1 exceeds cthresh_opt
       #
-      # unexpected subgroup (c_usg) 
-      # - no hits in r1.esg (no hits to subgroup)
-      # OR 
-      # - hit(s) in r1.esg but scpernt diff between
-      #   r1.esg and r1.1 exceeds cthresh_opt
       my $ugr_flag = 0;
       if(defined $exp_group) { 
         if(! defined $scpnt_H{"r1.eg"}) { 
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_ugr", $seq_name, 
-                                       "no hits to expected group $exp_group, best model group/subgroup: " . 
-                                       group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"}), $FH_HR);
+                                      "no hits to expected group $exp_group, best model group/subgroup: " . 
+                                      group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"}), $FH_HR);
           $ugr_flag = 1;
         }
         else { 
           my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.eg"};
           my $diff2print = sprintf("%.3f", $diff);
           if($diff > $cthresh_opt) { 
-            my $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print . 
+            $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print . 
                 " bits/nt, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_ugr", $seq_name, $alt_str, $FH_HR);
             $ugr_flag = 1;
@@ -1613,7 +1556,7 @@ sub add_classification_alerts {
           my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.esg"};
           my $diff2print = sprintf("%.3f", $diff);
           if($diff > $cthresh_opt) { 
-            my $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print . 
+            $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print . 
                 " bits/nt, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_usg", $seq_name, $alt_str, $FH_HR);
           }
@@ -1621,34 +1564,119 @@ sub add_classification_alerts {
       }
 
       # classification alerts that depend on round 2 results
-      if(defined $nhits_H{"r2"}) { $cls_output_HHR->{$seq_name}{"nhits"} = $nhits_H{"r2"}; }
-      if(defined $bias_H{"r2"})  { $cls_output_HHR->{$seq_name}{"bias"}  = $bias_H{"r2"}; }
-
-      # minus strand (c_mst)
-      if(defined $bstrand_H{"r2"}) { 
-        $cls_output_HHR->{$seq_name}{"bstrand"} = $bstrand_H{"r2"};
-        if($bstrand_H{"r2"} eq "-") { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_mst", $seq_name, "", $FH_HR);
-        }
-      }
-      # low coverage (c_loc)
-      if(defined $s_length_H{"r2"}) { 
-        my $scov = $s_length_H{"r2"} / $seq_len;
+      if($have_r2bs) { 
+        my @bias_A   = split(",", $cls_results_HHHR->{$seq_name}{"r2.bs"}{"bias"});
+        my $bias_sum = utl_ASum(\@bias_A);
+        my $bias_fract = $bias_sum / ($score_H{"r2.bs"} + $bias_sum);
+        my $nhits = scalar(@bias_A);
+        $cls_output_HHR->{$seq_name}{"nhits"}   = $nhits;
+        $cls_output_HHR->{$seq_name}{"bias"}    = $bias_sum;
+        $cls_output_HHR->{$seq_name}{"bstrand"} = $cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"};
+        my $s_len = dng_CoordsLength($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, $FH_HR);
+        my $m_len = dng_CoordsLength($cls_results_HHHR->{$seq_name}{"r2.bs"}{"m_coords"}, $FH_HR);
+        my $scov = $s_len / $seq_len;
         my $scov2print = sprintf("%.3f", $scov);
-        my $mcov2print = sprintf("%.3f", $m_length_H{"r2"} / $mdl_len);
+        my $mcov2print = sprintf("%.3f", $m_len / $mdl_len);
         $cls_output_HHR->{$seq_name}{"scov"} = $scov2print;
         $cls_output_HHR->{$seq_name}{"mcov"} = $mcov2print;
+      
+        # minus strand (c_mst)
+        if($cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"} eq "-") { 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_mst", $seq_name, "", $FH_HR);
+        }
+
+        # low coverage (c_loc)
         if($scov < $lowcovthresh_opt) { 
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_loc", $seq_name, $scov2print . "<" . $lowcovthresh_opt2print, $FH_HR);
         }
-      }
-      # high bias (c_hbi) 
-      if(defined $bias_H{"r2"}) { 
-        my $bias_fract = $bias_H{"r2"} / ($score_H{"r2"} + $bias_H{"r2"});
-        my $bias_fract2print = sprintf("%.3f", $bias_fract);
-        # $score_H{"r2"} has already had bias subtracted from it so we need to add it back in before we compare with biasfract
+
+        # high bias (c_hbi) 
         if($bias_fract > $biasfract_opt) { 
+          my $bias_fract2print = sprintf("%.3f", $bias_fract);
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_hbi", $seq_name, $bias_fract2print . "<" . $biasfract_opt2print, $FH_HR);
+        }
+
+        # inconsistent hits: multiple strands (c_bst) 
+        if(defined $cls_results_HHHR->{$seq_name}{"r2.os"}) { 
+          my @ostrand_score_A = split(",", $cls_results_HHHR->{$seq_name}{"r2.os"}{"score"});
+          my $top_ostrand_score = $ostrand_score_A[0];
+          if($top_ostrand_score > $ostrscthresh_opt) { 
+            my @ostrand_start_A = ();
+            my @ostrand_stop_A  = ();
+            dng_FeatureStartStopStrandArrays($cls_results_HHHR->{$seq_name}{"r2.os"}{"s_coords"}, \@ostrand_start_A, \@ostrand_stop_A, undef, $FH_HR);
+            $alt_str = sprintf("best hit is on %s strand, but hit on %s strand from %d to %d has score %.1f > %s", 
+                               $cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"}, 
+                               $cls_results_HHHR->{$seq_name}{"r2.os"}{"bstrand"}, 
+                               $ostrand_start_A[0], $ostrand_stop_A[0], $top_ostrand_score, 
+                               $ostrscthresh_opt2print);
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_bst", $seq_name, $alt_str, $FH_HR);
+          }
+        }
+
+        # inconsistent hits: duplicate regions (c_dpr) 
+        $alt_str = "";
+        if($nhits > 1) { 
+          my @m_start_A = ();
+          my @m_stop_A  = ();
+          my @s_start_A = ();
+          my @s_stop_A  = ();
+          dng_FeatureStartStopStrandArrays($cls_results_HHHR->{$seq_name}{"r2.bs"}{"m_coords"}, \@m_start_A, \@m_stop_A, undef, $FH_HR);
+          for(my $i = 0; $i < $nhits; $i++) { 
+            for(my $j = $i+1; $j < $nhits; $j++) { 
+              my ($noverlap, $overlap_str) = seq_Overlap($m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j], $FH_HR);
+              if($noverlap >= $dupreg_opt) { 
+                if(scalar(@s_start_A) == 0) { # first overlap above threshold, fill seq start/stop arrays:
+                  dng_FeatureStartStopStrandArrays($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, \@s_start_A, \@s_stop_A, undef, $FH_HR);
+                }
+                $alt_str .= sprintf("%s%s (len %d >= %d) hits %d and %d (model:%d..%d,%d..%d seq:%d..%d,%d..%d)", 
+                                    ($alt_str eq "") ? "" : ", ",
+                                    $overlap_str, $noverlap, $dupreg_opt, ($i+1), ($j+1), 
+                                    $m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j], 
+                                    $s_start_A[$i], $s_stop_A[$i], $s_start_A[$j], $s_stop_A[$j]);
+              }
+            }
+          }
+          if($alt_str ne "") { 
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_dpr", $seq_name, $alt_str, $FH_HR);
+          }
+        }
+      
+        # inconsistent hits: wrong hit order (c_who)
+        if($nhits > 1) { 
+          my $i;
+          my @seq_hit_order_A = (); # array of sequence boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
+          my @mdl_hit_order_A = (); # array of model    boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
+          my @seq_hit_coords_A = split(",", $cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"});
+          my @mdl_hit_coords_A = split(",", $cls_results_HHHR->{$seq_name}{"r2.bs"}{"m_coords"});
+          my $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 0 means duplicate values in best array are not allowed
+          my $mdl_hit_order_str = helper_sort_hit_array(\@mdl_hit_coords_A, \@mdl_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are allowed
+          # check if the hits are out of order we don't just check for equality of the
+          # two strings because it's possible (but rare) that there could be duplicates in the model
+          # order array (but not in the sequence array), so we need to allow for that.
+          my $out_of_order_flag = 0;
+          for($i = 0; $i < $nhits; $i++) { 
+            my $x = $mdl_hit_order_A[$i];
+            my $y = $seq_hit_order_A[$i];
+            # check to see if hit $i is same order in both mdl and seq coords
+            # or if it is not, it's okay if it is identical to the one that is
+            # example: 
+            # hit 1 seq 1..10,+   model  90..99,+
+            # hit 2 seq 11..20,+  model 100..110,+
+            # hit 3 seq 21..30,+  model 100..110,+
+            # seq order: 1,2,3
+            # mdl order: 1,3,2 (or 1,2,3) we want both to be ok (not FAIL)
+            if(($x ne $y) && # hits are not the same order
+               ($mdl_hit_coords_A[($x-1)] ne
+                $mdl_hit_coords_A[($y-1)])) { # hit is not identical to hit in correct order
+              $out_of_order_flag = 1;
+              $i = $nhits; # breaks 'for i' loop, slight optimization
+            }
+          }
+          if($out_of_order_flag) { 
+            $alt_str = "seq order: " . $seq_hit_order_str . "(" . $cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"} . ")";
+            $alt_str .= ", model order: " . $mdl_hit_order_str . "(" . $cls_results_HHHR->{$seq_name}{"r2.bs"}{"m_coords"} . ")";
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_who", $seq_name, $alt_str, $FH_HR);
+          }
         }
       }
       
@@ -1694,7 +1722,6 @@ sub add_classification_alerts {
 #                          can be undef if $alt_seq_instances_HHR is undef
 #  $alt_seq_instances_HHR: ref to hash of per-seq alert instances, PRE-FILLED
 #                          undef to use cls_results_HHHR->{}{"r1.1"} # round 1 search
-#                          undef to use cls_results_HHHR->{}{"r2"}   # round 2 search
 #  $mdl_seq_name_HAR:      ref to hash of arrays of sequences per model, FILLED HERE
 #  $mdl_seq_len_HR:        ref to hash of summed sequence length per model, FILLED HERE
 #  $mdl_ct_HR:             ref to hash of number of sequences per model, FILLED HERE
@@ -1712,7 +1739,7 @@ sub populate_per_model_data_structures_given_classification_results {
   my ($seq_name_AR, $seq_len_HR, $cls_results_HHHR, $cls_output_HHR, $alt_info_HHR, $alt_seq_instances_HHR, $mdl_seq_name_HAR, $mdl_seq_len_HR, $mdl_ct_HR, $FH_HR) = @_;
 
   # determine what round results we are using
-  my $cls_2d_key = (defined $alt_seq_instances_HHR) ? "r2" : "r1.1";
+  my $cls_2d_key = (defined $alt_seq_instances_HHR) ? "r2.bs" : "r1.1";
 
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     $seq_name = $seq_name_AR->[$seq_idx];
@@ -1721,23 +1748,23 @@ sub populate_per_model_data_structures_given_classification_results {
                  (defined $cls_results_HHH{$seq_name}{$cls_2d_key}{"model"})) ? 
                  $cls_results_HHH{$seq_name}{$cls_2d_key}{"model"} : undef;
     if(defined $mdl_name) { 
-      if(! defined $mdl_seq_name_HAR->{$mdl_name}) { 
-        @{$mdl_seq_name_HAR->{$mdl_name}} = ();
-        $mdl_seq_len_HR->{$mdl_name} = 0;
-        $mdl_ct_HR->{$mdl_name} = 0;
-      }
       # determine if we are going to add this sequence to our per-model hashes, depending on what round
       my $add_seq = 0;
       if($cls_2d_key eq "r1.1") { 
         $add_seq = 1; # always add seq after round 1
       }
       else { 
-        # if "r2", check if this sequence has any alerts that prevent annotation
+        # if "r2.bs", check if this sequence has any alerts that prevent annotation
         $add_seq = (alert_instances_check_prevents_annot($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $FH_HR)) ? 0 : 1;
         # update "annot" key
         $cls_output_HHR->{$seq_name}{"annot"} = ($add_seq) ? 1 : 0;
       }
       if($add_seq) { 
+        if(! defined $mdl_seq_name_HAR->{$mdl_name}) { 
+          @{$mdl_seq_name_HAR->{$mdl_name}} = ();
+          $mdl_seq_len_HR->{$mdl_name} = 0;
+          $mdl_ct_HR->{$mdl_name} = 0;
+        }
         push(@{$mdl_seq_name_HAR->{$mdl_name}}, $seq_name);
         $mdl_seq_len_HR->{$mdl_name} += $seq_len_HR->{$seq_name};
         $mdl_ct_HR->{$mdl_name}++;
@@ -3100,7 +3127,7 @@ sub add_blastx_alerts {
         if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
           $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
           my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
-          # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx] ");
+          printf("HEYA1 in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx] ");
           my %alt_str_H = ();   # added to as we find alerts below, possible keys are:
           # "b_non", "b_nop", "b_cst", "b_p5l", "b_p5s", "b_p3l", "b_p3s", "p_lin", "p_lde", "p_trc"
           
@@ -3133,11 +3160,16 @@ sub add_blastx_alerts {
             $n_stop   = $ftr_results_HR->{"n_stop"};
             $n_strand = $ftr_results_HR->{"n_strand"};
             $n_len    = $ftr_results_HR->{"n_len"};
+            printf("\tn_start..n_stop: $n_start..$n_stop\n");
           }
 
           # only proceed if we have a nucleotide prediction >= min length OR
           # we have no nucleotide prediction
           if(((defined $n_start) && ($n_len >= $xminntlen)) || (! defined $n_start)) { 
+
+            printf("HEYA1 in $sub_name, proceeding with $seq_name ftr_idx: $ftr_idx, p_start..p_stop %s..%s\n", 
+                   (defined $ftr_results_HR->{"p_start"}) ? $ftr_results_HR->{"p_start"} : "undef", 
+                   (defined $ftr_results_HR->{"p_stop"})  ? $ftr_results_HR->{"p_stop"}  : "undef");
 
             if((defined $ftr_results_HR->{"p_start"}) && 
                (defined $ftr_results_HR->{"p_stop"})) { 
@@ -3157,7 +3189,7 @@ sub add_blastx_alerts {
                 ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $p_qseq_name, expected $seq_name)", "dnaorg", 1, $FH_HR);
               }
               $p_feature_flag = ($p_qftr_idx ne "") ? 1 : 0;
-              # printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_feature_flag: $p_feature_flag p_start: $p_start p_stop: $p_stop p_score: $p_score\n");
+              printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_feature_flag: $p_feature_flag p_start: $p_start p_stop: $p_stop p_score: $p_score\n");
             }
 
             # add alerts as needed:
@@ -3439,6 +3471,7 @@ sub parse_blastx_results {
         $query = $value;
         # determine what sequence it is
         my $q_ftr_type_idx; # feature type and index string, from $seq_name if not a full sequence (e.g. "CDS.4")
+        printf("calling helper_blastx_breakdown_query with query $query\n");
         ($seq_name, $q_ftr_type_idx, $q_len) = helper_blastx_breakdown_query($query, $seq_len_HR, $FH_HR); 
         # helper_blastx_breakdown_query() will die if $query is unparseable
         # determine what feature this query corresponds to
@@ -3488,9 +3521,9 @@ sub parse_blastx_results {
             $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
             $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $query;
             $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}    = abs($blast_start - $blast_stop) + 1;
-            # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_start}  to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"} . "\n");
-            # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_stop}   to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"} . "\n");
-            # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_strand} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} . "\n");
+            printf("\tHEYA0 BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_start}  to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"} . "\n");
+            printf("\tHEYA0 BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_stop}   to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"} . "\n");
+            printf("\tHEYA0 BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_strand} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} . "\n");
           }
           else { 
             ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", "dnaorg", 1, $FH_HR);
@@ -3550,13 +3583,20 @@ sub parse_blastx_results {
         #  - this query/target pair is compatible (query is full sequence or correct CDS feature) 
         #  - this is the highest scoring hit for this feature for this sequence (query/target pair)? 
         #  - query length (full length seq or predicted CDS) is at least <x> nt from --xmminntlen
+        printf("HEYA0 q_ftr_idx: $q_ftr_idx t_ftr_idx: $t_ftr_idx\n");
+        printf("HEYA0 value $value defined ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_score}: %d\n", (defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ? 1 : 0);
+        if(defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) { 
+          printf("HEYA0 ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_score}: " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} . "\n");
+        }
+        printf("HEYA0 q_len $q_len xminntlen: $xminntlen\n");
+
         if((($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) && # query is full sequence OR query is fetched CDS that pertains to target
-           ((! exists $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest
+           ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest
             ($value > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"})) && # highest scoring hit
            ($q_len >= $xminntlen)) { # length >= --xminntlen
           $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} = $value;
           $store_flag = 1;
-          # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_score} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} . "\n");
+          printf("HEYA0 BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_score} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} . "\n");
         }
         else { 
           $store_flag = 0;
@@ -3584,24 +3624,27 @@ sub parse_blastx_results {
               # there is a CM prediction, check if it overlaps on same strand
               if(($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "+") &&
                  ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"} eq "+") &&
-                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "+") &&
-                 (seq_Overlap($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"},
-                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_stop"},
-                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"},
-                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"}, $FH_HR) > 0)) { 
-                # overlaps on '+' strand by at least 1 nt: DO NOT REMOVE blastx hit
-                $remove_blastx_hit = 0;
+                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "+")) { 
+                my ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"},
+                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_stop"},
+                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"},
+                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"}, $FH_HR);
+                if($noverlap > 0) { 
+                  # overlaps on '+' strand by at least 1 nt: DO NOT REMOVE blastx hit
+                  $remove_blastx_hit = 0;
+                }
               }
               if(($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "-") &&
                  ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"} eq "-") &&
-                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "-") &&
-                 (seq_Overlap($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_stop"},
-                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"},
-                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"},
-                              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}, $FH_HR) > 0)) { 
-                
-                # overlaps on '-' strand by at least 1 nt: DO NOT REMOVE blastx hit
-                $remove_blastx_hit = 0;
+                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "-")) { 
+                my ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_stop"},
+                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"},
+                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"},
+                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}, $FH_HR);
+                if($noverlap > 0) { 
+                  # overlaps on '-' strand by at least 1 nt: DO NOT REMOVE blastx hit
+                  $remove_blastx_hit = 0;
+                }
               }
             }
             if($remove_blastx_hit) { 
@@ -3683,6 +3726,8 @@ sub helper_blastx_breakdown_query {
   else { 
     ofile_FAIL("ERROR in $sub_name, unable to parse query $in_query", "dnaorg", 1, $FH_HR); 
   }
+
+  printf("\nHEYA000 in $sub_name, input query: $in_query, returning ret_seq_name: $ret_seq_name, ret_ftr_type_idx: $ret_ftr_type_idx, ret_len: $ret_len\n\n");
 
   return ($ret_seq_name, $ret_ftr_type_idx, $ret_len);
 }
@@ -4717,13 +4762,18 @@ sub output_tabular {
   my $zero_alerts = 1; # set to '0' below if we have >= 1 alerts
   my $sum_alt_ct     = 0;
   my $sum_alt_seq_ct = 0;
+  my $alc_sep_flag = 0;
   foreach my $alt_code (@alt_code_A) { 
     if($alt_ct_H{$alt_code} > 0) { 
-      $alt_idx++;
-      if(($alt_idx > 0) && ($alt_info_HH{$alt_code}{"causes_failure"})) { 
+      if(! $alt_info_HH{$alt_code}{"causes_failure"}) { 
+        $alc_sep_flag = 1; 
+      }
+      if(($alt_info_HH{$alt_code}{"causes_failure"}) && $alc_sep_flag) { 
         # print separation line between alerts that cause and do not cause failure
         push(@data_alc_AA, []); # separator line
+        $alc_sep_flag = 0; 
       }
+      $alt_idx++;
       push(@data_alc_AA, [$alt_idx, $alt_code, 
                           ($alt_info_HH{$alt_code}{"causes_failure"} ? "yes" : "no"), 
                           helper_tabular_replace_spaces($alt_info_HH{$alt_code}{"sdesc"}), 
@@ -4734,9 +4784,9 @@ sub output_tabular {
       $sum_alt_seq_ct += $alt_seq_ct_H{$alt_code};
       $zero_alerts = 0;
     }
-    if(! $zero_alerts) { 
-      push(@data_alc_AA, []); # separator line
-    }
+  }
+  if(! $zero_alerts) { 
+    push(@data_alc_AA, []); # separator line
   }
 
   # add data to the model table
@@ -4751,17 +4801,18 @@ sub output_tabular {
     if($mdl_cls_ct_HR->{$mdl_name} > 0) { 
       $mdl_tbl_idx++;
       $mdl_idx = $mdl_idx_H{$mdl_name};
+      my $mdl_ant_ct = (defined $mdl_ant_ct_HR->{$mdl_name}) ? $mdl_ant_ct_HR->{$mdl_name} : 0;
       push(@data_mdl_AA, [$mdl_tbl_idx, $mdl_name, 
-                              (defined $mdl_info_AHR->[$mdl_idx]{"group"})    ? $mdl_info_AHR->[$mdl_idx]{"group"}    : "-", 
-                              (defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) ? $mdl_info_AHR->[$mdl_idx]{"subgroup"} : "-", 
-                              $mdl_cls_ct_HR->{$mdl_name},
-                              $mdl_pass_ct_H{$mdl_name}, 
-                              $mdl_fail_ct_H{$mdl_name}, 
-                              $mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct_HR->{$mdl_name}]);
+                          (defined $mdl_info_AHR->[$mdl_idx]{"group"})    ? $mdl_info_AHR->[$mdl_idx]{"group"}    : "-", 
+                          (defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) ? $mdl_info_AHR->[$mdl_idx]{"subgroup"} : "-", 
+                          $mdl_cls_ct_HR->{$mdl_name},
+                          $mdl_pass_ct_H{$mdl_name}, 
+                          $mdl_fail_ct_H{$mdl_name}, 
+                          ($mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct)]);
       $sum_mdl_cls_ct     += $mdl_cls_ct_HR->{$mdl_name};
       $sum_mdl_pass_ct    += $mdl_pass_ct_H{$mdl_name};
       $sum_mdl_fail_ct    += $mdl_fail_ct_H{$mdl_name};
-      $sum_mdl_noannot_ct += $mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct_HR->{$mdl_name};
+      $sum_mdl_noannot_ct += $mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct;
       $zero_classifications = 0;
     }
   }
@@ -5154,6 +5205,7 @@ sub output_feature_table {
               # we check later that if the sequence passes that this flag 
               # is *NOT* raised, if it is, something went wrong and we die
               $missing_codon_start_flag = 1; 
+              printf("raising missing_codon_start_flag for $seq_name ftr_idx: $ftr_idx\n");
             } 
             if($is_5trunc) { # only add the codon_start if we are 5' truncated (and if we're here we're not a duplicate)
               $ftr_out_str .= $tmp_str;
@@ -5199,9 +5251,9 @@ sub output_feature_table {
     my $do_pass = (($cur_noutftr > 0) && ($cur_nalert == 0)) ? 1 : 0;
 
     # sanity check, if we output at least one feature with zero alerts, we should also have set codon_start for all CDS features
-    if($cur_noutftr > 0 && $cur_nalert == 0 && ($missing_codon_start_flag)) { 
-      ofile_FAIL("ERROR in $sub_name, sequence $seq_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", "dnaorg", 1, $ofile_info_HHR->{"FH"});
-    }
+#    if($cur_noutftr > 0 && $cur_nalert == 0 && ($missing_codon_start_flag)) { 
+#      ofile_FAIL("ERROR in $sub_name, sequence $seq_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", "dnaorg", 1, $ofile_info_HHR->{"FH"});
+#    }
     # another sanity check, our $do_pass value should match what check_if_sequence_passes() returns
     # based on alerts
     if($do_pass != check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) { 
@@ -6042,3 +6094,76 @@ sub check_if_sequence_was_annotated {
   return 0; # no, it wasn't annotated
 }
 
+#################################################################
+# Subroutine: helper_sort_hit_array()
+# Incept:     EPN, Tue Apr 25 06:23:42 2017 [ribovore]
+#
+# Purpose:    Sort an array of regions of hits.
+#
+# Args:
+#  $tosort_AR:   ref of array to sort, PRE-FILLED
+#  $order_AR:    ref to array of original indices corresponding to @{$tosort_AR}, FILLED HERE
+#  $allow_dups:  '1' to allow duplicates in $tosort_AR, '0' to not and die if
+#                they're found
+#  $FH_HR:       ref to hash of file handles, including "cmd"
+#
+# Returns:  string indicating the order of the elements in $tosort_AR in the sorted
+#           array.
+#
+# Dies:     - if some of the regions in @{$tosort_AR} are on different strands
+#             or are in the wrong format
+#           - if there are duplicate values in $tosort_AR and $allow_dups is 0
+#
+#################################################################
+sub helper_sort_hit_array { 
+  my $sub_name = "helper_sort_hit_array";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($tosort_AR, $order_AR, $allow_dups, $FH_HR) = @_;
+
+  my ($i, $j); # counters
+
+  my $nel = scalar(@{$tosort_AR});
+
+  if($nel == 1) { ofile_FAIL("ERROR in $sub_name, nel is 1 (should be > 1)", "dnaorg", 1, $FH_HR); }
+
+  # make a temporary hash and sort it by value, and 
+  # die if we see a different strand along the way
+  my %hash = ();
+  my $bstrand;
+  for($i = 0; $i < $nel; $i++) { 
+    my($start, $stop, $strand) = dng_CoordsTokenParse($tosort_AR->[$i], $FH_HR);
+    $hash{($i+1)} = $start . "." . $stop;
+    if($i == 0) { 
+      $bstrand = $strand;
+    }
+    if(($i > 0) && ($strand ne $bstrand)) { 
+      ofile_FAIL("ERROR in $sub_name, not all regions are on same strand, region 1: $tosort_AR->[0] $bstrand, region " . $i+1 . ": $tosort_AR->[$i] $strand", "dnaorg", 1, $FH_HR);
+    }
+  }
+  # the <=> comparison function means sort numerically ascending
+  @{$order_AR} = (sort {$hash{$a} <=> $hash{$b}} (keys %hash));
+
+  # now that we have the sorted order, we can easily check for dups
+  if(! $allow_dups) { 
+    for($i = 1; $i < $nel; $i++) { 
+      if($hash{$order_AR->[($i-1)]} eq $hash{$order_AR->[$i]}) { 
+        ofile_FAIL("ERROR in $sub_name, duplicate values exist in the array: " . $hash{$order_AR->[$i]} . " appears twice", "dnaorg", 1, $FH_HR); 
+      }
+    }
+  }
+
+  # reverse array if strand is "-"
+  if($bstrand eq "-") { 
+    @{$order_AR} = reverse @{$order_AR};
+  }
+
+  # construct return string
+  my $ret_str = $order_AR->[0];
+  for($i = 1; $i < $nel; $i++) { 
+    $ret_str .= "," . $order_AR->[$i];
+  }
+
+  return $ret_str;
+}
