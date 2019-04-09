@@ -2240,6 +2240,7 @@ sub dng_ModelInfoFileWrite {
     $ftr_key_ignore_H{"source_idx"}  = 1; # will be inferred from coords and type
     $ftr_key_ignore_H{"parent_idx"}  = 1; # will be inferred from coords and type
     $ftr_key_ignore_H{"3pa_ftr_idx"} = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"outname"}     = 1; # will be inferred from product and gene (or lack of)
     $ftr_key_ignore_H{"5p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
     $ftr_key_ignore_H{"3p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
     $ftr_key_ignore_H{"location"}    = 1; # *could* (but won't be) inferred from coords
