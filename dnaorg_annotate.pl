@@ -3127,7 +3127,7 @@ sub add_blastx_alerts {
         if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
           $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
           my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
-          printf("HEYA1 in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx] ");
+          # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx] ");
           my %alt_str_H = ();   # added to as we find alerts below, possible keys are:
           # "b_non", "b_nop", "b_cst", "b_p5l", "b_p5s", "b_p3l", "b_p3s", "p_lin", "p_lde", "p_trc"
           
@@ -3160,17 +3160,11 @@ sub add_blastx_alerts {
             $n_stop   = $ftr_results_HR->{"n_stop"};
             $n_strand = $ftr_results_HR->{"n_strand"};
             $n_len    = $ftr_results_HR->{"n_len"};
-            printf("\tn_start..n_stop: $n_start..$n_stop\n");
           }
 
           # only proceed if we have a nucleotide prediction >= min length OR
           # we have no nucleotide prediction
           if(((defined $n_start) && ($n_len >= $xminntlen)) || (! defined $n_start)) { 
-
-            printf("HEYA1 in $sub_name, proceeding with $seq_name ftr_idx: $ftr_idx, p_start..p_stop %s..%s\n", 
-                   (defined $ftr_results_HR->{"p_start"}) ? $ftr_results_HR->{"p_start"} : "undef", 
-                   (defined $ftr_results_HR->{"p_stop"})  ? $ftr_results_HR->{"p_stop"}  : "undef");
-
             if((defined $ftr_results_HR->{"p_start"}) && 
                (defined $ftr_results_HR->{"p_stop"})) { 
               $p_start   = $ftr_results_HR->{"p_start"};
@@ -3189,7 +3183,7 @@ sub add_blastx_alerts {
                 ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $p_qseq_name, expected $seq_name)", "dnaorg", 1, $FH_HR);
               }
               $p_feature_flag = ($p_qftr_idx ne "") ? 1 : 0;
-              printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_feature_flag: $p_feature_flag p_start: $p_start p_stop: $p_stop p_score: $p_score\n");
+              # printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_feature_flag: $p_feature_flag p_start: $p_start p_stop: $p_stop p_score: $p_score\n");
             }
 
             # add alerts as needed:
@@ -3443,21 +3437,39 @@ sub parse_blastx_results {
 
   open(IN, $blastx_summary_file) || ofile_FileOpenFailure($blastx_summary_file, "dnaorg", $sub_name, $!, "reading", $FH_HR);
   
-  # first step, determine which sequence each hit corresponds to
-  my $query      = undef;
-  my $target     = undef;
-  my $hsp_idx    = undef;
-  my $seq_name   = undef; 
+  my $xminntlen  = opt_Get("--xminntlen",  $opt_HHR);
+  my $xlonescore = opt_Get("--xlonescore", $opt_HHR);
+  my $seq_name   = undef; # sequence name this hit corresponds to 
   my $q_len      = undef; # length of query sequence
   my $q_ftr_idx  = undef; # feature index query pertains to, [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
   my $t_ftr_idx  = undef; # feature index target (fetched CDS sequence from input fasta file) pertains to [0..$nftr-1]
-  my $no_coords_query = undef; # name of query without coords, if query sequence is a predicted feature, e.g. "NC_002549.1/6039..8068:+" for query "NC_002549.1/6039..8068:+/10..885:+,885..2030:+"
-  my $coords          = undef; # string of coordinates if this is a predicted feature, e.g. "10..885:+,885..2030:+" for "NC_002549.1/6039..8068:+/10..885:+,885..2030:+"
-  my $store_flag = 0;   # should we store this query/target/hit trio? 
-                        # set to '1' if current query/target pair is compatible (query is full sequence or correct CDS feature) 
-                        # and this is highest scoring hit for this feature for this sequence (query/target) pair
-                        # and the query (full length sequence, or predicted CDS) is at least <x> nt from --xminntlen <x>
-  my $xminntlen  = opt_Get("--xminntlen", $opt_HHR);
+  my %cur_H = (); # values for current hit (HSP)
+
+  # Order of lines in <IN>:
+  # -----per-query/target-block---
+  # QACC
+  # QDEF   ignored
+  # MATCH  ignored
+  # HACC  
+  # HDEF   ignored
+  # SLEN   ignored
+  # ------per-HSP-block------
+  # HSP   
+  # SCORE 
+  # EVALUE ignored
+  # HLEN   ignored
+  # IDENT  ignored
+  # GAPS   ignored
+  # FRAME
+  # STOP   not always present
+  # DEL    not always present
+  # MAXDE  not always present
+  # INS    not always present
+  # MAXINS not always present
+  # QRANGE
+  # SRANGE ignored
+  # ------per-HSP-block------
+  # END_MATCH
 
   while(my $line = <IN>) { 
     chomp $line;
@@ -3468,198 +3480,158 @@ sub parse_blastx_results {
       }
       my ($key, $value) = (@el_A);
       if($key eq "QACC") { 
-        $query = $value;
+        $cur_H{$key} = $value;
         # determine what sequence it is
         my $q_ftr_type_idx; # feature type and index string, from $seq_name if not a full sequence (e.g. "CDS.4")
-        printf("calling helper_blastx_breakdown_query with query $query\n");
-        ($seq_name, $q_ftr_type_idx, $q_len) = helper_blastx_breakdown_query($query, $seq_len_HR, $FH_HR); 
+        ($seq_name, $q_ftr_type_idx, $q_len) = helper_blastx_breakdown_query($value, $seq_len_HR, $FH_HR); 
         # helper_blastx_breakdown_query() will die if $query is unparseable
         # determine what feature this query corresponds to
         $q_ftr_idx = ($q_ftr_type_idx eq "") ? -1 : $ftr_type_idx2ftr_idx_H{$q_ftr_type_idx};
         if(! defined $q_ftr_idx) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, problem parsing QACC line unable to determine feature index from query $query", "dnaorg", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, problem parsing QACC line unable to determine feature index from query $value", "dnaorg", 1, $FH_HR);
         }
       }
       elsif($key eq "HACC") { 
-        if(! defined $query) { 
+        if(! defined $cur_H{"QACC"}) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HACC line before QACC line\n", "dnaorg", 1, $FH_HR);
         }
-        $target = $value;
+        $cur_H{$key} = $value;
         # determine what feature it is
-        if($target =~ /(\S+)\/(\S+)/) { 
+        if($value =~ /(\S+)\/(\S+)/) { 
           my ($accn, $coords) = ($1, $2);
           # find it in @{$ftr_info_AHR}
-          $t_ftr_idx = helper_blastx_db_seqname_to_ftr_idx($target, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
+          $t_ftr_idx = helper_blastx_db_seqname_to_ftr_idx($value, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
+        }
+        else {
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse HACC line $line", "dnaorg", 1, $FH_HR);
         }
       }
       elsif($key eq "HSP") { 
-        if((! defined $query) || (! defined $t_ftr_idx)) { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"})) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines\n", "dnaorg", 1, $FH_HR);
         }
-        # printf("BLASTX HSP $key $value\n");
-        if($value =~ /^(\d+)$/) { 
-          $hsp_idx = $value;
-          # printf("BLASTX set hsp_idx to $hsp_idx\n");
-        }
-        else { 
+        $cur_H{$key} = $value;
+        if($value !~ /^(\d+)$/) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", "dnaorg", 1, $FH_HR);
         }
       }
+      elsif($key eq "SCORE") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
+        }
+        $cur_H{$key} = $value;
+        if($value !~ /^(\d+)$/) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary SCORE line $line", "dnaorg", 1, $FH_HR);
+        }
+      }
+      elsif($key eq "FRAME") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, HSP, or SCORE lines\n", "dnaorg", 1, $FH_HR);
+        }
+        if($value =~ /^[\+\-]([123])$/) { 
+          $cur_H{$key} = $1;
+          # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_frame} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"} . "\n");
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", "dnaorg", 1, $FH_HR);
+        }
+      }
+      elsif(($key eq "STOP") || ($key eq "DEL") || ($key eq "INS")) { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"}) || (! defined $cur_H{"FRAME"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, SCORE or FRAME lines\n", "dnaorg", 1, $FH_HR);
+        }
+        if($value ne "") { 
+          $cur_H{$key} = $value;
+        } 
+      }
       elsif($key eq "QRANGE") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"}) || (! defined $cur_H{"FRAME"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, SCORE or FRAME lines\n", "dnaorg", 1, $FH_HR);
+        }
         if($value eq "..") { # special case, no hits, silently move on
           ;
         }
-        elsif((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read QRANGE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
-        }
-        elsif($store_flag) { 
+        else { 
+          # determine if we should store this hit
           if($value =~ /^(\d+)..(\d+)$/) { 
             my ($blast_start, $blast_stop) = ($1, $2);
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
-            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"}  = $blast_start;
-            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"}   = $blast_stop;
-            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
-            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $query;
-            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}    = abs($blast_start - $blast_stop) + 1;
-            printf("\tHEYA0 BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_start}  to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"} . "\n");
-            printf("\tHEYA0 BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_stop}   to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"} . "\n");
-            printf("\tHEYA0 BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_strand} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} . "\n");
+            
+            # should we store this query/target/hit trio?
+            # we do if A, B, and C are all TRUE and one or both of D or E is TRUE
+            #  A. this query/target pair is compatible (query is full sequence or correct CDS feature) 
+            #  B. this is the highest scoring hit for this feature for this sequence (query/target pair)? 
+            #  C. query length (full length seq or predicted CDS) is at least <x> nt from --xminntlen
+            # 
+              #  D. hit score is above minimum (--xlonescore)
+            #  E. hit overlaps by at least 1 nt with a nucleotide prediction
+            my $a_true = (($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) ? 1 : 0; # query is full sequence OR query is fetched CDS that pertains to target
+            my $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest
+                          ($cur_H{"SCORE"} > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
+            my $c_true = ($q_len >= $xminntlen) ? 1 : 0; # length >= --xminntlen
+            if($a_true && $b_true && $c_true) { 
+              my $d_true = ($cur_H{"SCORE"} >= $xlonescore) ? 1 : 0;
+              my $e_true = 0; 
+              # only bother determining $e_true if $d_true is 0
+              if(! $d_true) { 
+                if((defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"}) &&
+                   ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"} eq $blast_strand)) { 
+                  my $noverlap = 0;
+                  if($blast_strand eq "+") { 
+                    ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_start"},
+                                                     $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_stop"},
+                                                     $blast_start, $blast_stop, $FH_HR);
+                  }
+                  elsif($blast_strand eq "-") { 
+                    ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_stop"},
+                                                     $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_start"},
+                                                     $blast_stop, $blast_start, $FH_HR);
+                  }
+                  if($noverlap > 0) { $e_true = 1; }
+                }
+              }
+              if($d_true || $e_true) { 
+                # store the hit
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"}  = $blast_start;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"}   = $blast_stop;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}    = abs($blast_start - $blast_stop) + 1;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $cur_H{"QACC"};
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}  = $cur_H{"SCORE"};
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"}  = $cur_H{"FRAME"};
+                if(defined $cur_H{"INS"}) { 
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = $cur_H{"INS"};
+                }
+                if(defined $cur_H{"DEL"}) { 
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} = $cur_H{"DEL"};
+                }
+                if(defined $cur_H{"STOP"}) { 
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"} = $cur_H{"STOP"};
+                }
+              }
+            }
           }
           else { 
             ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", "dnaorg", 1, $FH_HR);
           }
-        }
-      }
-      elsif($key eq "INS") { 
-        if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXIN line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
-        }
-        if($store_flag && ($value ne "")) { 
-          my $ins = $value;
-          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = $ins;
-          # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_ins} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} . "\n");
-        }
-      }
-      elsif($key eq "DEL") { 
-        if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXDE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
-        }
-        if($store_flag && ($value ne "")) { 
-          my $del = $value;
-          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} = $del;
-          # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_del} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} . "\n");
-        }
-      }
-      elsif($key eq "FRAME") { 
-        if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
-        }
-        if($store_flag) { 
-          if($value =~ /^[\+\-]([123])$/) { 
-            my $frame = $1;
-            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"} = $frame;
-            # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_frame} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"} . "\n");
-          }
-          else { 
-            ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", "dnaorg", 1, $FH_HR);
-          }
-        }
-      }
-      elsif($key eq "STOP") { 
-        if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read STOP line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
-        }
-        if($store_flag) { 
-          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $value;
-          # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_trcstop} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} . "\n");
-        }
-      }
-      elsif($key eq "SCORE") { 
-        if((! defined $query) || (! defined $t_ftr_idx) || (! defined $hsp_idx)) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines\n", "dnaorg", 1, $FH_HR);
-        }
-        # should we store this query/target/hit trio (set $store_flag to 1)? 
-        # we do if:
-        #  - this query/target pair is compatible (query is full sequence or correct CDS feature) 
-        #  - this is the highest scoring hit for this feature for this sequence (query/target pair)? 
-        #  - query length (full length seq or predicted CDS) is at least <x> nt from --xmminntlen
-        printf("HEYA0 q_ftr_idx: $q_ftr_idx t_ftr_idx: $t_ftr_idx\n");
-        printf("HEYA0 value $value defined ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_score}: %d\n", (defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ? 1 : 0);
-        if(defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) { 
-          printf("HEYA0 ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{p_score}: " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} . "\n");
-        }
-        printf("HEYA0 q_len $q_len xminntlen: $xminntlen\n");
-
-        if((($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) && # query is full sequence OR query is fetched CDS that pertains to target
-           ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest
-            ($value > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"})) && # highest scoring hit
-           ($q_len >= $xminntlen)) { # length >= --xminntlen
-          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} = $value;
-          $store_flag = 1;
-          printf("HEYA0 BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_score} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"} . "\n");
-        }
-        else { 
-          $store_flag = 0;
-        }
-      }
-      # Add elsif($key eq "") blocks here to store more values from the blastx.summary file
+        } # end of 'else' entered if QRANGE is NOT ".."
+        # reset variables
+        my $save_qacc = $cur_H{"QACC"}; 
+        my $save_hacc = $cur_H{"HACC"};
+        %cur_H = (); 
+        $cur_H{"QACC"} = $save_qacc; # save QACC
+        $cur_H{"HACC"} = $save_hacc; # save HACC
+      } # end of 'elsif $key eq "QRANGE"
+    } # end of 'if($line ne "END_MATCH")'
+    else { # $line eq "END_MATCH"
+      # reset variables
+      my $save_qacc = $cur_H{"QACC"};
+      %cur_H = (); 
+      $cur_H{"QACC"} = $save_qacc; # save QACC
+      $t_ftr_idx = undef;
     }
-  }
+  } # end of 'while($my $line = <IN>)'
   close(IN);
-
-  # go back through and remove any hits that are below the minimum score
-  # UNLESS that hit overlaps by at least 1 nt on same strand with a 
-  # CM prediction
-  my $min_x_score = opt_Get("--xlonescore", $opt_HHR); # minimum score for a lone hit (no corresponding CM prediction) to be considered
-  my $nseq = scalar(@{$seq_name_AR}); 
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    $seq_name = $seq_name_AR->[$seq_idx];
-    if(defined $ftr_results_HAHR->{$seq_name}) { 
-      for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        if(defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]) { 
-          if((defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"}) && 
-             $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"} < $min_x_score) { # blastx hit is below minimum score
-            my $remove_blastx_hit = 1; # could be changed to '0' below
-            if(defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) { 
-              # there is a CM prediction, check if it overlaps on same strand
-              if(($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "+") &&
-                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"} eq "+") &&
-                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "+")) { 
-                my ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"},
-                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_stop"},
-                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"},
-                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"}, $FH_HR);
-                if($noverlap > 0) { 
-                  # overlaps on '+' strand by at least 1 nt: DO NOT REMOVE blastx hit
-                  $remove_blastx_hit = 0;
-                }
-              }
-              if(($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "-") &&
-                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"} eq "-") &&
-                 ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_strand"} eq "-")) { 
-                my ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_stop"},
-                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"},
-                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"},
-                                                    $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}, $FH_HR);
-                if($noverlap > 0) { 
-                  # overlaps on '-' strand by at least 1 nt: DO NOT REMOVE blastx hit
-                  $remove_blastx_hit = 0;
-                }
-              }
-            }
-            if($remove_blastx_hit) { 
-              # set all values of "p_*" keys to undef
-              foreach my $p_key (keys %{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}) { 
-                if($p_key =~ m/^p\_/) { # key starts with "p_"
-                  $ftr_results_HAHR->{$seq_name}[$ftr_idx]{$p_key} = undef;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
 
   return 0;
 }
@@ -3726,8 +3698,6 @@ sub helper_blastx_breakdown_query {
   else { 
     ofile_FAIL("ERROR in $sub_name, unable to parse query $in_query", "dnaorg", 1, $FH_HR); 
   }
-
-  printf("\nHEYA000 in $sub_name, input query: $in_query, returning ret_seq_name: $ret_seq_name, ret_ftr_type_idx: $ret_ftr_type_idx, ret_len: $ret_len\n\n");
 
   return ($ret_seq_name, $ret_ftr_type_idx, $ret_len);
 }
