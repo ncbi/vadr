@@ -32,6 +32,7 @@ require "epn-utils.pm";
 # - Fills in feature and segment info
 # - Translates CDS (if any) and creates BLAST db
 # - Builds CM 
+# - Presses CM 
 # - Writes model info file
 # - Writes optional output files
 # 
@@ -266,6 +267,7 @@ foreach $cmd (@early_cmd_A) {
 my %execs_H = (); # hash with paths to all required executables
 if(! opt_Get("--skipbuild", \%opt_HH)) { 
   $execs_H{"cmbuild"}       = $inf_exec_dir . "/cmbuild";
+  $execs_H{"cmpress"}       = $inf_exec_dir . "/cmpress";
 }
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "/esl-reformat";
 $execs_H{"esl-translate"} = $esl_exec_dir . "/esl-translate";
@@ -388,7 +390,7 @@ if(defined $in_stk_file) {
   $start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
 
   utl_RunCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "fasta", "stockholm", \%opt_HH, $FH_HR);
+  sqf_EslReformatRun($execs_H{"esl-reformat"}, $stk_file, $fa_file, "stockholm", "fasta", \%opt_HH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -490,6 +492,19 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
 
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cm",      $cm_file, 1, "CM file");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmbuild", $cmbuild_file, 1, "cmbuild output file");
+
+  # press the file we just created 
+  $start_secs = ofile_OutputProgressPrior("Pressing CM file", $progress_w, $log_FH, *STDOUT);
+  my $cmpress_file = $out_root . ".cmpress";
+  my $cmpress_cmd  = $execs_H{"cmpress"} . " $cm_file > $cmpress_file";
+  utl_RunCommand($cmpress_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+  ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "i1m",     $cm_file . ".i1m", 1, "binary CM and p7 HMM filter file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "i1i",     $cm_file . ".i1i", 1, "SSI index for binary CM file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "i1f",     $cm_file . ".i1f", 1, "optimized p7 HMM filters (MSV part)");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "i1p",     $cm_file . ".i1p", 1, "optimized p7 HMM filters (remainder)");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmpress", $cmpress_file,     1, "cmpress output file");
 }
 
 ########################
@@ -580,12 +595,12 @@ sub stockholm_validate_single_sequence_input {
     }
     # validate it matches $exp_sqstring
     my $fetched_sqstring = $msa->get_sqstring_unaligned(0);
-    dng_SqstringCapitalize(\$fetched_sqstring);
-    dng_SqstringCapitalize(\$exp_sqstring);
-    dng_SqstringDnaize(\$fetched_sqstring);
-    dng_SqstringDnaize(\$exp_sqstring);
+    seq_SqstringCapitalize(\$fetched_sqstring);
+    seq_SqstringCapitalize(\$exp_sqstring);
+    seq_SqstringDnaize(\$fetched_sqstring);
+    seq_SqstringDnaize(\$exp_sqstring);
     if($fetched_sqstring ne $exp_sqstring) { 
-      my $summary_sqstring_diff_str = dng_SqstringDiffSummary($fetched_sqstring, $exp_sqstring);
+      my $summary_sqstring_diff_str = seq_SqstringDiffSummary($fetched_sqstring, $exp_sqstring);
       ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it does not match sequence read from GenBank file $gb_file:\n$summary_sqstring_diff_str", "dnaorg", 1, $FH_HR); 
     }
   }
@@ -593,7 +608,7 @@ sub stockholm_validate_single_sequence_input {
     ofile_FAIL("ERROR, did not read exactly 1 sequence in --stk file $in_stk_file.\nTo use DNAORG with models built from alignments of multiple sequences,\nyou will have to build the CM with cmbuild and create the model info file manually.\n", "dnaorg", 1, $FH_HR);
   }
 
-  return $msa->has_ss;
+  return $msa->has_ss_cons;
 }
 
 #################################################################
